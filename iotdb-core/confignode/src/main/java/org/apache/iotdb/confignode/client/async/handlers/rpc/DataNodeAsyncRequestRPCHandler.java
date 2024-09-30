@@ -196,6 +196,8 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
       case FLUSH:
       case CLEAR_CACHE:
       case INVALIDATE_LAST_CACHE:
+      case CLEAN_DATA_NODE_CACHE:
+      case STOP_DATA_NODE:
       case START_REPAIR_DATA:
       case STOP_REPAIR_DATA:
       case LOAD_CONFIGURATION:

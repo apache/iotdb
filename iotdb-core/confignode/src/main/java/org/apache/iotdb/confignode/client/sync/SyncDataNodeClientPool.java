@@ -28,10 +28,11 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.exception.UncheckedStartupException;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.mpp.rpc.thrift.TCleanDataNodeCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
-import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
@@ -186,6 +187,7 @@ public class SyncDataNodeClientPool {
       CnToDnSyncRequestType requestType, SyncDataNodeInternalServiceClient client, Object req)
       throws Exception {
     return Objects.requireNonNull(actionMap.get(requestType)).apply(req, client);
+    }
   }
 
   private void doRetryWait(int retryNum) {

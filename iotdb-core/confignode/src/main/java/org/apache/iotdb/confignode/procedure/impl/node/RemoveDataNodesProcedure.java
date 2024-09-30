@@ -22,12 +22,14 @@ package org.apache.iotdb.confignode.procedure.impl.node;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
-import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
+import org.apache.iotdb.confignode.procedure.env.RemoveDataNodeHandler;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrationPlan;
 import org.apache.iotdb.confignode.procedure.state.RemoveDataNodeState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
@@ -38,62 +40,70 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REMOVE_DATANODE_PROCESS;
 
 /** remove data node procedure */
-public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNodeState> {
-  private static final Logger LOG = LoggerFactory.getLogger(RemoveDataNodeProcedure.class);
+public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNodeState> {
+  private static final Logger LOG = LoggerFactory.getLogger(RemoveDataNodesProcedure.class);
   private static final int RETRY_THRESHOLD = 5;
 
-  private TDataNodeLocation removedDataNode;
+  private List<TDataNodeLocation> removedDataNodes;
 
-  private List<TConsensusGroupId> migratedDataNodeRegions = new ArrayList<>();
+  private List<RegionMigrationPlan> regionMigrationPlans = new ArrayList<>();
 
-  public RemoveDataNodeProcedure() {
+  private Map<Integer, NodeStatus> nodeStatusMap;
+
+  public RemoveDataNodesProcedure() {
     super();
   }
 
-  public RemoveDataNodeProcedure(TDataNodeLocation removedDataNode) {
+  public RemoveDataNodesProcedure(
+      List<TDataNodeLocation> removedDataNodes, Map<Integer, NodeStatus> nodeStatusMap) {
     super();
-    this.removedDataNode = removedDataNode;
+    this.removedDataNodes = removedDataNodes;
+    this.nodeStatusMap = nodeStatusMap;
   }
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, RemoveDataNodeState state) {
-    if (removedDataNode == null) {
+    if (removedDataNodes.isEmpty()) {
       return Flow.NO_MORE_STATE;
     }
 
-    RegionMaintainHandler handler = env.getRegionMaintainHandler();
+    RemoveDataNodeHandler removeDataNodeHandler = env.getRemoveDataNodeManager();
     try {
       switch (state) {
         case REGION_REPLICA_CHECK:
-          if (env.checkEnoughDataNodeAfterRemoving(removedDataNode)) {
+          if (removeDataNodeHandler.checkEnoughDataNodeAfterRemoving(removedDataNodes)) {
             setNextState(RemoveDataNodeState.REMOVE_DATA_NODE_PREPARE);
           } else {
             LOG.error(
                 "{}, Can not remove DataNode {} "
                     + "because the number of DataNodes is less or equal than region replica number",
                 REMOVE_DATANODE_PROCESS,
-                removedDataNode);
+                removedDataNodes);
             return Flow.NO_MORE_STATE;
           }
         case REMOVE_DATA_NODE_PREPARE:
-          // mark the datanode as removing status and broadcast region route map
-          env.markDataNodeAsRemovingAndBroadcast(removedDataNode);
-          migratedDataNodeRegions = handler.getMigratedDataNodeRegions(removedDataNode);
+          Map<Integer, NodeStatus> removedNodeStatusMap = new HashMap<>();
+          removedDataNodes.forEach(
+              dataNode -> removedNodeStatusMap.put(dataNode.getDataNodeId(), NodeStatus.Removing));
+          removeDataNodeHandler.changeDataNodeStatus(removedDataNodes, removedNodeStatusMap);
+          regionMigrationPlans = removeDataNodeHandler.getRegionMigrationPlans(removedDataNodes);
           LOG.info(
               "{}, DataNode regions to be removed is {}",
               REMOVE_DATANODE_PROCESS,
-              migratedDataNodeRegions);
+              regionMigrationPlans);
           setNextState(RemoveDataNodeState.BROADCAST_DISABLE_DATA_NODE);
           break;
         case BROADCAST_DISABLE_DATA_NODE:
-          handler.broadcastDisableDataNode(removedDataNode);
+          removeDataNodeHandler.broadcastDataNodeStatusChange(removedDataNodes);
           setNextState(RemoveDataNodeState.SUBMIT_REGION_MIGRATE);
           break;
         case SUBMIT_REGION_MIGRATE:
@@ -101,11 +111,7 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
           setNextState(RemoveDataNodeState.STOP_DATA_NODE);
           break;
         case STOP_DATA_NODE:
-          if (isAllRegionMigratedSuccessfully(env)) {
-            LOG.info("{}, Begin to stop DataNode: {}", REMOVE_DATANODE_PROCESS, removedDataNode);
-            handler.removeDataNodePersistence(removedDataNode);
-            handler.stopDataNode(removedDataNode);
-          }
+          checkRegionStatusAndStopDataNode(env);
           return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {
@@ -113,7 +119,10 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
         setFailure(new ProcedureException("Remove Data Node failed " + state));
       } else {
         LOG.error(
-            "Retrievable error trying to remove data node {}, state {}", removedDataNode, state, e);
+            "Retrievable error trying to remove data node {}, state {}",
+            removedDataNodes,
+            state,
+            e);
         if (getCycles() > RETRY_THRESHOLD) {
           setFailure(new ProcedureException("State stuck at " + state));
         }
@@ -123,8 +132,10 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
   }
 
   private void submitChildRegionMigrate(ConfigNodeProcedureEnv env) {
-    migratedDataNodeRegions.forEach(
-        regionId -> {
+    regionMigrationPlans.forEach(
+        regionMigrationPlan -> {
+          TConsensusGroupId regionId = regionMigrationPlan.getRegionId();
+          TDataNodeLocation removedDataNode = regionMigrationPlan.getFromDataNode();
           TDataNodeLocation destDataNode =
               env.getRegionMaintainHandler().findDestDataNode(regionId);
           // TODO: need to improve the coordinator selection method here, maybe through load
@@ -154,24 +165,45 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
         });
   }
 
-  private boolean isAllRegionMigratedSuccessfully(ConfigNodeProcedureEnv env) {
+  private void checkRegionStatusAndStopDataNode(ConfigNodeProcedureEnv env) {
     List<TRegionReplicaSet> replicaSets =
         env.getConfigManager().getPartitionManager().getAllReplicaSets();
-
-    List<TConsensusGroupId> migratedFailedRegions =
-        replicaSets.stream()
-            .filter(replica -> replica.getDataNodeLocations().contains(removedDataNode))
-            .map(TRegionReplicaSet::getRegionId)
-            .collect(Collectors.toList());
-    if (!migratedFailedRegions.isEmpty()) {
-      LOG.warn(
-          "{}, Some regions are migrated failed, the StopDataNode process should not be executed, migratedFailedRegions: {}",
-          REMOVE_DATANODE_PROCESS,
-          migratedFailedRegions);
-      return false;
+    List<TDataNodeLocation> rollBackDataNodes = new ArrayList<>();
+    for (TDataNodeLocation dataNode : removedDataNodes) {
+      List<TConsensusGroupId> migratedFailedRegions =
+          replicaSets.stream()
+              .filter(replica -> replica.getDataNodeLocations().contains(dataNode))
+              .map(TRegionReplicaSet::getRegionId)
+              .collect(Collectors.toList());
+      if (!migratedFailedRegions.isEmpty()) {
+        LOG.warn(
+            "{}, Some regions are migrated failed in DataNode: {}, migratedFailedRegions: {}."
+                + "Regions that have been successfully migrated will not roll back, you can submit the RemoveDataNodes task again later.",
+            REMOVE_DATANODE_PROCESS,
+            dataNode,
+            migratedFailedRegions);
+        rollBackDataNodes.add(dataNode);
+      } else {
+        LOG.info(
+            "{}, Region all migrated successfully, start to stop DataNode: {}",
+            REMOVE_DATANODE_PROCESS,
+            dataNode);
+        env.getRemoveDataNodeManager().removeDataNodePersistence(removedDataNodes);
+        env.getRemoveDataNodeManager().stopDataNodes(removedDataNodes);
+      }
     }
-
-    return true;
+    if (!rollBackDataNodes.isEmpty()) {
+      LOG.info(
+          "{}, Start to roll back the DataNodes status: {}",
+          REMOVE_DATANODE_PROCESS,
+          rollBackDataNodes);
+      env.getRemoveDataNodeManager().changeDataNodeStatus(rollBackDataNodes, nodeStatusMap);
+      env.getRemoveDataNodeManager().broadcastDataNodeStatusChange(rollBackDataNodes);
+      LOG.info(
+          "{}, Roll back the DataNodes status successfully: {}",
+          REMOVE_DATANODE_PROCESS,
+          rollBackDataNodes);
+    }
   }
 
   @Override
@@ -212,22 +244,40 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeShort(ProcedureType.REMOVE_DATA_NODE_PROCEDURE.getTypeCode());
     super.serialize(stream);
-    ThriftCommonsSerDeUtils.serializeTDataNodeLocation(removedDataNode, stream);
-    stream.writeInt(migratedDataNodeRegions.size());
-    migratedDataNodeRegions.forEach(
-        tid -> ThriftCommonsSerDeUtils.serializeTConsensusGroupId(tid, stream));
+    stream.writeInt(removedDataNodes.size());
+    removedDataNodes.forEach(
+        dataNode -> ThriftCommonsSerDeUtils.serializeTDataNodeLocation(dataNode, stream));
+    stream.writeInt(regionMigrationPlans.size());
+    for (RegionMigrationPlan regionMigrationPlan : regionMigrationPlans) {
+      regionMigrationPlan.serialize(stream);
+    }
+    stream.writeInt(nodeStatusMap.size());
+    for (Map.Entry<Integer, NodeStatus> entry : nodeStatusMap.entrySet()) {
+      stream.writeInt(entry.getKey());
+      stream.writeByte(entry.getValue().ordinal());
+    }
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     try {
-      removedDataNode = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
-      int regionSize = byteBuffer.getInt();
-      migratedDataNodeRegions = new ArrayList<>(regionSize);
-      for (int i = 0; i < regionSize; i++) {
-        migratedDataNodeRegions.add(
-            ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(byteBuffer));
+      int removedDataNodeSize = byteBuffer.getInt();
+      removedDataNodes = new ArrayList<>(removedDataNodeSize);
+      for (int i = 0; i < removedDataNodeSize; i++) {
+        removedDataNodes.add(ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer));
+      }
+      int regionMigrationPlanSize = byteBuffer.getInt();
+      regionMigrationPlans = new ArrayList<>(regionMigrationPlanSize);
+      for (int i = 0; i < regionMigrationPlanSize; i++) {
+        regionMigrationPlans.add(RegionMigrationPlan.deserialize(byteBuffer));
+      }
+      int nodeStatusMapSize = byteBuffer.getInt();
+      nodeStatusMap = new HashMap<>(nodeStatusMapSize);
+      for (int i = 0; i < nodeStatusMapSize; i++) {
+        int dataNodeId = byteBuffer.getInt();
+        NodeStatus nodeStatus = NodeStatus.values()[byteBuffer.get()];
+        nodeStatusMap.put(dataNodeId, nodeStatus);
       }
     } catch (ThriftSerDeException e) {
       LOG.error("Error in deserialize RemoveConfigNodeProcedure", e);
@@ -236,18 +286,22 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
 
   @Override
   public boolean equals(Object that) {
-    if (that instanceof RemoveDataNodeProcedure) {
-      RemoveDataNodeProcedure thatProc = (RemoveDataNodeProcedure) that;
+    if (that instanceof RemoveDataNodesProcedure) {
+      RemoveDataNodesProcedure thatProc = (RemoveDataNodesProcedure) that;
       return thatProc.getProcId() == this.getProcId()
           && thatProc.getState() == this.getState()
-          && thatProc.removedDataNode.equals(this.removedDataNode)
-          && thatProc.migratedDataNodeRegions.equals(this.migratedDataNodeRegions);
+          && thatProc.removedDataNodes.equals(this.removedDataNodes)
+          && thatProc.regionMigrationPlans.equals(this.regionMigrationPlans);
     }
     return false;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(this.removedDataNode, this.migratedDataNodeRegions);
+    return Objects.hash(this.removedDataNodes, this.regionMigrationPlans);
+  }
+
+  public List<TDataNodeLocation> getRemovedDataNodes() {
+    return removedDataNodes;
   }
 }

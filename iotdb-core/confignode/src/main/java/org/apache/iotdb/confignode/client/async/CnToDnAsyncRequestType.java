@@ -21,6 +21,9 @@ package org.apache.iotdb.confignode.client.async;
 
 public enum CnToDnAsyncRequestType {
   // Node Maintenance
+  CLEAN_DATA_NODE_CACHE,
+  STOP_DATA_NODE,
+
   FLUSH,
   MERGE,
   FULL_MERGE,

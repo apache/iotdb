@@ -32,8 +32,8 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionStatus;
-import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
@@ -42,19 +42,13 @@ import org.apache.iotdb.confignode.client.sync.CnToDnSyncRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
-import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHeartbeatSample;
-import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
-import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
-import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
-import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionMigrateResult;
@@ -74,10 +68,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REGION_MIGRATE_PROCESS;
-import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REMOVE_DATANODE_PROCESS;
 import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS;
 import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
-import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
 
 public class RegionMaintainHandler {
 
@@ -488,11 +480,11 @@ public class RegionMaintainHandler {
         .findAny();
   }
 
-  private boolean isSucceed(TSStatus status) {
+  public boolean isSucceed(TSStatus status) {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
-  private boolean isFailed(TSStatus status) {
+  public boolean isFailed(TSStatus status) {
     return !isSucceed(status);
   }
 
@@ -637,29 +629,6 @@ public class RegionMaintainHandler {
   }
 
   /**
-   * Remove data node in node info
-   *
-   * @param dataNodeLocation data node location
-   */
-  public void removeDataNodePersistence(TDataNodeLocation dataNodeLocation) {
-    // Remove consensus record
-    List<TDataNodeLocation> removeDataNodes = Collections.singletonList(dataNodeLocation);
-    try {
-      configManager.getConsensusManager().write(new RemoveDataNodePlan(removeDataNodes));
-    } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
-    }
-
-    // Adjust maxRegionGroupNum
-    configManager.getClusterSchemaManager().adjustMaxRegionGroupNum();
-
-    // Remove metrics
-    PartitionMetrics.unbindDataNodePartitionMetricsWhenUpdate(
-        MetricService.getInstance(),
-        NodeUrlUtils.convertTEndPointUrl(dataNodeLocation.getClientRpcEndPoint()));
-  }
-
-  /**
    * Change the leader of given Region.
    *
    * <p>For IOT_CONSENSUS, using `changeLeaderForIoTConsensus` method to change the regionLeaderMap
@@ -790,21 +759,5 @@ public class RegionMaintainHandler {
       }
     }
     return Optional.empty();
-  }
-
-  /**
-   * Check the protocol of the cluster, standalone is not supported to remove data node currently
-   *
-   * @return SUCCEED_STATUS if the Cluster is not standalone protocol, REMOVE_DATANODE_FAILED
-   *     otherwise
-   */
-  private TSStatus checkClusterProtocol() {
-    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    if (CONF.getDataRegionConsensusProtocolClass().equals(SIMPLE_CONSENSUS)
-        || CONF.getSchemaRegionConsensusProtocolClass().equals(SIMPLE_CONSENSUS)) {
-      status.setCode(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode());
-      status.setMessage("SimpleConsensus protocol is not supported to remove data node");
-    }
-    return status;
   }
 }
