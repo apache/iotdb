@@ -637,6 +637,21 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     }
   }
 
+  private Event supplyTerminateEvent() {
+    final PipeTerminateEvent terminateEvent =
+        new PipeTerminateEvent(pipeName, creationTime, pipeTaskMeta, dataRegionId);
+    if (!terminateEvent.increaseReferenceCount(
+        PipeHistoricalDataRegionTsFileAndDeletionExtractor.class.getName())) {
+      LOGGER.warn(
+          "Pipe {}@{}: failed to increase reference count for terminate event, will resend it",
+          pipeName,
+          dataRegionId);
+      return null;
+    }
+    isTerminateSignalSent = true;
+    return terminateEvent;
+  }
+
   private Event supplyTsFileEvent(TsFileResource resource) {
     final PipeTsFileInsertionEvent event =
         new PipeTsFileInsertionEvent(
@@ -711,21 +726,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
           event);
     }
     return isReferenceCountIncreased ? event : null;
-  }
-
-  private Event supplyTerminateEvent() {
-    final PipeTerminateEvent terminateEvent =
-        new PipeTerminateEvent(pipeName, creationTime, pipeTaskMeta, dataRegionId);
-    if (!terminateEvent.increaseReferenceCount(
-        PipeHistoricalDataRegionTsFileAndDeletionExtractor.class.getName())) {
-      LOGGER.warn(
-          "Pipe {}@{}: failed to increase reference count for terminate event, will resend it",
-          pipeName,
-          dataRegionId);
-      return null;
-    }
-    isTerminateSignalSent = true;
-    return terminateEvent;
   }
 
   @Override
