@@ -2324,7 +2324,7 @@ public class DataRegion implements IDataRegionForQuery {
       deleteDataInFiles(unsealedTsFileResource, deletion, devicePaths, deviceMatchInfo);
       // capture deleteDataNode and wait it to be persisted to DAL.
       DeletionResource deletionResource =
-          PipeInsertionDataNodeListener.getInstance().listenToDeleteData(node, dataRegionId);
+          PipeInsertionDataNodeListener.getInstance().listenToDeleteData(dataRegionId, node);
       // just get result. We have already waited for result in `listenToDeleteData`
       if (deletionResource != null && deletionResource.waitForResult() == Status.FAILURE) {
         throw deletionResource.getCause();
@@ -2374,7 +2374,7 @@ public class DataRegion implements IDataRegionForQuery {
       deleteDataDirectlyInFile(unsealedTsFileResource, pathToDelete, startTime, endTime);
       // capture deleteDataNode and wait it to be persisted to DAL.
       DeletionResource deletionResource =
-          PipeInsertionDataNodeListener.getInstance().listenToDeleteData(node, dataRegionId);
+          PipeInsertionDataNodeListener.getInstance().listenToDeleteData(dataRegionId, node);
       // just get result. We have already waited for result in `listenToDeleteData`
       if (deletionResource != null && deletionResource.waitForResult() == Status.FAILURE) {
         throw deletionResource.getCause();
