@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.client.dn.DnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.db.protocol.client.dn.DnToDnRequestType;
@@ -135,7 +134,8 @@ public class GeneralRegionAttributeSecurityService {
   }
 
   private Set<TDataNodeLocation> sendUpdateRequest(
-      Map<SchemaRegionId, Pair<Long, Map<TDataNodeLocation, byte[]>>> attributeUpdateCommitMap) {
+      final Map<SchemaRegionId, Pair<Long, Map<TDataNodeLocation, byte[]>>>
+          attributeUpdateCommitMap) {
     final AsyncRequestContext<TAttributeUpdateReq, TSStatus, DnToDnRequestType, TDataNodeLocation>
         clientHandler = new AsyncRequestContext<>(DnToDnRequestType.UPDATE_ATTRIBUTE);
 
@@ -156,9 +156,11 @@ public class GeneralRegionAttributeSecurityService {
                     }));
 
     DnToDnInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestToNodeWithRetryAndTimeoutInMs(
+        .sendAsyncRequestWithTimeoutInMs(
             clientHandler,
-            PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2 / 3);
+            IoTDBDescriptor.getInstance()
+                .getConfig()
+                .getGeneralRegionAttributeSecurityServiceTimeoutSeconds());
     return clientHandler.getResponseMap();
   }
 
