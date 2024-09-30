@@ -64,6 +64,8 @@ import java.util.Objects;
 
 public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContainer {
 
+  private static final LocalDate EMPTY_DATE = LocalDate.of(1000, 1, 1);
+
   private final long startTime;
   private final long endTime;
   private final Filter filter;
@@ -266,6 +268,13 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
         final TsPrimitiveType primitiveType = data.getVector()[i];
         if (Objects.isNull(primitiveType)) {
           tablet.bitMaps[i].mark(rowIndex);
+          final TSDataType type = tablet.getSchemas().get(i).getType();
+          if (type == TSDataType.TEXT || type == TSDataType.BLOB || type == TSDataType.STRING) {
+            ((Binary[]) columns[i])[rowIndex] = Binary.EMPTY_VALUE;
+          }
+          if (type == TSDataType.DATE) {
+            ((LocalDate[]) columns[i])[rowIndex] = EMPTY_DATE;
+          }
           continue;
         }
         switch (tablet.getSchemas().get(i).getType()) {
@@ -464,11 +473,13 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
   private boolean recordAlignedChunk(final List<Chunk> valueChunkList, final byte marker)
       throws IOException {
     if (!valueChunkList.isEmpty()) {
+      final Chunk timeChunk = timeChunkList.get(lastIndex);
+      timeChunk.getData().rewind();
       currentIsMultiPage = isMultiPageList.get(lastIndex);
       chunkReader =
           currentIsMultiPage
-              ? new AlignedChunkReader(timeChunkList.get(lastIndex), valueChunkList, filter)
-              : new AlignedSinglePageWholeChunkReader(timeChunkList.get(lastIndex), valueChunkList);
+              ? new AlignedChunkReader(timeChunk, valueChunkList, filter)
+              : new AlignedSinglePageWholeChunkReader(timeChunk, valueChunkList);
       currentIsAligned = true;
       lastMarker = marker;
       return true;
