@@ -732,9 +732,10 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   public synchronized boolean hasConsumedAll() {
     // If the pendingQueues are null when the function is called, it implies that the extractor only
     // extracts deletion thus the historical event has nothing to consume.
-    return hasBeenStarted && (Objects.isNull(pendingQueue))
-        || pendingQueue.isEmpty()
-            && (!shouldTerminatePipeOnAllHistoricalEventsConsumed || isTerminateSignalSent);
+    return hasBeenStarted
+        && (Objects.isNull(pendingQueue)
+            || pendingQueue.isEmpty()
+                && (!shouldTerminatePipeOnAllHistoricalEventsConsumed || isTerminateSignalSent));
   }
 
   @Override
@@ -747,16 +748,16 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     if (Objects.nonNull(pendingQueue)) {
       pendingQueue.forEach(
           resource -> {
-            try {
-              if (resource instanceof TsFileResource) {
+            if (resource instanceof TsFileResource) {
+              try {
                 PipeDataNodeResourceManager.tsfile().unpinTsFileResource((TsFileResource) resource);
+              } catch (final IOException e) {
+                LOGGER.warn(
+                    "Pipe {}@{}: failed to unpin TsFileResource after dropping pipe, original path: {}",
+                    pipeName,
+                    dataRegionId,
+                    ((TsFileResource) resource).getTsFilePath());
               }
-            } catch (final IOException e) {
-              LOGGER.warn(
-                  "Pipe {}@{}: failed to unpin TsFileResource after dropping pipe, original path: {}",
-                  pipeName,
-                  dataRegionId,
-                  ((TsFileResource) resource).getTsFilePath());
             }
           });
       pendingQueue.clear();
