@@ -651,7 +651,7 @@ public class TsFileResource implements PersistentResource {
 
   @Override
   public String toString() {
-    return String.format("file is %s, status: %s", file.toString(), getStatus());
+    return String.format("{file: %s, status: %s}", file.toString(), getStatus());
   }
 
   @Override

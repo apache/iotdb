@@ -22,6 +22,8 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -32,6 +34,15 @@ public class CreatePipeTask implements IConfigTask {
 
   public CreatePipeTask(CreatePipeStatement createPipeStatement) {
     this.createPipeStatement = createPipeStatement;
+  }
+
+  public CreatePipeTask(CreatePipe createPipe) {
+    createPipeStatement = new CreatePipeStatement(StatementType.CREATE_PIPE);
+    createPipeStatement.setPipeName(createPipe.getPipeName());
+    createPipeStatement.setIfNotExists(createPipe.hasIfNotExistsCondition());
+    createPipeStatement.setExtractorAttributes(createPipe.getExtractorAttributes());
+    createPipeStatement.setProcessorAttributes(createPipe.getProcessorAttributes());
+    createPipeStatement.setConnectorAttributes(createPipe.getConnectorAttributes());
   }
 
   @Override

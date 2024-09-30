@@ -84,10 +84,8 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
       node.setLeftChild(leftChild);
       node.setRightChild(rightChild);
 
-      // TODO(beyyes) when outer, left, right join is introduced, fix the condition
-      if (node.getJoinType() == JoinNode.JoinType.INNER) {
-        context.enablePushDown = false;
-      }
+      // TODO(beyyes) optimize for outer, left, right join
+      context.enablePushDown = false;
 
       return node;
     }

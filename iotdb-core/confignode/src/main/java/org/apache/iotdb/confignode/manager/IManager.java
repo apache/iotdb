@@ -91,6 +91,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
@@ -148,6 +149,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * A subset of services provided by {@link ConfigManager}. For use internally only, passed to
@@ -833,4 +835,6 @@ public interface IManager {
   TSStatus alterTable(final TAlterTableReq req);
 
   TShowTableResp showTables(final String database);
+
+  TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap);
 }

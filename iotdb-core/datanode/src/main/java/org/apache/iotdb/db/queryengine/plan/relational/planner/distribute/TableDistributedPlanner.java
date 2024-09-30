@@ -131,6 +131,13 @@ public class TableDistributedPlanner {
       }
     }
 
+    // Add all Symbol Types in SymbolAllocator into TypeProvider
+    // TODO Remove redundant logic in LogicalPlan generation or Optimizer
+    symbolAllocator
+        .getTypes()
+        .allTableModelTypes()
+        .forEach((k, v) -> mppQueryContext.getTypeProvider().putTableModelType(k, v));
+
     // add exchange node for distributed plan
     return new AddExchangeNodes(mppQueryContext).addExchangeNodes(distributedPlan, planContext);
   }

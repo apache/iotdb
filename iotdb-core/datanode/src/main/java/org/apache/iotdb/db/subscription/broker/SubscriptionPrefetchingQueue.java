@@ -531,12 +531,24 @@ public abstract class SubscriptionPrefetchingQueue {
     return consumerGroupId + "_" + topicName;
   }
 
-  public long getUncommittedEventCount() {
+  public long getSubscriptionUncommittedEventCount() {
     return inFlightEvents.size();
   }
 
   public long getCurrentCommitId() {
     return commitIdGenerator.get();
+  }
+
+  public int getPipeEventCount() {
+    return inputPendingQueue.size()
+        + prefetchingQueue.stream()
+            .map(SubscriptionEvent::getPipeEventCount)
+            .reduce(Integer::sum)
+            .orElse(0)
+        + +inFlightEvents.values().stream()
+            .map(SubscriptionEvent::getPipeEventCount)
+            .reduce(Integer::sum)
+            .orElse(0);
   }
 
   /////////////////////////////// close & termination ///////////////////////////////
