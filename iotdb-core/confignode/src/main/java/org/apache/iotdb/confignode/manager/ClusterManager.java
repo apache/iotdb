@@ -33,8 +33,8 @@ import org.apache.iotdb.common.rpc.thrift.TTestConnectionResult;
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.client.request.TestConnectionUtils;
 import org.apache.iotdb.confignode.client.CnToCnNodeRequestType;
-import org.apache.iotdb.confignode.client.CnToDnRequestType;
 import org.apache.iotdb.confignode.client.async.CnToCnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.ConfigNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
@@ -155,7 +155,7 @@ public class ClusterManager {
             .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location));
     DataNodeAsyncRequestContext<TNodeLocations, TTestConnectionResp> dataNodeAsyncRequestContext =
         new DataNodeAsyncRequestContext<>(
-            CnToDnRequestType.SUBMIT_TEST_CONNECTION_TASK, nodeLocations, dataNodeLocationMap);
+            CnToDnAsyncRequestType.SUBMIT_TEST_CONNECTION_TASK, nodeLocations, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequest(dataNodeAsyncRequestContext);
     Map<Integer, TDataNodeLocation> anotherDataNodeLocationMap =
@@ -226,8 +226,9 @@ public class ClusterManager {
         TDataNodeLocation::getDataNodeId,
         TDataNodeLocation::getInternalEndPoint,
         TServiceType.DataNodeInternalService,
-        CnToDnRequestType.TEST_CONNECTION,
-        (AsyncRequestContext<Object, TSStatus, CnToDnRequestType, TDataNodeLocation> handler) ->
+        CnToDnAsyncRequestType.TEST_CONNECTION,
+        (AsyncRequestContext<Object, TSStatus, CnToDnAsyncRequestType, TDataNodeLocation>
+                handler) ->
             CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequest(handler));
   }
 
