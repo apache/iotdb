@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read;
+package org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
@@ -303,9 +303,9 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode implements ISc
         + ", tableName='"
         + tableName
         + '\''
-        + ", idDeterminedFilterList="
+        + ", idDeterminedPredicateList="
         + idDeterminedPredicateList
-        + ", idFuzzyFilter="
+        + ", idFuzzyPredicate="
         + idFuzzyPredicate
         + ", columnHeaderList="
         + columnHeaderList

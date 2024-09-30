@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read;
+package org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
@@ -26,24 +26,32 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.AbstractTableDeviceQueryNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.List;
 
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice.COUNT_DEVICE_HEADER_STRING;
+public class TableDeviceQueryScanNode extends AbstractTableDeviceQueryNode {
+  private final long offset;
 
-public class TableDeviceQueryCountNode extends AbstractTableDeviceQueryNode {
+  // -1 when unlimited
+  private final long limit;
 
-  public TableDeviceQueryCountNode(
+  public TableDeviceQueryScanNode(
       final PlanNodeId planNodeId,
       final String database,
       final String tableName,
       final List<List<SchemaFilter>> idDeterminedPredicateList,
       final Expression idFuzzyPredicate,
       final List<ColumnHeader> columnHeaderList,
-      final TRegionReplicaSet schemaRegionReplicaSet) {
+      final TRegionReplicaSet schemaRegionReplicaSet,
+      final long offset,
+      final long limit) {
     super(
         planNodeId,
         database,
@@ -52,41 +60,62 @@ public class TableDeviceQueryCountNode extends AbstractTableDeviceQueryNode {
         idFuzzyPredicate,
         columnHeaderList,
         schemaRegionReplicaSet);
+    this.offset = offset;
+    this.limit = limit;
   }
 
-  @Override
-  public List<String> getOutputColumnNames() {
-    return Collections.singletonList(COUNT_DEVICE_HEADER_STRING);
+  public long getOffset() {
+    return offset;
+  }
+
+  public long getLimit() {
+    return limit;
   }
 
   @Override
   public <R, C> R accept(final PlanVisitor<R, C> visitor, final C context) {
-    return visitor.visitTableDeviceQueryCount(this, context);
+    return visitor.visitTableDeviceQueryScan(this, context);
   }
 
   @Override
   public PlanNodeType getType() {
-    return PlanNodeType.TABLE_DEVICE_QUERY_COUNT;
+    return PlanNodeType.TABLE_DEVICE_QUERY_SCAN;
   }
 
   @Override
   public PlanNode clone() {
-    return new TableDeviceQueryCountNode(
+    return new TableDeviceQueryScanNode(
         getPlanNodeId(),
         database,
         tableName,
         idDeterminedPredicateList,
         idFuzzyPredicate,
         columnHeaderList,
-        schemaRegionReplicaSet);
+        schemaRegionReplicaSet,
+        offset,
+        limit);
+  }
+
+  @Override
+  protected void serializeAttributes(final ByteBuffer byteBuffer) {
+    super.serializeAttributes(byteBuffer);
+    ReadWriteIOUtils.write(offset, byteBuffer);
+    ReadWriteIOUtils.write(limit, byteBuffer);
+  }
+
+  @Override
+  protected void serializeAttributes(final DataOutputStream stream) throws IOException {
+    super.serializeAttributes(stream);
+    ReadWriteIOUtils.write(offset, stream);
+    ReadWriteIOUtils.write(limit, stream);
   }
 
   public static PlanNode deserialize(final ByteBuffer buffer) {
-    return AbstractTableDeviceQueryNode.deserialize(buffer, false);
+    return AbstractTableDeviceQueryNode.deserialize(buffer, true);
   }
 
   @Override
   public String toString() {
-    return "TableDeviceQueryCountNode" + toStringMessage();
+    return "TableDeviceQueryScanNode" + toStringMessage();
   }
 }

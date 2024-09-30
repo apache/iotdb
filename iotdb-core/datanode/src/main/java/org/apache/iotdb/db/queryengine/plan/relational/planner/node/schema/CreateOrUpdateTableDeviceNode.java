@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
+package org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;

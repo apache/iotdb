@@ -17,10 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write;
+package org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -28,13 +29,13 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Set;
 
-public class UpdateAttributeCommitNode extends PlanNode {
+public class TableDeviceAttributeCommitNode extends PlanNode {
 
   private final long version;
   private final byte[] commitBuffer;
   private final Set<Integer> shrunkNodes;
 
-  protected UpdateAttributeCommitNode(
+  protected TableDeviceAttributeCommitNode(
       final PlanNodeId id,
       final long version,
       final byte[] commitBuffer,
@@ -68,8 +69,13 @@ public class UpdateAttributeCommitNode extends PlanNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.TABLE_DEVICE_ATTRIBUTE_COMMIT;
+  }
+
+  @Override
   public PlanNode clone() {
-    return new UpdateAttributeCommitNode(id, version, commitBuffer, shrunkNodes);
+    return new TableDeviceAttributeCommitNode(id, version, commitBuffer, shrunkNodes);
   }
 
   @Override
@@ -87,4 +93,8 @@ public class UpdateAttributeCommitNode extends PlanNode {
 
   @Override
   protected void serializeAttributes(final DataOutputStream stream) throws IOException {}
+
+  public static PlanNode deserialize(final ByteBuffer buffer) {
+    return null;
+  }
 }
