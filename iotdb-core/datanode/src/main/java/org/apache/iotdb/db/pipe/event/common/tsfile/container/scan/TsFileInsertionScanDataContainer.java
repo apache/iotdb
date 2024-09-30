@@ -464,11 +464,13 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
   private boolean recordAlignedChunk(final List<Chunk> valueChunkList, final byte marker)
       throws IOException {
     if (!valueChunkList.isEmpty()) {
+      final Chunk timeChunk = timeChunkList.get(lastIndex);
+      timeChunk.getData().rewind();
       currentIsMultiPage = isMultiPageList.get(lastIndex);
       chunkReader =
           currentIsMultiPage
-              ? new AlignedChunkReader(timeChunkList.get(lastIndex), valueChunkList, filter)
-              : new AlignedSinglePageWholeChunkReader(timeChunkList.get(lastIndex), valueChunkList);
+              ? new AlignedChunkReader(timeChunk, valueChunkList, filter)
+              : new AlignedSinglePageWholeChunkReader(timeChunk, valueChunkList);
       currentIsAligned = true;
       lastMarker = marker;
       return true;
