@@ -64,6 +64,14 @@ public abstract class ModEntry implements StreamSerializable, BufferSerializable
         ReadWriteIOUtils.readLong(buffer));
   }
 
+  public long getStartTime() {
+    return timeRange.getMin();
+  }
+
+  public long getEndTime() {
+    return timeRange.getMax();
+  }
+
   public abstract boolean matchesFull(PartialPath path);
 
   public static ModEntry createFrom(InputStream stream) throws IOException {

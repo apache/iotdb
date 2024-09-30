@@ -38,6 +38,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionWorker;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.DefaultCompactionTaskComparatorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
@@ -4372,7 +4373,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
               unseqResources,
               new FastCompactionPerformer(true),
               1000,
-              0);
+              0, new ModFileManager());
       Assert.assertTrue(task.setSourceFilesToCompactionCandidate());
 
       FixedPriorityBlockingQueue<AbstractCompactionTask> queue =

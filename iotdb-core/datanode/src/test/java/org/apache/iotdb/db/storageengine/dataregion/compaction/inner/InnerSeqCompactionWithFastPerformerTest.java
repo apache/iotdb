@@ -40,6 +40,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionC
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTimeseriesType;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
@@ -236,7 +237,7 @@ public class InnerSeqCompactionWithFastPerformerTest {
                   Collections.singletonList(targetTsFileResource),
                   CompactionTaskType.INNER_SEQ,
                   COMPACTION_TEST_SG);
-              CompactionUtils.combineModsInInnerCompaction(sourceResources, targetTsFileResource);
+              
               List<TsFileResource> targetTsFileResources = new ArrayList<>();
               targetTsFileResources.add(targetTsFileResource);
               // check data
@@ -532,7 +533,7 @@ public class InnerSeqCompactionWithFastPerformerTest {
                 Collections.singletonList(targetTsFileResource),
                 CompactionTaskType.INNER_SEQ,
                 COMPACTION_TEST_SG);
-            CompactionUtils.combineModsInInnerCompaction(toMergeResources, targetTsFileResource);
+            
             List<TsFileResource> targetTsFileResources = new ArrayList<>();
             targetTsFileResources.add(targetTsFileResource);
             CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsFileResources);
@@ -861,7 +862,7 @@ public class InnerSeqCompactionWithFastPerformerTest {
                   Collections.singletonList(targetTsFileResource),
                   CompactionTaskType.INNER_SEQ,
                   COMPACTION_TEST_SG);
-              CompactionUtils.combineModsInInnerCompaction(toMergeResources, targetTsFileResource);
+              
               List<TsFileResource> targetTsFileResources = new ArrayList<>();
               targetTsFileResources.add(targetTsFileResource);
               CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsFileResources);
@@ -1144,7 +1145,7 @@ public class InnerSeqCompactionWithFastPerformerTest {
     ICompactionPerformer performer = new FastCompactionPerformer(false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0, vsgp.getTsFileResourceManager(), sourceResources, true, performer, 0);
+            0, vsgp.getTsFileResourceManager(), sourceResources, true, performer, 0, new ModFileManager());
 
     task.setSourceFilesToCompactionCandidate();
     // set the source files to COMPACTING manually to simulate the concurrent scenario
@@ -1154,32 +1155,32 @@ public class InnerSeqCompactionWithFastPerformerTest {
     vsgp.deleteByDevice(new PartialPath(fullPaths[0]), 0, 1800, 0);
     for (int i = 0; i < sourceResources.size() - 1; i++) {
       TsFileResource resource = sourceResources.get(i);
-      resource.resetModFile();
-      Assert.assertTrue(resource.getCompactionModFile().exists());
-      Assert.assertTrue(resource.getOldModFileIntern().exists());
+      
+      Assert.assertNotNull(resource.getCompactionModFile());
+      Assert.assertTrue(resource.newModFileExists());
       if (i < 2) {
-        Assert.assertEquals(3, resource.getOldModFileIntern().getModifications().size());
-        Assert.assertEquals(2, resource.getCompactionModFile().getModifications().size());
+        Assert.assertEquals(3, resource.getAllModEntries().size());
+        Assert.assertEquals(2, resource.getCompactionModFile().getAllMods().size());
       } else if (i < 3) {
-        Assert.assertEquals(2, resource.getOldModFileIntern().getModifications().size());
-        Assert.assertEquals(2, resource.getCompactionModFile().getModifications().size());
+        Assert.assertEquals(2, resource.getAllModEntries().size());
+        Assert.assertEquals(2, resource.getCompactionModFile().getAllMods().size());
       } else {
-        Assert.assertEquals(1, resource.getOldModFileIntern().getModifications().size());
-        Assert.assertEquals(1, resource.getCompactionModFile().getModifications().size());
+        Assert.assertEquals(1, resource.getAllModEntries().size());
+        Assert.assertEquals(1, resource.getCompactionModFile().getAllMods().size());
       }
     }
     task.start();
     for (TsFileResource resource : sourceResources) {
       Assert.assertFalse(resource.getTsFile().exists());
-      Assert.assertFalse(resource.getOldModFileIntern().exists());
-      Assert.assertFalse(resource.getCompactionModFile().exists());
+      Assert.assertFalse(resource.newModFileExists());
+      Assert.assertNull(resource.getCompactionModFile());
     }
 
     TsFileResource resource =
         TsFileNameGenerator.increaseInnerCompactionCnt(sourceResources.get(0));
-    resource.resetModFile();
-    Assert.assertTrue(resource.getOldModFileIntern().exists());
-    Assert.assertEquals(2, resource.getOldModFileIntern().getModifications().size());
-    Assert.assertFalse(resource.getCompactionModFile().exists());
+    
+    Assert.assertTrue(resource.newModFileExists());
+    Assert.assertEquals(2, resource.getAllModEntries().size());
+    Assert.assertNull(resource.getCompactionModFile());
   }
 }

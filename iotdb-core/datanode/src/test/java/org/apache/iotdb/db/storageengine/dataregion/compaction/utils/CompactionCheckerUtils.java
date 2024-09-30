@@ -30,6 +30,8 @@ import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.IDataBlockReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.SeriesDataBlockReader;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
@@ -130,11 +132,11 @@ public class CompactionCheckerUtils {
           Map<Long, TimeValuePair> timeValuePairMap =
               mapResult.computeIfAbsent(path.getFullPath(), k -> new TreeMap<>());
           List<ChunkMetadata> chunkMetadataList = reader.getChunkMetadataList(path);
-          List<Modification> seriesModifications = new LinkedList<>();
+          List<ModEntry> seriesModifications = new LinkedList<>();
 
           if (!"".equals(path.getMeasurement())) {
-            for (Modification modification : tsFileResource.getOldModFileIntern().getModifications()) {
-              if (modification.getPath().matchFullPath(new PartialPath(path.getFullPath()))) {
+            for (ModEntry modification : tsFileResource.getAllModEntries()) {
+              if (modification.matchesFull(new PartialPath(path.getFullPath()))) {
                 seriesModifications.add(modification);
               }
             }
@@ -298,14 +300,14 @@ public class CompactionCheckerUtils {
         }
       }
 
-      Collection<Modification> modifications =
-          ModificationFileV1.getNormalMods(mergedFile).getModifications();
-      for (Modification modification : modifications) {
-        Deletion deletion = (Deletion) modification;
-        if (mergedData.containsKey(deletion.getPath().getFullPath())) {
+      Collection<ModEntry> modifications =
+          mergedFile.getAllModEntries();
+      for (ModEntry modification : modifications) {
+        TreeDeletionEntry deletion = (TreeDeletionEntry) modification;
+        if (mergedData.containsKey(deletion.getPathPattern().getFullPath())) {
           long deletedCount = 0L;
           Iterator<TimeValuePair> timeValuePairIterator =
-              mergedData.get(deletion.getPath().getFullPath()).iterator();
+              mergedData.get(deletion.getPathPattern().getFullPath()).iterator();
           while (timeValuePairIterator.hasNext()) {
             TimeValuePair timeValuePair = timeValuePairIterator.next();
             if (timeValuePair.getTimestamp() >= deletion.getStartTime()
@@ -314,9 +316,9 @@ public class CompactionCheckerUtils {
               deletedCount++;
             }
           }
-          long count = fullPathPointNum.get(deletion.getPath().getFullPath());
+          long count = fullPathPointNum.get(deletion.getPathPattern().getFullPath());
           count = count - deletedCount;
-          fullPathPointNum.put(deletion.getPath().getFullPath(), count);
+          fullPathPointNum.put(deletion.getPathPattern().getFullPath(), count);
         }
       }
     }

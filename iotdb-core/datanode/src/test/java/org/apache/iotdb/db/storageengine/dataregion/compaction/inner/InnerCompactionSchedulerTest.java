@@ -25,6 +25,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactio
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceList;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -96,7 +97,7 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
 
     CompactionScheduler.tryToSubmitInnerSpaceCompactionTask(
-        tsFileManager, 0L, true, new CompactionScheduleContext());
+        tsFileManager, 0L, true, new CompactionScheduleContext(), new ModFileManager());
     try {
       Thread.sleep(5000);
     } catch (Exception e) {
@@ -118,7 +119,7 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
     TsFileManager tsFileManager = new TsFileManager("testSG", "0", "tmp");
     tsFileManager.addAll(seqResources, true);
     CompactionScheduler.tryToSubmitInnerSpaceCompactionTask(
-        tsFileManager, 0L, true, new CompactionScheduleContext());
+        tsFileManager, 0L, true, new CompactionScheduleContext(), new ModFileManager());
 
     long waitingTime = 0;
     while (CompactionTaskManager.getInstance().getExecutingTaskCount() != 0) {
@@ -148,7 +149,7 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
     TsFileManager tsFileManager = new TsFileManager("testSG", "0", "tmp");
     tsFileManager.addAll(seqResources, true);
     CompactionScheduler.tryToSubmitInnerSpaceCompactionTask(
-        tsFileManager, 0L, true, new CompactionScheduleContext());
+        tsFileManager, 0L, true, new CompactionScheduleContext(), new ModFileManager());
     long waitingTime = 0;
     while (CompactionTaskManager.getInstance().getExecutingTaskCount() != 0) {
       try {

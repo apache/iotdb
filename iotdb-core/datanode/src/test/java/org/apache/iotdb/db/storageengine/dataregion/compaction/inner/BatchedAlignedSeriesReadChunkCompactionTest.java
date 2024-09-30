@@ -30,6 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Comp
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
@@ -183,10 +184,10 @@ public class BatchedAlignedSeriesReadChunkCompactionTest extends AbstractCompact
             true);
     seqResources.add(seqResource1);
     seqResource1
-        .getOldModFileIntern()
+        .getModFileMayAllocate()
         .write(
-            new Deletion(new PartialPath("root.testsg.d0", "s2"), Long.MAX_VALUE, Long.MAX_VALUE));
-    seqResource1.getOldModFileIntern().close();
+            new TreeDeletionEntry(new PartialPath("root.testsg.d0", "s2"), Long.MAX_VALUE));
+    seqResource1.getModFile().close();;
 
     TsFileResource seqResource2 =
         generateSingleAlignedSeriesFile(
@@ -228,10 +229,10 @@ public class BatchedAlignedSeriesReadChunkCompactionTest extends AbstractCompact
             true);
     seqResources.add(seqResource1);
     seqResource1
-        .getOldModFileIntern()
+        .getModFileMayAllocate()
         .write(
-            new Deletion(new PartialPath("root.testsg.d0", "s2"), Long.MAX_VALUE, Long.MAX_VALUE));
-    seqResource1.getOldModFileIntern().close();
+            new TreeDeletionEntry(new PartialPath("root.testsg.d0", "s2"), Long.MAX_VALUE));
+    seqResource1.getModFile().close();;
 
     TsFileResource seqResource2 =
         generateSingleAlignedSeriesFile(
@@ -320,9 +321,9 @@ public class BatchedAlignedSeriesReadChunkCompactionTest extends AbstractCompact
             true);
     seqResources.add(seqResource1);
     seqResource1
-        .getOldModFileIntern()
-        .write(new Deletion(new PartialPath("root.testsg.d0", "s2"), Long.MAX_VALUE, 250000));
-    seqResource1.getOldModFileIntern().close();
+        .getModFileMayAllocate()
+        .write(new TreeDeletionEntry(new PartialPath("root.testsg.d0", "s2"), 250000));
+    seqResource1.getModFile().close();;
 
     TsFileResource seqResource2 =
         generateSingleAlignedSeriesFile(
@@ -366,9 +367,9 @@ public class BatchedAlignedSeriesReadChunkCompactionTest extends AbstractCompact
             true);
     seqResources.add(seqResource1);
     seqResource1
-        .getOldModFileIntern()
-        .write(new Deletion(new PartialPath("root.testsg.d0", "s2"), Long.MAX_VALUE, 25000));
-    seqResource1.getOldModFileIntern().close();
+        .getModFileMayAllocate()
+        .write(new TreeDeletionEntry(new PartialPath("root.testsg.d0", "s2"), 25000));
+    seqResource1.getModFile().close();;
 
     TsFileResource seqResource2 =
         generateSingleAlignedSeriesFile(
@@ -450,9 +451,9 @@ public class BatchedAlignedSeriesReadChunkCompactionTest extends AbstractCompact
             true);
     seqResources.add(seqResource1);
     seqResource1
-        .getOldModFileIntern()
-        .write(new Deletion(new PartialPath("root.testsg.d0", "s2"), Long.MAX_VALUE, 15000));
-    seqResource1.getOldModFileIntern().close();
+        .getModFileMayAllocate()
+        .write(new TreeDeletionEntry(new PartialPath("root.testsg.d0", "s2"), 15000));
+    seqResource1.getModFile().close();;
 
     TsFileResource seqResource2 =
         generateSingleAlignedSeriesFile(

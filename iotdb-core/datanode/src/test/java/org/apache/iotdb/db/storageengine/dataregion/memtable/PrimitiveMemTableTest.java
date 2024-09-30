@@ -28,6 +28,8 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
@@ -250,9 +252,9 @@ public class PrimitiveMemTableTest {
                 TSEncoding.RLE,
                 CompressionType.UNCOMPRESSED,
                 Collections.emptyMap()));
-    List<Pair<Modification, IMemTable>> modsToMemtable = new ArrayList<>();
-    Modification deletion =
-        new Deletion(new PartialPath(deviceId, measurementId[0]), Long.MAX_VALUE, 10, dataSize);
+    List<Pair<ModEntry, IMemTable>> modsToMemtable = new ArrayList<>();
+    ModEntry deletion =
+        new TreeDeletionEntry(new PartialPath(deviceId, measurementId[0]), 10, dataSize);
     modsToMemtable.add(new Pair<>(deletion, memTable));
     ReadOnlyMemChunk memChunk =
         memTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, modsToMemtable);
@@ -306,9 +308,9 @@ public class PrimitiveMemTableTest {
                     TSEncoding.RLE,
                     CompressionType.UNCOMPRESSED,
                     Collections.emptyMap())));
-    List<Pair<Modification, IMemTable>> modsToMemtable = new ArrayList<>();
-    Modification deletion =
-        new Deletion(new PartialPath(deviceId, measurementId[0]), Long.MAX_VALUE, 10, dataSize);
+    List<Pair<ModEntry, IMemTable>> modsToMemtable = new ArrayList<>();
+    ModEntry deletion =
+        new TreeDeletionEntry(new PartialPath(deviceId, measurementId[0]), 10, dataSize);
     modsToMemtable.add(new Pair<>(deletion, memTable));
     ReadOnlyMemChunk memChunk =
         memTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, modsToMemtable);

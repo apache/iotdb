@@ -23,6 +23,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.constant.TestConstant;
@@ -83,7 +84,7 @@ public class InnerCompactionEmptyTsFileTest extends InnerCompactionTest {
             unseqResources.subList(0, 3),
             false,
             new ReadPointCompactionPerformer(),
-            0);
+            0, new ModFileManager());
     unseqResources.get(0).readLock();
     CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
     Future<CompactionTaskSummary> future =

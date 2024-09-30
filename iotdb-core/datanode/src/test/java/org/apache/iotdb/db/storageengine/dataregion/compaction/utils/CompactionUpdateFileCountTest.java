@@ -28,6 +28,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.junit.After;
 import org.junit.Assert;
@@ -60,7 +61,7 @@ public class CompactionUpdateFileCountTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
+            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0, new ModFileManager());
     Assert.assertTrue(task.start());
     Assert.assertEquals(initSeqFileNum - 1, FileMetrics.getInstance().getFileCount(true));
     Assert.assertEquals(initUnSeqFileNum, FileMetrics.getInstance().getFileCount(false));
@@ -77,7 +78,7 @@ public class CompactionUpdateFileCountTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, unseqResources, false, new FastCompactionPerformer(false), 0);
+            0, tsFileManager, unseqResources, false, new FastCompactionPerformer(false), 0, new ModFileManager());
     Assert.assertTrue(task.start());
     Assert.assertEquals(initSeqFileNum, FileMetrics.getInstance().getFileCount(true));
     Assert.assertEquals(initUnSeqFileNum - 1, FileMetrics.getInstance().getFileCount(false));
@@ -101,7 +102,7 @@ public class CompactionUpdateFileCountTest extends AbstractCompactionTest {
             unseqResources,
             new FastCompactionPerformer(true),
             0,
-            0);
+            0, new ModFileManager());
     Assert.assertTrue(task.start());
     Assert.assertEquals(initSeqFileNum, FileMetrics.getInstance().getFileCount(true));
     Assert.assertEquals(initUnSeqFileNum - 3, FileMetrics.getInstance().getFileCount(false));

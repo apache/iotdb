@@ -388,7 +388,9 @@ public class TsFileResource {
     this.modFile = parent.modFile;
     this.modFilePathOffset = parent.modFilePathOffset;
     this.modFileOffset = parent.modFileOffset;
-    this.modFile.addReference(this);
+    if (modFile != null) {
+      this.modFile.addReference(this);
+    }
   }
 
   public void setModFile(ModificationFile modFile, boolean persist) throws IOException {

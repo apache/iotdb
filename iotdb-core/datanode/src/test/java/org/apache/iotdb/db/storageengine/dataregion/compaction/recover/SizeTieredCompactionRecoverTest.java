@@ -41,6 +41,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
@@ -278,7 +279,7 @@ public class SizeTieredCompactionRecoverTest {
         COMPACTION_TEST_SG);
 
     InnerSpaceCompactionTask innerSpaceCompactionTask =
-        new InnerSpaceCompactionTask(COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath));
+        new InnerSpaceCompactionTask(COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath), new ModFileManager());
     innerSpaceCompactionTask.recover();
     for (TsFileResource resource : sourceFiles) {
       Assert.assertTrue(resource.getTsFile().exists());
@@ -345,7 +346,7 @@ public class SizeTieredCompactionRecoverTest {
     channel.truncate(targetResource.getTsFile().length() - 100);
     channel.close();
     InnerSpaceCompactionTask recoverTask =
-        new InnerSpaceCompactionTask(COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath));
+        new InnerSpaceCompactionTask(COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath), new ModFileManager());
     recoverTask.recover();
     // all the source file should be deleted
     for (TsFileResource resource : sourceFiles) {
@@ -406,7 +407,7 @@ public class SizeTieredCompactionRecoverTest {
         CompactionTaskType.INNER_SEQ,
         COMPACTION_TEST_SG);
     InnerSpaceCompactionTask innerSpaceCompactionTask =
-        new InnerSpaceCompactionTask(COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath));
+        new InnerSpaceCompactionTask(COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath), new ModFileManager());
     innerSpaceCompactionTask.recover();
     // all the source file should still exist
     for (TsFileResource resource : sourceFiles) {
@@ -474,7 +475,7 @@ public class SizeTieredCompactionRecoverTest {
     channel.truncate(targetResource.getTsFile().length() - 100);
     channel.close();
     InnerSpaceCompactionTask innerSpaceCompactionTask =
-        new InnerSpaceCompactionTask(COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath));
+        new InnerSpaceCompactionTask(COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath), new ModFileManager());
     innerSpaceCompactionTask.recover();
     // all the source file should be deleted
     for (TsFileResource resource : sourceFiles) {
@@ -587,7 +588,7 @@ public class SizeTieredCompactionRecoverTest {
       setDataDirs(new String[][] {{TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"}});
       InnerSpaceCompactionTask recoverTask =
           new InnerSpaceCompactionTask(
-              COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath));
+              COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath), new ModFileManager());
       recoverTask.recover();
       // all the source files should exist
       for (String sourceFileName : sourceFileNames) {
@@ -740,7 +741,7 @@ public class SizeTieredCompactionRecoverTest {
       setDataDirs(new String[][] {{TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"}});
       InnerSpaceCompactionTask recoverTask =
           new InnerSpaceCompactionTask(
-              COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath));
+              COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath), new ModFileManager());
       recoverTask.recover();
       // all the source file should be deleted
       for (String sourceFileName : sourceFileNames) {
@@ -884,7 +885,7 @@ public class SizeTieredCompactionRecoverTest {
       setDataDirs(new String[][] {{TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"}});
       InnerSpaceCompactionTask recoverTask =
           new InnerSpaceCompactionTask(
-              COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath));
+              COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath), new ModFileManager());
       recoverTask.recover();
       // all the source files should exist
       for (String sourceFileName : sourceFileNames) {
@@ -1037,7 +1038,7 @@ public class SizeTieredCompactionRecoverTest {
       setDataDirs(new String[][] {{TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"}});
       InnerSpaceCompactionTask recoverTask =
           new InnerSpaceCompactionTask(
-              COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath));
+              COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath), new ModFileManager());
       recoverTask.recover();
       // all the source file should be deleted
       for (String sourceFileName : sourceFileNames) {

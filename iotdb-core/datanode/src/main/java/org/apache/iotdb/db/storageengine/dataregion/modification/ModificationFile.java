@@ -27,6 +27,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
@@ -72,6 +73,12 @@ public class ModificationFile implements AutoCloseable {
 
   public Iterator<ModEntry> getModIterator() throws IOException {
     return new ModIterator();
+  }
+
+  public List<ModEntry> getAllMods() throws IOException {
+    List<ModEntry> allMods = new ArrayList<>();
+    getModIterator().forEachRemaining(allMods::add);
+    return allMods;
   }
 
   @Override
