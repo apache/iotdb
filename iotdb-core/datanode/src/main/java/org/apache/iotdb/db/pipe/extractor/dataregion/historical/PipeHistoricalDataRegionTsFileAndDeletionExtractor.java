@@ -617,6 +617,26 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
         originalDeletionCount);
   }
 
+  @Override
+  public synchronized Event supply() {
+    if (!hasBeenStarted && StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
+      start();
+    }
+
+    if (Objects.isNull(pendingQueue)) {
+      return null;
+    }
+
+    final PersistentResource resource = pendingQueue.poll();
+    if (resource == null) {
+      return supplyTerminateEvent();
+    } else if (resource instanceof TsFileResource) {
+      return supplyTsFileEvent((TsFileResource) resource);
+    } else {
+      return supplyDeletionEvent((DeletionResource) resource);
+    }
+  }
+
   private Event supplyTsFileEvent(TsFileResource resource) {
     final PipeTsFileInsertionEvent event =
         new PipeTsFileInsertionEvent(
@@ -706,26 +726,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     }
     isTerminateSignalSent = true;
     return terminateEvent;
-  }
-
-  @Override
-  public synchronized Event supply() {
-    if (!hasBeenStarted && StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
-      start();
-    }
-
-    if (Objects.isNull(pendingQueue)) {
-      return null;
-    }
-
-    final PersistentResource resource = pendingQueue.poll();
-    if (resource == null) {
-      return supplyTerminateEvent();
-    } else if (resource instanceof TsFileResource) {
-      return supplyTsFileEvent((TsFileResource) resource);
-    } else {
-      return supplyDeletionEvent((DeletionResource) resource);
-    }
   }
 
   @Override
