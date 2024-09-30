@@ -234,6 +234,33 @@ public class UpdateDetailContainer implements UpdateContainer {
                   this.updateMap.remove(table);
                 }
               });
+    } else {
+      ((UpdateClearContainer) commitContainer)
+          .getTableNames()
+          .forEach(
+              tableName -> {
+                final ConcurrentMap<String[], ConcurrentMap<String, String>> deviceMap =
+                    updateMap.remove(tableName);
+                if (Objects.nonNull(deviceMap)) {
+                  result.addAndGet(
+                      deviceMap.size()
+                              * (RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY + MAP_SIZE)
+                          + deviceMap.entrySet().stream()
+                              .mapToLong(
+                                  entry ->
+                                      RamUsageEstimator.sizeOf(entry.getKey())
+                                          + entry.getValue().size()
+                                              * RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+                                          + entry.getValue().entrySet().stream()
+                                              .mapToLong(
+                                                  attributeKV ->
+                                                      RamUsageEstimator.sizeOf(attributeKV.getKey())
+                                                          + RamUsageEstimator.sizeOf(
+                                                              attributeKV.getValue()))
+                                              .reduce(0, Long::sum))
+                              .reduce(0, Long::sum));
+                }
+              });
     }
     return new Pair<>(result.get(), updateMap.isEmpty());
   }
