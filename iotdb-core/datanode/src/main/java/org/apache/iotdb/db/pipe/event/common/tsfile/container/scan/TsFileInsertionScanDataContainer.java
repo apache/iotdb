@@ -64,6 +64,8 @@ import java.util.Objects;
 
 public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContainer {
 
+  private static final LocalDate EMPTY_DATE = LocalDate.of(1970, 1, 1);
+
   private final long startTime;
   private final long endTime;
   private final Filter filter;
@@ -269,10 +271,9 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
           final TSDataType type = tablet.getSchemas().get(i).getType();
           if (type == TSDataType.TEXT || type == TSDataType.BLOB || type == TSDataType.STRING) {
             ((Binary[]) columns[i])[rowIndex] = Binary.EMPTY_VALUE;
-            continue;
           }
           if (type == TSDataType.DATE) {
-            ((LocalDate[]) columns[i])[rowIndex] = LocalDate.of(1000, 1, 1);
+            ((LocalDate[]) columns[i])[rowIndex] = EMPTY_DATE;
           }
           continue;
         }
