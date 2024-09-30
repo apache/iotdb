@@ -110,11 +110,19 @@ public class DeletionResource implements PersistentResource {
     return deleteDataNode.getProgressIndex();
   }
 
+  /**
+   * Only the default implementation is provided here, which will not be called in practice, but is
+   * only used to implement the interface
+   */
   @Override
   public long getFileStartTime() {
     return 0;
   }
 
+  /**
+   * Only the default implementation is provided here, which will not be called in practice, but is
+   * only used to implement the interface
+   */
   @Override
   public long getFileEndTime() {
     return 0;

@@ -24,7 +24,9 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 public interface PersistentResource {
   ProgressIndex getProgressIndex();
 
+  /** Used in PipeHistoricalDataRegionTsFileAndDeletionExtractor to sort PersistentResource */
   long getFileStartTime();
 
+  /** Used in PipeHistoricalDataRegionTsFileAndDeletionExtractor to sort PersistentResource */
   long getFileEndTime();
 }
