@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -54,8 +54,8 @@ public class DeviceAttributeRemoteUpdater {
   private static final Logger logger = LoggerFactory.getLogger(DeviceAttributeRemoteUpdater.class);
   private static final int UPDATE_DETAIL_CONTAINER_SEND_MIN_LIMIT_BYTES = 1024;
 
-  private final Set<Pair<TEndPoint, Integer>> targetDataNodeLocations = new HashSet<>();
-  private final ConcurrentMap<TEndPoint, UpdateContainer> attributeUpdateMap =
+  private final Set<TDataNodeLocation> targetDataNodeLocations = new HashSet<>();
+  private final ConcurrentMap<TDataNodeLocation, UpdateContainer> attributeUpdateMap =
       new ConcurrentHashMap<>();
   private final AtomicLong version = new AtomicLong(0);
 
@@ -63,7 +63,7 @@ public class DeviceAttributeRemoteUpdater {
   private final MemSchemaRegionStatistics regionStatistics;
 
   // Only exist for update detail container
-  private final Map<TEndPoint, UpdateContainerStatistics> updateContainerStatistics =
+  private final Map<TDataNodeLocation, UpdateContainerStatistics> updateContainerStatistics =
       new HashMap<>();
 
   public DeviceAttributeRemoteUpdater(final MemSchemaRegionStatistics regionStatistics) {
@@ -75,8 +75,8 @@ public class DeviceAttributeRemoteUpdater {
   public void update(
       final String tableName, final String[] deviceId, final Map<String, String> attributeMap) {
     targetDataNodeLocations.forEach(
-        pair -> {
-          if (!attributeUpdateMap.containsKey(pair.getLeft())) {
+        location -> {
+          if (!attributeUpdateMap.containsKey(location)) {
             final UpdateContainer newContainer;
             if (!regionStatistics.isAllowToCreateNewSeries()) {
               newContainer = new UpdateClearContainer();
@@ -84,16 +84,14 @@ public class DeviceAttributeRemoteUpdater {
             } else {
               newContainer = new UpdateDetailContainer();
               requestMemory(UpdateDetailContainer.INSTANCE_SIZE);
-              updateContainerStatistics.put(pair.getLeft(), new UpdateContainerStatistics());
+              updateContainerStatistics.put(location, new UpdateContainerStatistics());
             }
-            attributeUpdateMap.put(pair.getLeft(), newContainer);
+            attributeUpdateMap.put(location, newContainer);
           }
           final long size =
-              attributeUpdateMap
-                  .get(pair.getLeft())
-                  .updateAttribute(tableName, deviceId, attributeMap);
+              attributeUpdateMap.get(location).updateAttribute(tableName, deviceId, attributeMap);
           updateContainerStatistics.computeIfPresent(
-              pair.getLeft(),
+              location,
               (k, v) -> {
                 v.addSize(size);
                 return v;
@@ -102,12 +100,14 @@ public class DeviceAttributeRemoteUpdater {
         });
   }
 
-  public Pair<Long, Map<TEndPoint, byte[]>> getAttributeUpdateInfo(final AtomicInteger limit) {
+  public Pair<Long, Map<TDataNodeLocation, byte[]>> getAttributeUpdateInfo(
+      final AtomicInteger limit) {
     // Note that the "updateContainerStatistics" is unsafe to use here for whole read of detail
     // container because the update map is read by GRASS thread, and the container's size may change
     // during the read process
-    final Map<TEndPoint, byte[]> updateBytes = new HashMap<>();
-    for (final Map.Entry<TEndPoint, UpdateContainer> entry : attributeUpdateMap.entrySet()) {
+    final Map<TDataNodeLocation, byte[]> updateBytes = new HashMap<>();
+    for (final Map.Entry<TDataNodeLocation, UpdateContainer> entry :
+        attributeUpdateMap.entrySet()) {
       // If the remaining capacity is too low we just send clear container first
       // Because they require less capacity
       if (limit.get() < UPDATE_DETAIL_CONTAINER_SEND_MIN_LIMIT_BYTES
@@ -124,7 +124,7 @@ public class DeviceAttributeRemoteUpdater {
     return new Pair<>(version.get(), updateBytes);
   }
 
-  public void addLocation(final Pair<TEndPoint, Integer> dataNodeLocation) {
+  public void addLocation(final TDataNodeLocation dataNodeLocation) {
     targetDataNodeLocations.add(dataNodeLocation);
   }
 
@@ -138,7 +138,7 @@ public class DeviceAttributeRemoteUpdater {
     if (regionStatistics.isAllowToCreateNewSeries()) {
       return;
     }
-    final TreeSet<TEndPoint> degradeSet =
+    final TreeSet<TDataNodeLocation> degradeSet =
         new TreeSet<>(
             Comparator.comparingLong(v -> updateContainerStatistics.get(v).getDegradePriority())
                 .reversed());
@@ -148,15 +148,15 @@ public class DeviceAttributeRemoteUpdater {
             degradeSet.add(k);
           }
         });
-    for (final TEndPoint endPoint : degradeSet) {
+    for (final TDataNodeLocation location : degradeSet) {
       if (regionStatistics.isAllowToCreateNewSeries()) {
         return;
       }
       final UpdateClearContainer newContainer =
-          ((UpdateDetailContainer) attributeUpdateMap.get(endPoint)).degrade();
-      updateMemory(newContainer.ramBytesUsed() - updateContainerStatistics.get(endPoint).getSize());
-      attributeUpdateMap.put(endPoint, newContainer);
-      updateContainerStatistics.remove(endPoint);
+          ((UpdateDetailContainer) attributeUpdateMap.get(location)).degrade();
+      updateMemory(newContainer.ramBytesUsed() - updateContainerStatistics.get(location).getSize());
+      attributeUpdateMap.put(location, newContainer);
+      updateContainerStatistics.remove(location);
     }
   }
 
@@ -206,14 +206,18 @@ public class DeviceAttributeRemoteUpdater {
 
   private void serialize(final OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(targetDataNodeLocations.size(), outputStream);
-    for (final Pair<TEndPoint, Integer> targetDataNodeLocation : targetDataNodeLocations) {
-      ThriftCommonsSerDeUtils.serializeTEndPoint(targetDataNodeLocation.getLeft(), outputStream);
-      ReadWriteIOUtils.write(targetDataNodeLocation.getRight(), outputStream);
+    for (final TDataNodeLocation targetDataNodeLocation : targetDataNodeLocations) {
+      ReadWriteIOUtils.write(targetDataNodeLocation.getDataNodeId(), outputStream);
+      ThriftCommonsSerDeUtils.serializeTEndPoint(
+          targetDataNodeLocation.getInternalEndPoint(), outputStream);
     }
 
     ReadWriteIOUtils.write(attributeUpdateMap.size(), outputStream);
-    for (final Map.Entry<TEndPoint, UpdateContainer> entry : attributeUpdateMap.entrySet()) {
-      ThriftCommonsSerDeUtils.serializeTEndPoint(entry.getKey(), outputStream);
+    for (final Map.Entry<TDataNodeLocation, UpdateContainer> entry :
+        attributeUpdateMap.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey().getDataNodeId(), outputStream);
+      ThriftCommonsSerDeUtils.serializeTEndPoint(
+          entry.getKey().getInternalEndPoint(), outputStream);
       entry.getValue().serialize(outputStream);
     }
 
@@ -243,20 +247,31 @@ public class DeviceAttributeRemoteUpdater {
     int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; i++) {
       targetDataNodeLocations.add(
-          new Pair<>(
+          new TDataNodeLocation(
+              ReadWriteIOUtils.readInt(inputStream),
+              null,
               ThriftCommonsSerDeUtils.deserializeTEndPoint(inputStream),
-              ReadWriteIOUtils.readInt(inputStream)));
+              null,
+              null,
+              null));
     }
 
     size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
-      final TEndPoint endPoint = ThriftCommonsSerDeUtils.deserializeTEndPoint(inputStream);
+      final TDataNodeLocation location =
+          new TDataNodeLocation(
+              ReadWriteIOUtils.readInt(inputStream),
+              null,
+              ThriftCommonsSerDeUtils.deserializeTEndPoint(inputStream),
+              null,
+              null,
+              null);
       final UpdateContainer container =
           ReadWriteIOUtils.readBool(inputStream)
               ? new UpdateDetailContainer()
               : new UpdateClearContainer();
       container.deserialize(inputStream);
-      attributeUpdateMap.put(endPoint, container);
+      attributeUpdateMap.put(location, container);
     }
 
     version.set(ReadWriteIOUtils.readLong(inputStream));
