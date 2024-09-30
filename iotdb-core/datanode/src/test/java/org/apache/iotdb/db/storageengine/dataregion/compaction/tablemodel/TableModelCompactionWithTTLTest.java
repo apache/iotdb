@@ -150,6 +150,34 @@ public class TableModelCompactionWithTTLTest extends AbstractCompactionTest {
     Assert.assertTrue(target.getFileStartTime() > startTime && target.getFileEndTime() == endTime);
   }
 
+  @Test
+  public void testTableNotExist() throws IOException {
+    TsFileResource resource1 = createEmptyFileAndResource(true);
+    long startTime = System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(200);
+    long endTime = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(200);
+    try (CompactionTableModelTestFileWriter writer =
+        new CompactionTableModelTestFileWriter(resource1)) {
+      writer.registerTableSchema("t1", Arrays.asList("id_column"));
+      writer.startChunkGroup("t1", Arrays.asList("id_field1"));
+      writer.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
+          Arrays.asList("s0", "s1"),
+          new TimeRange[][][] {
+            new TimeRange[][] {new TimeRange[] {new TimeRange(startTime, endTime)}}
+          },
+          TSEncoding.PLAIN,
+          CompressionType.LZ4,
+          Arrays.asList(false, false));
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    seqResources.add(resource1);
+    InnerSpaceCompactionTask task =
+        new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, getPerformer(), 0);
+    Assert.assertTrue(task.start());
+    TsFileResource target = tsFileManager.getTsFileList(true).get(0);
+    Assert.assertTrue(target.getFileStartTime() == startTime && target.getFileEndTime() == endTime);
+  }
+
   public void createTable(String tableName, long ttl) {
     TsTable tsTable = new TsTable(tableName);
     tsTable.addColumnSchema(new IdColumnSchema("id_column", TSDataType.STRING));
