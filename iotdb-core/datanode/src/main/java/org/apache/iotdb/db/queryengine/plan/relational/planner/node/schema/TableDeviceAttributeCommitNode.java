@@ -28,6 +28,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -115,6 +116,15 @@ public class TableDeviceAttributeCommitNode extends PlanNode {
   }
 
   public static PlanNode deserialize(final ByteBuffer buffer) {
-    return null;
+    final long version = ReadWriteIOUtils.readLong(buffer);
+    final byte[] commitBuffer = new byte[ReadWriteIOUtils.readInt(buffer)];
+    buffer.get(commitBuffer);
+    final int size = ReadWriteIOUtils.readInt(buffer);
+    final Set<Integer> shrunkNodes = new HashSet<>();
+    for (int i = 0; i < size; ++i) {
+      shrunkNodes.add(ReadWriteIOUtils.readInt(buffer));
+    }
+    final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
+    return new TableDeviceAttributeCommitNode(planNodeId, version, commitBuffer, shrunkNodes);
   }
 }
