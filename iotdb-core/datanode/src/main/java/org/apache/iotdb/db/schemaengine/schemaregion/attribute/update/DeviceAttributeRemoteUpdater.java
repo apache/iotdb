@@ -128,7 +128,15 @@ public class DeviceAttributeRemoteUpdater {
   }
 
   public void commit(final TableDeviceAttributeCommitUpdateNode node) {
-    // TODO
+    node.getCommitMap()
+        .forEach(
+            ((location, bytes) ->
+                attributeUpdateMap.computeIfPresent(
+                    location,
+                    (dataNode, container) -> {
+                      container.updateSelfByCommitBuffer(bytes);
+                      return container;
+                    })));
   }
 
   public void addLocation(final TDataNodeLocation dataNodeLocation) {

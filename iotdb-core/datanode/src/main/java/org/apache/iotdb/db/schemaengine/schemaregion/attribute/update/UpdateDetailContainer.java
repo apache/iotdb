@@ -30,7 +30,6 @@ import javax.annotation.concurrent.ThreadSafe;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
@@ -178,7 +177,7 @@ public class UpdateDetailContainer implements UpdateContainer {
   }
 
   @Override
-  public Pair<Integer, Boolean> updateSelfByCommitBuffer(final ByteBuffer commitBuffer) {
+  public Pair<Integer, Boolean> updateSelfByCommitBuffer(final byte[] commitBuffer) {
     return null;
   }
 

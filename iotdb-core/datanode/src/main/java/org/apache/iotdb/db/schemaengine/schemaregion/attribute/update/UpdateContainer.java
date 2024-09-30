@@ -27,7 +27,6 @@ import javax.annotation.concurrent.ThreadSafe;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -43,7 +42,7 @@ public interface UpdateContainer {
   // The "limitBytes" shall be at least 5 for a "type" and "0" to indicate empty
   byte[] getUpdateContent(final @Nonnull AtomicInteger limitBytes);
 
-  Pair<Integer, Boolean> updateSelfByCommitBuffer(final ByteBuffer commitBuffer);
+  Pair<Integer, Boolean> updateSelfByCommitBuffer(final byte[] commitBuffer);
 
   void serialize(final OutputStream outputstream) throws IOException;
 
