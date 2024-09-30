@@ -390,6 +390,9 @@ class RatisConsensus implements IConsensus {
       } else {
         throw new RatisRequestFailedException(e);
       }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new RatisReadUnavailableException(e);
     } catch (Exception e) {
       throw new RatisRequestFailedException(e);
     }
@@ -773,6 +776,9 @@ class RatisConsensus implements IConsensus {
 
   @Override
   public List<ConsensusGroupId> getAllConsensusGroupIdsWithoutStarting() {
+    if (!storageDir.exists()) {
+      return Collections.emptyList();
+    }
     List<ConsensusGroupId> consensusGroupIds = new ArrayList<>();
     try (DirectoryStream<Path> stream = Files.newDirectoryStream(storageDir.toPath())) {
       for (Path path : stream) {

@@ -48,6 +48,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -303,6 +304,8 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
   private void rollback() throws IOException {
     // if the task has started,
+    targetTsfileResourceList =
+        targetTsfileResourceList == null ? Collections.emptyList() : targetTsfileResourceList;
     if (recoverMemoryStatus) {
       replaceTsFileInMemory(
           targetTsfileResourceList,

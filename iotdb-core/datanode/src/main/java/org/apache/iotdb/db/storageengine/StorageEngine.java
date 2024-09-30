@@ -281,6 +281,7 @@ public class StorageEngine implements IService {
 
   @Override
   public void start() throws StartupException {
+    recoverDataRegionNum = 0;
     // build time Interval to divide time partition
     initTimePartition();
     // create systemDir

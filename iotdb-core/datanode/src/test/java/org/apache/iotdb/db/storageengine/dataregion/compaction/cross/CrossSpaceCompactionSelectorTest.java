@@ -25,6 +25,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactio
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.FileCannotTransitToCompactingException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskQueue;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.DefaultCompactionTaskComparatorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
@@ -75,7 +76,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
       throws IOException, MetadataException, WriteProcessException {
     createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, false);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
     Assert.assertEquals(0, selected.size());
@@ -88,7 +89,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
     createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, false);
     seqResources.get(0).setStatusForTest(TsFileResourceStatus.UNCLOSED);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
     Assert.assertEquals(0, selected.size());
@@ -100,7 +101,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
     createFiles(1, 2, 3, 50, 0, 10000, 50, 50, false, true);
     createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, false);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
     Assert.assertEquals(1, selected.size());
@@ -121,7 +122,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
     createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, false);
     seqResources.get(1).setStatusForTest(TsFileResourceStatus.UNCLOSED);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
     Assert.assertEquals(1, selected.size());
@@ -156,7 +157,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
     createFiles(1, 2, 3, 50, 0, 10000, 50, 50, false, false);
     createFiles(1, 2, 3, 50, 0, 10000, 50, 50, false, false);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
     Assert.assertEquals(1, selected.size());
@@ -170,7 +171,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
     createFiles(2, 2, 3, 50, 0, 10000, 50, 50, false, true);
     createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, false);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
     Assert.assertEquals(1, selected.size());
@@ -197,7 +198,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
       createFiles(19, 2, 3, 50, 0, 10000, 50, 50, false, true);
       createFiles(1, 2, 3, 3000, 0, 10000, 50, 50, false, false);
       RewriteCrossSpaceCompactionSelector selector =
-          new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+          new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
       List<CrossCompactionTaskResource> selected =
           selector.selectCrossSpaceTask(seqResources, unseqResources);
       Assert.assertEquals(1, selected.size());
@@ -268,7 +269,8 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 cd1.countDown();
                 cd2.await();
                 RewriteCrossSpaceCompactionSelector selector =
-                    new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+                    new RewriteCrossSpaceCompactionSelector(
+                        "", "", 0, null, new CompactionScheduleContext());
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
                         seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
@@ -337,7 +339,8 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
             () -> {
               try {
                 RewriteCrossSpaceCompactionSelector selector =
-                    new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+                    new RewriteCrossSpaceCompactionSelector(
+                        "", "", 0, null, new CompactionScheduleContext());
                 // copy candidate source file list and add read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
@@ -448,7 +451,8 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
             () -> {
               try {
                 RewriteCrossSpaceCompactionSelector selector =
-                    new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+                    new RewriteCrossSpaceCompactionSelector(
+                        "", "", 0, null, new CompactionScheduleContext());
                 // copy candidate source file list and add read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
@@ -553,7 +557,8 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
             () -> {
               try {
                 RewriteCrossSpaceCompactionSelector selector =
-                    new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+                    new RewriteCrossSpaceCompactionSelector(
+                        "", "", 0, null, new CompactionScheduleContext());
                 // copy candidate source file list and add read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
@@ -673,7 +678,8 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
             () -> {
               try {
                 RewriteCrossSpaceCompactionSelector selector =
-                    new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+                    new RewriteCrossSpaceCompactionSelector(
+                        "", "", 0, null, new CompactionScheduleContext());
                 // copy candidate source file list and add read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
@@ -789,7 +795,8 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
             () -> {
               try {
                 RewriteCrossSpaceCompactionSelector selector =
-                    new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+                    new RewriteCrossSpaceCompactionSelector(
+                        "", "", 0, null, new CompactionScheduleContext());
                 // copy candidate source file list and add read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
@@ -898,7 +905,8 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
             () -> {
               try {
                 RewriteCrossSpaceCompactionSelector selector =
-                    new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+                    new RewriteCrossSpaceCompactionSelector(
+                        "", "", 0, null, new CompactionScheduleContext());
                 // copy candidate source file list and add read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
@@ -1020,7 +1028,8 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 cd1.countDown();
                 cd2.await();
                 RewriteCrossSpaceCompactionSelector selector =
-                    new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+                    new RewriteCrossSpaceCompactionSelector(
+                        "", "", 0, null, new CompactionScheduleContext());
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
                         seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
@@ -1091,7 +1100,8 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 cd1.countDown();
                 cd2.await();
                 RewriteCrossSpaceCompactionSelector selector =
-                    new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+                    new RewriteCrossSpaceCompactionSelector(
+                        "", "", 0, null, new CompactionScheduleContext());
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
                         seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
@@ -1160,7 +1170,8 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
             () -> {
               try {
                 RewriteCrossSpaceCompactionSelector selector =
-                    new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+                    new RewriteCrossSpaceCompactionSelector(
+                        "", "", 0, null, new CompactionScheduleContext());
                 // copy candidate source file list and add read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
@@ -1272,7 +1283,8 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
             () -> {
               try {
                 RewriteCrossSpaceCompactionSelector selector =
-                    new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+                    new RewriteCrossSpaceCompactionSelector(
+                        "", "", 0, null, new CompactionScheduleContext());
                 // copy candidate source file list and add read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
@@ -1378,7 +1390,8 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
             () -> {
               try {
                 RewriteCrossSpaceCompactionSelector selector =
-                    new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+                    new RewriteCrossSpaceCompactionSelector(
+                        "", "", 0, null, new CompactionScheduleContext());
                 // copy candidate source file list and add read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
@@ -1499,7 +1512,8 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
             () -> {
               try {
                 RewriteCrossSpaceCompactionSelector selector =
-                    new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+                    new RewriteCrossSpaceCompactionSelector(
+                        "", "", 0, null, new CompactionScheduleContext());
                 // copy candidate source file list and add read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
@@ -1614,7 +1628,8 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
             () -> {
               try {
                 RewriteCrossSpaceCompactionSelector selector =
-                    new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+                    new RewriteCrossSpaceCompactionSelector(
+                        "", "", 0, null, new CompactionScheduleContext());
                 // copy candidate source file list and add read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
@@ -1723,7 +1738,8 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
             () -> {
               try {
                 RewriteCrossSpaceCompactionSelector selector =
-                    new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+                    new RewriteCrossSpaceCompactionSelector(
+                        "", "", 0, null, new CompactionScheduleContext());
                 // copy candidate source file list and add read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
@@ -1845,7 +1861,8 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 cd1.countDown();
                 cd2.await();
                 RewriteCrossSpaceCompactionSelector selector =
-                    new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+                    new RewriteCrossSpaceCompactionSelector(
+                        "", "", 0, null, new CompactionScheduleContext());
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
                         seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);

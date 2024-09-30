@@ -24,6 +24,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.RepairUnsortedFileCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairDataFileScanUtil;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.RepairUnsortedFileCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
@@ -55,8 +56,11 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
     }
   }
 
+  public static long getInitialAllocatedFileTimestamp() {
+    return Long.MAX_VALUE / 2;
+  }
+
   private final TsFileResource sourceFile;
-  private final boolean rewriteFile;
   private CountDownLatch latch;
 
   public RepairUnsortedFileCompactionTask(
@@ -70,36 +74,16 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
         tsFileManager,
         Collections.singletonList(sourceFile),
         sequence,
-        new RepairUnsortedFileCompactionPerformer(true),
+        new RepairUnsortedFileCompactionPerformer(),
         serialId,
         null);
     this.sourceFile = sourceFile;
-    this.innerSpaceEstimator = new RepairUnsortedFileCompactionEstimator();
-    this.rewriteFile = false;
-  }
-
-  public RepairUnsortedFileCompactionTask(
-      long timePartition,
-      TsFileManager tsFileManager,
-      TsFileResource sourceFile,
-      boolean sequence,
-      boolean rewriteFile,
-      long serialId) {
-    super(
-        timePartition,
-        tsFileManager,
-        Collections.singletonList(sourceFile),
-        sequence,
-        new RepairUnsortedFileCompactionPerformer(rewriteFile),
-        serialId,
-        null);
-    this.sourceFile = sourceFile;
-    if (rewriteFile) {
+    if (this.sourceFile.getTsFileRepairStatus() != TsFileRepairStatus.NEED_TO_REPAIR_BY_MOVE) {
       this.innerSpaceEstimator = new RepairUnsortedFileCompactionEstimator();
     }
-    this.rewriteFile = rewriteFile;
   }
 
+  // used for 'start repair data'
   public RepairUnsortedFileCompactionTask(
       long timePartition,
       TsFileManager tsFileManager,
@@ -112,36 +96,13 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
         tsFileManager,
         Collections.singletonList(sourceFile),
         sequence,
-        new RepairUnsortedFileCompactionPerformer(true),
+        new RepairUnsortedFileCompactionPerformer(),
         serialId,
         null);
     this.sourceFile = sourceFile;
-    this.innerSpaceEstimator = new RepairUnsortedFileCompactionEstimator();
-    this.latch = latch;
-    this.rewriteFile = false;
-  }
-
-  public RepairUnsortedFileCompactionTask(
-      long timePartition,
-      TsFileManager tsFileManager,
-      TsFileResource sourceFile,
-      CountDownLatch latch,
-      boolean sequence,
-      boolean rewriteFile,
-      long serialId) {
-    super(
-        timePartition,
-        tsFileManager,
-        Collections.singletonList(sourceFile),
-        sequence,
-        new RepairUnsortedFileCompactionPerformer(rewriteFile),
-        serialId,
-        null);
-    this.sourceFile = sourceFile;
-    if (rewriteFile) {
+    if (this.sourceFile.getTsFileRepairStatus() != TsFileRepairStatus.NEED_TO_REPAIR_BY_MOVE) {
       this.innerSpaceEstimator = new RepairUnsortedFileCompactionEstimator();
     }
-    this.rewriteFile = rewriteFile;
     this.latch = latch;
   }
 
@@ -208,21 +169,48 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
         storageGroupName,
         dataRegionId);
 
-    if (!rewriteFile && sourceFile.oldModFileExists()) {
-      Files.createLink(
-          new File(ModificationFileV1.getNormalMods(filesView.targetFilesInPerformer.get(0)).getFilePath()).toPath(),
-          new File(sourceFile.getOldModFile().getFilePath()).toPath());
+    if (sourceFile.getTsFileRepairStatus() != TsFileRepairStatus.NEED_TO_REPAIR_BY_REWRITE) {
+      if (sourceFile.oldModFileExists()) {
+        Files.createLink(
+            new File(ModificationFileV1.getNormalMods(filesView.targetFilesInPerformer.get(0)).getFilePath()).toPath(),
+            new File(sourceFile.getOldModFile().getFilePath()).toPath());
+      }
     }
   }
 
   @Override
   protected boolean doCompaction() {
+    calculateRepairMethod();
+    if (!sourceFile.getTsFileRepairStatus().isRepairCompactionCandidate()) {
+      return true;
+    }
     boolean isSuccess = super.doCompaction();
     if (!isSuccess) {
       LOGGER.info("Failed to repair file {}", sourceFile.getTsFile().getAbsolutePath());
       sourceFile.setTsFileRepairStatus(TsFileRepairStatus.CAN_NOT_REPAIR);
     }
     return isSuccess;
+  }
+
+  private void calculateRepairMethod() {
+    if (this.sourceFile.getTsFileRepairStatus() != TsFileRepairStatus.NEED_TO_CHECK) {
+      return;
+    }
+    RepairDataFileScanUtil repairDataFileScanUtil = new RepairDataFileScanUtil(sourceFile, true);
+    repairDataFileScanUtil.scanTsFile();
+    if (repairDataFileScanUtil.isBrokenFile()) {
+      sourceFile.setTsFileRepairStatus(TsFileRepairStatus.CAN_NOT_REPAIR);
+      return;
+    }
+    if (repairDataFileScanUtil.hasUnsortedData()) {
+      sourceFile.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_REPAIR_BY_REWRITE);
+      return;
+    }
+    if (sourceFile.isSeq()) {
+      sourceFile.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_REPAIR_BY_MOVE);
+      return;
+    }
+    sourceFile.setTsFileRepairStatus(TsFileRepairStatus.NORMAL);
   }
 
   @Override
@@ -250,7 +238,7 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
 
   @Override
   public boolean isDiskSpaceCheckPassed() {
-    if (!rewriteFile) {
+    if (sourceFile.getTsFileRepairStatus() == TsFileRepairStatus.NEED_TO_REPAIR_BY_MOVE) {
       return true;
     }
     return super.isDiskSpaceCheckPassed();

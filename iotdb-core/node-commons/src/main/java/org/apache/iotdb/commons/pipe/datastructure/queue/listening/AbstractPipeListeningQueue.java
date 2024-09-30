@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.commons.pipe.datastructure.queue.listening;
 
+import org.apache.iotdb.commons.pipe.agent.task.PipeTask;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.queue.serializer.QueueSerializerType;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
-import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.apache.tsfile.utils.Pair;

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.confignode.consensus.request.read.model;
 
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -30,7 +30,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class ShowModelPlan extends ConfigPhysicalPlan {
+public class ShowModelPlan extends ConfigPhysicalReadPlan {
 
   private String modelName;
 
@@ -38,7 +38,7 @@ public class ShowModelPlan extends ConfigPhysicalPlan {
     super(ConfigPhysicalPlanType.ShowModel);
   }
 
-  public ShowModelPlan(TShowModelReq showModelReq) {
+  public ShowModelPlan(final TShowModelReq showModelReq) {
     super(ConfigPhysicalPlanType.ShowModel);
     if (showModelReq.isSetModelId()) {
       this.modelName = showModelReq.getModelId();
@@ -69,7 +69,7 @@ public class ShowModelPlan extends ConfigPhysicalPlan {
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
@@ -79,7 +79,7 @@ public class ShowModelPlan extends ConfigPhysicalPlan {
     if (!super.equals(o)) {
       return false;
     }
-    ShowModelPlan that = (ShowModelPlan) o;
+    final ShowModelPlan that = (ShowModelPlan) o;
     return Objects.equals(modelName, that.modelName);
   }
 

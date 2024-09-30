@@ -279,7 +279,8 @@ public class CompactionScheduler {
     ICrossSpaceSelector crossSpaceCompactionSelector =
         config
             .getCrossCompactionSelector()
-            .createInstance(logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
+            .createInstance(
+                logicalStorageGroupName, dataRegionId, timePartition, tsFileManager, context);
 
     List<CrossCompactionTaskResource> taskList =
         crossSpaceCompactionSelector.selectCrossSpaceTask(

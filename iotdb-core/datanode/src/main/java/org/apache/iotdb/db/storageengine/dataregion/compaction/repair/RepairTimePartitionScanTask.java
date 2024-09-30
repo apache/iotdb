@@ -119,6 +119,7 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
       } finally {
         sourceFile.readUnlock();
       }
+      sourceFile.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_REPAIR_BY_REWRITE);
       LOGGER.info(
           "[RepairScheduler] {} need to repair because it has internal unsorted data", sourceFile);
       TsFileManager tsFileManager = timePartition.getTsFileManager();
@@ -143,7 +144,7 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
     List<TsFileResource> seqList =
         tsFileManager.getTsFileListSnapshot(timePartition.getTimePartitionId(), true);
     List<TsFileResource> overlapFiles =
-        RepairDataFileScanUtil.checkTimePartitionHasOverlap(seqList);
+        RepairDataFileScanUtil.checkTimePartitionHasOverlap(seqList, false);
     for (TsFileResource overlapFile : overlapFiles) {
       if (!timePartition.getTsFileManager().isAllowCompaction()) {
         LOGGER.info(
@@ -153,6 +154,7 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
       }
       checkTaskStatusAndMayStop();
       CountDownLatch latch = new CountDownLatch(1);
+      overlapFile.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_REPAIR_BY_MOVE);
       RepairUnsortedFileCompactionTask task =
           new RepairUnsortedFileCompactionTask(
               timePartition.getTimePartitionId(),
@@ -160,7 +162,6 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
               overlapFile,
               latch,
               true,
-              false,
               tsFileManager.getNextCompactionTaskId());
       LOGGER.info(
           "[RepairScheduler] {} need to repair because it is overlapped with other files",

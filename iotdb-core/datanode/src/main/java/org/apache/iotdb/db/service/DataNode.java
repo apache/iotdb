@@ -37,8 +37,8 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.ServiceType;
@@ -567,6 +567,9 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         DataRegionConsensusImpl.getInstance().getAllConsensusGroupIdsWithoutStarting().stream()
             .filter(consensusGroupId -> !dataNodeConsensusGroupIds.contains(consensusGroupId))
             .collect(Collectors.toList());
+    if (invalidDataRegionConsensusGroupIds.isEmpty()) {
+      return;
+    }
     logger.info("Remove invalid dataRegion directories... {}", invalidDataRegionConsensusGroupIds);
     for (ConsensusGroupId consensusGroupId : invalidDataRegionConsensusGroupIds) {
       File oldDir =
@@ -606,9 +609,11 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         SchemaRegionConsensusImpl.getInstance().getAllConsensusGroupIdsWithoutStarting().stream()
             .filter(consensusGroupId -> !dataNodeConsensusGroupIds.contains(consensusGroupId))
             .collect(Collectors.toList());
+    if (invalidSchemaRegionConsensusGroupIds.isEmpty()) {
+      return;
+    }
     logger.info(
         "Remove invalid schemaRegion directories... {}", invalidSchemaRegionConsensusGroupIds);
-
     for (ConsensusGroupId consensusGroupId : invalidSchemaRegionConsensusGroupIds) {
       File oldDir =
           new File(
@@ -809,10 +814,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   private void setUpRPCService() throws StartupException {
     // Start InternalRPCService to indicate that the current DataNode can accept cluster scheduling
     registerManager.register(DataNodeInternalRPCService.getInstance());
-    // Start InternalRPCService to indicate that the current DataNode can accept request from AINode
-    if (config.isEnableAINodeService()) {
-      registerManager.register(AINodeRPCService.getInstance());
-    }
 
     // Notice: During the period between starting the internal RPC service
     // and starting the client RPC service , some requests may fail because

@@ -31,9 +31,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
@@ -45,23 +45,19 @@ public class RecoverProgressIndex extends ProgressIndex {
   private final Map<Integer, SimpleProgressIndex> dataNodeId2LocalIndex;
 
   private RecoverProgressIndex() {
-    this.dataNodeId2LocalIndex = new HashMap<>();
+    this(Collections.emptyMap());
   }
 
   public RecoverProgressIndex(int dataNodeId, SimpleProgressIndex simpleProgressIndex) {
-    this(ImmutableMap.of(dataNodeId, simpleProgressIndex));
+    this(Collections.singletonMap(dataNodeId, simpleProgressIndex));
   }
 
   public RecoverProgressIndex(Map<Integer, SimpleProgressIndex> dataNodeId2LocalIndex) {
-    this.dataNodeId2LocalIndex = new HashMap<>();
-    for (Entry<Integer, SimpleProgressIndex> entry : dataNodeId2LocalIndex.entrySet()) {
-      this.dataNodeId2LocalIndex.put(
-          entry.getKey(), (SimpleProgressIndex) entry.getValue().deepCopy());
-    }
+    this.dataNodeId2LocalIndex = new HashMap<>(dataNodeId2LocalIndex);
   }
 
   public Map<Integer, SimpleProgressIndex> getDataNodeId2LocalIndex() {
-    return ImmutableMap.copyOf(((RecoverProgressIndex) deepCopy()).dataNodeId2LocalIndex);
+    return ImmutableMap.copyOf(dataNodeId2LocalIndex);
   }
 
   @Override
@@ -172,11 +168,6 @@ public class RecoverProgressIndex extends ProgressIndex {
   }
 
   @Override
-  public ProgressIndex deepCopy() {
-    return new RecoverProgressIndex(dataNodeId2LocalIndex);
-  }
-
-  @Override
   public ProgressIndex updateToMinimumEqualOrIsAfterProgressIndex(ProgressIndex progressIndex) {
     lock.writeLock().lock();
     try {
@@ -186,16 +177,18 @@ public class RecoverProgressIndex extends ProgressIndex {
 
       final RecoverProgressIndex thisRecoverProgressIndex = this;
       final RecoverProgressIndex thatRecoverProgressIndex = (RecoverProgressIndex) progressIndex;
+      final Map<Integer, SimpleProgressIndex> dataNodeId2LocalIndex =
+          new HashMap<>(thisRecoverProgressIndex.dataNodeId2LocalIndex);
       thatRecoverProgressIndex.dataNodeId2LocalIndex.forEach(
           (thatK, thatV) ->
-              thisRecoverProgressIndex.dataNodeId2LocalIndex.compute(
+              dataNodeId2LocalIndex.compute(
                   thatK,
                   (thisK, thisV) ->
                       (thisV == null
-                          ? (SimpleProgressIndex) thatV.deepCopy()
+                          ? thatV
                           : (SimpleProgressIndex)
                               thisV.updateToMinimumEqualOrIsAfterProgressIndex(thatV))));
-      return this;
+      return new RecoverProgressIndex(dataNodeId2LocalIndex);
     } finally {
       lock.writeLock().unlock();
     }
