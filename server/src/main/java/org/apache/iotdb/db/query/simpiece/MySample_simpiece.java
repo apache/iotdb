@@ -51,7 +51,7 @@ public class MySample_simpiece {
           String delimiter = ",";
           TimeSeries ts =
               TimeSeriesReader.getMyTimeSeries(
-                  inputStream, delimiter, false, N, start, hasHeader, false);
+                  inputStream, delimiter, false, N, start, hasHeader, true);
           //          double epsilon = getSimPieceParam(nout, ts, 1e-6);
           double epsilon = epsilonList[y];
           SimPiece simPiece = new SimPiece(ts.data, epsilon);

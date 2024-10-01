@@ -49,7 +49,7 @@ public class MySample_shrinkingcone {
           String delimiter = ",";
           TimeSeries ts =
               TimeSeriesReader.getMyTimeSeries(
-                  inputStream, delimiter, false, N, start, hasHeader, false);
+                  inputStream, delimiter, false, N, start, hasHeader, true);
           //          double epsilon = getSCParam(nout, ts, 1e-6);
           double epsilon = epsilonList[y];
           List<Point> reducedPoints = ShrinkingCone.reducePoints(ts.data, epsilon);

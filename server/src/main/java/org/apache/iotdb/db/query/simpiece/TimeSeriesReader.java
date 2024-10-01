@@ -197,7 +197,7 @@ public class TimeSeriesReader {
         if (!seriesTimeColumn) {
           timestamp = (long) Double.parseDouble(elements[0]);
         } else {
-          timestamp = cnt + 1;
+          timestamp = cnt; // for DFT, DWT, OM3
         }
         double value = Double.parseDouble(elements[1]);
         ts.add(new Point(timestamp, value));
