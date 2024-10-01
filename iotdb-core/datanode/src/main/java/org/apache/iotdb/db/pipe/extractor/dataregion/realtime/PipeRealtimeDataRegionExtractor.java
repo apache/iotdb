@@ -57,7 +57,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_END_TIME_KEY;
@@ -520,8 +522,15 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     return pendingQueue.getPipeHeartbeatEventCount();
   }
 
-  public int getEventCount() {
-    return pendingQueue.size();
+  public int getEventCount(final Predicate<EnrichedEvent> predicate) {
+    final AtomicInteger pendingQueueEventCount = new AtomicInteger(0);
+    pendingQueue.forEach(
+        event -> {
+          if (event instanceof EnrichedEvent && predicate.test((EnrichedEvent) event)) {
+            pendingQueueEventCount.incrementAndGet();
+          }
+        });
+    return pendingQueueEventCount.get();
   }
 
   public String getTaskID() {

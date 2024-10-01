@@ -274,9 +274,10 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
   }
 
   public int getEventCount(final Predicate<EnrichedEvent> predicate) {
-    // Avoid potential NPE in "getPipeName"
+    // lastEvent: avoid potential NPE in "getPipeName"
     final EnrichedEvent event =
         lastEvent instanceof EnrichedEvent ? (EnrichedEvent) lastEvent : null;
+    // TODO: consider events in specific processor
     return (Objects.nonNull(event) && predicate.test(event)) ? 1 : 0;
   }
 

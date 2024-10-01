@@ -316,6 +316,11 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   }
 
   @Override
+  public boolean isDataRegionRealtimeEvent() {
+    return !isGeneratedByHistoricalExtractor;
+  }
+
+  @Override
   public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       final String pipeName,
       final long creationTime,

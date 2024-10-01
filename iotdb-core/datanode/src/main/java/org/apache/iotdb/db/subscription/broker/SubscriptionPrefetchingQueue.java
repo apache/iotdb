@@ -542,6 +542,7 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   public int getPipeEventCount(final Predicate<EnrichedEvent> predicate) {
+    // 1. events in inputPendingQueue
     final AtomicInteger inputPendingQueuePipeEventCount = new AtomicInteger(0);
     inputPendingQueue.forEach(
         event -> {
@@ -549,11 +550,13 @@ public abstract class SubscriptionPrefetchingQueue {
             inputPendingQueuePipeEventCount.incrementAndGet();
           }
         });
+    // 2. events in prefetchingQueue
     final int prefetchingQueuePipeEventCount =
         prefetchingQueue.stream()
             .map(event -> event.getPipeEventCount(predicate))
             .reduce(Integer::sum)
             .orElse(0);
+    // do not consider events on the fly
     return inputPendingQueuePipeEventCount.get() + prefetchingQueuePipeEventCount;
   }
 

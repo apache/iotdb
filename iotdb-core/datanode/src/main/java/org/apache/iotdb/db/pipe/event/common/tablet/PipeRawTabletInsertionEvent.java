@@ -165,6 +165,14 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   }
 
   @Override
+  public boolean isDataRegionRealtimeEvent() {
+    if (!(sourceEvent instanceof PipeTsFileInsertionEvent)) {
+      return false;
+    }
+    return sourceEvent.isDataRegionRealtimeEvent();
+  }
+
+  @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       final String pipeName,
       final long creationTime,

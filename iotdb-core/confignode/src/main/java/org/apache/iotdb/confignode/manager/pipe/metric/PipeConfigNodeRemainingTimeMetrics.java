@@ -138,7 +138,8 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
     }
   }
 
-  public void markRegionCommit(final String pipeID, final boolean isDataRegion) {
+  public void markRegionCommit(
+      final String pipeID, final boolean isDataRegion, final boolean isDataRegionRealtimeEvent) {
     if (Objects.isNull(metricService)) {
       return;
     }

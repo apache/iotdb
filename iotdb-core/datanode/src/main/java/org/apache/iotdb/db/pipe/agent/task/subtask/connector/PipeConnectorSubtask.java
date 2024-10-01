@@ -219,7 +219,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
    * When a pipe is dropped, the connector maybe reused and will not be closed. So we just discard
    * its queued events in the output pipe connector.
    */
-  public void discardEventsOfPipe(final String pipeNameToDrop, int regionId) {
+  public void discardEventsOfPipe(final String pipeNameToDrop, final int regionId) {
     // Try to remove the events as much as possible
     inputPendingQueue.discardEventsOfPipe(pipeNameToDrop, regionId);
 
@@ -299,6 +299,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
   // For performance, this will not acquire lock and does not guarantee the correct
   // result. However, this shall not cause any exceptions when concurrently read & written.
   public int getEventCount(final Predicate<EnrichedEvent> predicate) {
+    // 1. events in inputPendingQueue
     final AtomicInteger inputPendingQueuePipeEventCount = new AtomicInteger(0);
     inputPendingQueue.forEach(
         event -> {
@@ -306,11 +307,12 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
             inputPendingQueuePipeEventCount.incrementAndGet();
           }
         });
+    // 2. events in specific connector
     final int retryEventQueuePipeEventCount =
         outputPipeConnector instanceof IoTDBDataRegionAsyncConnector
             ? ((IoTDBDataRegionAsyncConnector) outputPipeConnector).getRetryEventCount(predicate)
             : 0;
-    // Avoid potential NPE in "getPipeName"
+    // 3. lastEvent: avoid potential NPE in "getPipeName"
     final EnrichedEvent event =
         lastEvent instanceof EnrichedEvent ? (EnrichedEvent) lastEvent : null;
     final int lastEventCount = (Objects.nonNull(event) && predicate.test(event)) ? 1 : 0;

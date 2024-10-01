@@ -301,6 +301,10 @@ public abstract class EnrichedEvent implements Event {
     return !(this instanceof PipeWritePlanEvent) && !(this instanceof PipeSnapshotEvent);
   }
 
+  public boolean isDataRegionRealtimeEvent() {
+    return true;
+  }
+
   /**
    * Get the pattern string of this {@link EnrichedEvent}.
    *

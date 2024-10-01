@@ -55,43 +55,60 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
       Collections.newSetFromMap(new ConcurrentHashMap<>());
   private final Set<IoTDBSchemaRegionExtractor> schemaRegionExtractors =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
-  private final AtomicReference<Meter> dataRegionCommitMeter = new AtomicReference<>(null);
+
+  private final AtomicReference<Meter> dataRegionHistoricalEventCommitMeter =
+      new AtomicReference<>(null);
+  private final AtomicReference<Meter> dataRegionRealtimeEventCommitMeter =
+      new AtomicReference<>(null);
   private final AtomicReference<Meter> schemaRegionCommitMeter = new AtomicReference<>(null);
 
-  private double lastDataRegionCommitSmoothingValue = Long.MAX_VALUE;
+  private double lastDataRegionHistoricalEventCommitSmoothingValue = Long.MAX_VALUE;
+  private double lastDataRegionRealtimeEventCommitSmoothingValue = Long.MAX_VALUE;
   private double lastSchemaRegionCommitSmoothingValue = Long.MAX_VALUE;
 
   //////////////////////////// Remaining event & time calculation ////////////////////////////
 
-  private static Predicate<EnrichedEvent> pipeNameFilter(final String pipeName) {
-    return event -> {
-      if (Objects.isNull(event)) {
-        return false;
-      }
-      return Objects.equals(event.getPipeName(), pipeName);
-    };
-  }
+  private static final Predicate<EnrichedEvent> NEED_TO_COMMIT_RATE =
+      EnrichedEvent::needToCommitRate;
+  private static final Predicate<EnrichedEvent> IS_DATA_REGION_REALTIME_EVENT =
+      EnrichedEvent::isDataRegionRealtimeEvent;
+  private static final Predicate<EnrichedEvent> IS_DATA_REGION_HISTORICAL_EVENT =
+      event -> !event.isDataRegionRealtimeEvent();
 
-  private static Predicate<EnrichedEvent> pipeNameAndCommitRateFilter(final String pipeName) {
+  @SafeVarargs
+  private static Predicate<EnrichedEvent> filter(
+      final String pipeName, final Predicate<EnrichedEvent>... predicates) {
     return event -> {
       if (Objects.isNull(event)) {
         return false;
       }
-      return Objects.equals(event.getPipeName(), pipeName) && event.needToCommitRate();
+      if (!Objects.equals(event.getPipeName(), pipeName)) {
+        return false;
+      }
+      for (final Predicate<EnrichedEvent> predicate : predicates) {
+        if (!predicate.test(event)) {
+          return false;
+        }
+      }
+      return true;
     };
   }
 
   long getRemainingEvents() {
     return dataRegionExtractors.stream()
-            .map(IoTDBDataRegionExtractor::getEventCount)
+            .map(IoTDBDataRegionExtractor::getHistoricalTsFileInsertionEventCount)
+            .reduce(Integer::sum)
+            .orElse(0)
+        + dataRegionExtractors.stream()
+            .map(extractor -> extractor.getRealtimeEventCount(filter(pipeName)))
             .reduce(Integer::sum)
             .orElse(0)
         + dataRegionProcessors.stream()
-            .map(processorSubtask -> processorSubtask.getEventCount(pipeNameFilter(pipeName)))
+            .map(processor -> processor.getEventCount(filter(pipeName)))
             .reduce(Integer::sum)
             .orElse(0)
         + dataRegionConnectors.stream()
-            .map(connectorSubtask -> connectorSubtask.getEventCount(pipeNameFilter(pipeName)))
+            .map(connector -> connector.getEventCount(filter(pipeName)))
             .reduce(Integer::sum)
             .orElse(0)
         + schemaRegionExtractors.stream()
@@ -111,42 +128,91 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     final PipeRemainingTimeRateAverageTime pipeRemainingTimeCommitRateAverageTime =
         PipeConfig.getInstance().getPipeRemainingTimeCommitRateAverageTime();
 
-    final double totalDataRegionWriteEventCount =
+    // data region historical event
+    final double totalDataRegionWriteHistoricalEventCount =
         dataRegionExtractors.stream()
-                .map(IoTDBDataRegionExtractor::getEventCount)
+                .map(IoTDBDataRegionExtractor::getHistoricalTsFileInsertionEventCount)
                 .reduce(Integer::sum)
                 .orElse(0)
             + dataRegionProcessors.stream()
                 .map(
-                    processorSubtask ->
-                        processorSubtask.getEventCount(pipeNameAndCommitRateFilter(pipeName)))
+                    processor ->
+                        processor.getEventCount(
+                            filter(pipeName, NEED_TO_COMMIT_RATE, IS_DATA_REGION_HISTORICAL_EVENT)))
                 .reduce(Integer::sum)
                 .orElse(0)
             + dataRegionConnectors.stream()
                 .map(
-                    connectorSubtask ->
-                        connectorSubtask.getEventCount(pipeNameAndCommitRateFilter(pipeName)))
+                    connector ->
+                        connector.getEventCount(
+                            filter(pipeName, NEED_TO_COMMIT_RATE, IS_DATA_REGION_HISTORICAL_EVENT)))
                 .reduce(Integer::sum)
                 .orElse(0);
 
-    dataRegionCommitMeter.updateAndGet(
+    dataRegionHistoricalEventCommitMeter.updateAndGet(
         meter -> {
           if (Objects.nonNull(meter)) {
-            lastDataRegionCommitSmoothingValue =
+            lastDataRegionHistoricalEventCommitSmoothingValue =
                 pipeRemainingTimeCommitRateAverageTime.getMeterRate(meter);
           }
           return meter;
         });
-    final double dataRegionRemainingTime;
-    if (totalDataRegionWriteEventCount <= 0) {
-      dataRegionRemainingTime = 0;
+
+    final double dataRegionHistoricalEventRemainingTime;
+    if (totalDataRegionWriteHistoricalEventCount <= 0) {
+      dataRegionHistoricalEventRemainingTime = 0;
     } else {
-      dataRegionRemainingTime =
-          lastDataRegionCommitSmoothingValue <= 0
+      dataRegionHistoricalEventRemainingTime =
+          lastDataRegionHistoricalEventCommitSmoothingValue <= 0
               ? Double.MAX_VALUE
-              : totalDataRegionWriteEventCount / lastDataRegionCommitSmoothingValue;
+              : totalDataRegionWriteHistoricalEventCount
+                  / lastDataRegionHistoricalEventCommitSmoothingValue;
     }
 
+    // data region realtime event
+    final double totalDataRegionWriteRealtimeEventCount =
+        dataRegionExtractors.stream()
+                .map(
+                    extractor ->
+                        extractor.getRealtimeEventCount(filter(pipeName, NEED_TO_COMMIT_RATE)))
+                .reduce(Integer::sum)
+                .orElse(0)
+            + dataRegionProcessors.stream()
+                .map(
+                    processor ->
+                        processor.getEventCount(
+                            filter(pipeName, NEED_TO_COMMIT_RATE, IS_DATA_REGION_REALTIME_EVENT)))
+                .reduce(Integer::sum)
+                .orElse(0)
+            + dataRegionConnectors.stream()
+                .map(
+                    connector ->
+                        connector.getEventCount(
+                            filter(pipeName, NEED_TO_COMMIT_RATE, IS_DATA_REGION_REALTIME_EVENT)))
+                .reduce(Integer::sum)
+                .orElse(0);
+
+    dataRegionRealtimeEventCommitMeter.updateAndGet(
+        meter -> {
+          if (Objects.nonNull(meter)) {
+            lastDataRegionRealtimeEventCommitSmoothingValue =
+                pipeRemainingTimeCommitRateAverageTime.getMeterRate(meter);
+          }
+          return meter;
+        });
+
+    final double dataRegionRealtimeEventRemainingTime;
+    if (totalDataRegionWriteRealtimeEventCount <= 0) {
+      dataRegionRealtimeEventRemainingTime = 0;
+    } else {
+      dataRegionRealtimeEventRemainingTime =
+          lastDataRegionRealtimeEventCommitSmoothingValue <= 0
+              ? 0 // NOTE HERE
+              : totalDataRegionWriteRealtimeEventCount
+                  / lastDataRegionRealtimeEventCommitSmoothingValue;
+    }
+
+    // schema region event
     final long totalSchemaRegionWriteEventCount =
         schemaRegionExtractors.stream()
             .map(IoTDBSchemaRegionExtractor::getUnTransferredEventCount)
@@ -161,6 +227,7 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
           }
           return meter;
         });
+
     final double schemaRegionRemainingTime;
     if (totalSchemaRegionWriteEventCount <= 0) {
       schemaRegionRemainingTime = 0;
@@ -171,13 +238,19 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
               : totalSchemaRegionWriteEventCount / lastSchemaRegionCommitSmoothingValue;
     }
 
-    if (totalDataRegionWriteEventCount + totalSchemaRegionWriteEventCount == 0) {
+    if (totalDataRegionWriteHistoricalEventCount
+            + totalDataRegionWriteRealtimeEventCount
+            + totalSchemaRegionWriteEventCount
+        == 0) {
       notifyEmpty();
     } else {
       notifyNonEmpty();
     }
 
-    final double result = Math.max(dataRegionRemainingTime, schemaRegionRemainingTime);
+    final double result =
+        Math.max(
+            dataRegionHistoricalEventRemainingTime + dataRegionRealtimeEventRemainingTime,
+            schemaRegionRemainingTime);
     return result >= REMAINING_MAX_SECONDS ? REMAINING_MAX_SECONDS : result;
   }
 
@@ -206,14 +279,24 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
 
   //////////////////////////// Rate ////////////////////////////
 
-  void markDataRegionCommit() {
-    dataRegionCommitMeter.updateAndGet(
-        meter -> {
-          if (Objects.nonNull(meter)) {
-            meter.mark();
-          }
-          return meter;
-        });
+  void markDataRegionCommit(final boolean isDataRegionRealtimeEvent) {
+    if (isDataRegionRealtimeEvent) {
+      dataRegionRealtimeEventCommitMeter.updateAndGet(
+          meter -> {
+            if (Objects.nonNull(meter)) {
+              meter.mark();
+            }
+            return meter;
+          });
+    } else {
+      dataRegionHistoricalEventCommitMeter.updateAndGet(
+          meter -> {
+            if (Objects.nonNull(meter)) {
+              meter.mark();
+            }
+            return meter;
+          });
+    }
   }
 
   void markSchemaRegionCommit() {
@@ -236,7 +319,9 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     if (isStopped) {
       return;
     }
-    dataRegionCommitMeter.compareAndSet(
+    dataRegionHistoricalEventCommitMeter.compareAndSet(
+        null, new Meter(new ExponentialMovingAverages(), Clock.defaultClock()));
+    dataRegionRealtimeEventCommitMeter.compareAndSet(
         null, new Meter(new ExponentialMovingAverages(), Clock.defaultClock()));
     schemaRegionCommitMeter.compareAndSet(
         null, new Meter(new ExponentialMovingAverages(), Clock.defaultClock()));
@@ -246,7 +331,8 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
   @Override
   public synchronized void freezeRate(final boolean isStopPipe) {
     super.freezeRate(isStopPipe);
-    dataRegionCommitMeter.set(null);
+    dataRegionHistoricalEventCommitMeter.set(null);
+    dataRegionRealtimeEventCommitMeter.set(null);
     schemaRegionCommitMeter.set(null);
   }
 }
