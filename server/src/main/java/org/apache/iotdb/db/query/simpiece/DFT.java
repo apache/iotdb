@@ -23,7 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class DFT {
-  public static List<Point> reducePoints(List<Point> points, double epsilon) {
+  public static List<Point> reducePoints(List<Point> points, double threshold) {
     int length = points.size();
 
     List<Point> result = new ArrayList<>();
