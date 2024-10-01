@@ -406,9 +406,8 @@ public class FragmentInstanceContext extends QueryContext {
     if (globalTimeFilter == null) {
       globalTimeFilter = timeFilter;
     } else {
-      // In join case, there may exist more than one table and time filter, join criteria only
-      // support and condition, so use and to connect these two filters
-      globalTimeFilter = FilterFactory.and(globalTimeFilter, timeFilter);
+      // In join case, there may exist more than one table and time filter
+      globalTimeFilter = FilterFactory.or(globalTimeFilter, timeFilter);
       // throw new IllegalStateException(
       //    "globalTimeFilter in FragmentInstanceContext should only be set once in Table Model!");
     }

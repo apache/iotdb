@@ -93,6 +93,7 @@ statement
     | showRegionsStatement
     | showDataNodesStatement
     | showConfigNodesStatement
+    | showAINodesStatement
     | showClusterIdStatement
     | showRegionIdStatement
     | showTimeSlotListStatement
@@ -378,6 +379,10 @@ showDataNodesStatement
 
 showConfigNodesStatement
     : SHOW CONFIGNODES
+    ;
+
+showAINodesStatement
+    : SHOW AINODES
     ;
 
 showClusterIdStatement
@@ -857,6 +862,7 @@ ABSENT: 'ABSENT';
 ADD: 'ADD';
 ADMIN: 'ADMIN';
 AFTER: 'AFTER';
+AINODES: 'AINODES';
 ALL: 'ALL';
 ALTER: 'ALTER';
 ANALYZE: 'ANALYZE';

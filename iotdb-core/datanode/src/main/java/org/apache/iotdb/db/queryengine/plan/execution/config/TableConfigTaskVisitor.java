@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DropDBTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowAINodesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowConfigNodesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowDataNodesTask;
@@ -78,6 +79,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
@@ -242,24 +244,32 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     context.setQueryType(QueryType.READ);
     // As the implementation is identical, we'll simply translate to the
     // corresponding tree-model variant and execute that.
-    ShowRegionStatement treeStatement = new ShowRegionStatement();
+    final ShowRegionStatement treeStatement = new ShowRegionStatement();
     treeStatement.setRegionType(showRegions.getRegionType());
     treeStatement.setStorageGroups(showRegions.getDatabases());
     treeStatement.setNodeIds(showRegions.getNodeIds());
-    return new ShowRegionTask(treeStatement);
+    return new ShowRegionTask(treeStatement, true);
   }
 
   @Override
   protected IConfigTask visitShowDataNodes(
       final ShowDataNodes showDataNodesStatement, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    return new ShowDataNodesTask(showDataNodesStatement);
+    return new ShowDataNodesTask();
   }
 
+  @Override
   protected IConfigTask visitShowConfigNodes(
       final ShowConfigNodes showConfigNodesStatement, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    return new ShowConfigNodesTask(showConfigNodesStatement);
+    return new ShowConfigNodesTask();
+  }
+
+  @Override
+  protected IConfigTask visitShowAINodes(
+      final ShowAINodes showAINodesStatement, final MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    return new ShowAINodesTask();
   }
 
   @Override

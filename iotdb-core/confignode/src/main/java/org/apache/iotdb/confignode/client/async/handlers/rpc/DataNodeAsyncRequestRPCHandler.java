@@ -200,6 +200,7 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
       case LOAD_CONFIGURATION:
       case SET_SYSTEM_STATUS:
       case UPDATE_REGION_ROUTE_MAP:
+      case INVALIDATE_SCHEMA_CACHE:
       case INVALIDATE_MATCHED_SCHEMA_CACHE:
       case UPDATE_TEMPLATE:
       case UPDATE_TABLE:

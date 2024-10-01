@@ -254,7 +254,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
       // "nonnull" detection.
       if (lastExceptionEvent instanceof EnrichedEvent
           && pipeNameToDrop.equals(((EnrichedEvent) lastExceptionEvent).getPipeName())
-          && regionId == ((EnrichedEvent) lastEvent).getRegionId()) {
+          && regionId == ((EnrichedEvent) lastExceptionEvent).getRegionId()) {
         clearReferenceCountAndReleaseLastExceptionEvent();
       }
     }
