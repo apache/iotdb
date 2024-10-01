@@ -194,7 +194,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   public boolean needToCommitRate() {
     // When computing the commit rate, only consider events where needToReport is true to avoid
     // counting unparsed source events that influence remaining time calculation.
-    return needToReport;
+    return super.needToCommitRate() && needToReport;
   }
 
   @Override

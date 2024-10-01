@@ -49,6 +49,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 
 public class PipeProcessorSubtask extends PipeReportableSubtask {
 
@@ -136,13 +137,9 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
         if (event instanceof TabletInsertionEvent) {
           pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
           PipeProcessorMetrics.getInstance().markTabletEvent(taskID);
-          PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-              .markCollectInvocationCount(taskID, outputEventCollector.getCollectInvocationCount());
         } else if (event instanceof TsFileInsertionEvent) {
           pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
           PipeProcessorMetrics.getInstance().markTsFileEvent(taskID);
-          PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-              .markCollectInvocationCount(taskID, outputEventCollector.getCollectInvocationCount());
         } else if (event instanceof PipeHeartbeatEvent) {
           pipeProcessor.process(event, outputEventCollector);
           ((PipeHeartbeatEvent) event).onProcessed();
@@ -276,13 +273,11 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     return regionId;
   }
 
-  public int getEventCount(final boolean ignoreHeartbeat) {
+  public int getEventCount(final Predicate<EnrichedEvent> predicate) {
     // Avoid potential NPE in "getPipeName"
     final EnrichedEvent event =
         lastEvent instanceof EnrichedEvent ? (EnrichedEvent) lastEvent : null;
-    return Objects.nonNull(event) && !(ignoreHeartbeat && event instanceof PipeHeartbeatEvent)
-        ? 1
-        : 0;
+    return (Objects.nonNull(event) && predicate.test(event)) ? 1 : 0;
   }
 
   //////////////////////////// Error report ////////////////////////////

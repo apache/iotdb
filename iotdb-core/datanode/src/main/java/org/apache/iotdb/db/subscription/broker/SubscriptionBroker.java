@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
@@ -49,6 +50,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext.INVALID_COMMIT_ID;
@@ -369,7 +371,7 @@ public class SubscriptionBroker {
     prefetchingQueue.executePrefetch();
   }
 
-  public int getPipeEventCount(final String topicName, final boolean forRemainingTime) {
+  public int getPipeEventCount(final String topicName, final Predicate<EnrichedEvent> predicate) {
     final SubscriptionPrefetchingQueue prefetchingQueue =
         topicNameToPrefetchingQueue.get(topicName);
     if (Objects.isNull(prefetchingQueue)) {
@@ -386,6 +388,6 @@ public class SubscriptionBroker {
           brokerId);
       return 0;
     }
-    return prefetchingQueue.getPipeEventCount(forRemainingTime);
+    return prefetchingQueue.getPipeEventCount(predicate);
   }
 }

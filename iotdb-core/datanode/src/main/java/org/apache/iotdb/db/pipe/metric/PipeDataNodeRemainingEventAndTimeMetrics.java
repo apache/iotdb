@@ -218,19 +218,6 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     }
   }
 
-  public void markCollectInvocationCount(final String pipeID, final long collectInvocationCount) {
-    if (Objects.isNull(metricService)) {
-      return;
-    }
-    final PipeDataNodeRemainingEventAndTimeOperator operator =
-        remainingEventAndTimeOperatorMap.get(pipeID);
-    if (Objects.isNull(operator)) {
-      return;
-    }
-
-    operator.markCollectInvocationCount(collectInvocationCount);
-  }
-
   //////////////////////////// Show pipes ////////////////////////////
 
   public Pair<Long, Double> getRemainingEventAndTime(

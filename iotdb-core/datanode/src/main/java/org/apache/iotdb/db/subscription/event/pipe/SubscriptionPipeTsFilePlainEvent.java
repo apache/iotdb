@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.subscription.event.pipe;
 
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 
 import java.io.File;
+import java.util.function.Predicate;
 
 public class SubscriptionPipeTsFilePlainEvent implements SubscriptionPipeEvents {
 
@@ -59,7 +61,7 @@ public class SubscriptionPipeTsFilePlainEvent implements SubscriptionPipeEvents 
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 
   @Override
-  public int getPipeEventCount(final boolean forRemainingTime) {
-    return forRemainingTime ? (tsFileInsertionEvent.needToCommitRate() ? 1 : 0) : 1;
+  public int getPipeEventCount(final Predicate<EnrichedEvent> predicate) {
+    return predicate.test(tsFileInsertionEvent) ? 1 : 0;
   }
 }

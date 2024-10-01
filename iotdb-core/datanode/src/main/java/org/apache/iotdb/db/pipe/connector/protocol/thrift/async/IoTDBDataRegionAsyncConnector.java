@@ -70,6 +70,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Predicate;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_KEY;
@@ -559,22 +560,14 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
   // For performance, this will not acquire lock and does not guarantee the correct
   // result. However, this shall not cause any exceptions when concurrently read & written.
-  public int getRetryEventCount(final String pipeName) {
+  public int getRetryEventCount(final Predicate<EnrichedEvent> predicate) {
     final AtomicInteger count = new AtomicInteger(0);
-    try {
-      retryEventQueue.forEach(
-          event -> {
-            if (event instanceof EnrichedEvent
-                && pipeName.equals(((EnrichedEvent) event).getPipeName())) {
-              count.incrementAndGet();
-            }
-          });
-      return count.get();
-    } catch (final Exception e) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Failed to get retry event count for pipe {}.", pipeName, e);
-      }
-      return count.get();
-    }
+    retryEventQueue.forEach(
+        event -> {
+          if (event instanceof EnrichedEvent && predicate.test((EnrichedEvent) event)) {
+            count.incrementAndGet();
+          }
+        });
+    return count.get();
   }
 }

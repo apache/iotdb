@@ -21,26 +21,32 @@ package org.apache.iotdb.db.pipe.metric;
 
 import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.metric.PipeRemainingOperator;
 import org.apache.iotdb.db.pipe.agent.task.subtask.connector.PipeConnectorSubtask;
 import org.apache.iotdb.db.pipe.agent.task.subtask.processor.PipeProcessorSubtask;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
-import org.apache.iotdb.metrics.core.IoTDBMetricManager;
-import org.apache.iotdb.metrics.core.type.IoTDBHistogram;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import com.codahale.metrics.Clock;
 import com.codahale.metrics.ExponentialMovingAverages;
 import com.codahale.metrics.Meter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 
 class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
+
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(PipeDataNodeRemainingEventAndTimeOperator.class);
+
   private final Set<IoTDBDataRegionExtractor> dataRegionExtractors =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
   private final Set<PipeProcessorSubtask> dataRegionProcessors =
@@ -51,13 +57,29 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
       Collections.newSetFromMap(new ConcurrentHashMap<>());
   private final AtomicReference<Meter> dataRegionCommitMeter = new AtomicReference<>(null);
   private final AtomicReference<Meter> schemaRegionCommitMeter = new AtomicReference<>(null);
-  private final IoTDBHistogram collectInvocationHistogram =
-      (IoTDBHistogram) IoTDBMetricManager.getInstance().createHistogram(null);
 
   private double lastDataRegionCommitSmoothingValue = Long.MAX_VALUE;
   private double lastSchemaRegionCommitSmoothingValue = Long.MAX_VALUE;
 
   //////////////////////////// Remaining event & time calculation ////////////////////////////
+
+  private static Predicate<EnrichedEvent> pipeNameFilter(final String pipeName) {
+    return event -> {
+      if (Objects.isNull(event)) {
+        return false;
+      }
+      return Objects.equals(event.getPipeName(), pipeName);
+    };
+  }
+
+  private static Predicate<EnrichedEvent> pipeNameAndCommitRateFilter(final String pipeName) {
+    return event -> {
+      if (Objects.isNull(event)) {
+        return false;
+      }
+      return Objects.equals(event.getPipeName(), pipeName) && event.needToCommitRate();
+    };
+  }
 
   long getRemainingEvents() {
     return dataRegionExtractors.stream()
@@ -65,11 +87,11 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
             .reduce(Integer::sum)
             .orElse(0)
         + dataRegionProcessors.stream()
-            .map(processorSubtask -> processorSubtask.getEventCount(false))
+            .map(processorSubtask -> processorSubtask.getEventCount(pipeNameFilter(pipeName)))
             .reduce(Integer::sum)
             .orElse(0)
         + dataRegionConnectors.stream()
-            .map(connectorSubtask -> connectorSubtask.getEventCount(pipeName, false))
+            .map(connectorSubtask -> connectorSubtask.getEventCount(pipeNameFilter(pipeName)))
             .reduce(Integer::sum)
             .orElse(0)
         + schemaRegionExtractors.stream()
@@ -89,28 +111,21 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     final PipeRemainingTimeRateAverageTime pipeRemainingTimeCommitRateAverageTime =
         PipeConfig.getInstance().getPipeRemainingTimeCommitRateAverageTime();
 
-    final double invocationValue = collectInvocationHistogram.getMean();
-    // Do not take heartbeat event into account
     final double totalDataRegionWriteEventCount =
-        (dataRegionExtractors.stream()
-                        .map(IoTDBDataRegionExtractor::getEventCount)
-                        .reduce(Integer::sum)
-                        .orElse(0)
-                    - dataRegionExtractors.stream()
-                        .map(IoTDBDataRegionExtractor::getPipeHeartbeatEventCount)
-                        .reduce(Integer::sum)
-                        .orElse(0))
-                * Math.max(invocationValue, 1)
+        dataRegionExtractors.stream()
+                .map(IoTDBDataRegionExtractor::getEventCount)
+                .reduce(Integer::sum)
+                .orElse(0)
             + dataRegionProcessors.stream()
-                .map(processorSubtask -> processorSubtask.getEventCount(true))
+                .map(
+                    processorSubtask ->
+                        processorSubtask.getEventCount(pipeNameAndCommitRateFilter(pipeName)))
                 .reduce(Integer::sum)
                 .orElse(0)
             + dataRegionConnectors.stream()
-                .map(connectorSubtask -> connectorSubtask.getEventCount(pipeName, true))
-                .reduce(Integer::sum)
-                .orElse(0)
-            - dataRegionConnectors.stream()
-                .map(PipeConnectorSubtask::getPipeHeartbeatEventCount)
+                .map(
+                    connectorSubtask ->
+                        connectorSubtask.getEventCount(pipeNameAndCommitRateFilter(pipeName)))
                 .reduce(Integer::sum)
                 .orElse(0);
 
@@ -209,11 +224,6 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
           }
           return meter;
         });
-  }
-
-  void markCollectInvocationCount(final long collectInvocationCount) {
-    // If collectInvocationCount == 0, the event will still be committed once
-    collectInvocationHistogram.update(Math.max(collectInvocationCount, 1));
   }
 
   //////////////////////////// Switch ////////////////////////////

@@ -29,7 +29,6 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeEventBatches;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeEmptyEvent;
-import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -52,6 +51,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Predicate;
 
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext.INVALID_COMMIT_ID;
 
@@ -541,34 +541,20 @@ public abstract class SubscriptionPrefetchingQueue {
     return commitIdGenerator.get();
   }
 
-  public int getPipeEventCount(final boolean forRemainingTime) {
-    final AtomicInteger count = new AtomicInteger(0);
-    try {
-      inputPendingQueue.forEach(
-          event -> {
-            if (event instanceof EnrichedEvent
-                && (!forRemainingTime || ((EnrichedEvent) event).needToCommitRate())) {
-              count.incrementAndGet();
-            }
-          });
-    } catch (final Exception e) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            "Exception occurred when counting event of input pending queue of {}, root cause: {}",
-            this,
-            ErrorHandlingUtils.getRootCause(e).getMessage(),
-            e);
-      }
-    }
-    return count.get()
-        + prefetchingQueue.stream()
-            .map(event -> event.getPipeEventCount(forRemainingTime))
-            .reduce(Integer::sum)
-            .orElse(0)
-        + inFlightEvents.values().stream()
-            .map(event -> event.getPipeEventCount(forRemainingTime))
+  public int getPipeEventCount(final Predicate<EnrichedEvent> predicate) {
+    final AtomicInteger inputPendingQueuePipeEventCount = new AtomicInteger(0);
+    inputPendingQueue.forEach(
+        event -> {
+          if (event instanceof EnrichedEvent && predicate.test((EnrichedEvent) event)) {
+            inputPendingQueuePipeEventCount.incrementAndGet();
+          }
+        });
+    final int prefetchingQueuePipeEventCount =
+        prefetchingQueue.stream()
+            .map(event -> event.getPipeEventCount(predicate))
             .reduce(Integer::sum)
             .orElse(0);
+    return inputPendingQueuePipeEventCount.get() + prefetchingQueuePipeEventCount;
   }
 
   /////////////////////////////// close & termination ///////////////////////////////

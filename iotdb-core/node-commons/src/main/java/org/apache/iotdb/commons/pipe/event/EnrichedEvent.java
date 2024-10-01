@@ -366,7 +366,7 @@ public abstract class EnrichedEvent implements Event {
   }
 
   public boolean needToCommitRate() {
-    return true;
+    return this.needToCommit() && shouldReportOnCommit;
   }
 
   public abstract boolean mayEventTimeOverlappedWithTimeRange();

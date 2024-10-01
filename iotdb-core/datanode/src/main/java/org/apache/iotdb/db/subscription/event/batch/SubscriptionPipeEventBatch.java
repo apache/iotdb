@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 public abstract class SubscriptionPipeEventBatch {
 
@@ -89,10 +90,7 @@ public abstract class SubscriptionPipeEventBatch {
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 
-  public int getPipeEventCount(final boolean forRemainingTime) {
-    return (int)
-        enrichedEvents.stream()
-            .filter(event -> !forRemainingTime || event.needToCommitRate())
-            .count();
+  public int getPipeEventCount(final Predicate<EnrichedEvent> predicate) {
+    return (int) enrichedEvents.stream().filter(predicate).count();
   }
 }
