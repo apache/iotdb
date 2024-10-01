@@ -174,7 +174,7 @@ public abstract class LinearFill implements ILinearFill {
   public boolean needPrepareForNext(
       long rowIndex, Column valueColumn, int lastRowIndexForNonNullHelperColumn) {
     return nextRowIndex < rowIndex
-        && lastRowIndexForNonNullHelperColumn > 0
+        && lastRowIndexForNonNullHelperColumn >= 0
         && valueColumn.isNull(lastRowIndexForNonNullHelperColumn);
   }
 

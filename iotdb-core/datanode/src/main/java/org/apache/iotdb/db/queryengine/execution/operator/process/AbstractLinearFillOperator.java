@@ -102,11 +102,7 @@ abstract class AbstractLinearFillOperator implements ProcessOperator {
       if (nextTsBlock == null || nextTsBlock.isEmpty()) {
         return nextTsBlock;
       } else { // otherwise, we cache it
-        cachedTsBlock.add(nextTsBlock);
-        cachedRowIndex.add(currentRowIndex);
-        cachedLastRowIndexForNonNullHelperColumn.add(
-            getLastRowIndexForNonNullHelperColumn(nextTsBlock));
-        currentRowIndex += nextTsBlock.getPositionCount();
+        updateCachedData(nextTsBlock);
       }
     }
 
@@ -249,12 +245,17 @@ abstract class AbstractLinearFillOperator implements ProcessOperator {
       if (nextTsBlock == null || nextTsBlock.isEmpty()) {
         return false;
       } else { // otherwise, we cache it
-        cachedTsBlock.add(nextTsBlock);
-        cachedRowIndex.add(currentRowIndex);
-        currentRowIndex += nextTsBlock.getPositionCount();
+        updateCachedData(nextTsBlock);
         return true;
       }
     }
     return false;
+  }
+
+  private void updateCachedData(TsBlock tsBlock) {
+    cachedTsBlock.add(tsBlock);
+    cachedRowIndex.add(currentRowIndex);
+    cachedLastRowIndexForNonNullHelperColumn.add(getLastRowIndexForNonNullHelperColumn(tsBlock));
+    currentRowIndex += tsBlock.getPositionCount();
   }
 }
