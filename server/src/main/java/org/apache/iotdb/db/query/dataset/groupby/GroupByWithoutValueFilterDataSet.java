@@ -476,6 +476,9 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     } else if (CONFIG.getEnableTri().equals("Uniform")) {
       return new LocalGroupByExecutorTri_Uniform(
           path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
+    } else if (CONFIG.getEnableTri().equals("DWT")) {
+      return new LocalGroupByExecutorTri_DWT(
+          path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
     } else if (CONFIG.getEnableTri().equals("Visval")) {
       return new LocalGroupByExecutorTri_Visval(
           path, allSensors, dataType, context, timeFilter, fileFilter, ascending);

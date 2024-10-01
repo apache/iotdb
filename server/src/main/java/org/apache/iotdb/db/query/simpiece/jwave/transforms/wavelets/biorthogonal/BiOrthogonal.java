@@ -9,6 +9,7 @@
 package org.apache.iotdb.db.query.simpiece.jwave.transforms.wavelets.biorthogonal;
 
 import org.apache.iotdb.db.query.simpiece.jwave.transforms.wavelets.Wavelet;
+import org.apache.iotdb.tsfile.read.common.IOMonitor2;
 
 /**
  * Base class for BiOrthogonal wavelets.
@@ -80,9 +81,12 @@ public class BiOrthogonal extends Wavelet {
 
       for (int j = 0; j < _motherWavelength; j++) {
 
+        IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
+
         int k = (i << 1) + j; // k = ( i * 2 ) + j;
-        while (k >= arrHilb.length)
+        while (k >= arrHilb.length) {
           k -= arrHilb.length; // circulate over arrays if scaling and wavelet are are larger
+        }
 
         arrHilb[i] +=
             arrTime[k] * _scalingDeCom[j]; // low pass filter for the energy (approximation)
@@ -104,7 +108,9 @@ public class BiOrthogonal extends Wavelet {
   public double[] reverse(double[] arrHilb, int arrHilbLength) {
 
     double[] arrTime = new double[arrHilbLength];
-    for (int i = 0; i < arrTime.length; i++) arrTime[i] = 0.;
+    for (int i = 0; i < arrTime.length; i++) {
+      arrTime[i] = 0.;
+    }
 
     int h = arrTime.length >> 1; // .. -> 8 -> 4 -> 2 .. shrinks in each step by half wavelength
     for (int i = 0; i < h; i++) {
@@ -112,8 +118,9 @@ public class BiOrthogonal extends Wavelet {
       for (int j = 0; j < _motherWavelength; j++) {
 
         int k = (i << 1) + j; // k = ( i * 2 ) + j;
-        while (k >= arrTime.length)
+        while (k >= arrTime.length) {
           k -= arrTime.length; // circulate over arrays if scaling and wavelet are larger
+        }
 
         // adding up energy from low pass (approximation) and details from high pass filter
         arrTime[k] +=

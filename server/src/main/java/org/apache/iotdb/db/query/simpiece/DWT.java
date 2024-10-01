@@ -19,17 +19,25 @@
 
 package org.apache.iotdb.db.query.simpiece;
 
+import org.apache.iotdb.db.query.simpiece.jwave.Transform;
+import org.apache.iotdb.db.query.simpiece.jwave.TransformBuilder;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public class DWT {
-  public static List<Point> reducePoints(List<Point> points, double threshold) {
-    int length = points.size();
+
+  public static List<Point> reducePoints(double[] values, double threshold) {
+    Transform transform = TransformBuilder.create("Fast Wavelet Transform", "Haar");
+    double[] arrHilb = transform.forward(values);
 
     List<Point> result = new ArrayList<>();
-
-    //    IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
-
+    int n = arrHilb.length;
+    for (int i = 0; i < n; i++) {
+      if (Math.abs(arrHilb[i]) >= threshold) {
+        result.add(new Point(i, arrHilb[i]));
+      }
+    }
     return result;
   }
 }

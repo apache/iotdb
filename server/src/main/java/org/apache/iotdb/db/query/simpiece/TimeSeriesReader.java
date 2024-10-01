@@ -90,6 +90,52 @@ public class TimeSeriesReader {
     return new TimeSeries(ts, max - min);
   }
 
+  public static double[] getTimeSeriesFromTsFilesDR(
+      List<ChunkSuit4Tri> chunkSuit4TriList, long startTime, long endTime) throws IOException {
+    // assume chunkSuit4TriList already sorted in increasing time order
+    List<Double> ts = new ArrayList<>();
+
+    int start = 0;
+
+    for (ChunkSuit4Tri chunkSuit4Tri : chunkSuit4TriList) {
+      TSDataType dataType = chunkSuit4Tri.chunkMetadata.getDataType();
+      if (dataType != TSDataType.DOUBLE) {
+        throw new UnSupportedDataTypeException(String.valueOf(dataType));
+      }
+      ChunkMetadata chunkMetadata = chunkSuit4Tri.chunkMetadata;
+      long chunkMinTime = chunkMetadata.getStartTime();
+      long chunkMaxTime = chunkMetadata.getEndTime();
+      if (chunkMaxTime < startTime) {
+        continue;
+      } else if (chunkMinTime >= endTime) {
+        break;
+      } else {
+        chunkSuit4Tri.globalStartInList = start; // pointer start
+        chunkSuit4Tri.lastReadPos = start; // note this means global pos in the list
+        PageReader pageReader = // note this pageReader and its buffer is not maintained in memory
+            FileLoaderUtils.loadPageReaderList4CPV(
+                chunkSuit4Tri.chunkMetadata,
+                null); // note do not assign to chunkSuit4Tri.pageReader
+        for (int j = 0; j < chunkSuit4Tri.chunkMetadata.getStatistics().getCount(); j++) {
+          long timestamp = pageReader.timeBuffer.getLong(j * 8);
+          if (timestamp < startTime) {
+            continue;
+          } else if (timestamp >= endTime) {
+            break;
+          } else { // rightStartTime<=t<rightEndTime
+            ByteBuffer valueBuffer = pageReader.valueBuffer;
+            double value = valueBuffer.getDouble(pageReader.timeBufferLength + j * 8);
+            ts.add(value);
+            start++;
+          }
+        }
+        chunkSuit4Tri.globalEndInList = start; // pointer end
+      }
+    }
+
+    return ts.stream().mapToDouble(Double::doubleValue).toArray();
+  }
+
   public static List<VisvalPoint> getTimeSeriesFromTsFilesVisval(
       List<ChunkSuit4Tri> chunkSuit4TriList, long startTime, long endTime) throws IOException {
     // assume chunkSuit4TriList already sorted in increasing time order

@@ -33,6 +33,7 @@ package org.apache.iotdb.db.query.simpiece.jwave.transforms;
 import org.apache.iotdb.db.query.simpiece.jwave.datatypes.natives.Complex;
 import org.apache.iotdb.db.query.simpiece.jwave.exceptions.JWaveException;
 import org.apache.iotdb.db.query.simpiece.jwave.exceptions.JWaveFailure;
+import org.apache.iotdb.tsfile.read.common.IOMonitor2;
 
 /**
  * Discrete Fast Fourier Transform (dFFT)
@@ -59,21 +60,22 @@ public class DiscreteFourierTransform extends BasicTransform {
    * index. For example: arrTime[ 0 ] = real1, arrTime[ 1 ] = imag1, arrTime[ 2 ] = real2, arrTime[
    * 3 ] = imag2, ... The output arrFreq is organized by the same scheme.
    *
+   * @throws JWaveException
    * @date 25.03.2010 19:56:29
    * @author Christian (graetz23@gmail.com)
-   * @throws JWaveException
    * @see jwave.transforms.BasicTransform#forward(double[])
    */
   @Override
   public double[] forward(double[] arrTime) throws JWaveException {
 
-    if (!isBinary(arrTime.length))
+    if (!isBinary(arrTime.length)) {
       throw new JWaveFailure(
           "DiscreteFourierTransform#forward - "
               + "given array length is not 2^p | p E N "
               + "... = 1, 2, 4, 8, 16, 32, .. "
               + "please use the Ancient Egyptian "
               + "Decomposition for any other array length!");
+    }
 
     int m = arrTime.length;
     double[] arrFreq = new double[m]; // result
@@ -91,6 +93,7 @@ public class DiscreteFourierTransform extends BasicTransform {
       double arg = -2. * Math.PI * (double) i / (double) n;
 
       for (int k = 0; k < n; k++) {
+        IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
 
         int kR = k * 2;
         int kC = k * 2 + 1;
@@ -115,21 +118,22 @@ public class DiscreteFourierTransform extends BasicTransform {
    * index. For example: arrTime[ 0 ] = real1, arrTime[ 1 ] = imag1, arrTime[ 2 ] = real2, arrTime[
    * 3 ] = imag2, ... The output arrTime is organized by the same scheme.
    *
+   * @throws JWaveException
    * @date 25.03.2010 19:56:29
    * @author Christian (graetz23@gmail.com)
-   * @throws JWaveException
    * @see jwave.transforms.BasicTransform#reverse(double[])
    */
   @Override
   public double[] reverse(double[] arrFreq) throws JWaveException {
 
-    if (!isBinary(arrFreq.length))
+    if (!isBinary(arrFreq.length)) {
       throw new JWaveFailure(
           "DiscreteFourierTransform#reverse - "
               + "given array length is not 2^p | p E N "
               + "... = 1, 2, 4, 8, 16, 32, .. "
               + "please use the Ancient Egyptian "
               + "Decomposition for any other array length!");
+    }
 
     int m = arrFreq.length;
     double[] arrTime = new double[m]; // result
@@ -191,10 +195,10 @@ public class DiscreteFourierTransform extends BasicTransform {
    * organized by a class called Complex keeping real and imaginary part of a complex number. The
    * output arrFreq is organized by the same scheme.
    *
-   * @date 23.11.2010 18:57:34
-   * @author Christian (graetz23@gmail.com)
    * @param arrTime array of type Complex keeping coefficients of complex numbers
    * @return array of type Complex keeping the discrete fourier transform coefficients
+   * @date 23.11.2010 18:57:34
+   * @author Christian (graetz23@gmail.com)
    */
   public Complex[] forward(Complex[] arrTime) {
 
@@ -232,10 +236,10 @@ public class DiscreteFourierTransform extends BasicTransform {
    * organized by a class called Complex keeping real and imaginary part of a complex number. The
    * output arrTime is organized by the same scheme.
    *
-   * @date 23.11.2010 19:02:12
-   * @author Christian (graetz23@gmail.com)
    * @param arrFreq array of type Complex keeping the discrete fourier transform coefficients
    * @return array of type Complex keeping coefficients of tiem domain
+   * @date 23.11.2010 19:02:12
+   * @author Christian (graetz23@gmail.com)
    */
   public Complex[] reverse(Complex[] arrFreq) {
 
