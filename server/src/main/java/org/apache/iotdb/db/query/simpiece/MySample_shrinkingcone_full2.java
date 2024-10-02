@@ -43,28 +43,39 @@ public class MySample_shrinkingcone_full2 {
 
     double[][] epsilonArray = {
       {
-        14.388325691223145, 13.343345642089844, 12.697674751281738, 12.053359985351562,
-        11.411823272705078, 10.700932502746582, 10.222302436828613, 9.640463829040527,
-        9.169320106506348, 8.824727058410645, 8.389120101928711, 8.050561904907227,
-        7.84444522857666, 7.675000190734863, 7.441162109375,
+        14.388325263280421, 13.34334554336965, 12.697674418624956, 12.053359143726993,
+        11.411823799891863, 10.700932090578135, 10.222302158304956, 9.64046321529895,
+        9.169320066343062, 8.824726661085151, 8.38911917101359, 8.050000000046566,
+        7.844965517288074, 7.675000000046566, 7.4411764705437236,
       },
       {
-        0.001, 0.001, 0.001, 0.001,
-        0.001, 0.001, 0.001, 9.9945068359375E-4,
-        9.9945068359375E-4, 9.9945068359375E-4, 9.984970092773438E-4, 9.946823120117188E-4,
-        9.927749633789062E-4, 9.8419189453125E-4, 9.088516235351562E-4,
+        0.001,
+        0.001,
+        0.001,
+        0.001,
+        0.001,
+        0.001,
+        0.001,
+        9.999999892897904E-4,
+        9.999999892897904E-4,
+        9.999999892897904E-4,
+        9.986772784031928E-4,
+        9.954648558050394E-4,
+        9.931506938301027E-4,
+        9.859154815785587E-4,
+        9.090908570215106E-4,
       },
       {
-        680.2196474075317, 650.261082649231, 620.9016036987305, 586.952600479126,
-        547.2381553649902, 493.3626317977905, 453.35704135894775, 404.6129741668701,
-        368.50129795074463, 342.09704971313477, 305.65501976013184, 276.0216178894043,
-        257.88243865966797, 242.78428554534912, 223.49278926849365,
+        680.4174693996902, 650.2610825433512, 621.0945158457616, 586.9638199705514,
+        547.4329924675985, 494.63679197325837, 454.7579276354518, 406.4603661468718,
+        368.9741049989243, 342.1729954186012, 305.74686436593765, 276.5570874213008,
+        258.8369336259784, 243.3460398996831, 224.25107966241194,
       },
       {
-        11.259881019592285, 9.402754783630371, 8.384316444396973, 7.238059043884277,
-        5.794983863830566, 4.60251522064209, 3.8171539306640625, 3.0447826385498047,
-        2.526477813720703, 2.1706619262695312, 1.816070556640625, 1.5562095642089844,
-        1.4302129745483398, 1.3176708221435547, 1.1894960403442383,
+        11.258956845791545, 9.40259607497137, 8.384315740317106, 7.238058144459501,
+        5.828739010321442, 4.60251481551677, 3.8172692629741505, 3.0447826087474823,
+        2.523470887565054, 2.170023310056422, 1.8160594796063378, 1.556580246950034,
+        1.4294884910923429, 1.3174383605946787, 1.1894954767194577,
       }
     };
 
@@ -83,11 +94,11 @@ public class MySample_shrinkingcone_full2 {
         String delimiter = ",";
         TimeSeries ts =
             TimeSeriesReader.getMyTimeSeries(
-                inputStream, delimiter, false, N, start, hasHeader, false);
+                inputStream, delimiter, false, N, start, hasHeader, true);
         for (int x = 0; x < noutList.length; x++) {
           int nout = noutList[x];
 
-          //          double epsilon = getSCParam(nout, ts, 1e-15);
+          //          double epsilon = MySample_shrinkingcone.getSCParam(nout, ts, 1e-10);
           //          epsilonArray[y][x] = epsilon;
 
           double epsilon = epsilonArray[y][x];
@@ -146,77 +157,77 @@ public class MySample_shrinkingcone_full2 {
     }
   }
 
-  public static double getSCParam(int nout, TimeSeries ts, double accuracy) throws IOException {
-    double epsilon = 1;
-    boolean directLess = false;
-    boolean directMore = false;
-    boolean skip = false; // TODO
-    int threshold = 2; // TODO
-    while (true) {
-      List<Point> reducedPoints = ShrinkingCone.reducePoints(ts.data, epsilon);
-      if (reducedPoints.size() > nout) {
-        if (directMore) {
-          // TODO
-          if (Math.abs(reducedPoints.size() - nout) <= threshold) {
-            skip = true;
-          }
-          //
-          break;
-        }
-        if (!directLess) {
-          directLess = true;
-        }
-        epsilon *= 2;
-      } else {
-        if (directLess) {
-          // TODO
-          if (Math.abs(nout - reducedPoints.size()) <= threshold) {
-            skip = true;
-          }
-          //
-          break;
-        }
-        if (!directMore) {
-          directMore = true;
-        }
-        epsilon /= 2;
-      }
-    }
-    // TODO
-    if (skip) {
-      return epsilon;
-    }
-    //
-    // begin dichotomy
-    double left = 0;
-    double right = 0;
-    if (directLess) {
-      left = epsilon / 2;
-      right = epsilon;
-    }
-    if (directMore) {
-      left = epsilon;
-      right = epsilon * 2;
-    }
-    while (Math.abs(right - left) > accuracy) {
-      double mid = (left + right) / 2;
-      List<Point> reducedPoints = ShrinkingCone.reducePoints(ts.data, mid);
-      if (reducedPoints.size() > nout) {
-        left = mid;
-      } else {
-        right = mid;
-      }
-    }
-    // TODO
-    List<Point> reducedPoints = FSW.reducePoints(ts.data, left);
-    int n1 = reducedPoints.size();
-    reducedPoints = FSW.reducePoints(ts.data, right);
-    int n2 = reducedPoints.size();
-    if (Math.abs(n1 - nout) < Math.abs(n2 - nout)) {
-      return left;
-    } else {
-      return right;
-    }
-    //
-  }
+  //  public static double getSCParam(int nout, TimeSeries ts, double accuracy) throws IOException {
+  //    double epsilon = 1;
+  //    boolean directLess = false;
+  //    boolean directMore = false;
+  //    boolean skip = false; // TODO
+  //    int threshold = 2; // TODO
+  //    while (true) {
+  //      List<Point> reducedPoints = ShrinkingCone.reducePoints(ts.data, epsilon);
+  //      if (reducedPoints.size() > nout) {
+  //        if (directMore) {
+  //          // TODO
+  //          if (Math.abs(reducedPoints.size() - nout) <= threshold) {
+  //            skip = true;
+  //          }
+  //          //
+  //          break;
+  //        }
+  //        if (!directLess) {
+  //          directLess = true;
+  //        }
+  //        epsilon *= 2;
+  //      } else {
+  //        if (directLess) {
+  //          // TODO
+  //          if (Math.abs(nout - reducedPoints.size()) <= threshold) {
+  //            skip = true;
+  //          }
+  //          //
+  //          break;
+  //        }
+  //        if (!directMore) {
+  //          directMore = true;
+  //        }
+  //        epsilon /= 2;
+  //      }
+  //    }
+  //    // TODO
+  //    if (skip) {
+  //      return epsilon;
+  //    }
+  //    //
+  //    // begin dichotomy
+  //    double left = 0;
+  //    double right = 0;
+  //    if (directLess) {
+  //      left = epsilon / 2;
+  //      right = epsilon;
+  //    }
+  //    if (directMore) {
+  //      left = epsilon;
+  //      right = epsilon * 2;
+  //    }
+  //    while (Math.abs(right - left) > accuracy) {
+  //      double mid = (left + right) / 2;
+  //      List<Point> reducedPoints = ShrinkingCone.reducePoints(ts.data, mid);
+  //      if (reducedPoints.size() > nout) {
+  //        left = mid;
+  //      } else {
+  //        right = mid;
+  //      }
+  //    }
+  //    // TODO
+  //    List<Point> reducedPoints = FSW.reducePoints(ts.data, left);
+  //    int n1 = reducedPoints.size();
+  //    reducedPoints = FSW.reducePoints(ts.data, right);
+  //    int n2 = reducedPoints.size();
+  //    if (Math.abs(n1 - nout) < Math.abs(n2 - nout)) {
+  //      return left;
+  //    } else {
+  //      return right;
+  //    }
+  //    //
+  //  }
 }

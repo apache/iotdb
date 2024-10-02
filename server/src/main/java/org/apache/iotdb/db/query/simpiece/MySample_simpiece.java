@@ -36,7 +36,9 @@ public class MySample_simpiece {
     int[] noutList = new int[] {100};
     double[] r = new double[] {0.1, 0.5, 1.3, 0};
     double[] epsilonList =
-        new double[] {0.0009999, 316.5642651891633, 9.186667042922977, 11.162719900131227};
+        new double[] {
+          9.999999992942321E-4, 316.5642651891633, 9.186667042922977, 11.162719900131227
+        };
     int[] NList = new int[] {2500000, 2500000, 2500000, 500000};
     for (int y = 0; y < datasetNameList.length; y++) {
       String datasetName = datasetNameList[y];
@@ -52,7 +54,7 @@ public class MySample_simpiece {
           TimeSeries ts =
               TimeSeriesReader.getMyTimeSeries(
                   inputStream, delimiter, false, N, start, hasHeader, true);
-          //          double epsilon = getSimPieceParam(nout, ts, 1e-6);
+          //          double epsilon = getSimPieceParam(nout, ts, 1e-12);
           double epsilon = epsilonList[y];
           SimPiece simPiece = new SimPiece(ts.data, epsilon);
           System.out.println(
@@ -99,19 +101,79 @@ public class MySample_simpiece {
     }
   }
 
+  //  public static double getSimPieceParam(int nout, TimeSeries ts, double accuracy)
+  //      throws IOException {
+  //    double epsilon = ts.range * 0.001;
+  //    while (true) {
+  //      SimPiece simPiece = new SimPiece(ts.data, epsilon);
+  //      if (simPiece.segments.size() * 2 > nout) { // note *2 for disjoint
+  //        epsilon *= 2;
+  //      } else {
+  //        break;
+  //      }
+  //    }
+  //    double left = epsilon / 2;
+  //    double right = epsilon;
+  //    while (Math.abs(right - left) > accuracy) {
+  //      double mid = (left + right) / 2;
+  //      SimPiece simPiece = new SimPiece(ts.data, mid);
+  //      if (simPiece.segments.size() * 2 > nout) { // note *2 for disjoint
+  //        left = mid;
+  //      } else {
+  //        right = mid;
+  //      }
+  //    }
+  //    return (left + right) / 2;
+  //  }
+
   public static double getSimPieceParam(int nout, TimeSeries ts, double accuracy)
       throws IOException {
-    double epsilon = ts.range * 0.001;
+    double epsilon = 1;
+    boolean directLess = false;
+    boolean directMore = false;
+    boolean skip = false;
+    int threshold = 2;
     while (true) {
       SimPiece simPiece = new SimPiece(ts.data, epsilon);
       if (simPiece.segments.size() * 2 > nout) { // note *2 for disjoint
+        if (directMore) {
+          if (Math.abs(simPiece.segments.size() * 2 - nout) <= threshold) {
+            skip = true;
+          }
+          break;
+        }
+        if (!directLess) {
+          directLess = true;
+        }
         epsilon *= 2;
       } else {
-        break;
+        if (directLess) {
+          if (Math.abs(nout - simPiece.segments.size() * 2) <= threshold) {
+            skip = true;
+          }
+          break;
+        }
+        if (!directMore) {
+          directMore = true;
+        }
+        epsilon /= 2;
       }
     }
-    double left = epsilon / 2;
-    double right = epsilon;
+    if (skip) {
+      return epsilon;
+    }
+
+    // begin dichotomy
+    double left = 0;
+    double right = 0;
+    if (directLess) {
+      left = epsilon / 2;
+      right = epsilon;
+    }
+    if (directMore) {
+      left = epsilon;
+      right = epsilon * 2;
+    }
     while (Math.abs(right - left) > accuracy) {
       double mid = (left + right) / 2;
       SimPiece simPiece = new SimPiece(ts.data, mid);
@@ -121,6 +183,14 @@ public class MySample_simpiece {
         right = mid;
       }
     }
-    return (left + right) / 2;
+    SimPiece simPiece = new SimPiece(ts.data, left);
+    int n1 = simPiece.segments.size() * 2;
+    simPiece = new SimPiece(ts.data, right);
+    int n2 = simPiece.segments.size() * 2;
+    if (Math.abs(n1 - nout) < Math.abs(n2 - nout)) {
+      return left;
+    } else {
+      return right;
+    }
   }
 }

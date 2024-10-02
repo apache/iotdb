@@ -27,47 +27,66 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.List;
 
-public class MySample_shrinkingcone_full {
+public class MySample_dwt_full2 {
+  // After running this,
+  // output sample csv and copy them into lts-exp/notebook/segmentResults/.
+  // output epsilonArray_*.txt and copy them into lts-exp/tools/.
 
   public static void main(String[] args) {
     String fileDir = "D:\\desktop\\NISTPV\\";
+    // do not change the order of datasets below, as the output is used in exp bash
     String[] datasetNameList = new String[] {"WindSpeed", "Qloss", "Pyra1", "RTD"};
-    int[] noutList = new int[] {320, 360, 400, 440, 480, 520, 560, 600, 640};
+    int[] noutList =
+        new int[] {
+          320, 400, 480, 580, 720, 960, 1200, 1600, 2000, 2400, 3000, 3600, 4000, 4400, 5000
+        };
 
     double[][] epsilonArray = {
       {
-        14.388325214385986,
-        13.768231868743896,
-        13.343345165252686,
-        13.091249942779541,
-        12.69767427444458,
-        12.391706943511963,
-        12.167190074920654,
-        11.972727298736572,
-        11.756273746490479
-      },
-      {0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.0009999999999999999},
-      {
-        680.2196469306946,
-        665.2842917442322,
-        650.2610821723938,
-        636.7945942878723,
-        620.9016032218933,
-        604.7394433021545,
-        592.9867577552795,
-        578.6471419334412,
-        570.5106825828552
+        98.84062576293945,
+        83.28593826293945,
+        71.22443580627441,
+        59.164398193359375,
+        48.10093879699707,
+        37.6534366607666,
+        31.448437690734863,
+        25.480151176452637,
+        22.1484375,
+        19.969138145446777,
+        17.644524574279785,
+        16.02500057220459,
+        15.221578598022461,
+        14.512500762939453,
+        13.687499046325684,
       },
       {
-        11.259880542755127,
-        10.37297010421753,
-        9.402754306793213,
-        8.867334842681885,
-        8.384315967559814,
-        7.915340900421143,
-        7.39516019821167,
-        6.892223834991455,
-        6.5178914070129395
+        0.01904773712158203, 0.01746368408203125, 0.01591014862060547, 0.015031814575195312,
+        0.013813018798828125, 0.011875152587890625, 0.010687828063964844, 0.009125709533691406,
+        0.007843017578125, 0.007071495056152344, 0.0059661865234375, 0.005126953125,
+        0.0046844482421875, 0.004241943359375, 0.0037126541137695312,
+      },
+      {
+        17456.15777873993, 13712.626691818237, 10876.021079063416, 9463.918528556824,
+        7767.749307632446, 5635.975116729736, 4259.744117736816, 3277.170015335083,
+        2655.061099052429, 2169.5194940567017, 1751.8307266235352, 1485.040364265442,
+        1367.6178674697876, 1255.3692474365234, 1127.6510620117188,
+      },
+      {
+        849.467981338501,
+        703.4278907775879,
+        556.0022611618042,
+        456.47415828704834,
+        345.5801601409912,
+        241.60498523712158,
+        184.83848667144775,
+        128.0,
+        97.61968803405762,
+        77.68981170654297,
+        58.74324989318848,
+        47.012436866760254,
+        41.456562995910645,
+        36.50571346282959,
+        31.0604829788208,
       }
     };
 
@@ -86,16 +105,22 @@ public class MySample_shrinkingcone_full {
         String delimiter = ",";
         TimeSeries ts =
             TimeSeriesReader.getMyTimeSeries(
-                inputStream, delimiter, false, N, start, hasHeader, false);
+                inputStream, delimiter, false, N, start, hasHeader, true);
+        double[] values = new double[ts.length()];
+        int k = 0;
+        for (Point p : ts.data) {
+          values[k++] = p.getValue();
+        }
+
         for (int x = 0; x < noutList.length; x++) {
           int nout = noutList[x];
 
-          //          double epsilon = getSCParam(nout, ts, 1e-6);
+          //          double epsilon = MySample_dwt.getDWTParam(nout, values, 1e-6);
           //          epsilonArray[y][x] = epsilon;
 
           double epsilon = epsilonArray[y][x];
 
-          List<Point> reducedPoints = ShrinkingCone.reducePoints(ts.data, epsilon);
+          List<Point> reducedPoints = DWT.reducePoints(values, epsilon);
           System.out.println(
               datasetName
                   + ": n="
@@ -116,7 +141,7 @@ public class MySample_shrinkingcone_full {
                           + nout
                           + "-"
                           + reducedPoints.size()
-                          + "-sc.csv"))) {
+                          + "-dwt.csv"))) {
             for (Point p : reducedPoints) {
               writer.println(p.getTimestamp() + "," + p.getValue());
             }
@@ -127,57 +152,18 @@ public class MySample_shrinkingcone_full {
       }
     }
 
-    for (int i = 0; i < epsilonArray.length; i++) { // 遍历行
-      for (int j = 0; j < epsilonArray[i].length; j++) { // 遍历列
-        System.out.print(epsilonArray[i][j] + ",");
+    // do not change name of the output file, as the output is used in exp bash
+    try (FileWriter writer = new FileWriter("epsilonArray_dwt.txt")) {
+      for (double[] row : epsilonArray) {
+        for (double element : row) {
+          writer.write(element + " ");
+          System.out.print(element + ",");
+        }
+        writer.write("\n");
+        System.out.println();
       }
-      System.out.println();
+    } catch (IOException e) {
+      e.printStackTrace();
     }
-  }
-
-  public static double getSCParam(int nout, TimeSeries ts, double accuracy) throws IOException {
-    double epsilon = 1;
-    boolean directLess = false;
-    boolean directMore = false;
-    while (true) {
-      List<Point> reducedPoints = ShrinkingCone.reducePoints(ts.data, epsilon);
-      if (reducedPoints.size() > nout) {
-        if (directMore) {
-          break;
-        }
-        if (!directLess) {
-          directLess = true;
-        }
-        epsilon *= 2;
-      } else {
-        if (directLess) {
-          break;
-        }
-        if (!directMore) {
-          directMore = true;
-        }
-        epsilon /= 2;
-      }
-    }
-    double left = 0;
-    double right = 0;
-    if (directLess) {
-      left = epsilon / 2;
-      right = epsilon;
-    }
-    if (directMore) {
-      left = epsilon;
-      right = epsilon * 2;
-    }
-    while (Math.abs(right - left) > accuracy) {
-      double mid = (left + right) / 2;
-      List<Point> reducedPoints = ShrinkingCone.reducePoints(ts.data, mid);
-      if (reducedPoints.size() > nout) {
-        left = mid;
-      } else {
-        right = mid;
-      }
-    }
-    return (left + right) / 2;
   }
 }

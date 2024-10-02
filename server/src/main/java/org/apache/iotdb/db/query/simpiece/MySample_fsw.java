@@ -36,7 +36,9 @@ public class MySample_fsw {
     double[] r = new double[] {0.1, 0.5, 1.3, 0};
     int[] NList = new int[] {2500000, 2500000, 2500000, 500000};
     double[] epsilonList =
-        new double[] {9.999999E-4, 284.4034399986267, 6.428162097930908, 10.814893245697021};
+        new double[] {
+          9.999999992942321E-4, 284.40344031846143, 6.428162015438829, 10.818711800659003
+        };
     for (int y = 0; y < datasetNameList.length; y++) {
       String datasetName = datasetNameList[y];
       int start = (int) (10000000 / 2 - NList[y] * r[y]); // 从0开始计数
@@ -50,7 +52,7 @@ public class MySample_fsw {
           TimeSeries ts =
               TimeSeriesReader.getMyTimeSeries(
                   inputStream, delimiter, false, N, start, hasHeader, true);
-          //          double epsilon = getFSWParam(nout, ts, 1e-6);
+          //          double epsilon = getFSWParam(nout, ts, 1e-12);
           double epsilon = epsilonList[y];
           List<Point> reducedPoints = FSW.reducePoints(ts.data, epsilon);
           System.out.println(
@@ -78,14 +80,66 @@ public class MySample_fsw {
     }
   }
 
+  //  public static double getFSWParam(int nout, TimeSeries ts, double accuracy) throws IOException
+  // {
+  //    double epsilon = 1;
+  //    boolean directLess = false;
+  //    boolean directMore = false;
+  //    while (true) {
+  //      List<Point> reducedPoints = FSW.reducePoints(ts.data, epsilon);
+  //      if (reducedPoints.size() > nout) {
+  //        if (directMore) {
+  //          break;
+  //        }
+  //        if (!directLess) {
+  //          directLess = true;
+  //        }
+  //        epsilon *= 2;
+  //      } else {
+  //        if (directLess) {
+  //          break;
+  //        }
+  //        if (!directMore) {
+  //          directMore = true;
+  //        }
+  //        epsilon /= 2;
+  //      }
+  //    }
+  //    double left = 0;
+  //    double right = 0;
+  //    if (directLess) {
+  //      left = epsilon / 2;
+  //      right = epsilon;
+  //    }
+  //    if (directMore) {
+  //      left = epsilon;
+  //      right = epsilon * 2;
+  //    }
+  //    while (Math.abs(right - left) > accuracy) {
+  //      double mid = (left + right) / 2;
+  //      List<Point> reducedPoints = FSW.reducePoints(ts.data, mid);
+  //      if (reducedPoints.size() > nout) {
+  //        left = mid;
+  //      } else {
+  //        right = mid;
+  //      }
+  //    }
+  //    return (left + right) / 2;
+  //  }
+
   public static double getFSWParam(int nout, TimeSeries ts, double accuracy) throws IOException {
     double epsilon = 1;
     boolean directLess = false;
     boolean directMore = false;
+    boolean skip = false;
+    int threshold = 2;
     while (true) {
       List<Point> reducedPoints = FSW.reducePoints(ts.data, epsilon);
       if (reducedPoints.size() > nout) {
         if (directMore) {
+          if (Math.abs(reducedPoints.size() - nout) <= threshold) {
+            skip = true;
+          }
           break;
         }
         if (!directLess) {
@@ -94,6 +148,9 @@ public class MySample_fsw {
         epsilon *= 2;
       } else {
         if (directLess) {
+          if (Math.abs(nout - reducedPoints.size()) <= threshold) {
+            skip = true;
+          }
           break;
         }
         if (!directMore) {
@@ -102,6 +159,11 @@ public class MySample_fsw {
         epsilon /= 2;
       }
     }
+    if (skip) {
+      return epsilon;
+    }
+
+    // begin dichotomy
     double left = 0;
     double right = 0;
     if (directLess) {
@@ -121,6 +183,15 @@ public class MySample_fsw {
         right = mid;
       }
     }
-    return (left + right) / 2;
+
+    List<Point> reducedPoints = FSW.reducePoints(ts.data, left);
+    int n1 = reducedPoints.size();
+    reducedPoints = FSW.reducePoints(ts.data, right);
+    int n2 = reducedPoints.size();
+    if (Math.abs(n1 - nout) < Math.abs(n2 - nout)) {
+      return left;
+    } else {
+      return right;
+    }
   }
 }

@@ -23,12 +23,11 @@ package org.apache.iotdb.db.query.simpiece;
 
 import java.io.FileInputStream;
 import java.io.FileWriter;
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Comparator;
 import java.util.List;
 
-public class MySample_simpiece_full {
+public class MySample_simpiece_full_deprecated {
 
   public static void main(String[] args) {
     String fileDir = "D:\\desktop\\NISTPV\\";
@@ -102,7 +101,7 @@ public class MySample_simpiece_full {
         for (int x = 0; x < noutList.length; x++) {
           int nout = noutList[x];
 
-          //          double epsilon = getSimPieceParam(nout, ts, 1e-6);
+          //          double epsilon = MySample_simpiece.getSimPieceParam(nout, ts, 1e-6);
           //          epsilonArray[y][x] = epsilon;
 
           double epsilon = epsilonArray[y][x];
@@ -166,28 +165,28 @@ public class MySample_simpiece_full {
     }
   }
 
-  public static double getSimPieceParam(int nout, TimeSeries ts, double accuracy)
-      throws IOException {
-    double epsilon = ts.range * 0.001;
-    while (true) {
-      SimPiece simPiece = new SimPiece(ts.data, epsilon);
-      if (simPiece.segments.size() * 2 > nout) { // note *2 for disjoint
-        epsilon *= 2;
-      } else {
-        break;
-      }
-    }
-    double left = epsilon / 2;
-    double right = epsilon;
-    while (Math.abs(right - left) > accuracy) {
-      double mid = (left + right) / 2;
-      SimPiece simPiece = new SimPiece(ts.data, mid);
-      if (simPiece.segments.size() * 2 > nout) { // note *2 for disjoint
-        left = mid;
-      } else {
-        right = mid;
-      }
-    }
-    return (left + right) / 2;
-  }
+  //  public static double getSimPieceParam(int nout, TimeSeries ts, double accuracy)
+  //      throws IOException {
+  //    double epsilon = ts.range * 0.001;
+  //    while (true) {
+  //      SimPiece simPiece = new SimPiece(ts.data, epsilon);
+  //      if (simPiece.segments.size() * 2 > nout) { // note *2 for disjoint
+  //        epsilon *= 2;
+  //      } else {
+  //        break;
+  //      }
+  //    }
+  //    double left = epsilon / 2;
+  //    double right = epsilon;
+  //    while (Math.abs(right - left) > accuracy) {
+  //      double mid = (left + right) / 2;
+  //      SimPiece simPiece = new SimPiece(ts.data, mid);
+  //      if (simPiece.segments.size() * 2 > nout) { // note *2 for disjoint
+  //        left = mid;
+  //      } else {
+  //        right = mid;
+  //      }
+  //    }
+  //    return (left + right) / 2;
+  //  }
 }

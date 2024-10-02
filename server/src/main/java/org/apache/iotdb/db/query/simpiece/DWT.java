@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.query.simpiece;
 
 import org.apache.iotdb.db.query.simpiece.jwave.Transform;
-import org.apache.iotdb.db.query.simpiece.jwave.TransformBuilder;
+import org.apache.iotdb.db.query.simpiece.jwave.transforms.AncientEgyptianDecomposition;
+import org.apache.iotdb.db.query.simpiece.jwave.transforms.FastWaveletTransform;
+import org.apache.iotdb.db.query.simpiece.jwave.transforms.wavelets.haar.Haar1;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,7 +30,10 @@ import java.util.List;
 public class DWT {
 
   public static List<Point> reducePoints(double[] values, double threshold) {
-    Transform transform = TransformBuilder.create("Fast Wavelet Transform", "Haar");
+    //    Transform transform = TransformBuilder.create("Fast Wavelet Transform", "Haar");
+    Transform transform =
+        new Transform(new AncientEgyptianDecomposition(new FastWaveletTransform(new Haar1())));
+
     double[] arrHilb = transform.forward(values);
 
     List<Point> result = new ArrayList<>();

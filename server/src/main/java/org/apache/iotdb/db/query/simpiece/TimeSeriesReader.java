@@ -214,6 +214,8 @@ public class TimeSeriesReader {
       boolean seriesTimeColumn) {
     // N<0 means read all lines
 
+    System.out.println("seriesTimeColumn=" + seriesTimeColumn);
+
     ArrayList<Point> ts = new ArrayList<>();
     double max = Double.MIN_VALUE;
     double min = Double.MAX_VALUE;
@@ -243,7 +245,7 @@ public class TimeSeriesReader {
         if (!seriesTimeColumn) {
           timestamp = (long) Double.parseDouble(elements[0]);
         } else {
-          timestamp = cnt; // for DFT, DWT, OM3
+          timestamp = cnt; // because DWT, OM3 timestamp starting from 0
         }
         double value = Double.parseDouble(elements[1]);
         ts.add(new Point(timestamp, value));

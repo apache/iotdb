@@ -36,6 +36,7 @@ src/main/resources/metadata/mlog.txt
 tsfile-jdbc/src/main/resources/output/queryRes.csv
 
 *.txt
+*.csv
 
 *.gz
 *.tar.gz

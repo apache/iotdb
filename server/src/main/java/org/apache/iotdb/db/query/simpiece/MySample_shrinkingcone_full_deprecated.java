@@ -23,59 +23,50 @@ package org.apache.iotdb.db.query.simpiece;
 
 import java.io.FileInputStream;
 import java.io.FileWriter;
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.List;
 
-public class MySample_fsw_full2 {
-  // After running this,
-  // output sample csv and copy them into lts-exp/notebook/segmentResults/.
-  // output epsilonArray_*.txt and copy them into lts-exp/tools/.
+public class MySample_shrinkingcone_full_deprecated {
 
   public static void main(String[] args) {
     String fileDir = "D:\\desktop\\NISTPV\\";
-    // do not change the order of datasets below, as the output is used in exp bash
     String[] datasetNameList = new String[] {"WindSpeed", "Qloss", "Pyra1", "RTD"};
-    int[] noutList =
-        new int[] {
-          320, 400, 480, 580, 720, 960, 1200, 1600, 2000, 2400, 3000, 3600, 4000, 4400, 5000
-        };
+    int[] noutList = new int[] {320, 360, 400, 440, 480, 520, 560, 600, 640};
 
     double[][] epsilonArray = {
       {
-        9.618214055872158,
-        8.99153642953479,
-        8.375,
-        7.994615384615827,
-        7.615596330275366,
-        7.172755905511622,
-        6.8775202380129485,
-        6.408134920635348,
-        6.219821826281077,
-        5.977595190380271,
-        5.678260869564838,
-        5.499468085106855,
-        5.387459854014196,
-        5.299999999999272,
-        5.1635087719305375,
+        14.388325214385986,
+        13.768231868743896,
+        13.343345165252686,
+        13.091249942779541,
+        12.69767427444458,
+        12.391706943511963,
+        12.167190074920654,
+        11.972727298736572,
+        11.756273746490479
+      },
+      {0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.0009999999999999999},
+      {
+        680.2196469306946,
+        665.2842917442322,
+        650.2610821723938,
+        636.7945942878723,
+        620.9016032218933,
+        604.7394433021545,
+        592.9867577552795,
+        578.6471419334412,
+        570.5106825828552
       },
       {
-        9.99588181002764E-4, 9.9792019045708E-4, 9.960159368347377E-4, 9.93464052953641E-4,
-        9.900738350552274E-4, 9.817607760851388E-4, 9.688081945569138E-4, 9.424000008948497E-4,
-        8.978153637144715E-4, 8.259669120889157E-4, 6.680341875835438E-4, 5.191545578782097E-4,
-        4.996619345547515E-4, 4.989106755601824E-4, 4.871794872087776E-4,
-      },
-      {
-        439.5207473666851, 425.8416748119398, 405.7711305285957, 396.33365325326304,
-        380.677698415484, 358.4453466879504, 336.54477008704634, 304.11544481893816,
-        279.7037549556544, 257.61061704471194, 232.59544346653, 211.35450069313174,
-        201.14805889728268, 192.1216488917953, 178.6315376164921,
-      },
-      {
-        9.297997111218137, 7.471379310345583, 6.473535325328157, 5.616272926722559,
-        4.701954477981417, 3.7258684097114383, 3.078884904984079, 2.4637460027415727,
-        2.0368421052635313, 1.7683037779497681, 1.473529411765412, 1.2658022184905349,
-        1.166260869566031, 1.0711538461546297, 0.9613079019081852,
+        11.259880542755127,
+        10.37297010421753,
+        9.402754306793213,
+        8.867334842681885,
+        8.384315967559814,
+        7.915340900421143,
+        7.39516019821167,
+        6.892223834991455,
+        6.5178914070129395
       }
     };
 
@@ -94,16 +85,16 @@ public class MySample_fsw_full2 {
         String delimiter = ",";
         TimeSeries ts =
             TimeSeriesReader.getMyTimeSeries(
-                inputStream, delimiter, false, N, start, hasHeader, true);
+                inputStream, delimiter, false, N, start, hasHeader, false);
         for (int x = 0; x < noutList.length; x++) {
           int nout = noutList[x];
 
-          //          double epsilon = MySample_fsw.getFSWParam(nout, ts, 1e-12);
+          //          double epsilon = MySample_shrinkingcone.getSCParam(nout, ts, 1e-6);
           //          epsilonArray[y][x] = epsilon;
 
           double epsilon = epsilonArray[y][x];
 
-          List<Point> reducedPoints = FSW.reducePoints(ts.data, epsilon);
+          List<Point> reducedPoints = ShrinkingCone.reducePoints(ts.data, epsilon);
           System.out.println(
               datasetName
                   + ": n="
@@ -124,7 +115,7 @@ public class MySample_fsw_full2 {
                           + nout
                           + "-"
                           + reducedPoints.size()
-                          + "-fsw.csv"))) {
+                          + "-sc.csv"))) {
             for (Point p : reducedPoints) {
               writer.println(p.getTimestamp() + "," + p.getValue());
             }
@@ -135,42 +126,22 @@ public class MySample_fsw_full2 {
       }
     }
 
-    //    for (int i = 0; i < epsilonArray.length; i++) {
-    //      for (int j = 0; j < epsilonArray[i].length; j++) {
-    //        System.out.print(epsilonArray[i][j] + ",");
-    //      }
-    //      System.out.println();
-    //    }
-
-    // do not change name of the output file, as the output is used in exp bash
-    try (FileWriter writer = new FileWriter("epsilonArray_fsw.txt")) {
-      for (double[] row : epsilonArray) {
-        for (double element : row) {
-          writer.write(element + " ");
-          System.out.print(element + ",");
-        }
-        writer.write("\n");
-        System.out.println();
+    for (int i = 0; i < epsilonArray.length; i++) { // 遍历行
+      for (int j = 0; j < epsilonArray[i].length; j++) { // 遍历列
+        System.out.print(epsilonArray[i][j] + ",");
       }
-    } catch (IOException e) {
-      e.printStackTrace();
+      System.out.println();
     }
   }
 
-  //  public static double getFSWParam(int nout, TimeSeries ts, double accuracy) throws IOException
-  // {
+  //  public static double getSCParam(int nout, TimeSeries ts, double accuracy) throws IOException {
   //    double epsilon = 1;
   //    boolean directLess = false;
   //    boolean directMore = false;
-  //    boolean skip = false;
-  //    int threshold = 2;
   //    while (true) {
-  //      List<Point> reducedPoints = FSW.reducePoints(ts.data, epsilon);
+  //      List<Point> reducedPoints = ShrinkingCone.reducePoints(ts.data, epsilon);
   //      if (reducedPoints.size() > nout) {
   //        if (directMore) {
-  //          if (Math.abs(reducedPoints.size() - nout) <= threshold) {
-  //            skip = true;
-  //          }
   //          break;
   //        }
   //        if (!directLess) {
@@ -179,9 +150,6 @@ public class MySample_fsw_full2 {
   //        epsilon *= 2;
   //      } else {
   //        if (directLess) {
-  //          if (Math.abs(nout - reducedPoints.size()) <= threshold) {
-  //            skip = true;
-  //          }
   //          break;
   //        }
   //        if (!directMore) {
@@ -190,11 +158,6 @@ public class MySample_fsw_full2 {
   //        epsilon /= 2;
   //      }
   //    }
-  //    if (skip) {
-  //      return epsilon;
-  //    }
-  //
-  //    // begin dichotomy
   //    double left = 0;
   //    double right = 0;
   //    if (directLess) {
@@ -207,22 +170,13 @@ public class MySample_fsw_full2 {
   //    }
   //    while (Math.abs(right - left) > accuracy) {
   //      double mid = (left + right) / 2;
-  //      List<Point> reducedPoints = FSW.reducePoints(ts.data, mid);
+  //      List<Point> reducedPoints = ShrinkingCone.reducePoints(ts.data, mid);
   //      if (reducedPoints.size() > nout) {
   //        left = mid;
   //      } else {
   //        right = mid;
   //      }
   //    }
-  //
-  //    List<Point> reducedPoints = FSW.reducePoints(ts.data, left);
-  //    int n1 = reducedPoints.size();
-  //    reducedPoints = FSW.reducePoints(ts.data, right);
-  //    int n2 = reducedPoints.size();
-  //    if (Math.abs(n1 - nout) < Math.abs(n2 - nout)) {
-  //      return left;
-  //    } else {
-  //      return right;
-  //    }
+  //    return (left + right) / 2;
   //  }
 }

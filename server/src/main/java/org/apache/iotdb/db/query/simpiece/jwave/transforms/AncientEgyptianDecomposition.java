@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.simpiece.jwave.transforms;
 
 import org.apache.iotdb.db.query.simpiece.jwave.exceptions.JWaveException;
 import org.apache.iotdb.db.query.simpiece.jwave.tools.MathToolKit;
+import org.apache.iotdb.tsfile.read.common.IOMonitor2;
 
 /**
  * A wavelet transform method for arrays and signals of arbitrary lengths, even odd lengths. The
@@ -36,8 +37,8 @@ import org.apache.iotdb.db.query.simpiece.jwave.tools.MathToolKit;
  * For an "orthonormal" wavelet this holds. See:
  * http://en.wikipedia.org/wiki/Ancient_Egyptian_multiplication
  *
- * @date 14.08.2010 10:43:28
  * @author Christian (graetz23@gmail.com)
+ * @date 14.08.2010 10:43:28
  */
 public class AncientEgyptianDecomposition extends BasicTransform {
 
@@ -81,9 +82,9 @@ public class AncientEgyptianDecomposition extends BasicTransform {
    * transform and the resulting wavelet coefficients are copied back to their original discrete
    * positions.
    *
+   * @throws JWaveException
    * @date 14.08.2010 10:43:28
    * @author Christian (graetz23@gmail.com)
-   * @throws JWaveException
    * @see jwave.transforms.BasicTransform#forward(double[])
    */
   @Override
@@ -105,6 +106,9 @@ public class AncientEgyptianDecomposition extends BasicTransform {
       double[] arrTimeSub = new double[arrTimeSubLength];
 
       for (int i = 0; i < arrTimeSub.length; i++) {
+
+        IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++; // note
+
         arrTimeSub[i] = arrTime[i + offSet];
       }
 
@@ -126,9 +130,9 @@ public class AncientEgyptianDecomposition extends BasicTransform {
    * arrays of length 2^p is reverse transformed by the selected basic transform and the resulting
    * coefficients of time domain are copied back to their original discrete positions.
    *
+   * @throws JWaveException
    * @date 14.08.2010 10:43:28
    * @author Christian (graetz23@gmail.com)
-   * @throws JWaveException
    * @see jwave.transforms.BasicTransform#reverse(double[])
    */
   @Override

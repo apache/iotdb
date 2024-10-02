@@ -44,28 +44,28 @@ public class MySample_simpiece_full2 {
 
     double[][] epsilonArray = {
       {
-        10.421952322125435, 9.571347452700138, 9.122375220060349, 8.709278352558613,
-        8.077139288187027, 7.495633184909821, 7.083636365830898, 6.733693778514862,
-        6.403274565935135, 6.160000003874302, 5.93758013099432, 5.787152819335461,
-        5.647759035229683, 5.5742857083678246, 5.444876328110695,
+        10.421952322125435, 9.571148289031044, 9.123788145707294, 8.709278350515888,
+        8.077139287945101, 7.49563318777291, 7.083431952662977, 6.733693776602195,
+        6.40327455919396, 6.160000000000764, 5.937580128205809, 5.787373737373855,
+        5.64775903311147, 5.574285714284997, 5.457306590258668,
       },
       {
-        9.987801313400269E-4, 9.798482060432434E-4, 9.232386946678162E-4, 8.238255977630615E-4,
-        7.013455033302307E-4, 6.666630506515503E-4, 6.311237812042236E-4, 5.687475204467773E-4,
-        5.405843257904053E-4, 5.235522985458374E-4, 5.015432834625244E-4, 4.99919056892395E-4,
-        4.997774958610535E-4, 4.995688796043396E-4, 4.983171820640564E-4,
+        9.988254314521328E-4, 9.798434293770697E-4, 9.232312522726716E-4, 8.290353398479056E-4,
+        7.01342141837813E-4, 6.666666658929898E-4, 6.310499056780827E-4, 5.685331507265801E-4,
+        5.405860865721479E-4, 5.232102530499105E-4, 5.01524178616819E-4, 4.999221064281301E-4,
+        4.997711675969185E-4, 4.995523740944918E-4, 4.984227125532925E-4,
       },
       {
-        502.05052164942026, 485.91779258847237, 464.11991154402494, 436.75185588002205,
-        411.17336819320917, 383.33036886900663, 366.5155046656728, 334.26181526482105,
-        308.3470098376274, 288.7738408744335, 260.332594871521, 242.4736728295684,
-        229.66440346837044, 219.4005109295249, 205.81142588704824,
+        500.25713642584833, 485.6798042813498, 462.5099852368403, 438.8223129853304,
+        411.2180253415381, 383.33036886855643, 366.5155046623204, 334.3895290761275,
+        308.34700983663697, 288.773840881483, 260.33259486916086, 242.47727504848808,
+        229.664403461019, 219.6421213228923, 205.81142588513376,
       },
       {
-        13.637416116893291, 11.293272890150547, 9.741776660084724, 8.293842449784279,
-        6.9908598735928535, 5.493516407907009, 4.693962275981903, 3.6259122267365456,
-        2.9906081929802895, 2.5887924432754517, 2.1600354313850403, 1.8493054434657097,
-        1.689537525177002, 1.5635392591357231, 1.3930133953690529,
+        13.63730886850226, 11.131924092409463, 9.725488211197444, 8.293842443340509,
+        6.990965127238269, 5.49330590055888, 4.7039837191559855, 3.6282148184991456,
+        2.9906666666674937, 2.5889655172422863, 2.1600180365130655, 1.849353021440038,
+        1.6895299145307945, 1.5650976138831538, 1.3930370860935,
       }
     };
 
@@ -85,11 +85,11 @@ public class MySample_simpiece_full2 {
         String delimiter = ",";
         TimeSeries ts =
             TimeSeriesReader.getMyTimeSeries(
-                inputStream, delimiter, false, N, start, hasHeader, false);
+                inputStream, delimiter, false, N, start, hasHeader, true);
         for (int x = 0; x < noutList.length; x++) {
           int nout = noutList[x];
-          //
-          //          double epsilon = getSimPieceParam(nout, ts, 1e-8);
+
+          //          double epsilon = MySample_simpiece.getSimPieceParam(nout, ts, 1e-12);
           //          epsilonArray[y][x] = epsilon;
 
           double epsilon = epsilonArray[y][x];
@@ -167,78 +167,71 @@ public class MySample_simpiece_full2 {
     }
   }
 
-  public static double getSimPieceParam(int nout, TimeSeries ts, double accuracy)
-      throws IOException {
-    double epsilon = 1;
-    boolean directLess = false;
-    boolean directMore = false;
-    boolean skip = false; // TODO
-    int threshold = 2; // TODO
-    while (true) {
-      SimPiece simPiece = new SimPiece(ts.data, epsilon);
-      if (simPiece.segments.size() * 2 > nout) { // note *2 for disjoint
-        if (directMore) {
-          // TODO
-          if (Math.abs(simPiece.segments.size() * 2 - nout) <= threshold) {
-            skip = true;
-          }
-          //
-          break;
-        }
-        if (!directLess) {
-          directLess = true;
-        }
-        epsilon *= 2;
-      } else {
-        if (directLess) {
-          // TODO
-          if (Math.abs(nout - simPiece.segments.size() * 2) <= threshold) {
-            skip = true;
-          }
-          //
-          break;
-        }
-        if (!directMore) {
-          directMore = true;
-        }
-        epsilon /= 2;
-      }
-    }
-    // TODO
-    if (skip) {
-      return epsilon;
-    }
-    //
-    // begin dichotomy
-    double left = 0;
-    double right = 0;
-    if (directLess) {
-      left = epsilon / 2;
-      right = epsilon;
-    }
-    if (directMore) {
-      left = epsilon;
-      right = epsilon * 2;
-    }
-    while (Math.abs(right - left) > accuracy) {
-      double mid = (left + right) / 2;
-      SimPiece simPiece = new SimPiece(ts.data, mid);
-      if (simPiece.segments.size() * 2 > nout) { // note *2 for disjoint
-        left = mid;
-      } else {
-        right = mid;
-      }
-    }
-    // TODO
-    SimPiece simPiece = new SimPiece(ts.data, left);
-    int n1 = simPiece.segments.size() * 2;
-    simPiece = new SimPiece(ts.data, right);
-    int n2 = simPiece.segments.size() * 2;
-    if (Math.abs(n1 - nout) < Math.abs(n2 - nout)) {
-      return left;
-    } else {
-      return right;
-    }
-    //
-  }
+  //  public static double getSimPieceParam(int nout, TimeSeries ts, double accuracy)
+  //      throws IOException {
+  //    double epsilon = 1;
+  //    boolean directLess = false;
+  //    boolean directMore = false;
+  //    boolean skip = false;
+  //    int threshold = 2;
+  //    while (true) {
+  //      SimPiece simPiece = new SimPiece(ts.data, epsilon);
+  //      if (simPiece.segments.size() * 2 > nout) { // note *2 for disjoint
+  //        if (directMore) {
+  //          if (Math.abs(simPiece.segments.size() * 2 - nout) <= threshold) {
+  //            skip = true;
+  //          }
+  //          break;
+  //        }
+  //        if (!directLess) {
+  //          directLess = true;
+  //        }
+  //        epsilon *= 2;
+  //      } else {
+  //        if (directLess) {
+  //          if (Math.abs(nout - simPiece.segments.size() * 2) <= threshold) {
+  //            skip = true;
+  //          }
+  //          break;
+  //        }
+  //        if (!directMore) {
+  //          directMore = true;
+  //        }
+  //        epsilon /= 2;
+  //      }
+  //    }
+  //    if (skip) {
+  //      return epsilon;
+  //    }
+  //
+  //    // begin dichotomy
+  //    double left = 0;
+  //    double right = 0;
+  //    if (directLess) {
+  //      left = epsilon / 2;
+  //      right = epsilon;
+  //    }
+  //    if (directMore) {
+  //      left = epsilon;
+  //      right = epsilon * 2;
+  //    }
+  //    while (Math.abs(right - left) > accuracy) {
+  //      double mid = (left + right) / 2;
+  //      SimPiece simPiece = new SimPiece(ts.data, mid);
+  //      if (simPiece.segments.size() * 2 > nout) { // note *2 for disjoint
+  //        left = mid;
+  //      } else {
+  //        right = mid;
+  //      }
+  //    }
+  //    SimPiece simPiece = new SimPiece(ts.data, left);
+  //    int n1 = simPiece.segments.size() * 2;
+  //    simPiece = new SimPiece(ts.data, right);
+  //    int n2 = simPiece.segments.size() * 2;
+  //    if (Math.abs(n1 - nout) < Math.abs(n2 - nout)) {
+  //      return left;
+  //    } else {
+  //      return right;
+  //    }
+  //  }
 }
