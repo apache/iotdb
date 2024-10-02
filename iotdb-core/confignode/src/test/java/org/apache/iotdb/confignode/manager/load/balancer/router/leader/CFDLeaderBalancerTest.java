@@ -263,8 +263,7 @@ public class CFDLeaderBalancerTest {
 
     // The loadCost for each DataNode are the same
     int x = regionGroupNum / dataNodeNum;
-    // i.e. formula of (1^2 + 2^2 + 3^2 + ...) * 2
-    int loadCost = x * (x + 1) * (2 * x + 1) / 3;
+    int loadCost = 2 * x * x;
 
     int dataNodeId = 0;
     Random random = new Random();
