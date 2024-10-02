@@ -40,7 +40,7 @@ import java.util.stream.Collectors;
 public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAllocator {
 
   private static final GreedyRegionGroupAllocator GREEDY_ALLOCATOR =
-    new GreedyRegionGroupAllocator();
+      new GreedyRegionGroupAllocator();
 
   private int subGraphCount;
   private int replicationFactor;
@@ -60,17 +60,17 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
 
   @Override
   public TRegionReplicaSet generateOptimalRegionReplicasDistribution(
-    Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
-    Map<Integer, Double> freeDiskSpaceMap,
-    List<TRegionReplicaSet> allocatedRegionGroups,
-    List<TRegionReplicaSet> databaseAllocatedRegionGroups,
-    int replicationFactor,
-    TConsensusGroupId consensusGroupId) {
+      Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
+      Map<Integer, Double> freeDiskSpaceMap,
+      List<TRegionReplicaSet> allocatedRegionGroups,
+      List<TRegionReplicaSet> databaseAllocatedRegionGroups,
+      int replicationFactor,
+      TConsensusGroupId consensusGroupId) {
     this.regionPerDataNode =
-      (int)
-        (consensusGroupId.getType().equals(TConsensusGroupType.DataRegion)
-          ? ConfigNodeDescriptor.getInstance().getConf().getDataRegionPerDataNode()
-          : ConfigNodeDescriptor.getInstance().getConf().getSchemaRegionPerDataNode());
+        (int)
+            (consensusGroupId.getType().equals(TConsensusGroupType.DataRegion)
+                ? ConfigNodeDescriptor.getInstance().getConf().getDataRegionPerDataNode()
+                : ConfigNodeDescriptor.getInstance().getConf().getSchemaRegionPerDataNode());
     prepare(replicationFactor, availableDataNodeMap, allocatedRegionGroups);
 
     // Select alpha nodes set
@@ -80,12 +80,12 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
     if (bestValue.left == Integer.MAX_VALUE) {
       // Use greedy allocator as alternative if no alpha nodes set is found
       return GREEDY_ALLOCATOR.generateOptimalRegionReplicasDistribution(
-        availableDataNodeMap,
-        freeDiskSpaceMap,
-        allocatedRegionGroups,
-        databaseAllocatedRegionGroups,
-        replicationFactor,
-        consensusGroupId);
+          availableDataNodeMap,
+          freeDiskSpaceMap,
+          allocatedRegionGroups,
+          databaseAllocatedRegionGroups,
+          replicationFactor,
+          consensusGroupId);
     }
 
     // Select the beta nodes sets
@@ -93,12 +93,12 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
     if (betaDataNodes.size() < replicationFactor - alphaDataNodeNum) {
       // Use greedy allocator as alternative if no beta nodes set is found
       return GREEDY_ALLOCATOR.generateOptimalRegionReplicasDistribution(
-        availableDataNodeMap,
-        freeDiskSpaceMap,
-        allocatedRegionGroups,
-        databaseAllocatedRegionGroups,
-        replicationFactor,
-        consensusGroupId);
+          availableDataNodeMap,
+          freeDiskSpaceMap,
+          allocatedRegionGroups,
+          databaseAllocatedRegionGroups,
+          replicationFactor,
+          consensusGroupId);
     }
 
     // The next placement scheme is alpha \cup beta
@@ -106,19 +106,19 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
     result.setRegionId(consensusGroupId);
     for (int i = 0; i < alphaDataNodeNum; i++) {
       result.addToDataNodeLocations(
-        availableDataNodeMap.get(fakeToRealIdMap.get(bestAlphaNodes[i])).getLocation());
+          availableDataNodeMap.get(fakeToRealIdMap.get(bestAlphaNodes[i])).getLocation());
     }
     for (int i = 0; i < replicationFactor - alphaDataNodeNum; i++) {
       result.addToDataNodeLocations(
-        availableDataNodeMap.get(fakeToRealIdMap.get(betaDataNodes.get(i))).getLocation());
+          availableDataNodeMap.get(fakeToRealIdMap.get(betaDataNodes.get(i))).getLocation());
     }
     return result;
   }
 
   private void prepare(
-    int replicationFactor,
-    Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
-    List<TRegionReplicaSet> allocatedRegionGroups) {
+      int replicationFactor,
+      Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
+      List<TRegionReplicaSet> allocatedRegionGroups) {
     this.subGraphCount = replicationFactor / 2 + (replicationFactor % 2 == 0 ? 0 : 1);
     this.replicationFactor = replicationFactor;
 
@@ -128,9 +128,9 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
     Map<Integer, Integer> realToFakeIdMap = new TreeMap<>();
     this.dataNodeNum = availableDataNodeMap.size();
     List<Integer> dataNodeIdList =
-      availableDataNodeMap.values().stream()
-        .map(c -> c.getLocation().getDataNodeId())
-        .collect(Collectors.toList());
+        availableDataNodeMap.values().stream()
+            .map(c -> c.getLocation().getDataNodeId())
+            .collect(Collectors.toList());
     for (int i = 0; i < dataNodeNum; i++) {
       fakeToRealIdMap.put(i, dataNodeIdList.get(i));
       realToFakeIdMap.put(dataNodeIdList.get(i), i);
@@ -179,7 +179,9 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
     for (int index = firstIndex; index < dataNodeNum; index += subGraphCount) {
       // Prune: skip filled DataNodes
       if (regionCounter[index] < regionPerDataNode) {
-        entryList.add(new DataNodeEntry(index, regionCounter[index], freeDiskSpaceMap.get(fakeToRealIdMap.get(index))));
+        entryList.add(
+            new DataNodeEntry(
+                index, regionCounter[index], freeDiskSpaceMap.get(fakeToRealIdMap.get(index))));
       }
     }
     if (entryList.size() < alphaDataNodeNum) {
@@ -195,7 +197,7 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
       alphaNodes[alphaDataNodeNum - 1] = entryList.get(i).dataNodeId;
       Pair<Integer, Integer> currentValue = valuation(alphaNodes);
       if (currentValue.left < bestValue.left
-        || (currentValue.left.equals(bestValue.left) && currentValue.right < bestValue.right)) {
+          || (currentValue.left.equals(bestValue.left) && currentValue.right < bestValue.right)) {
         bestValue = currentValue;
         System.arraycopy(alphaNodes, 0, bestAlphaNodes, 0, alphaDataNodeNum);
       }
@@ -221,7 +223,7 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
         tmpNodes[alphaDataNodeNum] = i;
         Pair<Integer, Integer> currentValue = valuation(tmpNodes);
         if (currentValue.left < tmpValue.left
-          || (currentValue.left.equals(tmpValue.left) && currentValue.right < tmpValue.right)) {
+            || (currentValue.left.equals(tmpValue.left) && currentValue.right < tmpValue.right)) {
           tmpValue = currentValue;
           selectedDataNode = i;
         }
