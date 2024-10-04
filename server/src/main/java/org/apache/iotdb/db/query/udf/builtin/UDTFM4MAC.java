@@ -119,9 +119,9 @@ public class UDTFM4MAC implements UDTF {
     tqs = parameters.getLong("tqs"); // closed
     tqe = parameters.getLong("tqe"); // open
     w = parameters.getInt("w");
-    if ((tqe - tqs) % w != 0) {
-      throw new MetadataException("You should make tqe-tqs integer divide w");
-    }
+    //    if ((tqe - tqs) % w != 0) {
+    //      throw new MetadataException("You should make tqe-tqs integer divide w");
+    //    }
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
         .setOutputDataType(TSDataType.TEXT);
@@ -159,7 +159,7 @@ public class UDTFM4MAC implements UDTF {
   }
 
   protected void transformInt(long time, int value) throws IOException {
-    long intervalLen = (tqe - tqs) / w;
+    double intervalLen = (tqe - tqs) * 1.0 / w;
     int pos = (int) Math.floor((time - tqs) * 1.0 / intervalLen);
     if (pos >= w) {
       throw new IOException("Make sure the range time filter is time>=tqs and time<tqe");
@@ -210,7 +210,7 @@ public class UDTFM4MAC implements UDTF {
   }
 
   protected void transformLong(long time, long value) throws IOException {
-    long intervalLen = (tqe - tqs) / w;
+    double intervalLen = (tqe - tqs) * 1.0 / w;
     int pos = (int) Math.floor((time - tqs) * 1.0 / intervalLen);
 
     if (pos >= w) {
@@ -261,7 +261,7 @@ public class UDTFM4MAC implements UDTF {
   }
 
   protected void transformFloat(long time, float value) throws IOException {
-    long intervalLen = (tqe - tqs) / w;
+    double intervalLen = (tqe - tqs) * 1.0 / w;
     int pos = (int) Math.floor((time - tqs) * 1.0 / intervalLen);
 
     if (pos >= w) {
@@ -312,7 +312,7 @@ public class UDTFM4MAC implements UDTF {
   }
 
   protected void transformDouble(long time, double value) throws IOException {
-    long intervalLen = (tqe - tqs) / w;
+    double intervalLen = (tqe - tqs) * 1.0 / w;
     int pos = (int) Math.floor((time - tqs) * 1.0 / intervalLen);
 
     if (pos >= w) {
@@ -465,7 +465,8 @@ public class UDTFM4MAC implements UDTF {
     }
     // collect result
     for (int i = 0; i < w; i++) {
-      long startInterval = tqs + (tqe - tqs) / w * i;
+      //      long startInterval = tqs + (tqe - tqs) / w * i;
+      long startInterval = i;
       collector.putString(startInterval, result[i]);
     }
   }
