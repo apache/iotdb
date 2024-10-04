@@ -36,6 +36,7 @@ import java.util.List;
 import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
+import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.apache.iotdb.itbase.constant.TestConstant.DEVICE;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 
@@ -133,6 +134,20 @@ public class IoTDBCaseWhenThenIT {
           "0,99.0,", "1000000,null,", "20000000,999.0,", "210000000,null,",
         };
     resultSetEqualTest(sql, expectedHeader, retArray);
+  }
+
+  @Test
+  public void testShortCircuitEvaluation() {
+    String[] retArray =
+        new String[] {"0,0.0,", "1000000,11.0,", "20000000,22.0,", "210000000,33.0,"};
+    String[] expectedHeader =
+        new String[] {
+          "Time", "CASE WHEN 1 = 0 THEN root.sg.d1.s1 / 0 WHEN 1 != 0 THEN root.sg.d1.s1 END",
+        };
+    resultSetEqualTest(
+        "select case when 1=0 then s1/0 when 1!=0 then s1 end from root.sg.d1",
+        expectedHeader,
+        retArray);
   }
 
   @Test

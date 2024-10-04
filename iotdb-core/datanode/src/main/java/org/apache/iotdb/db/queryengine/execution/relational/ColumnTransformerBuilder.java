@@ -67,8 +67,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.CaseWhenThenColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.TableCaseWhenThenColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticColumnTransformerApi;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareEqualToColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareGreaterEqualColumnTransformer;
@@ -1344,7 +1344,7 @@ public class ColumnTransformerBuilder
         context.cache.put(
             node,
             // fix this
-            new CaseWhenThenColumnTransformer(
+            new TableCaseWhenThenColumnTransformer(
                 thenList.get(0).getType(), whenList, thenList, elseColumnTransformer));
       }
     }
@@ -1382,7 +1382,7 @@ public class ColumnTransformerBuilder
         context.cache.put(
             node,
             // fix this
-            new CaseWhenThenColumnTransformer(
+            new TableCaseWhenThenColumnTransformer(
                 thenList.get(0).getType(), whenList, thenList, elseColumnTransformer));
       }
     }

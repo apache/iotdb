@@ -73,7 +73,7 @@ public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransfo
       return;
     }
     for (int i = 0; i < positionCount; i++) {
-      if (!leftColumn.isNull(i) && !rightColumn.isNull(i) && !selection[i]) {
+      if (selection[i] && !leftColumn.isNull(i) && !rightColumn.isNull(i)) {
         evaluateAndTransform(leftColumn, rightColumn, i, builder);
       } else {
         builder.appendNull();

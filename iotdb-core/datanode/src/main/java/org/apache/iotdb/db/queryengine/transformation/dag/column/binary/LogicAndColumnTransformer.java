@@ -52,25 +52,10 @@ public class LogicAndColumnTransformer extends LogicBinaryColumnTransformer {
     ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
     for (int i = 0; i < positionCount; i++) {
       if (selection[i]) {
-        if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
-          // left value must be true
-          builder.write(rightColumn, i);
-        } else if (!leftColumn.isNull(i)) {
-          // right value is null
-          if (leftColumn.getBoolean(i)) {
-            builder.appendNull();
-          } else {
-            builder.write(leftColumn, i);
-          }
-        } else if (!rightColumn.isNull(i)) {
-          // left value is null
-          if (rightColumn.getBoolean(i)) {
-            builder.appendNull();
-          } else {
-            builder.write(rightColumn, i);
-          }
+        if (selectionCopy[i]) {
+          returnType.writeBoolean(builder, true);
         } else {
-          builder.appendNull();
+          returnType.writeBoolean(builder, false);
         }
       } else {
         builder.appendNull();

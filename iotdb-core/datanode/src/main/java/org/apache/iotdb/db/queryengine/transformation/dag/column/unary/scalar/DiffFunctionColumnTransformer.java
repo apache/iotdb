@@ -26,6 +26,8 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 
+import java.util.Arrays;
+
 public class DiffFunctionColumnTransformer extends UnaryColumnTransformer {
 
   // default is true
@@ -41,6 +43,19 @@ public class DiffFunctionColumnTransformer extends UnaryColumnTransformer {
       Type returnType, ColumnTransformer childColumnTransformer, boolean ignoreNull) {
     super(returnType, childColumnTransformer);
     this.ignoreNull = ignoreNull;
+  }
+
+  @Override
+  public void evaluateWithSelection(boolean[] selection) {
+    // The DIFF function depends on forward and backward rows and cannot be short-circuited.
+    boolean[] selectionCopy = new boolean[selection.length];
+    Arrays.fill(selectionCopy, true);
+    childColumnTransformer.evaluateWithSelection(selectionCopy);
+    Column column = childColumnTransformer.getColumn();
+    ColumnBuilder columnBuilder = returnType.createColumnBuilder(column.getPositionCount());
+    doTransform(column, columnBuilder, selection);
+    initializeColumnCache(columnBuilder.build());
+    childColumnTransformer.clearCache();
   }
 
   @Override
@@ -69,29 +84,6 @@ public class DiffFunctionColumnTransformer extends UnaryColumnTransformer {
 
   @Override
   protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
-    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
-      if (selection[i]) {
-        if (column.isNull(i)) {
-          columnBuilder.appendNull(); // currValue is null, append null
-
-          // When currValue is null:
-          // ignoreNull = true, keep lastValueIsNull as before
-          // ignoreNull = false, update lastValueIsNull to true
-          lastValueIsNull |= !ignoreNull;
-        } else {
-          double currValue = childColumnTransformer.getType().getDouble(column, i);
-          if (lastValueIsNull) {
-            columnBuilder.appendNull(); // lastValue is null, append null
-          } else {
-            returnType.writeDouble(columnBuilder, currValue - lastValue);
-          }
-
-          lastValue = currValue; // currValue is not null, update lastValue
-          lastValueIsNull = false;
-        }
-      } else {
-        columnBuilder.appendNull();
-      }
-    }
+    doTransform(column, columnBuilder);
   }
 }

@@ -49,6 +49,8 @@ public abstract class UnaryColumnTransformer extends ColumnTransformer {
     Column column = childColumnTransformer.getColumn();
     ColumnBuilder columnBuilder = returnType.createColumnBuilder(column.getPositionCount());
     doTransform(column, columnBuilder, selection);
+    initializeColumnCache(columnBuilder.build());
+    childColumnTransformer.clearCache();
   }
 
   public ColumnTransformer getChildColumnTransformer() {

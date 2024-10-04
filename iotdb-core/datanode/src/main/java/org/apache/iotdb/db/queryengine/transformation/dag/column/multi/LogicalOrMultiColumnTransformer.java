@@ -25,12 +25,52 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class LogicalOrMultiColumnTransformer extends LogicalMultiColumnTransformer {
   public LogicalOrMultiColumnTransformer(
       Type returnType, List<ColumnTransformer> columnTransformerList) {
     super(returnType, columnTransformerList);
+  }
+
+  @Override
+  public void evaluateWithSelection(boolean[] selection) {
+    boolean[] selectionCopy = selection.clone();
+    List<Column> childColumns = new ArrayList<>();
+    for (ColumnTransformer child : columnTransformerList) {
+      child.evaluateWithSelection(selection);
+      Column childColumn = child.getColumn();
+      childColumns.add(childColumn);
+
+      for (int i = 0; i < childColumn.getPositionCount(); i++) {
+        if (!childColumn.isNull(i) && childColumn.getBoolean(i)) {
+          selectionCopy[i] = false;
+        }
+      }
+    }
+
+    int positionCount = columnTransformerList.get(0).getColumnCachePositionCount();
+    ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
+
+    for (int i = 0; i < positionCount; i++) {
+      if (selection[i]) {
+        if (selectionCopy[i]) {
+          // all value are false
+          returnType.writeBoolean(builder, false);
+        } else {
+          returnType.writeBoolean(builder, true);
+        }
+      } else {
+        builder.appendNull();
+      }
+    }
+
+    initializeColumnCache(builder.build());
+
+    for (ColumnTransformer child : columnTransformerList) {
+      child.clearCache();
+    }
   }
 
   @Override
@@ -60,5 +100,11 @@ public class LogicalOrMultiColumnTransformer extends LogicalMultiColumnTransform
         }
       }
     }
+  }
+
+  @Override
+  protected void doTransform(
+      List<Column> childrenColumns, ColumnBuilder builder, int positionCount, boolean[] selection) {
+    // do nothing
   }
 }

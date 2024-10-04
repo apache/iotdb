@@ -22,12 +22,14 @@ package org.apache.iotdb.db.queryengine.execution.operator.process;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.CaseWhenThenColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.TableCaseWhenThenColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.TreeCaseWhenThenColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.BinaryColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.IdentityColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.MappableUDFColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.MultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ternary.TernaryColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
 
@@ -364,6 +366,14 @@ public class FilterAndProjectOperator implements ProcessOperator {
                   getMaxLevelOfColumnTransformerTree(
                       ((TernaryColumnTransformer) columnTransformer).getThirdColumnTransformer())));
       return Math.max(4, childMaxLevel);
+    } else if (columnTransformer instanceof MultiColumnTransformer) {
+      int childMaxLevel = 0;
+      for (ColumnTransformer transformer :
+          ((MultiColumnTransformer) columnTransformer).getChildren()) {
+        childMaxLevel = Math.max(childMaxLevel, getMaxLevelOfColumnTransformerTree(transformer));
+      }
+      return Math.max(
+          1 + ((MultiColumnTransformer) columnTransformer).getChildren().size(), childMaxLevel);
     } else if (columnTransformer instanceof MappableUDFColumnTransformer) {
       int childMaxLevel = 0;
       for (ColumnTransformer c :
@@ -376,11 +386,11 @@ public class FilterAndProjectOperator implements ProcessOperator {
                   .getInputColumnTransformers()
                   .length,
           childMaxLevel);
-    } else if (columnTransformer instanceof CaseWhenThenColumnTransformer) {
+    } else if (columnTransformer instanceof TreeCaseWhenThenColumnTransformer) {
       int childMaxLevel = 0;
       int childCount = 0;
       for (Pair<ColumnTransformer, ColumnTransformer> whenThenColumnTransformer :
-          ((CaseWhenThenColumnTransformer) columnTransformer).getWhenThenColumnTransformers()) {
+          ((TreeCaseWhenThenColumnTransformer) columnTransformer).getWhenThenColumnTransformers()) {
         childMaxLevel =
             Math.max(
                 childMaxLevel, getMaxLevelOfColumnTransformerTree(whenThenColumnTransformer.left));
@@ -393,7 +403,28 @@ public class FilterAndProjectOperator implements ProcessOperator {
           Math.max(
               childMaxLevel,
               getMaxLevelOfColumnTransformerTree(
-                  ((CaseWhenThenColumnTransformer) columnTransformer).getElseTransformer()));
+                  ((TreeCaseWhenThenColumnTransformer) columnTransformer).getElseTransformer()));
+      childMaxLevel = Math.max(childMaxLevel, childCount + 2);
+      return childMaxLevel;
+    } else if (columnTransformer instanceof TableCaseWhenThenColumnTransformer) {
+      int childMaxLevel = 0;
+      int childCount = 0;
+      for (Pair<ColumnTransformer, ColumnTransformer> whenThenColumnTransformer :
+          ((TableCaseWhenThenColumnTransformer) columnTransformer)
+              .getWhenThenColumnTransformers()) {
+        childMaxLevel =
+            Math.max(
+                childMaxLevel, getMaxLevelOfColumnTransformerTree(whenThenColumnTransformer.left));
+        childMaxLevel =
+            Math.max(
+                childMaxLevel, getMaxLevelOfColumnTransformerTree(whenThenColumnTransformer.right));
+        childCount++;
+      }
+      childMaxLevel =
+          Math.max(
+              childMaxLevel,
+              getMaxLevelOfColumnTransformerTree(
+                  ((TableCaseWhenThenColumnTransformer) columnTransformer).getElseTransformer()));
       childMaxLevel = Math.max(childMaxLevel, childCount + 2);
       return childMaxLevel;
     } else {
