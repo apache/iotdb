@@ -44,7 +44,8 @@ public enum TableExpressionType {
   NULL_LITERAL((short) 22),
   STRING_LITERAL((short) 23),
   SYMBOL_REFERENCE((short) 24),
-  COALESCE((short) 25);
+  COALESCE((short) 25),
+  CASE_WHEN((short) 26);
 
   TableExpressionType(short type) {
     this.type = type;

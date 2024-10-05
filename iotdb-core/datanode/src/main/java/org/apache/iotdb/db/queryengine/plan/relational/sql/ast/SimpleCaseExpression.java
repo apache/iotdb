@@ -121,4 +121,9 @@ public class SimpleCaseExpression extends Expression {
   public boolean shallowEquals(Node other) {
     return sameClass(this, other);
   }
+
+  @Override
+  public TableExpressionType getExpressionType() {
+    return TableExpressionType.CASE_WHEN;
+  }
 }

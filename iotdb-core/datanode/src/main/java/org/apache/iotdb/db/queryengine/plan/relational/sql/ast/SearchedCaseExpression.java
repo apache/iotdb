@@ -39,6 +39,11 @@ public class SearchedCaseExpression extends Expression {
     this.defaultValue = null;
   }
 
+  @Override
+  public TableExpressionType getExpressionType() {
+    return TableExpressionType.CASE_WHEN;
+  }
+
   public SearchedCaseExpression(List<WhenClause> whenClauses, Expression defaultValue) {
     super(null);
     this.whenClauses = ImmutableList.copyOf(requireNonNull(whenClauses, "whenClauses is null"));
