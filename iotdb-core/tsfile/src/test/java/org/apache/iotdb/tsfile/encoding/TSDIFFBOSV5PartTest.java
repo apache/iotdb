@@ -1044,7 +1044,7 @@ public class TSDIFFBOSV5PartTest {
         int repeatTime2 = 1;
 //        for (int file_i = 1; file_i < 2; file_i++) {
 
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        for (int file_i = 11; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);

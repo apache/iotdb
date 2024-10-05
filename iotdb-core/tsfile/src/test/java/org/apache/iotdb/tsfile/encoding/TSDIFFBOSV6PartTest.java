@@ -699,7 +699,7 @@ public class TSDIFFBOSV6PartTest {
 //                    int cur_k5 = block_size - k4_end_count;
 //                    cur_bits += (cur_k4) * getBitWith(x_4_minus_value - x_3_plus_value);
 //                    cur_bits += cur_k5 * getBitWith(max_delta_value - x_4_plus_value);
-                    for(int k_5_i = k_3_i+1;k_5_i < unique_value_count;k_5_i++) {
+                    for(int k_5_i = k_4_i+1;k_5_i < unique_value_count;k_5_i++) {
                         long x_5_minus_valueL = sorted_value_list[k_5_i - 1];
                         int x_5_minus_value = getUniqueValue(x_5_minus_valueL, left_shift);
                         int x_5_plus_value = getUniqueValue(sorted_value_list[k_5_i], left_shift);
@@ -743,7 +743,7 @@ public class TSDIFFBOSV6PartTest {
 
         // k1 = 1 to count
         // 1 1 1 1 1 1
-        for (int k_1_i = 1; k_1_i < unique_value_count-3; k_1_i++) {
+        for (int k_1_i = 1; k_1_i < unique_value_count-4; k_1_i++) {
             long k_1_minus_valueL = sorted_value_list[k_1_i-1];
             int x_1_minus_value =  getUniqueValue(k_1_minus_valueL, left_shift) ;
             int x_1_plus_value =  getUniqueValue(sorted_value_list[k_1_i], left_shift) ;
@@ -752,7 +752,7 @@ public class TSDIFFBOSV6PartTest {
             cur_k1 = getCount(k_1_minus_valueL,mask);
 
 
-            for (int k_2_i = k_1_i+1; k_2_i < unique_value_count-2; k_2_i++) {
+            for (int k_2_i = k_1_i+1; k_2_i < unique_value_count-3; k_2_i++) {
                 long k_2_minus_valueL = sorted_value_list[k_2_i-1];
                 int x_2_minus_value =  getUniqueValue(k_2_minus_valueL, left_shift) ;
                 int x_2_plus_value =  getUniqueValue(sorted_value_list[k_2_i], left_shift) ;
@@ -762,7 +762,7 @@ public class TSDIFFBOSV6PartTest {
                 cur_k2 = k2_end_count - cur_k1;
 
 
-                for(int k_3_i = k_2_i+1;k_3_i < unique_value_count-1;k_3_i++){
+                for(int k_3_i = k_2_i+1;k_3_i < unique_value_count-2;k_3_i++){
                     long x_3_minus_valueL = sorted_value_list[k_3_i-1];
                     int x_3_minus_value =  getUniqueValue(x_3_minus_valueL, left_shift) ;
                     int x_3_plus_value =  getUniqueValue(sorted_value_list[k_3_i], left_shift);
@@ -775,10 +775,13 @@ public class TSDIFFBOSV6PartTest {
 //                    int cur_k5 = block_size - k4_end_count;
 //                    cur_bits += (cur_k4) * getBitWith(x_4_minus_value - x_3_plus_value);
 //                    cur_bits += cur_k5 * getBitWith(max_delta_value - x_4_plus_value);
-                    for(int k_4_i = k_3_i+1;k_4_i < unique_value_count;k_4_i++) {
+                    for(int k_4_i = k_3_i+1;k_4_i < unique_value_count-1;k_4_i++) {
                         long x_4_minus_valueL = sorted_value_list[k_4_i - 1];
                         int x_4_minus_value = getUniqueValue(x_4_minus_valueL, left_shift);
                         int x_4_plus_value = getUniqueValue(sorted_value_list[k_4_i], left_shift);
+                        int k4_end_count = getCount(x_4_minus_valueL, mask);
+                        cur_k4 = k4_end_count - k3_end_count;
+
 
                         for(int k_5_i = k_4_i+1;k_5_i < unique_value_count;k_5_i++) {
                             long x_5_minus_valueL = sorted_value_list[k_5_i - 1];
@@ -790,11 +793,11 @@ public class TSDIFFBOSV6PartTest {
                             cur_bits += (cur_k3) * (getBitWith(x_3_minus_value - x_2_plus_value)+1);
                             cur_bits += (cur_k4) * (getBitWith(x_4_minus_value - x_3_plus_value)+3);
 
-                            int k4_end_count = getCount(x_4_minus_valueL, mask);
-                            int cur_k5 = k4_end_count - k3_end_count;
-                            int cur_k6 = block_size - k4_end_count;
-                            cur_bits += (cur_k5) * (getBitWith(x_4_minus_value - x_3_plus_value)+3);
-                            cur_bits += cur_k6 * (getBitWith(max_delta_value - x_4_plus_value)+4);
+                            int k5_end_count = getCount(x_5_minus_valueL, mask);
+                            int cur_k5 = k5_end_count - k4_end_count;
+                            int cur_k6 = block_size - k5_end_count;
+                            cur_bits += (cur_k5) * (getBitWith(x_5_minus_value - x_4_plus_value)+3);
+                            cur_bits += cur_k6 * (getBitWith(max_delta_value - x_5_plus_value)+4);
                             if (cur_bits < min_bits) {
 //                        if(cur_bits < 0){
 //                            System.out.println("<<<<<<< 1 1 1 1");
@@ -1088,7 +1091,7 @@ public class TSDIFFBOSV6PartTest {
     public void BOSOptimalTest() throws IOException {
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
 //        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
-        String output_parent_dir = parent_dir + "icde0802/supply_experiment/R3O4_vary_part/compression_ratio/bos_5";
+        String output_parent_dir = parent_dir + "icde0802/supply_experiment/R3O4_vary_part/compression_ratio/bos_6";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -1140,7 +1143,7 @@ public class TSDIFFBOSV6PartTest {
         int repeatTime2 = 1;
 //        for (int file_i = 1; file_i < 2; file_i++) {
 
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        for (int file_i = 2; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
