@@ -159,7 +159,7 @@ public class UDTFM4MAC implements UDTF {
   }
 
   protected void transformInt(long time, int value) throws IOException {
-    double intervalLen = (tqe - tqs) * 1.0 / w;
+    long intervalLen = (tqe - tqs) / w; // consistent with MinMaxCache's strategy
     int pos = (int) Math.floor((time - tqs) * 1.0 / intervalLen);
     if (pos >= w) {
       throw new IOException("Make sure the range time filter is time>=tqs and time<tqe");
@@ -210,7 +210,7 @@ public class UDTFM4MAC implements UDTF {
   }
 
   protected void transformLong(long time, long value) throws IOException {
-    double intervalLen = (tqe - tqs) * 1.0 / w;
+    long intervalLen = (tqe - tqs) / w; // consistent with MinMaxCache's strategy
     int pos = (int) Math.floor((time - tqs) * 1.0 / intervalLen);
 
     if (pos >= w) {
@@ -261,7 +261,7 @@ public class UDTFM4MAC implements UDTF {
   }
 
   protected void transformFloat(long time, float value) throws IOException {
-    double intervalLen = (tqe - tqs) * 1.0 / w;
+    long intervalLen = (tqe - tqs) / w; // consistent with MinMaxCache's strategy
     int pos = (int) Math.floor((time - tqs) * 1.0 / intervalLen);
 
     if (pos >= w) {
@@ -312,7 +312,7 @@ public class UDTFM4MAC implements UDTF {
   }
 
   protected void transformDouble(long time, double value) throws IOException {
-    double intervalLen = (tqe - tqs) * 1.0 / w;
+    long intervalLen = (tqe - tqs) / w; // consistent with MinMaxCache's strategy
     int pos = (int) Math.floor((time - tqs) * 1.0 / intervalLen);
 
     if (pos >= w) {
