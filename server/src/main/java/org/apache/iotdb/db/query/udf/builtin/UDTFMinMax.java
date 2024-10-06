@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.read.common.IOMonitor2;
 import org.apache.iotdb.tsfile.read.common.IOMonitor2.DataSetType;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 public class UDTFMinMax implements UDTF {
 
@@ -99,10 +100,10 @@ public class UDTFMinMax implements UDTF {
         .setOutputDataType(TSDataType.TEXT);
     init();
     this.idx = -1;
-    result = new String[w];
-    for (int i = 0; i < w; i++) {
-      result[i] = "empty";
-    }
+    long len = (tqe - tqs) / w; // floor
+    int num = (int) Math.ceil((tqe - tqs) * 1.0 / len); // ceil
+    result = new String[num];
+    Arrays.fill(result, "empty");
   }
 
   @Override
@@ -130,9 +131,9 @@ public class UDTFMinMax implements UDTF {
   }
 
   protected void transformInt(long time, int value) throws IOException {
-    double intervalLen = (tqe - tqs) * 1.0 / w;
+    long intervalLen = (tqe - tqs) / w; // consistent with MinMaxCache's strategy
     int pos = (int) Math.floor((time - tqs) * 1.0 / intervalLen);
-    if (pos >= w) {
+    if (pos < 0 || pos > result.length) {
       throw new IOException("Make sure the range time filter is time>=tqs and time<tqe");
     }
 
@@ -163,10 +164,10 @@ public class UDTFMinMax implements UDTF {
   }
 
   protected void transformLong(long time, long value) throws IOException {
-    double intervalLen = (tqe - tqs) * 1.0 / w;
+    long intervalLen = (tqe - tqs) / w; // consistent with MinMaxCache's strategy
     int pos = (int) Math.floor((time - tqs) * 1.0 / intervalLen);
 
-    if (pos >= w) {
+    if (pos < 0 || pos > result.length) {
       throw new IOException("Make sure the range time filter is time>=tqs and time<tqe");
     }
 
@@ -197,10 +198,10 @@ public class UDTFMinMax implements UDTF {
   }
 
   protected void transformFloat(long time, float value) throws IOException {
-    double intervalLen = (tqe - tqs) * 1.0 / w;
+    long intervalLen = (tqe - tqs) / w; // consistent with MinMaxCache's strategy
     int pos = (int) Math.floor((time - tqs) * 1.0 / intervalLen);
 
-    if (pos >= w) {
+    if (pos < 0 || pos > result.length) {
       throw new IOException("Make sure the range time filter is time>=tqs and time<tqe");
     }
 
@@ -231,10 +232,10 @@ public class UDTFMinMax implements UDTF {
   }
 
   protected void transformDouble(long time, double value) throws IOException {
-    double intervalLen = (tqe - tqs) * 1.0 / w;
+    long intervalLen = (tqe - tqs) / w; // consistent with MinMaxCache's strategy
     int pos = (int) Math.floor((time - tqs) * 1.0 / intervalLen);
 
-    if (pos >= w) {
+    if (pos < 0 || pos > result.length) {
       throw new IOException("Make sure the range time filter is time>=tqs and time<tqe");
     }
 
@@ -326,7 +327,7 @@ public class UDTFMinMax implements UDTF {
       }
     }
     // collect result
-    for (int i = 0; i < w; i++) {
+    for (int i = 0; i < result.length; i++) {
       //      long startInterval = tqs + (tqe - tqs) / w * i;
       long startInterval = i;
       collector.putString(startInterval, result[i]);

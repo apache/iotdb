@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.read.common.IOMonitor2;
 import org.apache.iotdb.tsfile.read.common.IOMonitor2.DataSetType;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 // This is the UDFM4 in paper.
 // The integration test for MAC is in org.apache.iotdb.db.integration.m4.MyTest3.test1_2
@@ -127,11 +128,10 @@ public class UDTFM4MAC implements UDTF {
         .setOutputDataType(TSDataType.TEXT);
     init();
     this.idx = -1;
-    result = new String[w];
-    for (int i = 0; i < w; i++) {
-      result[i] = "empty";
-    }
-    //    System.out.println("====DEBUG====: use UDTFM4MAC for MAC");
+    long len = (tqe - tqs) / w; // floor
+    int num = (int) Math.ceil((tqe - tqs) * 1.0 / len); // ceil
+    result = new String[num];
+    Arrays.fill(result, "empty");
   }
 
   @Override
@@ -161,7 +161,7 @@ public class UDTFM4MAC implements UDTF {
   protected void transformInt(long time, int value) throws IOException {
     long intervalLen = (tqe - tqs) / w; // consistent with MinMaxCache's strategy
     int pos = (int) Math.floor((time - tqs) * 1.0 / intervalLen);
-    if (pos >= w) {
+    if (pos < 0 || pos > result.length) {
       throw new IOException("Make sure the range time filter is time>=tqs and time<tqe");
     }
 
@@ -213,7 +213,7 @@ public class UDTFM4MAC implements UDTF {
     long intervalLen = (tqe - tqs) / w; // consistent with MinMaxCache's strategy
     int pos = (int) Math.floor((time - tqs) * 1.0 / intervalLen);
 
-    if (pos >= w) {
+    if (pos < 0 || pos > result.length) {
       throw new IOException("Make sure the range time filter is time>=tqs and time<tqe");
     }
 
@@ -264,7 +264,7 @@ public class UDTFM4MAC implements UDTF {
     long intervalLen = (tqe - tqs) / w; // consistent with MinMaxCache's strategy
     int pos = (int) Math.floor((time - tqs) * 1.0 / intervalLen);
 
-    if (pos >= w) {
+    if (pos < 0 || pos > result.length) {
       throw new IOException("Make sure the range time filter is time>=tqs and time<tqe");
     }
 
@@ -315,7 +315,7 @@ public class UDTFM4MAC implements UDTF {
     long intervalLen = (tqe - tqs) / w; // consistent with MinMaxCache's strategy
     int pos = (int) Math.floor((time - tqs) * 1.0 / intervalLen);
 
-    if (pos >= w) {
+    if (pos < 0 || pos > result.length) {
       throw new IOException("Make sure the range time filter is time>=tqs and time<tqe");
     }
 
@@ -464,7 +464,7 @@ public class UDTFM4MAC implements UDTF {
       }
     }
     // collect result
-    for (int i = 0; i < w; i++) {
+    for (int i = 0; i < result.length; i++) {
       //      long startInterval = tqs + (tqe - tqs) / w * i;
       long startInterval = i;
       collector.putString(startInterval, result[i]);
