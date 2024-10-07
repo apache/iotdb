@@ -35,14 +35,17 @@ import org.apache.iotdb.tsfile.read.common.IOMonitor2.DataSetType;
 import java.io.IOException;
 import java.util.Arrays;
 
-public class UDTFMinMax implements UDTF {
+// This is the UDFM4 in paper.
+// The integration test for MAC is in org.apache.iotdb.db.integration.m4.MyTest3.test1_2
+public class UDTFM4MAC_deprecated implements UDTF {
 
   protected TSDataType dataType;
   protected long tqs;
   protected long tqe;
-  //  protected int w;
+  protected int w;
 
-  protected long aggregateInterval;
+  private long minTime;
+  private long maxTime;
 
   private long bottomTime;
   private long topTime;
@@ -57,10 +60,33 @@ public class UDTFMinMax implements UDTF {
   private float floatMinV;
   private double doubleMinV;
 
+  private int intFirstV;
+  private long longFirstV;
+  private float floatFirstV;
+  private double doubleFirstV;
+
+  private int intLastV;
+  private long longLastV;
+  private float floatLastV;
+  private double doubleLastV;
+
   private String[] result;
   private int idx;
 
   private void init() {
+    this.minTime = Long.MAX_VALUE;
+    this.maxTime = Long.MIN_VALUE;
+
+    this.intFirstV = 0;
+    this.longFirstV = 0;
+    this.floatFirstV = 0;
+    this.doubleFirstV = 0;
+
+    this.intLastV = 0;
+    this.longLastV = 0;
+    this.floatLastV = 0;
+    this.doubleLastV = 0;
+
     this.bottomTime = 0;
     this.topTime = 0;
 
@@ -84,7 +110,7 @@ public class UDTFMinMax implements UDTF {
             0, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE)
         .validateRequiredAttribute("tqs")
         .validateRequiredAttribute("tqe")
-        .validateRequiredAttribute("aggInterval");
+        .validateRequiredAttribute("w");
   }
 
   @Override
@@ -93,8 +119,7 @@ public class UDTFMinMax implements UDTF {
     dataType = parameters.getDataType(0);
     tqs = parameters.getLong("tqs"); // closed
     tqe = parameters.getLong("tqe"); // open
-    aggregateInterval = parameters.getLong("aggInterval");
-    //    w = parameters.getInt("w");
+    w = parameters.getInt("w");
     //    if ((tqe - tqs) % w != 0) {
     //      throw new MetadataException("You should make tqe-tqs integer divide w");
     //    }
@@ -103,8 +128,8 @@ public class UDTFMinMax implements UDTF {
         .setOutputDataType(TSDataType.TEXT);
     init();
     this.idx = -1;
-    //    long len = (tqe - tqs) / w; // floor
-    int num = (int) Math.ceil((tqe - tqs) * 1.0 / aggregateInterval); // ceil
+    long len = (tqe - tqs) / w; // floor
+    int num = (int) Math.ceil((tqe - tqs) * 1.0 / len); // ceil
     result = new String[num];
     Arrays.fill(result, "empty");
   }
@@ -134,15 +159,25 @@ public class UDTFMinMax implements UDTF {
   }
 
   protected void transformInt(long time, int value) throws IOException {
-    //    long intervalLen = (tqe - tqs) / w; // consistent with MinMaxCache's strategy
-    int pos = (int) Math.floor((time - tqs) * 1.0 / aggregateInterval);
+    long intervalLen = (tqe - tqs) / w; // consistent with MinMaxCache's strategy
+    int pos = (int) Math.floor((time - tqs) * 1.0 / intervalLen);
     if (pos < 0 || pos > result.length) {
       throw new IOException("Make sure the range time filter is time>=tqs and time<tqe");
     }
 
     if (pos > idx) {
       result[idx] =
-          "BottomPoint=("
+          "FirstPoint=("
+              + minTime
+              + ","
+              + intFirstV
+              + "), "
+              + "LastPoint=("
+              + maxTime
+              + ","
+              + intLastV
+              + "), "
+              + "BottomPoint=("
               + bottomTime
               + ","
               + intMinV
@@ -156,6 +191,14 @@ public class UDTFMinMax implements UDTF {
       init(); // clear environment for this new interval
     }
     // update for the current interval
+    if (time < minTime) {
+      minTime = time;
+      intFirstV = value;
+    }
+    if (time > maxTime) {
+      maxTime = time;
+      intLastV = value;
+    }
     if (value < intMinV) {
       bottomTime = time;
       intMinV = value;
@@ -167,8 +210,8 @@ public class UDTFMinMax implements UDTF {
   }
 
   protected void transformLong(long time, long value) throws IOException {
-    //    long intervalLen = (tqe - tqs) / w; // consistent with MinMaxCache's strategy
-    int pos = (int) Math.floor((time - tqs) * 1.0 / aggregateInterval);
+    long intervalLen = (tqe - tqs) / w; // consistent with MinMaxCache's strategy
+    int pos = (int) Math.floor((time - tqs) * 1.0 / intervalLen);
 
     if (pos < 0 || pos > result.length) {
       throw new IOException("Make sure the range time filter is time>=tqs and time<tqe");
@@ -176,7 +219,17 @@ public class UDTFMinMax implements UDTF {
 
     if (pos > idx) {
       result[idx] =
-          "BottomPoint=("
+          "FirstPoint=("
+              + minTime
+              + ","
+              + longFirstV
+              + "), "
+              + "LastPoint=("
+              + maxTime
+              + ","
+              + longLastV
+              + "), "
+              + "BottomPoint=("
               + bottomTime
               + ","
               + longMinV
@@ -189,7 +242,14 @@ public class UDTFMinMax implements UDTF {
       idx = pos;
       init(); // clear environment for this new interval
     }
-
+    if (time < minTime) {
+      minTime = time;
+      longFirstV = value;
+    }
+    if (time > maxTime) {
+      maxTime = time;
+      longLastV = value;
+    }
     if (value < longMinV) {
       bottomTime = time;
       longMinV = value;
@@ -201,8 +261,8 @@ public class UDTFMinMax implements UDTF {
   }
 
   protected void transformFloat(long time, float value) throws IOException {
-    //    long intervalLen = (tqe - tqs) / w; // consistent with MinMaxCache's strategy
-    int pos = (int) Math.floor((time - tqs) * 1.0 / aggregateInterval);
+    long intervalLen = (tqe - tqs) / w; // consistent with MinMaxCache's strategy
+    int pos = (int) Math.floor((time - tqs) * 1.0 / intervalLen);
 
     if (pos < 0 || pos > result.length) {
       throw new IOException("Make sure the range time filter is time>=tqs and time<tqe");
@@ -210,7 +270,17 @@ public class UDTFMinMax implements UDTF {
 
     if (pos > idx) {
       result[idx] =
-          "BottomPoint=("
+          "FirstPoint=("
+              + minTime
+              + ","
+              + floatFirstV
+              + "), "
+              + "LastPoint=("
+              + maxTime
+              + ","
+              + floatLastV
+              + "), "
+              + "BottomPoint=("
               + bottomTime
               + ","
               + floatMinV
@@ -223,7 +293,14 @@ public class UDTFMinMax implements UDTF {
       idx = pos;
       init(); // clear environment for this new interval
     }
-
+    if (time < minTime) {
+      minTime = time;
+      floatFirstV = value;
+    }
+    if (time > maxTime) {
+      maxTime = time;
+      floatLastV = value;
+    }
     if (value < floatMinV) {
       bottomTime = time;
       floatMinV = value;
@@ -235,8 +312,8 @@ public class UDTFMinMax implements UDTF {
   }
 
   protected void transformDouble(long time, double value) throws IOException {
-    //    long intervalLen = (tqe - tqs) / w; // consistent with MinMaxCache's strategy
-    int pos = (int) Math.floor((time - tqs) * 1.0 / aggregateInterval);
+    long intervalLen = (tqe - tqs) / w; // consistent with MinMaxCache's strategy
+    int pos = (int) Math.floor((time - tqs) * 1.0 / intervalLen);
 
     if (pos < 0 || pos > result.length) {
       throw new IOException("Make sure the range time filter is time>=tqs and time<tqe");
@@ -244,7 +321,17 @@ public class UDTFMinMax implements UDTF {
 
     if (pos > idx) {
       result[idx] =
-          "BottomPoint=("
+          "FirstPoint=("
+              + minTime
+              + ","
+              + doubleFirstV
+              + "), "
+              + "LastPoint=("
+              + maxTime
+              + ","
+              + doubleLastV
+              + "), "
+              + "BottomPoint=("
               + bottomTime
               + ","
               + doubleMinV
@@ -257,7 +344,14 @@ public class UDTFMinMax implements UDTF {
       idx = pos;
       init(); // clear environment for this new interval
     }
-
+    if (time < minTime) {
+      minTime = time;
+      doubleFirstV = value;
+    }
+    if (time > maxTime) {
+      maxTime = time;
+      doubleLastV = value;
+    }
     if (value < doubleMinV) {
       bottomTime = time;
       doubleMinV = value;
@@ -275,7 +369,17 @@ public class UDTFMinMax implements UDTF {
       switch (dataType) {
         case INT32:
           result[idx] =
-              "BottomPoint=("
+              "FirstPoint=("
+                  + minTime
+                  + ","
+                  + intFirstV
+                  + "), "
+                  + "LastPoint=("
+                  + maxTime
+                  + ","
+                  + intLastV
+                  + "), "
+                  + "BottomPoint=("
                   + bottomTime
                   + ","
                   + intMinV
@@ -288,7 +392,17 @@ public class UDTFMinMax implements UDTF {
           break;
         case INT64:
           result[idx] =
-              "BottomPoint=("
+              "FirstPoint=("
+                  + minTime
+                  + ","
+                  + longFirstV
+                  + "), "
+                  + "LastPoint=("
+                  + maxTime
+                  + ","
+                  + longLastV
+                  + "), "
+                  + "BottomPoint=("
                   + bottomTime
                   + ","
                   + longMinV
@@ -301,7 +415,17 @@ public class UDTFMinMax implements UDTF {
           break;
         case FLOAT:
           result[idx] =
-              "BottomPoint=("
+              "FirstPoint=("
+                  + minTime
+                  + ","
+                  + floatFirstV
+                  + "), "
+                  + "LastPoint=("
+                  + maxTime
+                  + ","
+                  + floatLastV
+                  + "), "
+                  + "BottomPoint=("
                   + bottomTime
                   + ","
                   + floatMinV
@@ -314,7 +438,17 @@ public class UDTFMinMax implements UDTF {
           break;
         case DOUBLE:
           result[idx] =
-              "BottomPoint=("
+              "FirstPoint=("
+                  + minTime
+                  + ","
+                  + doubleFirstV
+                  + "), "
+                  + "LastPoint=("
+                  + maxTime
+                  + ","
+                  + doubleLastV
+                  + "), "
+                  + "BottomPoint=("
                   + bottomTime
                   + ","
                   + doubleMinV
