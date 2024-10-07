@@ -543,6 +543,10 @@ public class IoTDBDescriptor {
       conf.setEpsilon(
           Double.parseDouble(
               properties.getProperty("epsilon", Double.toString(conf.getEpsilon()))));
+
+      conf.setAutoP1n(
+          Boolean.parseBoolean(
+              properties.getProperty("auto_p1n", Boolean.toString(conf.getAutoP1n())).trim()));
       conf.setP1t(Long.parseLong(properties.getProperty("p1t", Long.toString(conf.getP1t()))));
       conf.setP1v(
           Double.parseDouble(properties.getProperty("p1v", Double.toString(conf.getP1v()))));

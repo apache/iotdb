@@ -48,6 +48,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -63,10 +64,10 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
   // keys: 0,1,...,(int) Math.floor((endTime * 1.0 - startTime) / interval)-1
   private Map<Integer, List<ChunkSuit4Tri>> splitChunkList = new HashMap<>();
 
-  private final long p1t = CONFIG.getP1t();
-  private final double p1v = CONFIG.getP1v();
-  private final long pnt = CONFIG.getPnt();
-  private final double pnv = CONFIG.getPnv();
+  private long p1t;
+  private double p1v;
+  private long pnt;
+  private double pnv;
 
   private long lt;
   private double lv;
@@ -136,12 +137,68 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
         }
       }
 
+      if (CONFIG.getAutoP1n()) {
+        // get real p1
+        List<ChunkSuit4Tri> firstBucket = splitChunkList.get(0);
+        sortByStartTime(firstBucket);
+        ChunkSuit4Tri firstChunk = firstBucket.get(0);
+        if (firstChunk.pageReader == null) {
+          firstChunk.pageReader =
+              FileLoaderUtils.loadPageReaderList4CPV(firstChunk.chunkMetadata, this.timeFilter);
+        }
+        PageReader pageReader = firstChunk.pageReader;
+        for (int j = 0; j < firstChunk.chunkMetadata.getStatistics().getCount(); j++) {
+          long timestamp = pageReader.timeBuffer.getLong(j * 8);
+          if (timestamp < startTime) {
+            continue;
+          } else if (timestamp >= startTime) {
+            ByteBuffer valueBuffer = pageReader.valueBuffer;
+            double v = valueBuffer.getDouble(pageReader.timeBufferLength + j * 8);
+            p1t = timestamp;
+            p1v = v;
+            break;
+          }
+        }
+
+        // get real pn
+        List<ChunkSuit4Tri> lastBucket = splitChunkList.get(N1 - 1);
+        sortByStartTime(lastBucket);
+        ChunkSuit4Tri lastChunk = lastBucket.get(lastBucket.size() - 1);
+        if (lastChunk.pageReader == null) {
+          lastChunk.pageReader =
+              FileLoaderUtils.loadPageReaderList4CPV(lastChunk.chunkMetadata, this.timeFilter);
+        }
+        pageReader = lastChunk.pageReader;
+        for (int j = 0; j < lastChunk.chunkMetadata.getStatistics().getCount(); j++) {
+          long timestamp = pageReader.timeBuffer.getLong(j * 8);
+          if (timestamp > endTime) { // pn can be at endTime
+            break;
+          } else {
+            ByteBuffer valueBuffer = pageReader.valueBuffer;
+            double v = valueBuffer.getDouble(pageReader.timeBufferLength + j * 8);
+            pnt = timestamp;
+            pnv = v;
+          }
+        }
+      } else {
+        p1t = CONFIG.getP1t();
+        p1v = CONFIG.getP1v();
+        pnt = CONFIG.getPnt();
+        pnv = CONFIG.getPnv();
+      }
+
     } catch (IOException e) {
       throw new QueryProcessException(e.getMessage());
     }
 
     //    IOMonitor2.addMeasure(Operation.M4_LSM_INIT_LOAD_ALL_CHUNKMETADATAS, System.nanoTime() -
     // start);
+  }
+
+  private static void sortByStartTime(List<ChunkSuit4Tri> list) {
+    Collections.sort(
+        list,
+        (a, b) -> Long.compare(a.chunkMetadata.getStartTime(), b.chunkMetadata.getStartTime()));
   }
 
   @Override
@@ -170,8 +227,8 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
     for (; num < numIterations; num++) {
       // NOTE: init lt&lv at the start of each iteration is a must, because they are modified in
       // each iteration
-      lt = CONFIG.getP1t();
-      lv = CONFIG.getP1v();
+      lt = p1t;
+      lv = p1v;
 
       boolean allSameFlag = true;
       boolean currentLeftSame = true;

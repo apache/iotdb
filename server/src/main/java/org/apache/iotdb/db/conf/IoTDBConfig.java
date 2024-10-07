@@ -437,6 +437,7 @@ public class IoTDBConfig {
 
   private double epsilon = 100; // for SimPiece
 
+  private boolean autoP1n = true;
   private long p1t;
   private double p1v;
   private long pnt;
@@ -489,6 +490,14 @@ public class IoTDBConfig {
 
   public void setAcc_iterRepeat(boolean acc_iterRepeat) {
     this.acc_iterRepeat = acc_iterRepeat;
+  }
+
+  public boolean getAutoP1n() {
+    return autoP1n;
+  }
+
+  public void setAutoP1n(boolean autoP1n) {
+    this.autoP1n = autoP1n;
   }
 
   public long getP1t() {
