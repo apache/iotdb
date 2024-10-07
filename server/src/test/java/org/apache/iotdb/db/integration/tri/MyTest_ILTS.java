@@ -73,6 +73,7 @@ public class MyTest_ILTS {
     config.setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
 
     config.setEnableTri("ILTS");
+    config.setAutoP1n(false);
     config.setAcc_avg(true);
     config.setAcc_rectangle(true);
     config.setAcc_convex(false);

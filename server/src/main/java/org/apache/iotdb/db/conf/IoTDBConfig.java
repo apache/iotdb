@@ -437,7 +437,7 @@ public class IoTDBConfig {
 
   private double epsilon = 100; // for SimPiece
 
-  private boolean autoP1n = true;
+  private boolean autoP1n = false;
   private long p1t;
   private double p1v;
   private long pnt;
