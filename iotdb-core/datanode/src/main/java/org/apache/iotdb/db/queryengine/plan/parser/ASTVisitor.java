@@ -240,15 +240,7 @@ import java.io.FileNotFoundException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
@@ -3135,15 +3127,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private Expression parseRegularExpression(ExpressionContext context, boolean canUseFullPath) {
     return new RegularExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, canUseFullPath),
-        parseStringLiteral(context.STRING_LITERAL().getText()),
+        parseStringLiteral(String.valueOf(context.pattern)),
         false);
   }
 
   private Expression parseLikeExpression(ExpressionContext context, boolean canUseFullPath) {
     return new LikeExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, canUseFullPath),
-        parseStringLiteral(context.pattern),
-        parseStringLiteral(context.escape == null ? null : context.escape),
+        parseStringLiteral(String.valueOf(context.pattern)),
+        Optional.of(parseStringLiteral(context.escape == null ? null : String.valueOf(context.escape))),
         false);
   }
 

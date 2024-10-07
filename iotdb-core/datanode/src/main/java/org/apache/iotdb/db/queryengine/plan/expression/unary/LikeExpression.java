@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor;
 
+import org.apache.ratis.protocol.GroupManagementRequest;
 import org.apache.tsfile.common.regexp.LikePattern;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -41,6 +42,7 @@ public class LikeExpression extends UnaryExpression {
       RamUsageEstimator.shallowSizeOfInstance(LikeExpression.class);
 
   private final String patternString;
+  private Optional<String> escape = Optional.empty();
   private final LikePattern pattern;
 
   private final boolean isNot;
@@ -49,8 +51,9 @@ public class LikeExpression extends UnaryExpression {
     super(expression);
     this.patternString = patternString;
     this.isNot = isNot;
-    if(escape.isPresent()) {
-      pattern = LikePattern.compile(patternString, getEscapeCharacter(escape));
+    this.escape = escape;
+    if(this.escape.isPresent()) {
+      pattern = LikePattern.compile(patternString, getEscapeCharacter(this.escape));
     } else {
       pattern = LikePattern.compile(patternString, getEscapeCharacter(Optional.of("\\")));
     }
