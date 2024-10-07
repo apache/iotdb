@@ -167,7 +167,7 @@ dropTableStatement
 
 showTableStatement
     : SHOW TABLES ((FROM | IN) database=identifier)?
-          // ((LIKE pattern=string) | (WHERE expression))?
+          // ((LIKE pattern=string (ESCAPE escape=string)) | (WHERE expression))?
     ;
 
 descTableStatement
@@ -370,7 +370,7 @@ showClusterStatement
 
 showRegionsStatement
     : SHOW (SCHEMA | DATA)? REGIONS ((FROM | IN) identifier)?
-          // ((LIKE pattern=string) | (WHERE expression))?
+          // ((LIKE pattern=string (ESCAPE escape=string)) | (WHERE expression))?
     ;
 
 showDataNodesStatement
@@ -627,7 +627,6 @@ relationPrimary
     | '(' query ')'                                                   #subqueryRelation
     | '(' relation ')'                                                #parenthesizedRelation
     ;
-
 
 expression
     : booleanExpression

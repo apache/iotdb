@@ -3142,7 +3142,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private Expression parseLikeExpression(ExpressionContext context, boolean canUseFullPath) {
     return new LikeExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, canUseFullPath),
-        parseStringLiteral(context.STRING_LITERAL().getText()),
+        parseStringLiteral(context.pattern),
+        parseStringLiteral(context.escape == null ? null : context.escape),
         false);
   }
 
