@@ -37,38 +37,29 @@ public class LikeExpression extends UnaryExpression {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(LikeExpression.class);
 
-  private final String patternString;
+  private final String pattern;
   private final Optional<String> escape;
 
   private final boolean isNot;
 
   public LikeExpression(
-      Expression expression, String patternString, Optional<String> escape, boolean isNot) {
+      Expression expression, String pattern, Optional<String> escape, boolean isNot) {
     super(expression);
-    System.out.println(
-        "LikeExpression: "
-            + expression.getExpressionString()
-            + " "
-            + patternString
-            + " "
-            + escape
-            + " "
-            + isNot);
-    this.patternString = patternString;
+    this.pattern = pattern;
     this.escape = escape;
     this.isNot = isNot;
   }
 
-  public LikeExpression(Expression expression, String patternString, boolean isNot) {
+  public LikeExpression(Expression expression, String pattern, boolean isNot) {
     super(expression);
-    this.patternString = patternString;
+    this.pattern = pattern;
     this.escape = Optional.empty();
     this.isNot = isNot;
   }
 
   public LikeExpression(ByteBuffer byteBuffer) {
     super(Expression.deserialize(byteBuffer));
-    patternString = ReadWriteIOUtils.readString(byteBuffer);
+    pattern = ReadWriteIOUtils.readString(byteBuffer);
     if (ReadWriteIOUtils.readBool(byteBuffer)) {
       escape = Optional.ofNullable(ReadWriteIOUtils.readString(byteBuffer));
     } else {
@@ -77,8 +68,8 @@ public class LikeExpression extends UnaryExpression {
     isNot = ReadWriteIOUtils.readBool(byteBuffer);
   }
 
-  public String getPatternString() {
-    return patternString;
+  public String getPattern() {
+    return pattern;
   }
 
   public Optional<String> getEscape() {
@@ -96,7 +87,7 @@ public class LikeExpression extends UnaryExpression {
             + (isNot ? " NOT" : "")
             + " LIKE "
             + "pattern = '"
-            + patternString
+            + pattern
             + "'";
     if (escape.isPresent()) {
       res = res + " escape = '" + escape + "'";
@@ -112,7 +103,7 @@ public class LikeExpression extends UnaryExpression {
   @Override
   protected void serialize(ByteBuffer byteBuffer) {
     super.serialize(byteBuffer);
-    ReadWriteIOUtils.write(patternString, byteBuffer);
+    ReadWriteIOUtils.write(pattern, byteBuffer);
     ReadWriteIOUtils.write(escape.isPresent(), byteBuffer);
     if (escape.isPresent()) {
       ReadWriteIOUtils.write(String.valueOf(escape), byteBuffer);
@@ -123,7 +114,7 @@ public class LikeExpression extends UnaryExpression {
   @Override
   protected void serialize(DataOutputStream stream) throws IOException {
     super.serialize(stream);
-    ReadWriteIOUtils.write(patternString, stream);
+    ReadWriteIOUtils.write(pattern, stream);
     ReadWriteIOUtils.write(escape.isPresent(), stream);
     if (escape.isPresent()) {
       ReadWriteIOUtils.write(String.valueOf(escape), stream);
@@ -138,7 +129,7 @@ public class LikeExpression extends UnaryExpression {
             + (isNot ? " NOT" : "")
             + " LIKE "
             + "pattern = '"
-            + patternString
+            + pattern
             + "'";
     if (escape.isPresent()) {
       res = res + " escape = '" + escape + "'";
@@ -155,6 +146,6 @@ public class LikeExpression extends UnaryExpression {
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(expression)
-        + RamUsageEstimator.sizeOf(patternString);
+        + RamUsageEstimator.sizeOf(pattern);
   }
 }

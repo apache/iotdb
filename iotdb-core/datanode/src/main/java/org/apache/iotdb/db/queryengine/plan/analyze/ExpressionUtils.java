@@ -170,7 +170,7 @@ public class ExpressionUtils {
         resultExpression =
             new LikeExpression(
                 childExpression,
-                ((LikeExpression) rawExpression).getPatternString(),
+                ((LikeExpression) rawExpression).getPattern(),
                 ((LikeExpression) rawExpression).getEscape(),
                 ((LikeExpression) rawExpression).isNot());
         break;

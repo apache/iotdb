@@ -315,7 +315,7 @@ public class IntermediateLayerVisitor
         LikeExpression likeExpression = (LikeExpression) expression;
         LikePattern pattern =
             LikePattern.compile(
-                likeExpression.getPatternString(),
+                likeExpression.getPattern(),
                 LikePattern.getEscapeCharacter(likeExpression.getEscape()));
         return new LikeTransformer(parentReader, pattern);
       case REGEXP:

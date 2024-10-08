@@ -34,7 +34,6 @@ import java.util.Optional;
 
 import static org.apache.tsfile.common.regexp.LikePattern.getEscapeCharacter;
 
-// Does not support escape now
 public class LikeFilter extends SchemaFilter {
   private final LikePattern pattern;
 

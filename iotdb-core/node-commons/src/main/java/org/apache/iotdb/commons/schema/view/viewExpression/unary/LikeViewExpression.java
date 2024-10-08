@@ -34,28 +34,28 @@ import java.util.Optional;
 public class LikeViewExpression extends UnaryViewExpression {
 
   // region member variables and init functions
-  private final String patternString;
+  private final String pattern;
   private final Optional<String> escape;
   private final boolean isNot;
 
   public LikeViewExpression(
-      ViewExpression expression, String patternString, Optional<String> escape, boolean isNot) {
+      ViewExpression expression, String pattern, Optional<String> escape, boolean isNot) {
     super(expression);
-    this.patternString = patternString;
+    this.pattern = pattern;
     this.escape = escape;
     this.isNot = isNot;
   }
 
-  public LikeViewExpression(ViewExpression expression, String patternString, boolean isNot) {
+  public LikeViewExpression(ViewExpression expression, String pattern, boolean isNot) {
     super(expression);
-    this.patternString = patternString;
+    this.pattern = pattern;
     this.escape = Optional.empty();
     this.isNot = isNot;
   }
 
   public LikeViewExpression(ByteBuffer byteBuffer) {
     super(ViewExpression.deserialize(byteBuffer));
-    patternString = ReadWriteIOUtils.readString(byteBuffer);
+    pattern = ReadWriteIOUtils.readString(byteBuffer);
     if (ReadWriteIOUtils.readBool(byteBuffer)) {
       escape = Optional.of(ReadWriteIOUtils.readString(byteBuffer));
     } else {
@@ -67,7 +67,7 @@ public class LikeViewExpression extends UnaryViewExpression {
   public LikeViewExpression(InputStream inputStream) {
     super(ViewExpression.deserialize(inputStream));
     try {
-      patternString = ReadWriteIOUtils.readString(inputStream);
+      pattern = ReadWriteIOUtils.readString(inputStream);
       if (ReadWriteIOUtils.readBool(inputStream)) {
         escape = Optional.of(ReadWriteIOUtils.readString(inputStream));
       } else {
@@ -98,7 +98,7 @@ public class LikeViewExpression extends UnaryViewExpression {
         this.expression.toString(false)
             + (isNot ? "NOT LIKE " : "LIKE ")
             + "pattern = '"
-            + this.patternString
+            + this.pattern
             + "'";
     if (escape.isPresent()) {
       basicString += " escape = '" + escape.get() + "'";
@@ -112,7 +112,7 @@ public class LikeViewExpression extends UnaryViewExpression {
   @Override
   protected void serialize(ByteBuffer byteBuffer) {
     super.serialize(byteBuffer);
-    ReadWriteIOUtils.write(patternString, byteBuffer);
+    ReadWriteIOUtils.write(pattern, byteBuffer);
     ReadWriteIOUtils.write(escape.isPresent(), byteBuffer);
     if (escape.isPresent()) {
       ReadWriteIOUtils.write(String.valueOf(escape), byteBuffer);
@@ -123,7 +123,7 @@ public class LikeViewExpression extends UnaryViewExpression {
   @Override
   protected void serialize(OutputStream stream) throws IOException {
     super.serialize(stream);
-    ReadWriteIOUtils.write(patternString, stream);
+    ReadWriteIOUtils.write(pattern, stream);
     ReadWriteIOUtils.write(escape.isPresent(), stream);
     if (escape.isPresent()) {
       ReadWriteIOUtils.write(String.valueOf(escape), stream);
@@ -133,8 +133,8 @@ public class LikeViewExpression extends UnaryViewExpression {
 
   // endregion
 
-  public String getPatternString() {
-    return patternString;
+  public String getPattern() {
+    return pattern;
   }
 
   public Optional<String> getEscape() {
