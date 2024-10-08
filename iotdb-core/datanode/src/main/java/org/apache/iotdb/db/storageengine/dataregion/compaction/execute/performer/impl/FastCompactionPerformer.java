@@ -21,10 +21,10 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performe
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.IllegalCompactionTaskSummaryException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
@@ -39,6 +39,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.wri
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.FastCrossCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.FastInnerCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
+import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
@@ -46,7 +47,6 @@ import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.tsfile.exception.StopReadTsFileByInterruptException;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -131,20 +131,25 @@ public class FastCompactionPerformer
         // actually exist but the judgment return device being existed.
         sortedSourceFiles.addAll(seqFiles);
         sortedSourceFiles.addAll(unseqFiles);
+        long ttl = deviceIterator.getTTLForCurrentDevice();
         sortedSourceFiles.removeIf(
-            x -> {
-              try {
-                return x.definitelyNotContains(device)
-                    || !x.isDeviceAlive(
-                        device,
-                        DataNodeTTLCache.getInstance()
-                            // TODO: remove deviceId conversion
-                            .getTTL(((PlainDeviceID) device).toStringID()));
-              } catch (IllegalPathException e) {
-                throw new RuntimeException(e);
-              }
-            });
+            x -> x.definitelyNotContains(device) || !x.isDeviceAlive(device, ttl));
         sortedSourceFiles.sort(Comparator.comparingLong(x -> x.getStartTime(device)));
+        if (ttl != Long.MAX_VALUE) {
+          Deletion ttlDeletion =
+              new Deletion(
+                  new PartialPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD),
+                  Long.MAX_VALUE,
+                  Long.MIN_VALUE,
+                  deviceIterator.getTimeLowerBoundForCurrentDevice());
+          for (TsFileResource sourceFile : sortedSourceFiles) {
+            modificationCache
+                .computeIfAbsent(
+                    sourceFile.getTsFile().getName(),
+                    k -> PatternTreeMapFactory.getModsPatternTreeMap())
+                .append(ttlDeletion.getPath(), ttlDeletion);
+          }
+        }
 
         if (sortedSourceFiles.isEmpty()) {
           // device is out of dated in all source files
