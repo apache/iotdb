@@ -178,6 +178,9 @@ public class SeriesScanUtil implements Accountable {
 
     // updated filter concerning TTL
     long ttl;
+    // Only the data in the table model needs to retain rows where all value
+    // columns are null values, so we can use isIgnoreAllNullRows to
+    // differentiate the data of tree model and table model.
     if (context.isIgnoreAllNullRows()) {
       ttl = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
     } else {
