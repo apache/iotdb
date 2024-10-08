@@ -1148,7 +1148,7 @@ public class IoTDBSessionSimpleIT {
           measurements,
           datatypes,
           values,
-          0L,
+          3L,
           "s1",
           "s2",
           TSDataType.INT32,
