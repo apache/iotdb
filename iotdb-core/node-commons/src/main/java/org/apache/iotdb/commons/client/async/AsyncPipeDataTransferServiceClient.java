@@ -217,7 +217,7 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
               tManagers[clientCnt.incrementAndGet() % tManagers.length],
               clientManager,
               endPoint.getCustomSendPortStrategy(),
-              endPoint.getMaxSendPortRange(),
+              endPoint.getMinSendPortRange(),
               endPoint.getMaxSendPortRange(),
               endPoint.getCandidatePorts()));
     }
