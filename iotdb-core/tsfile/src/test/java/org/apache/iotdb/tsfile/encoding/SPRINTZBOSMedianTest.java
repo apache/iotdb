@@ -2,11 +2,13 @@ package org.apache.iotdb.tsfile.encoding;
 
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
+import org.apache.commons.compress.archivers.sevenz.SevenZArchiveEntry;
+import org.apache.commons.compress.archivers.sevenz.SevenZOutputFile;
+import org.apache.iotdb.tsfile.compress.ICompressor;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.junit.Test;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -341,6 +343,46 @@ public class SPRINTZBOSMedianTest {
         }
         encoded_pos_result.add(decode_pos);
         return result_list;
+    }
+
+    private static void addToArchiveCompression(SevenZOutputFile out, File file, String dir) {
+        String name = dir + File.separator + file.getName();
+        if(dir.equals(".")) {
+            name = file.getName();
+        }
+        if (file.isFile()){
+            SevenZArchiveEntry entry = null;
+            FileInputStream in = null;
+            try {
+                entry = out.createArchiveEntry(file, name);
+                out.putArchiveEntry(entry);
+                in = new FileInputStream(file);
+                byte[] b = new byte[1024];
+                int count = 0;
+                while ((count = in.read(b)) > 0) {
+                    out.write(b, 0, count);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                try {
+                    out.closeArchiveEntry();
+                    in.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+            }
+        } else if (file.isDirectory()) {
+            File[] children = file.listFiles();
+            if (children != null){
+                for (File child : children){
+                    addToArchiveCompression(out, child, name);
+                }
+            }
+        } else {
+            System.out.println(file.getName() + " is not supported");
+        }
     }
 
     private static int BOSEncodeBits(int[] ts_block_delta,
@@ -968,6 +1010,197 @@ public class SPRINTZBOSMedianTest {
         }
     }
 
+    @Test
+    public void compressTest() throws IOException {
+//        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/";// your data path
+        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+        String output_parent_dir = parent_dir + "icde0802/supply_experiment/R3O2_compare_compression/compression_ratio/sprintz_m_c";
+        String input_parent_dir = parent_dir + "trans_data/";
+        ArrayList<String> input_path_list = new ArrayList<>();
+        ArrayList<String> output_path_list = new ArrayList<>();
+        ArrayList<String> dataset_name = new ArrayList<>();
+        ArrayList<Integer> dataset_block_size = new ArrayList<>();
+        dataset_name.add("CS-Sensors");
+        dataset_name.add("Metro-Traffic");
+        dataset_name.add("USGS-Earthquakes");
+        dataset_name.add("YZ-Electricity");
+        dataset_name.add("GW-Magnetic");
+        dataset_name.add("TY-Fuel");
+        dataset_name.add("Cyber-Vehicle");
+        dataset_name.add("Vehicle-Charge");
+        dataset_name.add("Nifty-Stocks");
+        dataset_name.add("TH-Climate");
+        dataset_name.add("TY-Transport");
+        dataset_name.add("EPM-Education");
+
+        for (String value : dataset_name) {
+            input_path_list.add(input_parent_dir + value);
+            dataset_block_size.add(1024);
+        }
+
+        output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
+//        dataset_block_size.add(1024);
+        output_path_list.add(output_parent_dir + "/Metro-Traffic_ratio.csv");// 1
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv");// 2
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/YZ-Electricity_ratio.csv"); // 3
+//        dataset_block_size.add(256);
+        output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); //4
+//        dataset_block_size.add(1024);
+        output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv");//5
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/Cyber-Vehicle_ratio.csv"); //6
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv");//7
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv");//8
+//        dataset_block_size.add(1024);
+        output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv");//9
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv");//10
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
+//        dataset_block_size.add(1024);
+
+        int repeatTime2 = 1;
+//        for (int file_i = 8; file_i < 9; file_i++) {
+        CompressionType[] compressList = {
+                CompressionType.LZ4,
+                CompressionType.LZMA2,
+        };
+
+        for (int file_i = input_path_list.size()-1; file_i >=0 ; file_i--) {
+
+            String inputPath = input_path_list.get(file_i);
+            System.out.println(inputPath);
+            String Output = output_path_list.get(file_i);
+
+            File file = new File(inputPath);
+            File[] tempList = file.listFiles();
+
+            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
+
+            String[] head = {
+                    "Input Direction",
+                    "Encoding Algorithm",
+                    "Compress Algorithm",
+                    "Encoding Time",
+                    "Decoding Time",
+                    "Points",
+                    "Compressed Size",
+                    "Compression Ratio"
+            };
+            writer.writeRecord(head); // write header to output file
+
+            assert tempList != null;
+
+            for (File f : tempList) {
+                System.out.println(f);
+                InputStream inputStream = Files.newInputStream(f.toPath());
+
+                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
+                ArrayList<Integer> data1 = new ArrayList<>();
+                ArrayList<Integer> data2 = new ArrayList<>();
+
+                loader.readHeaders();
+                while (loader.readRecord()) {
+                    data1.add(Integer.valueOf(loader.getValues()[0]));
+                    data2.add(Integer.valueOf(loader.getValues()[1]));
+                }
+                inputStream.close();
+
+                int[] data2_arr = new int[data1.size()];
+                for(int i = 0;i<data2.size();i++){
+                    data2_arr[i] = data2.get(i);
+                }
+                byte[] encoded_result = new byte[data2_arr.length*4];
+                long encodeTime = 0;
+                long decodeTime = 0;
+                int length = 0;
+
+                long s = System.nanoTime();
+                for (int repeat = 0; repeat < repeatTime2; repeat++) {
+                    length =  BOSEncoder(data2_arr, dataset_block_size.get(file_i), encoded_result);
+                }
+                long e = System.nanoTime();
+                encodeTime += ((e - s) / repeatTime2);
+
+                for (CompressionType comp : compressList) {
+                    double ratio = 0;
+                    double compressed_size = 0;
+                    ICompressor compressor = ICompressor.getCompressor(comp);
+                    byte[] compressed = compressor.compress(encoded_result);
+
+                    // test compression ratio and compressed size
+                    compressed_size += compressed.length;
+                    double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
+                    ratio += ratioTmp;
+                    s = System.nanoTime();
+                    for (int repeat = 0; repeat < repeatTime2; repeat++)
+                        BOSDecoder(encoded_result);
+                    e = System.nanoTime();
+                    decodeTime += ((e - s) / repeatTime2);
+
+
+                    String[] record = {
+                            f.toString(),
+                            "SPRINTZ+BOS-M",
+                            comp.toString(),
+                            String.valueOf(encodeTime),
+                            String.valueOf(decodeTime),
+                            String.valueOf(data1.size()),
+                            String.valueOf(compressed_size),
+                            String.valueOf(ratio)
+                    };
+                    writer.writeRecord(record);
+                    System.out.println(ratio);
+                }
+                double ratio = 0;
+                double compressed_size = 0;
+                File outfile = new File(parent_dir + "icde0802/example.bin");
+
+                // 使用FileOutputStream将byte数组写入文件
+                try (FileOutputStream fos = new FileOutputStream(outfile)) {
+                    fos.write(encoded_result);
+                } catch (IOException e2) {
+                    // 处理可能的I/O异常
+                    e2.printStackTrace();
+                }
+
+                File input = new File(parent_dir + "icde0802/example.bin");
+                File output = new File(parent_dir + "icde0802/example.7z");
+                SevenZOutputFile out = new SevenZOutputFile(output);
+
+                addToArchiveCompression(out, input, ".");
+                out.closeArchiveEntry();
+
+                long compressed = output.length();
+
+
+                // test compression ratio and compressed size
+                compressed_size += compressed;
+                double ratioTmp =
+                        (double) compressed / (double) (double) (data1.size() * Integer.BYTES);
+                ratio += ratioTmp;
+
+
+                String[] record = {
+                        f.toString(),
+                        "SPRINTZ+BOS-M",
+                        "7ZIP",
+                        String.valueOf(encodeTime),
+                        String.valueOf(decodeTime),
+                        String.valueOf(data1.size()),
+                        String.valueOf(compressed_size),
+                        String.valueOf(ratio)
+                };
+                writer.writeRecord(record);
+                System.out.println(ratio);
+            }
+            writer.close();
+        }
+    }
 
     @Test
     public void ExpTest() throws IOException {//        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/";// your data path
