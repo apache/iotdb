@@ -497,16 +497,15 @@ public class TsFileResource {
     if (oldModFileChecked) {
       return oldModFile;
     }
-    writeLock();
     // avoid creating different old mod files
-    try {
-      File oldModFile = new File(getTsFilePath() + ModificationFileV1.FILE_SUFFIX);
-      if (oldModFile.exists()) {
-        this.oldModFile = new ModificationFileV1(oldModFile.getPath());
+    synchronized (this) {
+      if (!oldModFileChecked) {
+        File oldModFile = new File(getTsFilePath() + ModificationFileV1.FILE_SUFFIX);
+        if (oldModFile.exists()) {
+          this.oldModFile = new ModificationFileV1(oldModFile.getPath());
+        }
+        oldModFileChecked = true;
       }
-      oldModFileChecked = true;
-    } finally {
-      writeUnlock();
     }
     return this.oldModFile;
   }
