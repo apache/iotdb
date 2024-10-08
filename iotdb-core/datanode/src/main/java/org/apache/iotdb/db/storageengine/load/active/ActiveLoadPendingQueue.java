@@ -54,7 +54,6 @@ public class ActiveLoadPendingQueue {
       ActiveLoadingFilesNumberMetricsSet.getInstance().increaseLoadingFileCounter(1);
       ActiveLoadingFilesNumberMetricsSet.getInstance().increaseQueuingFileCounter(-1);
     }
-
     return pair;
   }
 
