@@ -37,7 +37,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  */
 public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverTask> {
   /** Scheduled time threshold of TASK in each level. */
-  static final int[] LEVEL_THRESHOLD_SECONDS = {0, 1, 10, 60, 300};
+  static final int[] LEVEL_THRESHOLD_SECONDS = {0, 3, 30, 120, 600};
 
   /** the upper limit one Task can contribute to its level in one scheduled time. */
   static final long LEVEL_CONTRIBUTION_CAP = SECONDS.toNanos(30);
