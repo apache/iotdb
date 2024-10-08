@@ -1192,7 +1192,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     stopTriggerRelatedServices();
     registerManager.deregisterAll();
     JMXService.deregisterMBean(mbeanName);
-    SchemaEngine.getInstance().clear();
     MetricService.getInstance().stop();
     if (schemaRegionConsensusStarted) {
       try {
@@ -1201,6 +1200,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         logger.warn("Exception during SchemaRegionConsensusImpl stopping", e);
       }
     }
+    SchemaEngine.getInstance().clear();
     if (dataRegionConsensusStarted) {
       try {
         DataRegionConsensusImpl.getInstance().stop();
