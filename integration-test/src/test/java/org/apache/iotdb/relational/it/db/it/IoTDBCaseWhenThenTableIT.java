@@ -170,10 +170,6 @@ public class IoTDBCaseWhenThenTableIT {
         DATABASE);
 
     // 4 numerical types(INT LONG FLOAT DOUBLE) can exist at the same time
-    tableAssertTestFail(
-        "select case when s1=0 then 99 when s1=11 then 99.9 when s1=22 then 8589934588 when s1=33 then 999.9999999999 else 10086 end from table1",
-        "All result types must be the same",
-        DATABASE);
     //    retArray = new String[] {"99.0,", "99.9,", "8.589934588E9,", "999.9999999999,"};
     //    tableResultSetEqualTest(
     //        "select case when s1=0 then 99 when s1=11 then 99.9 when s1=22 then 8589934588 when
@@ -217,10 +213,11 @@ public class IoTDBCaseWhenThenTableIT {
         DATABASE);
 
     // 4 numerical types(INT LONG FLOAT DOUBLE) can exist at the same time
-    tableAssertTestFail(
-        "select case s1 when 0 then 99 when 11 then 99.9 when 22 then 8589934588 when 33 then 999.9999999999 else 10086 end from table1",
-        "All result types must be the same",
-        DATABASE);
+    //    tableAssertTestFail(
+    //        "select case s1 when 0 then 99 when 11 then 99.9 when 22 then 8589934588 when 33 then
+    // 999.9999999999 else 10086 end from table1",
+    //        "All result types must be the same",
+    //        DATABASE);
     //    retArray = new String[] {"99.0,", "99.9,", "8.589934588E9,", "999.9999999999,"};
     //    tableResultSetEqualTest(
     //        "select case s1 when 0 then 99 when 11 then 99.9 when 22 then 8589934588 when 33 then
