@@ -259,8 +259,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
       throws IllegalPathException {
     shouldExtractInsertion = listeningOptionPair.getLeft();
     shouldExtractDeletion = listeningOptionPair.getRight();
-    // Do nothing if extract nothing
-    if (!shouldExtractInsertion && !shouldExtractDeletion) {
+    // Do nothing if extract deletion
+    if (!shouldExtractInsertion) {
       return;
     }
 
@@ -378,7 +378,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
 
   @Override
   public synchronized void start() {
-    if (!shouldExtractInsertion && !shouldExtractDeletion) {
+    if (!shouldExtractInsertion) {
       hasBeenStarted = true;
       return;
     }
@@ -403,34 +403,33 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
         "Pipe: start to extract historical TsFile and Deletion(if uses pipeConsensus)");
     try {
       List<PersistentResource> resourceList = new ArrayList<>();
-        if (shouldExtractInsertion) {
-            // Flush TsFiles
-            final long startHistoricalExtractionTime = System.currentTimeMillis();
-            flushTsFilesForExtraction(dataRegion, startHistoricalExtractionTime);
-            // Extract TsFiles
-            extractTsFiles(dataRegion, startHistoricalExtractionTime, resourceList);
-        }
+      if (shouldExtractInsertion) {
+        // Flush TsFiles
+        flushTsFilesForExtraction(dataRegion, startHistoricalExtractionTime);
+        // Extract TsFiles
+        extractTsFiles(dataRegion, startHistoricalExtractionTime, resourceList);
+      }
 
-        if (shouldExtractDeletion) {
-            // Extract deletions
-            Optional.ofNullable(DeletionResourceManager.getInstance(String.valueOf(dataRegionId)))
-                    .ifPresent(mgr -> extractDeletions(mgr, resourceList));
-        }
-        // Sort tsFileResource and deletionResource
-        long startTime = System.currentTimeMillis();
-        LOGGER.info("Pipe {}@{}: start to sort all extracted resources", pipeName, dataRegionId);
-        resourceList.sort(
-                (o1, o2) ->
-                        startIndex instanceof TimeWindowStateProgressIndex
-                                ? Long.compare(o1.getFileStartTime(), o2.getFileStartTime())
-                                : o1.getProgressIndex().topologicalCompareTo(o2.getProgressIndex()));
-        LOGGER.info(
-                "Pipe {}@{}: finish to sort all extracted resources, took {} ms",
-                pipeName,
-                dataRegionId,
-                System.currentTimeMillis() - startTime);
+      if (shouldExtractDeletion) {
+        // Extract deletions
+        Optional.ofNullable(DeletionResourceManager.getInstance(String.valueOf(dataRegionId)))
+            .ifPresent(mgr -> extractDeletions(mgr, resourceList));
+      }
+      // Sort tsFileResource and deletionResource
+      long startTime = System.currentTimeMillis();
+      LOGGER.info("Pipe {}@{}: start to sort all extracted resources", pipeName, dataRegionId);
+      resourceList.sort(
+          (o1, o2) ->
+              startIndex instanceof TimeWindowStateProgressIndex
+                  ? Long.compare(o1.getFileStartTime(), o2.getFileStartTime())
+                  : o1.getProgressIndex().topologicalCompareTo(o2.getProgressIndex()));
+      LOGGER.info(
+          "Pipe {}@{}: finish to sort all extracted resources, took {} ms",
+          pipeName,
+          dataRegionId,
+          System.currentTimeMillis() - startTime);
 
-        pendingQueue = new ArrayDeque<>(resourceList);
+      pendingQueue = new ArrayDeque<>(resourceList);
     } finally {
       dataRegion.writeUnlock();
     }
@@ -612,26 +611,26 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     }
   }
 
-    private void extractDeletions(
-            final DeletionResourceManager deletionResourceManager,
-            final List<PersistentResource> resourceList) {
-        LOGGER.info("Pipe {}@{}: start to extract deletions", pipeName, dataRegionId);
-        long startTime = System.currentTimeMillis();
-        List<DeletionResource> allDeletionResources = deletionResourceManager.getAllDeletionResources();
-        final int originalDeletionCount = allDeletionResources.size();
-        allDeletionResources =
-                allDeletionResources.stream()
-                        .filter(resource -> !startIndex.isAfter(resource.getProgressIndex()))
-                        .collect(Collectors.toList());
-        resourceList.addAll(allDeletionResources);
-        LOGGER.info(
-                "Pipe {}@{}: finish to extract deletions, extract deletions count {}/{}, took {} ms",
-                pipeName,
-                dataRegionId,
-                resourceList.size(),
-                originalDeletionCount,
-                System.currentTimeMillis() - startTime);
-    }
+  private void extractDeletions(
+      final DeletionResourceManager deletionResourceManager,
+      final List<PersistentResource> resourceList) {
+    LOGGER.info("Pipe {}@{}: start to extract deletions", pipeName, dataRegionId);
+    long startTime = System.currentTimeMillis();
+    List<DeletionResource> allDeletionResources = deletionResourceManager.getAllDeletionResources();
+    final int originalDeletionCount = allDeletionResources.size();
+    allDeletionResources =
+        allDeletionResources.stream()
+            .filter(resource -> !startIndex.isAfter(resource.getProgressIndex()))
+            .collect(Collectors.toList());
+    resourceList.addAll(allDeletionResources);
+    LOGGER.info(
+        "Pipe {}@{}: finish to extract deletions, extract deletions count {}/{}, took {} ms",
+        pipeName,
+        dataRegionId,
+        resourceList.size(),
+        originalDeletionCount,
+        System.currentTimeMillis() - startTime);
+  }
 
   @Override
   public synchronized Event supply() {
