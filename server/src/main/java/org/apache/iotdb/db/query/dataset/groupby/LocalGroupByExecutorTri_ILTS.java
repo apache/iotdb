@@ -395,26 +395,28 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
                     pageReader,
                     bitSet,
                     chunkSuit4Tri.chunkMetadata.getStatistics().getCount());
-            double ch_maxDistance = -1;
-            long ch_select_t = -1;
-            double ch_select_v = -1;
-            for (QuickHullPoint point : foundPoints) {
-              IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
-              double distance = IOMonitor2.calculateDistance(lt, lv, point.t, point.v, rt, rv);
-              if (distance > ch_maxDistance) {
-                ch_maxDistance = distance;
-                ch_select_t = point.t;
-                ch_select_v = point.v;
+            if (foundPoints.size() > 0) {
+              double ch_maxDistance = -1;
+              long ch_select_t = -1;
+              double ch_select_v = -1;
+              for (QuickHullPoint point : foundPoints) {
+                IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
+                double distance = IOMonitor2.calculateDistance(lt, lv, point.t, point.v, rt, rv);
+                if (distance > ch_maxDistance) {
+                  ch_maxDistance = distance;
+                  ch_select_t = point.t;
+                  ch_select_v = point.v;
+                }
               }
-            }
-            if (ch_maxDistance <= maxDistance) {
-              continue;
-            }
-            if (ch_select_t >= localCurStartTime && ch_select_t < localCurEndTime) {
-              maxDistance = ch_maxDistance;
-              select_t = ch_select_t;
-              select_v = ch_select_v;
-              continue; // note this
+              if (ch_maxDistance <= maxDistance) {
+                continue;
+              }
+              if (ch_select_t >= localCurStartTime && ch_select_t < localCurEndTime) {
+                maxDistance = ch_maxDistance;
+                select_t = ch_select_t;
+                select_v = ch_select_v;
+                continue; // note this
+              }
             }
           }
           int count = chunkSuit4Tri.chunkMetadata.getStatistics().getCount();
@@ -479,15 +481,17 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
 
   public List<QuickHullPoint> convexHullAcc(
       double lt, double lv, double rt, double rv, PageReader pageReader, BitSet bitSet, int count) {
-    double A = lv - rv;
-    double B = rt - lt;
-
-    BitSet reverseBitSet = IOMonitor2.reverse(bitSet);
-
     long fpt = pageReader.timeBuffer.getLong(0);
     double fpv = pageReader.valueBuffer.getDouble(pageReader.timeBufferLength);
     long lpt = pageReader.timeBuffer.getLong((count - 1) * 8);
     double lpv = pageReader.valueBuffer.getDouble(pageReader.timeBufferLength + (count - 1) * 8);
+
+    // TODO 水平线？
+
+    double A = lv - rv;
+    double B = rt - lt;
+
+    BitSet reverseBitSet = IOMonitor2.reverse(bitSet);
 
     List<QuickHullPoint> LU = new ArrayList<>();
     List<QuickHullPoint> LL = new ArrayList<>();
