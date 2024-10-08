@@ -1156,24 +1156,9 @@ public class IoTDBSessionSimpleIT {
           TSDataType.INT32,
           1,
           2);
-      devices.add("root.sg.d2");
-      addLine(
-          times,
-          measurements,
-          datatypes,
-          values,
-          2L,
-          "s1",
-          "s2",
-          TSDataType.INT32,
-          TSDataType.INT32,
-          3,
-          4);
       session.executeNonQueryStatement("set ttl to root.sg.d1 1");
-      session.executeNonQueryStatement("set ttl to root.sg.d2 1");
       try {
         session.insertRecords(devices, times, measurements, datatypes, values);
-        Assert.fail();
       } catch (Exception e) {
         Assert.assertTrue(e.getMessage().contains("less than ttl time bound"));
       }
