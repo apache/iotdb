@@ -171,7 +171,7 @@ public class ExpressionUtils {
             new LikeExpression(
                 childExpression,
                 ((LikeExpression) rawExpression).getPatternString(),
-                ((LikeExpression) rawExpression).getPattern(),
+                ((LikeExpression) rawExpression).getEscape(),
                 ((LikeExpression) rawExpression).isNot());
         break;
       case LOGIC_NOT:

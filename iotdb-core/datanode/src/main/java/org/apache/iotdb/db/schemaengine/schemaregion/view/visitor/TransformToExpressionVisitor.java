@@ -154,7 +154,7 @@ public class TransformToExpressionVisitor extends ViewExpressionVisitor<Expressi
     return new org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression(
         child,
         likeExpression.getPatternString(),
-        likeExpression.getPattern(),
+        likeExpression.getEscape(),
         likeExpression.isNot());
   }
 

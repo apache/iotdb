@@ -60,7 +60,7 @@ public class ReversePredicateVisitor extends PredicateVisitor<Expression, Void> 
     return new LikeExpression(
         likeExpression.getExpression(),
         likeExpression.getPatternString(),
-        likeExpression.getPattern(),
+        likeExpression.getEscape(),
         !likeExpression.isNot());
   }
 
