@@ -150,9 +150,6 @@ public class CompactionExceptionHandler {
     TsFileResourceList seqTsFileResourceList =
         tsFileManager.getOrCreateSequenceListByTimePartition(timePartition);
 
-    // delete compaction mods files
-    CompactionUtils.deleteCompactionModsFile(sourceSeqResourceList, sourceUnseqResourceList);
-
     boolean removeAllTargetFile = true;
     tsFileManager.writeLock("CompactionExceptionHandler");
     try {
@@ -225,8 +222,6 @@ public class CompactionExceptionHandler {
     // delete sources file
     CompactionUtils.deleteSourceTsFileAndUpdateFileMetrics(
         sourceSeqResourceList, sourceUnseqResourceList);
-    // delete compaction mods files
-    CompactionUtils.deleteCompactionModsFile(sourceSeqResourceList, sourceUnseqResourceList);
 
     return true;
   }

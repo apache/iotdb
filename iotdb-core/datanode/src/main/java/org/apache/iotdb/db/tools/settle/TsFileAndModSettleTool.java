@@ -210,7 +210,7 @@ public class TsFileAndModSettleTool {
       return;
     }
     // if no deletions to this tsfile, then return.
-    if (!resourceToBeSettled.getModFile().exists()) {
+    if (resourceToBeSettled.getModFileTotalSizeByte() == 0) {
       return;
     }
     try (TsFileSplitByPartitionTool tsFileRewriteTool =

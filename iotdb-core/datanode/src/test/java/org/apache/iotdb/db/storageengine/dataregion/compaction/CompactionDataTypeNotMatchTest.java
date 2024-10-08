@@ -25,6 +25,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
@@ -71,7 +72,13 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
     generateDataTypeNotMatchFilesWithNonAlignedSeries();
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
+            0,
+            tsFileManager,
+            seqResources,
+            true,
+            new ReadChunkCompactionPerformer(),
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
     TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
     Assert.assertEquals(2, tsFileManager.getTsFileList(true).get(0).getStartTime(device));
@@ -83,7 +90,13 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
     generateDataTypeNotMatchFilesWithNonAlignedSeries();
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new FastCompactionPerformer(false), 0);
+            0,
+            tsFileManager,
+            seqResources,
+            true,
+            new FastCompactionPerformer(false),
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
     TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
     Assert.assertEquals(2, tsFileManager.getTsFileList(true).get(0).getStartTime(device));
@@ -95,7 +108,13 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
     generateDataTypeNotMatchFilesWithNonAlignedSeries();
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new ReadPointCompactionPerformer(), 0);
+            0,
+            tsFileManager,
+            seqResources,
+            true,
+            new ReadPointCompactionPerformer(),
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
     TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
     Assert.assertEquals(2, tsFileManager.getTsFileList(true).get(0).getStartTime(device));
@@ -107,7 +126,13 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
     generateDataTypeNotMatchFilesWithAlignedSeries();
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
+            0,
+            tsFileManager,
+            seqResources,
+            true,
+            new ReadChunkCompactionPerformer(),
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
     TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
     Assert.assertEquals(2, tsFileManager.getTsFileList(true).get(0).getStartTime(device));
@@ -119,7 +144,13 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
     generateDataTypeNotMatchFilesWithAlignedSeries();
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new FastCompactionPerformer(false), 0);
+            0,
+            tsFileManager,
+            seqResources,
+            true,
+            new FastCompactionPerformer(false),
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
     TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
     Assert.assertEquals(2, tsFileManager.getTsFileList(true).get(0).getStartTime(device));
@@ -131,7 +162,13 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
     generateDataTypeNotMatchFilesWithAlignedSeries();
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new ReadPointCompactionPerformer(), 0);
+            0,
+            tsFileManager,
+            seqResources,
+            true,
+            new ReadPointCompactionPerformer(),
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
     TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
     Assert.assertEquals(2, tsFileManager.getTsFileList(true).get(0).getStartTime(device));

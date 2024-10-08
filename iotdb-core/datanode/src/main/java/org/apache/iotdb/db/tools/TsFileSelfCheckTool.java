@@ -88,7 +88,7 @@ public class TsFileSelfCheckTool {
     try {
       timeseriesMetadataMap = getTimeseriesMetadataMapWithReader(reader);
       res = reader.selfCheckWithInfo(filename, fastFinish, timeseriesMetadataMap);
-    } catch (TsFileStatisticsMistakesException e) {
+    } catch (TsFileStatisticsMistakesException | TsFileTimeseriesMetadataException e) {
       throw e;
     } catch (Exception e) {
       LOGGER.error("Error occurred while getting all TimeseriesMetadata with offset in TsFile.");

@@ -43,6 +43,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.Siz
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossSpaceCompactionCandidate;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -136,7 +137,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -180,7 +182,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -224,7 +227,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -276,7 +280,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -325,7 +330,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -372,7 +378,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -422,7 +429,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -471,7 +479,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -520,7 +529,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -570,7 +580,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -620,7 +631,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -670,7 +682,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -721,7 +734,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -773,7 +787,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -825,7 +840,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -878,7 +894,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -932,7 +949,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -986,7 +1004,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -1040,7 +1059,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -1094,7 +1114,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -1147,7 +1168,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -1196,7 +1218,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -1246,7 +1269,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -1296,7 +1320,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -1346,7 +1371,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -1397,7 +1423,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -1449,7 +1476,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -1501,7 +1529,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -1554,7 +1583,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -1608,7 +1638,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -1662,7 +1693,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -1716,7 +1748,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -1770,7 +1803,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -1823,7 +1857,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -1874,7 +1909,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -1921,7 +1957,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -1973,7 +2010,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -2026,7 +2064,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -2079,7 +2118,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             selected.get(0).getUnseqFiles(),
             performer,
             0,
-            tsFileManager.getNextCompactionTaskId())
+            tsFileManager.getNextCompactionTaskId(),
+            new ModFileManager())
         .doCompaction();
 
     validateSeqFiles(true);
@@ -2117,7 +2157,6 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
 
     CompactionUtils.moveTargetFile(
         targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG + "-" + "0");
-    CompactionUtils.combineModsInInnerCompaction(sourceFiles, targetResources.get(0));
     tsFileManager.replace(sourceFiles, Collections.emptyList(), targetResources, 0);
     CompactionUtils.deleteTsFilesInDisk(sourceFiles, COMPACTION_TEST_SG + "-" + "0");
 
@@ -2173,7 +2212,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
 
     // inner seq space compact
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
-        new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
+        new SizeTieredCompactionSelector(
+                COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new ModFileManager())
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
     for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
       task.start();
@@ -2203,7 +2243,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
                 sourceFiles.getUnseqFiles(),
                 new ReadPointCompactionPerformer(),
                 sourceFiles.getTotalMemoryCost(),
-                0)
+                0,
+                new ModFileManager())
             .start());
 
     validateSeqFiles(true);
@@ -2246,7 +2287,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
 
     // inner seq space compact
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
-        new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
+        new SizeTieredCompactionSelector(
+                COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new ModFileManager())
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
     for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
       task.start();
@@ -2276,7 +2318,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
                 sourceFiles.getUnseqFiles(),
                 new ReadPointCompactionPerformer(),
                 sourceFiles.getTotalMemoryCost(),
-                0)
+                0,
+                new ModFileManager())
             .start());
 
     validateSeqFiles(true);
@@ -2320,7 +2363,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
 
     // inner seq space compact
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
-        new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
+        new SizeTieredCompactionSelector(
+                COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new ModFileManager())
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
     for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
       task.start();
@@ -2350,7 +2394,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
                 sourceFiles.getUnseqFiles(),
                 new ReadPointCompactionPerformer(),
                 sourceFiles.getTotalMemoryCost(),
-                0)
+                0,
+                new ModFileManager())
             .start());
 
     validateSeqFiles(true);
@@ -2395,7 +2440,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
 
     // inner seq space compact
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
-        new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
+        new SizeTieredCompactionSelector(
+                COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new ModFileManager())
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
     for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
       task.start();
@@ -2425,7 +2471,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
                 sourceFiles.getUnseqFiles(),
                 new ReadPointCompactionPerformer(),
                 sourceFiles.getTotalMemoryCost(),
-                0)
+                0,
+                new ModFileManager())
             .start());
 
     validateSeqFiles(true);
@@ -2476,7 +2523,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
 
     // inner seq space compact
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
-        new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
+        new SizeTieredCompactionSelector(
+                COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new ModFileManager())
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
     for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
       task.start();
@@ -2506,7 +2554,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
                 sourceFiles.getUnseqFiles(),
                 new ReadPointCompactionPerformer(),
                 sourceFiles.getTotalMemoryCost(),
-                0)
+                0,
+                new ModFileManager())
             .start());
 
     validateSeqFiles(true);
@@ -2556,7 +2605,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
 
     // inner seq space compact
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
-        new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
+        new SizeTieredCompactionSelector(
+                COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new ModFileManager())
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
     for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
       task.start();
@@ -2586,7 +2636,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
                 sourceFiles.getUnseqFiles(),
                 new ReadPointCompactionPerformer(),
                 sourceFiles.getTotalMemoryCost(),
-                0)
+                0,
+                new ModFileManager())
             .start());
 
     validateSeqFiles(true);
@@ -2637,7 +2688,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
 
     // inner seq space compact
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
-        new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
+        new SizeTieredCompactionSelector(
+                COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new ModFileManager())
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
     for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
       task.start();
@@ -2667,7 +2719,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
                 sourceFiles.getUnseqFiles(),
                 new ReadPointCompactionPerformer(),
                 sourceFiles.getTotalMemoryCost(),
-                0)
+                0,
+                new ModFileManager())
             .start());
 
     validateSeqFiles(true);
@@ -2719,7 +2772,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
 
     // inner seq space compact
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
-        new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
+        new SizeTieredCompactionSelector(
+                COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new ModFileManager())
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
     for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
       task.start();
@@ -2749,7 +2803,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
                 sourceFiles.getUnseqFiles(),
                 new ReadPointCompactionPerformer(),
                 sourceFiles.getTotalMemoryCost(),
-                0)
+                0,
+                new ModFileManager())
             .start());
 
     validateSeqFiles(true);

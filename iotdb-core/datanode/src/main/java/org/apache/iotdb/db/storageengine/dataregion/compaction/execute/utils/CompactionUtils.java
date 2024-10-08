@@ -27,8 +27,6 @@ import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -45,9 +43,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 /**
  * This tool can be used to perform inner space or cross space compaction of aligned and non aligned
@@ -117,114 +113,6 @@ public class CompactionUtils {
     targetResource.closeWithoutSettingStatus();
   }
 
-  /**
-   * Collect all the compaction modification files of source files, and combines them as the
-   * modification file of target file.
-   *
-   * @throws IOException if io errors occurred
-   */
-  public static void combineModsInCrossCompaction(
-      List<TsFileResource> seqResources,
-      List<TsFileResource> unseqResources,
-      List<TsFileResource> targetResources)
-      throws IOException {
-    Set<Modification> modifications = new HashSet<>();
-    // get compaction mods from all source unseq files
-    for (TsFileResource unseqFile : unseqResources) {
-      modifications.addAll(ModificationFile.getCompactionMods(unseqFile).getModifications());
-    }
-
-    // write target mods file
-    for (int i = 0; i < targetResources.size(); i++) {
-      TsFileResource targetResource = targetResources.get(i);
-      if (targetResource == null) {
-        continue;
-      }
-      Set<Modification> seqModifications =
-          new HashSet<>(ModificationFile.getCompactionMods(seqResources.get(i)).getModifications());
-      modifications.addAll(seqModifications);
-      updateOneTargetMods(targetResource, modifications);
-      if (!modifications.isEmpty()) {
-        FileMetrics.getInstance().increaseModFileNum(1);
-        FileMetrics.getInstance().increaseModFileSize(targetResource.getModFile().getSize());
-      }
-      modifications.removeAll(seqModifications);
-    }
-  }
-
-  /**
-   * Collect all the compaction modification files of source files, and combines them as the
-   * modification file of target file.
-   *
-   * @throws IOException if io errors occurred
-   */
-  public static void combineModsInInnerCompaction(
-      Collection<TsFileResource> sourceFiles, TsFileResource targetTsFile) throws IOException {
-    Set<Modification> modifications = new HashSet<>();
-    for (TsFileResource mergeTsFile : sourceFiles) {
-      try (ModificationFile sourceCompactionModificationFile =
-          ModificationFile.getCompactionMods(mergeTsFile)) {
-        modifications.addAll(sourceCompactionModificationFile.getModifications());
-      }
-    }
-    updateOneTargetMods(targetTsFile, modifications);
-    if (!modifications.isEmpty()) {
-      FileMetrics.getInstance().increaseModFileNum(1);
-      FileMetrics.getInstance().increaseModFileSize(targetTsFile.getModFile().getSize());
-    }
-  }
-
-  public static void combineModsInInnerCompaction(
-      Collection<TsFileResource> sourceFiles, List<TsFileResource> targetTsFiles)
-      throws IOException {
-    Set<Modification> modifications = new HashSet<>();
-    for (TsFileResource mergeTsFile : sourceFiles) {
-      try (ModificationFile sourceCompactionModificationFile =
-          ModificationFile.getCompactionMods(mergeTsFile)) {
-        modifications.addAll(sourceCompactionModificationFile.getModifications());
-      }
-    }
-    for (TsFileResource targetTsFile : targetTsFiles) {
-      updateOneTargetMods(targetTsFile, modifications);
-      if (!modifications.isEmpty()) {
-        FileMetrics.getInstance().increaseModFileNum(1);
-        FileMetrics.getInstance().increaseModFileSize(targetTsFile.getModFile().getSize());
-      }
-    }
-  }
-
-  private static void updateOneTargetMods(
-      TsFileResource targetFile, Set<Modification> modifications) throws IOException {
-    if (!modifications.isEmpty()) {
-      try (ModificationFile modificationFile = ModificationFile.getNormalMods(targetFile)) {
-        for (Modification modification : modifications) {
-          // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
-          // change after compaction
-          modification.setFileOffset(Long.MAX_VALUE);
-          modificationFile.write(modification);
-        }
-      }
-    }
-  }
-
-  public static void deleteCompactionModsFile(
-      List<TsFileResource> selectedSeqTsFileResourceList,
-      List<TsFileResource> selectedUnSeqTsFileResourceList)
-      throws IOException {
-    for (TsFileResource seqFile : selectedSeqTsFileResourceList) {
-      ModificationFile modificationFile = seqFile.getCompactionModFile();
-      if (modificationFile.exists()) {
-        modificationFile.remove();
-      }
-    }
-    for (TsFileResource unseqFile : selectedUnSeqTsFileResourceList) {
-      ModificationFile modificationFile = unseqFile.getCompactionModFile();
-      if (modificationFile.exists()) {
-        modificationFile.remove();
-      }
-    }
-  }
-
   public static boolean deleteTsFilesInDisk(
       Collection<TsFileResource> mergeTsFiles, String storageGroupName) {
     logger.info("{} [Compaction] Compaction starts to delete real file ", storageGroupName);
@@ -237,30 +125,6 @@ public class CompactionUtils {
           "{} [Compaction] delete TsFile {}", storageGroupName, mergeTsFile.getTsFilePath());
     }
     return result;
-  }
-
-  /**
-   * Delete all modification files for source files.
-   *
-   * @throws IOException if io errors occurred
-   */
-  public static void deleteModificationForSourceFile(
-      Collection<TsFileResource> sourceFiles, String storageGroupName) throws IOException {
-    logger.info("{} [Compaction] Start to delete modifications of source files", storageGroupName);
-    for (TsFileResource tsFileResource : sourceFiles) {
-      ModificationFile compactionModificationFile =
-          ModificationFile.getCompactionMods(tsFileResource);
-      if (compactionModificationFile.exists()) {
-        compactionModificationFile.remove();
-      }
-
-      ModificationFile normalModification = ModificationFile.getNormalMods(tsFileResource);
-      if (normalModification.exists()) {
-        FileMetrics.getInstance().decreaseModFileNum(1);
-        FileMetrics.getInstance().decreaseModFileSize(tsFileResource.getModFile().getSize());
-        normalModification.remove();
-      }
-    }
   }
 
   public static void updateResource(
@@ -323,10 +187,6 @@ public class CompactionUtils {
   public static void deleteSourceTsFileAndUpdateFileMetrics(
       List<TsFileResource> resources, boolean seq) {
     for (TsFileResource resource : resources) {
-      if (resource.getModFile().exists()) {
-        FileMetrics.getInstance().decreaseModFileNum(1);
-        FileMetrics.getInstance().decreaseModFileSize(resource.getModFile().getSize());
-      }
       if (!resource.remove()) {
         logger.warn(
             "[Compaction] delete file failed, file path is {}",

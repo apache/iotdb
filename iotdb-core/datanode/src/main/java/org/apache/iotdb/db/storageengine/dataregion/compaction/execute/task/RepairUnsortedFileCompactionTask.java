@@ -26,6 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.Com
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairDataFileScanUtil;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.RepairUnsortedFileCompactionEstimator;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -74,7 +75,8 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
         Collections.singletonList(sourceFile),
         sequence,
         new RepairUnsortedFileCompactionPerformer(),
-        serialId);
+        serialId,
+        null);
     this.sourceFile = sourceFile;
     if (this.sourceFile.getTsFileRepairStatus() != TsFileRepairStatus.NEED_TO_REPAIR_BY_MOVE) {
       this.innerSpaceEstimator = new RepairUnsortedFileCompactionEstimator();
@@ -95,7 +97,8 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
         Collections.singletonList(sourceFile),
         sequence,
         new RepairUnsortedFileCompactionPerformer(),
-        serialId);
+        serialId,
+        null);
     this.sourceFile = sourceFile;
     if (this.sourceFile.getTsFileRepairStatus() != TsFileRepairStatus.NEED_TO_REPAIR_BY_MOVE) {
       this.innerSpaceEstimator = new RepairUnsortedFileCompactionEstimator();
@@ -154,6 +157,8 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
         filesView.targetFilesInPerformer,
         filesView.sourceFilesInCompactionPerformer,
         Collections.emptyList());
+
+    filesView.targetFilesInPerformer.get(0).inheritModFile(sourceFile);
     CompactionUtils.moveTargetFile(
         filesView.targetFilesInPerformer,
         CompactionTaskType.REPAIR,
@@ -164,14 +169,14 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
         storageGroupName,
         dataRegionId);
 
-    if (sourceFile.getTsFileRepairStatus() == TsFileRepairStatus.NEED_TO_REPAIR_BY_REWRITE) {
-      CompactionUtils.combineModsInInnerCompaction(
-          filesView.sourceFilesInCompactionPerformer, filesView.targetFilesInPerformer);
-    } else {
-      if (sourceFile.modFileExists()) {
+    if (sourceFile.getTsFileRepairStatus() != TsFileRepairStatus.NEED_TO_REPAIR_BY_REWRITE) {
+      if (sourceFile.oldModFileExists()) {
         Files.createLink(
-            new File(filesView.targetFilesInPerformer.get(0).getModFile().getFilePath()).toPath(),
-            new File(sourceFile.getModFile().getFilePath()).toPath());
+            new File(
+                    ModificationFileV1.getNormalMods(filesView.targetFilesInPerformer.get(0))
+                        .getFilePath())
+                .toPath(),
+            new File(sourceFile.getOldModFile().getFilePath()).toPath());
       }
     }
   }

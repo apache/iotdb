@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -163,6 +164,8 @@ public class EnvironmentUtils {
     } catch (InterruptedException e) {
       throw new RuntimeException(e);
     }
+
+    MetricService.getInstance().clearMetricSets();
 
     // delete all directory
     cleanAllDir();

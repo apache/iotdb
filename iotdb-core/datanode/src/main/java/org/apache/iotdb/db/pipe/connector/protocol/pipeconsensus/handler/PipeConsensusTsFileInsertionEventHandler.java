@@ -96,8 +96,8 @@ public class PipeConsensusTsFileInsertionEventHandler
     this.thisDataNodeId = thisDataNodeId;
 
     tsFile = event.getTsFile();
-    modFile = event.getModFile();
-    transferMod = event.isWithMod();
+    modFile = event.getOldModFile();
+    transferMod = event.isWithOldMod();
     currentFile = transferMod ? modFile : tsFile;
 
     readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();

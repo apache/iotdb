@@ -333,4 +333,9 @@ public abstract class AbstractMetricService {
       metricSets.remove(metricSet);
     }
   }
+
+  // test only
+  public void clearMetricSets() {
+    metricSets.clear();
+  }
 }

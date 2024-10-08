@@ -230,7 +230,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
               "now try to delete directly, databasePath: {}, deletePath:{}",
               databaseToDelete.getFullPath(),
               path.getFullPath());
-          dataRegion.deleteDataDirectly(
+          dataRegion.deleteDataFileDirectly(
               databaseToDelete,
               node.getDeleteStartTime(),
               node.getDeleteEndTime(),

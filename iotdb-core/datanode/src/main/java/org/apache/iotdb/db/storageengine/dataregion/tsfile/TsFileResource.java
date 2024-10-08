@@ -32,9 +32,16 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTimeP
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCompactionCandidateStatus;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
@@ -62,10 +69,15 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -74,7 +86,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
-@SuppressWarnings("java:S1135") // ignore todos
+@SuppressWarnings({"java:S1135", "resource"}) // ignore todos
 public class TsFileResource {
 
   private static final long INSTANCE_SIZE =
@@ -96,7 +108,7 @@ public class TsFileResource {
   public static final String BROKEN_SUFFIX = ".broken";
 
   /** version number */
-  public static final byte VERSION_NUMBER = 1;
+  public static final byte VERSION_NUMBER = 2;
 
   /** Used in {@link TsFileResourceList TsFileResourceList} */
   protected TsFileResource prev;
@@ -106,11 +118,21 @@ public class TsFileResource {
   /** time index */
   private ITimeIndex timeIndex;
 
+  private ModificationFile modFile;
+  private long modFileOffset;
+
   @SuppressWarnings("squid:S3077")
-  private volatile ModificationFile modFile;
+  private volatile ModificationFileV1 oldModFile;
+
+  private volatile boolean oldModFileChecked = false;
 
   @SuppressWarnings("squid:S3077")
   private volatile ModificationFile compactionModFile;
+
+  private ModFileManager modFileManager;
+  // the start pos of mod file path in this TsFileResource
+  private long modFilePathOffset = -1;
+  private volatile boolean modFilePathDeserialized = false;
 
   protected AtomicReference<TsFileResourceStatus> atomicStatus =
       new AtomicReference<>(TsFileResourceStatus.UNCLOSED);
@@ -189,6 +211,7 @@ public class TsFileResource {
   public TsFileResource(File file, TsFileResourceStatus status) {
     this(file);
     this.setAtomicStatus(status);
+    modFilePathDeserialized = true;
   }
 
   /** unsealed TsFile, for writter */
@@ -201,6 +224,7 @@ public class TsFileResource {
     // this method is invoked when a new TsFile is created and a newly created TsFile's the
     // tierLevel is 0 by default
     this.tierLevel = new AtomicInteger(0);
+    modFilePathDeserialized = true;
   }
 
   /** unsealed TsFile, for read */
@@ -218,13 +242,14 @@ public class TsFileResource {
     this.tsFileID = originTsFileResource.tsFileID;
     this.isSeq = originTsFileResource.isSeq;
     this.tierLevel = originTsFileResource.tierLevel;
+    modFilePathDeserialized = true;
   }
 
   public synchronized void serialize() throws IOException {
     FileOutputStream fileOutputStream = new FileOutputStream(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
     BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream);
     try {
-      serializeTo(outputStream);
+      serializeTo(outputStream, fileOutputStream);
     } finally {
       outputStream.flush();
       fileOutputStream.getFD().sync();
@@ -236,28 +261,13 @@ public class TsFileResource {
     fsFactory.moveFile(src, dest);
   }
 
-  private void serializeTo(BufferedOutputStream outputStream) throws IOException {
+  private void serializeTo(BufferedOutputStream outputStream, FileOutputStream fileOutputStream)
+      throws IOException {
     ReadWriteIOUtils.write(VERSION_NUMBER, outputStream);
     timeIndex.serialize(outputStream);
 
     ReadWriteIOUtils.write(maxPlanIndex, outputStream);
     ReadWriteIOUtils.write(minPlanIndex, outputStream);
-
-    if (modFile != null && modFile.exists()) {
-      String modFileName = new File(modFile.getFilePath()).getName();
-      ReadWriteIOUtils.write(modFileName, outputStream);
-    } else {
-      // make the first "inputStream.available() > 0" in deserialize() happy.
-      //
-      // if modFile not exist, write null (-1). the first "inputStream.available() > 0" in
-      // deserialize() and deserializeFromOldFile() detect -1 and deserialize modFileName as null
-      // and skip the modFile deserialize.
-      //
-      // this make sure the first and the second "inputStream.available() > 0" in deserialize()
-      // will always be called... which is a bit ugly but allows the following variable
-      // maxProgressIndex to be deserialized correctly.
-      ReadWriteIOUtils.write((String) null, outputStream);
-    }
 
     if (maxProgressIndex != null) {
       TsFileResourceBlockType.PROGRESS_INDEX.serialize(outputStream);
@@ -265,31 +275,144 @@ public class TsFileResource {
     } else {
       TsFileResourceBlockType.EMPTY_BLOCK.serialize(outputStream);
     }
+
+    modFilePathOffset = fileOutputStream.getChannel().position();
+    if (modFile != null && modFile.getFile().length() > 0) {
+      ReadWriteIOUtils.writeVar(modFile.getFile().getAbsolutePath(), outputStream);
+    } else {
+      ReadWriteIOUtils.writeVar(null, outputStream);
+    }
+    ReadWriteIOUtils.write(modFileOffset, outputStream);
+    ReadWriteIOUtils.write(modFilePathOffset, outputStream);
   }
 
   /** deserialize from disk */
   public void deserialize() throws IOException {
     try (InputStream inputStream = fsFactory.getBufferedInputStream(file + RESOURCE_SUFFIX)) {
       // The first byte is VERSION_NUMBER, second byte is timeIndexType.
-      ReadWriteIOUtils.readByte(inputStream);
-      timeIndex = ITimeIndex.createTimeIndex(inputStream);
-      maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
-      minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
-
-      if (inputStream.available() > 0) {
-        String modFileName = ReadWriteIOUtils.readString(inputStream);
-        if (modFileName != null) {
-          File modF = new File(file.getParentFile(), modFileName);
-          modFile = new ModificationFile(modF.getPath());
-        }
+      byte version = ReadWriteIOUtils.readByte(inputStream);
+      switch (version) {
+        case 1:
+          deserializeV1(inputStream);
+          // upgrade to new format
+          serialize();
+          break;
+        case VERSION_NUMBER:
+          deserialize(inputStream);
+          break;
+        default:
+          throw new IllegalStateException("Unexpected version number: " + version);
       }
+    }
+  }
 
-      while (inputStream.available() > 0) {
-        final TsFileResourceBlockType blockType =
-            TsFileResourceBlockType.deserialize(ReadWriteIOUtils.readByte(inputStream));
-        if (blockType == TsFileResourceBlockType.PROGRESS_INDEX) {
-          maxProgressIndex = ProgressIndexType.deserializeFrom(inputStream);
-        }
+  private void deserialize(InputStream inputStream) throws IOException {
+    timeIndex = ITimeIndex.createTimeIndex(inputStream);
+    maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
+    minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
+
+    final TsFileResourceBlockType blockType =
+        TsFileResourceBlockType.deserialize(ReadWriteIOUtils.readByte(inputStream));
+    if (blockType == TsFileResourceBlockType.PROGRESS_INDEX) {
+      maxProgressIndex = ProgressIndexType.deserializeFrom(inputStream);
+    }
+
+    // avoid the newly-allocated mod file being over-written by recovery
+    String modFilePath = ReadWriteIOUtils.readVarIntString(inputStream);
+    modFileOffset = ReadWriteIOUtils.readLong(inputStream);
+    if (modFilePath != null) {
+      this.modFile = modFileManager.recoverModFile(modFilePath, this);
+    }
+    modFilePathDeserialized = true;
+  }
+
+  /** deserialize only the mod file related fields from the tail of the file. */
+  private void deserializeModFilePath() {
+    if (modFilePathDeserialized) {
+      return;
+    }
+    // avoid the newly-allocated mod file being over-written by recovery
+    File resFile = new File(file + RESOURCE_SUFFIX);
+    try (FileChannel fileChannel = FileChannel.open(resFile.toPath())) {
+      fileChannel.position(resFile.length() - Long.BYTES);
+      ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
+      fileChannel.read(buffer);
+      buffer.flip();
+      modFilePathOffset = buffer.getLong();
+
+      buffer = ByteBuffer.allocate((int) (resFile.length() - modFilePathOffset));
+      fileChannel.read(buffer);
+      buffer.flip();
+
+      String modFilePath = ReadWriteIOUtils.readVarIntString(buffer);
+      modFileOffset = ReadWriteIOUtils.readLong(buffer);
+      if (modFilePath != null) {
+        this.modFile = modFileManager.recoverModFile(modFilePath, this);
+      }
+      modFilePathDeserialized = true;
+    } catch (Exception e) {
+      LOGGER.warn("Cannot deserialize mod path for {}", this, e);
+    }
+  }
+
+  public void inheritModFile(TsFileResource parent) {
+    this.modFile = parent.modFile;
+    this.modFilePathOffset = parent.modFilePathOffset;
+    this.modFileOffset = parent.modFileOffset;
+    if (modFile != null) {
+      this.modFile.addReference(this);
+    }
+  }
+
+  public void setModFile(ModificationFile modFile, boolean persist) throws IOException {
+    this.modFile = modFile;
+    this.modFileOffset = modFile.getFile().length();
+    if (!persist) {
+      return;
+    }
+
+    File resFile = new File(file + RESOURCE_SUFFIX);
+    if (!resFile.exists()) {
+      // the file has not been serialized, just serialize it
+      serialize();
+    } else {
+      // only update the mod file related parts
+      try (FileChannel fileChannel = FileChannel.open(resFile.toPath())) {
+        fileChannel.truncate(modFilePathOffset);
+      }
+      FileOutputStream fileOutputStream =
+          new FileOutputStream(file + RESOURCE_SUFFIX + TEMP_SUFFIX, true);
+      BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream);
+      try {
+        ReadWriteIOUtils.writeVar(modFile.getFile().getAbsolutePath(), outputStream);
+        ReadWriteIOUtils.write(modFileOffset, outputStream);
+        ReadWriteIOUtils.write(modFilePathOffset, outputStream);
+      } finally {
+        outputStream.flush();
+        fileOutputStream.getFD().sync();
+        outputStream.close();
+      }
+    }
+  }
+
+  private void deserializeV1(InputStream inputStream) throws IOException {
+    timeIndex = ITimeIndex.createTimeIndex(inputStream);
+    maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
+    minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
+
+    if (inputStream.available() > 0) {
+      String modFileName = ReadWriteIOUtils.readString(inputStream);
+      if (modFileName != null) {
+        File modF = new File(file.getParentFile(), modFileName);
+        oldModFile = new ModificationFileV1(modF.getPath());
+      }
+    }
+
+    while (inputStream.available() > 0) {
+      final TsFileResourceBlockType blockType =
+          TsFileResourceBlockType.deserialize(ReadWriteIOUtils.readByte(inputStream));
+      if (blockType == TsFileResourceBlockType.PROGRESS_INDEX) {
+        maxProgressIndex = ProgressIndexType.deserializeFrom(inputStream);
       }
     }
   }
@@ -330,12 +453,31 @@ public class TsFileResource {
     return file != null && file.exists();
   }
 
-  public boolean modFileExists() {
-    return getModFile().exists();
+  public boolean newModFileExists() {
+    return getModFile() != null;
   }
 
-  public boolean compactionModFileExists() {
-    return getCompactionModFile().exists();
+  private boolean modFileExists() {
+    return oldModFileExists();
+  }
+
+  public boolean oldModFileExists() {
+    ModificationFileV1 oModFile = getOldModFileInternal();
+    if (oModFile == null) {
+      return false;
+    }
+    return oModFile.exists();
+  }
+
+  public long getModFileTotalSizeByte() {
+    long sum = 0;
+    if (oldModFileExists()) {
+      sum += getOldModFile().getSize();
+    }
+    if (newModFileExists()) {
+      sum += getModFile().getSize() - modFileOffset;
+    }
+    return sum;
   }
 
   public List<IChunkMetadata> getChunkMetadataList(PartialPath seriesPath) {
@@ -346,36 +488,34 @@ public class TsFileResource {
     return pathToReadOnlyMemChunkMap.get(seriesPath);
   }
 
+  public ModificationFileV1 getOldModFile() {
+    return getOldModFileInternal();
+  }
+
   @SuppressWarnings("squid:S2886")
-  public ModificationFile getModFile() {
-    if (modFile == null) {
-      synchronized (this) {
-        if (modFile == null) {
-          modFile = ModificationFile.getNormalMods(this);
+  private ModificationFileV1 getOldModFileInternal() {
+    if (oldModFileChecked) {
+      return oldModFile;
+    }
+    // avoid creating different old mod files
+    synchronized (this) {
+      if (!oldModFileChecked) {
+        File oldModFile = new File(getTsFilePath() + ModificationFileV1.FILE_SUFFIX);
+        if (oldModFile.exists()) {
+          this.oldModFile = new ModificationFileV1(oldModFile.getPath());
         }
+        oldModFileChecked = true;
       }
     }
-    return modFile;
+    return this.oldModFile;
   }
 
   public ModificationFile getCompactionModFile() {
-    if (compactionModFile == null) {
-      synchronized (this) {
-        if (compactionModFile == null) {
-          compactionModFile = ModificationFile.getCompactionMods(this);
-        }
-      }
-    }
     return compactionModFile;
   }
 
-  public void resetModFile() throws IOException {
-    if (modFile != null) {
-      synchronized (this) {
-        modFile.close();
-        modFile = null;
-      }
-    }
+  public void setCompactionModFile(ModificationFile compactionModFile) {
+    this.compactionModFile = compactionModFile;
   }
 
   public void setFile(File file) {
@@ -502,7 +642,20 @@ public class TsFileResource {
    */
   public Pair<Long, Long> getPossibleStartTimeAndEndTime(
       PartialPath devicePattern, Set<IDeviceID> deviceMatchInfo) {
-    return timeIndex.getPossibleStartTimeAndEndTime(devicePattern, deviceMatchInfo);
+    if (devicePattern.hasWildcard()) {
+      // root.**.d1
+      // root.db.*.d1
+      // root.db.a.**, use the pattern to match device
+      return timeIndex.getPossibleStartTimeAndEndTime(devicePattern, deviceMatchInfo);
+    } else {
+      // root.db.a.d1
+      IDeviceID deviceID = DeviceIDFactory.getInstance().getDeviceID(devicePattern);
+      if (definitelyNotContains(deviceID)) {
+        // resource does not contain this device
+        return null;
+      }
+      return new Pair<>(getStartTime(deviceID), getEndTime(deviceID));
+    }
   }
 
   public boolean isClosed() {
@@ -520,10 +673,11 @@ public class TsFileResource {
       modFile.close();
       modFile = null;
     }
-    if (compactionModFile != null) {
-      compactionModFile.close();
-      compactionModFile = null;
+    if (oldModFile != null) {
+      oldModFile.close();
+      oldModFile = null;
     }
+
     processor = null;
     pathToChunkMetadataListMap = null;
     pathToReadOnlyMemChunkMap = null;
@@ -588,8 +742,18 @@ public class TsFileResource {
   }
 
   public void removeModFile() throws IOException {
-    getModFile().remove();
-    modFile = null;
+    ModificationFileV1 oldMFile = getOldModFileInternal();
+    if (oldMFile != null) {
+      oldMFile.remove();
+      setOldModFile(null);
+    }
+
+    if (modFile != null) {
+      if (modFile.removeReferences(Collections.singletonList(this))) {
+        modFileManager.removeModFile(modFile);
+      }
+      modFile = null;
+    }
   }
 
   /**
@@ -598,6 +762,7 @@ public class TsFileResource {
    */
   public boolean remove() {
     forceMarkDeleted();
+
     try {
       fsFactory.deleteIfExists(file);
       fsFactory.deleteIfExists(
@@ -609,10 +774,9 @@ public class TsFileResource {
     if (!removeResourceFile()) {
       return false;
     }
+
     try {
-      fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX));
-      fsFactory.deleteIfExists(
-          fsFactory.getFile(file.getPath() + ModificationFile.COMPACTION_FILE_SUFFIX));
+      removeModFile();
     } catch (IOException e) {
       LOGGER.error("ModificationFile {} cannot be deleted: {}", file, e.getMessage());
       return false;
@@ -636,11 +800,11 @@ public class TsFileResource {
     fsFactory.moveFile(
         fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX),
         fsFactory.getFile(targetDir, file.getName() + RESOURCE_SUFFIX));
-    File originModFile = fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX);
+    File originModFile = fsFactory.getFile(file.getPath() + ModificationFileV1.FILE_SUFFIX);
     if (originModFile.exists()) {
       fsFactory.moveFile(
           originModFile,
-          fsFactory.getFile(targetDir, file.getName() + ModificationFile.FILE_SUFFIX));
+          fsFactory.getFile(targetDir, file.getName() + ModificationFileV1.FILE_SUFFIX));
     }
   }
 
@@ -856,9 +1020,9 @@ public class TsFileResource {
     return timeIndex.isSpanMultiTimePartitions();
   }
 
-  public void setModFile(ModificationFile modFile) {
+  public void setOldModFile(ModificationFileV1 oldModFile) {
     synchronized (this) {
-      this.modFile = modFile;
+      this.oldModFile = oldModFile;
     }
   }
 
@@ -1189,5 +1353,95 @@ public class TsFileResource {
 
   public void setInsertionCompactionTaskCandidate(InsertionCompactionCandidateStatus status) {
     insertionCompactionCandidateStatus = status;
+  }
+
+  public TsFileResource getPrev() {
+    return prev;
+  }
+
+  public TsFileResource getNext() {
+    return next;
+  }
+
+  public ModificationFile getModFile() {
+    if (modFilePathDeserialized) {
+      return modFile;
+    }
+    deserializeModFilePath();
+    return modFile;
+  }
+
+  public ModificationFile getModFileMayAllocate() throws IOException {
+    if (modFile == null) {
+      setModFile(modFileManager.allocate(this), true);
+    }
+    return modFile;
+  }
+
+  public ModIterator getModEntryIterator() {
+    return new ModIterator();
+  }
+
+  public Collection<ModEntry> getAllModEntries() {
+    long estimatedModEntrySizeByte = 50;
+    long modFileTotalSize = getModFileTotalSizeByte();
+    if (modFileTotalSize == 0) {
+      return Collections.emptyList();
+    }
+
+    // estimate the initial size to avoid resizing
+    List<ModEntry> entries =
+        new ArrayList<>((int) (modFileTotalSize / estimatedModEntrySizeByte + 1));
+    ModIterator modEntryIterator = getModEntryIterator();
+    modEntryIterator.forEachRemaining(entries::add);
+    return entries;
+  }
+
+  public class ModIterator implements Iterator<ModEntry> {
+
+    private final Iterator<Modification> oldModIterator;
+    private final Iterator<ModEntry> newModIterator;
+
+    public ModIterator() {
+      ModificationFileV1 oldMFile = getOldModFileInternal();
+      Iterator<Modification> oldIterator =
+          oldMFile != null ? oldMFile.getModificationsIter().iterator() : null;
+      Iterator<ModEntry> newIterator = null;
+      try {
+        ModificationFile newModFile = getModFile();
+        newIterator = newModFile != null ? newModFile.getModIterator() : null;
+      } catch (IOException e) {
+        LOGGER.warn("Failed to read mods from {} for {}", modFile, this, e);
+      }
+
+      this.oldModIterator = oldIterator;
+      this.newModIterator = newIterator;
+    }
+
+    @Override
+    public boolean hasNext() {
+      return (oldModIterator != null && oldModIterator.hasNext())
+          || (newModIterator != null && newModIterator.hasNext());
+    }
+
+    @Override
+    public ModEntry next() {
+      if (oldModIterator != null && oldModIterator.hasNext()) {
+        Deletion deletion = ((Deletion) oldModIterator.next());
+        return new TreeDeletionEntry(deletion);
+      }
+      if (newModIterator != null && newModIterator.hasNext()) {
+        return newModIterator.next();
+      }
+      throw new NoSuchElementException();
+    }
+  }
+
+  public ModFileManager getModFileManager() {
+    return modFileManager;
+  }
+
+  public void setModFileManager(ModFileManager modFileManager) {
+    this.modFileManager = modFileManager;
   }
 }

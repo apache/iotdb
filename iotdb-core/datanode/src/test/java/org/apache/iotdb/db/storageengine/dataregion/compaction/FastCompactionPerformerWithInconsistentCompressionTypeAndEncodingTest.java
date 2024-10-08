@@ -26,6 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.reader.CompactionChunkReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -121,7 +122,8 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
             unseqResources,
             new FastCompactionPerformer(true),
             0,
-            0);
+            0,
+            new ModFileManager());
 
     Assert.assertTrue(task.start());
     TsFileResource targetFile = tsFileManager.getTsFileList(true).get(0);
@@ -199,7 +201,8 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
             unseqResources,
             new FastCompactionPerformer(true),
             0,
-            0);
+            0,
+            new ModFileManager());
 
     Assert.assertTrue(task.start());
     TsFileResource targetFile = tsFileManager.getTsFileList(true).get(0);
@@ -273,7 +276,8 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
             unseqResources,
             new FastCompactionPerformer(true),
             0,
-            0);
+            0,
+            new ModFileManager());
 
     Assert.assertTrue(task.start());
     TsFileResource targetFile = tsFileManager.getTsFileList(true).get(0);
@@ -324,7 +328,8 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
             unseqResources,
             new FastCompactionPerformer(true),
             0,
-            0);
+            0,
+            new ModFileManager());
 
     Assert.assertTrue(task.start());
     TsFileResource targetFile = tsFileManager.getTsFileList(true).get(0);
@@ -402,7 +407,8 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
             unseqResources,
             new FastCompactionPerformer(true),
             0,
-            0);
+            0,
+            new ModFileManager());
 
     Assert.assertTrue(task.start());
     TsFileResource targetFile = tsFileManager.getTsFileList(true).get(0);
@@ -476,7 +482,8 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
             unseqResources,
             new FastCompactionPerformer(true),
             0,
-            0);
+            0,
+            new ModFileManager());
 
     Assert.assertTrue(task.start());
     TsFileResource targetFile = tsFileManager.getTsFileList(true).get(0);

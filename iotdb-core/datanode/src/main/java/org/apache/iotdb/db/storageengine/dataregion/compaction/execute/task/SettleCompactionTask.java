@@ -63,20 +63,20 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
       boolean isSequence,
       ICompactionPerformer performer,
       long serialId) {
-    super(timePartition, tsFileManager, partiallyDirtyFiles, isSequence, performer, serialId);
+    super(timePartition, tsFileManager, partiallyDirtyFiles, isSequence, performer, serialId, null);
     this.fullyDirtyFiles = fullyDirtyFiles;
     fullyDirtyFiles.forEach(x -> fullyDirtyFileSize += x.getTsFileSize());
     partiallyDirtyFiles.forEach(
         x -> {
           partiallyDirtyFileSize += x.getTsFileSize();
-          totalModsFileSize += x.getModFile().getSize();
+          totalModsFileSize += x.getModFileTotalSizeByte();
         });
     this.hashCode = this.toString().hashCode();
   }
 
   public SettleCompactionTask(
       String databaseName, String dataRegionId, TsFileManager tsFileManager, File logFile) {
-    super(databaseName, dataRegionId, tsFileManager, logFile);
+    super(databaseName, dataRegionId, tsFileManager, logFile, null);
   }
 
   @Override
@@ -86,6 +86,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     return allSourceFiles;
   }
 
+  @SuppressWarnings("unchecked")
   @Override
   protected void calculateSourceFilesAndTargetFiles() throws IOException {
     filesView.renamedTargetFiles = Collections.emptyList();
@@ -96,6 +97,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
                 TsFileNameGenerator.getSettleCompactionTargetFileResources(
                     filesView.sourceFilesInCompactionPerformer, filesView.sequence));
     filesView.targetFilesInPerformer = filesView.targetFilesInLog;
+    allocateModFile(filesView.targetFilesInPerformer, filesView.sourceFilesInCompactionPerformer);
   }
 
   @Override
@@ -212,9 +214,9 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     for (TsFileResource resource : fullyDirtyFiles) {
       if (recoverMemoryStatus) {
         tsFileManager.remove(resource, resource.isSeq());
-        if (resource.getModFile().exists()) {
+        if (resource.oldModFileExists()) {
           FileMetrics.getInstance().decreaseModFileNum(1);
-          FileMetrics.getInstance().decreaseModFileSize(resource.getModFile().getSize());
+          FileMetrics.getInstance().decreaseModFileSize(resource.getOldModFile().getSize());
         }
       }
       boolean res = deleteTsFileOnDisk(resource);

@@ -21,7 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata;
 
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.DiskChunkLoader;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
@@ -48,7 +48,7 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
   // global time filter, only used to check time range
   private final Filter globalTimeFilter;
 
-  private final List<Modification> pathModifications;
+  private final List<ModEntry> pathModifications;
 
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
@@ -58,7 +58,7 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
       TsFileResource resource,
       QueryContext context,
       Filter globalTimeFilter,
-      List<Modification> pathModifications) {
+      List<ModEntry> pathModifications) {
     this.resource = resource;
     this.context = context;
     this.globalTimeFilter = globalTimeFilter;

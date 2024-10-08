@@ -429,6 +429,17 @@ public class IoTDBDescriptor {
     conf.setWALCompressionAlgorithm(
         enableWALCompression ? CompressionType.LZ4 : CompressionType.UNCOMPRESSED);
 
+    conf.setLevelModFileCntThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "level_mod_file_cnt_threshold",
+                Integer.toString(conf.getLevelModFileCntThreshold()))));
+    conf.setSingleModFileSizeThreshold(
+        Long.parseLong(
+            properties.getProperty(
+                "single_mod_file_size_threshold",
+                Integer.toString(conf.getLevelModFileCntThreshold()))));
+
     conf.setCompactionScheduleIntervalInMs(
         Long.parseLong(
             properties.getProperty(
@@ -1974,6 +1985,17 @@ public class IoTDBDescriptor {
                   ConfigurationFileUtils.getConfigurationDefaultValue("enable_wal_compression")));
       conf.setWALCompressionAlgorithm(
           enableWALCompression ? CompressionType.LZ4 : CompressionType.UNCOMPRESSED);
+
+      conf.setLevelModFileCntThreshold(
+          Integer.parseInt(
+              properties.getProperty(
+                  "level_mod_file_cnt_threshold",
+                  Integer.toString(conf.getLevelModFileCntThreshold()))));
+      conf.setSingleModFileSizeThreshold(
+          Long.parseLong(
+              properties.getProperty(
+                  "single_mod_file_size_threshold",
+                  Integer.toString(conf.getLevelModFileCntThreshold()))));
 
       // update Consensus config
       reloadConsensusProps(properties);

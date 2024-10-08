@@ -27,6 +27,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -80,7 +81,13 @@ public class CompactionOverlapCheckTest extends AbstractCompactionTest {
     prepareOverlapSequenceFilesWithNonAlignedSeries();
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
+            0,
+            tsFileManager,
+            seqResources,
+            true,
+            new ReadChunkCompactionPerformer(),
+            0,
+            new ModFileManager());
     Assert.assertFalse(task.start());
   }
 
@@ -91,7 +98,13 @@ public class CompactionOverlapCheckTest extends AbstractCompactionTest {
     prepareOverlapSequenceFilesWithAlignedSeries();
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
+            0,
+            tsFileManager,
+            seqResources,
+            true,
+            new ReadChunkCompactionPerformer(),
+            0,
+            new ModFileManager());
     Assert.assertFalse(task.start());
   }
 
@@ -102,7 +115,13 @@ public class CompactionOverlapCheckTest extends AbstractCompactionTest {
     prepareOverlapSequenceFilesWithNonAlignedSeries();
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new FastCompactionPerformer(false), 0);
+            0,
+            tsFileManager,
+            seqResources,
+            true,
+            new FastCompactionPerformer(false),
+            0,
+            new ModFileManager());
     Assert.assertFalse(task.start());
   }
 
@@ -113,7 +132,13 @@ public class CompactionOverlapCheckTest extends AbstractCompactionTest {
     prepareOverlapSequenceFilesWithAlignedSeries();
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new FastCompactionPerformer(false), 0);
+            0,
+            tsFileManager,
+            seqResources,
+            true,
+            new FastCompactionPerformer(false),
+            0,
+            new ModFileManager());
     Assert.assertFalse(task.start());
   }
 
@@ -124,7 +149,13 @@ public class CompactionOverlapCheckTest extends AbstractCompactionTest {
     prepareInsideChunkOverlapUnSequenceFilesWithNonAlignedSeries();
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, unseqResources, false, new FastCompactionPerformer(false), 0);
+            0,
+            tsFileManager,
+            unseqResources,
+            false,
+            new FastCompactionPerformer(false),
+            0,
+            new ModFileManager());
     Assert.assertFalse(task.start());
   }
 
@@ -135,7 +166,13 @@ public class CompactionOverlapCheckTest extends AbstractCompactionTest {
     prepareInsideChunkOverlapUnSequenceFilesWithAlignedSeries();
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, unseqResources, false, new FastCompactionPerformer(false), 0);
+            0,
+            tsFileManager,
+            unseqResources,
+            false,
+            new FastCompactionPerformer(false),
+            0,
+            new ModFileManager());
     Assert.assertFalse(task.start());
   }
 
@@ -152,7 +189,8 @@ public class CompactionOverlapCheckTest extends AbstractCompactionTest {
             unseqResources,
             new FastCompactionPerformer(true),
             0,
-            0);
+            0,
+            new ModFileManager());
     Assert.assertFalse(task.start());
   }
 
@@ -169,7 +207,8 @@ public class CompactionOverlapCheckTest extends AbstractCompactionTest {
             unseqResources,
             new FastCompactionPerformer(true),
             0,
-            0);
+            0,
+            new ModFileManager());
     Assert.assertFalse(task.start());
   }
 

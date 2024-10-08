@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.TsFileResourceCandidate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -59,8 +60,9 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
       long timePartition,
       boolean sequence,
       TsFileManager tsFileManager,
-      CompactionScheduleContext context) {
-    super(storageGroupName, dataRegionId, timePartition, sequence, tsFileManager);
+      CompactionScheduleContext context,
+      ModFileManager modFileManager) {
+    super(storageGroupName, dataRegionId, timePartition, sequence, tsFileManager, modFileManager);
     double availableDiskSpaceInByte =
         MetricService.getInstance()
             .getAutoGauge(
@@ -304,7 +306,8 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
           currentSkippedResources,
           sequence,
           createCompactionPerformer(),
-          tsFileManager.getNextCompactionTaskId());
+          tsFileManager.getNextCompactionTaskId(),
+          modFileManager);
     }
 
     private List<InnerSpaceCompactionTask> getSelectedTaskList() {

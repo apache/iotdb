@@ -37,7 +37,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.PageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.flushcontroller.FollowedBatchedCompactionFlushController;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
@@ -78,7 +78,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
       AbstractCompactionWriter compactionWriter,
       Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
       Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
-      Map<String, PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer>>
+      Map<String, PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>>
           modificationCacheMap,
       List<TsFileResource> sortedSourceFiles,
       IDeviceID deviceId,
@@ -212,7 +212,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
         AbstractCompactionWriter compactionWriter,
         Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
         Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
-        Map<String, PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer>>
+        Map<String, PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>>
             modificationCacheMap,
         List<TsFileResource> sortedSourceFiles,
         IDeviceID deviceId,
@@ -307,7 +307,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
         AbstractCompactionWriter compactionWriter,
         Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
         Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
-        Map<String, PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer>>
+        Map<String, PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>>
             modificationCacheMap,
         List<TsFileResource> sortedSourceFiles,
         IDeviceID deviceId,

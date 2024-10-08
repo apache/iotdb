@@ -30,7 +30,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionCheckerUtils;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
@@ -177,10 +178,11 @@ public class BatchedAlignedSeriesCrossSpaceCompactionTest extends AbstractCompac
             CompressionType.LZ4,
             Arrays.asList(false, false, false),
             true);
+    seqResource1.setModFileManager(new ModFileManager());
 
     seqResource1
-        .getModFile()
-        .write(new Deletion(new PartialPath("root.testsg.d0", "*"), Long.MAX_VALUE, 200000));
+        .getModFileMayAllocate()
+        .write(new TreeDeletionEntry(new PartialPath("root.testsg.d0", "*"), 200000));
     seqResource1.getModFile().close();
     seqResources.add(seqResource1);
 
@@ -342,12 +344,13 @@ public class BatchedAlignedSeriesCrossSpaceCompactionTest extends AbstractCompac
             CompressionType.LZ4,
             Arrays.asList(false, false, false),
             true);
+    seqResource1.setModFileManager(new ModFileManager());
     seqResource1
-        .getModFile()
-        .write(new Deletion(new PartialPath("root.testsg.d0", "s0"), Long.MAX_VALUE, 15));
+        .getModFileMayAllocate()
+        .write(new TreeDeletionEntry(new PartialPath("root.testsg.d0", "s0"), 15));
     seqResource1
-        .getModFile()
-        .write(new Deletion(new PartialPath("root.testsg.d0", "s2"), Long.MAX_VALUE, 20));
+        .getModFileMayAllocate()
+        .write(new TreeDeletionEntry(new PartialPath("root.testsg.d0", "s2"), 20));
     seqResource1.getModFile().close();
     seqResources.add(seqResource1);
 

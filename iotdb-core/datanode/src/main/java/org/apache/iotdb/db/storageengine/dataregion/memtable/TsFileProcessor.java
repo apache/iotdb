@@ -56,8 +56,8 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.FlushListener;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.flush.NotifyFlushMemTable;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IFileScanHandle;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl.DiskAlignedChunkHandleImpl;
@@ -101,7 +101,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -136,7 +135,7 @@ public class TsFileProcessor {
   private final ConcurrentLinkedDeque<IMemTable> flushingMemTables = new ConcurrentLinkedDeque<>();
 
   /** Modification to memtable mapping. */
-  private final List<Pair<Modification, IMemTable>> modsToMemtable = new ArrayList<>();
+  private final List<Pair<ModEntry, IMemTable>> modsToMemtable = new ArrayList<>();
 
   /** Writer for restore tsfile and flushing. */
   private RestorableTsFileIOWriter writer;
@@ -1010,8 +1009,12 @@ public class TsFileProcessor {
    * <= 'timestamp' in the deletion. <br>
    *
    * <p>Delete data in both working MemTable and flushing MemTables.
+   *
+   * @param nonWritableFiles if the TsFile has a resource file after locking, the TsFile should be
+   *     added into the list
    */
-  public void deleteDataInMemory(Deletion deletion, Set<PartialPath> devicePaths) {
+  public void deleteDataInMemory(
+      TreeDeletionEntry deletion, List<TsFileResource> nonWritableFiles) {
     flushQueryLock.writeLock().lock();
     if (logger.isDebugEnabled()) {
       logger.debug(
@@ -1019,19 +1022,20 @@ public class TsFileProcessor {
     }
     try {
       if (workMemTable != null) {
-        logger.info(
-            "[Deletion] Deletion with path: {}, time:{}-{} in workMemTable",
-            deletion.getPath(),
-            deletion.getStartTime(),
-            deletion.getEndTime());
-        for (PartialPath device : devicePaths) {
-          workMemTable.delete(
-              deletion.getPath(), device, deletion.getStartTime(), deletion.getEndTime());
-        }
+        logger.info("[Deletion] Deletion {} in workMemTable", deletion);
+        workMemTable.delete(
+            deletion.getPathPattern(),
+            deletion.getTimeRange().getMin(),
+            deletion.getTimeRange().getMax());
       }
       // Flushing memTables are immutable, only record this deletion in these memTables for read
       if (!flushingMemTables.isEmpty()) {
         modsToMemtable.add(new Pair<>(deletion, flushingMemTables.getLast()));
+        if (tsFileResource.resourceFileExists()) {
+          // resource file exists, the memory mods may have already been written to the Mod File,
+          // treat it as a closed file to ensure the deletion will not be lost
+          nonWritableFiles.add(tsFileResource);
+        }
       }
     } finally {
       flushQueryLock.writeLock().unlock();
@@ -1470,19 +1474,14 @@ public class TsFileProcessor {
 
     try {
       flushQueryLock.writeLock().lock();
-      Iterator<Pair<Modification, IMemTable>> iterator = modsToMemtable.iterator();
+      Iterator<Pair<ModEntry, IMemTable>> iterator = modsToMemtable.iterator();
       while (iterator.hasNext()) {
-        Pair<Modification, IMemTable> entry = iterator.next();
+        Pair<ModEntry, IMemTable> entry = iterator.next();
         if (entry.right.equals(memTableToFlush)) {
-          entry.left.setFileOffset(tsFileResource.getTsFileSize());
-          this.tsFileResource.getModFile().write(entry.left);
-          tsFileResource.getModFile().close();
+          this.tsFileResource.getModFileMayAllocate().write(entry.left);
+          this.tsFileResource.getModFileMayAllocate().close();
           iterator.remove();
-          logger.info(
-              "[Deletion] Deletion with path: {}, time:{}-{} written when flush memtable",
-              entry.left.getPath(),
-              ((Deletion) (entry.left)).getStartTime(),
-              ((Deletion) (entry.left)).getEndTime());
+          logger.info("[Deletion] Deletion {} written when flush memtable", entry.left);
         }
       }
     } catch (IOException e) {
@@ -1753,7 +1752,7 @@ public class TsFileProcessor {
   private int searchTimeChunkMetaDataIndexAndSetModifications(
       List<List<ChunkMetadata>> chunkMetaDataList,
       IDeviceID deviceID,
-      List<List<Modification>> modifications,
+      List<List<ModEntry>> modifications,
       QueryContext context)
       throws QueryProcessException {
     int timeChunkMetaDataIndex = -1;
@@ -1801,7 +1800,7 @@ public class TsFileProcessor {
       QueryContext queryContext, IDeviceID deviceID)
       throws QueryProcessException, IllegalPathException {
     List<AlignedChunkMetadata> alignedChunkMetadataForOneDevice = new ArrayList<>();
-    List<List<Modification>> modifications = new ArrayList<>();
+    List<List<ModEntry>> modifications = new ArrayList<>();
     List<List<ChunkMetadata>> chunkMetaDataListForDevice =
         writer.getVisibleMetadataList(deviceID, null);
 

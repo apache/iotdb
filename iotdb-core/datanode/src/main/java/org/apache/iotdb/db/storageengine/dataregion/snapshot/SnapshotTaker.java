@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DirectoryNotLegalException;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -202,14 +202,19 @@ public class SnapshotTaker {
         }
         File snapshotTsFile = getSnapshotFilePathForTsFile(tsFile, snapshotId);
         // create hard link for tsfile, resource, mods
+        File snapthosResFile = new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
         createHardLink(snapshotTsFile, tsFile);
         createHardLink(
             new File(snapshotTsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
-            new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
-        if (resource.getModFile().exists()) {
+            snapthosResFile);
+        if (resource.oldModFileExists()) {
           copyFile(
-              new File(snapshotTsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX),
-              new File(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX));
+              new File(snapshotTsFile.getAbsolutePath() + ModificationFileV1.FILE_SUFFIX),
+              new File(tsFile.getAbsolutePath() + ModificationFileV1.FILE_SUFFIX));
+        }
+        // add reference to the Mod file to prevent it from being deleted
+        if (resource.newModFileExists()) {
+          resource.getModFile().addReference(new TsFileResource(snapthosResFile));
         }
       }
       return true;

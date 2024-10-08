@@ -21,10 +21,9 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogAnalyzer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.TsFileIdentifier;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -37,8 +36,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /** CompactionRecoverTask executes the recover process for all compaction tasks. */
@@ -174,20 +171,6 @@ public class CompactionRecoverTask {
       }
     }
 
-    // delete compaction mods files
-    List<TsFileResource> sourceTsFileResourceList = new ArrayList<>();
-    for (TsFileIdentifier sourceFileIdentifier : sourceFileIdentifiers) {
-      sourceTsFileResourceList.add(new TsFileResource(sourceFileIdentifier.getFileFromDataDirs()));
-    }
-    try {
-      CompactionUtils.deleteCompactionModsFile(sourceTsFileResourceList, Collections.emptyList());
-    } catch (IOException e) {
-      LOGGER.error(
-          "{} [Compaction][Recover] Exception occurs while deleting compaction mods file",
-          fullStorageGroupName,
-          e);
-      return false;
-    }
     return true;
   }
 
@@ -286,7 +269,7 @@ public class CompactionRecoverTask {
     }
 
     // delete mods file
-    file = getFileFromDataDirs(tsFileIdentifier.getFilePath() + ModificationFile.FILE_SUFFIX);
+    file = getFileFromDataDirs(tsFileIdentifier.getFilePath() + ModificationFileV1.FILE_SUFFIX);
     if (!checkAndDeleteFile(file)) {
       success = false;
     }
@@ -294,7 +277,7 @@ public class CompactionRecoverTask {
     // delete compaction mods file
     file =
         getFileFromDataDirs(
-            tsFileIdentifier.getFilePath() + ModificationFile.COMPACTION_FILE_SUFFIX);
+            tsFileIdentifier.getFilePath() + ModificationFileV1.COMPACTION_FILE_SUFFIX);
     if (!checkAndDeleteFile(file)) {
       success = false;
     }

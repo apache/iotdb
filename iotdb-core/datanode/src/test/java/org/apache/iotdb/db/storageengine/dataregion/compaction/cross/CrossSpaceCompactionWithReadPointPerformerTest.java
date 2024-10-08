@@ -38,6 +38,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionC
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTimeseriesType;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceList;
@@ -425,7 +426,8 @@ public class CrossSpaceCompactionWithReadPointPerformerTest {
                     mergeResource.getUnseqFiles(),
                     new ReadPointCompactionPerformer(),
                     0,
-                    0);
+                    0,
+                    new ModFileManager());
             compactionTask.start();
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
             for (TsFileResource seqResource : seqResources) {
@@ -726,7 +728,8 @@ public class CrossSpaceCompactionWithReadPointPerformerTest {
                     mergeResource.getUnseqFiles(),
                     new ReadPointCompactionPerformer(),
                     0,
-                    0);
+                    0,
+                    new ModFileManager());
             compactionTask.start();
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
             for (TsFileResource seqResource : seqResources.subList(1, 4)) {
@@ -1026,7 +1029,8 @@ public class CrossSpaceCompactionWithReadPointPerformerTest {
                     mergeResource.getUnseqFiles(),
                     new ReadPointCompactionPerformer(),
                     0,
-                    0);
+                    0,
+                    new ModFileManager());
             compactionTask.start();
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
             for (TsFileResource seqResource : seqResources.subList(1, 4)) {

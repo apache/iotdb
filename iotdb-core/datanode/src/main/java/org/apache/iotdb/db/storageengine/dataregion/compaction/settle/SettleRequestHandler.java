@@ -31,7 +31,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Abst
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceList;
@@ -85,6 +86,11 @@ public class SettleRequestHandler {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       }
       List<TsFileResource> selectedTsFileResources = context.getTsFileResourcesByFileNames();
+      if (!context.hasOldModFiles
+          && selectedTsFileResources.stream().noneMatch(TsFileResource::newModFileExists)) {
+        return RpcUtils.getStatus(
+            TSStatusCode.ILLEGAL_PARAMETER, "Every selected TsFile does not contain a Mod file.");
+      }
       return context.submitCompactionTask(selectedTsFileResources);
     } finally {
       CompactionScheduler.exclusiveUnlockCompactionSelection();
@@ -96,13 +102,14 @@ public class SettleRequestHandler {
 
     private boolean hasSeqFiles;
     private boolean hasUnseqFiles;
-    private boolean hasModsFiles;
+    private boolean hasOldModFiles;
     private List<String> paths;
     private Set<String> tsFileNames;
     private TsFileResourceList allTsFileResourceList;
 
     private TsFileManager tsFileManager;
     private IoTDBConfig config;
+    private ModFileManager modFileManager;
 
     private SettleRequestContext(List<String> paths) {
       this.paths = paths;
@@ -135,8 +142,8 @@ public class SettleRequestHandler {
           return RpcUtils.getStatus(
               TSStatusCode.PATH_NOT_EXIST, "The specified file does not exist in " + path);
         }
-        File modsFile = new File(path + ModificationFile.FILE_SUFFIX);
-        hasModsFiles |= modsFile.exists();
+        File modsFile = new File(path + ModificationFileV1.FILE_SUFFIX);
+        hasOldModFiles |= modsFile.exists();
 
         ConsistentSettleInfo currentInfo = calculateConsistentInfo(currentTsFile);
         if (!currentInfo.isValid) {
@@ -164,11 +171,6 @@ public class SettleRequestHandler {
         }
       }
 
-      if (!hasModsFiles) {
-        return RpcUtils.getStatus(
-            TSStatusCode.ILLEGAL_PARAMETER,
-            "Every selected TsFile does not contains the mods file.");
-      }
       DataRegion dataRegion =
           StorageEngine.getInstance()
               .getDataRegion(new DataRegionId(targetConsistentSettleInfo.dataRegionId));
@@ -176,6 +178,7 @@ public class SettleRequestHandler {
         return RpcUtils.getStatus(TSStatusCode.ILLEGAL_PATH, "DataRegion not exist");
       }
       tsFileManager = dataRegion.getTsFileManager();
+      modFileManager = dataRegion.getModFileManager(targetConsistentSettleInfo.timePartitionId);
 
       validationResult = checkCompactionConfigs();
       if (!isSuccess(validationResult)) {
@@ -281,7 +284,8 @@ public class SettleRequestHandler {
               tsFileResources,
               hasSeqFiles,
               performer,
-              tsFileManager.getNextCompactionTaskId());
+              tsFileManager.getNextCompactionTaskId(),
+              modFileManager);
       try {
         CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
       } catch (InterruptedException e) {

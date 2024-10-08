@@ -27,6 +27,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Abst
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskQueue;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.DefaultCompactionTaskComparatorImpl;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
@@ -182,7 +183,8 @@ public class CompactionTaskQueueTest extends AbstractCompactionTest {
             Collections.singletonList(seqResources.get(seqResources.size() - 1)),
             true,
             new ReadChunkCompactionPerformer(),
-            0);
+            0,
+            new ModFileManager());
     InnerSpaceCompactionTask mockTask = Mockito.spy(task);
     Mockito.doReturn(memCost).when(mockTask).getEstimatedMemoryCost();
     Mockito.doReturn(fileNum).when(mockTask).getProcessedFileNum();

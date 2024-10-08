@@ -22,9 +22,8 @@ package org.apache.iotdb.db.tools;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 
@@ -62,6 +61,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -74,9 +74,9 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
 
   protected TsFileSequenceReader reader;
   protected File oldTsFile;
-  protected List<Modification> oldModification;
+  protected List<ModEntry> oldModification;
   protected TsFileResource oldTsFileResource;
-  protected Iterator<Modification> modsIterator;
+  protected Iterator<ModEntry> modsIterator;
 
   protected Decoder defaultTimeDecoder =
       Decoder.getDecoderByType(
@@ -105,8 +105,8 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
     String file = oldTsFile.getAbsolutePath();
     reader = new TsFileSequenceReader(file);
     partitionWriterMap = new HashMap<>();
-    if (FSFactoryProducer.getFSFactory().getFile(file + ModificationFile.FILE_SUFFIX).exists()) {
-      oldModification = (List<Modification>) resourceToBeRewritten.getModFile().getModifications();
+    if (resourceToBeRewritten.getModFileTotalSizeByte() > 0) {
+      oldModification = (List<ModEntry>) resourceToBeRewritten.getAllModEntries();
       modsIterator = oldModification.iterator();
     }
   }
@@ -153,7 +153,6 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
     byte marker;
     IDeviceID deviceId = null;
     boolean firstChunkInChunkGroup = true;
-    long chunkHeaderOffset;
     try {
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
@@ -165,7 +164,6 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
             break;
           case MetaMarker.CHUNK_HEADER:
           case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
-            chunkHeaderOffset = reader.position() - 1;
             ChunkHeader header = reader.readChunkHeader(marker);
             MeasurementSchema measurementSchema =
                 new MeasurementSchema(
@@ -174,7 +172,6 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
                     header.getEncodingType(),
                     header.getCompressionType());
             TSDataType dataType = header.getDataType();
-            TSEncoding encoding = header.getEncodingType();
             List<PageHeader> pageHeadersInChunk = new ArrayList<>();
             List<ByteBuffer> dataInChunk = new ArrayList<>();
             List<Boolean> needToDecodeInfo = new ArrayList<>();
@@ -183,8 +180,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
               // a new Page
               PageHeader pageHeader =
                   reader.readPageHeader(dataType, header.getChunkType() == MetaMarker.CHUNK_HEADER);
-              boolean needToDecode =
-                  checkIfNeedToDecode(measurementSchema, deviceId, pageHeader, chunkHeaderOffset);
+              boolean needToDecode = checkIfNeedToDecode(measurementSchema, deviceId, pageHeader);
               needToDecodeInfo.add(needToDecode);
               ByteBuffer pageData =
                   !needToDecode
@@ -200,8 +196,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
                 measurementSchema,
                 pageHeadersInChunk,
                 dataInChunk,
-                needToDecodeInfo,
-                chunkHeaderOffset);
+                needToDecodeInfo);
             firstChunkInChunkGroup = false;
             break;
           case MetaMarker.OPERATION_INDEX_RANGE:
@@ -251,7 +246,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
    * false.
    */
   protected boolean checkIfNeedToDecode(
-      MeasurementSchema schema, IDeviceID deviceId, PageHeader pageHeader, long chunkHeaderOffset)
+      MeasurementSchema schema, IDeviceID deviceId, PageHeader pageHeader)
       throws IllegalPathException {
     if (pageHeader.getStatistics() == null) {
       return true;
@@ -259,17 +254,14 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
     // Decode is required if the page has data to be deleted. Otherwise, decode is not required
     if (oldModification != null) {
       modsIterator = oldModification.iterator();
-      Deletion currentDeletion = null;
+      TreeDeletionEntry currentDeletion = null;
       while (modsIterator.hasNext()) {
-        currentDeletion = (Deletion) modsIterator.next();
-        if (currentDeletion
-                .getPath()
-                .matchFullPath(
-                    new PartialPath(
-                        ((PlainDeviceID) deviceId).toStringID() + "." + schema.getMeasurementId()))
-            && currentDeletion.getFileOffset() > chunkHeaderOffset) {
-          if (pageHeader.getStartTime() <= currentDeletion.getEndTime()
-              && pageHeader.getEndTime() >= currentDeletion.getStartTime()) {
+        currentDeletion = (TreeDeletionEntry) modsIterator.next();
+        if (currentDeletion.matchesFull(
+            new PartialPath(
+                ((PlainDeviceID) deviceId).toStringID() + "." + schema.getMeasurementId()))) {
+          if (pageHeader.getStartTime() <= currentDeletion.getTimeRange().getMax()
+              && pageHeader.getEndTime() >= currentDeletion.getTimeRange().getMin()) {
             return true;
           }
         }
@@ -290,15 +282,13 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
       MeasurementSchema schema,
       List<PageHeader> pageHeadersInChunk,
       List<ByteBuffer> pageDataInChunk,
-      List<Boolean> needToDecodeInfoInChunk,
-      long chunkHeaderOffset)
+      List<Boolean> needToDecodeInfoInChunk)
       throws IOException, PageException, IllegalPathException {
     valueDecoder = Decoder.getDecoderByType(schema.getEncodingType(), schema.getType());
     Map<Long, ChunkWriterImpl> partitionChunkWriterMap = new HashMap<>();
     for (int i = 0; i < pageDataInChunk.size(); i++) {
       if (Boolean.TRUE.equals(needToDecodeInfoInChunk.get(i))) {
-        decodeAndWritePage(
-            deviceId, schema, pageDataInChunk.get(i), partitionChunkWriterMap, chunkHeaderOffset);
+        decodeAndWritePage(deviceId, schema, pageDataInChunk.get(i), partitionChunkWriterMap);
       } else {
         writePage(
             schema, pageHeadersInChunk.get(i), pageDataInChunk.get(i), partitionChunkWriterMap);
@@ -373,43 +363,36 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
       IDeviceID deviceId,
       MeasurementSchema schema,
       ByteBuffer pageData,
-      Map<Long, ChunkWriterImpl> partitionChunkWriterMap,
-      long chunkHeaderOffset)
+      Map<Long, ChunkWriterImpl> partitionChunkWriterMap)
       throws IOException, IllegalPathException {
     valueDecoder.reset();
     PageReader pageReader =
         new PageReader(pageData, schema.getType(), valueDecoder, defaultTimeDecoder);
     // read delete time range from old modification file
-    List<TimeRange> deleteIntervalList =
-        getOldSortedDeleteIntervals(deviceId, schema, chunkHeaderOffset);
+    List<TimeRange> deleteIntervalList = getOldSortedDeleteIntervals(deviceId, schema);
     pageReader.setDeleteIntervalList(deleteIntervalList);
     BatchData batchData = pageReader.getAllSatisfiedPageData();
     rewritePageIntoFiles(batchData, schema, partitionChunkWriterMap);
   }
 
-  private List<TimeRange> getOldSortedDeleteIntervals(
-      IDeviceID deviceId, MeasurementSchema schema, long chunkHeaderOffset)
+  private List<TimeRange> getOldSortedDeleteIntervals(IDeviceID deviceId, MeasurementSchema schema)
       throws IllegalPathException {
     if (oldModification != null) {
       ChunkMetadata chunkMetadata = new ChunkMetadata();
       modsIterator = oldModification.iterator();
-      Deletion currentDeletion = null;
+      TreeDeletionEntry currentDeletion = null;
       while (modsIterator.hasNext()) {
-        currentDeletion = (Deletion) modsIterator.next();
+        currentDeletion = (TreeDeletionEntry) modsIterator.next();
         // if deletion path match the chunkPath, then add the deletion to the list
-        if (currentDeletion
-                .getPath()
-                .matchFullPath(
-                    new PartialPath(
-                        ((PlainDeviceID) deviceId).toStringID() + "." + schema.getMeasurementId()))
-            && currentDeletion.getFileOffset() > chunkHeaderOffset) {
-          chunkMetadata.insertIntoSortedDeletions(
-              new TimeRange(currentDeletion.getStartTime(), currentDeletion.getEndTime()));
+        if (currentDeletion.matchesFull(
+            new PartialPath(
+                ((PlainDeviceID) deviceId).toStringID() + "." + schema.getMeasurementId()))) {
+          chunkMetadata.insertIntoSortedDeletions(currentDeletion.getTimeRange());
         }
       }
       return chunkMetadata.getDeleteIntervalList();
     }
-    return null;
+    return Collections.emptyList();
   }
 
   protected void rewritePageIntoFiles(
