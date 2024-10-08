@@ -33,6 +33,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.pipe.api.access.Row;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.PlainDeviceID;
@@ -49,6 +50,7 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,6 +83,16 @@ public class TsFileInsertionDataContainerTest {
   private File nonalignedTsFile;
   private TsFileResource resource;
 
+  // TsFileGeneratorUtils.generateAlignedTsFile may change the configs, which should be reversed
+  private int prevGroupSizeByte;
+  private int prevPageSizeByte;
+
+  @Before
+  public void setUp() throws Exception {
+    prevGroupSizeByte = TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte();
+    prevPageSizeByte = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+  }
+
   @After
   public void tearDown() throws Exception {
     if (alignedTsFile != null) {
@@ -92,6 +104,8 @@ public class TsFileInsertionDataContainerTest {
     if (Objects.nonNull(resource)) {
       resource.remove();
     }
+    TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(prevGroupSizeByte);
+    TSFileDescriptor.getInstance().getConfig().setPageSizeInByte(prevPageSizeByte);
   }
 
   @Test

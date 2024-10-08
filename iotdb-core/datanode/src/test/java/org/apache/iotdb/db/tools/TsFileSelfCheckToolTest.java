@@ -204,7 +204,7 @@ public class TsFileSelfCheckToolTest {
   }
 
   @Test
-  public void tsFileSelfCheckToolWithRandomModifiedTest() throws IOException, Exception {
+  public void tsFileSelfCheckToolWithRandomModifiedTest() throws Exception {
 
     String fileName = "1-0-0-3.tsfile";
     String filePath = path.concat(fileName);
@@ -214,9 +214,9 @@ public class TsFileSelfCheckToolTest {
     ByteArrayOutputStream bo = new ByteArrayOutputStream();
     ReadWriteIOUtils.write(100, bo);
     byte[] serialArr = bo.toByteArray();
-    // timeseriesMetadata begins at 878364
+    // timeseriesMetadata begins at 17000984
     // randomly modify timeseriesMetadata region
-    raf.seek(965844);
+    raf.seek(17000984);
     raf.write(serialArr, 0, serialArr.length);
     bo.close();
     raf.close();
@@ -225,7 +225,7 @@ public class TsFileSelfCheckToolTest {
     try {
       tool.check(filePath, false);
       fail("No exception thrown.");
-    } catch (TsFileTimeseriesMetadataException e) {
+    } catch (TsFileStatisticsMistakesException | TsFileTimeseriesMetadataException e) {
       assertEquals(
           "Error occurred while getting all TimeseriesMetadata with offset in TsFile.",
           e.getMessage());
