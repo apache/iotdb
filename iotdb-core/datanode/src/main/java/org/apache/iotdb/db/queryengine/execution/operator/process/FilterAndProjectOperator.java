@@ -46,6 +46,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.OptionalInt;
 
 public class FilterAndProjectOperator implements ProcessOperator {
 
@@ -366,13 +367,12 @@ public class FilterAndProjectOperator implements ProcessOperator {
                       ((TernaryColumnTransformer) columnTransformer).getThirdColumnTransformer())));
       return Math.max(4, childMaxLevel);
     } else if (columnTransformer instanceof MultiColumnTransformer) {
-      int childMaxLevel = 0;
-      for (ColumnTransformer transformer :
-          ((MultiColumnTransformer) columnTransformer).getChildren()) {
-        childMaxLevel = Math.max(childMaxLevel, getMaxLevelOfColumnTransformerTree(transformer));
-      }
-      return Math.max(
-          1 + ((MultiColumnTransformer) columnTransformer).getChildren().size(), childMaxLevel);
+      int childrenCount = ((MultiColumnTransformer) columnTransformer).getChildren().size();
+      OptionalInt childMaxLevel =
+          ((MultiColumnTransformer) columnTransformer)
+              .getChildren().stream().mapToInt(this::getMaxLevelOfColumnTransformerTree).max();
+
+      return Math.max(childrenCount + 1, childMaxLevel.orElse(childrenCount + 1));
     } else if (columnTransformer instanceof MappableUDFColumnTransformer) {
       int childMaxLevel = 0;
       for (ColumnTransformer c :
