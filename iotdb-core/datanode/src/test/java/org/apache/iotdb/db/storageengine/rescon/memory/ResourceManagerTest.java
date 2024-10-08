@@ -267,8 +267,7 @@ public class ResourceManagerTest {
     assertEquals(
         TimeIndexLevel.DEVICE_TIME_INDEX,
         TimeIndexLevel.valueOf(tsFileResource1.getTimeIndexType()));
-    long curTimeIndexMemoryThreshold = 3221;
-    tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
+
     tsFileResourceManager.registerSealedTsFileResource(tsFileResource1);
     assertEquals(
         TimeIndexLevel.DEVICE_TIME_INDEX,
@@ -291,6 +290,15 @@ public class ResourceManagerTest {
     assertEquals(
         TimeIndexLevel.DEVICE_TIME_INDEX,
         TimeIndexLevel.valueOf(tsFileResource2.getTimeIndexType()));
+
+    TsFileResource tsFileResource1Copy = new TsFileResource(file1);
+    tsFileResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
+    tsFileResource1.updatePlanIndexes((long) 0);
+    prepareFile(tsFileResource1Copy, 0, ptNum, 0);
+    tsFileResource1Copy.degradeTimeIndex();
+    // the memory is enough for downgraded file1 and non-downgraded file2
+    tsFileResourceManager.setTimeIndexMemoryThreshold(tsFileResource1Copy.calculateRamSize() + tsFileResource2.calculateRamSize());
+
     tsFileResourceManager.registerSealedTsFileResource(tsFileResource2);
     assertEquals(
         TimeIndexLevel.FILE_TIME_INDEX, TimeIndexLevel.valueOf(tsFileResource1.getTimeIndexType()));
