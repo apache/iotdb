@@ -20,7 +20,7 @@
 package org.apache.iotdb.confignode.manager.pipe.event;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -100,7 +100,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pattern) {
+      final TreePattern pattern) {
     super(pipeName, creationTime, pipeTaskMeta, pattern, PipeConfigNodeResourceManager.snapshot());
     this.snapshotPath = snapshotPath;
     this.templateFilePath = Objects.nonNull(templateFilePath) ? templateFilePath : "";
@@ -160,7 +160,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pattern,
+      final TreePattern pattern,
       final long startTime,
       final long endTime) {
     return new PipeConfigRegionSnapshotEvent(

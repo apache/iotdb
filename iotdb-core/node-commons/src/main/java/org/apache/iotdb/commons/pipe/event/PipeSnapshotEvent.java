@@ -21,7 +21,7 @@ package org.apache.iotdb.commons.pipe.event;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.resource.snapshot.PipeSnapshotResourceManager;
 
 import java.util.Set;
@@ -37,7 +37,7 @@ public abstract class PipeSnapshotEvent extends EnrichedEvent implements Seriali
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pattern,
+      final TreePattern pattern,
       final PipeSnapshotResourceManager resourceManager) {
     super(pipeName, creationTime, pipeTaskMeta, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
     this.resourceManager = resourceManager;

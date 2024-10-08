@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.agent.task.connection;
 
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -145,7 +145,7 @@ public class PipeEventCollector implements EventCollector {
     // Only used by events containing delete data node, no need to bind progress index here since
     // delete data event does not have progress index currently
     IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
-        .process(deleteDataEvent.getPlanNode(), (IoTDBPipePattern) deleteDataEvent.getPipePattern())
+        .process(deleteDataEvent.getPlanNode(), (IoTDBTreePattern) deleteDataEvent.getPipePattern())
         .map(
             planNode ->
                 new PipeSchemaRegionWritePlanEvent(

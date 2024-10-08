@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.event.realtime;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpoch;
 
@@ -45,7 +45,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
       final EnrichedEvent event,
       final TsFileEpoch tsFileEpoch,
       final Map<IDeviceID, String[]> device2Measurements,
-      final PipePattern pattern) {
+      final TreePattern pattern) {
     this(event, tsFileEpoch, device2Measurements, null, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
@@ -54,7 +54,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
       final TsFileEpoch tsFileEpoch,
       final Map<IDeviceID, String[]> device2Measurements,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pattern,
+      final TreePattern pattern,
       final long startTime,
       final long endTime) {
     // PipeTaskMeta is used to report the progress of the event, the PipeRealtimeEvent
@@ -166,7 +166,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pattern,
+      final TreePattern pattern,
       final long startTime,
       final long endTime) {
     return new PipeRealtimeEvent(

@@ -105,12 +105,13 @@ public class PipeDataRegionAssigner implements Closeable {
                   counter = 0;
                 }
 
+                // TODO: consider table pattern
                 final ProgressReportEvent reportEvent =
                     new ProgressReportEvent(
                         extractor.getPipeName(),
                         extractor.getCreationTime(),
                         extractor.getPipeTaskMeta(),
-                        extractor.getPipePattern(),
+                        extractor.getTreePattern(),
                         extractor.getRealtimeDataExtractionStartTime(),
                         extractor.getRealtimeDataExtractionEndTime());
                 reportEvent.bindProgressIndex(event.getProgressIndex());
@@ -129,7 +130,7 @@ public class PipeDataRegionAssigner implements Closeable {
                       extractor.getPipeName(),
                       extractor.getCreationTime(),
                       extractor.getPipeTaskMeta(),
-                      extractor.getPipePattern(),
+                      extractor.getTreePattern(),
                       extractor.getRealtimeDataExtractionStartTime(),
                       extractor.getRealtimeDataExtractionEndTime());
               final EnrichedEvent innerEvent = copiedEvent.getEvent();

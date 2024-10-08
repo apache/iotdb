@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.event.common.schema;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeWritePlanEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -48,7 +48,7 @@ public class PipeSchemaRegionWritePlanEvent extends PipeWritePlanEvent {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pattern,
+      final TreePattern pattern,
       final boolean isGeneratedByPipe) {
     super(pipeName, creationTime, pipeTaskMeta, pattern, isGeneratedByPipe);
     this.planNode = planNode;
@@ -63,7 +63,7 @@ public class PipeSchemaRegionWritePlanEvent extends PipeWritePlanEvent {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pattern,
+      final TreePattern pattern,
       final long startTime,
       final long endTime) {
     return new PipeSchemaRegionWritePlanEvent(

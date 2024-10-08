@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;
@@ -60,7 +60,7 @@ public abstract class EnrichedEvent implements Event {
   protected long commitId = NO_COMMIT_ID;
   protected int rebootTimes = 0;
 
-  protected final PipePattern pipePattern;
+  protected final TreePattern treePattern;
 
   protected final long startTime;
   protected final long endTime;
@@ -75,7 +75,7 @@ public abstract class EnrichedEvent implements Event {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pipePattern,
+      final TreePattern treePattern,
       final long startTime,
       final long endTime) {
     referenceCount = new AtomicInteger(0);
@@ -83,10 +83,10 @@ public abstract class EnrichedEvent implements Event {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
     this.pipeTaskMeta = pipeTaskMeta;
-    this.pipePattern = pipePattern;
+    this.treePattern = treePattern;
     this.startTime = startTime;
     this.endTime = endTime;
-    isPatternParsed = this.pipePattern == null || this.pipePattern.isRoot();
+    isPatternParsed = this.treePattern == null || this.treePattern.isRoot();
     isTimeParsed = Long.MIN_VALUE == startTime && Long.MAX_VALUE == endTime;
     addOnCommittedHook(
         () -> {
@@ -307,11 +307,11 @@ public abstract class EnrichedEvent implements Event {
    * @return the pattern string
    */
   public final String getPatternString() {
-    return pipePattern != null ? pipePattern.getPattern() : null;
+    return treePattern != null ? treePattern.getPattern() : null;
   }
 
-  public final PipePattern getPipePattern() {
-    return pipePattern;
+  public final TreePattern getPipePattern() {
+    return treePattern;
   }
 
   public final long getStartTime() {
@@ -350,7 +350,7 @@ public abstract class EnrichedEvent implements Event {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pattern,
+      final TreePattern pattern,
       final long startTime,
       final long endTime);
 
@@ -435,7 +435,7 @@ public abstract class EnrichedEvent implements Event {
         + "', commitId="
         + commitId
         + ", pattern='"
-        + pipePattern
+        + treePattern
         + "', startTime="
         + startTime
         + ", endTime="
@@ -462,7 +462,7 @@ public abstract class EnrichedEvent implements Event {
         + "', commitId="
         + commitId
         + ", pattern='"
-        + pipePattern
+        + treePattern
         + "', startTime="
         + startTime
         + ", endTime="

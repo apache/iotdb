@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -95,7 +95,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pattern,
+      final TreePattern pattern,
       final long startTime,
       final long endTime) {
     super(pipeName, creationTime, pipeTaskMeta, pattern, startTime, endTime);
@@ -179,7 +179,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pattern,
+      final TreePattern pattern,
       final long startTime,
       final long endTime) {
     return new PipeInsertNodeTabletInsertionEvent(
@@ -256,7 +256,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       if (insertNode instanceof InsertRowNode || insertNode instanceof InsertTabletNode) {
         final PartialPath devicePartialPath = insertNode.getTargetPath();
         return Objects.isNull(devicePartialPath)
-            || pipePattern.mayOverlapWithDevice(devicePartialPath.getIDeviceIDAsFullDevice());
+            || treePattern.mayOverlapWithDevice(devicePartialPath.getIDeviceIDAsFullDevice());
       }
 
       if (insertNode instanceof InsertRowsNode) {
@@ -265,7 +265,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
                 .anyMatch(
                     insertRowNode ->
                         Objects.isNull(insertRowNode.getTargetPath())
-                            || pipePattern.mayOverlapWithDevice(
+                            || treePattern.mayOverlapWithDevice(
                                 insertRowNode.getTargetPath().getIDeviceIDAsFullDevice()));
       }
 
@@ -328,12 +328,12 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
         case INSERT_TABLET:
         case RELATIONAL_INSERT_TABLET:
           dataContainers.add(
-              new TabletInsertionDataContainer(pipeTaskMeta, this, node, pipePattern));
+              new TabletInsertionDataContainer(pipeTaskMeta, this, node, treePattern));
           break;
         case INSERT_ROWS:
           for (final InsertRowNode insertRowNode : ((InsertRowsNode) node).getInsertRowNodeList()) {
             dataContainers.add(
-                new TabletInsertionDataContainer(pipeTaskMeta, this, insertRowNode, pipePattern));
+                new TabletInsertionDataContainer(pipeTaskMeta, this, insertRowNode, treePattern));
           }
           break;
         default:
