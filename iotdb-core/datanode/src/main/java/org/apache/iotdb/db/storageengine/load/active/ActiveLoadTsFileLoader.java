@@ -218,7 +218,7 @@ public class ActiveLoadTsFileLoader {
           filePair.getRight());
     } else if (status.getMessage() != null && status.getMessage().contains("read only")) {
       LOGGER.info(
-          "Error occurred when loading tsfile {} (isGeneratedByPipe = {}) due to the system is read only",
+          "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to the system is read only, will retry later.",
           filePair.getLeft(),
           filePair.getRight());
     } else {
@@ -247,7 +247,7 @@ public class ActiveLoadTsFileLoader {
           filePair.getRight());
     } else if (e.getMessage() != null && e.getMessage().contains("read only")) {
       LOGGER.info(
-          "Error occurred when loading tsfile {} (isGeneratedByPipe = {}) due to the system is read only",
+          "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to the system is read only, will retry later.",
           filePair.getLeft(),
           filePair.getRight());
     } else {
