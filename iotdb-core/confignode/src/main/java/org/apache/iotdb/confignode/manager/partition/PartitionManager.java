@@ -1009,7 +1009,7 @@ public class PartitionManager {
   /**
    * Get TSeriesPartitionSlot.
    *
-   * @param deviceID
+   * @param deviceID IDeviceID
    * @return SeriesPartitionSlot
    */
   public TSeriesPartitionSlot getSeriesPartitionSlot(IDeviceID deviceID) {

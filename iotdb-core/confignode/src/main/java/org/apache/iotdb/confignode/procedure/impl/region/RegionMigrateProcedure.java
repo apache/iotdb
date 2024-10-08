@@ -245,4 +245,8 @@ public class RegionMigrateProcedure
   public TConsensusGroupId getConsensusGroupId() {
     return consensusGroupId;
   }
+
+  public TDataNodeLocation getDestDataNode() {
+    return destDataNode;
+  }
 }
