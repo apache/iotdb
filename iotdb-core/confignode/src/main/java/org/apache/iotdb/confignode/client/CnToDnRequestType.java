@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.client;
 public enum CnToDnRequestType {
 
   // Node Maintenance
-  DISABLE_DATA_NODE,
+  CLEAN_DATA_NODE_CACHE,
   STOP_DATA_NODE,
 
   FLUSH,
@@ -122,4 +122,7 @@ public enum CnToDnRequestType {
   // Quota
   SET_SPACE_QUOTA,
   SET_THROTTLE_QUOTA,
+
+  // Table
+  UPDATE_TABLE,
 }

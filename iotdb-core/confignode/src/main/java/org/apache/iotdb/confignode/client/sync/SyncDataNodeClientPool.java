@@ -28,16 +28,17 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.mpp.rpc.thrift.TCleanDataNodeCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
-import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -118,8 +119,8 @@ public class SyncDataNodeClientPool {
         return client.deleteRegion((TConsensusGroupId) req);
       case INVALIDATE_PERMISSION_CACHE:
         return client.invalidatePermissionCache((TInvalidatePermissionCacheReq) req);
-      case DISABLE_DATA_NODE:
-        return client.disableDataNode((TDisableDataNodeReq) req);
+      case CLEAN_DATA_NODE_CACHE:
+        return client.cleanDataNodeCache((TCleanDataNodeCacheReq) req);
       case STOP_DATA_NODE:
         return client.stopDataNode();
       case SET_SYSTEM_STATUS:
@@ -128,6 +129,8 @@ public class SyncDataNodeClientPool {
         return client.killQueryInstance((String) req);
       case UPDATE_TEMPLATE:
         return client.updateTemplate((TUpdateTemplateReq) req);
+      case UPDATE_TABLE:
+        return client.updateTable((TUpdateTableReq) req);
       case CREATE_NEW_REGION_PEER:
         return client.createNewRegionPeer((TCreatePeerReq) req);
       case ADD_REGION_PEER:

@@ -20,8 +20,9 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.runtime;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleMetaChangePlan;
+import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
@@ -40,6 +41,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV2 {
 
@@ -60,6 +62,16 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
   }
 
   @Override
+  protected AtomicReference<PipeTaskInfo> acquireLockInternal(
+      ConfigNodeProcedureEnv configNodeProcedureEnv) {
+    return configNodeProcedureEnv
+        .getConfigManager()
+        .getPipeManager()
+        .getPipeTaskCoordinator()
+        .tryLock();
+  }
+
+  @Override
   protected PipeTaskOperation getOperation() {
     return PipeTaskOperation.HANDLE_PIPE_META_CHANGE;
   }
@@ -69,7 +81,7 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
     LOGGER.info("PipeHandleMetaChangeProcedure: executeFromValidateTask");
 
     // Do nothing
-    return false;
+    return true;
   }
 
   @Override

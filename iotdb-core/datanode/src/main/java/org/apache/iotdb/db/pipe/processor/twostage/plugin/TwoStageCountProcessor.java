@@ -24,10 +24,10 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.StateProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -172,10 +172,8 @@ public class TwoStageCountProcessor implements PipeProcessor {
             : ((PipeRawTabletInsertionEvent) event).count();
     localCount.accumulateAndGet(count, Long::sum);
 
-    localCommitProgressIndex.set(
-        localCommitProgressIndex
-            .get()
-            .updateToMinimumEqualOrIsAfterProgressIndex(event.getProgressIndex()));
+    localCommitProgressIndex.updateAndGet(
+        index -> index.updateToMinimumEqualOrIsAfterProgressIndex(event.getProgressIndex()));
   }
 
   @Override
@@ -199,10 +197,8 @@ public class TwoStageCountProcessor implements PipeProcessor {
     final long count = event.count(true);
     localCount.accumulateAndGet(count, Long::sum);
 
-    localCommitProgressIndex.set(
-        localCommitProgressIndex
-            .get()
-            .updateToMinimumEqualOrIsAfterProgressIndex(event.getProgressIndex()));
+    localCommitProgressIndex.updateAndGet(
+        index -> index.updateToMinimumEqualOrIsAfterProgressIndex(event.getProgressIndex()));
   }
 
   @Override
@@ -244,7 +240,7 @@ public class TwoStageCountProcessor implements PipeProcessor {
 
       final Tablet tablet =
           new Tablet(
-              outputSeries.getDevice(),
+              outputSeries.getIDeviceID().toString(),
               Collections.singletonList(
                   new MeasurementSchema(outputSeries.getMeasurement(), TSDataType.INT64)),
               1);

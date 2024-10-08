@@ -39,12 +39,14 @@ import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 
 import java.io.IOException;
+import java.net.URLEncoder;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 
 public class SubscriptionSessionExample {
@@ -63,6 +65,7 @@ public class SubscriptionSessionExample {
   private static final long POLL_TIMEOUT_MS = 10_000L;
   private static final int MAX_RETRY_TIMES = 3;
   private static final int PARALLELISM = 8;
+  private static final long CURRENT_TIME = System.currentTimeMillis();
 
   private static void prepareData() throws Exception {
     // Open session
@@ -77,14 +80,14 @@ public class SubscriptionSessionExample {
     session.open(false);
 
     // Insert some historical data
-    final long currentTime = System.currentTimeMillis();
     for (int i = 0; i < 100; ++i) {
       session.executeNonQueryStatement(
           String.format("insert into root.db.d1(time, s1, s2) values (%s, 1, 2)", i));
       session.executeNonQueryStatement(
-          String.format("insert into root.db.d2(time, s1, s2) values (%s, 3, 4)", currentTime + i));
+          String.format(
+              "insert into root.db.d2(time, s1, s2) values (%s, 3, 4)", CURRENT_TIME + i));
       session.executeNonQueryStatement(
-          String.format("insert into root.sg.d3(time, s1) values (%s, 5)", currentTime + 2 * i));
+          String.format("insert into root.sg.d3(time, s1) values (%s, 5)", CURRENT_TIME + 2 * i));
     }
     session.executeNonQueryStatement("flush");
 
@@ -133,39 +136,38 @@ public class SubscriptionSessionExample {
     final Properties config = new Properties();
     config.put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
     config.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
-    final SubscriptionPullConsumer consumer1 = new SubscriptionPullConsumer(config);
-    consumer1.open();
-    consumer1.subscribe(TOPIC_1);
-    while (true) {
-      LockSupport.parkNanos(SLEEP_NS); // wait some time
-      final List<SubscriptionMessage> messages = consumer1.poll(POLL_TIMEOUT_MS);
-      if (messages.isEmpty()) {
-        retryCount++;
-        if (retryCount >= MAX_RETRY_TIMES) {
-          break;
-        }
-      }
-      for (final SubscriptionMessage message : messages) {
-        for (final SubscriptionSessionDataSet dataSet : message.getSessionDataSetsHandler()) {
-          System.out.println(dataSet.getColumnNames());
-          System.out.println(dataSet.getColumnTypes());
-          while (dataSet.hasNext()) {
-            System.out.println(dataSet.next());
+    try (SubscriptionPullConsumer consumer1 = new SubscriptionPullConsumer(config)) {
+      consumer1.open();
+      consumer1.subscribe(TOPIC_1);
+      while (true) {
+        final List<SubscriptionMessage> messages = consumer1.poll(POLL_TIMEOUT_MS);
+        if (messages.isEmpty()) {
+          retryCount++;
+          if (retryCount >= MAX_RETRY_TIMES) {
+            break;
           }
         }
+        for (final SubscriptionMessage message : messages) {
+          for (final SubscriptionSessionDataSet dataSet : message.getSessionDataSetsHandler()) {
+            System.out.println(dataSet.getColumnNames());
+            System.out.println(dataSet.getColumnTypes());
+            while (dataSet.hasNext()) {
+              System.out.println(dataSet.next());
+            }
+          }
+        }
+        // Auto commit
       }
-      // Auto commit
-    }
 
-    // Show topics and subscriptions
-    try (final SubscriptionSession subscriptionSession = new SubscriptionSession(HOST, PORT)) {
-      subscriptionSession.open();
-      subscriptionSession.getTopics().forEach((System.out::println));
-      subscriptionSession.getSubscriptions().forEach((System.out::println));
-    }
+      // Show topics and subscriptions
+      try (final SubscriptionSession subscriptionSession = new SubscriptionSession(HOST, PORT)) {
+        subscriptionSession.open();
+        subscriptionSession.getTopics().forEach((System.out::println));
+        subscriptionSession.getSubscriptions().forEach((System.out::println));
+      }
 
-    consumer1.unsubscribe(TOPIC_1);
-    consumer1.close();
+      consumer1.unsubscribe(TOPIC_1);
+    }
   }
 
   /** multi pull consumer subscribe topic with tsfile format */
@@ -173,6 +175,8 @@ public class SubscriptionSessionExample {
     try (final SubscriptionSession subscriptionSession = new SubscriptionSession(HOST, PORT)) {
       subscriptionSession.open();
       final Properties config = new Properties();
+      config.put(TopicConstant.START_TIME_KEY, CURRENT_TIME + 33);
+      config.put(TopicConstant.END_TIME_KEY, CURRENT_TIME + 66);
       config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
       subscriptionSession.createTopic(TOPIC_2, config);
     }
@@ -194,7 +198,6 @@ public class SubscriptionSessionExample {
                   consumer2.open();
                   consumer2.subscribe(TOPIC_2);
                   while (true) {
-                    LockSupport.parkNanos(SLEEP_NS); // wait some time
                     final List<SubscriptionMessage> messages =
                         consumer2.poll(Collections.singleton(TOPIC_2), POLL_TIMEOUT_MS);
                     if (messages.isEmpty()) {
@@ -210,7 +213,7 @@ public class SubscriptionSessionExample {
                                 QueryExpression.create(
                                     Arrays.asList(
                                         new Path("root.db.d2", "s2", true),
-                                        new Path("root.db.d3", "s1", true)),
+                                        new Path("root.sg.d3", "s1", true)),
                                     null));
                         while (dataSet.hasNext()) {
                           System.out.println(dataSet.next());
@@ -233,13 +236,13 @@ public class SubscriptionSessionExample {
     }
   }
 
-  /** multi push consumer subscribe topic with tsfile format and query mode */
+  /** multi push consumer subscribe topic with tsfile format and snapshot mode */
   private static void dataSubscription3() throws Exception {
     try (final SubscriptionSession subscriptionSession = new SubscriptionSession(HOST, PORT)) {
       subscriptionSession.open();
       final Properties config = new Properties();
       config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
-      config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_QUERY_VALUE);
+      config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_SNAPSHOT_VALUE);
       subscriptionSession.createTopic(TOPIC_3, config);
     }
 
@@ -265,7 +268,7 @@ public class SubscriptionSessionExample {
                         .buildPushConsumer()) {
                   consumer3.open();
                   consumer3.subscribe(TOPIC_3);
-                  while (consumer3.hasMoreData()) {
+                  while (!consumer3.allSnapshotTopicMessagesHaveBeenConsumed()) {
                     LockSupport.parkNanos(SLEEP_NS); // wait some time
                   }
                 }
@@ -279,16 +282,17 @@ public class SubscriptionSessionExample {
     }
   }
 
-  /** multi pull consumer subscribe topic with tsfile format and query mode */
+  /** multi pull consumer subscribe topic with tsfile format and snapshot mode */
   private static void dataSubscription4() throws Exception {
     try (final SubscriptionSession subscriptionSession = new SubscriptionSession(HOST, PORT)) {
       subscriptionSession.open();
       final Properties config = new Properties();
       config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
-      config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_QUERY_VALUE);
+      config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_SNAPSHOT_VALUE);
       subscriptionSession.createTopic(TOPIC_4, config);
     }
 
+    final AtomicLong counter = new AtomicLong();
     final List<Thread> threads = new ArrayList<>();
     for (int i = 0; i < PARALLELISM; ++i) {
       final int idx = i;
@@ -305,16 +309,16 @@ public class SubscriptionSessionExample {
                         .buildPullConsumer()) {
                   consumer4.open();
                   consumer4.subscribe(TOPIC_4);
-                  while (true) {
-                    LockSupport.parkNanos(SLEEP_NS); // wait some time
-                    if (!consumer4.hasMoreData()) {
-                      break;
-                    }
+                  while (!consumer4.allSnapshotTopicMessagesHaveBeenConsumed()) {
                     for (final SubscriptionMessage message : consumer4.poll(POLL_TIMEOUT_MS)) {
                       final SubscriptionTsFileHandler handler = message.getTsFileHandler();
                       handler.moveFile(
-                          Paths.get(System.getProperty("user.dir"), "new-subscription-dir")
-                              .resolve(handler.getPath().getFileName()));
+                          Paths.get(System.getProperty("user.dir"), "exported-tsfiles")
+                              .resolve(
+                                  URLEncoder.encode(TOPIC_4)
+                                      + "-"
+                                      + counter.getAndIncrement()
+                                      + ".tsfile"));
                     }
                   }
                 } catch (final IOException e) {

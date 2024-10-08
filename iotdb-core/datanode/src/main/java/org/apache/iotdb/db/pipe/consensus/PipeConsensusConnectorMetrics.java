@@ -90,15 +90,16 @@ public class PipeConsensusConnectorMetrics implements IMetricSet {
   }
 
   private void bindCounter(AbstractMetricService metricService) {
-    metricService.getOrCreateCounter(
-        Metric.PIPE_RETRY_SEND_EVENT.toString(),
-        MetricLevel.IMPORTANT,
-        Tag.NAME.toString(),
-        CONNECTOR,
-        Tag.REGION.toString(),
-        pipeConsensusAsyncConnector.getConsensusGroupIdStr(),
-        Tag.TYPE.toString(),
-        "pipeConsensusRetryCount");
+    retryCounter =
+        metricService.getOrCreateCounter(
+            Metric.PIPE_RETRY_SEND_EVENT.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            CONNECTOR,
+            Tag.REGION.toString(),
+            pipeConsensusAsyncConnector.getConsensusGroupIdStr(),
+            Tag.TYPE.toString(),
+            "pipeConsensusRetryCount");
   }
 
   private void bindAutoGauge(AbstractMetricService metricService) {

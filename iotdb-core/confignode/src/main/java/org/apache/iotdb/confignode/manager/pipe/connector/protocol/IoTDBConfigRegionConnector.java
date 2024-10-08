@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClientManager;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBSslSyncConnector;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.manager.pipe.connector.client.IoTDBConfigNodeSyncClientManager;
 import org.apache.iotdb.confignode.manager.pipe.connector.payload.PipeTransferConfigPlanReq;
 import org.apache.iotdb.confignode.manager.pipe.connector.payload.PipeTransferConfigSnapshotPieceReq;
@@ -47,6 +48,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -61,9 +63,17 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
       final String trustStorePath,
       final String trustStorePwd,
       final boolean useLeaderCache,
-      final String loadBalanceStrategy) {
+      final String loadBalanceStrategy,
+      final boolean shouldReceiverConvertOnTypeMismatch,
+      final String loadTsFileStrategy) {
     return new IoTDBConfigNodeSyncClientManager(
-        nodeUrls, useSSL, trustStorePath, trustStorePwd, loadBalanceStrategy);
+        nodeUrls,
+        useSSL,
+        Objects.nonNull(trustStorePath) ? ConfigNodeConfig.addHomeDir(trustStorePath) : null,
+        trustStorePwd,
+        loadBalanceStrategy,
+        shouldReceiverConvertOnTypeMismatch,
+        loadTsFileStrategy);
   }
 
   @Override
@@ -105,12 +115,12 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
 
   private void doTransferWrapper(
       final PipeConfigRegionWritePlanEvent pipeConfigRegionWritePlanEvent) throws PipeException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeConfigRegionWritePlanEvent.increaseReferenceCount(
+        IoTDBConfigRegionConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeConfigRegionWritePlanEvent.increaseReferenceCount(
-          IoTDBConfigRegionConnector.class.getName())) {
-        return;
-      }
       doTransfer(pipeConfigRegionWritePlanEvent);
     } finally {
       pipeConfigRegionWritePlanEvent.decreaseReferenceCount(
@@ -166,12 +176,12 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
 
   private void doTransferWrapper(final PipeConfigRegionSnapshotEvent pipeConfigRegionSnapshotEvent)
       throws PipeException, IOException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeConfigRegionSnapshotEvent.increaseReferenceCount(
+        IoTDBConfigRegionConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeConfigRegionSnapshotEvent.increaseReferenceCount(
-          IoTDBConfigRegionConnector.class.getName())) {
-        return;
-      }
       doTransfer(pipeConfigRegionSnapshotEvent);
     } finally {
       pipeConfigRegionSnapshotEvent.decreaseReferenceCount(
@@ -188,9 +198,17 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
 
     // 1. Transfer snapshotFile, and template File if exists
-    transferFilePieces(pipeName, creationTime, snapshotFile, clientAndStatus, true);
+    transferFilePieces(
+        Collections.singletonMap(new Pair<>(pipeName, creationTime), 1.0),
+        snapshotFile,
+        clientAndStatus,
+        true);
     if (Objects.nonNull(templateFile)) {
-      transferFilePieces(pipeName, creationTime, templateFile, clientAndStatus, true);
+      transferFilePieces(
+          Collections.singletonMap(new Pair<>(pipeName, creationTime), 1.0),
+          templateFile,
+          clientAndStatus,
+          true);
     }
     // 2. Transfer file seal signal, which means the snapshots are transferred completely
     final TPipeTransferResp resp;

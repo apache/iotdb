@@ -151,5 +151,70 @@ public class StartClientScriptIT extends AbstractScript {
             "\"flush\"");
     builder2.environment().put("IOTDB_HOME", homePath);
     testOutput(builder2, output2, 0);
+
+    // test null display
+    final String[] successfulDisplay = {"Msg: The statement is executed successfully."};
+    ProcessBuilder builder3 =
+        new ProcessBuilder(
+            "bash",
+            sbinPath + File.separator + "start-cli.sh",
+            "-h",
+            ip,
+            "-p",
+            port,
+            "-e",
+            "\"CREATE ALIGNED TIMESERIES root.db.d1(s_boolean BOOLEAN, s_int32 INT32)\"");
+    builder3.environment().put("IOTDB_HOME", homePath);
+    testOutput(builder3, successfulDisplay, 0);
+
+    ProcessBuilder builder4 =
+        new ProcessBuilder(
+            "bash",
+            sbinPath + File.separator + "start-cli.sh",
+            "-h",
+            ip,
+            "-p",
+            port,
+            "-e",
+            "\"insert into root.db.d1(time, s_int32) values(0,0)\"");
+    builder4.environment().put("IOTDB_HOME", homePath);
+    testOutput(builder4, successfulDisplay, 0);
+
+    final String[] output5 = {"Time zone has set to asia/shanghai"};
+    ProcessBuilder builder5 =
+        new ProcessBuilder(
+            "bash",
+            sbinPath + File.separator + "start-cli.sh",
+            "-h",
+            ip,
+            "-p",
+            port,
+            "-e",
+            "\"set time_zone=Asia/Shanghai\"");
+    builder5.environment().put("IOTDB_HOME", homePath);
+    testOutput(builder5, output5, 0);
+
+    final String[] output6 = {
+      "+----+------------------+--------------------+",
+      "|Time|root.db.d1.s_int32|root.db.d1.s_boolean|",
+      "+----+------------------+--------------------+",
+      "|   0|                 0|                null|",
+      "+----+------------------+--------------------+",
+      "Total line number = 1",
+      "It costs "
+    };
+    ProcessBuilder builder6 =
+        new ProcessBuilder(
+            "bash",
+            sbinPath + File.separator + "start-cli.sh",
+            "-h",
+            ip,
+            "-p",
+            port,
+            "-disableISO8601",
+            "-e",
+            "\"select s_int32, s_boolean from root.db.d1\"");
+    builder6.environment().put("IOTDB_HOME", homePath);
+    testOutput(builder6, output6, 0);
   }
 }

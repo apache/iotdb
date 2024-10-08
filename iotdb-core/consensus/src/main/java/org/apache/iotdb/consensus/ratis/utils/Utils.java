@@ -210,18 +210,18 @@ public class Utils {
     return consensusGroupType;
   }
 
-  public static boolean rejectWrite() {
-    return config.isReadOnly();
+  public static boolean rejectWrite(TConsensusGroupType type) {
+    return type == TConsensusGroupType.DataRegion && config.isReadOnly();
   }
 
   /**
    * Normally, the RatisConsensus should reject write when system is read-only, i.e, {@link
-   * #rejectWrite()}. However, Ratis RaftServer close() will wait for applyIndex advancing to
-   * commitIndex. So when the system is shutting down, RatisConsensus should still allow
-   * statemachine to apply while rejecting new client write requests.
+   * #rejectWrite(TConsensusGroupType type)}. However, Ratis RaftServer close() will wait for
+   * applyIndex advancing to commitIndex. So when the system is shutting down, RatisConsensus should
+   * still allow statemachine to apply while rejecting new client write requests.
    */
-  public static boolean stallApply() {
-    return config.isReadOnly() && !config.isStopping();
+  public static boolean stallApply(TConsensusGroupType type) {
+    return type == TConsensusGroupType.DataRegion && config.isReadOnly() && !config.isStopping();
   }
 
   /** return the max wait duration for retry */
@@ -303,7 +303,7 @@ public class Utils {
         properties, config.getLog().getSegmentCacheSizeMax());
     RaftServerConfigKeys.Log.setPreallocatedSize(properties, config.getLog().getPreallocatedSize());
     final SizeInBytes writeBufferSize =
-        SizeInBytes.valueOf(config.getLeaderLogAppender().getBufferByteLimit().getSizeInt() + 8);
+        SizeInBytes.valueOf(config.getLeaderLogAppender().getBufferByteLimit().getSizeInt() + 8L);
     RaftServerConfigKeys.Log.setWriteBufferSize(properties, writeBufferSize);
     RaftServerConfigKeys.Log.setForceSyncNum(properties, config.getLog().getForceSyncNum());
     RaftServerConfigKeys.Log.setUnsafeFlushEnabled(

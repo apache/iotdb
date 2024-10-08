@@ -29,17 +29,17 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.ExplainAnalyzeNode
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.BatchActivateTemplateNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalBatchActivateTemplateNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateMultiTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.MeasurementGroup;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.ActivateTemplateNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.BatchActivateTemplateNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateAlignedTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateMultiTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.InternalBatchActivateTemplateNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.InternalCreateMultiTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.InternalCreateTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.MeasurementGroup;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.CreateLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
@@ -89,6 +89,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
@@ -129,7 +130,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             explainAnalyzeStatement.isVerbose(),
             context.getLocalQueryId(),
             context.getTimeOut());
-    context.getTypeProvider().setType(ColumnHeaderConstant.EXPLAIN_ANALYZE, TSDataType.TEXT);
+    context
+        .getTypeProvider()
+        .setTreeModelType(ColumnHeaderConstant.EXPLAIN_ANALYZE, TSDataType.TEXT);
     return root;
   }
 
@@ -142,45 +145,46 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
 
     if (queryStatement.isLastQuery()) {
-      planBuilder =
-          planBuilder
-              .planLast(analysis, analysis.getTimeseriesOrderingForLastQuery())
-              .planOffset(queryStatement.getRowOffset())
-              .planLimit(queryStatement.getRowLimit());
+      planBuilder = planBuilder.planLast(analysis, analysis.getTimeseriesOrderingForLastQuery());
 
       if (queryStatement.hasOrderBy() && !queryStatement.onlyOrderByTimeseries()) {
         planBuilder = planBuilder.planOrderBy(queryStatement.getSortItemList());
       }
+
+      planBuilder =
+          planBuilder
+              .planOffset(queryStatement.getRowOffset())
+              .planLimit(queryStatement.getRowLimit());
       return planBuilder.getRoot();
     }
 
     if (queryStatement.isAlignByDevice()) {
-      Map<String, PlanNode> deviceToSubPlanMap = new LinkedHashMap<>();
+      Map<IDeviceID, PlanNode> deviceToSubPlanMap = new LinkedHashMap<>();
       for (PartialPath device : analysis.getDeviceList()) {
-        String deviceName = device.getFullPath();
+        IDeviceID deviceID = device.getIDeviceIDAsFullDevice();
         LogicalPlanBuilder subPlanBuilder = new LogicalPlanBuilder(analysis, context);
         subPlanBuilder =
             subPlanBuilder.withNewRoot(
                 visitQueryBody(
                     queryStatement,
-                    analysis.getDeviceToSourceExpressions().get(deviceName),
-                    analysis.getDeviceToSourceTransformExpressions().get(deviceName),
+                    analysis.getDeviceToSourceExpressions().get(deviceID),
+                    analysis.getDeviceToSourceTransformExpressions().get(deviceID),
                     analysis.getDeviceToWhereExpression() != null
-                        ? analysis.getDeviceToWhereExpression().get(deviceName)
+                        ? analysis.getDeviceToWhereExpression().get(deviceID)
                         : null,
-                    analysis.getDeviceToAggregationExpressions().get(deviceName),
+                    analysis.getDeviceToAggregationExpressions().get(deviceID),
                     analysis.getDeviceToGroupByExpression() != null
-                        ? analysis.getDeviceToGroupByExpression().get(deviceName)
+                        ? analysis.getDeviceToGroupByExpression().get(deviceID)
                         : null,
                     context));
         // order by device, expression, push down sortOperator
         if (queryStatement.needPushDownSort()) {
           subPlanBuilder =
               subPlanBuilder.planOrderBy(
-                  analysis.getDeviceToOrderByExpressions().get(deviceName),
-                  analysis.getDeviceToSortItems().get(deviceName));
+                  analysis.getDeviceToOrderByExpressions().get(deviceID),
+                  analysis.getDeviceToSortItems().get(deviceID));
         }
-        deviceToSubPlanMap.put(deviceName, subPlanBuilder.getRoot());
+        deviceToSubPlanMap.put(deviceID, subPlanBuilder.getRoot());
       }
 
       // convert to ALIGN BY DEVICE view
@@ -227,6 +231,10 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
 
     if (!analysis.isUseTopKNode() || queryStatement.hasOffset()) {
       planBuilder = planBuilder.planLimit(queryStatement.getRowLimit());
+    }
+
+    if (queryStatement.hasModelInference()) {
+      planBuilder.planInference(analysis);
     }
 
     // plan select into
@@ -325,7 +333,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       }
 
       if (queryStatement.isOutputEndTime()) {
-        context.getTypeProvider().setType(ENDTIME, TSDataType.INT64);
+        context.getTypeProvider().setTreeModelType(ENDTIME, TSDataType.INT64);
         if (queryStatement.isGroupByTime()) {
           planBuilder =
               planBuilder.planEndTimeColumnInject(
@@ -411,7 +419,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   }
 
   @Override
-  public PlanNode visitCreateMultiTimeseries(
+  public PlanNode visitCreateMultiTimeSeries(
       CreateMultiTimeSeriesStatement createMultiTimeSeriesStatement, MPPQueryContext context) {
     return new CreateMultiTimeSeriesNode(
         context.getQueryId().genPlanNodeId(),
@@ -435,7 +443,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   }
 
   @Override
-  public PlanNode visitAlterTimeseries(
+  public PlanNode visitAlterTimeSeries(
       AlterTimeSeriesStatement alterTimeSeriesStatement, MPPQueryContext context) {
     return new AlterTimeSeriesNode(
         context.getQueryId().genPlanNodeId(),

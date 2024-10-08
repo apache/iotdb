@@ -92,10 +92,11 @@ public class LoadTsFileNode extends WritePlanNode {
   public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
     List<WritePlanNode> res = new ArrayList<>();
     LoadTsFileStatement statement =
-        ((Analysis) analysis).getStatement() instanceof PipeEnrichedStatement
+        ((Analysis) analysis).getTreeStatement() instanceof PipeEnrichedStatement
             ? (LoadTsFileStatement)
-                ((PipeEnrichedStatement) ((Analysis) analysis).getStatement()).getInnerStatement()
-            : (LoadTsFileStatement) ((Analysis) analysis).getStatement();
+                ((PipeEnrichedStatement) ((Analysis) analysis).getTreeStatement())
+                    .getInnerStatement()
+            : (LoadTsFileStatement) ((Analysis) analysis).getTreeStatement();
 
     for (int i = 0; i < resources.size(); i++) {
       res.add(

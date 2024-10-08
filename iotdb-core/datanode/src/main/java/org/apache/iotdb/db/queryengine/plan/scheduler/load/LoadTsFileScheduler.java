@@ -45,12 +45,6 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInfo;
-import org.apache.iotdb.db.queryengine.execution.load.ChunkData;
-import org.apache.iotdb.db.queryengine.execution.load.TsFileData;
-import org.apache.iotdb.db.queryengine.execution.load.TsFileSplitter;
-import org.apache.iotdb.db.queryengine.load.LoadTsFileDataCacheMemoryBlock;
-import org.apache.iotdb.db.queryengine.load.LoadTsFileMemoryManager;
-import org.apache.iotdb.db.queryengine.metric.load.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
@@ -63,13 +57,18 @@ import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileDataCacheMemoryBlock;
+import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
+import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
+import org.apache.iotdb.db.storageengine.load.splitter.ChunkData;
+import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
+import org.apache.iotdb.db.storageengine.load.splitter.TsFileSplitter;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import io.airlift.units.Duration;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.slf4j.Logger;
@@ -462,21 +461,19 @@ public class LoadTsFileScheduler implements IScheduler {
                       dataRegion.getDataRegionId(),
                       Tag.TYPE.toString(),
                       Metric.LOAD_POINT_COUNT.toString());
-              if (!node.isGeneratedByRemoteConsensusLeader()) {
-                MetricService.getInstance()
-                    .count(
-                        node.getWritePointCount(),
-                        Metric.LEADER_QUANTITY.toString(),
-                        MetricLevel.CORE,
-                        Tag.NAME.toString(),
-                        Metric.POINTS_IN.toString(),
-                        Tag.DATABASE.toString(),
-                        databaseName,
-                        Tag.REGION.toString(),
-                        dataRegion.getDataRegionId(),
-                        Tag.TYPE.toString(),
-                        Metric.LOAD_POINT_COUNT.toString());
-              }
+              MetricService.getInstance()
+                  .count(
+                      node.getWritePointCount(),
+                      Metric.LEADER_QUANTITY.toString(),
+                      MetricLevel.CORE,
+                      Tag.NAME.toString(),
+                      Metric.POINTS_IN.toString(),
+                      Tag.DATABASE.toString(),
+                      databaseName,
+                      Tag.REGION.toString(),
+                      dataRegion.getDataRegionId(),
+                      Tag.TYPE.toString(),
+                      Metric.LOAD_POINT_COUNT.toString());
             });
 
     return true;
@@ -586,7 +583,8 @@ public class LoadTsFileScheduler implements IScheduler {
                   .map(
                       data ->
                           new Pair<>(
-                              (IDeviceID) new PlainDeviceID(data.getDevice()),
+                              (IDeviceID)
+                                  IDeviceID.Factory.DEFAULT_FACTORY.create(data.getDevice()),
                               data.getTimePartitionSlot()))
                   .collect(Collectors.toList()),
               scheduler.queryContext.getSession().getUserName());
@@ -655,10 +653,7 @@ public class LoadTsFileScheduler implements IScheduler {
             fetcher.getOrCreateDataPartition(toQueryParam(subSlotList), userName);
         replicaSets.addAll(
             subSlotList.stream()
-                .map(
-                    pair ->
-                        dataPartition.getDataRegionReplicaSetForWriting(
-                            ((PlainDeviceID) pair.left).toStringID(), pair.right))
+                .map(pair -> dataPartition.getDataRegionReplicaSetForWriting(pair.left, pair.right))
                 .collect(Collectors.toList()));
       }
       return replicaSets;
@@ -674,9 +669,7 @@ public class LoadTsFileScheduler implements IScheduler {
           .stream()
           .map(
               entry ->
-                  new DataPartitionQueryParam(
-                      ((PlainDeviceID) entry.getKey()).toStringID(),
-                      new ArrayList<>(entry.getValue())))
+                  new DataPartitionQueryParam(entry.getKey(), new ArrayList<>(entry.getValue())))
           .collect(Collectors.toList());
     }
   }

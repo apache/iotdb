@@ -292,7 +292,7 @@ public class WALNodeTest {
         .setDataRegion(
             new DataRegionId(1), new DataRegionTest.DummyDataRegion(logDirectory, databasePath));
     walNode.onMemTableCreated(memTable, tsFilePath);
-    while (walNode.getCurrentLogVersion() == 0) {
+    while (time < 20000) {
       ++time;
       InsertTabletNode insertTabletNode =
           getInsertTabletNode(devicePath + memTableId, new long[] {time});

@@ -27,6 +27,6 @@ import java.io.IOException;
 /** CheckpointWriter writes the binary {@link Checkpoint} into .checkpoint file. */
 public class CheckpointWriter extends LogWriter {
   public CheckpointWriter(File logFile) throws IOException {
-    super(logFile);
+    super(logFile, WALFileVersion.V2);
   }
 }

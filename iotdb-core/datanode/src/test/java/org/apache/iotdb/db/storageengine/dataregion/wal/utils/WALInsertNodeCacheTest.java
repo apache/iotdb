@@ -80,7 +80,7 @@ public class WALInsertNodeCacheTest {
   public void testLoadAfterSyncBuffer() throws IllegalPathException {
     try {
       // Limit the wal buffer size to trigger sync Buffer when writing wal entry
-      walNode.setBufferSize(16);
+      walNode.setBufferSize(24);
       // write memTable
       IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
       walNode.onMemTableCreated(memTable, logDirectory + "/" + "fake.tsfile");
@@ -118,9 +118,7 @@ public class WALInsertNodeCacheTest {
       Thread getInsertNodeThread =
           new Thread(
               () -> {
-                try {
-                  assertEquals(node1, cache.getInsertNode(position));
-                } catch (Throwable e) {
+                if (!node1.equals(cache.getInsertNode(position))) {
                   failure.set(true);
                 }
               });

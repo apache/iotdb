@@ -26,6 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactio
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InsertionCrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.SimpleCompactionLogger;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossSpaceCompactionCandidate;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCrossCompactionTaskResource;
@@ -33,12 +34,11 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionF
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
@@ -77,8 +77,8 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
   @Test
   public void testRecoverWithTargetModFileNotExistedAndSourceModFileExisted()
       throws IOException, MergeException, IllegalPathException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
-    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
+    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
 
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -108,7 +108,7 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     unseqResource1.serialize();
 
     Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
-    deleteMap.put(((PlainDeviceID) d1).toStringID() + ".s1", new Pair<>(0L, 300L));
+    deleteMap.put(d1.toString() + ".s1", new Pair<>(0L, 300L));
     CompactionFileGeneratorUtils.generateMods(deleteMap, unseqResource1, false);
 
     unseqResources.add(unseqResource1);
@@ -117,7 +117,8 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource taskResource =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -165,8 +166,8 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
   @Test
   public void testRecoverWithTargetModFileNotExistedAndSourceModNotExisted()
       throws IOException, MergeException, IllegalPathException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
-    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
+    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
 
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -196,7 +197,7 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     unseqResource1.serialize();
 
     Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
-    deleteMap.put(((PlainDeviceID) d1).toStringID() + ".s1", new Pair<>(0L, 300L));
+    deleteMap.put(d1.toString() + ".s1", new Pair<>(0L, 300L));
 
     unseqResources.add(unseqResource1);
 
@@ -204,7 +205,8 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource taskResource =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -255,8 +257,8 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
   @Test
   public void testRecoverWithAllTargetFileExisted()
       throws IllegalPathException, IOException, MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
-    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
+    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
 
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -286,7 +288,7 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     unseqResource1.serialize();
 
     Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
-    deleteMap.put(((PlainDeviceID) d1).toStringID() + ".s1", new Pair<>(0L, 300L));
+    deleteMap.put(d1.toString() + ".s1", new Pair<>(0L, 300L));
     CompactionFileGeneratorUtils.generateMods(deleteMap, unseqResource1, false);
 
     unseqResources.add(unseqResource1);
@@ -295,7 +297,8 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource taskResource =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -348,8 +351,8 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
   @Test
   public void testRecoverWithTargetFileNotExist()
       throws IllegalPathException, IOException, MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
-    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
+    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
 
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -379,7 +382,7 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     unseqResource1.serialize();
 
     Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
-    deleteMap.put(((PlainDeviceID) d1).toStringID() + ".s1", new Pair<>(0L, 300L));
+    deleteMap.put(d1.toString() + ".s1", new Pair<>(0L, 300L));
     CompactionFileGeneratorUtils.generateMods(deleteMap, unseqResource1, false);
 
     unseqResources.add(unseqResource1);
@@ -388,7 +391,8 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource taskResource =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -430,7 +434,7 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
   private TsFileResource createTsFileResource(String name, boolean seq) {
     String filePath = (seq ? SEQ_DIRS : UNSEQ_DIRS) + File.separator + name;
     TsFileResource resource = new TsFileResource();
-    resource.setTimeIndex(new DeviceTimeIndex());
+    resource.setTimeIndex(new ArrayDeviceTimeIndex());
     resource.setFile(new File(filePath));
     resource.setStatusForTest(TsFileResourceStatus.NORMAL);
     resource.setSeq(seq);

@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.pipe.metric;
 
-import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
+import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.pipe.agent.task.subtask.connector.PipeConnectorSubtask;
+import org.apache.iotdb.db.pipe.agent.task.subtask.processor.PipeProcessorSubtask;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
-import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask;
-import org.apache.iotdb.db.pipe.task.subtask.processor.PipeProcessorSubtask;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -45,6 +45,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeDataNodeRemainingEventAndTimeMetrics.class);
 
+  @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;
 
   private final Map<String, PipeDataNodeRemainingEventAndTimeOperator>
@@ -101,6 +102,13 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
   private void removeAutoGauge(final String pipeID) {
     final PipeDataNodeRemainingEventAndTimeOperator operator =
         remainingEventAndTimeOperatorMap.get(pipeID);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PIPE_DATANODE_REMAINING_EVENT_COUNT.toString(),
+        Tag.NAME.toString(),
+        operator.getPipeName(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(operator.getCreationTime()));
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PIPE_DATANODE_REMAINING_TIME.toString(),
@@ -208,6 +216,19 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     } else {
       operator.markSchemaRegionCommit();
     }
+  }
+
+  public void markCollectInvocationCount(final String pipeID, final long collectInvocationCount) {
+    if (Objects.isNull(metricService)) {
+      return;
+    }
+    final PipeDataNodeRemainingEventAndTimeOperator operator =
+        remainingEventAndTimeOperatorMap.get(pipeID);
+    if (Objects.isNull(operator)) {
+      return;
+    }
+
+    operator.markCollectInvocationCount(collectInvocationCount);
   }
 
   //////////////////////////// Show pipes ////////////////////////////

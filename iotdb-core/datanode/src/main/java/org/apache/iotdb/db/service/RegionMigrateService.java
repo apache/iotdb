@@ -40,7 +40,6 @@ import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeRegionManager;
-import org.apache.iotdb.db.storageengine.rescon.memory.AbstractPoolManager;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionMigrateResult;
 import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
@@ -53,6 +52,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 
 public class RegionMigrateService implements IService {
@@ -65,7 +65,7 @@ public class RegionMigrateService implements IService {
 
   private static final int SLEEP_MILLIS = 5000;
 
-  private RegionMigratePool regionMigratePool;
+  private ExecutorService regionMigratePool;
 
   // Map<taskId, taskStatus>
   // TODO: Due to the use of procedureId as taskId, it is currently unable to handle the situation
@@ -199,15 +199,15 @@ public class RegionMigrateService implements IService {
 
   @Override
   public void start() throws StartupException {
-    regionMigratePool = new RegionMigratePool();
-    regionMigratePool.start();
+    regionMigratePool =
+        IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.REGION_MIGRATE.getName());
     LOGGER.info("Region migrate service start");
   }
 
   @Override
   public void stop() {
     if (regionMigratePool != null) {
-      regionMigratePool.stop();
+      regionMigratePool.shutdown();
     }
     LOGGER.info("Region migrate service stop");
   }
@@ -215,32 +215,6 @@ public class RegionMigrateService implements IService {
   @Override
   public ServiceType getID() {
     return ServiceType.DATA_NODE_REGION_MIGRATE_SERVICE;
-  }
-
-  private static class RegionMigratePool extends AbstractPoolManager {
-
-    private final Logger poolLogger = LoggerFactory.getLogger(RegionMigratePool.class);
-
-    private RegionMigratePool() {
-      this.pool = IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.REGION_MIGRATE.getName());
-    }
-
-    @Override
-    public Logger getLogger() {
-      return poolLogger;
-    }
-
-    @Override
-    public void start() {
-      if (this.pool != null) {
-        poolLogger.info("DataNode region migrate pool start");
-      }
-    }
-
-    @Override
-    public String getName() {
-      return "migrate region";
-    }
   }
 
   private static class AddRegionPeerTask implements Runnable {
@@ -594,11 +568,11 @@ public class RegionMigrateService implements IService {
     return result;
   }
 
-  private static boolean isSucceed(TSStatus status) {
+  public static boolean isSucceed(TSStatus status) {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
-  private static boolean isFailed(TSStatus status) {
+  public static boolean isFailed(TSStatus status) {
     return !isSucceed(status);
   }
 

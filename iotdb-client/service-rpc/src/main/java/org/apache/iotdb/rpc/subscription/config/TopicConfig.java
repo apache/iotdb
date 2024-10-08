@@ -33,6 +33,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.rpc.subscription.config.TopicConstant.MODE_LIVE_VALUE;
+import static org.apache.iotdb.rpc.subscription.config.TopicConstant.MODE_SNAPSHOT_VALUE;
+
 public class TopicConfig extends PipeParameters {
 
   public TopicConfig() {
@@ -48,19 +51,22 @@ public class TopicConfig extends PipeParameters {
   private static final Map<String, String> REALTIME_STREAM_MODE_CONFIG =
       Collections.singletonMap("realtime.mode", "stream");
 
-  private static final Map<String, String> QUERY_MODE_CONFIG =
-      Collections.singletonMap("mode", "query");
-  private static final Map<String, String> SUBSCRIBE_MODE_CONFIG =
-      Collections.singletonMap("mode", "subscribe");
+  private static final Map<String, String> SINK_TABLET_FORMAT_CONFIG =
+      Collections.singletonMap("format", "tablet");
 
-  private static final Set<String> LOOSE_RANGE_KEY_SET =
-      Collections.unmodifiableSet(
-          new HashSet<String>() {
-            {
-              add("history.loose-range");
-              add("realtime.loose-range");
-            }
-          });
+  private static final Map<String, String> SNAPSHOT_MODE_CONFIG =
+      Collections.singletonMap("mode", MODE_SNAPSHOT_VALUE);
+  private static final Map<String, String> LIVE_MODE_CONFIG =
+      Collections.singletonMap("mode", MODE_LIVE_VALUE);
+
+  private static final Set<String> LOOSE_RANGE_KEY_SET;
+
+  static {
+    final Set<String> set = new HashSet<>(2);
+    set.add("history.loose-range");
+    set.add("realtime.loose-range");
+    LOOSE_RANGE_KEY_SET = Collections.unmodifiableSet(set);
+  }
 
   /////////////////////////////// de/ser ///////////////////////////////
 
@@ -85,42 +91,29 @@ public class TopicConfig extends PipeParameters {
         attributes.getOrDefault(TopicConstant.PATH_KEY, TopicConstant.PATH_DEFAULT_VALUE));
   }
 
-  public Map<String, String> getAttributesWithTimeRange(final long creationTime) {
+  public Map<String, String> getAttributesWithTimeRange() {
     final Map<String, String> attributesWithTimeRange = new HashMap<>();
 
-    // parse start time
-    final String startTime =
-        attributes.getOrDefault(TopicConstant.START_TIME_KEY, String.valueOf(Long.MIN_VALUE));
-    if (TopicConstant.NOW_TIME_VALUE.equals(startTime)) {
-      attributesWithTimeRange.put(TopicConstant.START_TIME_KEY, String.valueOf(creationTime));
-    } else {
-      attributesWithTimeRange.put(TopicConstant.START_TIME_KEY, startTime);
-    }
-
-    // parse end time
-    final String endTime =
-        attributes.getOrDefault(TopicConstant.END_TIME_KEY, String.valueOf(Long.MAX_VALUE));
-    if (TopicConstant.NOW_TIME_VALUE.equals(endTime)) {
-      attributesWithTimeRange.put(TopicConstant.END_TIME_KEY, String.valueOf(creationTime));
-    } else {
-      attributesWithTimeRange.put(TopicConstant.END_TIME_KEY, endTime);
-    }
+    // there should be no TopicConstant.NOW_TIME_VALUE here
+    attributesWithTimeRange.put(
+        TopicConstant.START_TIME_KEY,
+        attributes.getOrDefault(TopicConstant.START_TIME_KEY, String.valueOf(Long.MIN_VALUE)));
+    attributesWithTimeRange.put(
+        TopicConstant.END_TIME_KEY,
+        attributes.getOrDefault(TopicConstant.END_TIME_KEY, String.valueOf(Long.MAX_VALUE)));
 
     return attributesWithTimeRange;
   }
 
   public Map<String, String> getAttributesWithRealtimeMode() {
-    return TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equals(
-            attributes.getOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE))
-        ? REALTIME_BATCH_MODE_CONFIG
-        : REALTIME_STREAM_MODE_CONFIG;
+    return REALTIME_STREAM_MODE_CONFIG;
   }
 
   public Map<String, String> getAttributesWithSourceMode() {
-    return TopicConstant.MODE_QUERY_VALUE.equals(
+    return MODE_SNAPSHOT_VALUE.equalsIgnoreCase(
             attributes.getOrDefault(TopicConstant.MODE_KEY, TopicConstant.MODE_DEFAULT_VALUE))
-        ? QUERY_MODE_CONFIG
-        : SUBSCRIBE_MODE_CONFIG;
+        ? SNAPSHOT_MODE_CONFIG
+        : LIVE_MODE_CONFIG;
   }
 
   public Map<String, String> getAttributesWithSourceLooseRange() {
@@ -140,5 +133,12 @@ public class TopicConfig extends PipeParameters {
           }
         });
     return attributesWithProcessorPrefix;
+  }
+
+  public Map<String, String> getAttributesWithSinkFormat() {
+    return TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equalsIgnoreCase(
+            attributes.getOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE))
+        ? Collections.emptyMap()
+        : SINK_TABLET_FORMAT_CONFIG;
   }
 }

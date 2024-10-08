@@ -19,10 +19,9 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
-import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
-import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
@@ -88,22 +87,22 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void putLong(long t, long v) {
+  public boolean putLongWithFlushCheck(long t, long v) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
-  public void putInt(long t, int v) {
+  public boolean putIntWithFlushCheck(long t, int v) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
-  public void putFloat(long t, float v) {
+  public boolean putFloatWithFlushCheck(long t, float v) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
-  public void putDouble(long t, double v) {
+  public boolean putDoubleWithFlushCheck(long t, double v) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
@@ -113,33 +112,33 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void putBoolean(long t, boolean v) {
+  public boolean putBooleanWithFlushCheck(long t, boolean v) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
   public boolean putAlignedValueWithFlushCheck(long t, Object[] v) {
     list.putAlignedValue(t, v);
-    return list.reachMaxChunkSizeThreshold();
+    return list.reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
-  public void putLongs(long[] t, long[] v, BitMap bitMap, int start, int end) {
+  public boolean putLongsWithFlushCheck(long[] t, long[] v, BitMap bitMap, int start, int end) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
-  public void putInts(long[] t, int[] v, BitMap bitMap, int start, int end) {
+  public boolean putIntsWithFlushCheck(long[] t, int[] v, BitMap bitMap, int start, int end) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
-  public void putFloats(long[] t, float[] v, BitMap bitMap, int start, int end) {
+  public boolean putFloatsWithFlushCheck(long[] t, float[] v, BitMap bitMap, int start, int end) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
-  public void putDoubles(long[] t, double[] v, BitMap bitMap, int start, int end) {
+  public boolean putDoublesWithFlushCheck(long[] t, double[] v, BitMap bitMap, int start, int end) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
@@ -150,15 +149,16 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void putBooleans(long[] t, boolean[] v, BitMap bitMap, int start, int end) {
+  public boolean putBooleansWithFlushCheck(
+      long[] t, boolean[] v, BitMap bitMap, int start, int end) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
   public boolean putAlignedValuesWithFlushCheck(
-      long[] t, Object[] v, BitMap[] bitMaps, int start, int end) {
-    list.putAlignedValues(t, v, bitMaps, start, end);
-    return list.reachMaxChunkSizeThreshold();
+      long[] t, Object[] v, BitMap[] bitMaps, int start, int end, TSStatus[] results) {
+    list.putAlignedValues(t, v, bitMaps, start, end, results);
+    return list.reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
@@ -187,13 +187,14 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       BitMap[] bitMaps,
       List<IMeasurementSchema> schemaList,
       int start,
-      int end) {
+      int end,
+      TSStatus[] results) {
     Pair<Object[], BitMap[]> pair =
         checkAndReorderColumnValuesInInsertPlan(schemaList, valueList, bitMaps);
     Object[] reorderedColumnValues = pair.left;
     BitMap[] reorderedBitMaps = pair.right;
     return putAlignedValuesWithFlushCheck(
-        times, reorderedColumnValues, reorderedBitMaps, start, end);
+        times, reorderedColumnValues, reorderedBitMaps, start, end, results);
   }
 
   /**
@@ -245,7 +246,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     return (long) list.rowCount() * measurementIndexMap.size();
   }
 
-  public long alignedListSize() {
+  public int alignedListSize() {
     return list.rowCount();
   }
 
@@ -268,7 +269,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public synchronized TVList getSortedTvListForQuery(List<IMeasurementSchema> schemaList) {
+  public synchronized TVList getSortedTvListForQuery(
+      List<IMeasurementSchema> schemaList, boolean ignoreAllNullRows) {
     sortTVList();
     // increase reference count
     list.increaseReferenceCount();
@@ -279,7 +281,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
           measurementIndexMap.getOrDefault(measurementSchema.getMeasurementId(), -1));
       dataTypeList.add(measurementSchema.getType());
     }
-    return list.getTvListByColumnIndex(columnIndexList, dataTypeList);
+    return list.getTvListByColumnIndex(columnIndexList, dataTypeList, ignoreAllNullRows);
   }
 
   private void sortTVList() {
@@ -389,17 +391,6 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
                   list.getValueIndex(sortedRowIndex);
             }
             if (timeDuplicateInfo[sortedRowIndex]) {
-              if (!list.isNullValue(list.getValueIndex(sortedRowIndex), columnIndex)) {
-                long recordSize =
-                    MemUtils.getRecordSize(
-                        tsDataType,
-                        tsDataType.isBinary()
-                            ? list.getBinaryByValueIndex(
-                                list.getValueIndex(sortedRowIndex), columnIndex)
-                            : null,
-                        true);
-                CompressionRatio.decreaseDuplicatedMemorySize(recordSize);
-              }
               continue;
             }
           }

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.schema.SchemaConstant;
@@ -58,6 +57,7 @@ import java.util.Iterator;
  * file. It Loads or writes a page length bytes at once, with an 32 bits int to index a page inside
  * a file. Use SlottedFile to manipulate segment(sp) inside a page(an array of bytes).
  */
+@SuppressWarnings("java:S2095")
 public class SchemaFile implements ISchemaFile {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaFile.class);
@@ -95,6 +95,7 @@ public class SchemaFile implements ISchemaFile {
   // region Constructors
 
   // todo refactor constructor for schema file in Jan.
+  @SuppressWarnings("java:S899")
   private SchemaFile(
       String sgName, int schemaRegionId, boolean override, long ttl, boolean isEntity)
       throws IOException, MetadataException {
@@ -160,7 +161,7 @@ public class SchemaFile implements ISchemaFile {
                 .getConfig()
                 .getSchemaRegionConsensusProtocolClass()
                 .equals(ConsensusFactory.RATIS_CONSENSUS),
-        CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
+        Long.MAX_VALUE,
         false);
   }
 
@@ -500,12 +501,7 @@ public class SchemaFile implements ISchemaFile {
     }
 
     Files.copy(snapshot.toPath(), schemaFile.toPath());
-    return new SchemaFile(
-        sgName,
-        schemaRegionId,
-        false,
-        CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
-        false);
+    return new SchemaFile(sgName, schemaRegionId, false, Long.MAX_VALUE, false);
   }
 
   // endregion

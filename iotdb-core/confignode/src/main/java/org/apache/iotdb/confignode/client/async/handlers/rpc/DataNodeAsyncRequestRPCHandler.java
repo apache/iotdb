@@ -195,13 +195,17 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
       case FULL_MERGE:
       case FLUSH:
       case CLEAR_CACHE:
+      case CLEAN_DATA_NODE_CACHE:
+      case STOP_DATA_NODE:
       case START_REPAIR_DATA:
       case STOP_REPAIR_DATA:
       case LOAD_CONFIGURATION:
       case SET_SYSTEM_STATUS:
       case UPDATE_REGION_ROUTE_MAP:
+      case INVALIDATE_SCHEMA_CACHE:
       case INVALIDATE_MATCHED_SCHEMA_CACHE:
       case UPDATE_TEMPLATE:
+      case UPDATE_TABLE:
       case KILL_QUERY_INSTANCE:
       case RESET_PEER_LIST:
       case TEST_CONNECTION:

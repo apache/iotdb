@@ -20,12 +20,12 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.common;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.reader.IPointReader;
 
 import java.io.IOException;
-import java.util.Objects;
 import java.util.PriorityQueue;
 
 /** This class implements {@link IPointReader} for data sources with different priorities. */
@@ -40,6 +40,8 @@ public class PriorityMergeReader implements IPointReader {
 
   protected long usedMemorySize = 0;
 
+  protected MemoryReservationManager memoryReservationManager;
+
   public PriorityMergeReader() {
     heap =
         new PriorityQueue<>(
@@ -51,11 +53,18 @@ public class PriorityMergeReader implements IPointReader {
             });
   }
 
+  public void setMemoryReservationManager(MemoryReservationManager memoryReservationManager) {
+    this.memoryReservationManager = memoryReservationManager;
+  }
+
   @TestOnly
   public void addReader(IPointReader reader, long priority) throws IOException {
     if (reader.hasNextTimeValuePair()) {
       heap.add(
-          new Element(reader, reader.nextTimeValuePair(), new MergeReaderPriority(priority, 0)));
+          new Element(
+              reader,
+              reader.nextTimeValuePair(),
+              new MergeReaderPriority(Long.MAX_VALUE, priority, 0, false)));
     } else {
       reader.close();
     }
@@ -67,7 +76,11 @@ public class PriorityMergeReader implements IPointReader {
       Element element = new Element(reader, reader.nextTimeValuePair(), priority);
       heap.add(element);
       currentReadStopTime = Math.max(currentReadStopTime, endTime);
-      usedMemorySize += element.getReader().getUsedMemorySize();
+      long size = element.getReader().getUsedMemorySize();
+      usedMemorySize += size;
+      if (memoryReservationManager != null) {
+        memoryReservationManager.reserveMemoryCumulatively(size);
+      }
     } else {
       reader.close();
     }
@@ -96,7 +109,11 @@ public class PriorityMergeReader implements IPointReader {
       top.setTimeValuePair(topNext);
       heap.add(top);
     } else {
-      usedMemorySize -= top.getReader().getUsedMemorySize();
+      long size = top.getReader().getUsedMemorySize();
+      usedMemorySize -= size;
+      if (memoryReservationManager != null) {
+        memoryReservationManager.releaseMemoryCumulatively(size);
+      }
     }
     return ret;
   }
@@ -121,7 +138,11 @@ public class PriorityMergeReader implements IPointReader {
       Element e = heap.poll();
       fillNullValue(ret, e.getTimeValuePair());
       if (!e.hasNext()) {
-        usedMemorySize -= e.getReader().getUsedMemorySize();
+        long size = e.getReader().getUsedMemorySize();
+        usedMemorySize -= size;
+        if (memoryReservationManager != null) {
+          memoryReservationManager.releaseMemoryCumulatively(size);
+        }
         e.getReader().close();
         continue;
       }
@@ -133,7 +154,11 @@ public class PriorityMergeReader implements IPointReader {
           e.next();
           heap.add(e);
         } else {
-          usedMemorySize -= e.getReader().getUsedMemorySize();
+          long size = e.getReader().getUsedMemorySize();
+          usedMemorySize -= size;
+          if (memoryReservationManager != null) {
+            memoryReservationManager.releaseMemoryCumulatively(size);
+          }
           // the chunk is end
           e.close();
         }
@@ -159,41 +184,9 @@ public class PriorityMergeReader implements IPointReader {
       Element e = heap.poll();
       e.close();
     }
+    if (memoryReservationManager != null) {
+      memoryReservationManager.releaseMemoryCumulatively(usedMemorySize);
+    }
     usedMemorySize = 0;
-  }
-
-  public static class MergeReaderPriority implements Comparable<MergeReaderPriority> {
-    long version;
-    long offset;
-
-    public MergeReaderPriority(long version, long offset) {
-      this.version = version;
-      this.offset = offset;
-    }
-
-    @Override
-    public int compareTo(MergeReaderPriority o) {
-      if (version < o.version) {
-        return -1;
-      }
-      return ((version > o.version) ? 1 : (Long.compare(offset, o.offset)));
-    }
-
-    @Override
-    public boolean equals(Object object) {
-      if (this == object) {
-        return true;
-      }
-      if (object == null || getClass() != object.getClass()) {
-        return false;
-      }
-      MergeReaderPriority that = (MergeReaderPriority) object;
-      return (this.version == that.version && this.offset == that.offset);
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(version, offset);
-    }
   }
 }

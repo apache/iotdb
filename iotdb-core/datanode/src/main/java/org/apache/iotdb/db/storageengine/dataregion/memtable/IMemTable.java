@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -82,12 +84,7 @@ public interface IMemTable extends WALEntryValue {
   /** only used when mem control enabled */
   long getTVListsRamCost();
 
-  /**
-   * only used when mem control enabled
-   *
-   * @return whether the average number of points in each WritableChunk reaches the threshold
-   */
-  boolean reachTotalPointNumThreshold();
+  boolean reachChunkSizeOrPointNumThreshold();
 
   int getSeriesNumber();
 
@@ -114,18 +111,19 @@ public interface IMemTable extends WALEntryValue {
   void insertTablet(InsertTabletNode insertTabletNode, int start, int end)
       throws WriteProcessException;
 
-  void insertAlignedTablet(InsertTabletNode insertTabletNode, int start, int end)
+  void insertAlignedTablet(
+      InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results)
       throws WriteProcessException;
 
   ReadOnlyMemChunk query(
       QueryContext context,
-      PartialPath fullPath,
+      IFullPath fullPath,
       long ttlLowerBound,
       List<Pair<Modification, IMemTable>> modsToMemtabled)
       throws IOException, QueryProcessException, MetadataException;
 
   void queryForSeriesRegionScan(
-      PartialPath fullPath,
+      IFullPath fullPath,
       long ttlLowerBound,
       Map<String, List<IChunkMetadata>> chunkMetadataMap,
       Map<String, List<IChunkHandle>> memChunkHandleMap,
@@ -174,7 +172,7 @@ public interface IMemTable extends WALEntryValue {
   void release();
 
   /** must guarantee the device exists in the work memtable only used when mem control enabled */
-  boolean checkIfChunkDoesNotExist(IDeviceID deviceId, String measurement);
+  boolean chunkNotExist(IDeviceID deviceId, String measurement);
 
   /** only used when mem control enabled */
   long getCurrentTVListSize(IDeviceID deviceId, String measurement);

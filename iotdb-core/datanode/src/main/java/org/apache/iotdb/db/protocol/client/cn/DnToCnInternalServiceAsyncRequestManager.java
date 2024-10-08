@@ -20,9 +20,11 @@
 package org.apache.iotdb.db.protocol.client.cn;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.commons.client.async.AsyncConfigNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.client.request.AsyncRequestRPCHandler;
 import org.apache.iotdb.commons.client.request.ConfigNodeInternalServiceAsyncRequestManager;
+import org.apache.iotdb.commons.client.request.TestConnectionUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,6 +49,14 @@ public class DnToCnInternalServiceAsyncRequestManager
       int requestId,
       TConfigNodeLocation targetNode) {
     return ConfigNodeAsyncRequestRPCHandler.buildHandler(requestContext, requestId, targetNode);
+  }
+
+  @Override
+  protected void adjustClientTimeoutIfNecessary(
+      DnToCnRequestType dnToCnRequestType, AsyncConfigNodeInternalServiceClient client) {
+    if (DnToCnRequestType.SUBMIT_TEST_CONNECTION_TASK.equals(dnToCnRequestType)) {
+      client.setTimeoutTemporarily(TestConnectionUtils.calculateCnLeaderToAllNodeMaxTime());
+    }
   }
 
   private static class ClientPoolHolder {

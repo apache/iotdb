@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.realtime;
 
+import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -34,17 +35,19 @@ public class PipeRealtimeEventFactory {
   private static final TsFileEpochManager TS_FILE_EPOCH_MANAGER = new TsFileEpochManager();
 
   public static PipeRealtimeEvent createRealtimeEvent(
-      TsFileResource resource, boolean isLoaded, boolean isGeneratedByPipe) {
+      final TsFileResource resource, final boolean isLoaded, final boolean isGeneratedByPipe) {
     return TS_FILE_EPOCH_MANAGER.bindPipeTsFileInsertionEvent(
-        new PipeTsFileInsertionEvent(resource, isLoaded, isGeneratedByPipe), resource);
+        new PipeTsFileInsertionEvent(resource, isLoaded, isGeneratedByPipe, false), resource);
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(
-      WALEntryHandler walEntryHandler, InsertNode insertNode, TsFileResource resource) {
+      final WALEntryHandler walEntryHandler,
+      final InsertNode insertNode,
+      final TsFileResource resource) {
     return TS_FILE_EPOCH_MANAGER.bindPipeInsertNodeTabletInsertionEvent(
         new PipeInsertNodeTabletInsertionEvent(
             walEntryHandler,
-            insertNode.getDevicePath(),
+            insertNode.getTargetPath(),
             insertNode.getProgressIndex(),
             insertNode.isAligned(),
             insertNode.isGeneratedByPipe()),
@@ -53,14 +56,18 @@ public class PipeRealtimeEventFactory {
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(
-      String dataRegionId, boolean shouldPrintMessage) {
+      final String dataRegionId, final boolean shouldPrintMessage) {
     return new PipeRealtimeEvent(
         new PipeHeartbeatEvent(dataRegionId, shouldPrintMessage), null, null, null);
   }
 
-  public static PipeRealtimeEvent createRealtimeEvent(DeleteDataNode node) {
+  public static PipeRealtimeEvent createRealtimeEvent(final DeleteDataNode node) {
     return new PipeRealtimeEvent(
         new PipeSchemaRegionWritePlanEvent(node, node.isGeneratedByPipe()), null, null, null);
+  }
+
+  public static PipeRealtimeEvent createRealtimeEvent(final ProgressReportEvent event) {
+    return new PipeRealtimeEvent(event, null, null, null);
   }
 
   private PipeRealtimeEventFactory() {

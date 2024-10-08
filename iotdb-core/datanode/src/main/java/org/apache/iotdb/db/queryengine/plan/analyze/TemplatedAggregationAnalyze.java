@@ -41,6 +41,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
@@ -167,13 +168,15 @@ public class TemplatedAggregationAnalyze {
             && "*".equalsIgnoreCase(selectExpression.getExpressions().get(0).getOutputSymbol())) {
           subExpressions = new ArrayList<>();
           FunctionExpression functionExpression = (FunctionExpression) selectExpression;
-          for (String measurement : template.getSchemaMap().keySet()) {
+          for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
             FunctionExpression subFunctionExpression =
                 new FunctionExpression(
                     functionExpression.getFunctionName(),
                     functionExpression.getFunctionAttributes(),
                     Collections.singletonList(
-                        new TimeSeriesOperand(new PartialPath(new String[] {measurement}))));
+                        new TimeSeriesOperand(
+                            new PartialPath(new String[] {entry.getKey()}),
+                            entry.getValue().getType())));
             subFunctionExpression.setFunctionType(functionExpression.getFunctionType());
             subExpressions.add(subFunctionExpression);
           }

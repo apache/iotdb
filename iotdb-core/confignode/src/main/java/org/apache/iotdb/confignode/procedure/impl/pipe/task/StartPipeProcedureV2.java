@@ -20,7 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
@@ -65,8 +65,8 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
     pipeTaskInfo.get().checkBeforeStartPipe(pipeName);
 
-    return pipeTaskInfo.get().isPipeRunning(pipeName)
-        && !pipeTaskInfo.get().isStoppedByRuntimeException(pipeName);
+    return !pipeTaskInfo.get().isPipeRunning(pipeName)
+        || pipeTaskInfo.get().isStoppedByRuntimeException(pipeName);
   }
 
   @Override

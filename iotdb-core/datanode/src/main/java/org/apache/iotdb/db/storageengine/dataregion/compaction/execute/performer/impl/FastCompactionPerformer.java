@@ -33,6 +33,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionPerformerSubTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionTableSchemaCollector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
@@ -43,13 +44,14 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
+import org.apache.tsfile.exception.StopReadTsFileByInterruptException;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -89,6 +91,7 @@ public class FastCompactionPerformer
       modificationCache = new ConcurrentHashMap<>();
 
   private final boolean isCrossCompaction;
+  private boolean ignoreAllNullRows = true;
 
   public FastCompactionPerformer(
       List<TsFileResource> seqFiles,
@@ -113,11 +116,14 @@ public class FastCompactionPerformer
   public void perform() throws Exception {
     this.subTaskSummary.setTemporalFileNum(targetFiles.size());
     try (MultiTsFileDeviceIterator deviceIterator =
-            new MultiTsFileDeviceIterator(seqFiles, unseqFiles, readerCacheMap);
+            new MultiTsFileDeviceIterator(seqFiles, unseqFiles, readerCacheMap, ignoreAllNullRows);
         AbstractCompactionWriter compactionWriter =
             isCrossCompaction
                 ? new FastCrossCompactionWriter(targetFiles, seqFiles, readerCacheMap)
-                : new FastInnerCompactionWriter(targetFiles.get(0))) {
+                : new FastInnerCompactionWriter(targetFiles)) {
+      List<Schema> schemas =
+          CompactionTableSchemaCollector.collectSchema(seqFiles, unseqFiles, readerCacheMap);
+      compactionWriter.setSchemaForAllTargetFile(schemas);
       readModification(seqFiles);
       readModification(unseqFiles);
       while (deviceIterator.hasNextDevice()) {
@@ -131,18 +137,13 @@ public class FastCompactionPerformer
         sortedSourceFiles.addAll(seqFiles);
         sortedSourceFiles.addAll(unseqFiles);
         sortedSourceFiles.removeIf(
-            x -> {
-              try {
-                return x.definitelyNotContains(device)
+            x ->
+                x.definitelyNotContains(device)
                     || !x.isDeviceAlive(
                         device,
                         DataNodeTTLCache.getInstance()
                             // TODO: remove deviceId conversion
-                            .getTTL(((PlainDeviceID) device).toStringID()));
-              } catch (IllegalPathException e) {
-                throw new RuntimeException(e);
-              }
-            });
+                            .getTTL(device)));
         sortedSourceFiles.sort(Comparator.comparingLong(x -> x.getStartTime(device)));
 
         if (sortedSourceFiles.isEmpty()) {
@@ -163,7 +164,7 @@ public class FastCompactionPerformer
         // check whether to flush chunk metadata or not
         compactionWriter.checkAndMayFlushChunkMetadata();
         // Add temp file metrics
-        subTaskSummary.setTemporalFileSize(compactionWriter.getWriterSize());
+        subTaskSummary.setTemporaryFileSize(compactionWriter.getWriterSize());
         sortedSourceFiles.clear();
       }
       compactionWriter.endFile();
@@ -192,7 +193,7 @@ public class FastCompactionPerformer
     // end offset of each timeseries metadata, in order to facilitate the reading of chunkMetadata
     // directly by this offset later. Instead of deserializing chunk metadata later, we need to
     // deserialize chunk metadata here to get the schemas of all value measurements, because we
-    // should get schemas of all value measurement to startMeasruement() and compaction process is
+    // should get schemas of all value measurement to startMeasurement() and compaction process is
     // to read a batch of overlapped files each time, and we cannot make sure if the first batch of
     // overlapped tsfiles contain all the value measurements.
     for (Map.Entry<String, Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>>> entry :
@@ -210,7 +211,8 @@ public class FastCompactionPerformer
             sortedSourceFiles,
             measurementSchemas,
             deviceId,
-            taskSummary)
+            taskSummary,
+            ignoreAllNullRows)
         .call();
     subTaskSummary.increase(taskSummary);
   }
@@ -269,8 +271,12 @@ public class FastCompactionPerformer
         futures.get(i).get();
         subTaskSummary.increase(taskSummaryList.get(i));
       } catch (ExecutionException e) {
-        if (e.getCause() instanceof CompactionLastTimeCheckFailedException) {
-          throw (CompactionLastTimeCheckFailedException) e.getCause();
+        Throwable cause = e.getCause();
+        if (cause instanceof CompactionLastTimeCheckFailedException) {
+          throw (CompactionLastTimeCheckFailedException) cause;
+        }
+        if (cause instanceof StopReadTsFileByInterruptException) {
+          throw (StopReadTsFileByInterruptException) cause;
         }
         throw new IOException("[Compaction] SubCompactionTask meet errors ", e);
       }
@@ -290,6 +296,11 @@ public class FastCompactionPerformer
               + "should be FastCompactionTaskSummary");
     }
     this.subTaskSummary = (FastCompactionTaskSummary) summary;
+  }
+
+  @Override
+  public void setIgnoreAllNullRows(boolean ignoreAllNullRows) {
+    this.ignoreAllNullRows = ignoreAllNullRows;
   }
 
   @Override

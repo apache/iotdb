@@ -117,11 +117,23 @@ public class FragmentInstanceExecution {
   }
 
   public FragmentInstanceInfo getInstanceInfo() {
-    return new FragmentInstanceInfo(
-        stateMachine.getState(),
-        context.getEndTime(),
-        context.getFailedCause(),
-        context.getFailureInfoList());
+    return context
+        .getErrorCode()
+        .map(
+            s ->
+                new FragmentInstanceInfo(
+                    stateMachine.getState(),
+                    context.getEndTime(),
+                    context.getFailedCause(),
+                    context.getFailureInfoList(),
+                    s))
+        .orElseGet(
+            () ->
+                new FragmentInstanceInfo(
+                    stateMachine.getState(),
+                    context.getEndTime(),
+                    context.getFailedCause(),
+                    context.getFailureInfoList()));
   }
 
   public long getStartTime() {
@@ -170,6 +182,7 @@ public class FragmentInstanceExecution {
     statistics.setSeqUnclosedNum(context.getUnclosedSeqFileNum());
     statistics.setUnseqClosedNum(context.getClosedUnseqFileNum());
     statistics.setUnseqUnclosedNum(context.getUnclosedUnseqFileNum());
+
     return true;
   }
 
@@ -311,6 +324,8 @@ public class FragmentInstanceExecution {
             exchangeManager.deRegisterFragmentInstanceFromMemoryPool(
                 instanceId.getQueryId().getId(), instanceId.getFragmentInstanceId(), true);
 
+            context.releaseMemoryReservationManager();
+
             if (newState.isFailed()) {
               scheduler.abortFragmentInstance(instanceId);
             }
@@ -343,7 +358,7 @@ public class FragmentInstanceExecution {
               + File.separator;
       File tmpFile = new File(tmpFilePath);
       if (tmpFile.exists()) {
-        FileUtils.deleteFileOrDirectory(tmpFile);
+        FileUtils.deleteFileOrDirectory(tmpFile, true);
       }
     }
   }

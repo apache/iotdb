@@ -22,10 +22,10 @@ package org.apache.iotdb.db.pipe.event.common.tablet;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.pattern.PipePattern;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
@@ -132,7 +132,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   @Override
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     try {
-      PipeResourceManager.wal().pin(walEntryHandler);
+      PipeDataNodeResourceManager.wal().pin(walEntryHandler);
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
@@ -147,7 +147,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   @Override
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     try {
-      PipeResourceManager.wal().unpin(walEntryHandler);
+      PipeDataNodeResourceManager.wal().unpin(walEntryHandler);
       // Release the containers' memory.
       if (dataContainers != null) {
         dataContainers.clear();
@@ -254,9 +254,9 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       }
 
       if (insertNode instanceof InsertRowNode || insertNode instanceof InsertTabletNode) {
-        final PartialPath devicePartialPath = insertNode.getDevicePath();
+        final PartialPath devicePartialPath = insertNode.getTargetPath();
         return Objects.isNull(devicePartialPath)
-            || pipePattern.mayOverlapWithDevice(devicePartialPath.getFullPath());
+            || pipePattern.mayOverlapWithDevice(devicePartialPath.getIDeviceIDAsFullDevice());
       }
 
       if (insertNode instanceof InsertRowsNode) {
@@ -264,9 +264,9 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
             .getInsertRowNodeList().stream()
                 .anyMatch(
                     insertRowNode ->
-                        Objects.isNull(insertRowNode.getDevicePath())
+                        Objects.isNull(insertRowNode.getTargetPath())
                             || pipePattern.mayOverlapWithDevice(
-                                insertRowNode.getDevicePath().getFullPath()));
+                                insertRowNode.getTargetPath().getIDeviceIDAsFullDevice()));
       }
 
       return true;
@@ -303,8 +303,8 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   /////////////////////////// convertToTablet ///////////////////////////
 
-  public boolean isAligned() {
-    return isAligned;
+  public boolean isAligned(final int i) {
+    return initDataContainers().get(i).isAligned();
   }
 
   public List<Tablet> convertToTablets() {
@@ -326,6 +326,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       switch (node.getType()) {
         case INSERT_ROW:
         case INSERT_TABLET:
+        case RELATIONAL_INSERT_TABLET:
           dataContainers.add(
               new TabletInsertionDataContainer(pipeTaskMeta, this, node, pipePattern));
           break;
@@ -345,7 +346,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       }
 
       return dataContainers;
-    } catch (Exception e) {
+    } catch (final Exception e) {
       throw new PipeException("Initialize data container error.", e);
     }
   }
@@ -362,11 +363,17 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   public List<PipeRawTabletInsertionEvent> toRawTabletInsertionEvents() {
     final List<PipeRawTabletInsertionEvent> events =
-        convertToTablets().stream()
+        initDataContainers().stream()
             .map(
-                tablet ->
+                container ->
                     new PipeRawTabletInsertionEvent(
-                        tablet, isAligned, pipeName, creationTime, pipeTaskMeta, this, false))
+                        container.convertToTablet(),
+                        container.isAligned(),
+                        pipeName,
+                        creationTime,
+                        pipeTaskMeta,
+                        this,
+                        false))
             .filter(event -> !event.hasNoNeedParsingAndIsEmpty())
             .collect(Collectors.toList());
 

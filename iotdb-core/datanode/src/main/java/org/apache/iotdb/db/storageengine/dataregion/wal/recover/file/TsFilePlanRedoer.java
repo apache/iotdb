@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -53,8 +53,8 @@ public class TsFilePlanRedoer {
   }
 
   void redoDelete(DeleteDataNode deleteDataNode) throws IOException {
-    List<PartialPath> paths = deleteDataNode.getPathList();
-    for (PartialPath path : paths) {
+    List<MeasurementPath> paths = deleteDataNode.getPathList();
+    for (MeasurementPath path : paths) {
       // path here is device path pattern
       recoveryMemTable.delete(
           path,
@@ -100,7 +100,7 @@ public class TsFilePlanRedoer {
     } else {
       if (node.isAligned()) {
         recoveryMemTable.insertAlignedTablet(
-            (InsertTabletNode) node, 0, ((InsertTabletNode) node).getRowCount());
+            (InsertTabletNode) node, 0, ((InsertTabletNode) node).getRowCount(), null);
       } else {
         recoveryMemTable.insertTablet(
             (InsertTabletNode) node, 0, ((InsertTabletNode) node).getRowCount());

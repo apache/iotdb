@@ -30,7 +30,6 @@ import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
@@ -54,8 +53,9 @@ import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFi
 public abstract class AbstractSeriesScanTest {
 
   protected static final String TEST_DATABASE = "root.sg_pd";
-  protected static final IDeviceID TEST_DEVICE = new PlainDeviceID(TEST_DATABASE + ".d1");
-  protected static final String TEST_PATH = ((PlainDeviceID) TEST_DEVICE).toStringID() + ".s1";
+  protected static final IDeviceID TEST_DEVICE =
+      IDeviceID.Factory.DEFAULT_FACTORY.create(TEST_DATABASE + ".d1");
+  protected static final String TEST_PATH = TEST_DEVICE.toString() + ".s1";
 
   /**
    * The data distribution is as follows.

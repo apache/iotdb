@@ -62,8 +62,8 @@ public class MemAlignedChunkLoader implements IChunkLoader {
       return new MemAlignedChunkReader(chunk, globalTimeFilter);
     } finally {
       long duration = System.nanoTime() - startTime;
-      context.getQueryStatistics().constructAlignedChunkReadersMemCount.getAndAdd(1);
-      context.getQueryStatistics().constructAlignedChunkReadersMemTime.getAndAdd(duration);
+      context.getQueryStatistics().getConstructAlignedChunkReadersMemCount().getAndAdd(1);
+      context.getQueryStatistics().getConstructAlignedChunkReadersMemTime().getAndAdd(duration);
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(INIT_CHUNK_READER_ALIGNED_MEM, duration);
     }
   }

@@ -63,7 +63,7 @@ public class ModificationFile implements AutoCloseable {
   private String filePath;
   private final SecureRandom random = new SecureRandom();
 
-  private static final long COMPACT_THRESHOLD = 1024 * 1024;
+  private static final long COMPACT_THRESHOLD = 1024 * 1024L;
 
   private boolean hasCompacted = false;
 

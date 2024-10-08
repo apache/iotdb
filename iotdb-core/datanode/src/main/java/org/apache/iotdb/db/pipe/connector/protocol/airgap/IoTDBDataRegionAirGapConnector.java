@@ -32,6 +32,7 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
@@ -129,7 +130,7 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
     try {
       if (event instanceof PipeSchemaRegionWritePlanEvent) {
         doTransferWrapper(socket, (PipeSchemaRegionWritePlanEvent) event);
-      } else if (!(event instanceof PipeHeartbeatEvent)) {
+      } else if (!(event instanceof PipeHeartbeatEvent || event instanceof PipeTerminateEvent)) {
         LOGGER.warn(
             "IoTDBDataRegionAirGapConnector does not support transferring generic event: {}.",
             event);
@@ -149,12 +150,12 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
       final AirGapSocket socket,
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, WALPipeException, IOException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
+        IoTDBDataRegionAirGapConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
-          IoTDBDataRegionAirGapConnector.class.getName())) {
-        return;
-      }
       doTransfer(socket, pipeInsertNodeTabletInsertionEvent);
     } finally {
       pipeInsertNodeTabletInsertionEvent.decreaseReferenceCount(
@@ -194,12 +195,12 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
   private void doTransferWrapper(
       final AirGapSocket socket, final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException, IOException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeRawTabletInsertionEvent.increaseReferenceCount(
+        IoTDBDataRegionAirGapConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeRawTabletInsertionEvent.increaseReferenceCount(
-          IoTDBDataRegionAirGapConnector.class.getName())) {
-        return;
-      }
       doTransfer(socket, pipeRawTabletInsertionEvent);
     } finally {
       pipeRawTabletInsertionEvent.decreaseReferenceCount(
@@ -232,12 +233,12 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
   private void doTransferWrapper(
       final AirGapSocket socket, final PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
       throws PipeException, IOException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeTsFileInsertionEvent.increaseReferenceCount(
+        IoTDBDataRegionAirGapConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeTsFileInsertionEvent.increaseReferenceCount(
-          IoTDBDataRegionAirGapConnector.class.getName())) {
-        return;
-      }
       doTransfer(socket, pipeTsFileInsertionEvent);
     } finally {
       pipeTsFileInsertionEvent.decreaseReferenceCount(

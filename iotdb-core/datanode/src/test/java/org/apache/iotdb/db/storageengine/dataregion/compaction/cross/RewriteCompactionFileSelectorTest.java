@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossSpaceCompactionCandidate;
@@ -39,7 +40,7 @@ import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
-import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -63,23 +64,29 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
 
   private int oldMinCrossCompactionUnseqLevel =
       IoTDBDescriptor.getInstance().getConfig().getMinCrossCompactionUnseqFileLevel();
+  private long compactionMemory = SystemInfo.getInstance().getMemorySizeForCompaction();
 
   @Before
   public void setUp() throws IOException, MetadataException, WriteProcessException {
     super.setUp();
     IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(0);
     IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(1);
+    SystemInfo.getInstance().setMemorySizeForCompaction(1000 * 1024 * 1024);
   }
 
   @After
   public void tearDown() throws StorageEngineException, IOException {
     super.tearDown();
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setMinCrossCompactionUnseqFileLevel(oldMinCrossCompactionUnseqLevel);
+    SystemInfo.getInstance().setMemorySizeForCompaction(compactionMemory);
   }
 
   @Test
   public void testFullSelection() throws MergeException, IOException {
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
     List<TsFileResource> seqSelected = selected.get(0).getSeqFiles();
@@ -87,14 +94,16 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     assertEquals(seqResources, seqSelected);
     assertEquals(unseqResources, unseqSelected);
 
-    selector = new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     selected = selector.selectCrossSpaceTask(seqResources.subList(0, 1), unseqResources);
     seqSelected = selected.get(0).getSeqFiles();
     unseqSelected = selected.get(0).getUnseqFiles();
     assertEquals(seqResources.subList(0, 1), seqSelected);
     assertEquals(unseqResources, unseqSelected);
 
-    selector = new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     selected = selector.selectCrossSpaceTask(seqResources, unseqResources.subList(0, 1));
     seqSelected = selected.get(0).getSeqFiles();
     unseqSelected = selected.get(0).getUnseqFiles();
@@ -107,7 +116,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
     assertEquals(1, selected.size());
@@ -118,7 +127,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
     List<TsFileResource> seqSelected = selected.get(0).getSeqFiles();
@@ -176,7 +185,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     List<TsFileResource> newUnseqResources = new ArrayList<>();
     newUnseqResources.add(largeUnseqTsFileResource);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, newUnseqResources);
     assertEquals(0, selected.size());
@@ -265,7 +274,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
     assertEquals(2, selected.get(0).getSeqFiles().size());
@@ -328,7 +337,8 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
               29000L * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
       try {
         RewriteCrossSpaceCompactionSelector selector =
-            new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+            new RewriteCrossSpaceCompactionSelector(
+                "", "", 0, null, new CompactionScheduleContext());
         List<CrossCompactionTaskResource> selected =
             selector.selectCrossSpaceTask(seqList, unseqList);
         assertEquals(1, selected.get(0).getSeqFiles().size());
@@ -411,7 +421,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                 * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
     try {
       RewriteCrossSpaceCompactionSelector selector =
-          new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+          new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
       List<CrossCompactionTaskResource> selected =
           selector.selectCrossSpaceTask(seqList, unseqList);
       Assert.assertEquals(1, selected.size());
@@ -484,7 +494,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                 * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
     try {
       RewriteCrossSpaceCompactionSelector selector =
-          new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+          new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
       List<CrossCompactionTaskResource> selected =
           selector.selectCrossSpaceTask(seqList, unseqList);
       Assert.assertEquals(1, selected.size());
@@ -557,7 +567,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                 * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
     try {
       RewriteCrossSpaceCompactionSelector selector =
-          new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+          new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
       List<CrossCompactionTaskResource> selected =
           selector.selectCrossSpaceTask(seqList, unseqList);
       Assert.assertEquals(1, selected.size());
@@ -633,7 +643,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                 * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
     try {
       RewriteCrossSpaceCompactionSelector selector =
-          new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+          new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
       List<CrossCompactionTaskResource> selected =
           selector.selectCrossSpaceTask(seqList, unseqList);
       Assert.assertEquals(1, selected.size());
@@ -712,7 +722,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                 * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
     try {
       RewriteCrossSpaceCompactionSelector selector =
-          new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+          new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
       List<CrossCompactionTaskResource> selected =
           selector.selectCrossSpaceTask(seqList, unseqList);
       Assert.assertEquals(1, selected.size());
@@ -754,7 +764,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
 
     TsFileWriter fileWriter = new TsFileWriter(firstFile);
     for (IDeviceID deviceId : deviceIds) {
-      for (MeasurementSchema measurementSchema : measurementSchemas) {
+      for (IMeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
       }
     }
@@ -807,7 +817,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     }
     fileWriter = new TsFileWriter(secondFile);
     for (IDeviceID deviceId : deviceIds) {
-      for (MeasurementSchema measurementSchema : measurementSchemas) {
+      for (IMeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
       }
     }
@@ -853,7 +863,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     }
     fileWriter = new TsFileWriter(thirdFile);
     for (IDeviceID deviceId : deviceIds) {
-      for (MeasurementSchema measurementSchema : measurementSchemas) {
+      for (IMeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
       }
     }
@@ -899,7 +909,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     }
     fileWriter = new TsFileWriter(fourthFile);
     for (IDeviceID deviceId : deviceIds) {
-      for (MeasurementSchema measurementSchema : measurementSchemas) {
+      for (IMeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
       }
     }
@@ -944,7 +954,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                 * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
     try {
       RewriteCrossSpaceCompactionSelector selector =
-          new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+          new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
       List<CrossCompactionTaskResource> selected =
           selector.selectCrossSpaceTask(seqList, unseqList);
       Assert.assertEquals(1, selected.size());
@@ -961,7 +971,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
         IoTDBDescriptor.getInstance().getConfig().getFileLimitPerCrossTask();
     IoTDBDescriptor.getInstance().getConfig().setFileLimitPerCrossTask(5);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
     assertEquals(1, selected.size());
@@ -981,7 +991,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     IoTDBDescriptor.getInstance().getConfig().setFileLimitPerCrossTask(1);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
     assertEquals(1, selected.size());
@@ -996,7 +1006,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
   @Test
   public void testDeleteInSelection() throws Exception {
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     AtomicBoolean fail = new AtomicBoolean(false);
     Thread thread1 =
         new Thread(
@@ -1032,7 +1042,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
   @Test
   public void testDeleteAndDegradeInSelection() throws Exception {
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     AtomicBoolean fail = new AtomicBoolean(false);
     Thread thread1 =
         new Thread(
@@ -1072,7 +1082,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
         .getConfig()
         .setTargetCompactionFileSize(unseqResources.get(5).getTsFileSize());
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources.subList(5, 6));
     Assert.assertEquals(1, selected.size());

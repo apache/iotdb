@@ -497,7 +497,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "show devices",
-          "Device,IsAligned,Template,TTL,",
+          "Device,IsAligned,Template,TTL(ms),",
           new HashSet<>(
               Arrays.asList(
                   "root.nonAligned.1TS,false,null,INF,",

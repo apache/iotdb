@@ -106,11 +106,11 @@ function prepare_buildx(){
             docker buildx create --name mybuilder --driver docker-container --bootstrap --use
             docker run --rm --privileged tonistiigi/binfmt:latest --install all
         fi
-        find ${current_path}/../ -name 'Dockerfile-1.0.0*' | xargs sed -i 's#FROM openjdk:11-jre-slim#FROM --platform=$TARGETPLATFORM eclipse-temurin:11-jre-focal#g'
+        find ${current_path}/../ -name 'Dockerfile-1.0.0*' | xargs sed -i 's#FROM eclipse-temurin:17-jre-focal#FROM --platform=$TARGETPLATFORM eclipse-temurin:17-jre-focal#g'
     else
         docker_build="docker build" ;
         docker_publish="" ;
-        find ${current_path}/../ -name 'Dockerfile-1.0.0*' | xargs sed -i 's#FROM --platform=$TARGETPLATFORM eclipse-temurin:11-jre-focal#FROM openjdk:11-jre-slim#g'
+        find ${current_path}/../ -name 'Dockerfile-1.0.0*' | xargs sed -i 's#FROM --platform=$TARGETPLATFORM eclipse-temurin:17-jre-focal#FROM eclipse-temurin:17-jre-focal#g'
     fi
 }
 function build_iotdb(){

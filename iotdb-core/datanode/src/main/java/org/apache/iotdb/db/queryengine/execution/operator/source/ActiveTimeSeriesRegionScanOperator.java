@@ -29,7 +29,6 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
@@ -55,12 +54,13 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
       PlanNodeId sourceId,
       Map<IDeviceID, Map<String, TimeseriesContext>> timeSeriesToSchemasInfo,
       Filter timeFilter,
+      Map<IDeviceID, Long> ttlCache,
       boolean isOutputCount) {
     this.outputCount = isOutputCount;
     this.operatorContext = operatorContext;
     this.sourceId = sourceId;
     this.timeSeriesToSchemasInfo = timeSeriesToSchemasInfo;
-    this.regionScanUtil = new RegionScanForActiveTimeSeriesUtil(timeFilter);
+    this.regionScanUtil = new RegionScanForActiveTimeSeriesUtil(timeFilter, ttlCache);
     this.dataBaseName =
         new Binary(
             operatorContext
@@ -109,7 +109,7 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
 
     for (Map.Entry<IDeviceID, List<String>> entry : activeTimeSeries.entrySet()) {
       IDeviceID deviceID = entry.getKey();
-      String deviceStr = ((PlainDeviceID) deviceID).toStringID();
+      String deviceStr = deviceID.toString();
       List<String> timeSeriesList = entry.getValue();
       Map<String, TimeseriesContext> timeSeriesInfo = timeSeriesToSchemasInfo.get(deviceID);
       for (String timeSeries : timeSeriesList) {

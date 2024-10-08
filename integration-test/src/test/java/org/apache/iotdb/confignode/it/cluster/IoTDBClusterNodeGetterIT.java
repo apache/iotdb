@@ -151,7 +151,6 @@ public class IoTDBClusterNodeGetterIT {
       Assert.assertEquals(
           expectedParameters.getSeriesPartitionExecutorClass(),
           clusterParameters.getSeriesPartitionExecutorClass());
-      Assert.assertEquals(expectedParameters.getDefaultTTL(), clusterParameters.getDefaultTTL());
       Assert.assertEquals(
           expectedParameters.getTimePartitionInterval(),
           clusterParameters.getTimePartitionInterval());

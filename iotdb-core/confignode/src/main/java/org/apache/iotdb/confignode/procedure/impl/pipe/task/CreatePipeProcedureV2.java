@@ -25,11 +25,11 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
-import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
-import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
-import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.task.meta.PipeType;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
@@ -42,6 +42,7 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -110,6 +111,17 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     return PipeTaskOperation.CREATE_PIPE;
   }
 
+  /**
+   * Check the {@link PipePlugin} configuration in Pipe. If there is an error, throw {@link
+   * PipeException}. If there is a Pipe with the same name and there is no IfNotExists condition in
+   * {@link #createPipeRequest}, throw {@link PipeException}. If there is an IfNotExists condition,
+   * return {@code false}. If there is no Pipe with the same name, return {@code true}.
+   *
+   * @param env the environment for the procedure
+   * @return {@code true} The pipeline does not exist {@code false} The pipeline already exists and
+   *     satisfies the IfNotExists condition
+   * @throws PipeException
+   */
   @Override
   public boolean executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info(
@@ -123,9 +135,8 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             createPipeRequest.getExtractorAttributes(),
             createPipeRequest.getProcessorAttributes(),
             createPipeRequest.getConnectorAttributes());
-    pipeTaskInfo.get().checkBeforeCreatePipe(createPipeRequest);
 
-    return false;
+    return pipeTaskInfo.get().checkBeforeCreatePipe(createPipeRequest);
   }
 
   @Override
@@ -172,7 +183,9 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                     env.getConfigManager()
                         .getPartitionManager()
                         .getRegionStorageGroup(regionGroupId);
-                if (databaseName != null && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)) {
+                if (databaseName != null
+                    && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)
+                    && !databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE + ".")) {
                   // Pipe only collect user's data, filter out metric database here.
                   consensusGroupIdToTaskMetaMap.put(
                       regionGroupId.getId(),

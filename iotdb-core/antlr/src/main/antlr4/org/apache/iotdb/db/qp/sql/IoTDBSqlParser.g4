@@ -65,6 +65,8 @@ ddlStatement
     // Cluster
     | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes | showClusterId
     | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList | migrateRegion | verifyConnection
+    // AINode
+    | showAINodes | createModel | dropModel | showModels | callInference
     // Quota
     | setSpaceQuota | showSpaceQuota | setThrottleQuota | showThrottleQuota
     // View
@@ -322,7 +324,7 @@ setTTL
 
 // ---- Unset TTL
 unsetTTL
-    : UNSET TTL TO path=prefixPath
+    : UNSET TTL (TO | FROM) path=prefixPath
     ;
 
 // ---- Show TTL
@@ -489,6 +491,11 @@ showConfigNodes
     : SHOW CONFIGNODES
     ;
 
+// ---- Show AI Nodes
+showAINodes
+    : SHOW AINODES
+    ;
+
 // ---- Show Cluster Id
 showClusterId
     : SHOW CLUSTERID
@@ -535,10 +542,11 @@ verifyConnection
 
 // Pipe Task =========================================================================================
 createPipe
-    : CREATE PIPE pipeName=identifier
-        extractorAttributesClause?
+    : CREATE PIPE  (IF NOT EXISTS)? pipeName=identifier
+        ((extractorAttributesClause?
         processorAttributesClause?
-        connectorAttributesClause
+        connectorAttributesClause)
+        |connectorAttributesWithoutWithSinkClause)
     ;
 
 extractorAttributesClause
@@ -570,14 +578,26 @@ connectorAttributesClause
         RR_BRACKET
     ;
 
+connectorAttributesWithoutWithSinkClause
+    : LR_BRACKET (connectorAttributeClause COMMA)* connectorAttributeClause? RR_BRACKET
+    ;
+
 connectorAttributeClause
     : connectorKey=STRING_LITERAL OPERATOR_SEQ connectorValue=STRING_LITERAL
     ;
 
 alterPipe
-    : ALTER PIPE pipeName=identifier
+    : ALTER PIPE (IF EXISTS)? pipeName=identifier
+        alterExtractorAttributesClause?
         alterProcessorAttributesClause?
         alterConnectorAttributesClause?
+    ;
+
+alterExtractorAttributesClause
+    : (MODIFY | REPLACE) (EXTRACTOR | SOURCE)
+        LR_BRACKET
+        (extractorAttributeClause COMMA)* extractorAttributeClause?
+        RR_BRACKET
     ;
 
 alterProcessorAttributesClause
@@ -595,7 +615,7 @@ alterConnectorAttributesClause
     ;
 
 dropPipe
-    : DROP PIPE pipeName=identifier
+    : DROP PIPE (IF EXISTS)? pipeName=identifier
     ;
 
 startPipe
@@ -612,11 +632,11 @@ showPipes
 
 // Pipe Plugin =========================================================================================
 createPipePlugin
-    : CREATE PIPEPLUGIN pluginName=identifier AS className=STRING_LITERAL uriClause
+    : CREATE PIPEPLUGIN (IF NOT EXISTS)? pluginName=identifier AS className=STRING_LITERAL uriClause
     ;
 
 dropPipePlugin
-    : DROP PIPEPLUGIN pluginName=identifier
+    : DROP PIPEPLUGIN (IF EXISTS)? pluginName=identifier
     ;
 
 showPipePlugins
@@ -625,7 +645,7 @@ showPipePlugins
 
 // Topic =========================================================================================
 createTopic
-    : CREATE TOPIC topicName=identifier topicAttributesClause?
+    : CREATE TOPIC (IF NOT EXISTS)? topicName=identifier topicAttributesClause?
     ;
 
 topicAttributesClause
@@ -637,7 +657,7 @@ topicAttributeClause
     ;
 
 dropTopic
-    : DROP TOPIC topicName=identifier
+    : DROP TOPIC (IF EXISTS)? topicName=identifier
     ;
 
 showTopics
@@ -647,6 +667,42 @@ showTopics
 // Subscriptions =========================================================================================
 showSubscriptions
     : SHOW SUBSCRIPTIONS (ON topicName=identifier)?
+    ;
+
+// AI Model =========================================================================================
+// ---- Create Model
+createModel
+    : CREATE MODEL modelName=identifier USING URI modelUri=STRING_LITERAL
+    ;
+
+windowFunction
+    : TAIL LR_BRACKET windowSize=INTEGER_LITERAL RR_BRACKET
+    | HEAD LR_BRACKET windowSize=INTEGER_LITERAL RR_BRACKET
+    | COUNT LR_BRACKET interval=INTEGER_LITERAL COMMA step=INTEGER_LITERAL RR_BRACKET
+    ;
+
+callInference
+    : CALL INFERENCE LR_BRACKET modelId=identifier COMMA inputSql=STRING_LITERAL (COMMA hparamPair)* RR_BRACKET
+    ;
+
+hparamPair
+    : hparamKey=attributeKey operator_eq hparamValue
+    ;
+
+hparamValue
+    : attributeValue
+    | windowFunction
+    ;
+
+// ---- Drop Model
+dropModel
+    : DROP MODEL modelId=identifier
+    ;
+
+// ---- Show Models
+showModels
+    : SHOW MODELS
+    | SHOW MODELS modelId=identifier
     ;
 
 // Create Logical View
@@ -1077,7 +1133,7 @@ loadTimeseries
 
 // Load TsFile
 loadFile
-    : LOAD fileName=STRING_LITERAL loadFileAttributeClauses?
+    : LOAD fileName=STRING_LITERAL ((loadFileAttributeClauses?) | (loadFileWithAttributeClauses))
     ;
 
 loadFileAttributeClauses
@@ -1088,6 +1144,17 @@ loadFileAttributeClause
     : SGLEVEL operator_eq INTEGER_LITERAL
     | VERIFY operator_eq boolean_literal
     | ONSUCCESS operator_eq (DELETE|NONE)
+    ;
+
+loadFileWithAttributeClauses
+    : WITH
+        LR_BRACKET
+        (loadFileWithAttributeClause COMMA)* loadFileWithAttributeClause?
+        RR_BRACKET
+    ;
+
+loadFileWithAttributeClause
+    : loadFileWithKey=STRING_LITERAL OPERATOR_SEQ loadFileWithValue=STRING_LITERAL
     ;
 
 // Remove TsFile

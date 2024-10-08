@@ -76,6 +76,12 @@ public class UDAFSpread implements UDTF {
       case DOUBLE:
         transformDouble(row);
         break;
+      case BLOB:
+      case TIMESTAMP:
+      case BOOLEAN:
+      case STRING:
+      case TEXT:
+      case DATE:
       default:
         break;
     }
@@ -96,6 +102,12 @@ public class UDAFSpread implements UDTF {
       case DOUBLE:
         pc.putDouble(0, doubleMax - doubleMin);
         break;
+      case TEXT:
+      case DATE:
+      case STRING:
+      case BOOLEAN:
+      case TIMESTAMP:
+      case BLOB:
       default:
         throw new NoNumberException();
     }

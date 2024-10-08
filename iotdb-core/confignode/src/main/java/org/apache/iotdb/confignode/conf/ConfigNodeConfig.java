@@ -35,7 +35,7 @@ import java.util.Arrays;
 
 public class ConfigNodeConfig {
 
-  /** ClusterId, the default value "defaultCluster" will be changed after join cluster. */
+  /** ClusterName, the default value "defaultCluster" will be changed after join cluster. */
   private volatile String clusterName = "defaultCluster";
 
   /** ConfigNodeId, the default value -1 will be changed after join cluster. */
@@ -132,9 +132,6 @@ public class ConfigNodeConfig {
   private String consensusDir =
       IoTDBConstant.CN_DEFAULT_DATA_DIR + File.separator + IoTDBConstant.CONSENSUS_FOLDER_NAME;
 
-  /** External lib directory, stores user-uploaded JAR files. */
-  private String extLibDir = IoTDBConstant.EXT_FOLDER_NAME;
-
   /** External lib directory for UDF, stores user-uploaded JAR files. */
   private String udfDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_FOLDER_NAME;
@@ -162,7 +159,7 @@ public class ConfigNodeConfig {
       systemDir + File.separator + "pipe" + File.separator + "receiver";
 
   /** Procedure Evict ttl. */
-  private int procedureCompletedEvictTTL = 800;
+  private int procedureCompletedEvictTTL = 60;
 
   /** Procedure completed clean interval. */
   private int procedureCompletedCleanInterval = 30;
@@ -302,7 +299,6 @@ public class ConfigNodeConfig {
   private void formulateFolders() {
     systemDir = addHomeDir(systemDir);
     consensusDir = addHomeDir(consensusDir);
-    extLibDir = addHomeDir(extLibDir);
     udfDir = addHomeDir(udfDir);
     udfTemporaryLibDir = addHomeDir(udfTemporaryLibDir);
     triggerDir = addHomeDir(triggerDir);
@@ -312,14 +308,10 @@ public class ConfigNodeConfig {
     pipeReceiverFileDir = addHomeDir(pipeReceiverFileDir);
   }
 
-  private String addHomeDir(String dir) {
-    String homeDir = System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null);
-    if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
-      if (!homeDir.endsWith(File.separator)) {
-        dir = homeDir + File.separatorChar + dir;
-      } else {
-        dir = homeDir + dir;
-      }
+  public static String addHomeDir(String dir) {
+    final String homeDir = System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null);
+    if (!new File(dir).isAbsolute() && homeDir != null && !homeDir.isEmpty()) {
+      dir = !homeDir.endsWith(File.separator) ? homeDir + File.separatorChar + dir : homeDir + dir;
     }
     return dir;
   }
@@ -532,14 +524,6 @@ public class ConfigNodeConfig {
 
   public void setSystemDir(String systemDir) {
     this.systemDir = systemDir;
-  }
-
-  public String getExtLibDir() {
-    return extLibDir;
-  }
-
-  public void setExtLibDir(String extLibDir) {
-    this.extLibDir = extLibDir;
   }
 
   public String getUdfDir() {

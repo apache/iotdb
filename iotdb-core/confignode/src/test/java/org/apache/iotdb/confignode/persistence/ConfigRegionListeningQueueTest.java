@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.persistence;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinkedQueue;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
@@ -52,6 +52,8 @@ public class ConfigRegionListeningQueueTest {
     if (!snapshotDir.exists()) {
       snapshotDir.mkdirs();
     }
+    PipeConfigNodeAgent.runtime().listener().open();
+    PipeConfigNodeAgent.runtime().notifyLeaderReady();
   }
 
   @AfterClass
@@ -64,13 +66,10 @@ public class ConfigRegionListeningQueueTest {
 
   @Test
   public void testSnapshot() throws TException, IOException, AuthException {
-    PipeConfigNodeAgent.runtime().listener().open();
-    PipeConfigNodeAgent.runtime().notifyLeaderReady();
-
-    DatabaseSchemaPlan plan1 =
+    final DatabaseSchemaPlan plan1 =
         new DatabaseSchemaPlan(
             ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.test1"));
-    PipeEnrichedPlan plan2 =
+    final PipeEnrichedPlan plan2 =
         new PipeEnrichedPlan(
             new AuthorPlan(
                 ConfigPhysicalPlanType.CreateUser,
@@ -96,10 +95,10 @@ public class ConfigRegionListeningQueueTest {
     ConcurrentIterableLinkedQueue<Event>.DynamicIterator itr =
         PipeConfigNodeAgent.runtime().listener().newIterator(0);
 
-    Event event1 = itr.next(0);
+    final Event event1 = itr.next(0);
     Assert.assertEquals(plan1, ((PipeConfigRegionWritePlanEvent) event1).getConfigPhysicalPlan());
 
-    Event event2 = itr.next(0);
+    final Event event2 = itr.next(0);
     Assert.assertEquals(
         plan2.getInnerPlan(), ((PipeConfigRegionWritePlanEvent) event2).getConfigPhysicalPlan());
     Assert.assertTrue(((PipeConfigRegionWritePlanEvent) event2).isGeneratedByPipe());

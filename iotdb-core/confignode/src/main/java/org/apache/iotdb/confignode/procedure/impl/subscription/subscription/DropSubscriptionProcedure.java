@@ -20,7 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -87,7 +87,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
   }
 
   @Override
-  protected void executeFromValidate(final ConfigNodeProcedureEnv env)
+  protected boolean executeFromValidate(final ConfigNodeProcedureEnv env)
       throws SubscriptionException {
     LOGGER.info("DropSubscriptionProcedure: executeFromValidate");
 
@@ -133,6 +133,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
 
     // Validate AlterConsumerGroupProcedure
     alterConsumerGroupProcedure.executeFromValidate(env);
+    return true;
   }
 
   @Override

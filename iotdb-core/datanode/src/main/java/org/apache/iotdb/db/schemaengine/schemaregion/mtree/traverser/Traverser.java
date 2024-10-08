@@ -43,6 +43,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
@@ -175,6 +176,12 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
     }
     if (child == null) {
       child = store.getChild(parent, childName);
+      if (Objects.nonNull(child)
+          && skipPreDeletedSchema
+          && child.isMeasurement()
+          && child.getAsMeasurementMNode().isPreDeleted()) {
+        child = null;
+      }
     }
     return child;
   }

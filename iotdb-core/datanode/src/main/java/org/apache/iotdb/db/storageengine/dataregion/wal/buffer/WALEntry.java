@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.buffer;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
@@ -71,6 +72,8 @@ public abstract class WALEntry implements SerializedSize {
       this.type = WALEntryType.DELETE_DATA_NODE;
     } else if (value instanceof Checkpoint) {
       this.type = WALEntryType.MEMORY_TABLE_CHECKPOINT;
+    } else if (value instanceof ContinuousSameSearchIndexSeparatorNode) {
+      this.type = WALEntryType.CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE;
     } else {
       throw new RuntimeException("Unknown WALEntry type");
     }
@@ -107,6 +110,9 @@ public abstract class WALEntry implements SerializedSize {
       case MEMORY_TABLE_SNAPSHOT:
         value = AbstractMemTable.Factory.create(stream);
         break;
+      case OLD_MEMORY_TABLE_SNAPSHOT:
+        value = AbstractMemTable.Factory.createFromOldMemTableSnapshot(stream);
+        break;
       case INSERT_ROW_NODE:
         value = (InsertRowNode) PlanNodeType.deserializeFromWAL(stream);
         break;
@@ -118,6 +124,9 @@ public abstract class WALEntry implements SerializedSize {
         break;
       case DELETE_DATA_NODE:
         value = (DeleteDataNode) PlanNodeType.deserializeFromWAL(stream);
+        break;
+      case CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE:
+        value = (ContinuousSameSearchIndexSeparatorNode) PlanNodeType.deserializeFromWAL(stream);
         break;
       default:
         throw new RuntimeException("Unknown WALEntry type " + type);

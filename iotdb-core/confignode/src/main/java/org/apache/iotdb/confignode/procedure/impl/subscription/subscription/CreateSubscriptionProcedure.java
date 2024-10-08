@@ -20,7 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -86,7 +86,7 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
   }
 
   @Override
-  protected void executeFromValidate(ConfigNodeProcedureEnv env) throws SubscriptionException {
+  protected boolean executeFromValidate(ConfigNodeProcedureEnv env) throws SubscriptionException {
     LOGGER.info("CreateSubscriptionProcedure: executeFromValidate");
 
     subscriptionInfo.get().validateBeforeSubscribe(subscribeReq);
@@ -131,6 +131,7 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
       createPipeProcedure.executeFromValidateTask(env);
       createPipeProcedure.executeFromCalculateInfoForTask(env);
     }
+    return true;
   }
 
   // TODO: check periodically if the subscription is still valid but no working pipe?

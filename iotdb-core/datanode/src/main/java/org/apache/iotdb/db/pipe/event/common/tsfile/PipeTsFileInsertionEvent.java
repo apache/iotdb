@@ -21,11 +21,14 @@ package org.apache.iotdb.db.pipe.event.common.tsfile;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.pattern.PipePattern;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
+import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainerProvider;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTimePartitionProgressIndexKeeper;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -35,7 +38,6 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,18 +62,30 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   private final boolean isLoaded;
   private final boolean isGeneratedByPipe;
+  private final boolean isGeneratedByPipeConsensus;
+  private final boolean isGeneratedByHistoricalExtractor;
 
   private final AtomicBoolean isClosed;
   private TsFileInsertionDataContainer dataContainer;
 
+  // The point count of the TsFile. Used for metrics on PipeConsensus' receiver side.
+  // May be updated after it is flushed. Should be negative if not set.
+  private long flushPointCount = TsFileProcessor.FLUSH_POINT_COUNT_NOT_SET;
+
+  private volatile ProgressIndex overridingProgressIndex;
+
   public PipeTsFileInsertionEvent(
-      final TsFileResource resource, final boolean isLoaded, final boolean isGeneratedByPipe) {
+      final TsFileResource resource,
+      final boolean isLoaded,
+      final boolean isGeneratedByPipe,
+      final boolean isGeneratedByHistoricalExtractor) {
     // The modFile must be copied before the event is assigned to the listening pipes
     this(
         resource,
         true,
         isLoaded,
         isGeneratedByPipe,
+        isGeneratedByHistoricalExtractor,
         null,
         0,
         null,
@@ -85,6 +99,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       final boolean isWithMod,
       final boolean isLoaded,
       final boolean isGeneratedByPipe,
+      final boolean isGeneratedByHistoricalExtractor,
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
@@ -102,6 +117,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
     this.isLoaded = isLoaded;
     this.isGeneratedByPipe = isGeneratedByPipe;
+    this.isGeneratedByPipeConsensus = resource.isGeneratedByPipeConsensus();
+    this.isGeneratedByHistoricalExtractor = isGeneratedByHistoricalExtractor;
 
     isClosed = new AtomicBoolean(resource.isClosed());
     // Register close listener if TsFile is not closed
@@ -113,6 +130,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
               synchronized (isClosed) {
                 isClosed.set(true);
                 isClosed.notifyAll();
+
+                // Update flushPointCount after TsFile is closed
+                flushPointCount = processor.getMemTableFlushPointCount();
               }
             });
       }
@@ -153,6 +173,13 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
           if (isClosedNow) {
             isClosed.set(true);
             isClosed.notifyAll();
+
+            // Update flushPointCount after TsFile is closed
+            final TsFileProcessor processor = resource.getProcessor();
+            if (processor != null) {
+              flushPointCount = processor.getMemTableFlushPointCount();
+            }
+
             break;
           }
         }
@@ -179,7 +206,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   // If the previous "isWithMod" is false, the modFile has been set to "null", then the isWithMod
   // can't be set to true
-  public void disableMod4NonTransferPipes(boolean isWithMod) {
+  public void disableMod4NonTransferPipes(final boolean isWithMod) {
     this.isWithMod = isWithMod && this.isWithMod;
   }
 
@@ -191,14 +218,30 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     return resource.getFileStartTime();
   }
 
+  /**
+   * Only used for metrics on PipeConsensus' receiver side. If the event is recovered after data
+   * node's restart, the flushPointCount can be not set. It's totally fine for the PipeConsensus'
+   * receiver side. The receiver side will count the actual point count from the TsFile.
+   *
+   * <p>If you want to get the actual point count with no risk, you can call {@link
+   * #count(boolean)}.
+   */
+  public long getFlushPointCount() {
+    return flushPointCount;
+  }
+
+  public long getTimePartitionId() {
+    return resource.getTimePartition();
+  }
+
   /////////////////////////// EnrichedEvent ///////////////////////////
 
   @Override
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     try {
-      tsFile = PipeResourceManager.tsfile().increaseFileReference(tsFile, true, resource);
+      tsFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(tsFile, true, resource);
       if (isWithMod) {
-        modFile = PipeResourceManager.tsfile().increaseFileReference(modFile, false, null);
+        modFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(modFile, false, null);
       }
       return true;
     } catch (final Exception e) {
@@ -214,9 +257,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   @Override
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     try {
-      PipeResourceManager.tsfile().decreaseFileReference(tsFile);
+      PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile);
       if (isWithMod) {
-        PipeResourceManager.tsfile().decreaseFileReference(modFile);
+        PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile);
       }
       return true;
     } catch (final Exception e) {
@@ -230,6 +273,11 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   }
 
   @Override
+  public void bindProgressIndex(final ProgressIndex overridingProgressIndex) {
+    this.overridingProgressIndex = overridingProgressIndex;
+  }
+
+  @Override
   public ProgressIndex getProgressIndex() {
     try {
       if (!waitForTsFileClose()) {
@@ -238,6 +286,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
             tsFile);
         return MinimumProgressIndex.INSTANCE;
       }
+      if (Objects.nonNull(overridingProgressIndex)) {
+        return overridingProgressIndex;
+      }
       return resource.getMaxProgressIndexAfterClose();
     } catch (final InterruptedException e) {
       LOGGER.warn(
@@ -245,6 +296,22 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
               "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath()));
       Thread.currentThread().interrupt();
       return MinimumProgressIndex.INSTANCE;
+    }
+  }
+
+  @Override
+  protected void reportProgress() {
+    super.reportProgress();
+    this.eliminateProgressIndex();
+  }
+
+  public void eliminateProgressIndex() {
+    if (Objects.isNull(overridingProgressIndex)) {
+      PipeTimePartitionProgressIndexKeeper.getInstance()
+          .eliminateProgressIndex(
+              resource.getDataRegionId(),
+              resource.getTimePartition(),
+              resource.getMaxProgressIndexAfterClose());
     }
   }
 
@@ -261,6 +328,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
         isWithMod,
         isLoaded,
         isGeneratedByPipe,
+        isGeneratedByHistoricalExtractor,
         pipeName,
         creationTime,
         pipeTaskMeta,
@@ -291,17 +359,14 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
     try {
       final Map<IDeviceID, Boolean> deviceIsAlignedMap =
-          PipeResourceManager.tsfile()
+          PipeDataNodeResourceManager.tsfile()
               .getDeviceIsAlignedMapFromCache(
-                  PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(resource.getTsFile()));
+                  PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(resource.getTsFile()),
+                  false);
       final Set<IDeviceID> deviceSet =
           Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
-      return deviceSet.stream()
-          .anyMatch(
-              // TODO: use IDeviceID
-              deviceID ->
-                  pipePattern.mayOverlapWithDevice(((PlainDeviceID) deviceID).toStringID()));
-    } catch (final IOException e) {
+      return deviceSet.stream().anyMatch(pipePattern::mayOverlapWithDevice);
+    } catch (final Exception e) {
       LOGGER.warn(
           "Pipe {}: failed to get devices from TsFile {}, extract it anyway",
           pipeName,
@@ -334,12 +399,22 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     }
   }
 
+  /** The method is used to prevent circular replication in PipeConsensus */
+  public boolean isGeneratedByPipeConsensus() {
+    return isGeneratedByPipeConsensus;
+  }
+
+  public boolean isGeneratedByHistoricalExtractor() {
+    return isGeneratedByHistoricalExtractor;
+  }
+
   private TsFileInsertionDataContainer initDataContainer() {
     try {
       if (dataContainer == null) {
         dataContainer =
-            new TsFileInsertionDataContainer(
-                tsFile, pipePattern, startTime, endTime, pipeTaskMeta, this);
+            new TsFileInsertionDataContainerProvider(
+                    tsFile, pipePattern, startTime, endTime, pipeTaskMeta, this)
+                .provide();
       }
       return dataContainer;
     } catch (final IOException e) {

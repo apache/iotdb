@@ -23,21 +23,25 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.agent.task.subtask.connector.PipeConnectorSubtask;
 import org.apache.iotdb.db.pipe.connector.client.IoTDBDataNodeAsyncClientManager;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeEventBatch;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeTransferBatchReqBuilder;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventBatch;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventPlainBatch;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventTsFileBatch;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletBatchEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletInsertNodeEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletRawEventHandler;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTsFileInsertionEventHandler;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTsFileHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBDataRegionSyncConnector;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -49,24 +53,26 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
+import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_BATCH_MODE_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY;
@@ -77,11 +83,9 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataRegionAsyncConnector.class);
 
   private static final String THRIFT_ERROR_FORMATTER_WITHOUT_ENDPOINT =
-      "Failed to borrow client from client pool or exception occurred "
-          + "when sending to receiver.";
+      "Failed to borrow client from client pool when sending to receiver.";
   private static final String THRIFT_ERROR_FORMATTER_WITH_ENDPOINT =
-      "Failed to borrow client from client pool or exception occurred "
-          + "when sending to receiver %s:%s.";
+      "Exception occurred while sending to receiver %s:%s.";
 
   private IoTDBDataNodeAsyncClientManager clientManager;
 
@@ -112,13 +116,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       final PipeParameters parameters, final PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
     super.customize(parameters, configuration);
-
-    // Disable batch mode for retry connector, in case retry events are never sent again
-    final PipeParameters retryParameters =
-        new PipeParameters(new HashMap<>(parameters.getAttribute()));
-    retryParameters.getAttribute().put(SINK_IOTDB_BATCH_MODE_ENABLE_KEY, "false");
-    retryParameters.getAttribute().put(CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY, "false");
-    retryConnector.customize(retryParameters, configuration);
+    retryConnector.customize(parameters, configuration);
 
     clientManager =
         new IoTDBDataNodeAsyncClientManager(
@@ -126,7 +124,9 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
             parameters.getBooleanOrDefault(
                 Arrays.asList(SINK_LEADER_CACHE_ENABLE_KEY, CONNECTOR_LEADER_CACHE_ENABLE_KEY),
                 CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE),
-            loadBalanceStrategy);
+            loadBalanceStrategy,
+            shouldReceiverConvertOnTypeMismatch,
+            loadTsFileStrategy);
 
     if (isTabletBatchModeEnabled) {
       tabletBatchBuilder = new PipeTransferBatchReqBuilder(parameters);
@@ -157,69 +157,100 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       return;
     }
 
-    transferWithoutCheck(tabletInsertionEvent);
+    if (isTabletBatchModeEnabled) {
+      final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch =
+          tabletBatchBuilder.onEvent(tabletInsertionEvent);
+      if (Objects.isNull(endPointAndBatch)) {
+        return;
+      }
+      transferInBatchWithoutCheck(endPointAndBatch);
+    } else {
+      transferInEventWithoutCheck(tabletInsertionEvent);
+    }
   }
 
-  private void transferWithoutCheck(final TabletInsertionEvent tabletInsertionEvent)
-      throws Exception {
-    if (isTabletBatchModeEnabled) {
-      final Pair<TEndPoint, PipeEventBatch> endPointAndBatch =
-          tabletBatchBuilder.onEvent(tabletInsertionEvent);
-      if (Objects.nonNull(endPointAndBatch)) {
+  private void transferInBatchWithoutCheck(
+      final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch)
+      throws IOException, WriteProcessException {
+    final PipeTabletEventBatch batch = endPointAndBatch.getRight();
+
+    if (batch instanceof PipeTabletEventPlainBatch) {
+      transfer(
+          endPointAndBatch.getLeft(),
+          new PipeTransferTabletBatchEventHandler((PipeTabletEventPlainBatch) batch, this));
+    } else if (batch instanceof PipeTabletEventTsFileBatch) {
+      final PipeTabletEventTsFileBatch tsFileBatch = (PipeTabletEventTsFileBatch) batch;
+      final List<File> sealedFiles = tsFileBatch.sealTsFiles();
+      final Map<Pair<String, Long>, Double> pipe2WeightMap = tsFileBatch.deepCopyPipe2WeightMap();
+      final List<EnrichedEvent> events = tsFileBatch.deepCopyEvents();
+      final AtomicInteger eventsReferenceCount = new AtomicInteger(sealedFiles.size());
+      final AtomicBoolean eventsHadBeenAddedToRetryQueue = new AtomicBoolean(false);
+
+      for (final File sealedFile : sealedFiles) {
         transfer(
-            endPointAndBatch.getLeft(),
-            new PipeTransferTabletBatchEventHandler(endPointAndBatch.getRight(), this));
-        endPointAndBatch.getRight().onSuccess();
+            new PipeTransferTsFileHandler(
+                this,
+                pipe2WeightMap,
+                events,
+                eventsReferenceCount,
+                eventsHadBeenAddedToRetryQueue,
+                sealedFile,
+                null,
+                false));
       }
     } else {
-      if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-        final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
-            (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
-        // We increase the reference count for this event to determine if the event may be released.
-        if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
-            IoTDBDataRegionAsyncConnector.class.getName())) {
-          pipeInsertNodeTabletInsertionEvent.decreaseReferenceCount(
-              IoTDBDataRegionAsyncConnector.class.getName(), false);
-          return;
-        }
+      LOGGER.warn(
+          "Unsupported batch type {} when transferring tablet insertion event.", batch.getClass());
+    }
 
-        final InsertNode insertNode =
-            pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
-        final TPipeTransferReq pipeTransferReq =
-            compressIfNeeded(
-                Objects.isNull(insertNode)
-                    ? PipeTransferTabletBinaryReq.toTPipeTransferReq(
-                        pipeInsertNodeTabletInsertionEvent.getByteBuffer())
-                    : PipeTransferTabletInsertNodeReq.toTPipeTransferReq(insertNode));
-        final PipeTransferTabletInsertNodeEventHandler pipeTransferInsertNodeReqHandler =
-            new PipeTransferTabletInsertNodeEventHandler(
-                pipeInsertNodeTabletInsertionEvent, pipeTransferReq, this);
+    endPointAndBatch.getRight().onSuccess();
+  }
 
-        transfer(
-            // getDeviceId() may return null for InsertRowsNode
-            pipeInsertNodeTabletInsertionEvent.getDeviceId(), pipeTransferInsertNodeReqHandler);
-      } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
-        final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
-            (PipeRawTabletInsertionEvent) tabletInsertionEvent;
-        // We increase the reference count for this event to determine if the event may be released.
-        if (!pipeRawTabletInsertionEvent.increaseReferenceCount(
-            IoTDBDataRegionAsyncConnector.class.getName())) {
-          pipeRawTabletInsertionEvent.decreaseReferenceCount(
-              IoTDBDataRegionAsyncConnector.class.getName(), false);
-          return;
-        }
-
-        final TPipeTransferReq pipeTransferTabletRawReq =
-            compressIfNeeded(
-                PipeTransferTabletRawReq.toTPipeTransferReq(
-                    pipeRawTabletInsertionEvent.convertToTablet(),
-                    pipeRawTabletInsertionEvent.isAligned()));
-        final PipeTransferTabletRawEventHandler pipeTransferTabletReqHandler =
-            new PipeTransferTabletRawEventHandler(
-                pipeRawTabletInsertionEvent, pipeTransferTabletRawReq, this);
-
-        transfer(pipeRawTabletInsertionEvent.getDeviceId(), pipeTransferTabletReqHandler);
+  private void transferInEventWithoutCheck(final TabletInsertionEvent tabletInsertionEvent)
+      throws Exception {
+    if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+      final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
+          (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
+          IoTDBDataRegionAsyncConnector.class.getName())) {
+        return;
       }
+
+      final InsertNode insertNode =
+          pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
+      final TPipeTransferReq pipeTransferReq =
+          compressIfNeeded(
+              Objects.isNull(insertNode)
+                  ? PipeTransferTabletBinaryReq.toTPipeTransferReq(
+                      pipeInsertNodeTabletInsertionEvent.getByteBuffer())
+                  : PipeTransferTabletInsertNodeReq.toTPipeTransferReq(insertNode));
+      final PipeTransferTabletInsertNodeEventHandler pipeTransferInsertNodeReqHandler =
+          new PipeTransferTabletInsertNodeEventHandler(
+              pipeInsertNodeTabletInsertionEvent, pipeTransferReq, this);
+
+      transfer(
+          // getDeviceId() may return null for InsertRowsNode
+          pipeInsertNodeTabletInsertionEvent.getDeviceId(), pipeTransferInsertNodeReqHandler);
+    } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
+      final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
+          (PipeRawTabletInsertionEvent) tabletInsertionEvent;
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeRawTabletInsertionEvent.increaseReferenceCount(
+          IoTDBDataRegionAsyncConnector.class.getName())) {
+        return;
+      }
+
+      final TPipeTransferReq pipeTransferTabletRawReq =
+          compressIfNeeded(
+              PipeTransferTabletRawReq.toTPipeTransferReq(
+                  pipeRawTabletInsertionEvent.convertToTablet(),
+                  pipeRawTabletInsertionEvent.isAligned()));
+      final PipeTransferTabletRawEventHandler pipeTransferTabletReqHandler =
+          new PipeTransferTabletRawEventHandler(
+              pipeRawTabletInsertionEvent, pipeTransferTabletRawReq, this);
+
+      transfer(pipeRawTabletInsertionEvent.getDeviceId(), pipeTransferTabletReqHandler);
     }
   }
 
@@ -283,8 +314,6 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     // We increase the reference count for this event to determine if the event may be released.
     if (!pipeTsFileInsertionEvent.increaseReferenceCount(
         IoTDBDataRegionAsyncConnector.class.getName())) {
-      pipeTsFileInsertionEvent.decreaseReferenceCount(
-          IoTDBDataRegionAsyncConnector.class.getName(), false);
       return;
     }
 
@@ -295,11 +324,24 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
         throw new FileNotFoundException(pipeTsFileInsertionEvent.getTsFile().getAbsolutePath());
       }
 
-      final PipeTransferTsFileInsertionEventHandler pipeTransferTsFileInsertionEventHandler =
-          new PipeTransferTsFileInsertionEventHandler(pipeTsFileInsertionEvent, this);
+      final PipeTransferTsFileHandler pipeTransferTsFileHandler =
+          new PipeTransferTsFileHandler(
+              this,
+              Collections.singletonMap(
+                  new Pair<>(
+                      pipeTsFileInsertionEvent.getPipeName(),
+                      pipeTsFileInsertionEvent.getCreationTime()),
+                  1.0),
+              Collections.singletonList(pipeTsFileInsertionEvent),
+              new AtomicInteger(1),
+              new AtomicBoolean(false),
+              pipeTsFileInsertionEvent.getTsFile(),
+              pipeTsFileInsertionEvent.getModFile(),
+              pipeTsFileInsertionEvent.isWithMod()
+                  && clientManager.supportModsIfIsDataNodeReceiver());
 
-      transfer(pipeTransferTsFileInsertionEventHandler);
-    } catch (Exception e) {
+      transfer(pipeTransferTsFileHandler);
+    } catch (final Exception e) {
       // Just in case. To avoid the case that exception occurred when constructing the handler.
       pipeTsFileInsertionEvent.decreaseReferenceCount(
           IoTDBDataRegionAsyncConnector.class.getName(), false);
@@ -307,15 +349,14 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     }
   }
 
-  private void transfer(
-      final PipeTransferTsFileInsertionEventHandler pipeTransferTsFileInsertionEventHandler) {
+  private void transfer(final PipeTransferTsFileHandler pipeTransferTsFileHandler) {
     AsyncPipeDataTransferServiceClient client = null;
     try {
       client = clientManager.borrowClient();
-      pipeTransferTsFileInsertionEventHandler.transfer(clientManager, client);
+      pipeTransferTsFileHandler.transfer(clientManager, client);
     } catch (final Exception ex) {
       logOnClientException(client, ex);
-      pipeTransferTsFileInsertionEventHandler.onError(ex);
+      pipeTransferTsFileHandler.onError(ex);
     }
   }
 
@@ -324,8 +365,9 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     transferQueuedEventsIfNecessary();
     transferBatchedEventsIfNecessary();
 
-    if (!(event instanceof PipeHeartbeatEvent)
-        && !(event instanceof PipeSchemaRegionWritePlanEvent)) {
+    if (!(event instanceof PipeHeartbeatEvent
+        || event instanceof PipeSchemaRegionWritePlanEvent
+        || event instanceof PipeTerminateEvent)) {
       LOGGER.warn(
           "IoTDBThriftAsyncConnector does not support transferring generic event: {}.", event);
       return;
@@ -401,29 +443,34 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
         }
       }
     }
+
+    // Trigger cron heartbeat event in retry connector to send batch in time
+    retryConnector.transfer(PipeConnectorSubtask.CRON_HEARTBEAT_EVENT);
   }
 
   /** Try its best to commit data in order. Flush can also be a trigger to transfer batched data. */
-  private void transferBatchedEventsIfNecessary() throws IOException {
+  private void transferBatchedEventsIfNecessary() throws IOException, WriteProcessException {
     if (!isTabletBatchModeEnabled || tabletBatchBuilder.isEmpty()) {
       return;
     }
 
-    for (final Pair<TEndPoint, PipeEventBatch> endPointAndBatch :
+    for (final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch :
         tabletBatchBuilder.getAllNonEmptyBatches()) {
-      transfer(
-          endPointAndBatch.getLeft(),
-          new PipeTransferTabletBatchEventHandler(endPointAndBatch.getRight(), this));
-      endPointAndBatch.getRight().onSuccess();
+      transferInBatchWithoutCheck(endPointAndBatch);
     }
   }
 
   /**
-   * Add failure event to retry queue.
+   * Add failure {@link Event} to retry queue.
    *
-   * @param event event to retry
+   * @param event {@link Event} to retry
    */
+  @SuppressWarnings("java:S899")
   public void addFailureEventToRetryQueue(final Event event) {
+    if (event instanceof EnrichedEvent && ((EnrichedEvent) event).isReleased()) {
+      return;
+    }
+
     if (isClosed.get()) {
       if (event instanceof EnrichedEvent) {
         ((EnrichedEvent) event).clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
@@ -444,14 +491,12 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   }
 
   /**
-   * Add failure events to retry queue.
+   * Add failure {@link EnrichedEvent}s to retry queue.
    *
-   * @param events events to retry
+   * @param events {@link EnrichedEvent}s to retry
    */
-  public void addFailureEventsToRetryQueue(final Iterable<Event> events) {
-    for (final Event event : events) {
-      addFailureEventToRetryQueue(event);
-    }
+  public void addFailureEventsToRetryQueue(final Iterable<EnrichedEvent> events) {
+    events.forEach(this::addFailureEventToRetryQueue);
   }
 
   public synchronized void clearRetryEventsReferenceCount() {
@@ -463,21 +508,18 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     }
   }
 
-  public boolean supportModsIfIsDataNodeReceiver() {
-    return clientManager.supportModsIfIsDataNodeReceiver();
-  }
-
   //////////////////////////// Operations for close ////////////////////////////
 
-  /**
-   * When a pipe is dropped, the connector maybe reused and will not be closed. So we just discard
-   * its queued events in the output pipe connector.
-   */
-  public synchronized void discardEventsOfPipe(final String pipeNameToDrop) {
+  @Override
+  public synchronized void discardEventsOfPipe(final String pipeNameToDrop, final int regionId) {
+    if (isTabletBatchModeEnabled) {
+      tabletBatchBuilder.discardEventsOfPipe(pipeNameToDrop, regionId);
+    }
     retryEventQueue.removeIf(
         event -> {
           if (event instanceof EnrichedEvent
-              && pipeNameToDrop.equals(((EnrichedEvent) event).getPipeName())) {
+              && pipeNameToDrop.equals(((EnrichedEvent) event).getPipeName())
+              && regionId == ((EnrichedEvent) event).getRegionId()) {
             ((EnrichedEvent) event)
                 .clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
             return true;
@@ -496,6 +538,14 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
     if (tabletBatchBuilder != null) {
       tabletBatchBuilder.close();
+    }
+
+    try {
+      if (clientManager != null) {
+        clientManager.close();
+      }
+    } catch (final Exception e) {
+      LOGGER.warn("Failed to close client manager.", e);
     }
 
     super.close();
@@ -520,7 +570,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
             }
           });
       return count.get();
-    } catch (Exception e) {
+    } catch (final Exception e) {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug("Failed to get retry event count for pipe {}.", pipeName, e);
       }

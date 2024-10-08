@@ -25,14 +25,14 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 public class PipeWALSelfHostResourceManager extends PipeWALResourceManager {
 
   @Override
-  protected void pinInternal(long memtableId, WALEntryHandler walEntryHandler) {
+  protected void pinInternal(final long memTableId, final WALEntryHandler walEntryHandler) {
     memtableIdToPipeWALResourceMap
-        .computeIfAbsent(memtableId, id -> new PipeWALSelfHostResource(walEntryHandler))
+        .computeIfAbsent(memTableId, id -> new PipeWALSelfHostResource(walEntryHandler))
         .pin();
   }
 
   @Override
-  protected void unpinInternal(long memtableId, WALEntryHandler walEntryHandler) {
-    memtableIdToPipeWALResourceMap.get(memtableId).unpin();
+  protected void unpinInternal(final long memTableId, final WALEntryHandler walEntryHandler) {
+    memtableIdToPipeWALResourceMap.get(memTableId).unpin();
   }
 }

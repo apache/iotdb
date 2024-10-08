@@ -28,6 +28,7 @@ import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossCompactionTaskResource;
@@ -410,7 +411,8 @@ public class CrossSpaceCompactionWithReadPointPerformerTest {
               new CrossSpaceCompactionCandidate(
                   seqTsFileResourceList, unseqTsFileResourceList, timeLowerBound);
           RewriteCrossSpaceCompactionSelector selector =
-              new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+              new RewriteCrossSpaceCompactionSelector(
+                  "", "", 0, null, new CompactionScheduleContext());
           List<CrossCompactionTaskResource> selected =
               selector.selectCrossSpaceTask(seqTsFileResourceList, unseqTsFileResourceList);
           index++;
@@ -711,7 +713,8 @@ public class CrossSpaceCompactionWithReadPointPerformerTest {
               new CrossSpaceCompactionCandidate(
                   seqTsFileResourceList, unseqTsFileResourceList, timeLowerBound);
           RewriteCrossSpaceCompactionSelector selector =
-              new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+              new RewriteCrossSpaceCompactionSelector(
+                  "", "", 0, null, new CompactionScheduleContext());
           List<CrossCompactionTaskResource> selected =
               selector.selectCrossSpaceTask(seqTsFileResourceList, unseqTsFileResourceList);
           if (selected.size() > 0) {
@@ -1010,7 +1013,8 @@ public class CrossSpaceCompactionWithReadPointPerformerTest {
               new CrossSpaceCompactionCandidate(
                   seqTsFileResourceList, unseqTsFileResourceList, timeLowerBound);
           RewriteCrossSpaceCompactionSelector selector =
-              new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+              new RewriteCrossSpaceCompactionSelector(
+                  "", "", 0, null, new CompactionScheduleContext());
           List<CrossCompactionTaskResource> selected =
               selector.selectCrossSpaceTask(seqTsFileResourceList, unseqTsFileResourceList);
           if (selected.size() > 0) {

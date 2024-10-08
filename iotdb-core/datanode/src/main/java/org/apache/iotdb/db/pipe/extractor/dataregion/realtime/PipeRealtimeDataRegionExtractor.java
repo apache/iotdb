@@ -21,12 +21,13 @@ package org.apache.iotdb.db.pipe.extractor.dataregion.realtime;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
+import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.pattern.PipePattern;
-import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -62,6 +63,7 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_LOOSE_RANGE_ALL_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_LOOSE_RANGE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_LOOSE_RANGE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_LOOSE_RANGE_PATH_VALUE;
@@ -154,24 +156,30 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       throw new PipeParameterNotValidException(e.getMessage());
     }
 
-    final Set<String> sloppyOptionSet =
-        Arrays.stream(
-                parameters
-                    .getStringOrDefault(
-                        Arrays.asList(
-                            EXTRACTOR_REALTIME_LOOSE_RANGE_KEY, SOURCE_REALTIME_LOOSE_RANGE_KEY),
-                        EXTRACTOR_REALTIME_LOOSE_RANGE_DEFAULT_VALUE)
-                    .split(","))
-            .map(String::trim)
-            .filter(s -> !s.isEmpty())
-            .map(String::toLowerCase)
-            .collect(Collectors.toSet());
-    sloppyTimeRange = sloppyOptionSet.remove(EXTRACTOR_REALTIME_LOOSE_RANGE_TIME_VALUE);
-    sloppyPattern = sloppyOptionSet.remove(EXTRACTOR_REALTIME_LOOSE_RANGE_PATH_VALUE);
-    if (!sloppyOptionSet.isEmpty()) {
-      throw new PipeParameterNotValidException(
-          String.format(
-              "Parameters in set %s are not allowed in 'realtime.loose-range'", sloppyOptionSet));
+    final String extractorRealtimeLooseRangeValue =
+        parameters
+            .getStringOrDefault(
+                Arrays.asList(EXTRACTOR_REALTIME_LOOSE_RANGE_KEY, SOURCE_REALTIME_LOOSE_RANGE_KEY),
+                EXTRACTOR_REALTIME_LOOSE_RANGE_DEFAULT_VALUE)
+            .trim();
+    if (EXTRACTOR_REALTIME_LOOSE_RANGE_ALL_VALUE.equalsIgnoreCase(
+        extractorRealtimeLooseRangeValue)) {
+      sloppyTimeRange = true;
+      sloppyPattern = true;
+    } else {
+      final Set<String> sloppyOptionSet =
+          Arrays.stream(extractorRealtimeLooseRangeValue.split(","))
+              .map(String::trim)
+              .filter(s -> !s.isEmpty())
+              .map(String::toLowerCase)
+              .collect(Collectors.toSet());
+      sloppyTimeRange = sloppyOptionSet.remove(EXTRACTOR_REALTIME_LOOSE_RANGE_TIME_VALUE);
+      sloppyPattern = sloppyOptionSet.remove(EXTRACTOR_REALTIME_LOOSE_RANGE_PATH_VALUE);
+      if (!sloppyOptionSet.isEmpty()) {
+        throw new PipeParameterNotValidException(
+            String.format(
+                "Parameters in set %s are not allowed in 'realtime.loose-range'", sloppyOptionSet));
+      }
     }
   }
 
@@ -280,6 +288,12 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
    * @param event the {@link Event} from the {@link StorageEngine}
    */
   public final void extract(final PipeRealtimeEvent event) {
+    // The progress report event shall be directly extracted
+    if (event.getEvent() instanceof ProgressReportEvent) {
+      extractDirectly(event);
+      return;
+    }
+
     if (isDbNameCoveredByPattern) {
       event.skipParsingPattern();
     }
@@ -362,14 +376,13 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     }
   }
 
-  protected void extractDeletion(final PipeRealtimeEvent event) {
+  protected void extractDirectly(final PipeRealtimeEvent event) {
     if (!pendingQueue.waitedOffer(event)) {
       // This would not happen, but just in case.
       // Pending is unbounded, so it should never reach capacity.
       final String errorMessage =
           String.format(
-              "extract: pending queue of %s %s "
-                  + "has reached capacity, discard deletion event %s",
+              "extract: pending queue of %s %s " + "has reached capacity, discard event %s",
               this.getClass().getSimpleName(), this, event);
       LOGGER.error(errorMessage);
       PipeDataNodeAgent.runtime()
@@ -397,7 +410,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     }
   }
 
-  protected Event supplyDeletion(final PipeRealtimeEvent event) {
+  protected Event supplyDirectly(final PipeRealtimeEvent event) {
     if (event.increaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName())) {
       return event.getEvent();
     } else {
@@ -406,7 +419,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       // event and report the exception to PipeRuntimeAgent.
       final String errorMessage =
           String.format(
-              "TsFile Event %s can not be supplied because "
+              "Event %s can not be supplied because "
                   + "the reference count can not be increased, "
                   + "the data represented by this event is lost",
               event.getEvent());

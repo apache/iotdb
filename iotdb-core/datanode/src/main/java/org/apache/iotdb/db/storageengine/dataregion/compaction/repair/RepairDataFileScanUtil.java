@@ -20,15 +20,17 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.repair;
 
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.reader.CompactionChunkReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.compress.IUnCompressor;
 import org.apache.tsfile.encoding.decoder.Decoder;
 import org.apache.tsfile.enums.TSDataType;
@@ -40,8 +42,6 @@ import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.MetadataIndexNode;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
-import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -61,17 +61,25 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static org.apache.tsfile.read.reader.chunk.ChunkReader.uncompressPageData;
+
 public class RepairDataFileScanUtil {
   private static final Logger logger = LoggerFactory.getLogger(RepairDataFileScanUtil.class);
   private final TsFileResource resource;
   private boolean hasUnsortedData;
   private boolean isBrokenFile;
   private long previousTime;
+  private boolean printLog;
 
   public RepairDataFileScanUtil(TsFileResource resource) {
+    this(resource, false);
+  }
+
+  public RepairDataFileScanUtil(TsFileResource resource, boolean printLog) {
     this.resource = resource;
     this.hasUnsortedData = false;
     this.previousTime = Long.MIN_VALUE;
+    this.printLog = printLog;
   }
 
   public void scanTsFile() {
@@ -97,6 +105,12 @@ public class RepairDataFileScanUtil {
       }
     } catch (CompactionLastTimeCheckFailedException lastTimeCheckFailedException) {
       this.hasUnsortedData = true;
+      if (printLog) {
+        logger.error(
+            "File {} has unsorted data: ",
+            resource.getTsFile().getPath(),
+            lastTimeCheckFailedException);
+      }
     } catch (Exception e) {
       // ignored the exception caused by thread interrupt
       if (Thread.currentThread().isInterrupted()) {
@@ -115,7 +129,7 @@ public class RepairDataFileScanUtil {
       TsFileSequenceReader reader, IDeviceID device, MetadataIndexNode metadataIndexNode)
       throws IOException {
     List<AlignedChunkMetadata> chunkMetadataList =
-        reader.getAlignedChunkMetadataByMetadataIndexNode(device, metadataIndexNode);
+        reader.getAlignedChunkMetadataByMetadataIndexNode(device, metadataIndexNode, false);
     for (AlignedChunkMetadata alignedChunkMetadata : chunkMetadataList) {
       IChunkMetadata timeChunkMetadata = alignedChunkMetadata.getTimeChunkMetadata();
       Chunk timeChunk = reader.readMemChunk((ChunkMetadata) timeChunkMetadata);
@@ -134,12 +148,15 @@ public class RepairDataFileScanUtil {
         ByteBuffer pageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
 
         ByteBuffer uncompressedPageData =
-            uncompressPageData(chunkHeader.getCompressionType(), pageHeader, pageData);
+            uncompressPageData(
+                pageHeader,
+                IUnCompressor.getUnCompressor(chunkHeader.getCompressionType()),
+                pageData);
         Decoder decoder =
             Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
         while (decoder.hasNext(uncompressedPageData)) {
           long currentTime = decoder.readLong(uncompressedPageData);
-          checkPreviousTimeAndUpdate(((PlainDeviceID) device).toStringID(), currentTime);
+          checkPreviousTimeAndUpdate(device, currentTime);
         }
       }
     }
@@ -156,16 +173,19 @@ public class RepairDataFileScanUtil {
           measurementChunkMetadataListMapIterator.next();
       for (Map.Entry<String, List<ChunkMetadata>> measurementChunkMetadataListEntry :
           measurementChunkMetadataListMap.entrySet()) {
-        String measurement = measurementChunkMetadataListEntry.getKey();
         List<ChunkMetadata> chunkMetadataList = measurementChunkMetadataListEntry.getValue();
-        checkSingleNonAlignedSeries(reader, measurement, chunkMetadataList);
+        checkSingleNonAlignedSeries(
+            reader, device, measurementChunkMetadataListEntry.getKey(), chunkMetadataList);
         previousTime = Long.MIN_VALUE;
       }
     }
   }
 
   private void checkSingleNonAlignedSeries(
-      TsFileSequenceReader reader, String measurement, List<ChunkMetadata> chunkMetadataList)
+      TsFileSequenceReader reader,
+      IDeviceID deviceID,
+      String measurementId,
+      List<ChunkMetadata> chunkMetadataList)
       throws IOException {
     for (ChunkMetadata chunkMetadata : chunkMetadataList) {
       if (chunkMetadata == null || chunkMetadata.getStatistics().getCount() == 0) {
@@ -186,7 +206,10 @@ public class RepairDataFileScanUtil {
         ByteBuffer pageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
 
         ByteBuffer uncompressedPageData =
-            uncompressPageData(chunkHeader.getCompressionType(), pageHeader, pageData);
+            uncompressPageData(
+                pageHeader,
+                IUnCompressor.getUnCompressor(chunkHeader.getCompressionType()),
+                pageData);
         ByteBuffer timeBuffer = getTimeBufferFromNonAlignedPage(uncompressedPageData);
         Decoder timeDecoder =
             Decoder.getDecoderByType(
@@ -194,7 +217,7 @@ public class RepairDataFileScanUtil {
                 TSDataType.INT64);
         while (timeDecoder.hasNext(timeBuffer)) {
           long currentTime = timeDecoder.readLong(timeBuffer);
-          checkPreviousTimeAndUpdate(measurement, currentTime);
+          checkPreviousTimeAndUpdate(deviceID, measurementId, currentTime);
         }
       }
     }
@@ -208,19 +231,17 @@ public class RepairDataFileScanUtil {
     return timeBuffer;
   }
 
-  private ByteBuffer uncompressPageData(
-      CompressionType compressionType, PageHeader pageHeader, ByteBuffer pageData)
-      throws IOException {
-    IUnCompressor unCompressor = IUnCompressor.getUnCompressor(compressionType);
-    byte[] uncompressedData = new byte[pageHeader.getUncompressedSize()];
-    unCompressor.uncompress(
-        pageData.array(), 0, pageHeader.getCompressedSize(), uncompressedData, 0);
-    return ByteBuffer.wrap(uncompressedData);
+  private void checkPreviousTimeAndUpdate(IDeviceID deviceID, String measurementId, long time) {
+    if (previousTime >= time) {
+      throw new CompactionLastTimeCheckFailedException(
+          deviceID.toString() + TsFileConstant.PATH_SEPARATOR + measurementId, time, previousTime);
+    }
+    previousTime = time;
   }
 
-  private void checkPreviousTimeAndUpdate(String path, long time) {
+  private void checkPreviousTimeAndUpdate(IDeviceID deviceID, long time) {
     if (previousTime >= time) {
-      throw new CompactionLastTimeCheckFailedException(path, time, previousTime);
+      throw new CompactionLastTimeCheckFailedException(deviceID.toString(), time, previousTime);
     }
     previousTime = time;
   }
@@ -233,7 +254,8 @@ public class RepairDataFileScanUtil {
     return isBrokenFile;
   }
 
-  public static List<TsFileResource> checkTimePartitionHasOverlap(List<TsFileResource> resources) {
+  public static List<TsFileResource> checkTimePartitionHasOverlap(
+      List<TsFileResource> resources, boolean printOverlappedDevices) {
     List<TsFileResource> overlapResources = new ArrayList<>();
     Map<IDeviceID, Long> deviceEndTimeMap = new HashMap<>();
     for (TsFileResource resource : resources) {
@@ -241,7 +263,7 @@ public class RepairDataFileScanUtil {
           || resource.getStatus() == TsFileResourceStatus.DELETED) {
         continue;
       }
-      DeviceTimeIndex deviceTimeIndex;
+      ArrayDeviceTimeIndex deviceTimeIndex;
       try {
         deviceTimeIndex = getDeviceTimeIndex(resource);
       } catch (Exception ignored) {
@@ -261,6 +283,13 @@ public class RepairDataFileScanUtil {
         }
         long deviceEndTimeInPreviousFile = deviceEndTimeMap.get(device);
         if (deviceStartTimeInCurrentFile <= deviceEndTimeInPreviousFile) {
+          if (printOverlappedDevices) {
+            logger.error(
+                "Device {} has overlapped data, start time in current file is {}, end time in previous file is {}",
+                device,
+                deviceStartTimeInCurrentFile,
+                deviceEndTimeInPreviousFile);
+          }
           fileHasOverlap = true;
           overlapResources.add(resource);
           break;
@@ -276,11 +305,12 @@ public class RepairDataFileScanUtil {
     return overlapResources;
   }
 
-  private static DeviceTimeIndex getDeviceTimeIndex(TsFileResource resource) throws IOException {
+  private static ArrayDeviceTimeIndex getDeviceTimeIndex(TsFileResource resource)
+      throws IOException {
     ITimeIndex timeIndex = resource.getTimeIndex();
-    if (timeIndex instanceof DeviceTimeIndex) {
-      return (DeviceTimeIndex) timeIndex;
+    if (timeIndex instanceof ArrayDeviceTimeIndex) {
+      return (ArrayDeviceTimeIndex) timeIndex;
     }
-    return resource.buildDeviceTimeIndex();
+    return CompactionUtils.buildDeviceTimeIndex(resource);
   }
 }

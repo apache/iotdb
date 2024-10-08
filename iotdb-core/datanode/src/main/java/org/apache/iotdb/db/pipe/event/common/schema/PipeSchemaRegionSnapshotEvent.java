@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.pipe.event.common.schema;
 
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
-import org.apache.iotdb.commons.pipe.pattern.PipePattern;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 
@@ -89,7 +89,7 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipePattern pattern) {
-    super(pipeName, creationTime, pipeTaskMeta, pattern, PipeResourceManager.snapshot());
+    super(pipeName, creationTime, pipeTaskMeta, pattern, PipeDataNodeResourceManager.snapshot());
     this.mTreeSnapshotPath = mTreeSnapshotPath;
     this.tagLogSnapshotPath = Objects.nonNull(tagLogSnapshotPath) ? tagLogSnapshotPath : "";
     this.databaseName = databaseName;

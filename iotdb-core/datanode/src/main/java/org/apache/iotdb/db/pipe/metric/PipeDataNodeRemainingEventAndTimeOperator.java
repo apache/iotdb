@@ -22,10 +22,12 @@ package org.apache.iotdb.db.pipe.metric;
 import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.metric.PipeRemainingOperator;
+import org.apache.iotdb.db.pipe.agent.task.subtask.connector.PipeConnectorSubtask;
+import org.apache.iotdb.db.pipe.agent.task.subtask.processor.PipeProcessorSubtask;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
-import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask;
-import org.apache.iotdb.db.pipe.task.subtask.processor.PipeProcessorSubtask;
+import org.apache.iotdb.metrics.core.IoTDBMetricManager;
+import org.apache.iotdb.metrics.core.type.IoTDBHistogram;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import com.codahale.metrics.Clock;
@@ -49,6 +51,8 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
       Collections.newSetFromMap(new ConcurrentHashMap<>());
   private final AtomicReference<Meter> dataRegionCommitMeter = new AtomicReference<>(null);
   private final AtomicReference<Meter> schemaRegionCommitMeter = new AtomicReference<>(null);
+  private final IoTDBHistogram collectInvocationHistogram =
+      (IoTDBHistogram) IoTDBMetricManager.getInstance().createHistogram(null);
 
   private double lastDataRegionCommitSmoothingValue = Long.MAX_VALUE;
   private double lastSchemaRegionCommitSmoothingValue = Long.MAX_VALUE;
@@ -85,22 +89,24 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     final PipeRemainingTimeRateAverageTime pipeRemainingTimeCommitRateAverageTime =
         PipeConfig.getInstance().getPipeRemainingTimeCommitRateAverageTime();
 
+    final double invocationValue = collectInvocationHistogram.getMean();
     // Do not take heartbeat event into account
-    final int totalDataRegionWriteEventCount =
-        dataRegionExtractors.stream()
-                .map(IoTDBDataRegionExtractor::getEventCount)
-                .reduce(Integer::sum)
-                .orElse(0)
+    final double totalDataRegionWriteEventCount =
+        (dataRegionExtractors.stream()
+                        .map(IoTDBDataRegionExtractor::getEventCount)
+                        .reduce(Integer::sum)
+                        .orElse(0)
+                    - dataRegionExtractors.stream()
+                        .map(IoTDBDataRegionExtractor::getPipeHeartbeatEventCount)
+                        .reduce(Integer::sum)
+                        .orElse(0))
+                * Math.max(invocationValue, 1)
             + dataRegionProcessors.stream()
                 .map(processorSubtask -> processorSubtask.getEventCount(true))
                 .reduce(Integer::sum)
                 .orElse(0)
             + dataRegionConnectors.stream()
                 .map(connectorSubtask -> connectorSubtask.getEventCount(pipeName))
-                .reduce(Integer::sum)
-                .orElse(0)
-            - dataRegionExtractors.stream()
-                .map(IoTDBDataRegionExtractor::getPipeHeartbeatEventCount)
                 .reduce(Integer::sum)
                 .orElse(0)
             - dataRegionConnectors.stream()
@@ -203,6 +209,11 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
           }
           return meter;
         });
+  }
+
+  void markCollectInvocationCount(final long collectInvocationCount) {
+    // If collectInvocationCount == 0, the event will still be committed once
+    collectInvocationHistogram.update(Math.max(collectInvocationCount, 1));
   }
 
   //////////////////////////// Switch ////////////////////////////

@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.connector.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 
 import com.github.benmanes.caffeine.cache.Cache;
@@ -51,15 +51,15 @@ public interface IoTDBDataNodeCacheLeaderClientManager {
 
     public LeaderCacheManager() {
       final long initMemorySizeInBytes =
-          PipeResourceManager.memory().getTotalMemorySizeInBytes() / 10;
+          PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes() / 10;
       final long maxMemorySizeInBytes =
           (long)
-              (PipeResourceManager.memory().getTotalMemorySizeInBytes()
+              (PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes()
                   * CONFIG.getPipeLeaderCacheMemoryUsagePercentage());
 
       // properties required by pipe memory control framework
       final PipeMemoryBlock allocatedMemoryBlock =
-          PipeResourceManager.memory()
+          PipeDataNodeResourceManager.memory()
               .tryAllocate(initMemorySizeInBytes)
               .setShrinkMethod(oldMemory -> Math.max(oldMemory / 2, 1))
               .setShrinkCallback(

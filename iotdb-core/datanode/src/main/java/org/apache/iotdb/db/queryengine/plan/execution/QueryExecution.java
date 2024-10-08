@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -71,6 +72,8 @@ import static com.google.common.base.Throwables.throwIfUnchecked;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.WAIT_FOR_RESULT;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.DISTRIBUTION_PLANNER;
+import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TREE_TYPE;
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
 
 /**
  * QueryExecution stores all the status of a query which is being prepared or running inside the MPP
@@ -150,11 +153,12 @@ public class QueryExecution implements IQueryExecution {
     T get() throws IoTDBException;
   }
 
+  @Override
   public void start() {
-    final long startTime = System.nanoTime();
+    long startTime = System.nanoTime();
     if (skipExecute()) {
       LOGGER.debug("[SkipExecute]");
-      if (context.getQueryType() == QueryType.WRITE && analysis.isFailed()) {
+      if (analysis.isFailed()) {
         stateMachine.transitionToFailed(analysis.getFailStatus());
       } else {
         constructResultForMemorySource();
@@ -166,11 +170,23 @@ public class QueryExecution implements IQueryExecution {
     // check timeout for query first
     checkTimeOutForQuery();
     doLogicalPlan();
+
+    if (skipExecute()) {
+      // TODO move this judgement to analyze state?
+      LOGGER.debug("[SkipExecute After LogicalPlan]");
+      if (analysis.isFailed()) {
+        stateMachine.transitionToFailed(analysis.getFailStatus());
+      } else {
+        constructResultForMemorySource();
+        stateMachine.transitionToRunning();
+      }
+      return;
+    }
+
     doDistributedPlan();
 
     // update timeout after finishing plan stage
-    context.setTimeOut(
-        context.getTimeOut() - (System.currentTimeMillis() - context.getStartTime()));
+    context.setTimeOut(context.getTimeOut() - (System.nanoTime() - context.getStartTime()));
 
     stateMachine.transitionToPlanned();
     if (context.getQueryType() == QueryType.READ) {
@@ -287,7 +303,8 @@ public class QueryExecution implements IQueryExecution {
     if (analysis.isQuery()) {
       long distributionPlanCost = System.nanoTime() - startTime;
       context.setDistributionPlanCost(distributionPlanCost);
-      QUERY_PLAN_COST_METRIC_SET.recordPlanCost(DISTRIBUTION_PLANNER, distributionPlanCost);
+      QUERY_PLAN_COST_METRIC_SET.recordPlanCost(
+          TREE_TYPE, DISTRIBUTION_PLANNER, distributionPlanCost);
     }
 
     // if is this Statement is ShowQueryStatement, set its instances to the highest priority, so
@@ -317,6 +334,7 @@ public class QueryExecution implements IQueryExecution {
   }
 
   // Stop the workers for this query
+  @Override
   public void stop(Throwable t) {
     // only stop once
     if (stopped.compareAndSet(false, true) && this.scheduler != null) {
@@ -325,6 +343,7 @@ public class QueryExecution implements IQueryExecution {
   }
 
   // Stop the query and clean up all the resources this query occupied
+  @Override
   public void stopAndCleanup() {
     stop(null);
     releaseResource();
@@ -371,6 +390,7 @@ public class QueryExecution implements IQueryExecution {
   }
 
   // Stop the query and clean up all the resources this query occupied
+  @Override
   public void stopAndCleanup(Throwable t) {
     stop(t);
     releaseResource(t);
@@ -414,6 +434,12 @@ public class QueryExecution implements IQueryExecution {
             throw new IoTDBException(
                 stateMachine.getFailureStatus().getMessage(), stateMachine.getFailureStatus().code);
           } else {
+            Throwable rootCause = stateMachine.getFailureException();
+            if (rootCause instanceof IoTDBRuntimeException) {
+              throw (IoTDBRuntimeException) rootCause;
+            } else if (rootCause instanceof IoTDBException) {
+              throw (IoTDBException) rootCause;
+            }
             throw new IoTDBException(
                 stateMachine.getFailureMessage(),
                 TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -455,12 +481,18 @@ public class QueryExecution implements IQueryExecution {
   }
 
   private void dealWithException(Throwable t) throws IoTDBException {
+    t = getRootCause(t);
     stateMachine.transitionToFailed(t);
     if (stateMachine.getFailureStatus() != null) {
       throw new IoTDBException(
           stateMachine.getFailureStatus().getMessage(), stateMachine.getFailureStatus().code);
     } else if (stateMachine.getFailureException() != null) {
       Throwable rootCause = stateMachine.getFailureException();
+      if (rootCause instanceof IoTDBRuntimeException) {
+        throw (IoTDBRuntimeException) rootCause;
+      } else if (rootCause instanceof IoTDBException) {
+        throw (IoTDBException) rootCause;
+      }
       throw new IoTDBException(rootCause, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
     } else {
       throwIfUnchecked(t);
@@ -511,6 +543,7 @@ public class QueryExecution implements IQueryExecution {
    *
    * @return ExecutionStatus. Contains the QueryId and the TSStatus.
    */
+  @Override
   public ExecutionResult getStatus() {
     // Although we monitor the state to transition to RUNNING, the future will return if any
     // Terminated state is triggered
@@ -663,6 +696,7 @@ public class QueryExecution implements IQueryExecution {
     return context;
   }
 
+  @Override
   public String toString() {
     return String.format("QueryExecution[%s]", context.getQueryId());
   }

@@ -21,10 +21,10 @@ package org.apache.iotdb.db.pipe.agent.runtime;
 
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
-import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoaderManager;
-import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
-import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
+import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoaderManager;
+import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginExecutableManager;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
@@ -114,7 +114,8 @@ class PipeAgentLauncher {
       }
       // If jar does not exist, add current pipePluginMeta to list
       if (!PipePluginExecutableManager.getInstance()
-          .hasFileUnderInstallDir(pipePluginMeta.getJarName())) {
+          .hasPluginFileUnderInstallDir(
+              pipePluginMeta.getPluginName(), pipePluginMeta.getJarName())) {
         pipePluginMetaList.add(pipePluginMeta);
       } else {
         try {
@@ -144,7 +145,10 @@ class PipeAgentLauncher {
       final List<ByteBuffer> jarList = resp.getJarList();
       for (int i = 0; i < pipePluginMetaList.size(); i++) {
         PipePluginExecutableManager.getInstance()
-            .saveToInstallDir(jarList.get(i), pipePluginMetaList.get(i).getJarName());
+            .savePluginToInstallDir(
+                jarList.get(i),
+                pipePluginMetaList.get(i).getPluginName(),
+                pipePluginMetaList.get(i).getJarName());
       }
     } catch (IOException | TException | ClientManagerException e) {
       throw new StartupException(e);

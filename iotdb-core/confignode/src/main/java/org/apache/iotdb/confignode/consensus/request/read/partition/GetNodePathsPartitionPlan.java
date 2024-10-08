@@ -20,17 +20,13 @@
 package org.apache.iotdb.confignode.consensus.request.read.partition;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class GetNodePathsPartitionPlan extends ConfigPhysicalPlan {
+public class GetNodePathsPartitionPlan extends ConfigPhysicalReadPlan {
   private PartialPath partialPath;
   private PathPatternTree scope;
   private int level = -1;
@@ -43,7 +39,7 @@ public class GetNodePathsPartitionPlan extends ConfigPhysicalPlan {
     return scope;
   }
 
-  public void setScope(PathPatternTree scope) {
+  public void setScope(final PathPatternTree scope) {
     this.scope = scope;
   }
 
@@ -51,7 +47,7 @@ public class GetNodePathsPartitionPlan extends ConfigPhysicalPlan {
     return partialPath;
   }
 
-  public void setPartialPath(PartialPath partialPath) {
+  public void setPartialPath(final PartialPath partialPath) {
     this.partialPath = partialPath;
   }
 
@@ -59,34 +55,19 @@ public class GetNodePathsPartitionPlan extends ConfigPhysicalPlan {
     return level;
   }
 
-  public void setLevel(int level) {
+  public void setLevel(final int level) {
     this.level = level;
   }
 
   @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
-    partialPath.serialize(stream);
-    scope.serialize(stream);
-    stream.writeInt(level);
-  }
-
-  @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    partialPath = (PartialPath) PathDeserializeUtil.deserialize(buffer);
-    scope = PathPatternTree.deserialize(buffer);
-    level = buffer.getInt();
-  }
-
-  @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    GetNodePathsPartitionPlan that = (GetNodePathsPartitionPlan) o;
+    final GetNodePathsPartitionPlan that = (GetNodePathsPartitionPlan) o;
     return level == that.level && Objects.equals(partialPath, that.partialPath);
   }
 

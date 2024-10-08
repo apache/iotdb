@@ -190,4 +190,38 @@ public class IoTDBLastQueryWithLimitOffsetIT {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void testWithSortLimit() {
+    String[] retArray =
+        new String[] {
+          "2,root.sg.d2.s2,1.0,DOUBLE",
+        };
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last * from root.sg.** order by time desc, timeseries desc limit 1")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(ColumnHeaderConstant.TIME)
+                  + ","
+                  + resultSet.getString(ColumnHeaderConstant.TIMESERIES)
+                  + ","
+                  + resultSet.getString(ColumnHeaderConstant.VALUE)
+                  + ","
+                  + resultSet.getString(ColumnHeaderConstant.DATATYPE);
+          assertEquals(retArray[cnt++], ans);
+        }
+        assertEquals(retArray.length, cnt);
+      }
+
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 }

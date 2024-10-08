@@ -21,6 +21,10 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.plugin;
 
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.plugin.PipePluginCoordinator;
+import org.apache.iotdb.confignode.manager.pipe.coordinator.task.PipeTaskCoordinator;
+import org.apache.iotdb.confignode.manager.subscription.SubscriptionCoordinator;
+import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
+import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -28,7 +32,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
-import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodesProcedure;
 import org.apache.iotdb.confignode.procedure.state.pipe.plugin.DropPipePluginState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -44,11 +48,12 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * This class extends {@link AbstractNodeProcedure} to make sure that when a {@link
  * DropPipePluginProcedure} is executed, the {@link AddConfigNodeProcedure}, {@link
- * RemoveConfigNodeProcedure} or {@link RemoveDataNodeProcedure} will not be executed at the same
+ * RemoveConfigNodeProcedure} or {@link RemoveDataNodesProcedure} will not be executed at the same
  * time.
  */
 public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePluginState> {
@@ -59,13 +64,20 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
 
   private String pluginName;
 
+  // If the plugin does not exist and the If Exists condition is met, the process ends.
+  // This field will not be serialized. It may cause some problems
+  // when the procedure fails on one node and recovers on another node.
+  // Though it is not a good practice, it is acceptable here.
+  private boolean isSetIfExistsCondition;
+
   public DropPipePluginProcedure() {
     super();
   }
 
-  public DropPipePluginProcedure(String pluginName) {
+  public DropPipePluginProcedure(String pluginName, boolean isSetIfExistsCondition) {
     super();
     this.pluginName = pluginName;
+    this.isSetIfExistsCondition = isSetIfExistsCondition;
   }
 
   @Override
@@ -104,18 +116,39 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
 
   private Flow executeFromLock(ConfigNodeProcedureEnv env) {
     LOGGER.info("DropPipePluginProcedure: executeFromLock({})", pluginName);
+
+    final PipeTaskCoordinator pipeTaskCoordinator =
+        env.getConfigManager().getPipeManager().getPipeTaskCoordinator();
     final PipePluginCoordinator pipePluginCoordinator =
         env.getConfigManager().getPipeManager().getPipePluginCoordinator();
+    final SubscriptionCoordinator subscriptionCoordinator =
+        env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator();
 
+    final AtomicReference<PipeTaskInfo> pipeTaskInfo = pipeTaskCoordinator.lock();
     pipePluginCoordinator.lock();
+    SubscriptionInfo subscriptionInfo = subscriptionCoordinator.getSubscriptionInfo();
 
     try {
-      pipePluginCoordinator.getPipePluginInfo().validateBeforeDroppingPipePlugin(pluginName);
+      if (pipePluginCoordinator
+          .getPipePluginInfo()
+          .validateBeforeDroppingPipePlugin(pluginName, isSetIfExistsCondition)) {
+        LOGGER.info(
+            "Pipe plugin {} is not exist, end the DropPipePluginProcedure({})",
+            pluginName,
+            pluginName);
+        pipePluginCoordinator.unlock();
+        pipeTaskCoordinator.unlock();
+        return Flow.NO_MORE_STATE;
+      }
+
+      pipeTaskInfo.get().validatePipePluginUsageByPipe(pluginName);
+      subscriptionInfo.validatePipePluginUsageByTopic(pluginName);
     } catch (PipeException e) {
       // if the pipe plugin is a built-in plugin, we should not drop it
       LOGGER.warn(e.getMessage());
-      setFailure(new ProcedureException(e.getMessage()));
       pipePluginCoordinator.unlock();
+      pipeTaskCoordinator.unlock();
+      setFailure(new ProcedureException(e.getMessage()));
       return Flow.NO_MORE_STATE;
     }
 
@@ -124,7 +157,6 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
     } catch (ConsensusException e) {
       LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
     }
-
     setNextState(DropPipePluginState.DROP_ON_DATA_NODES);
     return Flow.HAS_MORE_STATE;
   }
@@ -132,8 +164,7 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
   private Flow executeFromDropOnDataNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info("DropPipePluginProcedure: executeFromDropOnDataNodes({})", pluginName);
 
-    if (RpcUtils.squashResponseStatusList(env.dropPipePluginOnDataNodes(pluginName, false))
-            .getCode()
+    if (RpcUtils.squashResponseStatusList(env.dropPipePluginOnDataNodes(pluginName, true)).getCode()
         == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(DropPipePluginState.DROP_ON_CONFIG_NODES);
       return Flow.HAS_MORE_STATE;
@@ -160,7 +191,7 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
     LOGGER.info("DropPipePluginProcedure: executeFromUnlock({})", pluginName);
 
     env.getConfigManager().getPipeManager().getPipePluginCoordinator().unlock();
-
+    env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
     return Flow.NO_MORE_STATE;
   }
 
@@ -184,6 +215,7 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
     LOGGER.info("DropPipePluginProcedure: rollbackFromLock({})", pluginName);
 
     env.getConfigManager().getPipeManager().getPipePluginCoordinator().unlock();
+    env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
   }
 
   private void rollbackFromDropOnDataNodes(ConfigNodeProcedureEnv env) {

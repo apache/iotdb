@@ -106,7 +106,6 @@ public class WALEntryPosition {
       is.skipToGivenLogicalPosition(position);
       ByteBuffer buffer = ByteBuffer.allocate(size);
       is.read(buffer);
-      buffer.flip();
       return buffer;
     }
   }

@@ -58,7 +58,8 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       QueryContext context,
       IMeasurementSchema schema,
       TVList tvList,
-      List<List<TimeRange>> deletionList)
+      List<TimeRange> timeColumnDeletion,
+      List<List<TimeRange>> valueColumnsDeletionList)
       throws QueryProcessException {
     super(context);
     this.timeChunkName = schema.getMeasurementId();
@@ -67,7 +68,13 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
     List<TSEncoding> encodingList = schema.getSubMeasurementsTSEncodingList();
     this.tsBlock =
-        ((AlignedTVList) tvList).buildTsBlock(floatPrecision, encodingList, deletionList);
+        ((AlignedTVList) tvList)
+            .buildTsBlock(
+                floatPrecision,
+                encodingList,
+                timeColumnDeletion,
+                valueColumnsDeletionList,
+                context.isIgnoreAllNullRows());
     initAlignedChunkMetaFromTsBlock();
   }
 
@@ -75,7 +82,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     // Time chunk
     Statistics timeStatistics = Statistics.getStatsByType(TSDataType.VECTOR);
     IChunkMetadata timeChunkMetadata =
-        new ChunkMetadata(timeChunkName, TSDataType.VECTOR, 0, timeStatistics);
+        new ChunkMetadata(timeChunkName, TSDataType.VECTOR, null, null, 0, timeStatistics);
     List<IChunkMetadata> valueChunkMetadataList = new ArrayList<>();
     // Update time chunk
     for (int row = 0; row < tsBlock.getPositionCount(); row++) {
@@ -145,7 +152,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       if (valueStatistics.getCount() > 0) {
         IChunkMetadata valueChunkMetadata =
             new ChunkMetadata(
-                valueChunkNames.get(column), dataTypes.get(column), 0, valueStatistics);
+                valueChunkNames.get(column), dataTypes.get(column), null, null, 0, valueStatistics);
         valueChunkMetadataList.add(valueChunkMetadata);
         valueStatistics.setEmpty(false);
       } else {

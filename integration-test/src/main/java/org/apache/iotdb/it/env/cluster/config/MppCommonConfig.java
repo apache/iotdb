@@ -124,11 +124,9 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setMaxInnerCompactionCandidateFileNum(
-      int maxInnerCompactionCandidateFileNum) {
+  public CommonConfig setInnerCompactionCandidateFileNum(int maxInnerCompactionCandidateFileNum) {
     setProperty(
-        "max_inner_compaction_candidate_file_num",
-        String.valueOf(maxInnerCompactionCandidateFileNum));
+        "inner_compaction_candidate_file_num", String.valueOf(maxInnerCompactionCandidateFileNum));
     return this;
   }
 
@@ -233,6 +231,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setTimePartitionOrigin(long timePartitionOrigin) {
+    setProperty("time_partition_origin", String.valueOf(timePartitionOrigin));
+    return this;
+  }
+
+  @Override
   public CommonConfig setTimestampPrecision(String timestampPrecision) {
     setProperty("timestamp_precision", timestampPrecision);
     return this;
@@ -326,6 +330,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
       queryThreadCount = Runtime.getRuntime().availableProcessors();
     }
     setProperty("query_thread_count", String.valueOf(queryThreadCount));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setWalBufferSize(int walBufferSize) {
+    setProperty("wal_buffer_size_in_byte", String.valueOf(walBufferSize));
     return this;
   }
 
@@ -461,6 +471,16 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
     setProperty(
         "pipe_meta_syncer_sync_interval_minutes",
         String.valueOf(pipeMetaSyncerSyncIntervalMinutes));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeConnectorRequestSliceThresholdBytes(
+      int pipeConnectorRequestSliceThresholdBytes) {
+    setProperty(
+        "pipe_connector_request_slice_threshold_bytes",
+        String.valueOf(pipeConnectorRequestSliceThresholdBytes));
+
     return this;
   }
 

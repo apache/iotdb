@@ -21,6 +21,8 @@ package org.apache.iotdb.db.queryengine.transformation.dag.column.ternary;
 
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 
 public abstract class TernaryColumnTransformer extends ColumnTransformer {
@@ -42,6 +44,27 @@ public abstract class TernaryColumnTransformer extends ColumnTransformer {
     this.thirdColumnTransformer = thirdColumnTransformer;
     checkType();
   }
+
+  @Override
+  protected void evaluate() {
+    firstColumnTransformer.tryEvaluate();
+    secondColumnTransformer.tryEvaluate();
+    thirdColumnTransformer.tryEvaluate();
+    int positionCount = firstColumnTransformer.getColumnCachePositionCount();
+    Column firstColumn = firstColumnTransformer.getColumn();
+    Column secondColumn = secondColumnTransformer.getColumn();
+    Column thirdColumn = thirdColumnTransformer.getColumn();
+    ColumnBuilder columnBuilder = returnType.createColumnBuilder(positionCount);
+    doTransform(firstColumn, secondColumn, thirdColumn, columnBuilder, positionCount);
+    initializeColumnCache(columnBuilder.build());
+  }
+
+  protected abstract void doTransform(
+      Column firstColumn,
+      Column secondColumn,
+      Column thirdColumn,
+      ColumnBuilder builder,
+      int positionCount);
 
   public ColumnTransformer getFirstColumnTransformer() {
     return firstColumnTransformer;

@@ -26,7 +26,7 @@ import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2Subscription;
+import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionArchVerification;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
@@ -69,7 +69,7 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2Subscription.class})
+@Category({MultiClusterIT2SubscriptionArchVerification.class})
 public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT {
 
   // Test dimensions:
@@ -79,6 +79,11 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBSubscriptionConsumerGroupIT.class);
+
+  private static final String TOPIC_1 = "topic1";
+  private static final String TOPIC_2 = "topic2";
+  private static final String TOPIC_ALL_WITH_TABLET = "topic_all_with_tablet";
+  private static final String TOPIC_ALL_WITH_TSFILE = "topic_all_with_tsfile";
 
   private static Map<String, String> ASYNC_CONNECTOR_ATTRIBUTES;
   private static Map<String, String> SYNC_CONNECTOR_ATTRIBUTES;
@@ -91,8 +96,9 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   private static Pair<List<SubscriptionInfo>, Map<String, String>> __3C_3CG_SUBSCRIBE_TWO_TOPIC;
   private static Pair<List<SubscriptionInfo>, Map<String, String>> __4C_2CG_SUBSCRIBE_TWO_TOPIC;
   private static Pair<List<SubscriptionInfo>, Map<String, String>>
-      __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE;
-  private static Pair<List<SubscriptionInfo>, Map<String, String>> __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC;
+      __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL;
+  private static Pair<List<SubscriptionInfo>, Map<String, String>>
+      __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL;
 
   static final class SubscriptionInfo {
     final String consumerId;
@@ -117,7 +123,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
 
   @Override
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     super.setUp();
 
     // Setup connector attributes
@@ -152,9 +158,9 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     // Setup subscription info list with expected results
     {
       final List<SubscriptionInfo> subscriptionInfoList = new ArrayList<>();
-      subscriptionInfoList.add(new SubscriptionInfo("c1", "cg1", Collections.singleton("topic1")));
-      subscriptionInfoList.add(new SubscriptionInfo("c2", "cg1", Collections.singleton("topic1")));
-      subscriptionInfoList.add(new SubscriptionInfo("c3", "cg1", Collections.singleton("topic1")));
+      subscriptionInfoList.add(new SubscriptionInfo("c1", "cg1", Collections.singleton(TOPIC_1)));
+      subscriptionInfoList.add(new SubscriptionInfo("c2", "cg1", Collections.singleton(TOPIC_1)));
+      subscriptionInfoList.add(new SubscriptionInfo("c3", "cg1", Collections.singleton(TOPIC_1)));
 
       final Map<String, String> expectedHeaderWithResult = new HashMap<>();
       expectedHeaderWithResult.put("count(root.cg1.topic1.s)", "100");
@@ -165,9 +171,9 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     }
     {
       final List<SubscriptionInfo> subscriptionInfoList = new ArrayList<>();
-      subscriptionInfoList.add(new SubscriptionInfo("c1", "cg1", Collections.singleton("topic1")));
-      subscriptionInfoList.add(new SubscriptionInfo("c2", "cg2", Collections.singleton("topic1")));
-      subscriptionInfoList.add(new SubscriptionInfo("c3", "cg3", Collections.singleton("topic1")));
+      subscriptionInfoList.add(new SubscriptionInfo("c1", "cg1", Collections.singleton(TOPIC_1)));
+      subscriptionInfoList.add(new SubscriptionInfo("c2", "cg2", Collections.singleton(TOPIC_1)));
+      subscriptionInfoList.add(new SubscriptionInfo("c3", "cg3", Collections.singleton(TOPIC_1)));
 
       final Map<String, String> expectedHeaderWithResult = new HashMap<>();
       expectedHeaderWithResult.put("count(root.cg1.topic1.s)", "100");
@@ -180,10 +186,10 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     }
     {
       final List<SubscriptionInfo> subscriptionInfoList = new ArrayList<>();
-      subscriptionInfoList.add(new SubscriptionInfo("c1", "cg1", Collections.singleton("topic1")));
+      subscriptionInfoList.add(new SubscriptionInfo("c1", "cg1", Collections.singleton(TOPIC_1)));
       subscriptionInfoList.add(
-          new SubscriptionInfo("c2", "cg1", new HashSet<>(Arrays.asList("topic1", "topic2"))));
-      subscriptionInfoList.add(new SubscriptionInfo("c3", "cg1", Collections.singleton("topic2")));
+          new SubscriptionInfo("c2", "cg1", new HashSet<>(Arrays.asList(TOPIC_1, TOPIC_2))));
+      subscriptionInfoList.add(new SubscriptionInfo("c3", "cg1", Collections.singleton(TOPIC_2)));
 
       final Map<String, String> expectedHeaderWithResult = new HashMap<>();
       expectedHeaderWithResult.put("count(root.cg1.topic1.s)", "100");
@@ -195,10 +201,10 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     }
     {
       final List<SubscriptionInfo> subscriptionInfoList = new ArrayList<>();
-      subscriptionInfoList.add(new SubscriptionInfo("c1", "cg1", Collections.singleton("topic1")));
+      subscriptionInfoList.add(new SubscriptionInfo("c1", "cg1", Collections.singleton(TOPIC_1)));
       subscriptionInfoList.add(
-          new SubscriptionInfo("c2", "cg2", new HashSet<>(Arrays.asList("topic1", "topic2"))));
-      subscriptionInfoList.add(new SubscriptionInfo("c3", "cg3", Collections.singleton("topic2")));
+          new SubscriptionInfo("c2", "cg2", new HashSet<>(Arrays.asList(TOPIC_1, TOPIC_2))));
+      subscriptionInfoList.add(new SubscriptionInfo("c3", "cg3", Collections.singleton(TOPIC_2)));
 
       final Map<String, String> expectedHeaderWithResult = new HashMap<>();
       expectedHeaderWithResult.put("count(root.cg1.topic1.s)", "100");
@@ -212,11 +218,11 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     }
     {
       final List<SubscriptionInfo> subscriptionInfoList = new ArrayList<>();
-      subscriptionInfoList.add(new SubscriptionInfo("c1", "cg1", Collections.singleton("topic1")));
+      subscriptionInfoList.add(new SubscriptionInfo("c1", "cg1", Collections.singleton(TOPIC_1)));
       subscriptionInfoList.add(
-          new SubscriptionInfo("c2", "cg2", new HashSet<>(Arrays.asList("topic1", "topic2"))));
-      subscriptionInfoList.add(new SubscriptionInfo("c3", "cg1", Collections.singleton("topic1")));
-      subscriptionInfoList.add(new SubscriptionInfo("c4", "cg2", Collections.singleton("topic2")));
+          new SubscriptionInfo("c2", "cg2", new HashSet<>(Arrays.asList(TOPIC_1, TOPIC_2))));
+      subscriptionInfoList.add(new SubscriptionInfo("c3", "cg1", Collections.singleton(TOPIC_1)));
+      subscriptionInfoList.add(new SubscriptionInfo("c4", "cg2", Collections.singleton(TOPIC_2)));
 
       final Map<String, String> expectedHeaderWithResult = new HashMap<>();
       expectedHeaderWithResult.put("count(root.cg1.topic1.s)", "100");
@@ -229,41 +235,50 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     }
     {
       final List<SubscriptionInfo> subscriptionInfoList = new ArrayList<>();
-      subscriptionInfoList.add(new SubscriptionInfo("c1", "cg1", Collections.singleton("all")));
       subscriptionInfoList.add(
-          new SubscriptionInfo("c2", "cg2", new HashSet<>(Arrays.asList("topic1", "topic2"))));
-      subscriptionInfoList.add(new SubscriptionInfo("c3", "cg1", Collections.singleton("all")));
-      subscriptionInfoList.add(new SubscriptionInfo("c4", "cg2", Collections.singleton("topic2")));
+          new SubscriptionInfo("c1", "cg1", Collections.singleton(TOPIC_ALL_WITH_TSFILE)));
+      subscriptionInfoList.add(
+          new SubscriptionInfo("c2", "cg2", new HashSet<>(Arrays.asList(TOPIC_1, TOPIC_2))));
+      subscriptionInfoList.add(
+          new SubscriptionInfo("c3", "cg1", Collections.singleton(TOPIC_ALL_WITH_TSFILE)));
+      subscriptionInfoList.add(new SubscriptionInfo("c4", "cg2", Collections.singleton(TOPIC_2)));
 
       final Map<String, String> expectedHeaderWithResult = new HashMap<>();
-      expectedHeaderWithResult.put("count(root.cg1.topic1.s)", "100");
-      expectedHeaderWithResult.put("count(root.cg1.topic2.s)", "100");
+      expectedHeaderWithResult.put("count(root.cg1.topic1.s)", "200");
+      expectedHeaderWithResult.put("count(root.cg1.topic2.s)", "200");
       expectedHeaderWithResult.put("count(root.cg2.topic1.s)", "100");
       expectedHeaderWithResult.put("count(root.cg2.topic2.s)", "100");
       expectedHeaderWithResult.put("count(root.topic1.s)", "100");
       expectedHeaderWithResult.put("count(root.topic2.s)", "100");
 
-      __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE =
+      __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL =
           new Pair<>(subscriptionInfoList, expectedHeaderWithResult);
     }
     {
       final List<SubscriptionInfo> subscriptionInfoList = new ArrayList<>();
-      subscriptionInfoList.add(new SubscriptionInfo("c1", "cg1", Collections.singleton("all")));
-      subscriptionInfoList.add(new SubscriptionInfo("c2", "cg1", Collections.singleton("all")));
-      subscriptionInfoList.add(new SubscriptionInfo("c3", "cg1", Collections.singleton("all")));
-      subscriptionInfoList.add(new SubscriptionInfo("c4", "cg1", Collections.singleton("all")));
-      subscriptionInfoList.add(new SubscriptionInfo("c5", "cg2", Collections.singleton("all")));
-      subscriptionInfoList.add(new SubscriptionInfo("c6", "cg2", Collections.singleton("all")));
+      subscriptionInfoList.add(
+          new SubscriptionInfo("c1", "cg1", Collections.singleton(TOPIC_ALL_WITH_TABLET)));
+      subscriptionInfoList.add(
+          new SubscriptionInfo("c2", "cg1", Collections.singleton(TOPIC_ALL_WITH_TABLET)));
+      subscriptionInfoList.add(
+          new SubscriptionInfo("c3", "cg1", Collections.singleton(TOPIC_ALL_WITH_TSFILE)));
+      subscriptionInfoList.add(
+          new SubscriptionInfo("c4", "cg1", Collections.singleton(TOPIC_ALL_WITH_TSFILE)));
+      subscriptionInfoList.add(
+          new SubscriptionInfo("c5", "cg2", Collections.singleton(TOPIC_ALL_WITH_TABLET)));
+      subscriptionInfoList.add(
+          new SubscriptionInfo("c6", "cg2", Collections.singleton(TOPIC_ALL_WITH_TSFILE)));
 
       final Map<String, String> expectedHeaderWithResult = new HashMap<>();
-      expectedHeaderWithResult.put("count(root.cg1.topic1.s)", "100");
-      expectedHeaderWithResult.put("count(root.cg1.topic2.s)", "100");
-      expectedHeaderWithResult.put("count(root.cg2.topic1.s)", "100");
-      expectedHeaderWithResult.put("count(root.cg2.topic2.s)", "100");
+      expectedHeaderWithResult.put("count(root.cg1.topic1.s)", "200");
+      expectedHeaderWithResult.put("count(root.cg1.topic2.s)", "200");
+      expectedHeaderWithResult.put("count(root.cg2.topic1.s)", "200");
+      expectedHeaderWithResult.put("count(root.cg2.topic2.s)", "200");
       expectedHeaderWithResult.put("count(root.topic1.s)", "100");
       expectedHeaderWithResult.put("count(root.topic2.s)", "100");
 
-      __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC = new Pair<>(subscriptionInfoList, expectedHeaderWithResult);
+      __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL =
+          new Pair<>(subscriptionInfoList, expectedHeaderWithResult);
     }
   }
 
@@ -675,147 +690,144 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         __4C_2CG_SUBSCRIBE_TWO_TOPIC.right);
   }
 
-  // ------------------------------------------------------ //
-  // 4 consumers, 2 consumer groups, 2 topics (with tsfile) //
-  // ------------------------------------------------------ //
+  // --------------------------------------------------------- //
+  // 4 consumers, 2 consumer groups, 2 topics (with topic all) //
+  // --------------------------------------------------------- //
 
   @Test
-  public void test4C2CGSubscribeTwoTopicWithTsFileHistoricalDataWithAsyncConnector()
-      throws Exception {
+  public void test4C2CGSubscribeTwoTopicWithAllHistoricalDataWithAsyncConnector() throws Exception {
     testSubscriptionHistoricalDataTemplate(
         ASYNC_CONNECTOR_ATTRIBUTES,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.left,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.right);
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.left,
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.right);
   }
 
   @Test
-  public void test4C2CGSubscribeTwoTopicWithTsFileHistoricalDataWithSyncConnector()
-      throws Exception {
+  public void test4C2CGSubscribeTwoTopicWithAllHistoricalDataWithSyncConnector() throws Exception {
     testSubscriptionHistoricalDataTemplate(
         SYNC_CONNECTOR_ATTRIBUTES,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.left,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.right);
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.left,
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.right);
   }
 
   @Test
-  public void test4C2CGSubscribeTwoTopicWithTsFileHistoricalDataWithLegacyConnector()
+  public void test4C2CGSubscribeTwoTopicWithAllHistoricalDataWithLegacyConnector()
       throws Exception {
     testSubscriptionHistoricalDataTemplate(
         LEGACY_CONNECTOR_ATTRIBUTES,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.left,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.right);
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.left,
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.right);
   }
 
   @Test
-  public void test4C2CGSubscribeTwoTopicWithTsFileHistoricalDataWithAirGapConnector()
+  public void test4C2CGSubscribeTwoTopicWithAllHistoricalDataWithAirGapConnector()
       throws Exception {
     testSubscriptionHistoricalDataTemplate(
         AIR_GAP_CONNECTOR_ATTRIBUTES,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.left,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.right);
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.left,
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.right);
   }
 
   @Test
-  public void test4C2CGSubscribeTwoTopicWithTsFileRealtimeDataWithAsyncConnector()
-      throws Exception {
+  public void test4C2CGSubscribeTwoTopicWithAllRealtimeDataWithAsyncConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
         ASYNC_CONNECTOR_ATTRIBUTES,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.left,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.right);
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.left,
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.right);
   }
 
   @Test
-  public void test4C2CGSubscribeTwoTopicWithTsFileRealtimeDataWithSyncConnector() throws Exception {
+  public void test4C2CGSubscribeTwoTopicWithAllRealtimeDataWithSyncConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
         SYNC_CONNECTOR_ATTRIBUTES,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.left,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.right);
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.left,
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.right);
   }
 
   @Test
-  public void test4C2CGSubscribeTwoTopicWithTsFileRealtimeDataWithLegacyConnector()
-      throws Exception {
+  public void test4C2CGSubscribeTwoTopicWithAllRealtimeDataWithLegacyConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
         LEGACY_CONNECTOR_ATTRIBUTES,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.left,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.right);
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.left,
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.right);
   }
 
   @Test
-  public void test4C2CGSubscribeTwoTopicWithTsFileRealtimeDataWithAirGapConnector()
-      throws Exception {
+  public void test4C2CGSubscribeTwoTopicWithAllRealtimeDataWithAirGapConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
         AIR_GAP_CONNECTOR_ATTRIBUTES,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.left,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.right);
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.left,
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.right);
   }
 
-  // ------------------------------------------------ //
-  // 6 consumers, 2 consumer groups, 1 topic (tsfile) //
-  // ------------------------------------------------ //
+  // --------------------------------------------------- //
+  // 6 consumers, 2 consumer groups, 1 topic (topic all) //
+  // --------------------------------------------------- //
 
   @Test
-  public void test6C2CGSubscribeOneTsFileTopicHistoricalDataWithAsyncConnector() throws Exception {
+  public void test6C2CGSubscribeOneTopicWithAllHistoricalDataWithAsyncConnector() throws Exception {
     testSubscriptionHistoricalDataTemplate(
         ASYNC_CONNECTOR_ATTRIBUTES,
-        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.left,
-        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.right);
+        __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.left,
+        __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.right);
   }
 
   @Test
-  public void test6C2CGSubscribeOneTsFileTopicHistoricalDataWithSyncConnector() throws Exception {
+  public void test6C2CGSubscribeOneTopicWithAllHistoricalDataWithSyncConnector() throws Exception {
     testSubscriptionHistoricalDataTemplate(
         SYNC_CONNECTOR_ATTRIBUTES,
-        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.left,
-        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.right);
+        __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.left,
+        __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.right);
   }
 
   @Test
-  public void test6C2CGSubscribeOneTsFileTopicHistoricalDataWithLegacyConnector() throws Exception {
+  public void test6C2CGSubscribeOneTopicWithAllHistoricalDataWithLegacyConnector()
+      throws Exception {
     testSubscriptionHistoricalDataTemplate(
         LEGACY_CONNECTOR_ATTRIBUTES,
-        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.left,
-        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.right);
+        __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.left,
+        __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.right);
   }
 
   @Test
-  public void test6C2CGSubscribeOneTsFileTopicHistoricalDataWithAirGapConnector() throws Exception {
+  public void test6C2CGSubscribeOneTopicWithAllHistoricalDataWithAirGapConnector()
+      throws Exception {
     testSubscriptionHistoricalDataTemplate(
         AIR_GAP_CONNECTOR_ATTRIBUTES,
-        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.left,
-        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.right);
+        __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.left,
+        __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.right);
   }
 
   @Test
-  public void test6C2CGSubscribeOneTsFileTopicRealtimeDataWithAsyncConnector() throws Exception {
+  public void test6C2CGSubscribeOneTopicWithAllRealtimeDataWithAsyncConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
         ASYNC_CONNECTOR_ATTRIBUTES,
-        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.left,
-        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.right);
+        __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.left,
+        __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.right);
   }
 
   @Test
-  public void test6C2CGSubscribeOneTsFileTopicRealtimeDataWithSyncConnector() throws Exception {
+  public void test6C2CGSubscribeOneTopicWithAllRealtimeDataWithSyncConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
         SYNC_CONNECTOR_ATTRIBUTES,
-        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.left,
-        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.right);
+        __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.left,
+        __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.right);
   }
 
   @Test
-  public void test6C2CGSubscribeOneTsFileTopicRealtimeDataWithLegacyConnector() throws Exception {
+  public void test6C2CGSubscribeOneTopicWithAllRealtimeDataWithLegacyConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
         LEGACY_CONNECTOR_ATTRIBUTES,
-        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.left,
-        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.right);
+        __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.left,
+        __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.right);
   }
 
   @Test
-  public void test6C2CGSubscribeOneTsFileTopicRealtimeDataWithAirGapConnector() throws Exception {
+  public void test6C2CGSubscribeOneTopicWithAllRealtimeDataWithAirGapConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
         AIR_GAP_CONNECTOR_ATTRIBUTES,
-        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.left,
-        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.right);
+        __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.left,
+        __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.right);
   }
 
   /////////////////////////////// utility ///////////////////////////////
@@ -828,18 +840,29 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       session.open();
       {
         final Properties config = new Properties();
+        config.put(TopicConstant.PATH_KEY, "root.topic1.s");
         config.put(TopicConstant.END_TIME_KEY, currentTime - 1);
-        session.createTopic("topic1", config);
+        config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_SESSION_DATA_SETS_HANDLER_VALUE);
+        session.createTopic(TOPIC_1, config);
       }
       {
         final Properties config = new Properties();
+        config.put(TopicConstant.PATH_KEY, "root.topic2.s");
         config.put(TopicConstant.START_TIME_KEY, currentTime);
-        session.createTopic("topic2", config);
+        config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
+        session.createTopic(TOPIC_2, config);
       }
       {
         final Properties config = new Properties();
+        config.put(TopicConstant.PATH_KEY, "root.*.s");
         config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
-        session.createTopic("all", config);
+        session.createTopic(TOPIC_ALL_WITH_TSFILE, config);
+      }
+      {
+        final Properties config = new Properties();
+        config.put(TopicConstant.PATH_KEY, "root.*.s");
+        config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_SESSION_DATA_SETS_HANDLER_VALUE);
+        session.createTopic(TOPIC_ALL_WITH_TABLET, config);
       }
     } catch (final Exception e) {
       e.printStackTrace();
@@ -852,10 +875,17 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     try (final ISession session = senderEnv.getSessionConnection()) {
       for (int i = 0; i < 100; ++i) {
         session.executeNonQueryStatement(
-            String.format("insert into root.topic1(time, s) values (%s, 1)", i)); // topic1
+            String.format("insert into root.topic1(time, s, t) values (%s, 1, 2)", i));
         session.executeNonQueryStatement(
             String.format(
-                "insert into root.topic2(time, s) values (%s, 1)", currentTime + i)); // topic2
+                "insert into root.topic1(time, s, t) values (%s, 1, 2)", currentTime + i));
+      }
+      for (int i = 0; i < 100; ++i) {
+        session.executeNonQueryStatement(
+            String.format("insert into root.topic2(time, s, t) values (%s, 3, 4)", i));
+        session.executeNonQueryStatement(
+            String.format(
+                "insert into root.topic2(time, s, t) values (%s, 3, 4)", currentTime + i));
       }
       session.executeNonQueryStatement("flush");
     } catch (final Exception e) {
@@ -873,6 +903,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
 
       extractorAttributes.put("inclusion", "data.insert");
       extractorAttributes.put("inclusion.exclusion", "data.delete");
+      extractorAttributes.put("path", "root.topic1.s");
       extractorAttributes.put("end-time", String.valueOf(currentTime - 1));
 
       final TSStatus status =
@@ -893,6 +924,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
 
       extractorAttributes.put("inclusion", "data.insert");
       extractorAttributes.put("inclusion.exclusion", "data.delete");
+      extractorAttributes.put("path", "root.topic2.s");
       extractorAttributes.put("start-time", String.valueOf(currentTime));
 
       final TSStatus status =
@@ -944,54 +976,54 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                         consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
                     for (final SubscriptionMessage message : messages) {
                       final short messageType = message.getMessageType();
-                      if (SubscriptionMessageType.isValidatedMessageType(messageType)) {
-                        switch (SubscriptionMessageType.valueOf(messageType)) {
-                          case SESSION_DATA_SETS_HANDLER:
-                            {
-                              for (final SubscriptionSessionDataSet dataSet :
-                                  message.getSessionDataSetsHandler()) {
-                                final List<String> columnNameList = dataSet.getColumnNames();
-                                while (dataSet.hasNext()) {
-                                  final RowRecord record = dataSet.next();
-                                  if (!insertRowRecordEnrichedByConsumerGroupId(
-                                      columnNameList, record, consumerGroupId)) {
-                                    receiverCrashed.set(true);
-                                    throw new RuntimeException("detect receiver crashed");
-                                  }
-                                }
-                              }
-                              break;
-                            }
-                          case TS_FILE_HANDLER:
-                            {
-                              try (final TsFileReader tsFileReader =
-                                  message.getTsFileHandler().openReader()) {
-                                final QueryDataSet dataSet =
-                                    tsFileReader.query(
-                                        QueryExpression.create(
-                                            Arrays.asList(
-                                                new Path("root.topic1", "s", true),
-                                                new Path("root.topic2", "s", true)),
-                                            null));
-                                while (dataSet.hasNext()) {
-                                  final RowRecord record = dataSet.next();
-                                  if (!insertRowRecordEnrichedByConsumerGroupId(
-                                      dataSet.getPaths().get(0).toString(),
-                                      record,
-                                      consumerGroupId)) {
-                                    receiverCrashed.set(true);
-                                    throw new RuntimeException("detect receiver crashed");
-                                  }
-                                }
-                              }
-                              break;
-                            }
-                          default:
-                            LOGGER.warn("unexpected message type: {}", messageType);
-                            break;
-                        }
-                      } else {
+                      if (!SubscriptionMessageType.isValidatedMessageType(messageType)) {
                         LOGGER.warn("unexpected message type: {}", messageType);
+                        continue;
+                      }
+                      switch (SubscriptionMessageType.valueOf(messageType)) {
+                        case SESSION_DATA_SETS_HANDLER:
+                          {
+                            for (final SubscriptionSessionDataSet dataSet :
+                                message.getSessionDataSetsHandler()) {
+                              final List<String> columnNameList = dataSet.getColumnNames();
+                              while (dataSet.hasNext()) {
+                                final RowRecord record = dataSet.next();
+                                if (!insertRowRecordEnrichedByConsumerGroupId(
+                                    columnNameList, record.getTimestamp(), consumerGroupId)) {
+                                  receiverCrashed.set(true);
+                                  throw new RuntimeException("detect receiver crashed");
+                                }
+                              }
+                            }
+                            break;
+                          }
+                        case TS_FILE_HANDLER:
+                          {
+                            try (final TsFileReader tsFileReader =
+                                message.getTsFileHandler().openReader()) {
+                              final QueryDataSet dataSet =
+                                  tsFileReader.query(
+                                      QueryExpression.create(
+                                          Arrays.asList(
+                                              new Path("root.topic1", "s", true),
+                                              new Path("root.topic2", "s", true)),
+                                          null));
+                              while (dataSet.hasNext()) {
+                                final RowRecord record = dataSet.next();
+                                for (final Path path : dataSet.getPaths()) {
+                                  if (!insertRowRecordEnrichedByConsumerGroupId(
+                                      path.toString(), record.getTimestamp(), consumerGroupId)) {
+                                    receiverCrashed.set(true);
+                                    throw new RuntimeException("detect receiver crashed");
+                                  }
+                                }
+                              }
+                            }
+                            break;
+                          }
+                        default:
+                          LOGGER.warn("unexpected message type: {}", messageType);
+                          break;
                       }
                     }
                     consumer.commitSync(messages);
@@ -1004,7 +1036,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                   LOGGER.info("consumer {} exiting...", consumers.get(index));
                 }
               },
-              String.format("%s - %s", testName.getMethodName(), consumers.get(index).toString()));
+              String.format("%s - %s", testName.getDisplayName(), consumers.get(index).toString()));
       t.start();
       threads.add(t);
     }
@@ -1024,9 +1056,9 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
               // potential stuck
               if (System.currentTimeMillis() - currentTime[0] > 60_000L) {
                 for (final DataNodeWrapper wrapper : senderEnv.getDataNodeWrapperList()) {
-                  wrapper.executeJstack();
-                  // wrapper.executeJstack(String.format("%s_%s", testName.getMethodName(),
-                  // currentTime[0]));
+                  // wrapper.executeJstack();
+                  wrapper.executeJstack(
+                      String.format("%s_%s", testName.getDisplayName(), currentTime[0]));
                 }
                 currentTime[0] = System.currentTimeMillis();
               }
@@ -1050,39 +1082,47 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
    * @return false -> receiver crashed
    */
   private boolean insertRowRecordEnrichedByConsumerGroupId(
-      final List<String> columnNameList, final RowRecord record, final String consumerGroupId)
+      final List<String> columnNameList, final long timestamp, final String consumerGroupId)
       throws Exception {
-    if (columnNameList.size() != 2) {
+    final int columnSize = columnNameList.size();
+    if (columnSize <= 1) { // only with time column
       LOGGER.warn("unexpected column name list: {}", columnNameList);
       throw new Exception("unexpected column name list");
     }
-    final String columnName = columnNameList.get(1);
-    return insertRowRecordEnrichedByConsumerGroupId(columnName, record, consumerGroupId);
+
+    for (int columnIndex = 1; columnIndex < columnSize; ++columnIndex) {
+      final String columnName = columnNameList.get(columnIndex);
+      if (!insertRowRecordEnrichedByConsumerGroupId(columnName, timestamp, consumerGroupId)) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   /**
    * @return false -> receiver crashed
    */
   private boolean insertRowRecordEnrichedByConsumerGroupId(
-      final String columnName, final RowRecord record, final String consumerGroupId)
+      final String columnName, final long timestamp, final String consumerGroupId)
       throws Exception {
     if ("root.topic1.s".equals(columnName)) {
       final String sql =
           String.format(
-              "insert into root.%s.topic1(time, s) values (%s, 1)",
-              consumerGroupId, record.getTimestamp());
+              "insert into root.%s.topic1(time, s) values (%s, 1)", consumerGroupId, timestamp);
       LOGGER.info(sql);
       return TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, sql);
-    } else if ("root.topic2.s".equals(columnName)) {
+    }
+
+    if ("root.topic2.s".equals(columnName)) {
       final String sql =
           String.format(
-              "insert into root.%s.topic2(time, s) values (%s, 1)",
-              consumerGroupId, record.getTimestamp());
+              "insert into root.%s.topic2(time, s) values (%s, 3)", consumerGroupId, timestamp);
       LOGGER.info(sql);
       return TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, sql);
-    } else {
-      LOGGER.warn("unexpected column name: {}", columnName);
-      throw new Exception("unexpected column name");
     }
+
+    LOGGER.warn("unexpected column name: {}", columnName);
+    throw new Exception("unexpected column name");
   }
 }

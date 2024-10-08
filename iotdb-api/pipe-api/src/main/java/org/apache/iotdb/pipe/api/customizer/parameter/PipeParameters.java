@@ -71,6 +71,10 @@ public class PipeParameters {
     return false;
   }
 
+  public void addAttribute(final String key, String values) {
+    attributes.put(KeyReducer.reduce(key), values);
+  }
+
   public String getString(final String key) {
     final String value = attributes.get(key);
     return value != null ? value : attributes.get(KeyReducer.reduce(key));
@@ -278,11 +282,30 @@ public class PipeParameters {
         .collect(
             Collectors.toMap(
                 Entry::getKey,
-                entry -> ValueHider.hide(entry.getKey(), entry.getValue()),
-                // The key won't be duplicated thus we just return the oldValue
-                (u, v) -> u,
+                entry -> {
+                  final String value = ValueHider.hide(entry.getKey(), entry.getValue());
+                  return value == null ? "null" : value;
+                },
+                (v1, v2) -> {
+                  final boolean v1IsNull = isNullValue(v1);
+                  final boolean v2IsNull = isNullValue(v2);
+                  if (v1IsNull && v2IsNull) {
+                    return "null";
+                  }
+                  if (v1IsNull) {
+                    return v2;
+                  }
+                  if (v2IsNull) {
+                    return v1;
+                  }
+                  return v1;
+                },
                 TreeMap::new))
         .toString();
+  }
+
+  private static boolean isNullValue(final String value) {
+    return value == null || value.equals("null");
   }
 
   /**

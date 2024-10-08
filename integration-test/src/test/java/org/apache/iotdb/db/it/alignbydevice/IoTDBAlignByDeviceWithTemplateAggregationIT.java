@@ -59,6 +59,16 @@ public class IoTDBAlignByDeviceWithTemplateAggregationIT {
         "flush;",
         "INSERT INTO root.sg2.d3(timestamp,s1,s2,s3) values(1,111.1,true,null), (4,444.4,true,44), (8,8.8,false,4), (1314000000002,13.16,false,1316);",
         "INSERT INTO root.sg2.d4(timestamp,s1,s2,s3) values(1,1111.1,true,1111), (5,5555.5,false,5555), (8,0.8,true,10), (1314000000003,13.14,true,1314);",
+
+        // aligned template with delete
+        "CREATE database root.sg3;",
+        "SET SCHEMA TEMPLATE t2 to root.sg3;",
+        "INSERT INTO root.sg3.d1(timestamp,s1,s2,s3) values(1,1.1,false,1), (2,2.2,false,2), (5,5.5,true,5), (1314000000000,13.14,true,1314);",
+        "INSERT INTO root.sg3.d2(timestamp,s1,s2,s3) values(1,11.1,false,11), (2,22.2,false,22), (5,50.0,false,5), (1314000000001,13.15,false,1315);",
+        "flush;",
+        "INSERT INTO root.sg3.d3(timestamp,s1,s2,s3) values(1,111.1,true,null), (4,444.4,true,44), (8,8.8,false,4), (1314000000002,13.16,false,1316);",
+        "INSERT INTO root.sg3.d4(timestamp,s1,s2,s3) values(1,1111.1,true,1111), (5,5555.5,false,5555), (8,0.8,true,10), (1314000000003,13.14,true,1314);",
+        "delete from root.sg3.d1.s1 where time <= 5;"
       };
 
   @BeforeClass
@@ -652,6 +662,25 @@ public class IoTDBAlignByDeviceWithTemplateAggregationIT {
         };
     resultSetEqualTest(
         "SELECT count(*)+1 FROM root.sg2.** where s2=false having count(s3+s1) > 2 align by device;",
+        expectedHeader,
+        retArray);
+  }
+
+  @Test
+  public void orderByTimeWithDeleteTest() {
+    String[] expectedHeader = new String[] {"Device,count(s1)"};
+    String[] retArray =
+        new String[] {
+          "root.sg3.d1,1,", "root.sg3.d2,4,", "root.sg3.d3,4,", "root.sg3.d4,4,",
+        };
+    resultSetEqualTest(
+        "select count(s1) from root.sg3.** order by device align by device;",
+        expectedHeader,
+        retArray);
+
+    // to test visitSingeDeviceViewNode in AggregationPushDown
+    resultSetEqualTest(
+        "select count(s1) from root.sg3.** order by time align by device;",
         expectedHeader,
         retArray);
   }

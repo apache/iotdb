@@ -143,6 +143,7 @@ public class PipeConsensusTsFileInsertionEventHandler
                     modFile.length(),
                     tsFile.getName(),
                     tsFile.length(),
+                    event.getFlushPointCount(),
                     commitId,
                     consensusGroupId,
                     event.getProgressIndex(),
@@ -150,6 +151,7 @@ public class PipeConsensusTsFileInsertionEventHandler
                 : PipeConsensusTsFileSealReq.toTPipeConsensusTransferReq(
                     tsFile.getName(),
                     tsFile.length(),
+                    event.getFlushPointCount(),
                     commitId,
                     consensusGroupId,
                     event.getProgressIndex(),

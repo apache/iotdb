@@ -40,6 +40,8 @@ public class SubscriptionCommitContext implements Comparable<SubscriptionCommitC
 
   private final long commitId;
 
+  public static final long INVALID_COMMIT_ID = -1;
+
   public SubscriptionCommitContext(
       final int dataNodeId,
       final int rebootTimes,

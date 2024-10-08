@@ -35,6 +35,7 @@ import org.apache.tsfile.utils.TimeDuration;
 
 import java.time.DateTimeException;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -54,19 +55,38 @@ public class DateTimeUtils {
     // forbidding instantiation
   }
 
-  private static final String TIMESTAMP_PRECISION =
+  public static final String TIMESTAMP_PRECISION =
       CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
+
+  public static long correctPrecision(long millis) {
+    switch (TIMESTAMP_PRECISION) {
+      case "us":
+      case "microsecond":
+        return millis * 1_000L;
+      case "ns":
+      case "nanosecond":
+        return millis * 1_000_000L;
+      case "ms":
+      case "millisecond":
+      default:
+        return millis;
+    }
+  }
+
   private static Function<Long, Long> CAST_TIMESTAMP_TO_MS;
 
   static {
     switch (CommonDescriptor.getInstance().getConfig().getTimestampPrecision()) {
       case "us":
+      case "microsecond":
         CAST_TIMESTAMP_TO_MS = timestamp -> timestamp / 1000;
         break;
       case "ns":
+      case "nanosecond":
         CAST_TIMESTAMP_TO_MS = timestamp -> timestamp / 1000000;
         break;
       case "ms":
+      case "millisecond":
       default:
         CAST_TIMESTAMP_TO_MS = timestamp -> timestamp;
         break;
@@ -501,7 +521,7 @@ public class DateTimeUtils {
     try {
       ZonedDateTime zonedDateTime = ZonedDateTime.parse(str, formatter);
       Instant instant = zonedDateTime.toInstant();
-      if ("us".equals(timestampPrecision)) {
+      if ("us".equals(timestampPrecision) || "microsecond".equals(timestampPrecision)) {
         if (instant.getEpochSecond() < 0 && instant.getNano() > 0) {
           // adjustment can reduce the loss of the division
           long millis = Math.multiplyExact(instant.getEpochSecond() + 1, 1000_000L);
@@ -511,7 +531,7 @@ public class DateTimeUtils {
           long millis = Math.multiplyExact(instant.getEpochSecond(), 1000_000L);
           return Math.addExact(millis, instant.getNano() / 1000);
         }
-      } else if ("ns".equals(timestampPrecision)) {
+      } else if ("ns".equals(timestampPrecision) || "nanosecond".equals(timestampPrecision)) {
         long millis = Math.multiplyExact(instant.getEpochSecond(), 1000_000_000L);
         return Math.addExact(millis, instant.getNano());
       }
@@ -629,9 +649,11 @@ public class DateTimeUtils {
     long res = value;
     switch (durationUnit) {
       case y:
+      case year:
         res *= 365 * 86_400_000L;
         break;
       case mo:
+      case month:
         if (currentTime == -1) {
           res *= 30 * 86_400_000L;
         } else {
@@ -643,44 +665,55 @@ public class DateTimeUtils {
         }
         break;
       case w:
+      case week:
         res *= 7 * 86_400_000L;
         break;
       case d:
+      case day:
         res *= 86_400_000L;
         break;
       case h:
+      case hour:
         res *= 3_600_000L;
         break;
       case m:
+      case minute:
         res *= 60_000L;
         break;
       case s:
+      case second:
         res *= 1_000L;
         break;
       default:
         break;
     }
 
-    if ("us".equals(timestampPrecision)) {
-      if (unit.equals(DurationUnit.ns.toString())) {
+    if ("us".equals(timestampPrecision) || "microsecond".equals(timestampPrecision)) {
+      if (unit.equals(DurationUnit.ns.toString())
+          || unit.equals(DurationUnit.nanosecond.toString())) {
         return value / 1000;
-      } else if (unit.equals(DurationUnit.us.toString())) {
+      } else if (unit.equals(DurationUnit.us.toString())
+          || unit.equals(DurationUnit.microsecond.toString())) {
         return value;
       } else {
         return res * 1000;
       }
-    } else if ("ns".equals(timestampPrecision)) {
-      if (unit.equals(DurationUnit.ns.toString())) {
+    } else if ("ns".equals(timestampPrecision) || "nanosecond".equals(timestampPrecision)) {
+      if (unit.equals(DurationUnit.ns.toString())
+          || unit.equals(DurationUnit.nanosecond.toString())) {
         return value;
-      } else if (unit.equals(DurationUnit.us.toString())) {
+      } else if (unit.equals(DurationUnit.us.toString())
+          || unit.equals(DurationUnit.microsecond.toString())) {
         return value * 1000;
       } else {
         return res * 1000_000;
       }
     } else {
-      if (unit.equals(DurationUnit.ns.toString())) {
+      if (unit.equals(DurationUnit.ns.toString())
+          || unit.equals(DurationUnit.nanosecond.toString())) {
         return value / 1000_000;
-      } else if (unit.equals(DurationUnit.us.toString())) {
+      } else if (unit.equals(DurationUnit.us.toString())
+          || unit.equals(DurationUnit.microsecond.toString())) {
         return value / 1000;
       } else {
         return res;
@@ -689,9 +722,9 @@ public class DateTimeUtils {
   }
 
   public static TimeUnit timestampPrecisionStringToTimeUnit(String timestampPrecision) {
-    if ("us".equals(timestampPrecision)) {
+    if ("us".equals(timestampPrecision) || "microsecond".equals(timestampPrecision)) {
       return TimeUnit.MICROSECONDS;
-    } else if ("ns".equals(timestampPrecision)) {
+    } else if ("ns".equals(timestampPrecision) || "nanosecond".equals(timestampPrecision)) {
       return TimeUnit.NANOSECONDS;
     } else {
       return TimeUnit.MILLISECONDS;
@@ -700,20 +733,40 @@ public class DateTimeUtils {
 
   public static String convertLongToDate(long timestamp) {
     return convertLongToDate(
-        timestamp, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+        timestamp,
+        CommonDescriptor.getInstance().getConfig().getTimestampPrecision(),
+        ZoneId.systemDefault());
   }
 
-  public static String convertLongToDate(long timestamp, String sourcePrecision) {
+  public static String convertLongToDate(final long timestamp, final ZoneId zoneId) {
+    return convertLongToDate(
+        timestamp, CommonDescriptor.getInstance().getConfig().getTimestampPrecision(), zoneId);
+  }
+
+  public static String convertLongToDate(final long timestamp, final String sourcePrecision) {
+    return convertLongToDate(timestamp, sourcePrecision, ZoneId.systemDefault());
+  }
+
+  public static String convertLongToDate(
+      long timestamp, final String sourcePrecision, final ZoneId zoneId) {
     switch (sourcePrecision) {
       case "ns":
+      case "nanosecond":
         timestamp /= 1000_000;
         break;
       case "us":
+      case "microsecond":
         timestamp /= 1000;
         break;
+      default:
+        break;
     }
-    return LocalDateTime.ofInstant(Instant.ofEpochMilli(timestamp), ZoneId.systemDefault())
-        .toString();
+    return LocalDateTime.ofInstant(Instant.ofEpochMilli(timestamp), zoneId).toString();
+  }
+
+  public static LocalDate convertToLocalDate(long timestamp, ZoneId zoneId) {
+    timestamp = CAST_TIMESTAMP_TO_MS.apply(timestamp);
+    return Instant.ofEpochMilli(timestamp).atZone(zoneId).toLocalDate();
   }
 
   public static ZoneOffset toZoneOffset(ZoneId zoneId) {
@@ -726,30 +779,46 @@ public class DateTimeUtils {
 
   public enum DurationUnit {
     y,
+    year,
     mo,
+    month,
     w,
+    week,
     d,
+    day,
     h,
+    hour,
     m,
+    minute,
     s,
+    second,
     ms,
+    millisecond,
     us,
-    ns
+    microsecond,
+    ns,
+    nanosecond
   }
 
   public static TimeUnit toTimeUnit(String t) {
     switch (t) {
       case "h":
+      case "hour":
         return TimeUnit.HOURS;
       case "m":
+      case "minute":
         return TimeUnit.MINUTES;
       case "s":
+      case "second":
         return TimeUnit.SECONDS;
       case "ms":
+      case "millisecond":
         return TimeUnit.MILLISECONDS;
       case "u":
+      case "microsecond":
         return TimeUnit.MICROSECONDS;
       case "n":
+      case "nanosecond":
         return TimeUnit.NANOSECONDS;
       default:
         throw new IllegalArgumentException("time precision must be one of: h,m,s,ms,u,n");
@@ -781,30 +850,33 @@ public class DateTimeUtils {
     long temp = 0;
     long monthDuration = 0;
     long nonMonthDuration = 0;
-    for (int i = 0; i < duration.length(); i++) {
+    int i = 0;
+    for (; i < duration.length(); i++) {
       char ch = duration.charAt(i);
       if (Character.isDigit(ch)) {
         temp *= 10;
         temp += (ch - '0');
       } else {
-        String unit = String.valueOf(duration.charAt(i));
-        // This is to identify units with two letters.
-        if (i + 1 < duration.length() && !Character.isDigit(duration.charAt(i + 1))) {
+        StringBuilder unit = new StringBuilder(String.valueOf(duration.charAt(i)));
+        i++;
+        // This is to identify units.
+        while (i < duration.length() && !Character.isDigit(duration.charAt(i))) {
+          unit.append(duration.charAt(i));
           i++;
-          unit += duration.charAt(i);
         }
-        if (unit.equals("y")) {
+        i--;
+        if ("y".contentEquals(unit) || "year".contentEquals(unit)) {
           monthDuration += temp * 12;
           temp = 0;
           continue;
         }
-        if (unit.equals("mo")) {
+        if ("mo".contentEquals(unit) || "month".contentEquals(unit)) {
           monthDuration += temp;
           temp = 0;
           continue;
         }
         nonMonthDuration +=
-            DateTimeUtils.convertDurationStrToLong(-1, temp, unit, currTimePrecision);
+            DateTimeUtils.convertDurationStrToLong(-1, temp, unit.toString(), currTimePrecision);
         temp = 0;
       }
     }

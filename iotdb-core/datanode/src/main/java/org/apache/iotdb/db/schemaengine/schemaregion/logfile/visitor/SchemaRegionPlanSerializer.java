@@ -21,6 +21,8 @@ package org.apache.iotdb.db.schemaengine.schemaregion.logfile.visitor;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.ISerializer;
@@ -66,12 +68,13 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
       new ConfigurableDataOutputStream(null);
 
   @Override
-  public void serialize(ISchemaRegionPlan plan, OutputStream outputStream) throws IOException {
+  public void serialize(final ISchemaRegionPlan plan, final OutputStream outputStream)
+      throws IOException {
     dataOutputStream.changeOutputStream(outputStream);
     // serialize plan type
     plan.getPlanType().serialize(dataOutputStream);
     // serialize plan attributes
-    SchemaRegionPlanSerializationResult result =
+    final SchemaRegionPlanSerializationResult result =
         plan.accept(new SchemaRegionPlanSerializeVisitor(), dataOutputStream);
     if (result.isFailed()) {
       throw result.getException();
@@ -80,11 +83,11 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
 
   private static class ConfigurableDataOutputStream extends DataOutputStream {
 
-    private ConfigurableDataOutputStream(OutputStream out) {
+    private ConfigurableDataOutputStream(final OutputStream out) {
       super(out);
     }
 
-    private void changeOutputStream(OutputStream out) {
+    private void changeOutputStream(final OutputStream out) {
       this.out = out;
       written = 0;
     }
@@ -97,7 +100,7 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
 
     private final IOException exception;
 
-    private SchemaRegionPlanSerializationResult(IOException exception) {
+    private SchemaRegionPlanSerializationResult(final IOException exception) {
       this.exception = exception;
     }
 
@@ -114,15 +117,15 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
       extends SchemaRegionPlanVisitor<SchemaRegionPlanSerializationResult, DataOutputStream> {
     @Override
     public SchemaRegionPlanSerializationResult visitSchemaRegionPlan(
-        ISchemaRegionPlan plan, DataOutputStream dataOutputStream) {
+        final ISchemaRegionPlan plan, final DataOutputStream dataOutputStream) {
       throw new UnsupportedOperationException(
           String.format("%s plan doesn't support serialization.", plan.getPlanType().name()));
     }
 
     @Override
     public SchemaRegionPlanSerializationResult visitActivateTemplateInCluster(
-        IActivateTemplateInClusterPlan activateTemplateInClusterPlan,
-        DataOutputStream dataOutputStream) {
+        final IActivateTemplateInClusterPlan activateTemplateInClusterPlan,
+        final DataOutputStream dataOutputStream) {
       try {
         ReadWriteIOUtils.write(
             activateTemplateInClusterPlan.getActivatePath().getFullPath(), dataOutputStream);
@@ -132,111 +135,113 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
         // serialize a long to keep compatible with old version (raft index)
         dataOutputStream.writeLong(0);
         return SchemaRegionPlanSerializationResult.SUCCESS;
-      } catch (IOException e) {
+      } catch (final IOException e) {
         return new SchemaRegionPlanSerializationResult(e);
       }
     }
 
     @Override
     public SchemaRegionPlanSerializationResult visitAutoCreateDeviceMNode(
-        IAutoCreateDeviceMNodePlan autoCreateDeviceMNodePlan, DataOutputStream dataOutputStream) {
+        final IAutoCreateDeviceMNodePlan autoCreateDeviceMNodePlan,
+        final DataOutputStream dataOutputStream) {
       try {
         ReadWriteIOUtils.write(autoCreateDeviceMNodePlan.getPath().getFullPath(), dataOutputStream);
         // serialize a long to keep compatible with old version (raft index)
         dataOutputStream.writeLong(0);
         return SchemaRegionPlanSerializationResult.SUCCESS;
-      } catch (IOException e) {
+      } catch (final IOException e) {
         return new SchemaRegionPlanSerializationResult(e);
       }
     }
 
     @Override
     public SchemaRegionPlanSerializationResult visitChangeAlias(
-        IChangeAliasPlan changeAliasPlan, DataOutputStream dataOutputStream) {
+        final IChangeAliasPlan changeAliasPlan, final DataOutputStream dataOutputStream) {
       try {
         ReadWriteIOUtils.write(changeAliasPlan.getPath().getFullPath(), dataOutputStream);
         ReadWriteIOUtils.write(changeAliasPlan.getAlias(), dataOutputStream);
         return SchemaRegionPlanSerializationResult.SUCCESS;
-      } catch (IOException e) {
+      } catch (final IOException e) {
         return new SchemaRegionPlanSerializationResult(e);
       }
     }
 
     @Override
     public SchemaRegionPlanSerializationResult visitChangeTagOffset(
-        IChangeTagOffsetPlan changeTagOffsetPlan, DataOutputStream dataOutputStream) {
+        final IChangeTagOffsetPlan changeTagOffsetPlan, final DataOutputStream dataOutputStream) {
       try {
         ReadWriteIOUtils.write(changeTagOffsetPlan.getPath().getFullPath(), dataOutputStream);
         dataOutputStream.writeLong(changeTagOffsetPlan.getOffset());
         return SchemaRegionPlanSerializationResult.SUCCESS;
-      } catch (IOException e) {
+      } catch (final IOException e) {
         return new SchemaRegionPlanSerializationResult(e);
       }
     }
 
     @Override
     public SchemaRegionPlanSerializationResult visitCreateAlignedTimeSeries(
-        ICreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan,
-        DataOutputStream dataOutputStream) {
+        final ICreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan,
+        final DataOutputStream dataOutputStream) {
       try {
         // serialize a int to keep compatible with old version
         dataOutputStream.writeInt(-1);
 
-        byte[] bytes = createAlignedTimeSeriesPlan.getDevicePath().getFullPath().getBytes();
+        final byte[] bytes = createAlignedTimeSeriesPlan.getDevicePath().getFullPath().getBytes();
         dataOutputStream.writeInt(bytes.length);
         dataOutputStream.write(bytes);
 
-        List<String> measurements = createAlignedTimeSeriesPlan.getMeasurements();
+        final List<String> measurements = createAlignedTimeSeriesPlan.getMeasurements();
         dataOutputStream.writeInt(measurements.size());
-        for (String measurement : measurements) {
+        for (final String measurement : measurements) {
           ReadWriteIOUtils.write(measurement, dataOutputStream);
         }
 
-        for (TSDataType dataType : createAlignedTimeSeriesPlan.getDataTypes()) {
+        for (final TSDataType dataType : createAlignedTimeSeriesPlan.getDataTypes()) {
           dataOutputStream.writeByte(dataType.serialize());
         }
 
-        for (TSEncoding tsEncoding : createAlignedTimeSeriesPlan.getEncodings()) {
+        for (final TSEncoding tsEncoding : createAlignedTimeSeriesPlan.getEncodings()) {
           dataOutputStream.writeByte(tsEncoding.serialize());
         }
 
-        for (CompressionType compressionType : createAlignedTimeSeriesPlan.getCompressors()) {
+        for (final CompressionType compressionType : createAlignedTimeSeriesPlan.getCompressors()) {
           dataOutputStream.writeByte(compressionType.serialize());
         }
 
-        for (long tagOffset : createAlignedTimeSeriesPlan.getTagOffsets()) {
+        for (final long tagOffset : createAlignedTimeSeriesPlan.getTagOffsets()) {
           dataOutputStream.writeLong(tagOffset);
         }
 
         // alias
-        List<String> aliasList = createAlignedTimeSeriesPlan.getAliasList();
+        final List<String> aliasList = createAlignedTimeSeriesPlan.getAliasList();
         if (aliasList == null || aliasList.isEmpty()) {
           dataOutputStream.writeByte(0);
         } else {
           dataOutputStream.writeByte(1);
-          for (String alias : aliasList) {
+          for (final String alias : aliasList) {
             ReadWriteIOUtils.write(alias, dataOutputStream);
           }
         }
 
         // tags
-        List<Map<String, String>> tagsList = createAlignedTimeSeriesPlan.getTagsList();
+        final List<Map<String, String>> tagsList = createAlignedTimeSeriesPlan.getTagsList();
         if (tagsList == null || tagsList.isEmpty()) {
           dataOutputStream.writeByte(0);
         } else {
           dataOutputStream.writeByte(1);
-          for (Map<String, String> tags : tagsList) {
+          for (final Map<String, String> tags : tagsList) {
             ReadWriteIOUtils.write(tags, dataOutputStream);
           }
         }
 
         // attributes
-        List<Map<String, String>> attributesList = createAlignedTimeSeriesPlan.getAttributesList();
+        final List<Map<String, String>> attributesList =
+            createAlignedTimeSeriesPlan.getAttributesList();
         if (attributesList == null || attributesList.isEmpty()) {
           dataOutputStream.writeByte(0);
         } else {
           dataOutputStream.writeByte(1);
-          for (Map<String, String> attributes : attributesList) {
+          for (final Map<String, String> attributes : attributesList) {
             ReadWriteIOUtils.write(attributes, dataOutputStream);
           }
         }
@@ -245,17 +250,17 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
         dataOutputStream.writeLong(0);
 
         return SchemaRegionPlanSerializationResult.SUCCESS;
-      } catch (IOException e) {
+      } catch (final IOException e) {
         return new SchemaRegionPlanSerializationResult(e);
       }
     }
 
     @Override
     public SchemaRegionPlanSerializationResult visitCreateTimeSeries(
-        ICreateTimeSeriesPlan createTimeSeriesPlan, DataOutputStream dataOutputStream) {
+        final ICreateTimeSeriesPlan createTimeSeriesPlan, final DataOutputStream dataOutputStream) {
       try {
 
-        byte[] bytes = createTimeSeriesPlan.getPath().getFullPath().getBytes();
+        final byte[] bytes = createTimeSeriesPlan.getPath().getFullPath().getBytes();
         dataOutputStream.writeInt(bytes.length);
         dataOutputStream.write(bytes);
         dataOutputStream.writeByte(createTimeSeriesPlan.getDataType().serialize());
@@ -272,7 +277,7 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
         }
 
         // props
-        Map<String, String> props = createTimeSeriesPlan.getProps();
+        final Map<String, String> props = createTimeSeriesPlan.getProps();
         if (props == null || props.isEmpty()) {
           dataOutputStream.writeByte(0);
         } else {
@@ -281,7 +286,7 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
         }
 
         // tags
-        Map<String, String> tags = createTimeSeriesPlan.getTags();
+        final Map<String, String> tags = createTimeSeriesPlan.getTags();
         if (tags == null || tags.isEmpty()) {
           dataOutputStream.writeByte(0);
         } else {
@@ -290,7 +295,7 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
         }
 
         // attributes
-        Map<String, String> attributes = createTimeSeriesPlan.getAttributes();
+        final Map<String, String> attributes = createTimeSeriesPlan.getAttributes();
         if (attributes == null || attributes.isEmpty()) {
           dataOutputStream.writeByte(0);
         } else {
@@ -302,18 +307,18 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
         dataOutputStream.writeLong(0);
 
         return SchemaRegionPlanSerializationResult.SUCCESS;
-      } catch (IOException e) {
+      } catch (final IOException e) {
         return new SchemaRegionPlanSerializationResult(e);
       }
     }
 
     @Override
     public SchemaRegionPlanSerializationResult visitDeleteTimeSeries(
-        IDeleteTimeSeriesPlan deleteTimeSeriesPlan, DataOutputStream dataOutputStream) {
+        final IDeleteTimeSeriesPlan deleteTimeSeriesPlan, final DataOutputStream dataOutputStream) {
       try {
-        List<PartialPath> deletePathList = deleteTimeSeriesPlan.getDeletePathList();
+        final List<PartialPath> deletePathList = deleteTimeSeriesPlan.getDeletePathList();
         dataOutputStream.writeInt(deletePathList.size());
-        for (PartialPath path : deletePathList) {
+        for (final PartialPath path : deletePathList) {
           ReadWriteIOUtils.write(path.getFullPath(), dataOutputStream);
         }
 
@@ -321,14 +326,15 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
         dataOutputStream.writeLong(0);
 
         return SchemaRegionPlanSerializationResult.SUCCESS;
-      } catch (IOException e) {
+      } catch (final IOException e) {
         return new SchemaRegionPlanSerializationResult(e);
       }
     }
 
     @Override
     public SchemaRegionPlanSerializationResult visitPreDeleteTimeSeries(
-        IPreDeleteTimeSeriesPlan preDeleteTimeSeriesPlan, DataOutputStream dataOutputStream) {
+        final IPreDeleteTimeSeriesPlan preDeleteTimeSeriesPlan,
+        final DataOutputStream dataOutputStream) {
       try {
         preDeleteTimeSeriesPlan.getPath().serialize(dataOutputStream);
 
@@ -336,15 +342,15 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
         dataOutputStream.writeLong(0);
 
         return SchemaRegionPlanSerializationResult.SUCCESS;
-      } catch (IOException e) {
+      } catch (final IOException e) {
         return new SchemaRegionPlanSerializationResult(e);
       }
     }
 
     @Override
     public SchemaRegionPlanSerializationResult visitRollbackPreDeleteTimeSeries(
-        IRollbackPreDeleteTimeSeriesPlan rollbackPreDeleteTimeSeriesPlan,
-        DataOutputStream dataOutputStream) {
+        final IRollbackPreDeleteTimeSeriesPlan rollbackPreDeleteTimeSeriesPlan,
+        final DataOutputStream dataOutputStream) {
       try {
         rollbackPreDeleteTimeSeriesPlan.getPath().serialize(dataOutputStream);
 
@@ -352,54 +358,57 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
         dataOutputStream.writeLong(0);
 
         return SchemaRegionPlanSerializationResult.SUCCESS;
-      } catch (IOException e) {
+      } catch (final IOException e) {
         return new SchemaRegionPlanSerializationResult(e);
       }
     }
 
     @Override
     public SchemaRegionPlanSerializationResult visitPreDeactivateTemplate(
-        IPreDeactivateTemplatePlan preDeactivateTemplatePlan, DataOutputStream dataOutputStream) {
+        final IPreDeactivateTemplatePlan preDeactivateTemplatePlan,
+        final DataOutputStream dataOutputStream) {
       try {
         serializeTemplateSetInfo(preDeactivateTemplatePlan.getTemplateSetInfo(), dataOutputStream);
         return SchemaRegionPlanSerializationResult.SUCCESS;
-      } catch (IOException e) {
+      } catch (final IOException e) {
         return new SchemaRegionPlanSerializationResult(e);
       }
     }
 
     @Override
     public SchemaRegionPlanSerializationResult visitRollbackPreDeactivateTemplate(
-        IRollbackPreDeactivateTemplatePlan rollbackPreDeactivateTemplatePlan,
-        DataOutputStream dataOutputStream) {
+        final IRollbackPreDeactivateTemplatePlan rollbackPreDeactivateTemplatePlan,
+        final DataOutputStream dataOutputStream) {
       try {
         serializeTemplateSetInfo(
             rollbackPreDeactivateTemplatePlan.getTemplateSetInfo(), dataOutputStream);
         return SchemaRegionPlanSerializationResult.SUCCESS;
-      } catch (IOException e) {
+      } catch (final IOException e) {
         return new SchemaRegionPlanSerializationResult(e);
       }
     }
 
     @Override
     public SchemaRegionPlanSerializationResult visitDeactivateTemplate(
-        IDeactivateTemplatePlan deactivateTemplatePlan, DataOutputStream dataOutputStream) {
+        final IDeactivateTemplatePlan deactivateTemplatePlan,
+        final DataOutputStream dataOutputStream) {
       try {
         serializeTemplateSetInfo(deactivateTemplatePlan.getTemplateSetInfo(), dataOutputStream);
         return SchemaRegionPlanSerializationResult.SUCCESS;
-      } catch (IOException e) {
+      } catch (final IOException e) {
         return new SchemaRegionPlanSerializationResult(e);
       }
     }
 
     private void serializeTemplateSetInfo(
-        Map<PartialPath, List<Integer>> templateSetInfo, DataOutputStream dataOutputStream)
+        final Map<PartialPath, List<Integer>> templateSetInfo,
+        final DataOutputStream dataOutputStream)
         throws IOException {
       dataOutputStream.writeInt(templateSetInfo.size());
-      for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
+      for (final Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
         entry.getKey().serialize(dataOutputStream);
         dataOutputStream.writeInt(entry.getValue().size());
-        for (int templateId : entry.getValue()) {
+        for (final int templateId : entry.getValue()) {
           dataOutputStream.writeInt(templateId);
         }
       }
@@ -407,71 +416,98 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
 
     @Override
     public SchemaRegionPlanSerializationResult visitCreateLogicalView(
-        ICreateLogicalViewPlan createLogicalViewPlan, DataOutputStream dataOutputStream) {
+        final ICreateLogicalViewPlan createLogicalViewPlan,
+        final DataOutputStream dataOutputStream) {
       try {
-        int viewSize = createLogicalViewPlan.getViewSize();
+        final int viewSize = createLogicalViewPlan.getViewSize();
         // serialize size of views
         dataOutputStream.writeInt(viewSize);
-        List<PartialPath> viewPAthList = createLogicalViewPlan.getViewPathList();
-        Map<PartialPath, ViewExpression> viewPathToSourceMap =
+        final List<PartialPath> viewPAthList = createLogicalViewPlan.getViewPathList();
+        final Map<PartialPath, ViewExpression> viewPathToSourceMap =
             createLogicalViewPlan.getViewPathToSourceExpressionMap();
         for (int i = 0; i < viewSize; i++) {
-          PartialPath thisPath = viewPAthList.get(i);
-          ViewExpression thisExp = viewPathToSourceMap.get(thisPath);
+          final PartialPath thisPath = viewPAthList.get(i);
+          final ViewExpression thisExp = viewPathToSourceMap.get(thisPath);
           // for each view, serialize info of it
-          byte[] bytes = thisPath.getFullPath().getBytes();
+          final byte[] bytes = thisPath.getFullPath().getBytes();
           dataOutputStream.writeInt(bytes.length);
           dataOutputStream.write(bytes);
           ViewExpression.serialize(thisExp, dataOutputStream);
         }
         return SchemaRegionPlanSerializationResult.SUCCESS;
-      } catch (IOException e) {
+      } catch (final IOException e) {
         return new SchemaRegionPlanSerializationResult(e);
       }
     }
 
     @Override
     public SchemaRegionPlanSerializationResult visitPreDeleteLogicalView(
-        IPreDeleteLogicalViewPlan preDeleteLogicalViewPlan, DataOutputStream dataOutputStream) {
+        final IPreDeleteLogicalViewPlan preDeleteLogicalViewPlan,
+        final DataOutputStream dataOutputStream) {
       try {
         preDeleteLogicalViewPlan.getPath().serialize(dataOutputStream);
         return SchemaRegionPlanSerializationResult.SUCCESS;
-      } catch (IOException e) {
+      } catch (final IOException e) {
         return new SchemaRegionPlanSerializationResult(e);
       }
     }
 
     @Override
     public SchemaRegionPlanSerializationResult visitRollbackPreDeleteLogicalView(
-        IRollbackPreDeleteLogicalViewPlan rollbackPreDeleteLogicalViewPlan,
-        DataOutputStream dataOutputStream) {
+        final IRollbackPreDeleteLogicalViewPlan rollbackPreDeleteLogicalViewPlan,
+        final DataOutputStream dataOutputStream) {
       try {
         rollbackPreDeleteLogicalViewPlan.getPath().serialize(dataOutputStream);
         return SchemaRegionPlanSerializationResult.SUCCESS;
-      } catch (IOException e) {
+      } catch (final IOException e) {
         return new SchemaRegionPlanSerializationResult(e);
       }
     }
 
     @Override
     public SchemaRegionPlanSerializationResult visitDeleteLogicalView(
-        IDeleteLogicalViewPlan deleteLogicalViewPlan, DataOutputStream dataOutputStream) {
+        final IDeleteLogicalViewPlan deleteLogicalViewPlan,
+        final DataOutputStream dataOutputStream) {
       try {
         deleteLogicalViewPlan.getPath().serialize(dataOutputStream);
         return SchemaRegionPlanSerializationResult.SUCCESS;
-      } catch (IOException e) {
+      } catch (final IOException e) {
+        return new SchemaRegionPlanSerializationResult(e);
+      }
+    }
+
+    @Override
+    public SchemaRegionPlanSerializationResult visitCreateOrUpdateTableDevice(
+        final CreateOrUpdateTableDeviceNode createOrUpdateTableDeviceNode,
+        final DataOutputStream outputStream) {
+      try {
+        createOrUpdateTableDeviceNode.serialize(outputStream);
+        return SchemaRegionPlanSerializationResult.SUCCESS;
+      } catch (final IOException e) {
+        return new SchemaRegionPlanSerializationResult(e);
+      }
+    }
+
+    @Override
+    public SchemaRegionPlanSerializationResult visitUpdateTableDeviceAttribute(
+        final TableDeviceAttributeUpdateNode updateTableDeviceAttributePlan,
+        final DataOutputStream outputStream) {
+      try {
+        updateTableDeviceAttributePlan.serialize(outputStream);
+        return SchemaRegionPlanSerializationResult.SUCCESS;
+      } catch (final IOException e) {
         return new SchemaRegionPlanSerializationResult(e);
       }
     }
 
     @Override
     public SchemaRegionPlanSerializationResult visitAlterLogicalView(
-        IAlterLogicalViewPlan alterLogicalViewPlan, DataOutputStream stream) {
+        final IAlterLogicalViewPlan alterLogicalViewPlan, final DataOutputStream stream) {
       try {
         alterLogicalViewPlan.getViewPath().serialize(stream);
         ViewExpression.serialize(alterLogicalViewPlan.getSourceExpression(), stream);
         return SchemaRegionPlanSerializationResult.SUCCESS;
-      } catch (IOException e) {
+      } catch (final IOException e) {
         return new SchemaRegionPlanSerializationResult(e);
       }
     }

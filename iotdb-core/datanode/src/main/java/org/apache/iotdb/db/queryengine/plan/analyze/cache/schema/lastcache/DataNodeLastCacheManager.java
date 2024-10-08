@@ -23,11 +23,8 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.SchemaCacheEntry;
 
 import org.apache.tsfile.read.TimeValuePair;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class DataNodeLastCacheManager {
-  private static final Logger logger = LoggerFactory.getLogger(DataNodeLastCacheManager.class);
 
   private static final boolean CACHE_ENABLED =
       CommonDescriptor.getInstance().getConfig().isLastCacheEnable();

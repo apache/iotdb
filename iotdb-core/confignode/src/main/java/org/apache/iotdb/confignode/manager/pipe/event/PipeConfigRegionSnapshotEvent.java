@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.confignode.manager.pipe.event;
 
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
-import org.apache.iotdb.commons.pipe.pattern.PipePattern;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.manager.pipe.resource.snapshot.PipeConfigNodeSnapshotResourceManager;
+import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeResourceManager;
 import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -101,12 +101,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipePattern pattern) {
-    super(
-        pipeName,
-        creationTime,
-        pipeTaskMeta,
-        pattern,
-        PipeConfigNodeSnapshotResourceManager.getInstance());
+    super(pipeName, creationTime, pipeTaskMeta, pattern, PipeConfigNodeResourceManager.snapshot());
     this.snapshotPath = snapshotPath;
     this.templateFilePath = Objects.nonNull(templateFilePath) ? templateFilePath : "";
     this.fileType = type;

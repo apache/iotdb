@@ -145,6 +145,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
   }
 
   @Override
+  @SuppressWarnings("java:S2095")
   public void handshake() throws Exception {
     for (int i = 0; i < sockets.size(); i++) {
       if (Boolean.TRUE.equals(isSocketAlive.get(i))) {

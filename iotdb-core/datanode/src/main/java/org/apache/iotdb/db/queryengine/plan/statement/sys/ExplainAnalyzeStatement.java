@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.sys;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -36,6 +37,11 @@ public class ExplainAnalyzeStatement extends Statement {
   public ExplainAnalyzeStatement(QueryStatement queryStatement) {
     statementType = StatementType.QUERY;
     this.queryStatement = queryStatement;
+  }
+
+  @Override
+  public TSStatus checkPermissionBeforeProcess(String userName) {
+    return queryStatement.checkPermissionBeforeProcess(userName);
   }
 
   public QueryStatement getQueryStatement() {

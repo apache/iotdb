@@ -19,10 +19,7 @@
 
 package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
-import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -88,30 +85,35 @@ public class IoTDBSetConfigurationIT {
 
   @Test
   public void testSetClusterName() throws Exception {
-    Connection connection = EnvFactory.getEnv().getConnection();
-    Statement statement = connection.createStatement();
     // set cluster name on cn and dn
-    statement.execute("set configuration \"cluster_name\"=\"xx\"");
-    ResultSet variables = statement.executeQuery("show variables");
-    variables.next();
-    Assert.assertEquals("xx", variables.getString(2));
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("set configuration \"cluster_name\"=\"xx\"");
+      ResultSet variables = statement.executeQuery("show variables");
+      variables.next();
+      Assert.assertEquals("xx", variables.getString(2));
+    }
     Assert.assertTrue(
         EnvFactory.getEnv().getNodeWrapperList().stream()
             .allMatch(nodeWrapper -> checkConfigFileContains(nodeWrapper, "cluster_name=xx")));
     // restart successfully
     EnvFactory.getEnv().getDataNodeWrapper(0).stop();
     EnvFactory.getEnv().getDataNodeWrapper(0).start();
-    IConfigNodeRPCService.Iface configNodeClient =
-        EnvFactory.getEnv().getLeaderConfigNodeConnection();
+    // set cluster name on datanode
     Awaitility.await()
-        .atMost(10, TimeUnit.SECONDS)
+        .atMost(30, TimeUnit.SECONDS)
+        .pollDelay(1, TimeUnit.SECONDS)
         .until(
             () -> {
-              TShowClusterResp resp = configNodeClient.showCluster();
-              return NodeStatus.Running.toString().equals(resp.getNodeStatus().get(1));
+              try (Connection connection = EnvFactory.getEnv().getConnection();
+                  Statement statement = connection.createStatement()) {
+                statement.execute("set configuration \"cluster_name\"=\"yy\" on 1");
+              } catch (Exception e) {
+                return false;
+              }
+              return true;
             });
-    // set cluster name on datanode, cannot restart
-    statement.execute("set configuration \"cluster_name\"=\"yy\" on 1");
+    // cannot restart
     EnvFactory.getEnv().getDataNodeWrapper(0).stop();
     EnvFactory.getEnv().getDataNodeWrapper(0).start();
     Awaitility.await()

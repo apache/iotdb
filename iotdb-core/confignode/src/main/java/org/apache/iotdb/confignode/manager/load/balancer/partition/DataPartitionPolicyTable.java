@@ -138,8 +138,8 @@ public class DataPartitionPolicyTable {
       // No need to re-balance when there is no DataRegionGroup
       return;
     }
+    dataAllotTableLock.lock();
     try {
-      dataAllotTableLock.lock();
       int mu = SERIES_SLOT_NUM / seriesPartitionSlotCounter.size();
       dataAllotMap.forEach(
           (seriesPartitionSlot, regionGroupId) -> {

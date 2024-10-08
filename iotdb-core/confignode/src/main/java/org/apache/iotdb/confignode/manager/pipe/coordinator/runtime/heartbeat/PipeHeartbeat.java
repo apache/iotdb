@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.heartbeat;
 
-import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
-import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 
 import javax.validation.constraints.NotNull;
 
@@ -61,6 +61,10 @@ public class PipeHeartbeat {
               ? pipeRemainingTimeListFromAgent.get(i)
               : 0d);
     }
+  }
+
+  public int getPipeMetaSize() {
+    return pipeMetaMap.size();
   }
 
   public PipeMeta getPipeMeta(final PipeStaticMeta pipeStaticMeta) {

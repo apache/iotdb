@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
@@ -99,8 +99,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
-    MeasurementPath path =
-        SchemaTestUtils.getMeasurementPath(
+    IFullPath path =
+        SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
@@ -188,7 +188,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     new CompactionRecoverTask(COMPACTION_TEST_SG, "0", tsFileManager, compactionLogFile, true)
         .doCompaction();
     path =
-        SchemaTestUtils.getMeasurementPath(
+        SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
@@ -219,8 +219,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
-    MeasurementPath path =
-        SchemaTestUtils.getMeasurementPath(
+    IFullPath path =
+        SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
@@ -296,7 +296,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         new File(targetTsFileResource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
 
     path =
-        SchemaTestUtils.getMeasurementPath(
+        SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
@@ -327,8 +327,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
-    MeasurementPath path =
-        SchemaTestUtils.getMeasurementPath(
+    IFullPath path =
+        SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
@@ -406,7 +406,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         new File(targetTsFileResource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
 
     path =
-        SchemaTestUtils.getMeasurementPath(
+        SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
@@ -437,8 +437,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
-    MeasurementPath path =
-        SchemaTestUtils.getMeasurementPath(
+    IFullPath path =
+        SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
@@ -512,7 +512,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
 
     tsFileManager.add(targetTsFileResource, true);
     path =
-        SchemaTestUtils.getMeasurementPath(
+        SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
@@ -766,8 +766,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
-    MeasurementPath path =
-        SchemaTestUtils.getMeasurementPath(
+    IFullPath path =
+        SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
@@ -831,7 +831,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     new CompactionRecoverTask(COMPACTION_TEST_SG, "0", tsFileManager, compactionLogFile, true)
         .doCompaction();
     path =
-        SchemaTestUtils.getMeasurementPath(
+        SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
@@ -864,8 +864,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
-    MeasurementPath path =
-        SchemaTestUtils.getMeasurementPath(
+    IFullPath path =
+        SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
@@ -924,7 +924,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     new CompactionRecoverTask(COMPACTION_TEST_SG, "0", tsFileManager, compactionLogFile, true)
         .doCompaction();
     path =
-        SchemaTestUtils.getMeasurementPath(
+        SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
@@ -956,8 +956,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
-    MeasurementPath path =
-        SchemaTestUtils.getMeasurementPath(
+    IFullPath path =
+        SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
@@ -1017,7 +1017,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     new CompactionRecoverTask(COMPACTION_TEST_SG, "0", tsFileManager, compactionLogFile, true)
         .doCompaction();
     path =
-        SchemaTestUtils.getMeasurementPath(
+        SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
@@ -1060,8 +1060,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     tmpSeqResources.add(seqResources.get(2));
     sizeTieredCompactionLogger.logFiles(tmpSeqResources, STR_SOURCE_FILES);
     sizeTieredCompactionLogger.close();
-    MeasurementPath path =
-        SchemaTestUtils.getMeasurementPath(
+    IFullPath path =
+        SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
@@ -1101,8 +1101,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     tmpSeqResources.add(seqResources.get(2));
     sizeTieredCompactionLogger.logFiles(tmpSeqResources, STR_SOURCE_FILES);
     sizeTieredCompactionLogger.close();
-    MeasurementPath path =
-        SchemaTestUtils.getMeasurementPath(
+    IFullPath path =
+        SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
@@ -1156,8 +1156,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     sizeTieredCompactionLogger.logFiles(
         Collections.singletonList(targetTsFileResource), STR_TARGET_FILES);
     sizeTieredCompactionLogger.close();
-    MeasurementPath path =
-        SchemaTestUtils.getMeasurementPath(
+    IFullPath path =
+        SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());

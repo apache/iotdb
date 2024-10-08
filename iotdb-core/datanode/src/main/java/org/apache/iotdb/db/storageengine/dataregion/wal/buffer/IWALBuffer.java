@@ -36,8 +36,8 @@ public interface IWALBuffer extends AutoCloseable {
   /** Get current log version id. */
   long getCurrentWALFileVersion();
 
-  /** Get current wal file's size. */
-  long getCurrentWALFileSize();
+  /** Get current wal file's original size. */
+  long getCurrentWALOriginalFileSize();
 
   /** Get current search index. */
   long getCurrentSearchIndex();

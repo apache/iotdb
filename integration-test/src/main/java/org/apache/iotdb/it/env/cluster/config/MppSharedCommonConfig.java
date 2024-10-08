@@ -118,10 +118,9 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setMaxInnerCompactionCandidateFileNum(
-      int maxInnerCompactionCandidateFileNum) {
-    cnConfig.setMaxInnerCompactionCandidateFileNum(maxInnerCompactionCandidateFileNum);
-    dnConfig.setMaxInnerCompactionCandidateFileNum(maxInnerCompactionCandidateFileNum);
+  public CommonConfig setInnerCompactionCandidateFileNum(int maxInnerCompactionCandidateFileNum) {
+    cnConfig.setInnerCompactionCandidateFileNum(maxInnerCompactionCandidateFileNum);
+    dnConfig.setInnerCompactionCandidateFileNum(maxInnerCompactionCandidateFileNum);
     return this;
   }
 
@@ -232,6 +231,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setTimePartitionOrigin(long timePartitionOrigin) {
+    cnConfig.setTimePartitionOrigin(timePartitionOrigin);
+    dnConfig.setTimePartitionOrigin(timePartitionOrigin);
+    return this;
+  }
+
+  @Override
   public CommonConfig setTimestampPrecision(String timestampPrecision) {
     cnConfig.setTimestampPrecision(timestampPrecision);
     dnConfig.setTimestampPrecision(timestampPrecision);
@@ -317,6 +323,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setQueryThreadCount(int queryThreadCount) {
     cnConfig.setQueryThreadCount(queryThreadCount);
     dnConfig.setQueryThreadCount(queryThreadCount);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setWalBufferSize(int walBufferSize) {
+    cnConfig.setWalBufferSize(walBufferSize);
+    dnConfig.setWalBufferSize(walBufferSize);
     return this;
   }
 
@@ -468,6 +481,14 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setPipeMetaSyncerSyncIntervalMinutes(long pipeMetaSyncerSyncIntervalMinutes) {
     dnConfig.setPipeMetaSyncerSyncIntervalMinutes(pipeMetaSyncerSyncIntervalMinutes);
     cnConfig.setPipeMetaSyncerSyncIntervalMinutes(pipeMetaSyncerSyncIntervalMinutes);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeConnectorRequestSliceThresholdBytes(
+      int pipeConnectorRequestSliceThresholdBytes) {
+    dnConfig.setPipeConnectorRequestSliceThresholdBytes(pipeConnectorRequestSliceThresholdBytes);
+    cnConfig.setPipeConnectorRequestSliceThresholdBytes(pipeConnectorRequestSliceThresholdBytes);
     return this;
   }
 }

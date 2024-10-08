@@ -36,6 +36,12 @@ public enum ConfigPhysicalPlanType {
   RemoveDataNode((short) 102),
   UpdateDataNodeConfiguration((short) 103),
 
+  /** AINode. */
+  RegisterAINode((short) 104),
+  UpdateAINodeConfiguration((short) 105),
+  RemoveAINode((short) 106),
+  GetAINodeConfiguration((short) 107),
+
   /** Database. */
   CreateDatabase((short) 200),
   SetTTL((short) 201),
@@ -148,6 +154,15 @@ public enum ConfigPhysicalPlanType {
   CommitSetSchemaTemplate((short) 813),
   ExtendSchemaTemplate((short) 814),
 
+  /* Table */
+  PreCreateTable((short) 850),
+  RollbackCreateTable((short) 851),
+  CommitCreateTable((short) 852),
+  AddTableColumn((short) 853),
+  SetTableProperties((short) 854),
+  ShowTable((short) 855),
+  FetchTable((short) 856),
+
   /** Deprecated types for sync, restored them for upgrade. */
   @Deprecated
   CreatePipeSinkV1((short) 900),
@@ -184,7 +199,14 @@ public enum ConfigPhysicalPlanType {
   UPDATE_CQ_LAST_EXEC_TIME((short) 1103),
   SHOW_CQ((short) 1104),
 
-  // 1200-1299 planId is used by IoTDB-ML.
+  /** AI model. */
+  CreateModel((short) 1200),
+  UpdateModelInfo((short) 1201),
+  UpdateModelState((short) 1202),
+  DropModel((short) 1203),
+  ShowModel((short) 1204),
+  GetModelInfo((short) 1206),
+  DropModelInNode((short) 1207),
 
   /** Pipe Plugin. */
   CreatePipePlugin((short) 1300),

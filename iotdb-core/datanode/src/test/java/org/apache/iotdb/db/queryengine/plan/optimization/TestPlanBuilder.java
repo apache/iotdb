@@ -55,12 +55,15 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.LongLiteral;
 import org.apache.iotdb.db.utils.columngenerator.parameter.SlidingTimeColumnGeneratorParameter;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DEVICE;
 
@@ -340,8 +343,9 @@ public class TestPlanBuilder {
   }
 
   public TestPlanBuilder singleDeviceView(String id, String device, String measurement) {
-    Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
-    deviceToMeasurementIndexesMap.put(device, Collections.singletonList(1));
+    IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(device);
+    Map<IDeviceID, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
+    deviceToMeasurementIndexesMap.put(deviceID, Collections.singletonList(1));
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(
             new PlanNodeId(id),
@@ -351,7 +355,7 @@ public class TestPlanBuilder {
                     new SortItem(OrderByKey.TIME, Ordering.ASC))),
             Arrays.asList(DEVICE, measurement),
             deviceToMeasurementIndexesMap);
-    deviceViewNode.addChildDeviceNode(device, getRoot());
+    deviceViewNode.addChildDeviceNode(deviceID, getRoot());
     this.root = deviceViewNode;
     return this;
   }
@@ -384,7 +388,7 @@ public class TestPlanBuilder {
   public TestPlanBuilder into(String id, PartialPath sourcePath, PartialPath intoPath) {
     IntoPathDescriptor intoPathDescriptor = new IntoPathDescriptor();
     intoPathDescriptor.specifyTargetPath(sourcePath.toString(), "", intoPath);
-    intoPathDescriptor.specifyDeviceAlignment(intoPath.getDevice(), false);
+    intoPathDescriptor.specifyDeviceAlignment(intoPath.getIDeviceID().toString(), false);
     intoPathDescriptor.recordSourceColumnDataType(
         sourcePath.toString(), sourcePath.getSeriesType());
     this.root = new IntoNode(new PlanNodeId(id), getRoot(), intoPathDescriptor);
@@ -407,6 +411,9 @@ public class TestPlanBuilder {
       List<String> devices,
       Map<String, List<Integer>> deviceToMeasurementIndexesMap,
       List<PlanNode> children) {
+    Map<IDeviceID, List<Integer>> map = new HashMap<>();
+    deviceToMeasurementIndexesMap.forEach(
+        (key, value) -> map.put(IDeviceID.Factory.DEFAULT_FACTORY.create(key), value));
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(
             new PlanNodeId(id),
@@ -415,8 +422,10 @@ public class TestPlanBuilder {
                     new SortItem(OrderByKey.DEVICE, Ordering.ASC),
                     new SortItem(OrderByKey.TIME, Ordering.ASC))),
             outputColumnNames,
-            devices,
-            deviceToMeasurementIndexesMap);
+            devices.stream()
+                .map(IDeviceID.Factory.DEFAULT_FACTORY::create)
+                .collect(Collectors.toList()),
+            map);
     deviceViewNode.setChildren(children);
     this.root = deviceViewNode;
     return this;

@@ -56,6 +56,7 @@ public class SystemPropertiesUtils {
   private static final String SCHEMA_CONSENSUS_PROTOCOL = "schema_region_consensus_protocol_class";
   private static final String SERIES_PARTITION_SLOT_NUM = "series_partition_slot_num";
   private static final String SERIES_PARTITION_EXECUTOR_CLASS = "series_partition_executor_class";
+  private static final String TIME_PARTITION_ORIGIN = "time_partition_origin";
   private static final String TIME_PARTITION_INTERVAL = "time_partition_interval";
 
   private SystemPropertiesUtils() {
@@ -177,6 +178,19 @@ public class SystemPropertiesUtils {
       conf.setSeriesPartitionExecutorClass(seriesPartitionSlotExecutorClass);
     }
 
+    if (systemProperties.getProperty(TIME_PARTITION_ORIGIN, null) != null) {
+      long timePartitionOrigin =
+          Long.parseLong(systemProperties.getProperty(TIME_PARTITION_ORIGIN));
+      if (timePartitionOrigin != COMMON_CONFIG.getTimePartitionOrigin()) {
+        LOGGER.warn(
+            format,
+            TIME_PARTITION_ORIGIN,
+            COMMON_CONFIG.getTimePartitionOrigin(),
+            timePartitionOrigin);
+        COMMON_CONFIG.setTimePartitionOrigin(timePartitionOrigin);
+      }
+    }
+
     if (systemProperties.getProperty(TIME_PARTITION_INTERVAL, null) != null) {
       long timePartitionInterval =
           Long.parseLong(systemProperties.getProperty(TIME_PARTITION_INTERVAL));
@@ -250,6 +264,8 @@ public class SystemPropertiesUtils {
         SERIES_PARTITION_SLOT_NUM, String.valueOf(conf.getSeriesSlotNum()));
     systemProperties.setProperty(
         SERIES_PARTITION_EXECUTOR_CLASS, conf.getSeriesPartitionExecutorClass());
+    systemProperties.setProperty(
+        TIME_PARTITION_ORIGIN, String.valueOf(COMMON_CONFIG.getTimePartitionOrigin()));
     systemProperties.setProperty(
         TIME_PARTITION_INTERVAL, String.valueOf(COMMON_CONFIG.getTimePartitionInterval()));
     systemProperties.setProperty(TIMESTAMP_PRECISION, COMMON_CONFIG.getTimestampPrecision());

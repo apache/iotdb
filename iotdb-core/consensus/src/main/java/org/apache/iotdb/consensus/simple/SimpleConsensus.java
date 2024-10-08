@@ -245,6 +245,11 @@ class SimpleConsensus implements IConsensus {
   }
 
   @Override
+  public int getReplicationNum(ConsensusGroupId groupId) {
+    return stateMachineMap.containsKey(groupId) ? 1 : 0;
+  }
+
+  @Override
   public List<ConsensusGroupId> getAllConsensusGroupIds() {
     return new ArrayList<>(stateMachineMap.keySet());
   }
@@ -265,7 +270,8 @@ class SimpleConsensus implements IConsensus {
   }
 
   @Override
-  public void resetPeerList(ConsensusGroupId groupId, List<Peer> peers) throws ConsensusException {
+  public void resetPeerList(ConsensusGroupId groupId, List<Peer> correctPeers)
+      throws ConsensusException {
     throw new ConsensusException("SimpleConsensus does not support reset peer list");
   }
 

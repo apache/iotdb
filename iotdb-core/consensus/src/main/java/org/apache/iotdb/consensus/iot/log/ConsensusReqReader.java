@@ -46,7 +46,7 @@ public interface ConsensusReqReader {
 
   /** This iterator provides blocking and non-blocking interfaces to read consensus request. */
   interface ReqIterator {
-    // Like {@link Iterator#hasNext()}
+    /** Like {@link Iterator#hasNext()} */
     boolean hasNext();
 
     /**

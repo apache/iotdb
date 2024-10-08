@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.pipe.receiver;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
@@ -46,9 +47,12 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE;
 
 /**
  * {@link IoTDBFileReceiver} is the parent class of receiver on both configNode and DataNode,
@@ -65,6 +69,12 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
   private File writingFile;
   private RandomAccessFile writingFileWriter;
+
+  protected boolean shouldConvertDataTypeOnTypeMismatch =
+      CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE;
+
+  // Used to determine current strategy is sync or async
+  protected final AtomicBoolean isUsingAsyncLoadTsFileStrategy = new AtomicBoolean(false);
 
   @Override
   public IoTDBConnectorRequestVersion getVersion() {
@@ -214,6 +224,22 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       LOGGER.warn(
           "Receiver id = {}: Handshake failed, response status = {}.", receiverId.get(), status);
       return new TPipeTransferResp(status);
+    }
+
+    final String shouldConvertDataTypeOnTypeMismatchString =
+        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CONVERT_ON_TYPE_MISMATCH);
+    if (shouldConvertDataTypeOnTypeMismatchString != null) {
+      shouldConvertDataTypeOnTypeMismatch =
+          Boolean.parseBoolean(shouldConvertDataTypeOnTypeMismatchString);
+    }
+
+    final String loadTsFileStrategyString =
+        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY);
+    if (loadTsFileStrategyString != null) {
+      isUsingAsyncLoadTsFileStrategy.set(
+          Objects.equals(
+              PipeConnectorConstant.CONNECTOR_LOAD_TSFILE_STRATEGY_ASYNC_VALUE,
+              loadTsFileStrategyString));
     }
 
     // Handle the handshake request as a v1 request.

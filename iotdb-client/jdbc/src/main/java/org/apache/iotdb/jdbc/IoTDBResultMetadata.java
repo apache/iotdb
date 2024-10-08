@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.jdbc;
 
+import java.sql.Date;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.List;
 
@@ -40,6 +42,13 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
   private static final String DOUBLE = "DOUBLE";
 
   private static final String TEXT = "TEXT";
+
+  private static final String STRING = "STRING";
+
+  private static final String BLOB = "BLOB";
+
+  private static final String DATE = "DATE";
+  private static final String TIMESTAMP = "TIMESTAMP";
 
   /** Constructor of IoTDBResultMetadata. */
   public IoTDBResultMetadata(
@@ -135,7 +144,8 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
   public String getColumnClassName(int column) throws SQLException {
     String columnTypeName = getColumnTypeName(column);
     switch (columnTypeName) {
-      case "TIMESTAMP":
+      case TIMESTAMP:
+        return Timestamp.class.getName();
       case INT64:
         return Long.class.getName();
       case BOOLEAN:
@@ -147,7 +157,12 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
       case DOUBLE:
         return Double.class.getName();
       case TEXT:
+      case STRING:
         return String.class.getName();
+      case DATE:
+        return Date.class.getName();
+      case BLOB:
+        return "byte[]";
       default:
         break;
     }
@@ -207,7 +222,14 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
       case DOUBLE:
         return Types.DOUBLE;
       case TEXT:
+      case STRING:
         return Types.VARCHAR;
+      case DATE:
+        return Types.DATE;
+      case TIMESTAMP:
+        return Types.TIMESTAMP;
+      case BLOB:
+        return Types.BLOB;
       default:
         break;
     }
@@ -218,7 +240,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
   public String getColumnTypeName(int column) throws SQLException {
     checkColumnIndex(column);
     if (column == 1 && !ignoreTimestamp) {
-      return "TIME";
+      return TIMESTAMP;
     }
     String columnType = columnTypeList.get(column - 1);
     String typeString = columnType.toUpperCase();
@@ -227,7 +249,11 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
         || INT64.equals(typeString)
         || FLOAT.equals(typeString)
         || DOUBLE.equals(typeString)
-        || TEXT.equals(typeString)) {
+        || TEXT.equals(typeString)
+        || STRING.equals(typeString)
+        || BLOB.equals(typeString)
+        || DATE.equals(typeString)
+        || TIMESTAMP.equals(typeString)) {
       return typeString;
     }
     return null;
@@ -237,7 +263,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
   public int getPrecision(int column) throws SQLException {
     checkColumnIndex(column);
     if (column == 1 && !ignoreTimestamp) {
-      return 13;
+      return 3;
     }
     String columnType = columnTypeList.get(column - 1);
     switch (columnType.toUpperCase()) {
@@ -252,7 +278,13 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
       case DOUBLE:
         return 308;
       case TEXT:
+      case BLOB:
+      case STRING:
         return Integer.MAX_VALUE;
+      case TIMESTAMP:
+        return 3;
+      case DATE:
+        return 0;
       default:
         break;
     }
@@ -271,6 +303,10 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
       case INT32:
       case INT64:
       case TEXT:
+      case BLOB:
+      case STRING:
+      case TIMESTAMP:
+      case DATE:
         return 0;
       case FLOAT:
         return 6;

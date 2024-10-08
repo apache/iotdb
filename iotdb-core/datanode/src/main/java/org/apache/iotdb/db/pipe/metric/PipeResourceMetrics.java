@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.metric;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.pipe.resource.wal.PipeWALResourceManager;
@@ -39,19 +39,19 @@ public class PipeResourceMetrics implements IMetricSet {
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
-  public void bindTo(AbstractMetricService metricService) {
+  public void bindTo(final AbstractMetricService metricService) {
     // pipe memory related
     metricService.createAutoGauge(
         Metric.PIPE_MEM.toString(),
         MetricLevel.IMPORTANT,
-        PipeResourceManager.memory(),
+        PipeDataNodeResourceManager.memory(),
         PipeMemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
         PIPE_USED_MEMORY);
     metricService.createAutoGauge(
         Metric.PIPE_MEM.toString(),
         MetricLevel.IMPORTANT,
-        PipeResourceManager.memory(),
+        PipeDataNodeResourceManager.memory(),
         PipeMemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         PIPE_TOTAL_MEMORY);
@@ -59,17 +59,17 @@ public class PipeResourceMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.PIPE_PINNED_MEMTABLE_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        PipeResourceManager.wal(),
+        PipeDataNodeResourceManager.wal(),
         PipeWALResourceManager::getPinnedWalCount);
     metricService.createAutoGauge(
         Metric.PIPE_LINKED_TSFILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        PipeResourceManager.tsfile(),
+        PipeDataNodeResourceManager.tsfile(),
         PipeTsFileResourceManager::getLinkedTsfileCount);
   }
 
   @Override
-  public void unbindFrom(AbstractMetricService metricService) {
+  public void unbindFrom(final AbstractMetricService metricService) {
     // pipe memory related
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.PIPE_MEM.toString(), Tag.NAME.toString(), PIPE_USED_MEMORY);

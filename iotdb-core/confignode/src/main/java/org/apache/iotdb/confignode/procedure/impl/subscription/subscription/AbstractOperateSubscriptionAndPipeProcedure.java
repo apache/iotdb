@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 
-import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.subscription.AbstractOperateSubscriptionProcedure;
@@ -48,11 +48,7 @@ public abstract class AbstractOperateSubscriptionAndPipeProcedure
     LOGGER.info("ProcedureId {} try to acquire subscription and pipe lock.", getProcId());
 
     pipeTaskInfo =
-        configNodeProcedureEnv
-            .getConfigManager()
-            .getPipeManager()
-            .getPipeTaskCoordinator()
-            .tryLock();
+        configNodeProcedureEnv.getConfigManager().getPipeManager().getPipeTaskCoordinator().lock();
     if (pipeTaskInfo == null) {
       LOGGER.warn("ProcedureId {} failed to acquire pipe lock.", getProcId());
     } else {

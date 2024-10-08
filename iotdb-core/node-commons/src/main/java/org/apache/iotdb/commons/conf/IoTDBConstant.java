@@ -171,7 +171,6 @@ public class IoTDBConstant {
   public static final String STATEMENT = "statement";
 
   public static final String COLUMN_DATABASE = "database";
-  public static final String COLUMN_TTL = "ttl";
 
   public static final String COLUMN_FUNCTION_NAME = "function name";
   public static final String COLUMN_FUNCTION_TYPE = "function type";
@@ -244,6 +243,8 @@ public class IoTDBConstant {
   public static final String SYSTEM_FOLDER_NAME = "system";
   public static final String SCHEMA_FOLDER_NAME = "schema";
   public static final String LOAD_TSFILE_FOLDER_NAME = "load";
+  public static final String LOAD_TSFILE_ACTIVE_LISTENING_PENDING_FOLDER_NAME = "pending";
+  public static final String LOAD_TSFILE_ACTIVE_LISTENING_FAILED_FOLDER_NAME = "failed";
   public static final String SYNC_FOLDER_NAME = "sync";
   public static final String QUERY_FOLDER_NAME = "query";
   public static final String EXT_FOLDER_NAME = "ext";
