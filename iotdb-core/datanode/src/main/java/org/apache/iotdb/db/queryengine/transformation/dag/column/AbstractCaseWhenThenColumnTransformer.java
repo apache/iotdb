@@ -29,7 +29,7 @@ public abstract class AbstractCaseWhenThenColumnTransformer extends ColumnTransf
   List<Pair<ColumnTransformer, ColumnTransformer>> whenThenTransformers;
   ColumnTransformer elseTransformer;
 
-  public AbstractCaseWhenThenColumnTransformer(
+  protected AbstractCaseWhenThenColumnTransformer(
       Type returnType,
       List<ColumnTransformer> whenTransformers,
       List<ColumnTransformer> thenTransformers,

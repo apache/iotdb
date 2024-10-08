@@ -37,15 +37,24 @@ public class LogicalOrMultiColumnTransformer extends LogicalMultiColumnTransform
   @Override
   public void evaluateWithSelection(boolean[] selection) {
     boolean[] selectionCopy = selection.clone();
+    boolean[] result = new boolean[selection.length];
+    boolean[] hasNull = new boolean[selection.length];
+
     List<Column> childColumns = new ArrayList<>();
     for (ColumnTransformer child : columnTransformerList) {
-      child.evaluateWithSelection(selection);
+      child.evaluateWithSelection(selectionCopy);
       Column childColumn = child.getColumn();
       childColumns.add(childColumn);
 
       for (int i = 0; i < childColumn.getPositionCount(); i++) {
-        if (!childColumn.isNull(i) && childColumn.getBoolean(i)) {
-          selectionCopy[i] = false;
+        if (childColumn.isNull(i)) {
+          hasNull[i] = true;
+        } else {
+          if (childColumn.getBoolean(i)) {
+            result[i] = true;
+            selectionCopy[i] = false;
+            break;
+          }
         }
       }
     }
@@ -55,11 +64,14 @@ public class LogicalOrMultiColumnTransformer extends LogicalMultiColumnTransform
 
     for (int i = 0; i < positionCount; i++) {
       if (selection[i]) {
-        if (selectionCopy[i]) {
-          // all value are false
-          returnType.writeBoolean(builder, false);
-        } else {
+        if (result[i]) {
           returnType.writeBoolean(builder, true);
+        } else {
+          if (hasNull[i]) {
+            builder.appendNull();
+          } else {
+            returnType.writeBoolean(builder, false);
+          }
         }
       } else {
         builder.appendNull();
@@ -106,5 +118,7 @@ public class LogicalOrMultiColumnTransformer extends LogicalMultiColumnTransform
   protected void doTransform(
       List<Column> childrenColumns, ColumnBuilder builder, int positionCount, boolean[] selection) {
     // do nothing
+    throw new UnsupportedOperationException(
+        "LogicalOrMultiColumnTransformer do not support doTransform with selection");
   }
 }

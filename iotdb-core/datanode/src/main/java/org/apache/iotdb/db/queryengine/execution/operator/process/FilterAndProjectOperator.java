@@ -22,9 +22,8 @@ package org.apache.iotdb.db.queryengine.execution.operator.process;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.AbstractCaseWhenThenColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.TableCaseWhenThenColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.TreeCaseWhenThenColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.BinaryColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.IdentityColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
@@ -386,31 +385,11 @@ public class FilterAndProjectOperator implements ProcessOperator {
                   .getInputColumnTransformers()
                   .length,
           childMaxLevel);
-    } else if (columnTransformer instanceof TreeCaseWhenThenColumnTransformer) {
+    } else if (columnTransformer instanceof AbstractCaseWhenThenColumnTransformer) {
       int childMaxLevel = 0;
       int childCount = 0;
       for (Pair<ColumnTransformer, ColumnTransformer> whenThenColumnTransformer :
-          ((TreeCaseWhenThenColumnTransformer) columnTransformer).getWhenThenColumnTransformers()) {
-        childMaxLevel =
-            Math.max(
-                childMaxLevel, getMaxLevelOfColumnTransformerTree(whenThenColumnTransformer.left));
-        childMaxLevel =
-            Math.max(
-                childMaxLevel, getMaxLevelOfColumnTransformerTree(whenThenColumnTransformer.right));
-        childCount++;
-      }
-      childMaxLevel =
-          Math.max(
-              childMaxLevel,
-              getMaxLevelOfColumnTransformerTree(
-                  ((TreeCaseWhenThenColumnTransformer) columnTransformer).getElseTransformer()));
-      childMaxLevel = Math.max(childMaxLevel, childCount + 2);
-      return childMaxLevel;
-    } else if (columnTransformer instanceof TableCaseWhenThenColumnTransformer) {
-      int childMaxLevel = 0;
-      int childCount = 0;
-      for (Pair<ColumnTransformer, ColumnTransformer> whenThenColumnTransformer :
-          ((TableCaseWhenThenColumnTransformer) columnTransformer)
+          ((AbstractCaseWhenThenColumnTransformer) columnTransformer)
               .getWhenThenColumnTransformers()) {
         childMaxLevel =
             Math.max(
@@ -424,7 +403,8 @@ public class FilterAndProjectOperator implements ProcessOperator {
           Math.max(
               childMaxLevel,
               getMaxLevelOfColumnTransformerTree(
-                  ((TableCaseWhenThenColumnTransformer) columnTransformer).getElseTransformer()));
+                  ((AbstractCaseWhenThenColumnTransformer) columnTransformer)
+                      .getElseTransformer()));
       childMaxLevel = Math.max(childMaxLevel, childCount + 2);
       return childMaxLevel;
     } else {

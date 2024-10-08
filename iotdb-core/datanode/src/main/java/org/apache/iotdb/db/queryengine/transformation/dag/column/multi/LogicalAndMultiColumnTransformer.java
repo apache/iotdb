@@ -37,16 +37,18 @@ public class LogicalAndMultiColumnTransformer extends LogicalMultiColumnTransfor
   @Override
   public void evaluateWithSelection(boolean[] selection) {
     boolean[] selectionCopy = selection.clone();
+    boolean[] hasNull = new boolean[selection.length];
 
     List<Column> childrenColumns = new ArrayList<>();
     for (ColumnTransformer child : columnTransformerList) {
       child.evaluateWithSelection(selectionCopy);
       Column childColumn = child.getColumn();
       childrenColumns.add(childColumn);
-
       for (int i = 0; i < childColumn.getPositionCount(); i++) {
-        // set selection to false if the value is false
-        if (!childColumn.isNull(i) && !childColumn.getBoolean(i)) {
+        if (childColumn.isNull(i)) {
+          hasNull[i] = true;
+        } else if (!childColumn.getBoolean(i)) {
+          // set selection to false if the value is false
           selectionCopy[i] = false;
         }
       }
@@ -54,13 +56,20 @@ public class LogicalAndMultiColumnTransformer extends LogicalMultiColumnTransfor
 
     int positionCount = columnTransformerList.get(0).getColumnCachePositionCount();
     ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
-
     for (int i = 0; i < positionCount; i++) {
       if (selection[i]) {
-        if (selectionCopy[i]) {
-          returnType.writeBoolean(builder, true);
-        } else {
+        // have no null, all is true, result will be true
+        // have no null, and also have false, result will be false
+        // have null, and others are all true, result will be null
+        // have null, and also have false, result will be false
+        if (!selectionCopy[i]) {
           returnType.writeBoolean(builder, false);
+        } else {
+          if (hasNull[i]) {
+            builder.appendNull();
+          } else {
+            returnType.writeBoolean(builder, true);
+          }
         }
       } else {
         builder.appendNull();
@@ -90,6 +99,10 @@ public class LogicalAndMultiColumnTransformer extends LogicalMultiColumnTransfor
         }
       }
 
+      // have no null, all is true, result will be true
+      // have no null, and also have false, result will be false
+      // have null, and others are all true, result will be null
+      // have null, and also have false, result will be false
       if (!result) {
         returnType.writeBoolean(builder, false);
       } else if (hasNull) {
@@ -104,5 +117,7 @@ public class LogicalAndMultiColumnTransformer extends LogicalMultiColumnTransfor
   protected void doTransform(
       List<Column> childrenColumns, ColumnBuilder builder, int positionCount, boolean[] selection) {
     // do nothing
+    throw new UnsupportedOperationException(
+        "LogicalAndMultiColumnTransformer do not support doTransform with selection");
   }
 }

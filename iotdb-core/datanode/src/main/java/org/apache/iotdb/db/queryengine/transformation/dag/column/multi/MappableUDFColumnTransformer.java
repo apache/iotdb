@@ -46,21 +46,33 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
       inputColumnTransformer.tryEvaluate();
     }
     // construct input TsBlock with columns
-    int size = inputColumnTransformers.length;
-    Column[] columns = new Column[size];
-    for (int i = 0; i < size; i++) {
-      columns[i] = inputColumnTransformers[i].getColumn();
-    }
-    // construct TsBlockBuilder
-    int count = inputColumnTransformers[0].getColumnCachePositionCount();
-    ColumnBuilder builder = returnType.createColumnBuilder(count);
-    // executor UDF and cache result
-    executor.execute(columns, builder);
-    initializeColumnCache(builder.build());
+    doTransform();
   }
 
   @Override
-  public void evaluateWithSelection(boolean[] selection) {}
+  public void evaluateWithSelection(boolean[] selection) {
+    for (ColumnTransformer inputColumnTransformer : inputColumnTransformers) {
+      inputColumnTransformer.evaluateWithSelection(selection);
+    }
+    doTransform();
+    // clear cache
+    for (ColumnTransformer inputColumnTransformer : inputColumnTransformers) {
+      inputColumnTransformer.clearCache();
+    }
+  }
+
+  private void doTransform() {
+    int columnSize = inputColumnTransformers.length;
+    Column[] columns = new Column[columnSize];
+    for (int i = 0; i < columnSize; i++) {
+      columns[i] = inputColumnTransformers[i].getColumn();
+    }
+    int positionCount = inputColumnTransformers[0].getColumnCachePositionCount();
+    ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
+
+    executor.execute(columns, builder);
+    initializeColumnCache(builder.build());
+  }
 
   @Override
   protected void checkType() {

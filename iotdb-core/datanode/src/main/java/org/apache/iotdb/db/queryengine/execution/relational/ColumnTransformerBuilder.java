@@ -1328,7 +1328,6 @@ public class ColumnTransformerBuilder
         List<ColumnTransformer> whenList = new ArrayList<>();
         List<ColumnTransformer> thenList = new ArrayList<>();
         for (WhenClause whenClause : node.getWhenClauses()) {
-          // TODO:
           whenList.add(
               process(
                   new ComparisonExpression(
@@ -1343,7 +1342,6 @@ public class ColumnTransformerBuilder
             process(node.getDefaultValue().orElse(new NullLiteral()), context);
         context.cache.put(
             node,
-            // fix this
             new TableCaseWhenThenColumnTransformer(
                 thenList.get(0).getType(), whenList, thenList, elseColumnTransformer));
       }
@@ -1381,7 +1379,6 @@ public class ColumnTransformerBuilder
 
         context.cache.put(
             node,
-            // fix this
             new TableCaseWhenThenColumnTransformer(
                 thenList.get(0).getType(), whenList, thenList, elseColumnTransformer));
       }

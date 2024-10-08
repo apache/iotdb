@@ -39,9 +39,4 @@ public abstract class LeafColumnTransformer extends ColumnTransformer {
   public void initFromTsBlock(TsBlock input) {
     this.input = input;
   }
-
-  @Override
-  public void clearCache() {
-    super.clearCache();
-  }
 }
