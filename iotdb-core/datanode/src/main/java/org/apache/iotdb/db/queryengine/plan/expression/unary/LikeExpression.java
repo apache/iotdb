@@ -45,6 +45,15 @@ public class LikeExpression extends UnaryExpression {
   public LikeExpression(
       Expression expression, String patternString, Optional<String> escape, boolean isNot) {
     super(expression);
+    System.out.println(
+        "LikeExpression: "
+            + expression.getExpressionString()
+            + " "
+            + patternString
+            + " "
+            + escape
+            + " "
+            + isNot);
     this.patternString = patternString;
     this.escape = escape;
     this.isNot = isNot;
