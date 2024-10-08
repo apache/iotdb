@@ -120,6 +120,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
 
   private Pair<Boolean, Boolean> listeningOptionPair;
   private boolean shouldExtractInsertion;
+  private boolean shouldExtractDeletion;
   private boolean shouldTransferModFile; // Whether to transfer mods
 
   private boolean shouldTerminatePipeOnAllHistoricalEventsConsumed;
@@ -256,8 +257,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
       final PipeParameters parameters, final PipeExtractorRuntimeConfiguration configuration)
       throws IllegalPathException {
     shouldExtractInsertion = listeningOptionPair.getLeft();
-    // Do nothing if only extract deletion
-    if (!shouldExtractInsertion) {
+    shouldExtractDeletion = listeningOptionPair.getRight();
+    // Do nothing if extract nothing
+    if (!shouldExtractInsertion && !shouldExtractDeletion) {
       return;
     }
 
@@ -377,6 +379,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
       final DeletionResourceManager deletionResourceManager,
       final List<PersistentResource> resourceList) {
     LOGGER.info("Pipe {}@{}: start to extract deletions", pipeName, dataRegionId);
+    long startTime = System.currentTimeMillis();
     List<DeletionResource> allDeletionResources = deletionResourceManager.getAllDeletionResources();
     final int originalDeletionCount = allDeletionResources.size();
     allDeletionResources =
@@ -385,11 +388,12 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
             .collect(Collectors.toList());
     resourceList.addAll(allDeletionResources);
     LOGGER.info(
-        "Pipe {}@{}: finish to extract deletions, extract deletions count {}/{}",
+        "Pipe {}@{}: finish to extract deletions, extract deletions count {}/{}, took {} ms",
         pipeName,
         dataRegionId,
         resourceList.size(),
-        originalDeletionCount);
+        originalDeletionCount,
+        System.currentTimeMillis() - startTime);
   }
 
   private void flushTsFilesForExtraction(
@@ -494,7 +498,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
 
   @Override
   public synchronized void start() {
-    if (!shouldExtractInsertion) {
+    if (!shouldExtractInsertion && !shouldExtractDeletion) {
       hasBeenStarted = true;
       return;
     }
@@ -518,22 +522,32 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
         "Pipe: start to extract historical TsFile and Deletion(if uses pipeConsensus)");
     try {
       List<PersistentResource> resourceList = new ArrayList<>();
-      // Flush TsFiles
-      final long startHistoricalExtractionTime = System.currentTimeMillis();
-      flushTsFilesForExtraction(dataRegion, startHistoricalExtractionTime);
-      // Extract TsFiles
-      extractTsFiles(dataRegion, startHistoricalExtractionTime, resourceList);
+      if (shouldExtractInsertion) {
+        // Flush TsFiles
+        final long startHistoricalExtractionTime = System.currentTimeMillis();
+        flushTsFilesForExtraction(dataRegion, startHistoricalExtractionTime);
+        // Extract TsFiles
+        extractTsFiles(dataRegion, startHistoricalExtractionTime, resourceList);
+      }
 
-      // Extract deletions
-      Optional.ofNullable(DeletionResourceManager.getInstance(String.valueOf(dataRegionId)))
-          .ifPresent(mgr -> extractDeletions(mgr, resourceList));
-
+      if (shouldExtractDeletion) {
+        // Extract deletions
+        Optional.ofNullable(DeletionResourceManager.getInstance(String.valueOf(dataRegionId)))
+            .ifPresent(mgr -> extractDeletions(mgr, resourceList));
+      }
       // Sort tsFileResource and deletionResource
+      long startTime = System.currentTimeMillis();
+      LOGGER.info("Pipe {}@{}: start to sort all extracted resources", pipeName, dataRegionId);
       resourceList.sort(
           (o1, o2) ->
               startIndex instanceof TimeWindowStateProgressIndex
                   ? Long.compare(o1.getFileStartTime(), o2.getFileStartTime())
                   : o1.getProgressIndex().topologicalCompareTo(o2.getProgressIndex()));
+      LOGGER.info(
+          "Pipe {}@{}: finish to sort all extracted resources, took {} ms",
+          pipeName,
+          dataRegionId,
+          System.currentTimeMillis() - startTime);
       pendingQueue = new ArrayDeque<>(resourceList);
     } finally {
       dataRegion.writeUnlock();
