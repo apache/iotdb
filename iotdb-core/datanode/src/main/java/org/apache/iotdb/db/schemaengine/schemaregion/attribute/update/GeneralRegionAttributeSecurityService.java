@@ -133,7 +133,7 @@ public class GeneralRegionAttributeSecurityService {
       }
 
       // Send & may shrink
-      final Map<SchemaRegionId, Set<Integer>> shrinkMap =
+      final Map<SchemaRegionId, Set<TDataNodeLocation>> shrinkMap =
           sendUpdateRequest(attributeUpdateCommitMap)
               ? detectNodeShrinkage(attributeUpdateCommitMap)
               : Collections.emptyMap();
@@ -173,7 +173,7 @@ public class GeneralRegionAttributeSecurityService {
     }
   }
 
-  private @Nonnull Map<SchemaRegionId, Set<Integer>> detectNodeShrinkage(
+  private @Nonnull Map<SchemaRegionId, Set<TDataNodeLocation>> detectNodeShrinkage(
       final Map<SchemaRegionId, Pair<Long, Map<TDataNodeLocation, byte[]>>>
           attributeUpdateCommitMap) {
     final TShowClusterResp showClusterResp;
@@ -207,12 +207,7 @@ public class GeneralRegionAttributeSecurityService {
               return !entry.getValue().getRight().isEmpty();
             })
         .collect(
-            Collectors.toMap(
-                Map.Entry::getKey,
-                entry ->
-                    entry.getValue().getRight().keySet().stream()
-                        .map(TDataNodeLocation::getDataNodeId)
-                        .collect(Collectors.toSet())));
+            Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().getRight().keySet()));
   }
 
   private boolean sendUpdateRequest(

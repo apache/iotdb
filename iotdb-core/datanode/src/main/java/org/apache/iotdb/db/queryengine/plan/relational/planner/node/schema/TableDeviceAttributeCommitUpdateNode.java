@@ -43,7 +43,7 @@ public class TableDeviceAttributeCommitUpdateNode extends PlanNode implements IS
 
   private final long version;
   private final Map<TDataNodeLocation, byte[]> commitMap;
-  private final Set<Integer> shrunkNodes;
+  private final Set<TDataNodeLocation> shrunkNodes;
 
   public static final TableDeviceAttributeCommitUpdateNode MOCK_INSTANCE =
       new TableDeviceAttributeCommitUpdateNode(new PlanNodeId(""), 0L, null, null);
@@ -52,7 +52,7 @@ public class TableDeviceAttributeCommitUpdateNode extends PlanNode implements IS
       final PlanNodeId id,
       final long version,
       final Map<TDataNodeLocation, byte[]> commitMap,
-      final Set<Integer> shrunkNodes) {
+      final Set<TDataNodeLocation> shrunkNodes) {
     super(id);
     this.version = version;
     this.commitMap = commitMap;
@@ -67,7 +67,7 @@ public class TableDeviceAttributeCommitUpdateNode extends PlanNode implements IS
     return commitMap;
   }
 
-  public Set<Integer> getShrunkNodes() {
+  public Set<TDataNodeLocation> getShrunkNodes() {
     return shrunkNodes;
   }
 
@@ -113,8 +113,9 @@ public class TableDeviceAttributeCommitUpdateNode extends PlanNode implements IS
       byteBuffer.put(entry.getValue());
     }
     ReadWriteIOUtils.write(shrunkNodes.size(), byteBuffer);
-    for (final Integer nodeId : shrunkNodes) {
-      ReadWriteIOUtils.write(nodeId, byteBuffer);
+    for (final TDataNodeLocation location : shrunkNodes) {
+      ReadWriteIOUtils.write(location.getDataNodeId(), byteBuffer);
+      ThriftCommonsSerDeUtils.serializeTEndPoint(location.getInternalEndPoint(), byteBuffer);
     }
   }
 
@@ -130,8 +131,9 @@ public class TableDeviceAttributeCommitUpdateNode extends PlanNode implements IS
       stream.write(entry.getValue());
     }
     ReadWriteIOUtils.write(shrunkNodes.size(), stream);
-    for (final Integer nodeId : shrunkNodes) {
-      ReadWriteIOUtils.write(nodeId, stream);
+    for (final TDataNodeLocation location : shrunkNodes) {
+      ReadWriteIOUtils.write(location.getDataNodeId(), stream);
+      ThriftCommonsSerDeUtils.serializeTEndPoint(location.getInternalEndPoint(), stream);
     }
   }
 
@@ -153,9 +155,16 @@ public class TableDeviceAttributeCommitUpdateNode extends PlanNode implements IS
       commitMap.put(location, commitBuffer);
     }
     size = ReadWriteIOUtils.readInt(buffer);
-    final Set<Integer> shrunkNodes = new HashSet<>();
+    final Set<TDataNodeLocation> shrunkNodes = new HashSet<>();
     for (int i = 0; i < size; ++i) {
-      shrunkNodes.add(ReadWriteIOUtils.readInt(buffer));
+      shrunkNodes.add(
+          new TDataNodeLocation(
+              ReadWriteIOUtils.readInt(buffer),
+              null,
+              ThriftCommonsSerDeUtils.deserializeTEndPoint(buffer),
+              null,
+              null,
+              null));
     }
     final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
     return new TableDeviceAttributeCommitUpdateNode(planNodeId, version, commitMap, shrunkNodes);

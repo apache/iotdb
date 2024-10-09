@@ -129,6 +129,11 @@ public class DeviceAttributeRemoteUpdater {
   }
 
   public void commit(final TableDeviceAttributeCommitUpdateNode node) {
+    final Set<TDataNodeLocation> shrunkNodes = node.getShrunkNodes();
+    targetDataNodeLocations.removeAll(shrunkNodes);
+    attributeUpdateMap.keySet().removeAll(shrunkNodes);
+    updateContainerStatistics.keySet().removeAll(shrunkNodes);
+
     node.getCommitMap()
         .forEach(
             ((location, bytes) ->
