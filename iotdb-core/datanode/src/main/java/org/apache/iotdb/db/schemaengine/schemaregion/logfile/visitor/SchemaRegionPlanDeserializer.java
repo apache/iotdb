@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
@@ -429,6 +430,12 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
         final TableDeviceAttributeCommitUpdateNode commitUpdateTableDeviceAttributePlan,
         final ByteBuffer buffer) {
       return (TableDeviceAttributeCommitUpdateNode) PlanNodeType.deserialize(buffer);
+    }
+
+    @Override
+    public ISchemaRegionPlan visitAddNodeLocation(
+        final TableNodeLocationAddNode addNodeLocationPlan, final ByteBuffer buffer) {
+      return (TableNodeLocationAddNode) PlanNodeType.deserialize(buffer);
     }
   }
 }
