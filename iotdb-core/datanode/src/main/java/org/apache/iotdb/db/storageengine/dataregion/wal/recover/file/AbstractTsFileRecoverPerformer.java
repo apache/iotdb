@@ -26,6 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.exception.NotCompatibleTsFileException;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
@@ -84,7 +85,10 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
       try (TsFileSequenceReader sequenceReader =
           new TsFileSequenceReader(tsFile.getAbsolutePath())) {
         versionNumber = sequenceReader.readVersionNumber();
+      } catch (NotCompatibleTsFileException e) {
+        versionNumber = -1;
       }
+
       if (versionNumber != TSFileConfig.VERSION_NUMBER) {
         // cannot rewrite a file with V3 header, delete it first
         writer.close();
