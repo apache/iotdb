@@ -54,6 +54,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
@@ -1576,6 +1577,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     deviceAttributeRemoteUpdater.commit(node);
     writeToMLog(node);
   }
+
+  @Override
+  public void addNodeLocation(TableNodeLocationAddNode node) throws MetadataException {}
 
   // endregion
 

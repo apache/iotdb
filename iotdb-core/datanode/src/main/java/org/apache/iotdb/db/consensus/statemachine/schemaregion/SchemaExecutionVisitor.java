@@ -60,6 +60,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSc
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.ICreateTimeSeriesPlan;
@@ -610,6 +611,18 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
       final TableDeviceAttributeCommitUpdateNode node, final ISchemaRegion schemaRegion) {
     try {
       schemaRegion.commitUpdateAttribute(node);
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    } catch (final MetadataException e) {
+      logger.error(e.getMessage(), e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+  }
+
+  @Override
+  public TSStatus visitTableDeviceAttributeCommit(
+      final TableNodeLocationAddNode node, final ISchemaRegion schemaRegion) {
+    try {
+      schemaRegion.addNodeLocation(node);
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (final MetadataException e) {
       logger.error(e.getMessage(), e);

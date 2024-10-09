@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
@@ -69,6 +70,11 @@ public class TableNodeLocationAddNode extends PlanNode implements ISchemaRegionP
   @Override
   public List<String> getOutputColumnNames() {
     return null;
+  }
+
+  @Override
+  public <R, C> R accept(final PlanVisitor<R, C> visitor, final C context) {
+    return visitor.visitTableNodeLocationAdd(this, context);
   }
 
   @Override

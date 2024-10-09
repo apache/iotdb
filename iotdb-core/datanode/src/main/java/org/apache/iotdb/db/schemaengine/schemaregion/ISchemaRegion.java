@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.schemaengine.rescon.ISchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowDevicesPlan;
@@ -358,6 +359,8 @@ public interface ISchemaRegion {
 
   void commitUpdateAttribute(final TableDeviceAttributeCommitUpdateNode node)
       throws MetadataException;
+
+  void addNodeLocation(final TableNodeLocationAddNode node) throws MetadataException;
 
   // endregion
 }

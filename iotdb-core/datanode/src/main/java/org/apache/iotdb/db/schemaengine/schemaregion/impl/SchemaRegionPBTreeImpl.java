@@ -42,6 +42,7 @@ import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionCachedMetric;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaRegionStatistics;
@@ -1501,6 +1502,11 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
   @Override
   public void commitUpdateAttribute(final TableDeviceAttributeCommitUpdateNode node) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void addNodeLocation(final TableNodeLocationAddNode node) {
     throw new UnsupportedOperationException();
   }
 
