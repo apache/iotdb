@@ -136,6 +136,7 @@ public enum TSStatusCode {
   // Arithmetic
   NUMERIC_VALUE_OUT_OF_RANGE(750),
   DIVISION_BY_ZERO(751),
+  DATE_OUT_OF_RANGE(752),
 
   // Authentication
   INIT_AUTH_ERROR(800),
