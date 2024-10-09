@@ -216,10 +216,17 @@ public class SettleSelectorImpl implements ISettleSelector {
     for (IDeviceID device : ((ArrayDeviceTimeIndex) timeIndex).getDevices()) {
       // check expired device by ttl
       // TODO: remove deviceId conversion
-      long deviceTTL = DataNodeTTLCache.getInstance().getTTL(device);
-      boolean hasSetTTL = deviceTTL != Long.MAX_VALUE;
+
+      long ttl;
+      String tableName = device.getTableName();
+      if (tableName.startsWith("root.")) {
+        ttl = DataNodeTTLCache.getInstance().getTTLForTree(device);
+      } else {
+        ttl = DataNodeTTLCache.getInstance().getTTLForTable(storageGroupName, tableName);
+      }
+      boolean hasSetTTL = ttl != Long.MAX_VALUE;
       boolean isDeleted =
-          !timeIndex.isDeviceAlive(device, deviceTTL)
+          !timeIndex.isDeviceAlive(device, ttl)
               || isDeviceDeletedByMods(
                   modifications,
                   device,
@@ -234,8 +241,7 @@ public class SettleSelectorImpl implements ISettleSelector {
         }
         long outdatedTimeDiff = currentTime - timeIndex.getEndTime(device);
         hasExpiredTooLong =
-            hasExpiredTooLong
-                || outdatedTimeDiff > Math.min(config.getMaxExpiredTime(), 3 * deviceTTL);
+            hasExpiredTooLong || outdatedTimeDiff > Math.min(config.getMaxExpiredTime(), 3 * ttl);
       }
 
       if (isDeleted) {

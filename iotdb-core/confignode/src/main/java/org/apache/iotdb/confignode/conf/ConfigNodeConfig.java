@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.manager.load.balancer.router.leader.AbstractL
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
 import java.io.File;
 import java.lang.reflect.Field;
@@ -159,7 +160,7 @@ public class ConfigNodeConfig {
       systemDir + File.separator + "pipe" + File.separator + "receiver";
 
   /** Procedure Evict ttl. */
-  private int procedureCompletedEvictTTL = 800;
+  private int procedureCompletedEvictTTL = 60;
 
   /** Procedure completed clean interval. */
   private int procedureCompletedCleanInterval = 30;
@@ -335,6 +336,7 @@ public class ConfigNodeConfig {
 
   public void setClusterName(String clusterName) {
     this.clusterName = clusterName;
+    MetricConfigDescriptor.getInstance().getMetricConfig().updateClusterName(clusterName);
   }
 
   public int getConfigNodeId() {

@@ -366,10 +366,10 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     PageHeader timePageHeader = timePage.getHeader();
     ByteBuffer uncompressedTimePageData = timePage.getUnCompressedData();
     Decoder timeDecoder = Decoder.getDecoderByType(timePage.getEncoding(), TSDataType.INT64);
-    timePage.clear();
     TimePageReader timePageReader =
         new TimePageReader(timePageHeader, uncompressedTimePageData, timeDecoder);
     timePageReader.setDeleteIntervalList(timePage.getDeleteIntervalList());
+    timePage.clear();
 
     List<ValuePageReader> valuePageReaders = new ArrayList<>(valuePages.size());
     int nonEmptyPageNum = 1;
@@ -452,6 +452,9 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
 
     private boolean canFlushChunk(ChunkLoader timeChunk, List<ChunkLoader> valueChunks)
         throws IOException {
+      if (timeChunk.getModifiedStatus() == ModifiedStatus.PARTIAL_DELETED) {
+        return false;
+      }
       boolean largeEnough =
           timeChunk.getHeader().getDataSize() >= targetChunkSize
               || timeChunk.getChunkMetadata().getNumOfPoints() >= targetChunkPointNum;
@@ -494,6 +497,9 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     }
 
     private boolean canFlushPage(PageLoader timePage, List<PageLoader> valuePages) {
+      if (timePage.getModifiedStatus() == ModifiedStatus.PARTIAL_DELETED) {
+        return false;
+      }
       long count = timePage.getHeader().getStatistics().getCount();
       boolean largeEnough =
           count >= targetPagePointNum

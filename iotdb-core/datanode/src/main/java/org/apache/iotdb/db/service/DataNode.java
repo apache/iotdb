@@ -127,7 +127,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -273,41 +273,42 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   }
 
   @Override
-  protected void remove(Long nodeId) throws IoTDBException {
-    // If the nodeId was null, this is a shorthand for removing the current dataNode.
+  protected void remove(Set<Integer> nodeIds) throws IoTDBException {
+    // If the nodeIds was null, this is a shorthand for removing the current dataNode.
     // In this case we need to find our nodeId.
-    if (nodeId == null) {
-      nodeId = (long) config.getDataNodeId();
+    if (nodeIds == null) {
+      nodeIds = Collections.singleton(config.getDataNodeId());
     }
 
-    logger.info("Starting to remove DataNode with node-id {} from cluster", nodeId);
+    logger.info("Starting to remove DataNode with nodeIds: {}", nodeIds);
 
     // Load ConfigNodeList from system.properties file
     ConfigNodeInfo.getInstance().loadConfigNodeList();
 
-    int removeNodeId = nodeId.intValue();
     try (ConfigNodeClient configNodeClient =
         ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Find a datanode location with the given node id.
-      Optional<TDataNodeLocation> dataNodeLocationOpt =
+
+      final Set<Integer> finalNodeIds = nodeIds;
+      List<TDataNodeLocation> removeDataNodeLocations =
           configNodeClient
               .getDataNodeConfiguration(-1)
               .getDataNodeConfigurationMap()
               .values()
               .stream()
               .map(TDataNodeConfiguration::getLocation)
-              .filter(location -> location.getDataNodeId() == removeNodeId)
-              .findFirst();
-      if (!dataNodeLocationOpt.isPresent()) {
+              .filter(location -> finalNodeIds.contains(location.getDataNodeId()))
+              .collect(Collectors.toList());
+
+      if (removeDataNodeLocations.isEmpty()) {
         throw new IoTDBException("Invalid node-id", -1);
       }
-      TDataNodeLocation dataNodeLocation = dataNodeLocationOpt.get();
 
-      logger.info("Start to remove datanode, removed datanode endpoint: {}", dataNodeLocation);
-      TDataNodeRemoveReq removeReq =
-          new TDataNodeRemoveReq(Collections.singletonList(dataNodeLocation));
+      logger.info(
+          "Start to remove datanode, removed DataNodes endpoint: {}", removeDataNodeLocations);
+      TDataNodeRemoveReq removeReq = new TDataNodeRemoveReq(removeDataNodeLocations);
       TDataNodeRemoveResp removeResp = configNodeClient.removeDataNode(removeReq);
-      logger.info("Remove result {} ", removeResp);
+      logger.info("Submit Remove DataNodes result {} ", removeResp);
       if (removeResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new IoTDBException(
             removeResp.getStatus().toString(), removeResp.getStatus().getCode());
@@ -1139,7 +1140,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     for (int i = 0; i < mapSize; i++) {
       try {
         DataNodeTTLCache.getInstance()
-            .setTTL(
+            .setTTLForTree(
                 PathUtils.splitPathToDetachedNodes(
                     Objects.requireNonNull(ReadWriteIOUtils.readString(buffer))),
                 ReadWriteIOUtils.readLong(buffer));
@@ -1192,7 +1193,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     stopTriggerRelatedServices();
     registerManager.deregisterAll();
     JMXService.deregisterMBean(mbeanName);
-    SchemaEngine.getInstance().clear();
     MetricService.getInstance().stop();
     if (schemaRegionConsensusStarted) {
       try {
@@ -1201,6 +1201,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         logger.warn("Exception during SchemaRegionConsensusImpl stopping", e);
       }
     }
+    SchemaEngine.getInstance().clear();
     if (dataRegionConsensusStarted) {
       try {
         DataRegionConsensusImpl.getInstance().stop();
