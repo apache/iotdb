@@ -41,8 +41,8 @@ public class IoTDBTreePattern extends TreePattern {
 
   private final PartialPath patternPartialPath;
 
-  public IoTDBTreePattern(final String pattern) {
-    super(pattern);
+  public IoTDBTreePattern(final boolean isTreeModelDataAllowedToBeCaptured, final String pattern) {
+    super(isTreeModelDataAllowedToBeCaptured, pattern);
 
     try {
       patternPartialPath = new PartialPath(getPattern());
@@ -80,8 +80,9 @@ public class IoTDBTreePattern extends TreePattern {
   @Override
   public boolean coversDb(final String db) {
     try {
-      return patternPartialPath.include(
-          new MeasurementPath(db, IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD));
+      return isTreeModelDataAllowedToBeCaptured
+          && patternPartialPath.include(
+              new MeasurementPath(db, IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD));
     } catch (final IllegalPathException e) {
       return false;
     }
@@ -90,8 +91,9 @@ public class IoTDBTreePattern extends TreePattern {
   @Override
   public boolean coversDevice(final IDeviceID device) {
     try {
-      return patternPartialPath.include(
-          new MeasurementPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
+      return isTreeModelDataAllowedToBeCaptured
+          && patternPartialPath.include(
+              new MeasurementPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
     } catch (final IllegalPathException e) {
       return false;
     }
@@ -102,7 +104,8 @@ public class IoTDBTreePattern extends TreePattern {
     try {
       // Another way is to use patternPath.overlapWith("device.*"),
       // there will be no false positives but time cost may be higher.
-      return patternPartialPath.matchPrefixPath(new PartialPath(device));
+      return isTreeModelDataAllowedToBeCaptured
+          && patternPartialPath.matchPrefixPath(new PartialPath(device));
     } catch (final IllegalPathException e) {
       return false;
     }
@@ -116,7 +119,8 @@ public class IoTDBTreePattern extends TreePattern {
     }
 
     try {
-      return patternPartialPath.matchFullPath(new MeasurementPath(device, measurement));
+      return isTreeModelDataAllowedToBeCaptured
+          && patternPartialPath.matchFullPath(new MeasurementPath(device, measurement));
     } catch (final IllegalPathException e) {
       return false;
     }
@@ -130,7 +134,8 @@ public class IoTDBTreePattern extends TreePattern {
    */
   public boolean matchPrefixPath(final String path) {
     try {
-      return patternPartialPath.matchPrefixPath(new PartialPath(path));
+      return isTreeModelDataAllowedToBeCaptured
+          && patternPartialPath.matchPrefixPath(new PartialPath(path));
     } catch (final IllegalPathException e) {
       return false;
     }
@@ -141,7 +146,8 @@ public class IoTDBTreePattern extends TreePattern {
    */
   public boolean matchDevice(final String devicePath) {
     try {
-      return patternPartialPath.overlapWith(new MeasurementPath(devicePath, "*"));
+      return isTreeModelDataAllowedToBeCaptured
+          && patternPartialPath.overlapWith(new MeasurementPath(devicePath, "*"));
     } catch (final IllegalPathException e) {
       return false;
     }
@@ -152,7 +158,8 @@ public class IoTDBTreePattern extends TreePattern {
    * prefix or full path pattern.
    */
   public boolean matchTailNode(final String tailNode) {
-    return !isFullPath() || patternPartialPath.getTailNode().equals(tailNode);
+    return isTreeModelDataAllowedToBeCaptured
+        && (!isFullPath() || patternPartialPath.getTailNode().equals(tailNode));
   }
 
   /**
@@ -192,7 +199,8 @@ public class IoTDBTreePattern extends TreePattern {
   }
 
   public boolean mayMatchMultipleTimeSeriesInOneDevice() {
-    return PathPatternUtil.hasWildcard(patternPartialPath.getTailNode());
+    return isTreeModelDataAllowedToBeCaptured
+        && PathPatternUtil.hasWildcard(patternPartialPath.getTailNode());
   }
 
   @Override

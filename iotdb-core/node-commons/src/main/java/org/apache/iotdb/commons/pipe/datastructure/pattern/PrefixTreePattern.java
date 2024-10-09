@@ -31,8 +31,8 @@ import java.util.Arrays;
 
 public class PrefixTreePattern extends TreePattern {
 
-  public PrefixTreePattern(final String pattern) {
-    super(pattern);
+  public PrefixTreePattern(final boolean isTreeModelDataAllowedToBeCaptured, final String pattern) {
+    super(isTreeModelDataAllowedToBeCaptured, pattern);
   }
 
   @Override
@@ -75,7 +75,9 @@ public class PrefixTreePattern extends TreePattern {
 
   @Override
   public boolean coversDb(final String db) {
-    return pattern.length() <= db.length() && db.startsWith(pattern);
+    return isTreeModelDataAllowedToBeCaptured
+        && pattern.length() <= db.length()
+        && db.startsWith(pattern);
   }
 
   @Override
@@ -83,20 +85,22 @@ public class PrefixTreePattern extends TreePattern {
     final String deviceStr = device.toString();
     // for example, pattern is root.a.b and device is root.a.b.c
     // in this case, the extractor can be matched without checking the measurements
-    return pattern.length() <= deviceStr.length() && deviceStr.startsWith(pattern);
+    return isTreeModelDataAllowedToBeCaptured
+        && pattern.length() <= deviceStr.length()
+        && deviceStr.startsWith(pattern);
   }
 
   @Override
   public boolean mayOverlapWithDevice(final IDeviceID device) {
     final String deviceStr = device.toString();
-    return (
+    return isTreeModelDataAllowedToBeCaptured
         // for example, pattern is root.a.b and device is root.a.b.c
         // in this case, the extractor can be matched without checking the measurements
-        pattern.length() <= deviceStr.length() && deviceStr.startsWith(pattern))
-        // for example, pattern is root.a.b.c and device is root.a.b
-        // in this case, the extractor can be selected as candidate, but the measurements should
-        // be checked further
-        || (pattern.length() > deviceStr.length() && pattern.startsWith(deviceStr));
+        && ((pattern.length() <= deviceStr.length() && deviceStr.startsWith(pattern))
+            // for example, pattern is root.a.b.c and device is root.a.b
+            // in this case, the extractor can be selected as candidate, but the measurements should
+            // be checked further
+            || (pattern.length() > deviceStr.length() && pattern.startsWith(deviceStr)));
   }
 
   @Override
@@ -104,16 +108,16 @@ public class PrefixTreePattern extends TreePattern {
     final String deviceStr = device.toString();
     // We assume that the device is already matched.
     if (pattern.length() <= deviceStr.length()) {
-      return true;
+      return isTreeModelDataAllowedToBeCaptured;
     }
 
     // For example, pattern is "root.a.b.c", device is "root.a.b",
     // then measurements "c" and "cc" can be matched,
     // measurements "d" or "dc" can't be matched.
     final String dotAndMeasurement = TsFileConstant.PATH_SEPARATOR + measurement;
-    return
-    // low cost check comes first
-    pattern.length() <= deviceStr.length() + dotAndMeasurement.length()
+    return isTreeModelDataAllowedToBeCaptured
+        // low cost check comes first
+        && pattern.length() <= deviceStr.length() + dotAndMeasurement.length()
         // high cost check comes later
         && dotAndMeasurement.startsWith(pattern.substring(deviceStr.length()));
   }
