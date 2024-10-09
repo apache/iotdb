@@ -139,7 +139,6 @@ public class GeneralRegionAttributeSecurityService {
               : Collections.emptyMap();
 
       // Commit
-      // TODO: Execute in parallel by thread pool
       attributeUpdateCommitMap.forEach(
           (schemaRegionId, pair) -> {
             if (!new RegionWriteExecutor()
