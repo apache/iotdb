@@ -1336,7 +1336,9 @@ public class ProcedureManager {
       if (isSucceed) {
         return statusList.get(0);
       } else {
-        return new TSStatus(TSStatusCode.SUBSCRIPTION_SUBSCRIBE_ERROR.getStatusCode())
+        // we assume that a timeout has occurred in the procedure related to the pipe in the
+        // subscription procedure
+        return new TSStatus(TSStatusCode.SUBSCRIPTION_PIPE_TIMEOUT_ERROR.getStatusCode())
             .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
       }
     } catch (Exception e) {
@@ -1354,7 +1356,9 @@ public class ProcedureManager {
       if (isSucceed) {
         return statusList.get(0);
       } else {
-        return new TSStatus(TSStatusCode.SUBSCRIPTION_UNSUBSCRIBE_ERROR.getStatusCode())
+        // we assume that a timeout has occurred in the procedure related to the pipe in the
+        // subscription procedure
+        return new TSStatus(TSStatusCode.SUBSCRIPTION_PIPE_TIMEOUT_ERROR.getStatusCode())
             .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
       }
     } catch (Exception e) {

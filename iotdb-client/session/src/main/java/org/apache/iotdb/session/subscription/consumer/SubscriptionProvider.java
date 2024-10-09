@@ -27,6 +27,7 @@ import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionPipeTimeoutException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeNonCriticalException;
 import org.apache.iotdb.rpc.subscription.payload.poll.PollFilePayload;
@@ -66,6 +67,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 final class SubscriptionProvider extends SubscriptionSession {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionProvider.class);
+
+  private static final String SUBSCRIPTION_PIPE_TIMEOUT_MESSAGE =
+      "A timeout has occurred in procedures related to the pipe within the subscription procedure. Please manually check the subscription correctness later.";
 
   private String consumerId;
   private String consumerGroupId;
@@ -398,6 +402,12 @@ final class SubscriptionProvider extends SubscriptionSession {
             status.code,
             status.message);
         throw new SubscriptionRuntimeNonCriticalException(status.message);
+      case 1911: // SUBSCRIPTION_PIPE_TIMEOUT_ERROR
+        LOGGER.warn(
+            "Timed out to wait for pipe procedure return, status code {}, status message {}",
+            status.code,
+            status.message);
+        throw new SubscriptionPipeTimeoutException(SUBSCRIPTION_PIPE_TIMEOUT_MESSAGE);
       case 1900: // SUBSCRIPTION_VERSION_ERROR
       case 1901: // SUBSCRIPTION_TYPE_ERROR
       case 1909: // SUBSCRIPTION_MISSING_CUSTOMER
