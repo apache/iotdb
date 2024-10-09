@@ -706,6 +706,8 @@ public class QueryPlanner {
           k -> {
             groupingKeys.add(k);
             orderBySymbols.add(k);
+            // sort order for fill_group should always be ASC_NULLS_LAST, it should be same as
+            // TableOperatorGenerator
             return ASC_NULLS_LAST;
           });
     }
@@ -714,6 +716,7 @@ public class QueryPlanner {
           timeColumn,
           k -> {
             orderBySymbols.add(k);
+            // sort order for fill_group should always be ASC_NULLS_LAST
             return ASC_NULLS_LAST;
           });
     }

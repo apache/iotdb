@@ -127,8 +127,16 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
 
     @Override
     public PlanNode visitPreviousFill(PreviousFillNode node, Context context) {
-      context.enablePushDown = !node.getGroupingKeys().isPresent();
-      return node;
+      if (node.getGroupingKeys().isPresent()) {
+        context.enablePushDown = false;
+        return node;
+      } else {
+        PlanNode newNode = node.clone();
+        for (PlanNode child : node.getChildren()) {
+          newNode.addChild(child.accept(this, context));
+        }
+        return newNode;
+      }
     }
 
     @Override

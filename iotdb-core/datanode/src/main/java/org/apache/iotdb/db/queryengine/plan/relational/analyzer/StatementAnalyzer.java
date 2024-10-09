@@ -2199,7 +2199,7 @@ public class StatementAnalyzer {
         if (index == -1) {
           throw new SemanticException(
               String.format(
-                  "Cannot infer the time column for %s FILL, there exists no column whose type is TIMESTAMP",
+                  "Cannot infer TIME_COLUMN for %s FILL, there exists no column whose type is TIMESTAMP",
                   fillMethod.name()));
         }
         helperColumn = new FieldReference(index);

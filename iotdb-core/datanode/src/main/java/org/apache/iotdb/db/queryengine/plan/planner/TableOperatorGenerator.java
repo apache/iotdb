@@ -37,6 +37,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.CollectOperato
 import org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.LimitOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.PreviousFillWithGroupOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableFillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableLinearFillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableMergeSortOperator;
@@ -90,10 +91,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToInt64Litera
 import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToStringLiteralVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToTimestampLiteralVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
@@ -113,6 +116,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
+import org.apache.iotdb.db.utils.datastructure.SortKey;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -131,6 +135,7 @@ import javax.validation.constraints.NotNull;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -156,6 +161,7 @@ import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.getLinearFill;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.getPreviousFill;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableBuiltinAggregationFunction.getAggregationTypeByFuncName;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 
 /** This Visitor is responsible for transferring Table PlanNode Tree to Table Operator Tree. */
@@ -571,15 +577,43 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     if (node.getHelperColumn().isPresent()) {
       helperColumnIndex = getColumnIndex(node.getHelperColumn().get(), node.getChild());
     }
-    return new TableFillOperator(
-        operatorContext,
+    IFill[] fillArray =
         getPreviousFill(
             inputColumnCount,
             inputDataTypes,
             node.getTimeBound().orElse(null),
-            context.getZoneId()),
-        child,
-        helperColumnIndex);
+            context.getZoneId());
+
+    if (node.getGroupingKeys().isPresent()) {
+      return new PreviousFillWithGroupOperator(
+          operatorContext,
+          fillArray,
+          child,
+          helperColumnIndex,
+          genFillGroupKeyComparator(node.getGroupingKeys().get(), node, inputDataTypes),
+          inputDataTypes);
+    } else {
+      return new TableFillOperator(operatorContext, fillArray, child, helperColumnIndex);
+    }
+  }
+
+  private Comparator<SortKey> genFillGroupKeyComparator(
+      List<Symbol> groupingKeys, FillNode node, List<TSDataType> inputDataTypes) {
+    int groupKeysCount = groupingKeys.size();
+    List<SortOrder> sortOrderList = new ArrayList<>(groupKeysCount);
+    List<Integer> groupItemIndexList = new ArrayList<>(groupKeysCount);
+    List<TSDataType> groupItemDataTypeList = new ArrayList<>(groupKeysCount);
+    Map<Symbol, Integer> columnIndex =
+        makeLayoutFromOutputSymbols(node.getChild().getOutputSymbols());
+    for (Symbol symbol : groupingKeys) {
+      // sort order for fill_group should always be ASC_NULLS_LAST, it should be same as
+      // QueryPlanner.fillGroup
+      sortOrderList.add(ASC_NULLS_LAST);
+      int index = columnIndex.get(symbol);
+      groupItemIndexList.add(index);
+      groupItemDataTypeList.add(inputDataTypes.get(index));
+    }
+    return getComparatorForTable(sortOrderList, groupItemIndexList, groupItemDataTypeList);
   }
 
   // index starts from 0

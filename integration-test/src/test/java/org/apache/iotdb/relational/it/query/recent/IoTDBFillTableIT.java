@@ -59,6 +59,17 @@ public class IoTDBFillTableIT {
             + " values(7, 'd1', 7, 77, 7.7, 77.7, true)",
         "INSERT INTO table1(time,device_id,s6,s7,s8,s9,s10) "
             + " values(8, 'd1', 'text8', 'string8', X'cafebabe08', 8, '2024-10-08')",
+        "CREATE TABLE table2(city STRING ID, device_id STRING ID, s1 INT32 MEASUREMENT, s2 INT64 MEASUREMENT)",
+        "INSERT INTO table2(time,city,device_id,s2) values(1, 'shanghai', 'd1', 02111)",
+        "INSERT INTO table2(time,city,device_id,s1) values(2, 'shanghai', 'd1', 0212)",
+        "INSERT INTO table2(time,city,device_id,s2) values(1, 'beijing', 'd1', 01011)",
+        "INSERT INTO table2(time,city,device_id,s1) values(2, 'beijing', 'd1', 0102)",
+        "INSERT INTO table2(time,city,device_id,s1) values(3, 'beijing', 'd1', 0103)",
+        "INSERT INTO table2(time,city,device_id,s1) values(4, 'beijing', 'd1', 0104)",
+        "INSERT INTO table2(time,city,device_id,s1) values(1, 'beijing', 'd2', 0101)",
+        "INSERT INTO table2(time,city,device_id,s2) values(2, 'beijing', 'd2', 01022)",
+        "INSERT INTO table2(time,city,device_id,s2) values(3, 'beijing', 'd2', 01033)",
+        "INSERT INTO table2(time,city,device_id,s2) values(4, 'beijing', 'd2', 01044)",
       };
 
   @BeforeClass
@@ -94,7 +105,7 @@ public class IoTDBFillTableIT {
           "1970-01-01T00:00:00.008Z,d1,7,77,7.7,77.7,true,text8,string8,0xcafebabe08,1970-01-01T00:00:00.008Z,2024-10-08,",
         };
     tableResultSetEqualTest(
-        "select * from table1 FILL(PREVIOUS)", expectedHeader, retArray, DATABASE_NAME);
+        "select * from table1 FILL METHOD PREVIOUS", expectedHeader, retArray, DATABASE_NAME);
 
     // case 2: all with time filter using previous fill without timeDuration
     expectedHeader =
@@ -111,7 +122,7 @@ public class IoTDBFillTableIT {
           "1970-01-01T00:00:00.008Z,d1,7,77,7.7,77.7,true,text8,string8,0xcafebabe08,1970-01-01T00:00:00.008Z,2024-10-08,",
         };
     tableResultSetEqualTest(
-        "select * from table1 WHERE time > 1 FILL(PREVIOUS)",
+        "select * from table1 WHERE time > 1 FILL METHOD PREVIOUS",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -127,7 +138,7 @@ public class IoTDBFillTableIT {
           "1970-01-01T00:00:00.007Z,d1,7,77,7.7,77.7,true,null,null,null,null,null,",
         };
     tableResultSetEqualTest(
-        "select * from table1 WHERE time > 1 and time < 8 and s2 > 22 FILL(PREVIOUS)",
+        "select * from table1 WHERE time > 1 and time < 8 and s2 > 22 FILL METHOD PREVIOUS",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -148,7 +159,10 @@ public class IoTDBFillTableIT {
           "1970-01-01T00:00:00.008Z,d1,7,77,7.7,77.7,true,text8,string8,0xcafebabe08,1970-01-01T00:00:00.008Z,2024-10-08,",
         };
     tableResultSetEqualTest(
-        "select * from table1 FILL(PREVIOUS, 2ms)", expectedHeader, retArray, DATABASE_NAME);
+        "select * from table1 FILL METHOD PREVIOUS TIME_BOUND 2ms",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
 
     // case 5: all without time filter using previous fill with timeDuration with helper column
     // index
@@ -167,7 +181,10 @@ public class IoTDBFillTableIT {
           "1970-01-01T00:00:00.008Z,d1,7,77,7.7,77.7,true,text8,string8,0xcafebabe08,1970-01-01T00:00:00.008Z,2024-10-08,",
         };
     tableResultSetEqualTest(
-        "select * from table1 FILL(PREVIOUS(1), 2ms)", expectedHeader, retArray, DATABASE_NAME);
+        "select * from table1 FILL METHOD PREVIOUS TIME_BOUND 2ms TIME_COLUMN 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
 
     // case 6: all without time filter using previous fill with timeDuration with helper column
     // index
@@ -186,7 +203,10 @@ public class IoTDBFillTableIT {
           "1970-01-01T00:00:00.008Z,d1,null,null,null,null,null,text8,string8,0xcafebabe08,1970-01-01T00:00:00.008Z,2024-10-08,",
         };
     tableResultSetEqualTest(
-        "select * from table1 FILL(PREVIOUS(11), 2ms)", expectedHeader, retArray, DATABASE_NAME);
+        "select * from table1 FILL METHOD PREVIOUS TIME_BOUND 2ms TIME_COLUMN 11",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
 
     // case7: all without time filter using previous fill with order by time desc
     expectedHeader =
@@ -204,7 +224,7 @@ public class IoTDBFillTableIT {
           "1970-01-01T00:00:00.001Z,d1,1,11,1.1,11.1,true,text1,string1,0xcafebabe01,1970-01-01T00:00:00.001Z,2024-10-01,",
         };
     tableResultSetEqualTest(
-        "select * from table1 FILL(PREVIOUS(1), 2ms) order by time desc",
+        "select * from table1 FILL METHOD PREVIOUS TIME_BOUND 2ms TIME_COLUMN 1 order by time desc",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -225,7 +245,7 @@ public class IoTDBFillTableIT {
           "1970-01-01T00:00:00.007Z,d1,7,77,7.7,77.7,true,null,null,null,null,null,",
         };
     tableResultSetEqualTest(
-        "select * from table1 FILL(PREVIOUS(1), 2ms) order by s9 desc, time desc",
+        "select * from table1 FILL METHOD PREVIOUS TIME_BOUND 2ms TIME_COLUMN 1 order by s9 desc, time desc",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -246,7 +266,64 @@ public class IoTDBFillTableIT {
           "1970-01-01T00:00:00.008Z,d1,null,null,null,null,null,text8,string8,0xcafebabe08,1970-01-01T00:00:00.008Z,2024-10-08,",
         };
     tableResultSetEqualTest(
-        "select * from (select * from table1 order by time desc) FILL(previous, 2ms) order by time",
+        "select * from (select * from table1 order by time desc) FILL METHOD PREVIOUS TIME_BOUND 2ms order by time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // case10: all without time filter using previous fill with FILL_GROUP
+    expectedHeader = new String[] {"time", "city", "device_id", "s1", "s2"};
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,beijing,d1,null,1011,",
+          "1970-01-01T00:00:00.002Z,beijing,d1,102,1011,",
+          "1970-01-01T00:00:00.003Z,beijing,d1,103,1011,",
+          "1970-01-01T00:00:00.004Z,beijing,d1,104,1011,",
+          "1970-01-01T00:00:00.001Z,beijing,d2,101,null,",
+          "1970-01-01T00:00:00.002Z,beijing,d2,101,1022,",
+          "1970-01-01T00:00:00.003Z,beijing,d2,101,1033,",
+          "1970-01-01T00:00:00.004Z,beijing,d2,101,1044,",
+          "1970-01-01T00:00:00.001Z,shanghai,d1,null,2111,",
+          "1970-01-01T00:00:00.002Z,shanghai,d1,212,2111,",
+        };
+    tableResultSetEqualTest(
+        "select time,city,device_id,s1,s2 from table2 FILL METHOD PREVIOUS FILL_GROUP 2,3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // case11: all without time filter using previous fill with FILL_GROUP and TIME_COLUMN
+    tableResultSetEqualTest(
+        "select time,city,device_id,s1,s2 from table2 FILL METHOD PREVIOUS TIME_COLUMN 1 FILL_GROUP 2,3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // case12: all without time filter using previous fill with TIME_BOUND and FILL_GROUP
+    expectedHeader = new String[] {"time", "city", "device_id", "s1", "s2"};
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,beijing,d1,null,1011,",
+          "1970-01-01T00:00:00.002Z,beijing,d1,102,1011,",
+          "1970-01-01T00:00:00.003Z,beijing,d1,103,1011,",
+          "1970-01-01T00:00:00.004Z,beijing,d1,104,null,",
+          "1970-01-01T00:00:00.001Z,beijing,d2,101,null,",
+          "1970-01-01T00:00:00.002Z,beijing,d2,101,1022,",
+          "1970-01-01T00:00:00.003Z,beijing,d2,101,1033,",
+          "1970-01-01T00:00:00.004Z,beijing,d2,null,1044,",
+          "1970-01-01T00:00:00.001Z,shanghai,d1,null,2111,",
+          "1970-01-01T00:00:00.002Z,shanghai,d1,212,2111,",
+        };
+    tableResultSetEqualTest(
+        "select time,city,device_id,s1,s2 from table2 FILL METHOD PREVIOUS TIME_BOUND 2ms FILL_GROUP 2,3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // case13: all without time filter using previous fill with TIME_BOUND, FILL_GROUP and
+    // TIME_COLUMN
+    tableResultSetEqualTest(
+        "select time,city,device_id,s1,s2 from table2 FILL METHOD PREVIOUS TIME_BOUND 2ms TIME_COLUMN 1 FILL_GROUP 2,3",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -266,7 +343,7 @@ public class IoTDBFillTableIT {
           "1970-01-01T00:00:00.008Z,d1,null,null,null,null,text8,string8,0xcafebabe08,1970-01-01T00:00:00.008Z,2024-10-08,",
         };
     tableResultSetEqualTest(
-        "select time,device_id,s1,s2,s3,s5,s6,s7,s8,s9,s10 from table1 FILL(LINEAR)",
+        "select time,device_id,s1,s2,s3,s5,s6,s7,s8,s9,s10 from table1 FILL METHOD LINEAR",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -284,7 +361,7 @@ public class IoTDBFillTableIT {
           "1970-01-01T00:00:00.008Z,d1,null,null,null,null,text8,string8,0xcafebabe08,1970-01-01T00:00:00.008Z,2024-10-08,",
         };
     tableResultSetEqualTest(
-        "select time,device_id,s1,s2,s3,s5,s6,s7,s8,s9,s10 from table1 WHERE time > 1 FILL(LINEAR)",
+        "select time,device_id,s1,s2,s3,s5,s6,s7,s8,s9,s10 from table1 WHERE time > 1 FILL METHOD LINEAR",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -298,7 +375,7 @@ public class IoTDBFillTableIT {
           "1970-01-01T00:00:00.007Z,d1,7,77,7.7,true,null,null,null,null,null,",
         };
     tableResultSetEqualTest(
-        "select time,device_id,s1,s2,s3,s5,s6,s7,s8,s9,s10 from table1 WHERE time > 1 and time < 8 and s2 > 22 FILL(LINEAR)",
+        "select time,device_id,s1,s2,s3,s5,s6,s7,s8,s9,s10 from table1 WHERE time > 1 and time < 8 and s2 > 22 FILL METHOD LINEAR",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -318,7 +395,7 @@ public class IoTDBFillTableIT {
           "1970-01-01T00:00:00.008Z,d1,null,null,null,null,text8,string8,0xcafebabe08,1970-01-01T00:00:00.008Z,2024-10-08,",
         };
     tableResultSetEqualTest(
-        "select time,device_id,s1,s2,s3,s5,s6,s7,s8,s9,s10 from table1 FILL(LINEAR(1))",
+        "select time,device_id,s1,s2,s3,s5,s6,s7,s8,s9,s10 from table1 FILL METHOD LINEAR TIME_COLUMN 1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -337,7 +414,7 @@ public class IoTDBFillTableIT {
           "1970-01-01T00:00:00.008Z,d1,null,null,null,null,text8,string8,0xcafebabe08,1970-01-01T00:00:00.008Z,2024-10-08,",
         };
     tableResultSetEqualTest(
-        "select time,device_id,s1,s2,s3,s5,s6,s7,s8,s9,s10 from table1 FILL(LINEAR(10))",
+        "select time,device_id,s1,s2,s3,s5,s6,s7,s8,s9,s10 from table1 FILL METHOD LINEAR TIME_COLUMN 10",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -356,7 +433,7 @@ public class IoTDBFillTableIT {
           "1970-01-01T00:00:00.001Z,d1,1,11,1.1,true,text1,string1,0xcafebabe01,1970-01-01T00:00:00.001Z,2024-10-01,",
         };
     tableResultSetEqualTest(
-        "select time,device_id,s1,s2,s3,s5,s6,s7,s8,s9,s10 from table1 FILL(LINEAR) order by time desc",
+        "select time,device_id,s1,s2,s3,s5,s6,s7,s8,s9,s10 from table1 FILL METHOD LINEAR order by time desc",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -375,7 +452,7 @@ public class IoTDBFillTableIT {
           "1970-01-01T00:00:00.001Z,d1,1,11,1.1,true,text1,string1,0xcafebabe01,1970-01-01T00:00:00.001Z,2024-10-01,",
         };
     tableResultSetEqualTest(
-        "select time,device_id,s1,s2,s3,s5,s6,s7,s8,s9,s10 from table1 FILL(LINEAR(1)) order by s9 desc, time desc",
+        "select time,device_id,s1,s2,s3,s5,s6,s7,s8,s9,s10 from table1 FILL METHOD LINEAR TIME_COLUMN 1 order by s9 desc, time desc",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -394,7 +471,7 @@ public class IoTDBFillTableIT {
           "1970-01-01T00:00:00.008Z,d1,null,null,null,null,text8,string8,0xcafebabe08,1970-01-01T00:00:00.008Z,2024-10-08,",
         };
     tableResultSetEqualTest(
-        "select * from (select time,device_id,s1,s2,s3,s5,s6,s7,s8,s9,s10 from table1 order by time desc) FILL(LINEAR) order by time",
+        "select * from (select time,device_id,s1,s2,s3,s5,s6,s7,s8,s9,s10 from table1 order by time desc) FILL METHOD LINEAR order by time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -416,7 +493,7 @@ public class IoTDBFillTableIT {
           "1970-01-01T00:00:00.008Z,d1,100,100,100.0,100.0,true,text8,string8,0xcafebabe08,1970-01-01T00:00:00.008Z,2024-10-08,",
         };
     tableResultSetEqualTest(
-        "select * from table1 FILL(100)", expectedHeader, retArray, DATABASE_NAME);
+        "select * from table1 FILL METHOD CONSTANT 100", expectedHeader, retArray, DATABASE_NAME);
 
     // case 2: fill with float value
     expectedHeader =
@@ -434,7 +511,7 @@ public class IoTDBFillTableIT {
           "1970-01-01T00:00:00.008Z,d1,110,110,110.2,110.2,true,text8,string8,0xcafebabe08,1970-01-01T00:00:00.008Z,2024-10-08,",
         };
     tableResultSetEqualTest(
-        "select * from table1 FILL(110.2)", expectedHeader, retArray, DATABASE_NAME);
+        "select * from table1 FILL METHOD CONSTANT 110.2", expectedHeader, retArray, DATABASE_NAME);
 
     // case 3: fill with boolean value
     expectedHeader =
@@ -452,9 +529,9 @@ public class IoTDBFillTableIT {
           "1970-01-01T00:00:00.008Z,d1,0,0,0.0,0.0,false,text8,string8,0xcafebabe08,1970-01-01T00:00:00.008Z,2024-10-08,",
         };
     tableResultSetEqualTest(
-        "select * from table1 FILL(false)", expectedHeader, retArray, DATABASE_NAME);
+        "select * from table1 FILL METHOD CONSTANT false", expectedHeader, retArray, DATABASE_NAME);
 
-    // case 3: fill with string value
+    // case 4: fill with string value
     expectedHeader =
         new String[] {
           "time", "device_id", "s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10"
@@ -470,7 +547,10 @@ public class IoTDBFillTableIT {
           "1970-01-01T00:00:00.008Z,d1,null,null,null,null,false,text8,string8,0xcafebabe08,1970-01-01T00:00:00.008Z,2024-10-08,",
         };
     tableResultSetEqualTest(
-        "select * from table1 FILL('iotdb')", expectedHeader, retArray, DATABASE_NAME);
+        "select * from table1 FILL METHOD CONSTANT 'iotdb'",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
 
     expectedHeader =
         new String[] {
@@ -487,9 +567,12 @@ public class IoTDBFillTableIT {
           "1970-01-01T00:00:00.008Z,d1,null,null,null,null,false,text8,string8,0xcafebabe08,1970-01-01T00:00:00.008Z,2024-10-08,",
         };
     tableResultSetEqualTest(
-        "select * from table1 FILL('2018-05-06')", expectedHeader, retArray, DATABASE_NAME);
+        "select * from table1 FILL METHOD CONSTANT '2018-05-06'",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
 
-    // case 4: fill with blob value
+    // case 5: fill with blob value
     expectedHeader =
         new String[] {
           "time", "device_id", "s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10"
@@ -505,7 +588,10 @@ public class IoTDBFillTableIT {
           "1970-01-01T00:00:00.008Z,d1,null,null,null,null,null,text8,string8,0xcafebabe08,1970-01-01T00:00:00.008Z,2024-10-08,",
         };
     tableResultSetEqualTest(
-        "select * from table1 FILL(X'cafebabe99')", expectedHeader, retArray, DATABASE_NAME);
+        "select * from table1 FILL METHOD CONSTANT X'cafebabe99'",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
   }
 
   @Test
@@ -513,59 +599,88 @@ public class IoTDBFillTableIT {
 
     // --------------------------------- PREVIOUS FILL ---------------------------------
     tableAssertTestFail(
-        "select s1 from table1 FILL(PREVIOUS(1))",
+        "select s1 from table1 FILL METHOD PREVIOUS TIME_COLUMN 1",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Don't need to specify helper column index while timeDuration parameter is not specified",
+            + ": Don't need to specify TIME_COLUMN while either TIME_BOUND or FILL_GROUP parameter is not specified",
         DATABASE_NAME);
 
     tableAssertTestFail(
-        "select s1 from table1 FILL(PREVIOUS, 2ms)",
+        "select s1 from table1 FILL METHOD PREVIOUS TIME_BOUND 2ms",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Cannot infer the helper column for PREVIOUS FILL, there exists no column whose type is TIMESTAMP",
+            + ": Cannot infer TIME_COLUMN for PREVIOUS FILL, there exists no column whose type is TIMESTAMP",
         DATABASE_NAME);
 
     tableAssertTestFail(
-        "select s1, time from table1 FILL(PREVIOUS(1), 2ms)",
+        "select s1 from table1 FILL METHOD PREVIOUS FILL_GROUP 1",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Type of helper column for PREVIOUS FILL should only be TIMESTAMP, but type of the column you specify is INT32",
+            + ": Cannot infer TIME_COLUMN for PREVIOUS FILL, there exists no column whose type is TIMESTAMP",
         DATABASE_NAME);
 
     tableAssertTestFail(
-        "select s1, time from table1 FILL(PREVIOUS(0), 2ms)",
+        "select s1, time from table1 FILL METHOD PREVIOUS TIME_BOUND 2ms TIME_COLUMN 1",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": PREVIOUS FILL position 0 is not in select list",
+            + ": Type of TIME_COLUMN for PREVIOUS FILL should only be TIMESTAMP, but type of the column you specify is INT32",
         DATABASE_NAME);
 
     tableAssertTestFail(
-        "select s1, time from table1 FILL(PREVIOUS(3), 2ms)",
+        "select s1, time from table1 FILL METHOD PREVIOUS TIME_BOUND 2ms TIME_COLUMN 0",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": PREVIOUS FILL position 3 is not in select list",
+            + ": PREVIOUS FILL TIME_COLUMN position 0 is not in select list",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select s1, time from table1 FILL METHOD PREVIOUS TIME_BOUND 2ms TIME_COLUMN 3",
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+            + ": PREVIOUS FILL TIME_COLUMN position 3 is not in select list",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select s1, time from table1 FILL METHOD PREVIOUS FILL_GROUP 0",
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+            + ": PREVIOUS FILL FILL_GROUP position 0 is not in select list",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select s1, time from table1 FILL METHOD PREVIOUS FILL_GROUP 3",
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+            + ": PREVIOUS FILL FILL_GROUP position 3 is not in select list",
         DATABASE_NAME);
 
     // --------------------------------- LINEAR FILL ---------------------------------
-
     tableAssertTestFail(
-        "select s1 from table1 FILL(LINEAR)",
+        "select s1 from table1 FILL METHOD LINEAR",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Cannot infer the helper column for LINEAR FILL, there exists no column whose type is TIMESTAMP",
+            + ": Cannot infer TIME_COLUMN for LINEAR FILL, there exists no column whose type is TIMESTAMP",
         DATABASE_NAME);
 
     tableAssertTestFail(
-        "select s1, time from table1 FILL(LINEAR(1))",
+        "select s1, time from table1 FILL METHOD LINEAR TIME_COLUMN 1",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Type of helper column for LINEAR FILL should only be TIMESTAMP, but type of the column you specify is INT32",
+            + ": Type of TIME_COLUMN for LINEAR FILL should only be TIMESTAMP, but type of the column you specify is INT32",
         DATABASE_NAME);
 
     tableAssertTestFail(
-        "select s1, time from table1 FILL(LINEAR(0))",
+        "select s1, time from table1 FILL METHOD LINEAR TIME_COLUMN 0",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": LINEAR FILL position 0 is not in select list",
+            + ": LINEAR FILL TIME_COLUMN position 0 is not in select list",
         DATABASE_NAME);
 
     tableAssertTestFail(
-        "select s1, time from table1 FILL(LINEAR(3))",
+        "select s1, time from table1 FILL METHOD LINEAR TIME_COLUMN 3",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": LINEAR FILL position 3 is not in select list",
+            + ": LINEAR FILL TIME_COLUMN position 3 is not in select list",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select s1, time from table1 FILL METHOD LINEAR FILL_GROUP 0",
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+            + ": LINEAR FILL FILL_GROUP position 0 is not in select list",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select s1, time from table1 FILL METHOD LINEAR FILL_GROUP 3",
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+            + ": LINEAR FILL FILL_GROUP position 3 is not in select list",
         DATABASE_NAME);
   }
 }

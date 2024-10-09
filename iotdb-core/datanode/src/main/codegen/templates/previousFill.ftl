@@ -100,5 +100,10 @@ public class ${className} implements IFill {
       return new ${type.column}(size, Optional.empty(), array);
     }
   }
+
+  @Override
+  public void reset() {
+    previousIsNull = true;
+  }
 }
 </#list>
