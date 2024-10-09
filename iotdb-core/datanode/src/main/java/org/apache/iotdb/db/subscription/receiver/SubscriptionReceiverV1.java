@@ -261,8 +261,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     try {
       return handlePipeSubscribeSubscribeInternal(req);
     } catch (final SubscriptionPipeTimeoutException e) {
-      // rethrow timeout exception
-      throw e;
+      return PipeSubscribeSubscribeResp.toTPipeSubscribeResp(
+          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_PIPE_TIMEOUT_ERROR, e.getMessage()));
     } catch (final Exception e) {
       LOGGER.warn("Exception occurred when subscribing with request {}", req, e);
       final String exceptionMessage =
@@ -302,8 +302,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     try {
       return handlePipeSubscribeUnsubscribeInternal(req);
     } catch (final SubscriptionPipeTimeoutException e) {
-      // rethrow timeout exception
-      throw e;
+      return PipeSubscribeSubscribeResp.toTPipeSubscribeResp(
+          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_PIPE_TIMEOUT_ERROR, e.getMessage()));
     } catch (final Exception e) {
       LOGGER.warn("Exception occurred when unsubscribing with request {}", req, e);
       final String exceptionMessage =

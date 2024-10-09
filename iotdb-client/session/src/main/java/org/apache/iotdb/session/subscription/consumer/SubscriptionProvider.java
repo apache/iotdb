@@ -68,8 +68,13 @@ final class SubscriptionProvider extends SubscriptionSession {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionProvider.class);
 
-  private static final String SUBSCRIPTION_PIPE_TIMEOUT_MESSAGE =
-      "A timeout has occurred in procedures related to the pipe within the subscription procedure. Please manually check the subscription correctness later.";
+  private static final String STATUS_FORMATTER = "Status code is [%s], status message is [%s].";
+  private static final String INTERNAL_ERROR_FORMATTER =
+      "Internal error occurred. " + STATUS_FORMATTER;
+  private static final String SUBSCRIPTION_PIPE_TIMEOUT_FORMATTER =
+      "A timeout has occurred in procedures related to the pipe within the subscription procedure. "
+          + "Please manually check the subscription correctness later. "
+          + STATUS_FORMATTER;
 
   private String consumerId;
   private String consumerGroupId;
@@ -397,26 +402,25 @@ final class SubscriptionProvider extends SubscriptionSession {
       case 1906: // SUBSCRIPTION_CLOSE_ERROR
       case 1907: // SUBSCRIPTION_SUBSCRIBE_ERROR
       case 1908: // SUBSCRIPTION_UNSUBSCRIBE_ERROR
-        LOGGER.warn(
-            "Internal error occurred, status code {}, status message {}",
-            status.code,
-            status.message);
-        throw new SubscriptionRuntimeNonCriticalException(status.message);
+        {
+          final String errorMessage =
+              String.format(INTERNAL_ERROR_FORMATTER, status.code, status.message);
+          LOGGER.warn(errorMessage);
+          throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+        }
       case 1911: // SUBSCRIPTION_PIPE_TIMEOUT_ERROR
-        LOGGER.warn(
-            "Timed out to wait for pipe procedure return, status code {}, status message {}",
-            status.code,
-            status.message);
-        throw new SubscriptionPipeTimeoutException(SUBSCRIPTION_PIPE_TIMEOUT_MESSAGE);
+        throw new SubscriptionPipeTimeoutException(
+            String.format(SUBSCRIPTION_PIPE_TIMEOUT_FORMATTER, status.code, status.message));
       case 1900: // SUBSCRIPTION_VERSION_ERROR
       case 1901: // SUBSCRIPTION_TYPE_ERROR
       case 1909: // SUBSCRIPTION_MISSING_CUSTOMER
       default:
-        LOGGER.warn(
-            "Internal error occurred, status code {}, status message {}",
-            status.code,
-            status.message);
-        throw new SubscriptionRuntimeCriticalException(status.message);
+        {
+          final String errorMessage =
+              String.format(INTERNAL_ERROR_FORMATTER, status.code, status.message);
+          LOGGER.warn(errorMessage);
+          throw new SubscriptionRuntimeCriticalException(status.message);
+        }
     }
   }
 

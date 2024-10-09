@@ -1213,8 +1213,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
         return;
       } catch (final Exception e) {
         if (e instanceof SubscriptionPipeTimeoutException) {
-          // rethrow timeout exception for fast fail
-          throw e;
+          // degrade exception to log for pipe timeout
+          LOGGER.warn(e.getMessage());
+          return;
         }
         LOGGER.warn(
             "{} failed to subscribe topics {} from subscription provider {}, try next subscription provider...",
@@ -1247,8 +1248,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
         return;
       } catch (final Exception e) {
         if (e instanceof SubscriptionPipeTimeoutException) {
-          // rethrow timeout exception for fast fail
-          throw e;
+          // degrade exception to log for pipe timeout
+          LOGGER.warn(e.getMessage());
+          return;
         }
         LOGGER.warn(
             "{} failed to unsubscribe topics {} from subscription provider {}, try next subscription provider...",
