@@ -27,10 +27,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.regex.Pattern;
 
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_DATABASE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_TABLE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_CAPTURE_TABLE_DATABASE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_CAPTURE_TABLE_TABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_DATABASE_NAME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_TABLE_NAME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_DATABASE_NAME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_TABLE_NAME_KEY;
 
 public class TablePattern {
 
@@ -72,11 +72,9 @@ public class TablePattern {
   public static TablePattern parsePipePatternFromSourceParameters(
       final PipeParameters sourceParameters) {
     final String databaseNamePattern =
-        sourceParameters.getStringByKeys(
-            EXTRACTOR_CAPTURE_TABLE_DATABASE_KEY, SOURCE_CAPTURE_TABLE_DATABASE_KEY);
+        sourceParameters.getStringByKeys(EXTRACTOR_DATABASE_NAME_KEY, SOURCE_DATABASE_NAME_KEY);
     final String tableNamePattern =
-        sourceParameters.getStringByKeys(
-            EXTRACTOR_CAPTURE_TABLE_TABLE_KEY, SOURCE_CAPTURE_TABLE_TABLE_KEY);
+        sourceParameters.getStringByKeys(EXTRACTOR_TABLE_NAME_KEY, SOURCE_TABLE_NAME_KEY);
     try {
       return new TablePattern(databaseNamePattern, tableNamePattern);
     } catch (final Exception e) {
