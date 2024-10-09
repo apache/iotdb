@@ -55,6 +55,7 @@ public enum SchemaRegionPlanType {
   CREATE_TABLE_DEVICE((byte) 100),
   UPDATE_TABLE_DEVICE_ATTRIBUTE((byte) 101),
   COMMIT_UPDATE_TABLE_DEVICE_ATTRIBUTE((byte) 102),
+  ADD_NODE_LOCATION((byte) 103),
 
   // query plan doesn't need any ser/deSer, thus use one type to represent all
   READ_SCHEMA(Byte.MAX_VALUE);

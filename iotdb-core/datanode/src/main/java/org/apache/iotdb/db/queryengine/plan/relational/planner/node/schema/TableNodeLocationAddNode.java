@@ -38,6 +38,9 @@ import java.util.List;
 public class TableNodeLocationAddNode extends PlanNode implements ISchemaRegionPlan {
   private final TDataNodeLocation location;
 
+  public static final TableNodeLocationAddNode MOCK_INSTANCE =
+      new TableNodeLocationAddNode(new PlanNodeId(""), null);
+
   public TableNodeLocationAddNode(final PlanNodeId id, final TDataNodeLocation location) {
     super(id);
     this.location = location;
@@ -102,7 +105,7 @@ public class TableNodeLocationAddNode extends PlanNode implements ISchemaRegionP
 
   @Override
   public SchemaRegionPlanType getPlanType() {
-    return PlanNodeType.TABLE_DEVICE_LOCATION_ADD;
+    return SchemaRegionPlanType.ADD_NODE_LOCATION;
   }
 
   @Override
