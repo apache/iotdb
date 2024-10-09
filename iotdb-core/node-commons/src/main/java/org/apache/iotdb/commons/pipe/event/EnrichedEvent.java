@@ -83,6 +83,7 @@ public abstract class EnrichedEvent implements Event {
       final long endTime) {
     referenceCount = new AtomicInteger(0);
     isReleased = new AtomicBoolean(false);
+
     this.pipeName = pipeName;
     this.creationTime = creationTime;
     this.pipeTaskMeta = pipeTaskMeta;
@@ -90,8 +91,13 @@ public abstract class EnrichedEvent implements Event {
     this.tablePattern = tablePattern;
     this.startTime = startTime;
     this.endTime = endTime;
-    isPatternParsed = this.treePattern == null || this.treePattern.isRoot();
+
+    isPatternParsed =
+        (treePattern == null || treePattern.isRoot())
+            && (tablePattern == null
+                || !tablePattern.hasUserSpecifiedDatabasePatternOrTablePattern());
     isTimeParsed = Long.MIN_VALUE == startTime && Long.MAX_VALUE == endTime;
+
     addOnCommittedHook(
         () -> {
           if (shouldReportOnCommit) {
