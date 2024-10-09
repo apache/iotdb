@@ -310,7 +310,8 @@ public abstract class EnrichedEvent implements Event {
    *
    * @return the pattern string
    */
-  public final String getPatternString() {
+  // TODO: consider tablePattern
+  public final String getTreePatternString() {
     return treePattern != null ? treePattern.getPattern() : null;
   }
 
