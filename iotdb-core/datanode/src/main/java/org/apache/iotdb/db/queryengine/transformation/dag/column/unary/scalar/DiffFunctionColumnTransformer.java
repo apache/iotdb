@@ -71,12 +71,14 @@ public class DiffFunctionColumnTransformer extends UnaryColumnTransformer {
       } else {
         double currValue = childColumnTransformer.getType().getDouble(column, i);
         if (lastValueIsNull) {
-          columnBuilder.appendNull(); // lastValue is null, append null
+          // lastValue is null, append null
+          columnBuilder.appendNull();
         } else {
           returnType.writeDouble(columnBuilder, currValue - lastValue);
         }
 
-        lastValue = currValue; // currValue is not null, update lastValue
+        // currValue is not null, update lastValue
+        lastValue = currValue;
         lastValueIsNull = false;
       }
     }
