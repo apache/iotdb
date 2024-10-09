@@ -236,7 +236,8 @@ public enum ThreadName {
               PBTREE_RELEASE_MONITOR,
               SCHEMA_FORCE_MLOG,
               PBTREE_FLUSH_MONITOR,
-              PBTREE_WORKER_POOL));
+              PBTREE_WORKER_POOL,
+              GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE));
 
   private static final Set<ThreadName> clientServiceThreadNames =
       new HashSet<>(Arrays.asList(CLIENT_RPC_SERVICE, CLIENT_RPC_PROCESSOR));
