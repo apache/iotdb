@@ -118,26 +118,18 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
   }
 
   @Override
-  public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
-      throws SubscriptionException {
+  public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
     LOGGER.info(
         "AlterTopicProcedure: executeFromOperateOnDataNodes({})", updatedTopicMeta.getTopicName());
 
-    try {
-      final List<TSStatus> statuses = env.pushSingleTopicOnDataNode(updatedTopicMeta.serialize());
-      if (RpcUtils.squashResponseStatusList(statuses).getCode()
-          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new SubscriptionException(
-            String.format(
-                "Failed to alter topic (%s -> %s) on data nodes, because %s",
-                existedTopicMeta, updatedTopicMeta, statuses));
-      }
-    } catch (IOException e) {
-      LOGGER.warn("Failed to serialize the topic meta due to: ", e);
-      throw new SubscriptionException(
-          String.format(
-              "Failed to alter topic (%s -> %s) on data nodes, because %s",
-              existedTopicMeta, updatedTopicMeta, e.getMessage()));
+    final List<TSStatus> statuses = env.pushSingleTopicOnDataNode(updatedTopicMeta.serialize());
+    if (RpcUtils.squashResponseStatusList(statuses).getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn(
+          "Failed to alter topic ({} -> {}) on data nodes, because {}",
+          existedTopicMeta,
+          updatedTopicMeta,
+          statuses);
     }
   }
 
@@ -147,7 +139,8 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
   }
 
   @Override
-  public void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) {
+  public void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env)
+      throws SubscriptionException {
     LOGGER.info(
         "AlterTopicProcedure: rollbackFromOperateOnConfigNodes({})",
         updatedTopicMeta.getTopicName());
@@ -171,25 +164,18 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
   }
 
   @Override
-  public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
+  public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
     LOGGER.info(
         "AlterTopicProcedure: rollbackFromOperateOnDataNodes({})", updatedTopicMeta.getTopicName());
 
-    try {
-      final List<TSStatus> statuses = env.pushSingleTopicOnDataNode(existedTopicMeta.serialize());
-      if (RpcUtils.squashResponseStatusList(statuses).getCode()
-          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new SubscriptionException(
-            String.format(
-                "Failed to rollback from altering topic (%s -> %s) on data nodes, because %s",
-                updatedTopicMeta, existedTopicMeta, statuses));
-      }
-    } catch (IOException e) {
-      LOGGER.warn("Failed to serialize the topic meta due to: ", e);
-      throw new SubscriptionException(
-          String.format(
-              "Failed to rollback from altering topic (%s -> %s) on data nodes, because %s",
-              updatedTopicMeta, existedTopicMeta, e.getMessage()));
+    final List<TSStatus> statuses = env.pushSingleTopicOnDataNode(existedTopicMeta.serialize());
+    if (RpcUtils.squashResponseStatusList(statuses).getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn(
+          "Failed to rollback from altering topic ({} -> {}) on data nodes, because {}",
+          updatedTopicMeta,
+          existedTopicMeta,
+          statuses);
     }
   }
 
