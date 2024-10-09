@@ -110,6 +110,6 @@ public class TableNodeLocationAddNode extends PlanNode implements ISchemaRegionP
 
   @Override
   public <R, C> R accept(final SchemaRegionPlanVisitor<R, C> visitor, C context) {
-    return null;
+    return visitor.visitAddNodeLocation(this, context);
   }
 }
