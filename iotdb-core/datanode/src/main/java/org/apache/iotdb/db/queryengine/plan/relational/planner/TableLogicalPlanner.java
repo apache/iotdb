@@ -328,8 +328,7 @@ public class TableLogicalPlanner {
             statement.getTableName(),
             statement.getIdDeterminedFilterList(),
             statement.getIdFuzzyPredicate(),
-            statement.getColumnHeaderList(),
-            null);
+            statement.getColumnHeaderList());
 
     final CountSchemaMergeNode countMergeNode =
         new CountSchemaMergeNode(queryContext.getQueryId().genPlanNodeId());

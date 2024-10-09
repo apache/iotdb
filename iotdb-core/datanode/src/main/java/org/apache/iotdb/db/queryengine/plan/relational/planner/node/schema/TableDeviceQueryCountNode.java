@@ -42,8 +42,7 @@ public class TableDeviceQueryCountNode extends AbstractTableDeviceQueryNode {
       final String tableName,
       final List<List<SchemaFilter>> idDeterminedPredicateList,
       final Expression idFuzzyPredicate,
-      final List<ColumnHeader> columnHeaderList,
-      final TRegionReplicaSet schemaRegionReplicaSet) {
+      final List<ColumnHeader> columnHeaderList) {
     super(
         planNodeId,
         database,
@@ -51,7 +50,7 @@ public class TableDeviceQueryCountNode extends AbstractTableDeviceQueryNode {
         idDeterminedPredicateList,
         idFuzzyPredicate,
         columnHeaderList,
-        schemaRegionReplicaSet);
+        null);
   }
 
   @Override

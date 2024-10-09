@@ -50,7 +50,7 @@ public class TableDeviceFetchNode extends TableDeviceSourceNode {
       final List<ColumnHeader> columnHeaderList,
       final TRegionReplicaSet regionReplicaSet,
       final TDataNodeLocation senderLocation) {
-    super(id, database, tableName, columnHeaderList, regionReplicaSet);
+    super(id, database, tableName, columnHeaderList, regionReplicaSet, senderLocation);
     this.deviceIdList = deviceIdList;
   }
 

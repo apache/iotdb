@@ -53,12 +53,12 @@ public abstract class TableDeviceSourceNode extends SourceNode {
       final String database,
       final String tableName,
       final List<ColumnHeader> columnHeaderList,
-      final TRegionReplicaSet schemaRegionReplicaSet) {
+      final TDataNodeLocation senderLocation) {
     super(id);
     this.database = database;
     this.tableName = tableName;
     this.columnHeaderList = columnHeaderList;
-    this.schemaRegionReplicaSet = schemaRegionReplicaSet;
+    this.senderLocation = senderLocation;
   }
 
   public String getDatabase() {

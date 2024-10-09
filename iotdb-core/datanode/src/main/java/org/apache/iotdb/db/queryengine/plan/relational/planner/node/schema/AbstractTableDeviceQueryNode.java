@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
@@ -59,8 +59,8 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
       final List<List<SchemaFilter>> idDeterminedPredicateList,
       final Expression idFuzzyPredicate,
       final List<ColumnHeader> columnHeaderList,
-      final TRegionReplicaSet schemaRegionReplicaSet) {
-    super(planNodeId, database, tableName, columnHeaderList, schemaRegionReplicaSet);
+      final TDataNodeLocation senderLocation) {
+    super(planNodeId, database, tableName, columnHeaderList, senderLocation);
     this.idDeterminedPredicateList = idDeterminedPredicateList;
     this.idFuzzyPredicate = idFuzzyPredicate;
   }
@@ -164,6 +164,18 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
       columnHeaderList.add(ColumnHeader.deserialize(buffer));
     }
 
+    TDataNodeLocation senderLocation = null;
+    if (ReadWriteIOUtils.readBool(buffer)) {
+      senderLocation =
+          new TDataNodeLocation(
+              ReadWriteIOUtils.readInt(buffer),
+              null,
+              ThriftCommonsSerDeUtils.deserializeTEndPoint(buffer),
+              null,
+              null,
+              null);
+    }
+
     final long offset = isScan ? ReadWriteIOUtils.readLong(buffer) : 0;
     final long limit = isScan ? ReadWriteIOUtils.readLong(buffer) : 0;
 
@@ -176,7 +188,7 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
             idDeterminedFilterList,
             idFuzzyFilter,
             columnHeaderList,
-            null,
+            senderLocation,
             offset,
             limit)
         : new TableDeviceQueryCountNode(
@@ -185,8 +197,7 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
             tableName,
             idDeterminedFilterList,
             idFuzzyFilter,
-            columnHeaderList,
-            null);
+            columnHeaderList);
   }
 
   @Override
