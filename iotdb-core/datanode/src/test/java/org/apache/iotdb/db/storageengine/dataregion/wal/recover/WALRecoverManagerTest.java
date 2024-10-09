@@ -139,7 +139,7 @@ public class WALRecoverManagerTest {
       tsFileWithoutWALResource.close();
     }
     checkpointManager.close();
-    if (! bufferClosed) {
+    if (!bufferClosed) {
       walBuffer.close();
     }
     config.setWalMode(prevMode);
