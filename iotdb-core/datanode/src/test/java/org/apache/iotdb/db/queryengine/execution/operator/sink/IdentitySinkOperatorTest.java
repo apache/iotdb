@@ -208,23 +208,30 @@ public class IdentitySinkOperatorTest {
         }
       }
 
-      while (seriesScanOperator4.hasNext()
-          && identitySinkOperator.isBlocked().isDone()
-          && identitySinkOperator.hasNext()) {
-        TsBlock identityTsBlock = seriesScanOperator4.next();
-        TsBlock tsBlock = identitySinkOperator.next();
-        if (tsBlock == null) {
-          continue;
-        }
-        assertEquals(1, tsBlock.getValueColumnCount());
-        assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
-        assertNotNull(identityTsBlock);
-        assertEquals(identityTsBlock.getPositionCount(), tsBlock.getPositionCount());
-        for (int i = 0; i < identityTsBlock.getPositionCount(); i++) {
-          assertEquals(identityTsBlock.getColumn(0).getInt(i), tsBlock.getColumn(0).getInt(i));
+      List<Integer> scanOp4Result = new ArrayList<>();
+      List<Integer> identitySinkOpResult = new ArrayList<>();
+      while (seriesScanOperator4.hasNext()) {
+        TsBlock seriesScanBlock = seriesScanOperator4.next();
+        assertNotNull(seriesScanBlock);
+        for (int i = 0; i < seriesScanBlock.getPositionCount(); i++) {
+          scanOp4Result.add(seriesScanBlock.getColumn(0).getInt(i));
         }
       }
 
+      while (identitySinkOperator.isBlocked().isDone() && identitySinkOperator.hasNext()) {
+        TsBlock identityTsBlock = identitySinkOperator.next();
+        if (identityTsBlock == null) {
+          continue;
+        }
+        assertEquals(1, identityTsBlock.getValueColumnCount());
+        assertTrue(identityTsBlock.getColumn(0) instanceof IntColumn);
+        for (int i = 0; i < identityTsBlock.getPositionCount(); i++) {
+          identitySinkOpResult.add(identityTsBlock.getColumn(0).getInt(i));
+        }
+      }
+
+      assertEquals(500, scanOp4Result.size());
+      assertEquals(scanOp4Result, identitySinkOpResult);
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();

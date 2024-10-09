@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
-import java.util.Objects;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
@@ -31,6 +30,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Comparator;
+import java.util.Objects;
 
 public class TreeDeletionEntry extends ModEntry {
 
@@ -149,7 +149,8 @@ public class TreeDeletionEntry extends ModEntry {
       return false;
     }
     TreeDeletionEntry that = (TreeDeletionEntry) o;
-    return Objects.equals(pathPattern, that.pathPattern) && Objects.equals(timeRange, that.timeRange);
+    return Objects.equals(pathPattern, that.pathPattern)
+        && Objects.equals(timeRange, that.timeRange);
   }
 
   @Override

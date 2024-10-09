@@ -297,7 +297,8 @@ public class ResourceManagerTest {
     prepareFile(tsFileResource1Copy, 0, ptNum, 0);
     tsFileResource1Copy.degradeTimeIndex();
     // the memory is enough for downgraded file1 and non-downgraded file2
-    tsFileResourceManager.setTimeIndexMemoryThreshold(tsFileResource1Copy.calculateRamSize() + tsFileResource2.calculateRamSize());
+    tsFileResourceManager.setTimeIndexMemoryThreshold(
+        tsFileResource1Copy.calculateRamSize() + tsFileResource2.calculateRamSize());
 
     tsFileResourceManager.registerSealedTsFileResource(tsFileResource2);
     assertEquals(
