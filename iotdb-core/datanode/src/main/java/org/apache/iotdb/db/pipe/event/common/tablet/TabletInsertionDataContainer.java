@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.event.common.tablet;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
@@ -99,7 +99,7 @@ public class TabletInsertionDataContainer {
       final PipeTaskMeta pipeTaskMeta,
       final EnrichedEvent sourceEvent,
       final InsertNode insertNode,
-      final PipePattern pattern) {
+      final TreePattern pattern) {
     this.pipeTaskMeta = pipeTaskMeta;
     this.sourceEvent = sourceEvent;
 
@@ -118,7 +118,7 @@ public class TabletInsertionDataContainer {
       final EnrichedEvent sourceEvent,
       final Tablet tablet,
       final boolean isAligned,
-      final PipePattern pattern) {
+      final TreePattern pattern) {
     this.pipeTaskMeta = pipeTaskMeta;
     this.sourceEvent = sourceEvent;
 
@@ -126,7 +126,7 @@ public class TabletInsertionDataContainer {
   }
 
   @TestOnly
-  public TabletInsertionDataContainer(final InsertNode insertNode, final PipePattern pattern) {
+  public TabletInsertionDataContainer(final InsertNode insertNode, final TreePattern pattern) {
     this(null, null, insertNode, pattern);
   }
 
@@ -140,7 +140,7 @@ public class TabletInsertionDataContainer {
 
   //////////////////////////// parse ////////////////////////////
 
-  private void parse(final InsertRowNode insertRowNode, final PipePattern pattern) {
+  private void parse(final InsertRowNode insertRowNode, final TreePattern pattern) {
     final int originColumnSize = insertRowNode.getMeasurements().length;
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
@@ -209,7 +209,7 @@ public class TabletInsertionDataContainer {
     }
   }
 
-  private void parse(final InsertTabletNode insertTabletNode, final PipePattern pattern) {
+  private void parse(final InsertTabletNode insertTabletNode, final TreePattern pattern) {
     final int originColumnSize = insertTabletNode.getMeasurements().length;
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
@@ -294,7 +294,7 @@ public class TabletInsertionDataContainer {
     }
   }
 
-  private void parse(final Tablet tablet, final boolean isAligned, final PipePattern pattern) {
+  private void parse(final Tablet tablet, final boolean isAligned, final TreePattern pattern) {
     final int originColumnSize = tablet.getSchemas().size();
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
@@ -389,7 +389,7 @@ public class TabletInsertionDataContainer {
 
   private void generateColumnIndexMapper(
       final String[] originMeasurementList,
-      final PipePattern pattern,
+      final TreePattern pattern,
       final Integer[] originColumnIndex2FilteredColumnIndexMapperList) {
     final int originColumnSize = originMeasurementList.length;
 

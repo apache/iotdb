@@ -21,8 +21,9 @@ package org.apache.iotdb.db.pipe.extractor.dataregion;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBExtractor;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -139,12 +140,12 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
             EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE,
             EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE);
 
-    // Get the pattern format to check whether the pattern is legal
-    final PipePattern pattern =
-        PipePattern.parsePipePatternFromSourceParameters(validator.getParameters());
-
-    // Check whether the pattern is legal
-    validatePattern(pattern);
+    // Validate tree pattern and table pattern
+    final TreePattern treePattern =
+        TreePattern.parsePipePatternFromSourceParameters(validator.getParameters());
+    final TablePattern tablePattern =
+        TablePattern.parsePipePatternFromSourceParameters(validator.getParameters());
+    validatePattern(treePattern, tablePattern);
 
     // Validate extractor.history.enable and extractor.realtime.enable
     validator
@@ -218,19 +219,26 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
     realtimeExtractor.validate(validator);
   }
 
-  private void validatePattern(final PipePattern pattern) {
-    if (!pattern.isLegal()) {
-      throw new IllegalArgumentException(String.format("Pattern \"%s\" is illegal.", pattern));
+  private void validatePattern(final TreePattern treePattern, final TablePattern tablePattern) {
+    if (!treePattern.isLegal()) {
+      throw new IllegalArgumentException(String.format("Pattern \"%s\" is illegal.", treePattern));
     }
 
     if (shouldExtractDeletion
-        && !(pattern instanceof IoTDBPipePattern
-            && (((IoTDBPipePattern) pattern).isPrefix()
-                || ((IoTDBPipePattern) pattern).isFullPath()))) {
+        && !(treePattern instanceof IoTDBTreePattern
+            && (((IoTDBTreePattern) treePattern).isPrefix()
+                || ((IoTDBTreePattern) treePattern).isFullPath()))) {
       throw new IllegalArgumentException(
           String.format(
               "The path pattern %s is not valid for the source. Only prefix or full path is allowed.",
-              pattern));
+              treePattern));
+    }
+
+    if (shouldExtractDeletion && tablePattern.hasUserSpecifiedDatabasePatternOrTablePattern()) {
+      throw new IllegalArgumentException(
+          String.format(
+              "The table model pattern %s can not be specified when deletion capture is enabled.",
+              tablePattern));
     }
   }
 
