@@ -74,7 +74,6 @@ public abstract class TernaryColumnTransformer extends ColumnTransformer {
     firstColumnTransformer.clearCache();
     secondColumnTransformer.clearCache();
     thirdColumnTransformer.clearCache();
-    ;
   }
 
   protected abstract void doTransform(

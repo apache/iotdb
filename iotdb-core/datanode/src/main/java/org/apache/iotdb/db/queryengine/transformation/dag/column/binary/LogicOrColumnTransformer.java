@@ -33,8 +33,7 @@ public class LogicOrColumnTransformer extends LogicBinaryColumnTransformer {
 
   @Override
   public void evaluateWithSelection(boolean[] selection) {
-    boolean[] selectionCopy = new boolean[selection.length];
-    System.arraycopy(selection, 0, selectionCopy, 0, selection.length);
+    boolean[] selectionCopy = selection.clone();
 
     leftTransformer.evaluateWithSelection(selectionCopy);
     Column leftColumn = leftTransformer.getColumn();

@@ -166,9 +166,4 @@ public abstract class AbstractCaseWhenThenColumnTransformer extends ColumnTransf
   protected void checkType() {
     // do nothing
   }
-
-  @Override
-  public void clearCache() {
-    super.clearCache();
-  }
 }

@@ -100,9 +100,8 @@ public class LogicalAndMultiColumnTransformer extends LogicalMultiColumnTransfor
       }
 
       // have no null, all is true, result will be true
-      // have no null, and also have false, result will be false
+      // have any false, result will be false
       // have null, and others are all true, result will be null
-      // have null, and also have false, result will be false
       if (!result) {
         returnType.writeBoolean(builder, false);
       } else if (hasNull) {

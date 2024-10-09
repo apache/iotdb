@@ -41,17 +41,6 @@ public abstract class ColumnTransformer {
     referenceCount = 0;
   }
 
-  /**
-   * Return whether the types of two ColumnTransformer are equal. If one ColumnTransformer is {@link
-   * NullColumnTransformer} (Only the Type of NullColumnTransformer is null), return {@code true}.
-   */
-  public static boolean typeEquals(ColumnTransformer a, ColumnTransformer b) {
-    if (a.getType() == null || b.getType() == null) {
-      return true;
-    }
-    return a.getType().getTypeEnum().equals(b.getType().getTypeEnum());
-  }
-
   public void tryEvaluate() {
     if (!columnCache.hasCached()) {
       evaluate();
@@ -83,6 +72,17 @@ public abstract class ColumnTransformer {
       return true;
     }
     return isNumericType(returnType);
+  }
+
+  /**
+   * Return whether the types of two ColumnTransformer are equal. If one ColumnTransformer is {@link
+   * NullColumnTransformer} (Only the Type of NullColumnTransformer is null), return {@code true}.
+   */
+  public static boolean typeEquals(ColumnTransformer a, ColumnTransformer b) {
+    if (a.getType() == null || b.getType() == null) {
+      return true;
+    }
+    return a.getType().getTypeEnum().equals(b.getType().getTypeEnum());
   }
 
   /**

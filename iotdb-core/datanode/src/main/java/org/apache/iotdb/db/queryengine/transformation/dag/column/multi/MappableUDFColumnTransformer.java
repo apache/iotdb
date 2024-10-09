@@ -45,7 +45,6 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
     for (ColumnTransformer inputColumnTransformer : inputColumnTransformers) {
       inputColumnTransformer.tryEvaluate();
     }
-    // construct input TsBlock with columns
     doTransform();
   }
 
@@ -62,14 +61,15 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
   }
 
   private void doTransform() {
-    int columnSize = inputColumnTransformers.length;
-    Column[] columns = new Column[columnSize];
-    for (int i = 0; i < columnSize; i++) {
+    int size = inputColumnTransformers.length;
+    Column[] columns = new Column[size];
+    for (int i = 0; i < size; i++) {
       columns[i] = inputColumnTransformers[i].getColumn();
     }
+    // construct input TsBlock with columns
     int positionCount = inputColumnTransformers[0].getColumnCachePositionCount();
     ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
-
+    // executor UDF and cache result
     executor.execute(columns, builder);
     initializeColumnCache(builder.build());
   }

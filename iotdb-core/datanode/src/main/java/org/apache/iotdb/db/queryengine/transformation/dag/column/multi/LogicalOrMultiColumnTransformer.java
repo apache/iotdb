@@ -37,7 +37,6 @@ public class LogicalOrMultiColumnTransformer extends LogicalMultiColumnTransform
   @Override
   public void evaluateWithSelection(boolean[] selection) {
     boolean[] selectionCopy = selection.clone();
-    boolean[] result = new boolean[selection.length];
     boolean[] hasNull = new boolean[selection.length];
 
     List<Column> childColumns = new ArrayList<>();
@@ -49,12 +48,8 @@ public class LogicalOrMultiColumnTransformer extends LogicalMultiColumnTransform
       for (int i = 0; i < childColumn.getPositionCount(); i++) {
         if (childColumn.isNull(i)) {
           hasNull[i] = true;
-        } else {
-          if (childColumn.getBoolean(i)) {
-            result[i] = true;
-            selectionCopy[i] = false;
-            break;
-          }
+        } else if (childColumn.getBoolean(i)) {
+          selectionCopy[i] = false;
         }
       }
     }
@@ -64,7 +59,10 @@ public class LogicalOrMultiColumnTransformer extends LogicalMultiColumnTransform
 
     for (int i = 0; i < positionCount; i++) {
       if (selection[i]) {
-        if (result[i]) {
+        // have any true, result will be true
+        // have no true, and have both false and null, result will be null
+        // have all false, result will be false
+        if (!selectionCopy[i]) {
           returnType.writeBoolean(builder, true);
         } else {
           if (hasNull[i]) {
