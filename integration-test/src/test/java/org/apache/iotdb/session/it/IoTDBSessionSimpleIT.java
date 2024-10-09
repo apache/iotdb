@@ -1159,6 +1159,7 @@ public class IoTDBSessionSimpleIT {
       session.executeNonQueryStatement("set ttl to root.sg.d1 1");
       try {
         session.insertRecords(devices, times, measurements, datatypes, values);
+        fail();
       } catch (Exception e) {
         Assert.assertTrue(e.getMessage().contains("less than ttl time bound"));
       }
