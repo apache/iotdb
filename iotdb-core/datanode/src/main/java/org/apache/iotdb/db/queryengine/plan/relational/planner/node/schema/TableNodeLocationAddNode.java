@@ -19,11 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
+
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -31,9 +36,11 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 public class TableNodeLocationAddNode extends PlanNode implements ISchemaRegionPlan {
+  private final TDataNodeLocation location;
 
-  protected TableNodeLocationAddNode(final PlanNodeId id) {
+  public TableNodeLocationAddNode(final PlanNodeId id, final TDataNodeLocation location) {
     super(id);
+    this.location = location;
   }
 
   @Override
@@ -48,7 +55,7 @@ public class TableNodeLocationAddNode extends PlanNode implements ISchemaRegionP
 
   @Override
   public PlanNode clone() {
-    return null;
+    return new TableNodeLocationAddNode(id, location);
   }
 
   @Override
@@ -62,14 +69,40 @@ public class TableNodeLocationAddNode extends PlanNode implements ISchemaRegionP
   }
 
   @Override
-  protected void serializeAttributes(final ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(final ByteBuffer byteBuffer) {
+    getType().serialize(byteBuffer);
+    ReadWriteIOUtils.write(location.getDataNodeId(), byteBuffer);
+    ThriftCommonsSerDeUtils.serializeTEndPoint(location.getInternalEndPoint(), byteBuffer);
+  }
 
   @Override
-  protected void serializeAttributes(final DataOutputStream stream) throws IOException {}
+  protected void serializeAttributes(final DataOutputStream stream) throws IOException {
+    getType().serialize(stream);
+    ReadWriteIOUtils.write(location.getDataNodeId(), stream);
+    ThriftCommonsSerDeUtils.serializeTEndPoint(location.getInternalEndPoint(), stream);
+  }
+
+  public static PlanNode deserialize(final ByteBuffer buffer) {
+    final TDataNodeLocation location =
+        new TDataNodeLocation(
+            ReadWriteIOUtils.readInt(buffer),
+            null,
+            ThriftCommonsSerDeUtils.deserializeTEndPoint(buffer),
+            null,
+            null,
+            null);
+    final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
+    return new TableNodeLocationAddNode(planNodeId, location);
+  }
+
+  @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.TABLE_DEVICE_LOCATION_ADD;
+  }
 
   @Override
   public SchemaRegionPlanType getPlanType() {
-    return null;
+    return PlanNodeType.TABLE_DEVICE_LOCATION_ADD;
   }
 
   @Override

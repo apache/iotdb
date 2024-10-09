@@ -120,6 +120,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Table
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryCountNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -240,6 +241,7 @@ public enum PlanNodeType {
   TABLE_DEVICE_QUERY_COUNT((short) 906),
   TABLE_DEVICE_ATTRIBUTE_UPDATE((short) 907),
   TABLE_DEVICE_ATTRIBUTE_COMMIT((short) 908),
+  TABLE_DEVICE_LOCATION_ADD((short) 909),
 
   TABLE_SCAN_NODE((short) 1000),
   TABLE_FILTER_NODE((short) 1001),
@@ -537,6 +539,8 @@ public enum PlanNodeType {
         return TableDeviceAttributeUpdateNode.deserialize(buffer);
       case 908:
         return TableDeviceAttributeCommitUpdateNode.deserialize(buffer);
+      case 909:
+        return TableNodeLocationAddNode.deserialize(buffer);
       case 1000:
         return org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode
             .deserialize(buffer);

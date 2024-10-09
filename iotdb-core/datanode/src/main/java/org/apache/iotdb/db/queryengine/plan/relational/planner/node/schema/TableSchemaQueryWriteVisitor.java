@@ -57,5 +57,6 @@ public class TableSchemaQueryWriteVisitor
     if (Objects.nonNull(node.getSenderLocation())) {
       return null;
     }
+    return null;
   }
 }
