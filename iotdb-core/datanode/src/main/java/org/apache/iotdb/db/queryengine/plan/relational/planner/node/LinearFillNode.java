@@ -26,28 +26,41 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
 import com.google.common.collect.Iterables;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
+import javax.annotation.Nullable;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 public class LinearFillNode extends FillNode {
   private final Symbol helperColumn;
 
-  public LinearFillNode(PlanNodeId id, PlanNode child, Symbol helperColumn) {
+  @Nullable private final List<Symbol> groupingKeys;
+
+  public LinearFillNode(
+      PlanNodeId id, PlanNode child, Symbol helperColumn, List<Symbol> groupingKeys) {
     super(id, child);
     this.helperColumn = helperColumn;
+    this.groupingKeys = groupingKeys;
   }
 
   public Symbol getHelperColumn() {
     return helperColumn;
   }
 
+  public Optional<List<Symbol>> getGroupingKeys() {
+    return Optional.ofNullable(groupingKeys);
+  }
+
   @Override
   public PlanNode clone() {
-    return new LinearFillNode(id, null, helperColumn);
+    return new LinearFillNode(id, null, helperColumn, groupingKeys);
   }
 
   @Override
@@ -59,23 +72,51 @@ public class LinearFillNode extends FillNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.TABLE_LINEAR_FILL_NODE.serialize(byteBuffer);
     Symbol.serialize(helperColumn, byteBuffer);
+    if (groupingKeys == null) {
+      ReadWriteIOUtils.write(false, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(true, byteBuffer);
+      ReadWriteIOUtils.write(groupingKeys.size(), byteBuffer);
+      for (Symbol symbol : groupingKeys) {
+        Symbol.serialize(symbol, byteBuffer);
+      }
+    }
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.TABLE_LINEAR_FILL_NODE.serialize(stream);
     Symbol.serialize(helperColumn, stream);
+    if (groupingKeys == null) {
+      ReadWriteIOUtils.write(false, stream);
+    } else {
+      ReadWriteIOUtils.write(true, stream);
+      ReadWriteIOUtils.write(groupingKeys.size(), stream);
+      for (Symbol symbol : groupingKeys) {
+        Symbol.serialize(symbol, stream);
+      }
+    }
   }
 
   public static LinearFillNode deserialize(ByteBuffer byteBuffer) {
     Symbol helperColumn = Symbol.deserialize(byteBuffer);
+    boolean hasValue = ReadWriteIOUtils.readBool(byteBuffer);
+    List<Symbol> groupingKeys = null;
+    if (hasValue) {
+      int size = ReadWriteIOUtils.readInt(byteBuffer);
+      groupingKeys = new ArrayList<>(size);
+      while (size-- > 0) {
+        groupingKeys.add(Symbol.deserialize(byteBuffer));
+      }
+    }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new LinearFillNode(planNodeId, null, helperColumn);
+    return new LinearFillNode(planNodeId, null, helperColumn, groupingKeys);
   }
 
   @Override
   public PlanNode replaceChildren(List<PlanNode> newChildren) {
-    return new LinearFillNode(id, Iterables.getOnlyElement(newChildren), helperColumn);
+    return new LinearFillNode(
+        id, Iterables.getOnlyElement(newChildren), helperColumn, groupingKeys);
   }
 
   @Override

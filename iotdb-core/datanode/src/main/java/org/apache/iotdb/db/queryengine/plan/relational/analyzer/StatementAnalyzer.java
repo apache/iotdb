@@ -2124,8 +2124,10 @@ public class StatementAnalyzer {
     private void analyzeFill(Fill node, Scope scope) {
       Analysis.FillAnalysis fillAnalysis;
       if (node.getFillMethod() == FillPolicy.PREVIOUS) {
-        if (node.getTimeDurationThreshold().isPresent()) {
-          FieldReference helperColumn = getHelperColumn(node, scope, FillPolicy.PREVIOUS);
+        FieldReference timeColumn = null;
+        List<FieldReference> groupingKeys = null;
+        if (node.getTimeBound().isPresent() || node.getFillGroupingElements().isPresent()) {
+          timeColumn = getHelperColumn(node, scope, FillPolicy.PREVIOUS);
           ExpressionAnalyzer.analyzeExpression(
               metadata,
               queryContext,
@@ -2134,16 +2136,16 @@ public class StatementAnalyzer {
               accessControl,
               scope,
               analysis,
-              helperColumn,
+              timeColumn,
               WarningCollector.NOOP,
               correlationSupport);
-          fillAnalysis =
-              new Analysis.PreviousFillAnalysis(
-                  node.getTimeDurationThreshold().get(), helperColumn);
-        } else {
-          fillAnalysis = new Analysis.PreviousFillAnalysis(null, null);
+
+          groupingKeys = analyzeFillGroup(node, scope, FillPolicy.PREVIOUS);
         }
-      } else if (node.getFillMethod() == FillPolicy.VALUE) {
+        fillAnalysis =
+            new Analysis.PreviousFillAnalysis(
+                node.getTimeBound().orElse(null), timeColumn, groupingKeys);
+      } else if (node.getFillMethod() == FillPolicy.CONSTANT) {
         Literal literal = node.getFillValue().get();
         ExpressionAnalyzer.analyzeExpression(
             metadata,
@@ -2170,7 +2172,8 @@ public class StatementAnalyzer {
             helperColumn,
             WarningCollector.NOOP,
             correlationSupport);
-        fillAnalysis = new Analysis.LinearFillAnalysis(helperColumn);
+        List<FieldReference> groupingKeys = analyzeFillGroup(node, scope, FillPolicy.LINEAR);
+        fillAnalysis = new Analysis.LinearFillAnalysis(helperColumn, groupingKeys);
       } else {
         throw new IllegalArgumentException("Unknown fill method: " + node.getFillMethod());
       }
@@ -2180,22 +2183,9 @@ public class StatementAnalyzer {
 
     private FieldReference getHelperColumn(Fill node, Scope scope, FillPolicy fillMethod) {
       FieldReference helperColumn;
-      if (node.getIndex().isPresent()) {
-        long ordinal = node.getIndex().get().getParsedValue();
-        if (ordinal < 1 || ordinal > scope.getRelationType().getVisibleFieldCount()) {
-          throw new SemanticException(
-              String.format(
-                  "%s FILL position %s is not in select list", fillMethod.name(), ordinal));
-        } else if (!isTimestampType(
-            scope.getRelationType().getFieldByIndex((int) ordinal - 1).getType())) {
-          throw new SemanticException(
-              String.format(
-                  "Type of helper column for %s FILL should only be TIMESTAMP, but type of the column you specify is %s",
-                  fillMethod.name(),
-                  scope.getRelationType().getFieldByIndex((int) ordinal - 1).getType()));
-        } else {
-          helperColumn = new FieldReference(toIntExact(ordinal - 1));
-        }
+      if (node.getTimeColumnIndex().isPresent()) {
+        helperColumn =
+            getFieldReferenceForTimeColumn(node.getTimeColumnIndex().get(), scope, fillMethod);
       } else {
         // if user doesn't specify the index of helper column, we use first column whose data type
         // is TIMESTAMP instead.
@@ -2209,12 +2199,78 @@ public class StatementAnalyzer {
         if (index == -1) {
           throw new SemanticException(
               String.format(
-                  "Cannot infer the helper column for %s FILL, there exists no column whose type is TIMESTAMP",
+                  "Cannot infer the time column for %s FILL, there exists no column whose type is TIMESTAMP",
                   fillMethod.name()));
         }
         helperColumn = new FieldReference(index);
       }
       return helperColumn;
+    }
+
+    private List<FieldReference> analyzeFillGroup(Fill node, Scope scope, FillPolicy fillMethod) {
+      if (node.getFillGroupingElements().isPresent()) {
+        ImmutableList.Builder<FieldReference> groupingFieldsBuilder = ImmutableList.builder();
+        for (LongLiteral index : node.getFillGroupingElements().get()) {
+          FieldReference element = getFieldReferenceForFillGroup(index, scope, fillMethod);
+          groupingFieldsBuilder.add(element);
+          ExpressionAnalyzer.analyzeExpression(
+              metadata,
+              queryContext,
+              sessionContext,
+              statementAnalyzerFactory,
+              accessControl,
+              scope,
+              analysis,
+              element,
+              WarningCollector.NOOP,
+              correlationSupport);
+        }
+        return groupingFieldsBuilder.build();
+      } else {
+        return null;
+      }
+    }
+
+    private FieldReference getFieldReferenceForTimeColumn(
+        LongLiteral index, Scope scope, FillPolicy fillMethod) {
+      long ordinal = index.getParsedValue();
+      if (ordinal < 1 || ordinal > scope.getRelationType().getVisibleFieldCount()) {
+        throw new SemanticException(
+            String.format(
+                "%s FILL TIME_COLUMN position %s is not in select list",
+                fillMethod.name(), ordinal));
+      } else if (!isTimestampType(
+          scope.getRelationType().getFieldByIndex((int) ordinal - 1).getType())) {
+        throw new SemanticException(
+            String.format(
+                "Type of TIME_COLUMN for %s FILL should only be TIMESTAMP, but type of the column you specify is %s",
+                fillMethod.name(),
+                scope.getRelationType().getFieldByIndex((int) ordinal - 1).getType()));
+      } else {
+        return new FieldReference(toIntExact(ordinal - 1));
+      }
+    }
+
+    private FieldReference getFieldReferenceForFillGroup(
+        LongLiteral index, Scope scope, FillPolicy fillMethod) {
+      long ordinal = index.getParsedValue();
+      if (ordinal < 1 || ordinal > scope.getRelationType().getVisibleFieldCount()) {
+        throw new SemanticException(
+            String.format(
+                "%s FILL FILL_GROUP position %s is not in select list",
+                fillMethod.name(), ordinal));
+      } else if (!scope
+          .getRelationType()
+          .getFieldByIndex((int) ordinal - 1)
+          .getType()
+          .isOrderable()) {
+        throw new SemanticException(
+            String.format(
+                "Type %s is not orderable, and therefore cannot be used in FILL_GROUP: %s",
+                scope.getRelationType().getFieldByIndex((int) ordinal - 1).getType(), index));
+      } else {
+        return new FieldReference(toIntExact(ordinal - 1));
+      }
     }
 
     private List<Expression> analyzeOrderBy(

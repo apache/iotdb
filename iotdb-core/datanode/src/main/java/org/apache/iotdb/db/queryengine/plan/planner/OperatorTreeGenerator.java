@@ -1325,7 +1325,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 TreeFillOperator.class.getSimpleName());
     switch (fillPolicy) {
-      case VALUE:
+      case CONSTANT:
         Literal literal = descriptor.getFillValue();
         return new TreeFillOperator(
             operatorContext, getConstantFill(inputColumns, inputDataTypes, literal), child);

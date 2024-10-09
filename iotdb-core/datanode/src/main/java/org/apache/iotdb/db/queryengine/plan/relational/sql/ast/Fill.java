@@ -39,44 +39,47 @@ public class Fill extends Node {
   private final Literal fillValue;
 
   // used for previous fill
-  private final TimeDuration timeDurationThreshold;
+  private final TimeDuration timeBound;
 
   // used for linear fill or previous fill
-  private final LongLiteral index;
+  private final LongLiteral timeColumnIndex;
+
+  // used for linear fill or previous fill
+  private final List<LongLiteral> fillGroupingElements;
 
   // used for constant fill
   public Fill(NodeLocation location, Literal fillValue) {
     super(requireNonNull(location, "location is null"));
     this.fillValue = fillValue;
-    this.timeDurationThreshold = null;
-    this.index = null;
-    this.fillMethod = FillPolicy.VALUE;
+    this.timeBound = null;
+    this.timeColumnIndex = null;
+    this.fillMethod = FillPolicy.CONSTANT;
+    this.fillGroupingElements = null;
   }
 
   // used for previous fill
-  public Fill(NodeLocation location, TimeDuration timeDurationThreshold, LongLiteral index) {
+  public Fill(
+      NodeLocation location,
+      TimeDuration timeBound,
+      LongLiteral timeColumnIndex,
+      List<LongLiteral> fillGroupingElements) {
     super(requireNonNull(location, "location is null"));
     this.fillValue = null;
-    this.timeDurationThreshold = timeDurationThreshold;
-    this.index = index;
+    this.timeBound = timeBound;
+    this.timeColumnIndex = timeColumnIndex;
     this.fillMethod = FillPolicy.PREVIOUS;
+    this.fillGroupingElements = fillGroupingElements;
   }
 
   // used for linear fill
-  public Fill(NodeLocation location, LongLiteral index) {
+  public Fill(
+      NodeLocation location, LongLiteral timeColumnIndex, List<LongLiteral> fillGroupingElements) {
     super(requireNonNull(location, "location is null"));
     this.fillValue = null;
-    this.timeDurationThreshold = null;
-    this.index = index;
+    this.timeBound = null;
+    this.timeColumnIndex = timeColumnIndex;
     this.fillMethod = FillPolicy.LINEAR;
-  }
-
-  public Fill(NodeLocation location) {
-    super(requireNonNull(location, "location is null"));
-    this.fillValue = null;
-    this.timeDurationThreshold = null;
-    this.index = null;
-    this.fillMethod = FillPolicy.LINEAR;
+    this.fillGroupingElements = fillGroupingElements;
   }
 
   public FillPolicy getFillMethod() {
@@ -87,12 +90,16 @@ public class Fill extends Node {
     return Optional.ofNullable(fillValue);
   }
 
-  public Optional<TimeDuration> getTimeDurationThreshold() {
-    return Optional.ofNullable(timeDurationThreshold);
+  public Optional<TimeDuration> getTimeBound() {
+    return Optional.ofNullable(timeBound);
   }
 
-  public Optional<LongLiteral> getIndex() {
-    return Optional.ofNullable(index);
+  public Optional<LongLiteral> getTimeColumnIndex() {
+    return Optional.ofNullable(timeColumnIndex);
+  }
+
+  public Optional<List<LongLiteral>> getFillGroupingElements() {
+    return Optional.ofNullable(fillGroupingElements);
   }
 
   @Override
@@ -116,13 +123,14 @@ public class Fill extends Node {
     Fill fill = (Fill) o;
     return fillMethod == fill.fillMethod
         && Objects.equals(fillValue, fill.fillValue)
-        && Objects.equals(timeDurationThreshold, fill.timeDurationThreshold)
-        && Objects.equals(index, fill.index);
+        && Objects.equals(timeBound, fill.timeBound)
+        && Objects.equals(timeColumnIndex, fill.timeColumnIndex)
+        && Objects.equals(fillGroupingElements, fill.fillGroupingElements);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(fillMethod, fillValue, timeDurationThreshold, index);
+    return Objects.hash(fillMethod, fillValue, timeBound, timeColumnIndex, fillGroupingElements);
   }
 
   @Override
@@ -131,11 +139,14 @@ public class Fill extends Node {
     if (fillValue != null) {
       stringHelper.add("value", fillValue);
     }
-    if (timeDurationThreshold != null) {
-      stringHelper.add("timeDurationThreshold", timeDurationThreshold);
+    if (timeBound != null) {
+      stringHelper.add("TIME_BOUND", timeBound);
     }
-    if (index != null) {
-      stringHelper.add("index", index);
+    if (timeColumnIndex != null) {
+      stringHelper.add("TIME_COLUMN", timeColumnIndex);
+    }
+    if (fillGroupingElements != null) {
+      stringHelper.add("FILL_GROUP", fillGroupingElements);
     }
     return stringHelper.toString();
   }
@@ -150,7 +161,8 @@ public class Fill extends Node {
     }
     Fill fill = (Fill) other;
     return fillMethod == fill.fillMethod
-        && Objects.equals(timeDurationThreshold, fill.timeDurationThreshold)
-        && Objects.equals(index, fill.index);
+        && Objects.equals(timeBound, fill.timeBound)
+        && Objects.equals(timeColumnIndex, fill.timeColumnIndex)
+        && Objects.equals(fillGroupingElements, fill.fillGroupingElements);
   }
 }

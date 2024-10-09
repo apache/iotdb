@@ -34,34 +34,46 @@ import javax.annotation.Nullable;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
 public class PreviousFillNode extends FillNode {
 
-  @Nullable private final TimeDuration timeDuration;
+  @Nullable private final TimeDuration timeBound;
 
   @Nullable private final Symbol helperColumn;
 
+  @Nullable private final List<Symbol> groupingKeys;
+
   public PreviousFillNode(
-      PlanNodeId id, PlanNode child, TimeDuration timeDuration, Symbol helperColumn) {
+      PlanNodeId id,
+      PlanNode child,
+      TimeDuration timeBound,
+      Symbol helperColumn,
+      List<Symbol> groupingKeys) {
     super(id, child);
-    this.timeDuration = timeDuration;
+    this.timeBound = timeBound;
     this.helperColumn = helperColumn;
+    this.groupingKeys = groupingKeys;
   }
 
-  public Optional<TimeDuration> getTimeDuration() {
-    return Optional.ofNullable(timeDuration);
+  public Optional<TimeDuration> getTimeBound() {
+    return Optional.ofNullable(timeBound);
   }
 
   public Optional<Symbol> getHelperColumn() {
     return Optional.ofNullable(helperColumn);
   }
 
+  public Optional<List<Symbol>> getGroupingKeys() {
+    return Optional.ofNullable(groupingKeys);
+  }
+
   @Override
   public PlanNode clone() {
-    return new PreviousFillNode(id, null, timeDuration, helperColumn);
+    return new PreviousFillNode(id, null, timeBound, helperColumn, groupingKeys);
   }
 
   @Override
@@ -72,34 +84,54 @@ public class PreviousFillNode extends FillNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.TABLE_PREVIOUS_FILL_NODE.serialize(byteBuffer);
-    if (timeDuration == null) {
+    if (timeBound == null) {
       ReadWriteIOUtils.write(false, byteBuffer);
     } else {
       ReadWriteIOUtils.write(true, byteBuffer);
-      timeDuration.serialize(byteBuffer);
+      timeBound.serialize(byteBuffer);
     }
+
     if (helperColumn == null) {
       ReadWriteIOUtils.write(false, byteBuffer);
     } else {
       ReadWriteIOUtils.write(true, byteBuffer);
       Symbol.serialize(helperColumn, byteBuffer);
     }
+
+    if (groupingKeys == null) {
+      ReadWriteIOUtils.write(false, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(true, byteBuffer);
+      ReadWriteIOUtils.write(groupingKeys.size(), byteBuffer);
+      for (Symbol symbol : groupingKeys) {
+        Symbol.serialize(symbol, byteBuffer);
+      }
+    }
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.TABLE_PREVIOUS_FILL_NODE.serialize(stream);
-    if (timeDuration == null) {
+    if (timeBound == null) {
       ReadWriteIOUtils.write(false, stream);
     } else {
       ReadWriteIOUtils.write(true, stream);
-      timeDuration.serialize(stream);
+      timeBound.serialize(stream);
     }
     if (helperColumn == null) {
       ReadWriteIOUtils.write(false, stream);
     } else {
       ReadWriteIOUtils.write(true, stream);
       Symbol.serialize(helperColumn, stream);
+    }
+    if (groupingKeys == null) {
+      ReadWriteIOUtils.write(false, stream);
+    } else {
+      ReadWriteIOUtils.write(true, stream);
+      ReadWriteIOUtils.write(groupingKeys.size(), stream);
+      for (Symbol symbol : groupingKeys) {
+        Symbol.serialize(symbol, stream);
+      }
     }
   }
 
@@ -114,14 +146,23 @@ public class PreviousFillNode extends FillNode {
     if (hasValue) {
       helperColumn = Symbol.deserialize(byteBuffer);
     }
+    hasValue = ReadWriteIOUtils.readBool(byteBuffer);
+    List<Symbol> groupingKeys = null;
+    if (hasValue) {
+      int size = ReadWriteIOUtils.readInt(byteBuffer);
+      groupingKeys = new ArrayList<>(size);
+      while (size-- > 0) {
+        groupingKeys.add(Symbol.deserialize(byteBuffer));
+      }
+    }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new PreviousFillNode(planNodeId, null, timeDuration, helperColumn);
+    return new PreviousFillNode(planNodeId, null, timeDuration, helperColumn, groupingKeys);
   }
 
   @Override
   public PlanNode replaceChildren(List<PlanNode> newChildren) {
     return new PreviousFillNode(
-        id, Iterables.getOnlyElement(newChildren), timeDuration, helperColumn);
+        id, Iterables.getOnlyElement(newChildren), timeBound, helperColumn, groupingKeys);
   }
 
   @Override
@@ -136,13 +177,13 @@ public class PreviousFillNode extends FillNode {
       return false;
     }
     PreviousFillNode that = (PreviousFillNode) o;
-    return Objects.equals(timeDuration, that.timeDuration)
+    return Objects.equals(timeBound, that.timeBound)
         && Objects.equals(helperColumn, that.helperColumn);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), timeDuration, helperColumn);
+    return Objects.hash(super.hashCode(), timeBound, helperColumn);
   }
 
   @Override

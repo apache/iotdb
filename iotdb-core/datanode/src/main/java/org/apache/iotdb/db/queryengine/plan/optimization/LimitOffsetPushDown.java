@@ -118,7 +118,7 @@ public class LimitOffsetPushDown implements PlanOptimizer {
     @Override
     public PlanNode visitFill(FillNode node, RewriterContext context) {
       FillPolicy fillPolicy = node.getFillDescriptor().getFillPolicy();
-      if (fillPolicy == FillPolicy.VALUE) {
+      if (fillPolicy == FillPolicy.CONSTANT) {
         node.setChild(node.getChild().accept(this, context));
       } else {
         context.setEnablePushDown(false);

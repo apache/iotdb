@@ -234,22 +234,39 @@ public final class SqlFormatter {
 
     @Override
     protected Void visitFill(Fill node, Integer indent) {
-      append(indent, "FILL(").append(node.getFillMethod().name());
+      append(indent, "FILL METHOD ").append(node.getFillMethod().name());
 
-      if (node.getFillMethod() == FillPolicy.VALUE) {
+      if (node.getFillMethod() == FillPolicy.CONSTANT) {
         builder.append(formatExpression(node.getFillValue().get()));
       } else if (node.getFillMethod() == FillPolicy.LINEAR) {
-        node.getIndex()
-            .ifPresent(index -> builder.append("(").append(String.valueOf(index)).append(")"));
+        node.getTimeColumnIndex()
+            .ifPresent(index -> builder.append(" TIME_COLUMN ").append(String.valueOf(index)));
+        node.getFillGroupingElements()
+            .ifPresent(
+                elements ->
+                    builder
+                        .append(" FILL_GROUP ")
+                        .append(
+                            elements.stream()
+                                .map(SqlFormatter::formatExpression)
+                                .collect(joining(", "))));
       } else if (node.getFillMethod() == FillPolicy.PREVIOUS) {
-        node.getIndex()
-            .ifPresent(index -> builder.append("(").append(String.valueOf(index)).append(")"));
-        node.getTimeDurationThreshold()
-            .ifPresent(timeDuration -> builder.append(", ").append(timeDuration.toString()));
+        node.getTimeBound()
+            .ifPresent(timeBound -> builder.append(" TIME_BOUND ").append(timeBound.toString()));
+        node.getTimeColumnIndex()
+            .ifPresent(index -> builder.append(" TIME_COLUMN ").append(String.valueOf(index)));
+        node.getFillGroupingElements()
+            .ifPresent(
+                elements ->
+                    builder
+                        .append(" FILL_GROUP ")
+                        .append(
+                            elements.stream()
+                                .map(SqlFormatter::formatExpression)
+                                .collect(joining(", "))));
       } else {
         throw new IllegalArgumentException("Unknown fill method: " + node.getFillMethod());
       }
-      builder.append(")");
       return null;
     }
 

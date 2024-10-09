@@ -1077,7 +1077,7 @@ public class Analysis implements IAnalysis {
     private final Literal filledValue;
 
     public ValueFillAnalysis(Literal filledValue) {
-      super(FillPolicy.VALUE);
+      super(FillPolicy.CONSTANT);
       requireNonNull(filledValue, "filledValue is null");
       this.filledValue = filledValue;
     }
@@ -1088,35 +1088,48 @@ public class Analysis implements IAnalysis {
   }
 
   public static class PreviousFillAnalysis extends FillAnalysis {
-    @Nullable private final TimeDuration timeDuration;
+    @Nullable private final TimeDuration timeBound;
     @Nullable private final FieldReference fieldReference;
+    @Nullable private final List<FieldReference> groupingKeys;
 
-    public PreviousFillAnalysis(TimeDuration timeDuration, FieldReference fieldReference) {
+    public PreviousFillAnalysis(
+        TimeDuration timeBound, FieldReference fieldReference, List<FieldReference> groupingKeys) {
       super(FillPolicy.PREVIOUS);
-      this.timeDuration = timeDuration;
+      this.timeBound = timeBound;
       this.fieldReference = fieldReference;
+      this.groupingKeys = groupingKeys;
     }
 
-    public Optional<TimeDuration> getTimeDuration() {
-      return Optional.ofNullable(timeDuration);
+    public Optional<TimeDuration> getTimeBound() {
+      return Optional.ofNullable(timeBound);
     }
 
     public Optional<FieldReference> getFieldReference() {
       return Optional.ofNullable(fieldReference);
     }
+
+    public Optional<List<FieldReference>> getGroupingKeys() {
+      return Optional.ofNullable(groupingKeys);
+    }
   }
 
   public static class LinearFillAnalysis extends FillAnalysis {
     private final FieldReference fieldReference;
+    @Nullable private final List<FieldReference> groupingKeys;
 
-    public LinearFillAnalysis(FieldReference fieldReference) {
+    public LinearFillAnalysis(FieldReference fieldReference, List<FieldReference> groupingKeys) {
       super(FillPolicy.LINEAR);
       requireNonNull(fieldReference, "fieldReference is null");
       this.fieldReference = fieldReference;
+      this.groupingKeys = groupingKeys;
     }
 
     public FieldReference getFieldReference() {
       return fieldReference;
+    }
+
+    public Optional<List<FieldReference>> getGroupingKeys() {
+      return Optional.ofNullable(groupingKeys);
     }
   }
 

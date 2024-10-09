@@ -174,16 +174,25 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
     public PlanAndMappings visitPreviousFill(PreviousFillNode node, UnaliasContext context) {
       PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
 
-      if (node.getHelperColumn().isPresent()) {
+      if (node.getHelperColumn().isPresent() || node.getGroupingKeys().isPresent()) {
         Map<Symbol, Symbol> mapping = new HashMap<>(rewrittenSource.getMappings());
         SymbolMapper mapper = symbolMapper(mapping);
 
+        Symbol helperColumn = null;
+        if (node.getHelperColumn().isPresent()) {
+          helperColumn = mapper.map(node.getHelperColumn().get());
+        }
+        List<Symbol> groupingKeys = null;
+        if (node.getGroupingKeys().isPresent()) {
+          groupingKeys = mapper.mapAndDistinct(node.getGroupingKeys().get());
+        }
         return new PlanAndMappings(
             new PreviousFillNode(
                 node.getPlanNodeId(),
                 rewrittenSource.getRoot(),
-                node.getTimeDuration().get(),
-                mapper.map(node.getHelperColumn().get())),
+                node.getTimeBound().orElse(null),
+                helperColumn,
+                groupingKeys),
             mapping);
       } else {
         return new PlanAndMappings(
@@ -198,9 +207,17 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
       Map<Symbol, Symbol> mapping = new HashMap<>(rewrittenSource.getMappings());
       SymbolMapper mapper = symbolMapper(mapping);
 
+      List<Symbol> groupingKeys = null;
+      if (node.getGroupingKeys().isPresent()) {
+        groupingKeys = mapper.mapAndDistinct(node.getGroupingKeys().get());
+      }
+
       return new PlanAndMappings(
           new LinearFillNode(
-              node.getPlanNodeId(), rewrittenSource.getRoot(), mapper.map(node.getHelperColumn())),
+              node.getPlanNodeId(),
+              rewrittenSource.getRoot(),
+              mapper.map(node.getHelperColumn()),
+              groupingKeys),
           mapping);
     }
 

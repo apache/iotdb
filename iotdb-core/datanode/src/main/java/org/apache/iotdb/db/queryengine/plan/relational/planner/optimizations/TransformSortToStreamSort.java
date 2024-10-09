@@ -174,9 +174,5 @@ public class TransformSortToStreamSort implements PlanOptimizer {
     public void setCanTransform(boolean canTransform) {
       this.canTransform = canTransform;
     }
-
-    public boolean isCanTransform() {
-      return canTransform;
-    }
   }
 }

@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNod
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
@@ -51,6 +52,8 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import org.apache.tsfile.read.common.type.Type;
+
+import javax.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -75,6 +78,7 @@ import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingTranslator.sortItemToSortOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.PlanBuilder.newPlanBuilder;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware.scopeAwareKey;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.groupingSets;
 
 public class QueryPlanner {
@@ -639,6 +643,7 @@ public class QueryPlanner {
       return subPlan;
     }
 
+    List<Symbol> groupingKeys = null;
     switch (fill.get().getFillMethod()) {
       case PREVIOUS:
         Analysis.PreviousFillAnalysis previousFillAnalysis =
@@ -649,19 +654,32 @@ public class QueryPlanner {
               subPlan.translate(previousFillAnalysis.getFieldReference().get());
         }
 
+        if (previousFillAnalysis.getGroupingKeys().isPresent()) {
+          List<FieldReference> fieldReferenceList = previousFillAnalysis.getGroupingKeys().get();
+          groupingKeys = new ArrayList<>(fieldReferenceList.size());
+          subPlan = fillGroup(subPlan, fieldReferenceList, groupingKeys, previousFillHelperColumn);
+        }
+
         return subPlan.withNewRoot(
             new PreviousFillNode(
                 queryIdAllocator.genPlanNodeId(),
                 subPlan.getRoot(),
-                previousFillAnalysis.getTimeDuration().orElse(null),
-                previousFillHelperColumn));
+                previousFillAnalysis.getTimeBound().orElse(null),
+                previousFillHelperColumn,
+                groupingKeys));
       case LINEAR:
         Analysis.LinearFillAnalysis linearFillAnalysis =
             (Analysis.LinearFillAnalysis) analysis.getFill(fill.get());
         Symbol helperColumn = subPlan.translate(linearFillAnalysis.getFieldReference());
+        if (linearFillAnalysis.getGroupingKeys().isPresent()) {
+          List<FieldReference> fieldReferenceList = linearFillAnalysis.getGroupingKeys().get();
+          groupingKeys = new ArrayList<>(fieldReferenceList.size());
+          subPlan = fillGroup(subPlan, fieldReferenceList, groupingKeys, helperColumn);
+        }
         return subPlan.withNewRoot(
-            new LinearFillNode(queryIdAllocator.genPlanNodeId(), subPlan.getRoot(), helperColumn));
-      case VALUE:
+            new LinearFillNode(
+                queryIdAllocator.genPlanNodeId(), subPlan.getRoot(), helperColumn, groupingKeys));
+      case CONSTANT:
         Analysis.ValueFillAnalysis valueFillAnalysis =
             (Analysis.ValueFillAnalysis) analysis.getFill(fill.get());
         return subPlan.withNewRoot(
@@ -672,6 +690,38 @@ public class QueryPlanner {
       default:
         throw new IllegalArgumentException("Unknown fill method: " + fill.get().getFillMethod());
     }
+  }
+
+  private PlanBuilder fillGroup(
+      PlanBuilder subPlan,
+      List<FieldReference> fieldReferenceList,
+      List<Symbol> groupingKeys,
+      @Nullable Symbol timeColumn) {
+    ImmutableList.Builder<Symbol> orderBySymbols = ImmutableList.builder();
+    Map<Symbol, SortOrder> orderings = new HashMap<>();
+    for (FieldReference field : fieldReferenceList) {
+      Symbol symbol = subPlan.translate(field);
+      orderings.computeIfAbsent(
+          symbol,
+          k -> {
+            groupingKeys.add(k);
+            orderBySymbols.add(k);
+            return ASC_NULLS_LAST;
+          });
+    }
+    if (timeColumn != null) {
+      orderings.computeIfAbsent(
+          timeColumn,
+          k -> {
+            orderBySymbols.add(k);
+            return ASC_NULLS_LAST;
+          });
+    }
+    OrderingScheme orderingScheme = new OrderingScheme(orderBySymbols.build(), orderings);
+    analysis.setSortNode(true);
+    return subPlan.withNewRoot(
+        new SortNode(
+            queryIdAllocator.genPlanNodeId(), subPlan.getRoot(), orderingScheme, false, false));
   }
 
   private Optional<OrderingScheme> orderingScheme(

@@ -576,7 +576,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         getPreviousFill(
             inputColumnCount,
             inputDataTypes,
-            node.getTimeDuration().orElse(null),
+            node.getTimeBound().orElse(null),
             context.getZoneId()),
         child,
         helperColumnIndex);

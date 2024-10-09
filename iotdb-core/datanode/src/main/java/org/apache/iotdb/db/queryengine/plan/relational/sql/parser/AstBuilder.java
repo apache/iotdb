@@ -1050,38 +1050,58 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitPreviousFill(RelationalSqlParser.PreviousFillContext ctx) {
-    TimeDuration timeDuration = null;
-    LongLiteral helperColumnIndex = null;
-    if (ctx.timeDuration() != null) {
-      timeDuration = DateTimeUtils.constructTimeDuration(ctx.timeDuration().getText());
+    TimeDuration timeBound = null;
+    LongLiteral timeColumn = null;
+    List<LongLiteral> fillGroupingElements = null;
+    if (ctx.timeBoundClause() != null) {
+      timeBound =
+          DateTimeUtils.constructTimeDuration(ctx.timeBoundClause().timeDuration().getText());
 
-      if (timeDuration.monthDuration != 0 && timeDuration.nonMonthDuration != 0) {
+      if (timeBound.monthDuration != 0 && timeBound.nonMonthDuration != 0) {
         throw new SemanticException(
             "Simultaneous setting of monthly and non-monthly intervals is not supported.");
       }
-
-      if (ctx.INTEGER_VALUE() != null) {
-        helperColumnIndex =
-            new LongLiteral(getLocation(ctx.INTEGER_VALUE()), ctx.INTEGER_VALUE().getText());
-      }
-    } else {
-      if (ctx.INTEGER_VALUE() != null) {
-        throw new SemanticException(
-            "Don't need to specify helper column index while timeDuration parameter is not specified");
-      }
     }
-    return new Fill(getLocation(ctx), timeDuration, helperColumnIndex);
+
+    if (ctx.timeColumnClause() != null) {
+      timeColumn =
+          new LongLiteral(
+              getLocation(ctx.timeColumnClause().INTEGER_VALUE()),
+              ctx.timeColumnClause().INTEGER_VALUE().getText());
+    }
+
+    if (ctx.fillGroupClause() != null) {
+      fillGroupingElements =
+          ctx.fillGroupClause().INTEGER_VALUE().stream()
+              .map(index -> new LongLiteral(getLocation(index), index.getText()))
+              .collect(toList());
+    }
+
+    if (timeColumn != null && (timeBound == null && fillGroupingElements == null)) {
+      throw new SemanticException(
+          "Don't need to specify TIME_COLUMN while either TIME_BOUND or FILL_GROUP parameter is not specified");
+    }
+    return new Fill(getLocation(ctx), timeBound, timeColumn, fillGroupingElements);
   }
 
   @Override
   public Node visitLinearFill(RelationalSqlParser.LinearFillContext ctx) {
-    if (ctx.INTEGER_VALUE() != null) {
-      return new Fill(
-          getLocation(ctx),
-          new LongLiteral(getLocation(ctx.INTEGER_VALUE()), ctx.INTEGER_VALUE().getText()));
-    } else {
-      return new Fill(getLocation(ctx));
+    LongLiteral timeColumn = null;
+    List<LongLiteral> fillGroupingElements = null;
+    if (ctx.timeColumnClause() != null) {
+      timeColumn =
+          new LongLiteral(
+              getLocation(ctx.timeColumnClause().INTEGER_VALUE()),
+              ctx.timeColumnClause().INTEGER_VALUE().getText());
     }
+    if (ctx.fillGroupClause() != null) {
+      fillGroupingElements =
+          ctx.fillGroupClause().INTEGER_VALUE().stream()
+              .map(index -> new LongLiteral(getLocation(index), index.getText()))
+              .collect(toList());
+    }
+
+    return new Fill(getLocation(ctx), timeColumn, fillGroupingElements);
   }
 
   @Override

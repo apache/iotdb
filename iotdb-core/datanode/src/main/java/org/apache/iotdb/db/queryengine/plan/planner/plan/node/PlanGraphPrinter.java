@@ -735,12 +735,13 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   public List<String> visitPreviousFill(PreviousFillNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("PreviousFill-%s", node.getPlanNodeId().getId()));
-    node.getTimeDuration()
-        .ifPresent(
-            timeDuration -> {
-              boxValue.add(String.format("HelperColumn: %s", node.getHelperColumn().get()));
-              boxValue.add(String.format("TimeDuration: %s", timeDuration));
-            });
+    node.getTimeBound()
+        .ifPresent(timeBound -> boxValue.add(String.format("TIME_BOUND: %s", timeBound)));
+    node.getHelperColumn()
+        .ifPresent(timeColumn -> boxValue.add(String.format("TIME_COLUMN: %s", timeColumn)));
+    node.getGroupingKeys()
+        .ifPresent(groupingKeys -> boxValue.add(String.format("FILL_GROUP: %s", groupingKeys)));
+
     return render(node, boxValue, context);
   }
 
@@ -748,7 +749,9 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   public List<String> visitLinearFill(LinearFillNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("LinearFill-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("HelperColumn: %s", node.getHelperColumn()));
+    boxValue.add(String.format("TIME_COLUMN: %s", node.getHelperColumn()));
+    node.getGroupingKeys()
+        .ifPresent(groupingKeys -> boxValue.add(String.format("FILL_GROUP: %s", groupingKeys)));
     return render(node, boxValue, context);
   }
 
