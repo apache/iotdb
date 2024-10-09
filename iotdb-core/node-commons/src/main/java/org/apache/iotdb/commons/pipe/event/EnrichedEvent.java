@@ -94,8 +94,7 @@ public abstract class EnrichedEvent implements Event {
 
     isPatternParsed =
         (treePattern == null || treePattern.isRoot())
-            && (tablePattern == null
-                || !tablePattern.hasUserSpecifiedDatabasePatternOrTablePattern());
+            && (tablePattern == null || !tablePattern.needPatternMatching());
     isTimeParsed = Long.MIN_VALUE == startTime && Long.MAX_VALUE == endTime;
 
     addOnCommittedHook(
