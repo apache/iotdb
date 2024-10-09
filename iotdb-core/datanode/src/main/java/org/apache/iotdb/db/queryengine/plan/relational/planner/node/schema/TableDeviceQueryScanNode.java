@@ -90,7 +90,7 @@ public class TableDeviceQueryScanNode extends AbstractTableDeviceQueryNode {
         idDeterminedPredicateList,
         idFuzzyPredicate,
         columnHeaderList,
-        schemaRegionReplicaSet,
+        senderLocation,
         offset,
         limit);
   }

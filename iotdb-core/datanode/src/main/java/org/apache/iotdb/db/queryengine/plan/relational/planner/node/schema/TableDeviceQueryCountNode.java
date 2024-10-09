@@ -81,8 +81,7 @@ public class TableDeviceQueryCountNode extends AbstractTableDeviceQueryNode {
         tableName,
         idDeterminedPredicateList,
         idFuzzyPredicate,
-        columnHeaderList,
-        schemaRegionReplicaSet);
+        columnHeaderList);
   }
 
   public static PlanNode deserialize(final ByteBuffer buffer) {
