@@ -69,6 +69,10 @@ public class IoTDBArithmeticTableIT {
     "insert into table1(device, time, s1, s2, s3, s4, s5, s6, s7, s8) values ('d1', 1, 1, 1, 1.0, 1.0, '2024-01-01', 10, true, 'test')",
     "insert into table1(device, time, s1, s2, s3, s4, s5, s6, s7, s8) values ('d1', 2, 2, 2, 2.0, 2.0, '2024-02-01', 20, true, 'test')",
     "insert into table1(device, time, s1, s2, s3, s4, s5, s6, s7, s8) values ('d1', 3, 3, 3, 3.0, 3.0, '2024-03-01', 30, true, 'test')",
+    "CREATE TABLE table2 (device STRING ID, int32 INT32 MEASUREMENT, int64 INT64 MEASUREMENT, date DATE MEASUREMENT)",
+    "insert into table2(device, time, int32, int64, date) values ('d1', 1, 2147483647, 9223372036854775807, '9999-12-31')",
+    "insert into table2(device, time, int32, int64, date) values ('d1', 2, -2147483648, -9223372036854775808, '1000-01-01')",
+    "insert into table2(device, time, int32, date) values ('d1', 3, 86400000, '9999-12-31')",
   };
 
   @BeforeClass
@@ -291,6 +295,8 @@ public class IoTDBArithmeticTableIT {
         String.format("select s6-(%d) from table1", Long.MIN_VALUE),
         "750: long Subtraction overflow",
         "test");
+
+    tableAssertTestFail("select date + int32 from table2 where time = 1", "752", "test");
   }
 
   @Test
