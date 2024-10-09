@@ -24,11 +24,10 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_KEY = "extractor";
   public static final String SOURCE_KEY = "source";
 
-  public static final String EXTRACTOR_DIALECT_KEY = "extractor.dialect";
-  public static final String SOURCE_DIALECT_KEY = "source.dialect";
-  public static final String EXTRACTOR_DIALECT_TREE_VALUE = "tree";
-  public static final String EXTRACTOR_DIALECT_TABLE_VALUE = "table";
-  public static final String EXTRACTOR_DIALECT_DEFAULT_VALUE = EXTRACTOR_DIALECT_TREE_VALUE;
+  public static final String EXTRACTOR_CAPTURE_TREE_KEY = "extractor.capture.tree";
+  public static final String SOURCE_CAPTURE_TREE_KEY = "source.capture.tree";
+  public static final String EXTRACTOR_CAPTURE_TABLE_KEY = "extractor.capture.table";
+  public static final String SOURCE_CAPTURE_TABLE_KEY = "source.capture.table";
 
   public static final String EXTRACTOR_INCLUSION_KEY = "extractor.inclusion";
   public static final String SOURCE_INCLUSION_KEY = "source.inclusion";
