@@ -443,8 +443,10 @@ public abstract class EnrichedEvent implements Event {
         + committerKey
         + "', commitId="
         + commitId
-        + ", pattern='"
+        + ", treePattern='"
         + treePattern
+        + "', tablePattern='"
+        + tablePattern
         + "', startTime="
         + startTime
         + ", endTime="
@@ -470,8 +472,10 @@ public abstract class EnrichedEvent implements Event {
         + committerKey
         + "', commitId="
         + commitId
-        + ", pattern='"
+        + ", treePattern='"
         + treePattern
+        + "', tablePattern='"
+        + tablePattern
         + "', startTime="
         + startTime
         + ", endTime="
