@@ -138,6 +138,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedD
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedNonWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableSchemaQueryWriteVisitor;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
@@ -279,6 +280,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -358,11 +360,22 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return resp;
     }
 
-    final RegionReadExecutor executor = new RegionReadExecutor();
-    final RegionExecutionResult executionResult =
-        groupId == null
-            ? executor.execute(fragmentInstance)
-            : executor.execute(groupId, fragmentInstance);
+    RegionExecutionResult executionResult = null;
+    if (Objects.nonNull(groupId)) {
+      // For schema query, there may be a "write" before "read"
+      // the result is not null iff the "write" has failed
+      executionResult =
+          new TableSchemaQueryWriteVisitor()
+              .visitPlan(fragmentInstance.getFragment().getPlanNodeTree(), groupId);
+    }
+    if (Objects.isNull(executionResult)) {
+      final RegionReadExecutor executor = new RegionReadExecutor();
+      executionResult =
+          groupId == null
+              ? executor.execute(fragmentInstance)
+              : executor.execute(groupId, fragmentInstance);
+    }
+
     final TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp();
     resp.setAccepted(executionResult.isAccepted());
     resp.setMessage(executionResult.getMessage());
