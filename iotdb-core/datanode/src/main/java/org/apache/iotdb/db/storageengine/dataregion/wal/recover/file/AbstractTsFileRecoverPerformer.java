@@ -25,6 +25,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
@@ -77,10 +78,22 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
       return;
     }
 
-    // If the resource does not exist, then the flush is not complete and the associated WAL should
-    // all exist. We can simply start a new file and recover from WAL.
-    tsFile.delete();
     writer = new RestorableTsFileIOWriter(tsFile);
+    if (writer.hasCrashed()) {
+      byte versionNumber;
+      try (TsFileSequenceReader sequenceReader =
+          new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+        versionNumber = sequenceReader.readVersionNumber();
+      }
+      if (versionNumber != TSFileConfig.VERSION_NUMBER) {
+        // cannot rewrite a file with V3 header, delete it first
+        writer.close();
+        tsFile.delete();
+        writer = new RestorableTsFileIOWriter(tsFile);
+      }
+    } else {
+      reconstructResourceFile();
+    }
   }
 
   private void loadResourceFile() throws IOException {
