@@ -108,7 +108,7 @@ public class SessionConnection {
 
   private final String sqlDialect;
 
-  private final String database;
+  private String database;
 
   // ms is 1_000, us is 1_000_000, ns is 1_000_000_000
   private int timeFactor = 1_000;
@@ -520,7 +520,9 @@ public class SessionConnection {
     request.setStatementId(statementId);
     TSExecuteStatementResp resp = client.executeUpdateStatementV2(request);
     if (resp.isSetDatabase()) {
-      session.changeDatabase(resp.getDatabase());
+      String dbName = resp.getDatabase();
+      session.changeDatabase(dbName);
+      this.database = dbName;
     }
     return resp.status;
   }
