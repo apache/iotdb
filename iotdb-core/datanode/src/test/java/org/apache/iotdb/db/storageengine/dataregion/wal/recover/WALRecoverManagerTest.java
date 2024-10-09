@@ -311,17 +311,25 @@ public class WALRecoverManagerTest {
     // region check file with wal
     // check file content
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_WITH_WAL_NAME);
-    List<ChunkMetadata> chunkMetadataList;
+    List<ChunkMetadata> chunkMetadataList =
+        reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s1", true));
+    assertNotNull(chunkMetadataList);
+    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s2", true));
+    assertNotNull(chunkMetadataList);
     chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s1", true));
     assertNotNull(chunkMetadataList);
     chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s2", true));
     assertNotNull(chunkMetadataList);
-    assertEquals(1, chunkMetadataList.size());
+    assertEquals(2, chunkMetadataList.size());
     Chunk chunk = reader.readMemChunk(chunkMetadataList.get(0));
+    assertEquals(3, chunk.getChunkStatistic().getEndTime());
+    chunk = reader.readMemChunk(chunkMetadataList.get(1));
     assertEquals(15, chunk.getChunkStatistic().getEndTime());
     reader.close();
     // check .resource file in memory
-    assertEquals(4, tsFileWithWALResource.getStartTime(DEVICE2_NAME));
+    assertEquals(1, tsFileWithWALResource.getStartTime(DEVICE1_NAME));
+    assertEquals(2, tsFileWithWALResource.getEndTime(DEVICE1_NAME));
+    assertEquals(3, tsFileWithWALResource.getStartTime(DEVICE2_NAME));
     assertEquals(15, tsFileWithWALResource.getEndTime(DEVICE2_NAME));
     // check file existence
     assertTrue(new File(FILE_WITH_WAL_NAME).exists());
@@ -331,11 +339,23 @@ public class WALRecoverManagerTest {
     // region check file without wal
     // check file content
     reader = new TsFileSequenceReader(FILE_WITHOUT_WAL_NAME);
+    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s1", true));
+    assertNotNull(chunkMetadataList);
+    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s2", true));
+    assertNotNull(chunkMetadataList);
     chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s1", true));
     assertNotNull(chunkMetadataList);
     chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s2", true));
     assertNotNull(chunkMetadataList);
-    assertEquals(0, chunkMetadataList.size());
+    assertEquals(1, chunkMetadataList.size());
+    chunk = reader.readMemChunk(chunkMetadataList.get(0));
+    assertEquals(3, chunk.getChunkStatistic().getEndTime());
+    reader.close();
+    // check .resource file in memory
+    assertEquals(1, tsFileWithoutWALResource.getStartTime(DEVICE1_NAME));
+    assertEquals(2, tsFileWithoutWALResource.getEndTime(DEVICE1_NAME));
+    assertEquals(3, tsFileWithoutWALResource.getStartTime(DEVICE2_NAME));
+    assertEquals(3, tsFileWithoutWALResource.getEndTime(DEVICE2_NAME));
     // check file existence
     assertTrue(new File(FILE_WITHOUT_WAL_NAME).exists());
     assertTrue(new File(FILE_WITHOUT_WAL_NAME.concat(TsFileResource.RESOURCE_SUFFIX)).exists());
