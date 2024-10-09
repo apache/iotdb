@@ -69,6 +69,8 @@ public class GeneralRegionAttributeSecurityService {
       IoTDBThreadPoolFactory.newSingleThreadExecutor(
           ThreadName.GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE.getName());
 
+  private final Map<Integer, Pair<Long, Integer>> dataNodeId2FailureDurationAndTimesMap =
+      new HashMap<>();
   private final Set<ISchemaRegion> regionLeaders = new HashSet<>();
   private final ReentrantLock lock = new ReentrantLock();
   private final Condition condition = lock.newCondition();
@@ -129,6 +131,8 @@ public class GeneralRegionAttributeSecurityService {
       // Send
       sendUpdateRequest(attributeUpdateCommitMap);
 
+      // May shrink
+
       // Commit
       // TODO: Execute in parallel by thread pool
       attributeUpdateCommitMap.forEach(
@@ -173,7 +177,7 @@ public class GeneralRegionAttributeSecurityService {
       showClusterResp = client.showCluster();
     } catch (final ClientManagerException | TException e) {
       LOGGER.warn("Failed to fetch dataNodeLocations, will retry.");
-      return null;
+      return Collections.emptyMap();
     }
     final Set<TDataNodeLocation> dataNodeLocations = new HashSet<>();
     showClusterResp

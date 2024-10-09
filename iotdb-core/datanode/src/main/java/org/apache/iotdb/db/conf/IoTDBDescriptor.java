@@ -1088,6 +1088,21 @@ public class IoTDBDescriptor {
                 "general_region_attribute_security_service_timeout_seconds",
                 String.valueOf(conf.getGeneralRegionAttributeSecurityServiceTimeoutSeconds()))));
 
+    conf.setGeneralRegionAttributeSecurityServiceFailureDurationSecondsToFetch(
+        Long.parseLong(
+            properties.getProperty(
+                "general_region_attribute_security_service_failure_duration_seconds_to_fetch",
+                String.valueOf(
+                    conf
+                        .getGeneralRegionAttributeSecurityServiceFailureDurationSecondsToFetch()))));
+
+    conf.setGeneralRegionAttributeSecurityServiceFailureTimesToFetch(
+        Integer.parseInt(
+            properties.getProperty(
+                "general_region_attribute_security_service_failure_times_to_fetch",
+                String.valueOf(
+                    conf.getGeneralRegionAttributeSecurityServiceFailureTimesToFetch()))));
+
     conf.setDetailContainerMinDegradeMemoryInBytes(
         Long.parseLong(
             properties.getProperty(

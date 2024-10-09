@@ -1048,6 +1048,8 @@ public class IoTDBConfig {
   private long generalRegionAttributeSecurityServiceIntervalSeconds = 30L;
 
   private long generalRegionAttributeSecurityServiceTimeoutSeconds = 20L;
+  private long generalRegionAttributeSecurityServiceFailureDurationSecondsToFetch = 600L;
+  private int generalRegionAttributeSecurityServiceFailureTimesToFetch = 20;
   private long detailContainerMinDegradeMemoryInBytes = 1024 * 1024L;
 
   private String readConsistencyLevel = "strong";
@@ -3489,6 +3491,26 @@ public class IoTDBConfig {
       long generalRegionAttributeSecurityServiceTimeoutSeconds) {
     this.generalRegionAttributeSecurityServiceTimeoutSeconds =
         generalRegionAttributeSecurityServiceTimeoutSeconds;
+  }
+
+  public long getGeneralRegionAttributeSecurityServiceFailureDurationSecondsToFetch() {
+    return generalRegionAttributeSecurityServiceFailureDurationSecondsToFetch;
+  }
+
+  public void setGeneralRegionAttributeSecurityServiceFailureDurationSecondsToFetch(
+      long generalRegionAttributeSecurityServiceFailureDurationSecondsToFetch) {
+    this.generalRegionAttributeSecurityServiceFailureDurationSecondsToFetch =
+        generalRegionAttributeSecurityServiceFailureDurationSecondsToFetch;
+  }
+
+  public int getGeneralRegionAttributeSecurityServiceFailureTimesToFetch() {
+    return generalRegionAttributeSecurityServiceFailureTimesToFetch;
+  }
+
+  public void setGeneralRegionAttributeSecurityServiceFailureTimesToFetch(
+      int generalRegionAttributeSecurityServiceFailureTimesToFetch) {
+    this.generalRegionAttributeSecurityServiceFailureTimesToFetch =
+        generalRegionAttributeSecurityServiceFailureTimesToFetch;
   }
 
   public long getDetailContainerMinDegradeMemoryInBytes() {
