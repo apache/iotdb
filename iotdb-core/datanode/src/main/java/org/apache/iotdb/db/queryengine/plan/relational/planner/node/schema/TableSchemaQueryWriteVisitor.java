@@ -19,37 +19,43 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.db.queryengine.execution.executor.RegionExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
 
-public class TableSchemaQueryWriteVisitor extends PlanVisitor<TSStatus, Void> {
+import java.util.Objects;
 
+public class TableSchemaQueryWriteVisitor
+    extends PlanVisitor<RegionExecutionResult, ConsensusGroupId> {
   @Override
-  public TSStatus visitPlan(final PlanNode node, final Void context) {
-    return StatusUtils.OK;
+  public RegionExecutionResult visitPlan(final PlanNode node, final ConsensusGroupId context) {
+    return null;
   }
 
   @Override
-  public TSStatus visitFilter(final FilterNode node, final Void context) {
+  public RegionExecutionResult visitFilter(final FilterNode node, final ConsensusGroupId context) {
     return node.getChild().accept(this, context);
   }
 
   @Override
-  public TSStatus visitTableDeviceFetch(final TableDeviceFetchNode node, final Void context) {
-    return visitTableDeviceSourceNode(node);
+  public RegionExecutionResult visitTableDeviceFetch(
+      final TableDeviceFetchNode node, final ConsensusGroupId context) {
+    return visitTableDeviceSourceNode(node, context);
   }
 
   @Override
-  public TSStatus visitTableDeviceQueryScan(
-      final TableDeviceQueryScanNode node, final Void context) {
-    return visitTableDeviceSourceNode(node);
+  public RegionExecutionResult visitTableDeviceQueryScan(
+      final TableDeviceQueryScanNode node, final ConsensusGroupId context) {
+    return visitTableDeviceSourceNode(node, context);
   }
 
-  private TSStatus visitTableDeviceSourceNode(final TableDeviceSourceNode node) {
-    return StatusUtils.OK;
+  private RegionExecutionResult visitTableDeviceSourceNode(
+      final TableDeviceSourceNode node, final ConsensusGroupId context) {
+    if (Objects.nonNull(node.getSenderLocation())) {
+      return null;
+    }
   }
 }

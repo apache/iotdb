@@ -282,7 +282,6 @@ public class TableLogicalPlanner {
             statement.getTableName(),
             statement.getDeviceIdList(),
             columnHeaderList,
-            null,
             null);
 
     final SchemaPartition schemaPartition =

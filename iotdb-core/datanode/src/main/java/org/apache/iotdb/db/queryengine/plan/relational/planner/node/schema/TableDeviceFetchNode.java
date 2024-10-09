@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -48,9 +47,8 @@ public class TableDeviceFetchNode extends TableDeviceSourceNode {
       final String tableName,
       final List<Object[]> deviceIdList,
       final List<ColumnHeader> columnHeaderList,
-      final TRegionReplicaSet regionReplicaSet,
       final TDataNodeLocation senderLocation) {
-    super(id, database, tableName, columnHeaderList, regionReplicaSet, senderLocation);
+    super(id, database, tableName, columnHeaderList, senderLocation);
     this.deviceIdList = deviceIdList;
   }
 
@@ -70,13 +68,7 @@ public class TableDeviceFetchNode extends TableDeviceSourceNode {
   @Override
   public PlanNode clone() {
     return new TableDeviceFetchNode(
-        getPlanNodeId(),
-        database,
-        tableName,
-        deviceIdList,
-        columnHeaderList,
-        schemaRegionReplicaSet,
-        senderLocation);
+        getPlanNodeId(), database, tableName, deviceIdList, columnHeaderList, senderLocation);
   }
 
   @Override
@@ -170,7 +162,7 @@ public class TableDeviceFetchNode extends TableDeviceSourceNode {
 
     final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
     return new TableDeviceFetchNode(
-        planNodeId, database, tableName, deviceIdList, columnHeaderList, null, senderLocation);
+        planNodeId, database, tableName, deviceIdList, columnHeaderList, senderLocation);
   }
 
   @Override
