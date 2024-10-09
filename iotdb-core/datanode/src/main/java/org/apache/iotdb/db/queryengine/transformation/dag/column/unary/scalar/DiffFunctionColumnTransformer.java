@@ -84,6 +84,7 @@ public class DiffFunctionColumnTransformer extends UnaryColumnTransformer {
 
   @Override
   protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
+    // Diff do not support short circuit evaluation
     doTransform(column, columnBuilder);
   }
 }
