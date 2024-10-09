@@ -775,14 +775,12 @@ public class TableDistributedPlanGenerator
         tableDeviceFetchMap
             .computeIfAbsent(
                 regionReplicaSet,
-                k ->
-                    new TableDeviceFetchNode(
-                        queryId.genPlanNodeId(),
-                        node.getDatabase(),
-                        node.getTableName(),
-                        new ArrayList<>(),
-                        node.getColumnHeaderList(),
-                        regionReplicaSet))
+                k -> {
+                  final TableDeviceFetchNode clonedNode = (TableDeviceFetchNode) node.clone();
+                  clonedNode.setPlanNodeId(queryId.genPlanNodeId());
+                  clonedNode.setRegionReplicaSet(regionReplicaSet);
+                  return clonedNode;
+                })
             .addDeviceId(deviceIdArray);
       }
 

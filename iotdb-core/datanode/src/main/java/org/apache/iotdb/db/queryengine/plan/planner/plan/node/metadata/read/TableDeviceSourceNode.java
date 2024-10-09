@@ -46,7 +46,7 @@ public abstract class TableDeviceSourceNode extends SourceNode {
   protected List<ColumnHeader> columnHeaderList;
 
   protected TRegionReplicaSet schemaRegionReplicaSet;
-  private TDataNodeLocation senderLocation;
+  protected TDataNodeLocation senderLocation;
 
   protected TableDeviceSourceNode(
       final PlanNodeId id,

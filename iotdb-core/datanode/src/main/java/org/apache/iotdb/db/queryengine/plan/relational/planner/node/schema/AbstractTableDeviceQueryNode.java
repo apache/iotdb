@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -95,6 +96,14 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
     for (final ColumnHeader columnHeader : columnHeaderList) {
       columnHeader.serialize(byteBuffer);
     }
+
+    if (Objects.nonNull(senderLocation)) {
+      ReadWriteIOUtils.write(true, byteBuffer);
+      ReadWriteIOUtils.write(senderLocation.getDataNodeId(), byteBuffer);
+      ThriftCommonsSerDeUtils.serializeTEndPoint(senderLocation.getInternalEndPoint(), byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(false, byteBuffer);
+    }
   }
 
   @Override
@@ -119,6 +128,14 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
     ReadWriteIOUtils.write(columnHeaderList.size(), stream);
     for (final ColumnHeader columnHeader : columnHeaderList) {
       columnHeader.serialize(stream);
+    }
+
+    if (Objects.nonNull(senderLocation)) {
+      ReadWriteIOUtils.write(true, stream);
+      ReadWriteIOUtils.write(senderLocation.getDataNodeId(), stream);
+      ThriftCommonsSerDeUtils.serializeTEndPoint(senderLocation.getInternalEndPoint(), stream);
+    } else {
+      ReadWriteIOUtils.write(false, stream);
     }
   }
 

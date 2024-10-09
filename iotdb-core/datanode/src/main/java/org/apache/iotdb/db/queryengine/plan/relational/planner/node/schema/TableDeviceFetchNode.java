@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -46,7 +48,8 @@ public class TableDeviceFetchNode extends TableDeviceSourceNode {
       final String tableName,
       final List<Object[]> deviceIdList,
       final List<ColumnHeader> columnHeaderList,
-      final TRegionReplicaSet regionReplicaSet) {
+      final TRegionReplicaSet regionReplicaSet,
+      final TDataNodeLocation senderLocation) {
     super(id, database, tableName, columnHeaderList, regionReplicaSet);
     this.deviceIdList = deviceIdList;
   }
@@ -72,7 +75,8 @@ public class TableDeviceFetchNode extends TableDeviceSourceNode {
         tableName,
         deviceIdList,
         columnHeaderList,
-        schemaRegionReplicaSet);
+        schemaRegionReplicaSet,
+        senderLocation);
   }
 
   @Override
@@ -93,6 +97,14 @@ public class TableDeviceFetchNode extends TableDeviceSourceNode {
     for (final ColumnHeader columnHeader : columnHeaderList) {
       columnHeader.serialize(byteBuffer);
     }
+
+    if (Objects.nonNull(senderLocation)) {
+      ReadWriteIOUtils.write(true, byteBuffer);
+      ReadWriteIOUtils.write(senderLocation.getDataNodeId(), byteBuffer);
+      ThriftCommonsSerDeUtils.serializeTEndPoint(senderLocation.getInternalEndPoint(), byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(false, byteBuffer);
+    }
   }
 
   @Override
@@ -112,6 +124,14 @@ public class TableDeviceFetchNode extends TableDeviceSourceNode {
     ReadWriteIOUtils.write(columnHeaderList.size(), stream);
     for (final ColumnHeader columnHeader : columnHeaderList) {
       columnHeader.serialize(stream);
+    }
+
+    if (Objects.nonNull(senderLocation)) {
+      ReadWriteIOUtils.write(true, stream);
+      ReadWriteIOUtils.write(senderLocation.getDataNodeId(), stream);
+      ThriftCommonsSerDeUtils.serializeTEndPoint(senderLocation.getInternalEndPoint(), stream);
+    } else {
+      ReadWriteIOUtils.write(false, stream);
     }
   }
 
@@ -136,9 +156,21 @@ public class TableDeviceFetchNode extends TableDeviceSourceNode {
       columnHeaderList.add(ColumnHeader.deserialize(buffer));
     }
 
+    TDataNodeLocation senderLocation = null;
+    if (ReadWriteIOUtils.readBool(buffer)) {
+      senderLocation =
+          new TDataNodeLocation(
+              ReadWriteIOUtils.readInt(buffer),
+              null,
+              ThriftCommonsSerDeUtils.deserializeTEndPoint(buffer),
+              null,
+              null,
+              null);
+    }
+
     final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
     return new TableDeviceFetchNode(
-        planNodeId, database, tableName, deviceIdList, columnHeaderList, null);
+        planNodeId, database, tableName, deviceIdList, columnHeaderList, null, senderLocation);
   }
 
   @Override
