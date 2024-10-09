@@ -1140,7 +1140,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     for (int i = 0; i < mapSize; i++) {
       try {
         DataNodeTTLCache.getInstance()
-            .setTTL(
+            .setTTLForTree(
                 PathUtils.splitPathToDetachedNodes(
                     Objects.requireNonNull(ReadWriteIOUtils.readString(buffer))),
                 ReadWriteIOUtils.readLong(buffer));
@@ -1193,7 +1193,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     stopTriggerRelatedServices();
     registerManager.deregisterAll();
     JMXService.deregisterMBean(mbeanName);
-    SchemaEngine.getInstance().clear();
     MetricService.getInstance().stop();
     if (schemaRegionConsensusStarted) {
       try {
@@ -1202,6 +1201,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         logger.warn("Exception during SchemaRegionConsensusImpl stopping", e);
       }
     }
+    SchemaEngine.getInstance().clear();
     if (dataRegionConsensusStarted) {
       try {
         DataRegionConsensusImpl.getInstance().stop();

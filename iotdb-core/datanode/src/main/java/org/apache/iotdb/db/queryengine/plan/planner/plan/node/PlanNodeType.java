@@ -257,6 +257,8 @@ public enum PlanNodeType {
   TABLE_PREVIOUS_FILL_NODE((short) 1012),
   TABLE_LINEAR_FILL_NODE((short) 1013),
   TABLE_VALUE_FILL_NODE((short) 1014),
+  TABLE_AGGREGATION_NODE((short) 1015),
+  TABLE_AGGREGATION_TABLE_SCAN_NODE((short) 1016),
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),
@@ -579,6 +581,12 @@ public enum PlanNodeType {
         return LinearFillNode.deserialize(buffer);
       case 1014:
         return ValueFillNode.deserialize(buffer);
+      case 1015:
+        return org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode
+            .deserialize(buffer);
+      case 1016:
+        return org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode
+            .deserialize(buffer);
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);
       case 2001:
