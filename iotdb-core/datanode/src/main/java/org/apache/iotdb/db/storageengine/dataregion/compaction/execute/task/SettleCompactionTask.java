@@ -97,7 +97,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
                 TsFileNameGenerator.getSettleCompactionTargetFileResources(
                     filesView.sourceFilesInCompactionPerformer, filesView.sequence));
     filesView.targetFilesInPerformer = filesView.targetFilesInLog;
-    allocateModFile(filesView.targetFilesInPerformer, filesView.sourceFilesInCompactionPerformer);
+    allocateModFile(filesView.targetFilesInPerformer, modFileManager, filesView.sourceFilesInCompactionPerformer);
   }
 
   @Override

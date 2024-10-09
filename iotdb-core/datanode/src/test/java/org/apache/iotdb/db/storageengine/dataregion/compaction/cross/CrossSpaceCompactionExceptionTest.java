@@ -29,6 +29,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
@@ -323,6 +324,7 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
    */
   @Test
   public void testHandleWithoutAllSourceFilesAndModFilesExist() throws Exception {
+
     registerTimeseriesInMManger(4, 5, false);
     createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
     createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
@@ -334,6 +336,8 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
 
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    AbstractCompactionTask.allocateModFile(targetResources, modFileManager, seqResources, unseqResources);
+
     File compactionLogFile =
         new File(
             SEQ_DIRS,
@@ -444,11 +448,13 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     createFiles(3, 3, 4, 200, 20, 10020, 30, 30, false, false);
     createFiles(2, 1, 5, 100, 450, 20450, 0, 0, false, false);
     TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", SEQ_DIRS.getPath());
+    modFileManager = tsFileManager.getModFileManager(seqResources.get(0).getTimePartition());
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    AbstractCompactionTask.allocateModFile(targetResources, modFileManager, seqResources, unseqResources);
     File compactionLogFile =
         new File(
             SEQ_DIRS,
@@ -674,6 +680,7 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
 
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    AbstractCompactionTask.allocateModFile(targetResources, modFileManager, seqResources, unseqResources);
     File compactionLogFile =
         new File(
             SEQ_DIRS,

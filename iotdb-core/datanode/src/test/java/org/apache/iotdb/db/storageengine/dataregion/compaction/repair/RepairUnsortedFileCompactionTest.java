@@ -598,7 +598,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
 
     modFile = targetResource.getModFile();
     Assert.assertNotNull(modFile);
-    Iterator<ModEntry> modIterator = modFile.getModIterator();
+    Iterator<ModEntry> modIterator = modFile.getModIterator(targetResource.getModFileOffset());
     Assert.assertTrue(modIterator.hasNext());
     TreeDeletionEntry modification = (TreeDeletionEntry) modIterator.next();
     Assert.assertEquals(writtenModification, modification);

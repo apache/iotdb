@@ -357,7 +357,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
               availablePositionForTargetFiles.subList(0, requiredPositionNum), filesView.sequence);
     }
 
-    allocateModFile(filesView.targetFilesInPerformer, filesView.sourceFilesInLog);
+    allocateModFile(filesView.targetFilesInPerformer, modFileManager, filesView.sourceFilesInLog);
 
     filesView.targetFilesInLog =
         new ArrayList<>(

@@ -378,7 +378,7 @@ public abstract class AbstractCompactionTask {
     return null;
   }
 
-  protected void unsetCompactionModsFile(List<TsFileResource> sourceFileList) {
+  public static void unsetCompactionModsFile(List<TsFileResource> sourceFileList) {
     for (TsFileResource tsFile : sourceFileList) {
       tsFile.setCompactionModFile(null);
     }
@@ -510,13 +510,14 @@ public abstract class AbstractCompactionTask {
   }
 
   @SafeVarargs
-  protected final void allocateModFile(
-      List<TsFileResource> targetFiles, List<TsFileResource>... allSourceFiles) throws IOException {
+  public static void allocateModFile(
+      List<TsFileResource> targetFiles, ModFileManager modFileManager, List<TsFileResource>... allSourceFiles) throws IOException {
     // allocate the same mod file for all target files
     ModificationFile modificationFile = modFileManager.allocate(targetFiles.get(0));
-    for (int i = 1; i < targetFiles.size(); i++) {
+    for (int i = 0; i < targetFiles.size(); i++) {
       // do not persist the modification file path now because the resource is incomplete
       targetFiles.get(i).setModFile(modificationFile, false);
+      targetFiles.get(i).setModFileManager(modFileManager);
       modificationFile.addReference(targetFiles.get(i));
     }
     // mark the mod file as the compaction mod file for all source files

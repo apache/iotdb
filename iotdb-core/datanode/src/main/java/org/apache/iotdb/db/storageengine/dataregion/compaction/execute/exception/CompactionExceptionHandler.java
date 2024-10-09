@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -98,6 +99,9 @@ public class CompactionExceptionHandler {
                 lostSourceFiles,
                 fullStorageGroupName);
       }
+
+      AbstractCompactionTask.unsetCompactionModsFile(seqResourceList);
+      AbstractCompactionTask.unsetCompactionModsFile(unseqResourceList);
 
       if (!handleSuccess) {
         LOGGER.error(

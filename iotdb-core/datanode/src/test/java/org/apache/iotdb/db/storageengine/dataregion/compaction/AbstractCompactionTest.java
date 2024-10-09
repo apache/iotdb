@@ -38,6 +38,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
@@ -182,6 +183,7 @@ public class AbstractCompactionTest {
 
   protected TsFileManager tsFileManager =
       new TsFileManager(COMPACTION_TEST_SG, "0", STORAGE_GROUP_DIR.getPath());
+  protected ModFileManager modFileManager = new ModFileManager();
 
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
@@ -394,6 +396,7 @@ public class AbstractCompactionTest {
       resource.updatePlanIndexes(fileVersion);
       resource.setStatusForTest(TsFileResourceStatus.NORMAL);
       resource.serialize();
+      resource.setModFileManager(modFileManager);
       if (isSeq) {
         seqResources.add(resource);
       } else {

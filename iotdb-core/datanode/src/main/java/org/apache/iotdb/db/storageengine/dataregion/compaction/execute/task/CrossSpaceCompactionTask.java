@@ -179,7 +179,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       long startTime = System.currentTimeMillis();
       targetTsfileResourceList =
           TsFileNameGenerator.getCrossCompactionTargetFileResources(selectedSequenceFiles);
-      allocateModFile(targetTsfileResourceList, selectedSequenceFiles, selectedUnsequenceFiles);
+      allocateModFile(targetTsfileResourceList, modFileManager, selectedSequenceFiles, selectedUnsequenceFiles);
 
       logFile =
           new File(

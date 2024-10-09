@@ -83,6 +83,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static java.nio.file.StandardOpenOption.WRITE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
@@ -377,7 +378,7 @@ public class TsFileResource {
       serialize();
     } else {
       // only update the mod file related parts
-      try (FileChannel fileChannel = FileChannel.open(resFile.toPath())) {
+      try (FileChannel fileChannel = FileChannel.open(resFile.toPath(), WRITE)) {
         fileChannel.truncate(modFilePathOffset);
       }
       FileOutputStream fileOutputStream =
@@ -671,11 +672,9 @@ public class TsFileResource {
   public void closeWithoutSettingStatus() throws IOException {
     if (modFile != null) {
       modFile.close();
-      modFile = null;
     }
     if (oldModFile != null) {
       oldModFile.close();
-      oldModFile = null;
     }
 
     processor = null;
@@ -1409,7 +1408,7 @@ public class TsFileResource {
       Iterator<ModEntry> newIterator = null;
       try {
         ModificationFile newModFile = getModFile();
-        newIterator = newModFile != null ? newModFile.getModIterator() : null;
+        newIterator = newModFile != null ? newModFile.getModIterator(modFileOffset) : null;
       } catch (IOException e) {
         LOGGER.warn("Failed to read mods from {} for {}", modFile, this, e);
       }
@@ -1443,5 +1442,9 @@ public class TsFileResource {
 
   public void setModFileManager(ModFileManager modFileManager) {
     this.modFileManager = modFileManager;
+  }
+
+  public long getModFileOffset() {
+    return modFileOffset;
   }
 }

@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
+import static java.nio.file.StandardOpenOption.APPEND;
+import static java.nio.file.StandardOpenOption.CREATE;
+
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.slf4j.Logger;
@@ -63,8 +67,8 @@ public class ModificationFile implements AutoCloseable {
     lock.writeLock().lock();
     try {
       if (fileOutputStream == null) {
-        fileOutputStream = new BufferedOutputStream(Files.newOutputStream(file.toPath()));
-        channel = FileChannel.open(file.toPath());
+        fileOutputStream = new BufferedOutputStream(Files.newOutputStream(file.toPath(), CREATE, APPEND));
+        channel = FileChannel.open(file.toPath(), CREATE, APPEND);
       }
       entry.serialize(fileOutputStream);
       channel.force(false);
@@ -73,22 +77,32 @@ public class ModificationFile implements AutoCloseable {
     }
   }
 
-  public Iterator<ModEntry> getModIterator() throws IOException {
-    return new ModIterator();
+  public Iterator<ModEntry> getModIterator(long offset) throws IOException {
+    return new ModIterator(offset);
   }
 
+  @TestOnly
   public List<ModEntry> getAllMods() throws IOException {
+    return getAllMods(0);
+  }
+
+  public List<ModEntry> getAllMods(long offset) throws IOException {
     List<ModEntry> allMods = new ArrayList<>();
-    getModIterator().forEachRemaining(allMods::add);
+    getModIterator(offset).forEachRemaining(allMods::add);
     return allMods;
   }
 
   @Override
   public void close() throws IOException {
+    if (fileOutputStream == null) {
+      return;
+    }
+
     lock.writeLock().lock();
     try {
       fileOutputStream.close();
       fileOutputStream = null;
+      channel.force(true);
       channel.close();
       channel = null;
     } finally {
@@ -141,7 +155,7 @@ public class ModificationFile implements AutoCloseable {
   }
 
   public static String composeFileName(long levelNum, long modFileNum) {
-    return levelNum + "-" + modFileNum + "." + FILE_SUFFIX;
+    return levelNum + "-" + modFileNum + FILE_SUFFIX;
   }
 
   public static long[] parseFileName(String name) {
@@ -160,8 +174,12 @@ public class ModificationFile implements AutoCloseable {
     private InputStream inputStream;
     private ModEntry nextEntry;
 
-    public ModIterator() throws IOException {
+    public ModIterator(long offset) throws IOException {
       this.inputStream = Files.newInputStream(file.toPath());
+      long skipped = inputStream.skip(offset);
+      if (skipped != offset) {
+        LOGGER.warn("Fail to read Mod file {}, expecting offset {}, actually skipped {}", file, offset, skipped);
+      }
     }
 
     @Override
