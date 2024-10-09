@@ -164,7 +164,7 @@ public class GeneralRegionAttributeSecurityService {
     }
   }
 
-  private Map<SchemaRegionId, Set<TDataNodeLocation>> detectNodeShrinkage(
+  private Map<SchemaRegionId, Set<Integer>> detectNodeShrinkage(
       final Map<SchemaRegionId, Pair<Long, Map<TDataNodeLocation, byte[]>>>
           attributeUpdateCommitMap) {
     final TShowClusterResp showClusterResp;
@@ -197,7 +197,12 @@ public class GeneralRegionAttributeSecurityService {
               return !entry.getValue().getRight().isEmpty();
             })
         .collect(
-            Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().getRight().keySet()));
+            Collectors.toMap(
+                Map.Entry::getKey,
+                entry ->
+                    entry.getValue().getRight().keySet().stream()
+                        .map(TDataNodeLocation::getDataNodeId)
+                        .collect(Collectors.toSet())));
   }
 
   private void sendUpdateRequest(
