@@ -2212,10 +2212,15 @@ public class TsFileProcessor {
   }
 
   private long getQueryTimeLowerBound(IDeviceID deviceID) {
-    long deviceTTL = DataNodeTTLCache.getInstance().getTTL(deviceID);
-    return deviceTTL != Long.MAX_VALUE
-        ? CommonDateTimeUtils.currentTime() - deviceTTL
-        : Long.MIN_VALUE;
+    long ttl;
+    if (deviceID.getTableName().startsWith("root.")) {
+      ttl = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
+    } else {
+      ttl =
+          DataNodeTTLCache.getInstance()
+              .getTTLForTable(this.storageGroupName, deviceID.getTableName());
+    }
+    return ttl != Long.MAX_VALUE ? CommonDateTimeUtils.currentTime() - ttl : Long.MIN_VALUE;
   }
 
   public long getTimeRangeId() {
