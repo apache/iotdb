@@ -119,7 +119,7 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
         socket,
         PipeTransferSchemaSnapshotSealReq.toTPipeTransferBytes(
             // The pattern is surely Non-null
-            pipeSchemaRegionSnapshotEvent.getPatternString(),
+            pipeSchemaRegionSnapshotEvent.getTreePatternString(),
             mtreeSnapshotFile.getName(),
             mtreeSnapshotFile.length(),
             Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.getName() : null,
