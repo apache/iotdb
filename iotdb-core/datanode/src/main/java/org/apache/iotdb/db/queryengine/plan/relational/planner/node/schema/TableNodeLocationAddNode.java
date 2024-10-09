@@ -47,6 +47,10 @@ public class TableNodeLocationAddNode extends PlanNode implements ISchemaRegionP
     this.location = location;
   }
 
+  public TDataNodeLocation getLocation() {
+    return location;
+  }
+
   @Override
   public List<PlanNode> getChildren() {
     return null;

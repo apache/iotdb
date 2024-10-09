@@ -619,7 +619,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   }
 
   @Override
-  public TSStatus visitTableDeviceAttributeCommit(
+  public TSStatus visitTableNodeLocationAdd(
       final TableNodeLocationAddNode node, final ISchemaRegion schemaRegion) {
     try {
       schemaRegion.addNodeLocation(node);

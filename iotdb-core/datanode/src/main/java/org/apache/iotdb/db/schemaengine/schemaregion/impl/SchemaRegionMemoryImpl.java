@@ -1579,7 +1579,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public void addNodeLocation(TableNodeLocationAddNode node) throws MetadataException {}
+  public void addNodeLocation(final TableNodeLocationAddNode node) throws MetadataException {
+    deviceAttributeRemoteUpdater.addLocation(node.getLocation());
+    writeToMLog(node);
+  }
 
   // endregion
 
@@ -1827,6 +1830,17 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         final SchemaRegionMemoryImpl context) {
       try {
         commitUpdateAttribute(commitUpdateTableDeviceAttributePlan);
+        return RecoverOperationResult.SUCCESS;
+      } catch (final MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
+    public RecoverOperationResult visitAddNodeLocation(
+        final TableNodeLocationAddNode addNodeLocationPlan, final SchemaRegionMemoryImpl context) {
+      try {
+        addNodeLocation(addNodeLocationPlan);
         return RecoverOperationResult.SUCCESS;
       } catch (final MetadataException e) {
         return new RecoverOperationResult(e);
