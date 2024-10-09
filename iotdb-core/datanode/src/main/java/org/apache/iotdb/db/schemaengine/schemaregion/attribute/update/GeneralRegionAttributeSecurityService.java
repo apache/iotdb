@@ -21,12 +21,17 @@ package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.client.dn.DnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.db.protocol.client.dn.DnToDnRequestType;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
@@ -37,6 +42,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TAttributeUpdateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaRegionAttributeInfo;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TException;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -156,6 +162,42 @@ public class GeneralRegionAttributeSecurityService {
       lock.unlock();
       securityServiceExecutor.submit(this::execute);
     }
+  }
+
+  private Map<SchemaRegionId, Set<TDataNodeLocation>> detectNodeShrinkage(
+      final Map<SchemaRegionId, Pair<Long, Map<TDataNodeLocation, byte[]>>>
+          attributeUpdateCommitMap) {
+    final TShowClusterResp showClusterResp;
+    try (final ConfigNodeClient client =
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      showClusterResp = client.showCluster();
+    } catch (final ClientManagerException | TException e) {
+      LOGGER.warn("Failed to fetch dataNodeLocations, will retry.");
+      return null;
+    }
+    final Set<TDataNodeLocation> dataNodeLocations = new HashSet<>();
+    showClusterResp
+        .getDataNodeList()
+        .forEach(
+            location -> {
+              location.setDataRegionConsensusEndPoint(null);
+              location.setMPPDataExchangeEndPoint(null);
+              location.setSchemaRegionConsensusEndPoint(null);
+              location.setClientRpcEndPoint(null);
+              dataNodeLocations.add(location);
+            });
+    return attributeUpdateCommitMap.entrySet().stream()
+        .filter(
+            entry -> {
+              entry
+                  .getValue()
+                  .getRight()
+                  .keySet()
+                  .removeIf(location -> !dataNodeLocations.contains(location));
+              return !entry.getValue().getRight().isEmpty();
+            })
+        .collect(
+            Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().getRight().keySet()));
   }
 
   private void sendUpdateRequest(
