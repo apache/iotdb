@@ -145,7 +145,7 @@ public class PipeEventCollector implements EventCollector {
     // Only used by events containing delete data node, no need to bind progress index here since
     // delete data event does not have progress index currently
     IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
-        .process(deleteDataEvent.getPlanNode(), (IoTDBTreePattern) deleteDataEvent.getPipePattern())
+        .process(deleteDataEvent.getPlanNode(), (IoTDBTreePattern) deleteDataEvent.getTreePattern())
         .map(
             planNode ->
                 new PipeSchemaRegionWritePlanEvent(
@@ -153,7 +153,8 @@ public class PipeEventCollector implements EventCollector {
                     deleteDataEvent.getPipeName(),
                     deleteDataEvent.getCreationTime(),
                     deleteDataEvent.getPipeTaskMeta(),
-                    deleteDataEvent.getPipePattern(),
+                    deleteDataEvent.getTreePattern(),
+                    deleteDataEvent.getTablePattern(),
                     deleteDataEvent.isGeneratedByPipe()))
         .ifPresent(
             event -> {

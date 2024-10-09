@@ -617,7 +617,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             creationTime,
             pipeTaskMeta,
             treePattern,
-            // TODO: consider tablePattern
+            tablePattern,
             historicalDataExtractionStartTime,
             historicalDataExtractionEndTime);
     if (sloppyPattern || isDbNameCoveredByPattern) {

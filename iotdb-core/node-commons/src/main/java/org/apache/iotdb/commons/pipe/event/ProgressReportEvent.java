@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.event;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 
 /**
@@ -37,9 +38,10 @@ public class ProgressReportEvent extends EnrichedEvent {
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
+      final TablePattern tablePattern,
       final long startTime,
       final long endTime) {
-    super(pipeName, creationTime, pipeTaskMeta, treePattern, startTime, endTime);
+    super(pipeName, creationTime, pipeTaskMeta, treePattern, tablePattern, startTime, endTime);
   }
 
   @Override
@@ -67,11 +69,12 @@ public class ProgressReportEvent extends EnrichedEvent {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final TreePattern pattern,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
       final long startTime,
       final long endTime) {
     return new ProgressReportEvent(
-        pipeName, creationTime, pipeTaskMeta, pattern, startTime, endTime);
+        pipeName, creationTime, pipeTaskMeta, treePattern, tablePattern, startTime, endTime);
   }
 
   @Override

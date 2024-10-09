@@ -60,7 +60,7 @@ public class CachedSchemaPatternMatcherTest {
         TsFileEpoch tsFileEpoch,
         Map<IDeviceID, String[]> device2Measurements,
         TreePattern pattern) {
-      super(event, tsFileEpoch, device2Measurements, pattern);
+      super(event, tsFileEpoch, device2Measurements, pattern, null);
     }
 
     @Override

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -61,6 +62,7 @@ public abstract class EnrichedEvent implements Event {
   protected int rebootTimes = 0;
 
   protected final TreePattern treePattern;
+  protected final TablePattern tablePattern;
 
   protected final long startTime;
   protected final long endTime;
@@ -76,6 +78,7 @@ public abstract class EnrichedEvent implements Event {
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
+      final TablePattern tablePattern,
       final long startTime,
       final long endTime) {
     referenceCount = new AtomicInteger(0);
@@ -84,6 +87,7 @@ public abstract class EnrichedEvent implements Event {
     this.creationTime = creationTime;
     this.pipeTaskMeta = pipeTaskMeta;
     this.treePattern = treePattern;
+    this.tablePattern = tablePattern;
     this.startTime = startTime;
     this.endTime = endTime;
     isPatternParsed = this.treePattern == null || this.treePattern.isRoot();
@@ -310,8 +314,12 @@ public abstract class EnrichedEvent implements Event {
     return treePattern != null ? treePattern.getPattern() : null;
   }
 
-  public final TreePattern getPipePattern() {
+  public final TreePattern getTreePattern() {
     return treePattern;
+  }
+
+  public final TablePattern getTablePattern() {
+    return tablePattern;
   }
 
   public final long getStartTime() {
@@ -350,7 +358,8 @@ public abstract class EnrichedEvent implements Event {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final TreePattern pattern,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
       final long startTime,
       final long endTime);
 
