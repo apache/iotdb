@@ -53,9 +53,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
@@ -209,7 +211,7 @@ public class GeneralRegionAttributeSecurityService {
                         .collect(Collectors.toSet())));
   }
 
-  private void sendUpdateRequest(
+  private boolean sendUpdateRequest(
       final Map<SchemaRegionId, Pair<Long, Map<TDataNodeLocation, byte[]>>>
           attributeUpdateCommitMap) {
     final AsyncRequestContext<TAttributeUpdateReq, TSStatus, DnToDnRequestType, TDataNodeLocation>
@@ -238,10 +240,29 @@ public class GeneralRegionAttributeSecurityService {
                 .getConfig()
                 .getGeneralRegionAttributeSecurityServiceTimeoutSeconds());
 
+    final AtomicBoolean needFetch = new AtomicBoolean(false);
+
     final Set<Integer> failedDataNodes =
         clientHandler.getResponseMap().entrySet().stream()
             .filter(
-                entry -> entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
+                entry -> {
+                  final boolean failed =
+                      entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode();
+                  if (failed) {
+                    dataNodeId2FailureDurationAndTimesMap.compute(
+                        entry.getKey(),
+                        (k, v) -> {
+                          if (Objects.isNull(v)) {
+                            return new Pair<>(System.currentTimeMillis(), 1);
+                          }
+                          v.setRight(v.getRight() + 1);
+                          return v;
+                        });
+                  } else {
+                    dataNodeId2FailureDurationAndTimesMap.remove(entry.getKey());
+                  }
+                  return failed;
+                })
             .map(Map.Entry::getKey)
             .collect(Collectors.toSet());
     for (final Iterator<Map.Entry<SchemaRegionId, Pair<Long, Map<TDataNodeLocation, byte[]>>>> it =
@@ -256,6 +277,7 @@ public class GeneralRegionAttributeSecurityService {
         it.remove();
       }
     }
+    return needFetch.get();
   }
 
   /////////////////////////////// SingleTon ///////////////////////////////
