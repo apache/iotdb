@@ -313,8 +313,6 @@ public class DataRegion implements IDataRegionForQuery {
 
   private final AtomicBoolean isCompactionSelecting = new AtomicBoolean(false);
 
-  private boolean isTreeModel;
-
   private static final QueryResourceMetricSet QUERY_RESOURCE_METRIC_SET =
       QueryResourceMetricSet.getInstance();
 
@@ -335,7 +333,6 @@ public class DataRegion implements IDataRegionForQuery {
     this.dataRegionId = dataRegionId;
     this.databaseName = databaseName;
     this.fileFlushPolicy = fileFlushPolicy;
-    this.isTreeModel = this.databaseName.startsWith("root.");
     acquireDirectBufferMemory();
 
     dataRegionSysDir = SystemFileFactory.INSTANCE.getFile(systemDir, dataRegionId);
@@ -386,7 +383,6 @@ public class DataRegion implements IDataRegionForQuery {
     this.dataRegionId = id;
     this.tsFileManager = new TsFileManager(databaseName, id, "");
     this.partitionMaxFileVersions = new HashMap<>();
-    this.isTreeModel = this.databaseName.startsWith("root.");
     partitionMaxFileVersions.put(0L, 0L);
   }
 
@@ -1027,11 +1023,10 @@ public class DataRegion implements IDataRegionForQuery {
    */
   public void insert(InsertRowNode insertRowNode) throws WriteProcessException {
     // reject insertions that are out of ttl
-    long deviceTTL =
-        DataNodeTTLCache.getInstance().getTTL(insertRowNode.getTargetPath().getNodes());
-    if (!CommonUtils.isAlive(insertRowNode.getTime(), deviceTTL)) {
+    long ttl = getTTL(insertRowNode);
+    if (!CommonUtils.isAlive(insertRowNode.getTime(), ttl)) {
       throw new OutOfTTLException(
-          insertRowNode.getTime(), (CommonDateTimeUtils.currentTime() - deviceTTL));
+          insertRowNode.getTime(), (CommonDateTimeUtils.currentTime() - ttl));
     }
     StorageEngine.blockInsertionIfReject();
     long startTime = System.nanoTime();
@@ -1202,9 +1197,7 @@ public class DataRegion implements IDataRegionForQuery {
       TSStatus[] results = new TSStatus[insertTabletNode.getRowCount()];
       Arrays.fill(results, RpcUtils.SUCCESS_STATUS);
       boolean noFailure;
-      int loc =
-          insertTabletNode.checkTTL(
-              results, i -> DataNodeTTLCache.getInstance().getTTL(insertTabletNode.getDeviceID(i)));
+      int loc = insertTabletNode.checkTTL(results, i -> getTTL(insertTabletNode));
       noFailure = loc == 0;
       noFailure = noFailure && splitAndInsert(insertTabletNode, loc, results);
 
@@ -2775,7 +2768,7 @@ public class DataRegion implements IDataRegionForQuery {
       // Sort the time partition from largest to smallest
       timePartitions.sort(Comparator.reverseOrder());
 
-      CompactionScheduleContext context = new CompactionScheduleContext(this.isTreeModel);
+      CompactionScheduleContext context = new CompactionScheduleContext();
 
       // schedule insert compaction
       trySubmitCount += executeInsertionCompaction(timePartitions, context);
@@ -2818,7 +2811,7 @@ public class DataRegion implements IDataRegionForQuery {
     logger.info("[TTL] {}-{} Start ttl checking.", databaseName, dataRegionId);
     int trySubmitCount = 0;
     try {
-      CompactionScheduleContext context = new CompactionScheduleContext(this.isTreeModel);
+      CompactionScheduleContext context = new CompactionScheduleContext();
       List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
       // Sort the time partition from smallest to largest
       Collections.sort(timePartitions);
@@ -3499,14 +3492,12 @@ public class DataRegion implements IDataRegionForQuery {
       if (deleted) {
         return;
       }
-      long deviceTTL =
-          DataNodeTTLCache.getInstance()
-              .getTTL(insertRowsOfOneDeviceNode.getTargetPath().getNodes());
+      long ttl = getTTL(insertRowsOfOneDeviceNode);
       long[] costsForMetrics = new long[4];
       Map<TsFileProcessor, InsertRowsNode> tsFileProcessorMap = new HashMap<>();
       for (int i = 0; i < insertRowsOfOneDeviceNode.getInsertRowNodeList().size(); i++) {
         InsertRowNode insertRowNode = insertRowsOfOneDeviceNode.getInsertRowNodeList().get(i);
-        if (!CommonUtils.isAlive(insertRowNode.getTime(), deviceTTL)) {
+        if (!CommonUtils.isAlive(insertRowNode.getTime(), ttl)) {
           // we do not need to write these part of data, as they can not be queried
           // or the sub-plan has already been executed, we are retrying other sub-plans
           insertRowsOfOneDeviceNode
@@ -3519,7 +3510,7 @@ public class DataRegion implements IDataRegionForQuery {
                           "Insertion time [%s] is less than ttl time bound [%s]",
                           DateTimeUtils.convertLongToDate(insertRowNode.getTime()),
                           DateTimeUtils.convertLongToDate(
-                              CommonDateTimeUtils.currentTime() - deviceTTL))));
+                              CommonDateTimeUtils.currentTime() - ttl))));
           continue;
         }
         // init map
@@ -3621,13 +3612,8 @@ public class DataRegion implements IDataRegionForQuery {
       long[] timePartitionIds = new long[insertRowsNode.getInsertRowNodeList().size()];
       for (int i = 0; i < insertRowsNode.getInsertRowNodeList().size(); i++) {
         InsertRowNode insertRowNode = insertRowsNode.getInsertRowNodeList().get(i);
-        long deviceTTL =
-            DataNodeTTLCache.getInstance()
-                .getTTL(
-                    Arrays.stream(insertRowNode.getDeviceID().getSegments())
-                        .map(seg -> seg != null ? seg.toString() : null)
-                        .toArray(String[]::new));
-        if (!CommonUtils.isAlive(insertRowNode.getTime(), deviceTTL)) {
+        long ttl = getTTL(insertRowNode);
+        if (!CommonUtils.isAlive(insertRowNode.getTime(), ttl)) {
           insertRowsNode
               .getResults()
               .put(
@@ -3638,7 +3624,8 @@ public class DataRegion implements IDataRegionForQuery {
                           "Insertion time [%s] is less than ttl time bound [%s]",
                           DateTimeUtils.convertLongToDate(insertRowNode.getTime()),
                           DateTimeUtils.convertLongToDate(
-                              CommonDateTimeUtils.currentTime() - deviceTTL))));
+                              CommonDateTimeUtils.currentTime() - ttl))));
+          insertRowNode.setFailedMeasurementNumber(insertRowNode.getMeasurements().length);
           continue;
         }
         // init map
@@ -3946,5 +3933,13 @@ public class DataRegion implements IDataRegionForQuery {
   @TestOnly
   public TsFileManager getTsFileManager() {
     return tsFileManager;
+  }
+
+  private long getTTL(InsertNode insertNode) {
+    if (insertNode.getTableName() == null) {
+      return DataNodeTTLCache.getInstance().getTTLForTree(insertNode.getTargetPath().getNodes());
+    } else {
+      return DataNodeTTLCache.getInstance().getTTLForTable(databaseName, insertNode.getTableName());
+    }
   }
 }

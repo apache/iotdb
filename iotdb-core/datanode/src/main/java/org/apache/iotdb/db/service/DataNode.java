@@ -1140,7 +1140,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     for (int i = 0; i < mapSize; i++) {
       try {
         DataNodeTTLCache.getInstance()
-            .setTTL(
+            .setTTLForTree(
                 PathUtils.splitPathToDetachedNodes(
                     Objects.requireNonNull(ReadWriteIOUtils.readString(buffer))),
                 ReadWriteIOUtils.readLong(buffer));
