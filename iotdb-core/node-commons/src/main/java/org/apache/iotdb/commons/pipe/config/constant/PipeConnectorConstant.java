@@ -121,7 +121,7 @@ public class PipeConnectorConstant {
   public static final String CONNECTOR_ASYNC_RETRY_CLEAR_CLIENTS_KEY =
       "connector.async.retry.clear-clients";
   public static final String SINK_ASYNC_RETRY_CLEAR_CLIENTS_KEY = "sink.async.retry.clear-clients";
-  public static final boolean CONNECTOR_ASYNC_RETRY_CLEAR_CLIENTS_DEFAULT = false;
+  public static final boolean CONNECTOR_ASYNC_RETRY_CLEAR_CLIENTS_DEFAULT_VALUE = false;
 
   public static final String CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_KEY =
       "connector.air-gap.e-language.enable";

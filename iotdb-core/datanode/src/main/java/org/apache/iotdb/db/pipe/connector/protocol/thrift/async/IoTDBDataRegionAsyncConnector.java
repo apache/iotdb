@@ -71,7 +71,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_ASYNC_RETRY_CLEAR_CLIENTS_DEFAULT;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_ASYNC_RETRY_CLEAR_CLIENTS_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_ASYNC_RETRY_CLEAR_CLIENTS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_KEY;
@@ -119,7 +119,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
         parameters.getBooleanOrDefault(
             Arrays.asList(
                 CONNECTOR_ASYNC_RETRY_CLEAR_CLIENTS_KEY, SINK_ASYNC_RETRY_CLEAR_CLIENTS_KEY),
-            CONNECTOR_ASYNC_RETRY_CLEAR_CLIENTS_DEFAULT);
+            CONNECTOR_ASYNC_RETRY_CLEAR_CLIENTS_DEFAULT_VALUE);
   }
 
   @Override
