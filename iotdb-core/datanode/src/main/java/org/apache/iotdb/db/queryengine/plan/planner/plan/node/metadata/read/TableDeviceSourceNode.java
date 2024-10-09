@@ -19,11 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
 import java.util.Collections;
@@ -32,6 +37,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 public abstract class TableDeviceSourceNode extends SourceNode {
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   protected String database;
 
@@ -40,6 +46,7 @@ public abstract class TableDeviceSourceNode extends SourceNode {
   protected List<ColumnHeader> columnHeaderList;
 
   protected TRegionReplicaSet schemaRegionReplicaSet;
+  private TDataNodeLocation senderLocation;
 
   protected TableDeviceSourceNode(
       final PlanNodeId id,
@@ -66,6 +73,10 @@ public abstract class TableDeviceSourceNode extends SourceNode {
     return columnHeaderList;
   }
 
+  public TDataNodeLocation getSenderLocation() {
+    return senderLocation;
+  }
+
   @Override
   public List<String> getOutputColumnNames() {
     return columnHeaderList.stream().map(ColumnHeader::getColumnName).collect(Collectors.toList());
@@ -79,6 +90,18 @@ public abstract class TableDeviceSourceNode extends SourceNode {
   @Override
   public void setRegionReplicaSet(final TRegionReplicaSet regionReplicaSet) {
     this.schemaRegionReplicaSet = regionReplicaSet;
+    if (!TableDeviceSchemaFetcher.getInstance()
+        .getAttributeGuard()
+        .isRegionFetched(regionReplicaSet.getRegionId().getId())) {
+      this.senderLocation =
+          new TDataNodeLocation(
+              config.getDataNodeId(),
+              null,
+              new TEndPoint(config.getInternalAddress(), config.getInternalPort()),
+              null,
+              null,
+              null);
+    }
   }
 
   @Override

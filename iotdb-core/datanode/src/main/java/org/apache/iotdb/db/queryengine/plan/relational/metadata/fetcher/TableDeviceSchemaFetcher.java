@@ -79,6 +79,9 @@ public class TableDeviceSchemaFetcher {
 
   private final TableDeviceSchemaCache cache = new TableDeviceSchemaCache();
 
+  private final TableDeviceCacheAttributeGuard attributeGuard =
+      new TableDeviceCacheAttributeGuard();
+
   private TableDeviceSchemaFetcher() {
     // do nothing
   }
@@ -93,6 +96,10 @@ public class TableDeviceSchemaFetcher {
 
   public TableDeviceSchemaCache getTableDeviceCache() {
     return cache;
+  }
+
+  public TableDeviceCacheAttributeGuard getAttributeGuard() {
+    return attributeGuard;
   }
 
   Map<TableDeviceId, ConcurrentMap<String, String>> fetchMissingDeviceSchemaForDataInsertion(
