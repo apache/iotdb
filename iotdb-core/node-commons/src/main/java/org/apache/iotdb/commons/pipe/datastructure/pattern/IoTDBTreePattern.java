@@ -51,6 +51,10 @@ public class IoTDBTreePattern extends TreePattern {
     }
   }
 
+  public IoTDBTreePattern(final String pattern) {
+    this(true, pattern);
+  }
+
   public static <T> List<T> applyIndexesOnList(
       final int[] filteredIndexes, final List<T> originalList) {
     return Objects.nonNull(originalList)

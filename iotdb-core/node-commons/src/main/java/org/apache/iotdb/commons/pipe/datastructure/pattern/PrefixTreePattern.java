@@ -35,6 +35,10 @@ public class PrefixTreePattern extends TreePattern {
     super(isTreeModelDataAllowedToBeCaptured, pattern);
   }
 
+  public PrefixTreePattern(final String pattern) {
+    this(true, pattern);
+  }
+
   @Override
   public String getDefaultPattern() {
     return PipeExtractorConstant.EXTRACTOR_PATTERN_PREFIX_DEFAULT_VALUE;
