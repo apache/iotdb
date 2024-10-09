@@ -118,6 +118,11 @@ public class PipeConnectorConstant {
       "sink.exception.others.record-ignored-data";
   public static final boolean CONNECTOR_EXCEPTION_OTHERS_RECORD_IGNORED_DATA_DEFAULT_VALUE = true;
 
+  public static final String CONNECTOR_ASYNC_RETRY_CLEAR_CLIENTS_KEY =
+      "connector.async.retry.clear-clients";
+  public static final String SINK_ASYNC_RETRY_CLEAR_CLIENTS_KEY = "sink.async.retry.clear-clients";
+  public static final boolean CONNECTOR_ASYNC_RETRY_CLEAR_CLIENTS_DEFAULT = false;
+
   public static final String CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_KEY =
       "connector.air-gap.e-language.enable";
   public static final String SINK_AIR_GAP_E_LANGUAGE_ENABLE_KEY = "sink.air-gap.e-language.enable";

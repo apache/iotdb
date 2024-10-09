@@ -295,6 +295,12 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     LEADER_CACHE_MANAGER.updateLeaderEndPoint(deviceId, endPoint);
   }
 
+  public void clearClients(List<TEndPoint> nodeUrls) {
+    for (TEndPoint tEndPoint : nodeUrls) {
+      endPoint2Client.clear(tEndPoint);
+    }
+  }
+
   public void close() {
     synchronized (IoTDBDataNodeAsyncClientManager.class) {
       RECEIVER_ATTRIBUTES_REF_COUNT.computeIfPresent(

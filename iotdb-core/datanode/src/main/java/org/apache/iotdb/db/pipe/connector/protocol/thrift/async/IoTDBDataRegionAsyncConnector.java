@@ -71,8 +71,11 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_ASYNC_RETRY_CLEAR_CLIENTS_DEFAULT;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_ASYNC_RETRY_CLEAR_CLIENTS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_ASYNC_RETRY_CLEAR_CLIENTS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY;
@@ -96,6 +99,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
 
+  private boolean clearClientsAfterHandshakeSuccess = false;
+
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
     super.validate(validator);
@@ -109,6 +114,12 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
         parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false),
         parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY),
         parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY));
+
+    clearClientsAfterHandshakeSuccess =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(
+                CONNECTOR_ASYNC_RETRY_CLEAR_CLIENTS_KEY, SINK_ASYNC_RETRY_CLEAR_CLIENTS_KEY),
+            CONNECTOR_ASYNC_RETRY_CLEAR_CLIENTS_DEFAULT);
   }
 
   @Override
@@ -137,6 +148,10 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   // Synchronized to avoid close connector when transfer event
   public synchronized void handshake() throws Exception {
     retryConnector.handshake();
+    if (clearClientsAfterHandshakeSuccess) {
+      clientManager.clearClients(nodeUrls);
+      LOGGER.info("Clients cleared after handshake success.");
+    }
   }
 
   @Override
