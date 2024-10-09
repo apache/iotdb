@@ -70,6 +70,11 @@ public class TableDeviceQueryCountNode extends AbstractTableDeviceQueryNode {
   }
 
   @Override
+  public void setRegionReplicaSet(final TRegionReplicaSet regionReplicaSet) {
+    this.schemaRegionReplicaSet = regionReplicaSet;
+  }
+
+  @Override
   public PlanNode clone() {
     return new TableDeviceQueryCountNode(
         getPlanNodeId(),
