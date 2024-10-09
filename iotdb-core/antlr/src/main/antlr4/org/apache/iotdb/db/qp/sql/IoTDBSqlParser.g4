@@ -1274,8 +1274,8 @@ expression
     | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
     | leftExpression=expression (PLUS | MINUS) rightExpression=expression
     | leftExpression=expression (OPERATOR_GT | OPERATOR_GTE | OPERATOR_LT | OPERATOR_LTE | OPERATOR_SEQ | OPERATOR_DEQ | OPERATOR_NEQ) rightExpression=expression
-    | unaryBeforeRegularOrLikeExpression=expression operator_not? REGEXP pattern=expression
-    | unaryBeforeRegularOrLikeExpression=expression operator_not? LIKE pattern=expression (ESCAPE escapeSet=expression)?
+    | unaryBeforeRegularOrLikeExpression=expression operator_not? REGEXP pattern=STRING_LITERAL
+    | unaryBeforeRegularOrLikeExpression=expression operator_not? LIKE pattern=STRING_LITERAL (ESCAPE escapeSet=STRING_LITERAL)?
     | firstExpression=expression operator_not? operator_between secondExpression=expression operator_and thirdExpression=expression
     | unaryBeforeIsNullExpression=expression operator_is operator_not? null_literal
     | unaryBeforeInExpression=expression operator_not? (operator_in | operator_contains) LR_BRACKET constant (COMMA constant)* RR_BRACKET
