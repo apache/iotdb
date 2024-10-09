@@ -47,6 +47,8 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
+
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
@@ -130,10 +132,11 @@ public class GeneralRegionAttributeSecurityService {
         attributeUpdateCommitMap.put(regionLeader.getSchemaRegionId(), currentResult);
       }
 
-      // Send
-      sendUpdateRequest(attributeUpdateCommitMap);
-
-      // May shrink
+      // Send & may shrink
+      final Map<SchemaRegionId, Set<Integer>> shrinkMap =
+          sendUpdateRequest(attributeUpdateCommitMap)
+              ? detectNodeShrinkage(attributeUpdateCommitMap)
+              : Collections.emptyMap();
 
       // Commit
       // TODO: Execute in parallel by thread pool
@@ -146,7 +149,7 @@ public class GeneralRegionAttributeSecurityService {
                         new PlanNodeId(""),
                         pair.getLeft(),
                         pair.getRight(),
-                        Collections.emptySet()))
+                        shrinkMap.getOrDefault(schemaRegionId, Collections.emptySet())))
                 .isAccepted()) {
               LOGGER.warn("Failed to write attribute commit message to region {}.", schemaRegionId);
             }
@@ -170,7 +173,7 @@ public class GeneralRegionAttributeSecurityService {
     }
   }
 
-  private Map<SchemaRegionId, Set<Integer>> detectNodeShrinkage(
+  private @Nonnull Map<SchemaRegionId, Set<Integer>> detectNodeShrinkage(
       final Map<SchemaRegionId, Pair<Long, Map<TDataNodeLocation, byte[]>>>
           attributeUpdateCommitMap) {
     final TShowClusterResp showClusterResp;
@@ -181,6 +184,7 @@ public class GeneralRegionAttributeSecurityService {
       LOGGER.warn("Failed to fetch dataNodeLocations, will retry.");
       return Collections.emptyMap();
     }
+    dataNodeId2FailureDurationAndTimesMap.clear();
     final Set<TDataNodeLocation> dataNodeLocations = new HashSet<>();
     showClusterResp
         .getDataNodeList()
@@ -256,6 +260,16 @@ public class GeneralRegionAttributeSecurityService {
                             return new Pair<>(System.currentTimeMillis(), 1);
                           }
                           v.setRight(v.getRight() + 1);
+                          if (System.currentTimeMillis() - v.getLeft()
+                                  >= IoTDBDescriptor.getInstance()
+                                      .getConfig()
+                                      .getGeneralRegionAttributeSecurityServiceFailureDurationSecondsToFetch()
+                              || v.getRight()
+                                  >= IoTDBDescriptor.getInstance()
+                                      .getConfig()
+                                      .getGeneralRegionAttributeSecurityServiceFailureTimesToFetch()) {
+                            needFetch.set(true);
+                          }
                           return v;
                         });
                   } else {
