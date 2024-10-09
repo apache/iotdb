@@ -21,7 +21,9 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionExecutionResult;
+import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
@@ -55,7 +57,12 @@ public class TableSchemaQueryWriteVisitor
   private RegionExecutionResult visitTableDeviceSourceNode(
       final TableDeviceSourceNode node, final ConsensusGroupId context) {
     if (Objects.nonNull(node.getSenderLocation())) {
-      return null;
+      final RegionExecutionResult result =
+          new RegionWriteExecutor()
+              .execute(
+                  context,
+                  new TableNodeLocationAddNode(new PlanNodeId(""), node.getSenderLocation()));
+      return !result.isAccepted() ? result : null;
     }
     return null;
   }
