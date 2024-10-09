@@ -330,7 +330,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSendFragmentInstanceResp sendFragmentInstance(TSendFragmentInstanceReq req) {
+  public TSendFragmentInstanceResp sendFragmentInstance(final TSendFragmentInstanceReq req) {
     LOGGER.debug("receive FragmentInstance to group[{}]", req.getConsensusGroupId());
 
     // Deserialize ConsensusGroupId
@@ -338,9 +338,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     if (req.consensusGroupId != null) {
       try {
         groupId = ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
-      } catch (Exception e) {
+      } catch (final Exception e) {
         LOGGER.warn("Deserialize ConsensusGroupId failed. ", e);
-        TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
+        final TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
         resp.setMessage("Deserialize ConsensusGroupId failed: " + e.getMessage());
         return resp;
       }
@@ -348,22 +348,22 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
     // We deserialize here instead of the underlying state machine because parallelism is possible
     // here but not at the underlying state machine
-    FragmentInstance fragmentInstance;
+    final FragmentInstance fragmentInstance;
     try {
       fragmentInstance = FragmentInstance.deserializeFrom(req.fragmentInstance.body);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn("Deserialize FragmentInstance failed.", e);
       TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
       resp.setMessage("Deserialize FragmentInstance failed: " + e.getMessage());
       return resp;
     }
 
-    RegionReadExecutor executor = new RegionReadExecutor();
-    RegionExecutionResult executionResult =
+    final RegionReadExecutor executor = new RegionReadExecutor();
+    final RegionExecutionResult executionResult =
         groupId == null
             ? executor.execute(fragmentInstance)
             : executor.execute(groupId, fragmentInstance);
-    TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp();
+    final TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp();
     resp.setAccepted(executionResult.isAccepted());
     resp.setMessage(executionResult.getMessage());
     resp.setNeedRetry(executionResult.isReadNeedRetry());
