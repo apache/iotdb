@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 
@@ -81,6 +82,11 @@ public class DeviceAttributeRemoteUpdater {
       final String tableName, final String[] deviceId, final Map<String, String> attributeMap) {
     targetDataNodeLocations.forEach(
         location -> {
+          // Skip update on local
+          if (location.getDataNodeId()
+              == IoTDBDescriptor.getInstance().getConfig().getDataNodeId()) {
+            return;
+          }
           if (!attributeUpdateMap.containsKey(location)) {
             final UpdateContainer newContainer;
             if (!regionStatistics.isAllowToCreateNewSeries()) {
