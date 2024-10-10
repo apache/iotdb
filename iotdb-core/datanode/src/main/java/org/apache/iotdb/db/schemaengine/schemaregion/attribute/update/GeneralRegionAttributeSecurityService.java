@@ -87,7 +87,7 @@ public class GeneralRegionAttributeSecurityService implements IService {
       Collections.newSetFromMap(new ConcurrentHashMap<>());
   private final ReentrantLock lock = new ReentrantLock();
   private final Condition condition = lock.newCondition();
-  private volatile boolean skipNext = false;
+  private volatile boolean skipNextSleep = false;
   private volatile boolean allowSubmitListen = false;
 
   public void startBroadcast(final ISchemaRegion schemaRegion) {
@@ -106,7 +106,7 @@ public class GeneralRegionAttributeSecurityService implements IService {
         lock.unlock();
       }
     } else {
-      skipNext = true;
+      skipNextSleep = true;
     }
   }
 
@@ -165,12 +165,12 @@ public class GeneralRegionAttributeSecurityService implements IService {
             });
       }
 
-      if (!skipNext) {
+      if (!skipNextSleep) {
         condition.await(
             iotdbConfig.getGeneralRegionAttributeSecurityServiceIntervalSeconds(),
             TimeUnit.SECONDS);
       }
-      skipNext = false;
+      skipNextSleep = false;
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
       LOGGER.warn(
