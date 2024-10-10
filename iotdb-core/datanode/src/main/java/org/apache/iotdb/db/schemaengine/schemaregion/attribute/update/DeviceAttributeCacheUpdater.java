@@ -286,6 +286,8 @@ public class DeviceAttributeCacheUpdater {
   }
 
   private void serialize(final OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(version.get(), outputStream);
+
     ReadWriteIOUtils.write(targetDataNodeLocations.size(), outputStream);
     for (final TDataNodeLocation targetDataNodeLocation : targetDataNodeLocations) {
       serializeNodeLocation4AttributeUpdate(targetDataNodeLocation, outputStream);
@@ -297,8 +299,6 @@ public class DeviceAttributeCacheUpdater {
       serializeNodeLocation4AttributeUpdate(entry.getKey(), outputStream);
       entry.getValue().serialize(outputStream);
     }
-
-    ReadWriteIOUtils.write(version.get(), outputStream);
   }
 
   public void loadFromSnapshot(final File snapshotDir) throws IOException {
@@ -321,6 +321,8 @@ public class DeviceAttributeCacheUpdater {
   }
 
   private void deserialize(final InputStream inputStream) throws IOException {
+    version.set(ReadWriteIOUtils.readLong(inputStream));
+
     int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; i++) {
       targetDataNodeLocations.add(deserializeNodeLocationForAttributeUpdate(inputStream));
@@ -336,8 +338,6 @@ public class DeviceAttributeCacheUpdater {
       container.deserialize(inputStream);
       attributeUpdateMap.put(location, container);
     }
-
-    version.set(ReadWriteIOUtils.readLong(inputStream));
   }
 
   public static void serializeNodeLocation4AttributeUpdate(
