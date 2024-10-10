@@ -19,17 +19,33 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
-import java.util.HashSet;
-import java.util.Set;
+import org.apache.iotdb.mpp.rpc.thrift.TAttributeUpdateReq;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class TableDeviceCacheAttributeGuard {
-  final Set<Integer> fetchedSchemaRegionIds = new HashSet<>();
+  final Map<Integer, Long> fetchedSchemaRegionIds2LargestVersionMap = new ConcurrentHashMap<>();
 
   public boolean isRegionFetched(final Integer schemaRegionId) {
-    return fetchedSchemaRegionIds.contains(schemaRegionId);
+    return fetchedSchemaRegionIds2LargestVersionMap.containsKey(schemaRegionId);
   }
 
   public void addFetchedRegion(final Integer schemaRegionId) {
-    fetchedSchemaRegionIds.add(schemaRegionId);
+    fetchedSchemaRegionIds2LargestVersionMap.put(schemaRegionId, Long.MIN_VALUE);
+  }
+
+  public void handleAttributeUpdate(final TAttributeUpdateReq updateReq) {
+    // Trim the schema regions with lower or equal version
+    // or with this node restarted before fetching
+    updateReq
+        .getAttributeUpdateMap()
+        .entrySet()
+        .removeIf(
+            entry ->
+                !fetchedSchemaRegionIds2LargestVersionMap.containsKey(entry.getKey())
+                    || entry.getValue().getVersion()
+                        <= fetchedSchemaRegionIds2LargestVersionMap.get(entry.getKey()));
+
   }
 }
