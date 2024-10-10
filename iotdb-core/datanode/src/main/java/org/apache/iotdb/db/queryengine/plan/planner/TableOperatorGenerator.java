@@ -49,8 +49,12 @@ import org.apache.iotdb.db.queryengine.execution.operator.schema.source.SchemaSo
 import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.InnerJoinOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableFullOuterJoinOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableInnerJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Accumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Aggregator;
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -92,6 +96,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.RowType;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -108,6 +114,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -117,8 +124,10 @@ import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.createAccumulator;
 import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.convertPredicateToFilter;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.ASC_TIME_COMPARATOR;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableBuiltinAggregationFunction.getAggregationTypeByFuncName;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 
 /** This Visitor is responsible for transferring Table PlanNode Tree to Table Operator Tree. */
@@ -760,11 +769,15 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     Operator leftChild = node.getLeftChild().accept(this, context);
     Operator rightChild = node.getRightChild().accept(this, context);
 
+    int leftTimeColumnPosition =
+        node.getLeftChild().getOutputSymbols().indexOf(node.getCriteria().get(0).getLeft());
     int[] leftOutputSymbolIdx = new int[node.getLeftOutputSymbols().size()];
     for (int i = 0; i < leftOutputSymbolIdx.length; i++) {
       leftOutputSymbolIdx[i] =
           node.getLeftChild().getOutputSymbols().indexOf(node.getLeftOutputSymbols().get(i));
     }
+    int rightTimeColumnPosition =
+        node.getRightChild().getOutputSymbols().indexOf(node.getCriteria().get(0).getRight());
     int[] rightOutputSymbolIdx = new int[node.getRightOutputSymbols().size()];
     for (int i = 0; i < rightOutputSymbolIdx.length; i++) {
       rightOutputSymbolIdx[i] =
@@ -772,11 +785,24 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     }
 
     if (requireNonNull(node.getJoinType()) == JoinNode.JoinType.INNER) {
-      return new InnerJoinOperator(
+      return new TableInnerJoinOperator(
           operatorContext,
           leftChild,
+          leftTimeColumnPosition,
           leftOutputSymbolIdx,
           rightChild,
+          rightTimeColumnPosition,
+          rightOutputSymbolIdx,
+          ASC_TIME_COMPARATOR,
+          dataTypes);
+    } else if (requireNonNull(node.getJoinType()) == JoinNode.JoinType.FULL) {
+      return new TableFullOuterJoinOperator(
+          operatorContext,
+          leftChild,
+          leftTimeColumnPosition,
+          leftOutputSymbolIdx,
+          rightChild,
+          rightTimeColumnPosition,
           rightOutputSymbolIdx,
           ASC_TIME_COMPARATOR,
           dataTypes);
@@ -896,7 +922,86 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
   @Override
   public Operator visitAggregation(AggregationNode node, LocalExecutionPlanContext context) {
-    throw new UnsupportedOperationException("Agg-BE not supported");
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                AggregationNode.class.getSimpleName());
+    Operator child = node.getChild().accept(this, context);
+
+    if (node.getGroupingKeys().isEmpty()) {
+      return planGlobalAggregation(node, child, context.getTypeProvider(), operatorContext);
+    }
+
+    throw new UnsupportedOperationException();
+    // return planGroupByAggregation(node, child, outputTypes, operatorContext);
+  }
+
+  private Operator planGlobalAggregation(
+      AggregationNode node, Operator child, TypeProvider typeProvider, OperatorContext context) {
+
+    Map<Symbol, AggregationNode.Aggregation> aggregationMap = node.getAggregations();
+    ImmutableList.Builder<Aggregator> aggregatorBuilder = new ImmutableList.Builder<>();
+    Map<Symbol, Integer> childLayout =
+        makeLayoutFromOutputSymbols(node.getChild().getOutputSymbols());
+
+    node.getOutputSymbols()
+        .forEach(
+            symbol ->
+                aggregatorBuilder.add(
+                    buildAggregator(
+                        childLayout, aggregationMap.get(symbol), node.getStep(), typeProvider)));
+    return new AggregationOperator(context, child, aggregatorBuilder.build());
+  }
+
+  private ImmutableMap<Symbol, Integer> makeLayoutFromOutputSymbols(List<Symbol> outputSymbols) {
+    ImmutableMap.Builder<Symbol, Integer> outputMappings = ImmutableMap.builder();
+    int channel = 0;
+    for (Symbol symbol : outputSymbols) {
+      outputMappings.put(symbol, channel);
+      channel++;
+    }
+    return outputMappings.buildOrThrow();
+  }
+
+  private Aggregator buildAggregator(
+      Map<Symbol, Integer> childLayout,
+      AggregationNode.Aggregation aggregation,
+      AggregationNode.Step step,
+      TypeProvider typeProvider) {
+    List<Integer> argumentChannels = new ArrayList<>();
+    List<TSDataType> argumentTypes = new ArrayList<>();
+    for (Expression argument : aggregation.getArguments()) {
+      Symbol argumentSymbol = Symbol.from(argument);
+      argumentChannels.add(childLayout.get(argumentSymbol));
+
+      // get argument types
+      Type type = typeProvider.getTableModelType(argumentSymbol);
+      if (type instanceof RowType) {
+        type.getTypeParameters().forEach(subType -> argumentTypes.add(getTSDataType(subType)));
+      } else {
+        argumentTypes.add(getTSDataType(type));
+      }
+    }
+
+    String functionName = aggregation.getResolvedFunction().getSignature().getName();
+    Accumulator accumulator =
+        createAccumulator(
+            functionName,
+            getAggregationTypeByFuncName(functionName),
+            argumentTypes,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true);
+
+    return new Aggregator(
+        accumulator,
+        step,
+        getTSDataType(aggregation.getResolvedFunction().getSignature().getReturnType()),
+        argumentChannels,
+        OptionalInt.empty());
   }
 
   @Override

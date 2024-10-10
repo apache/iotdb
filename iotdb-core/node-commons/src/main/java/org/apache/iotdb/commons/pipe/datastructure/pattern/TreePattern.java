@@ -19,12 +19,15 @@
 
 package org.apache.iotdb.commons.pipe.datastructure.pattern;
 
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.Objects;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATH_KEY;
@@ -36,14 +39,20 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_KEY;
 
-public abstract class PipePattern {
+public abstract class TreePattern {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipePattern.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TreePattern.class);
 
+  protected final boolean isTreeModelDataAllowedToBeCaptured;
   protected final String pattern;
 
-  protected PipePattern(final String pattern) {
+  protected TreePattern(final boolean isTreeModelDataAllowedToBeCaptured, final String pattern) {
+    this.isTreeModelDataAllowedToBeCaptured = isTreeModelDataAllowedToBeCaptured;
     this.pattern = pattern != null ? pattern : getDefaultPattern();
+  }
+
+  public boolean isTreeModelDataAllowedToBeCaptured() {
+    return isTreeModelDataAllowedToBeCaptured;
   }
 
   public String getPattern() {
@@ -57,16 +66,26 @@ public abstract class PipePattern {
   /**
    * Interpret from source parameters and get a {@link PipePattern}.
    *
-   * @return The interpreted {@link PipePattern} which is not {@code null}.
+   * @return The interpreted {@link TreePattern} which is not {@code null}.
    */
-  public static PipePattern parsePipePatternFromSourceParameters(
+  public static TreePattern parsePipePatternFromSourceParameters(
       final PipeParameters sourceParameters) {
+    final boolean isTreeModelDataAllowedToBeCaptured =
+        sourceParameters.getBooleanOrDefault(
+            Arrays.asList(
+                PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_KEY,
+                PipeExtractorConstant.SOURCE_CAPTURE_TREE_KEY),
+            sourceParameters
+                .getStringOrDefault(
+                    SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
+                .equals(SystemConstant.SQL_DIALECT_TREE_VALUE));
+
     final String path = sourceParameters.getStringByKeys(EXTRACTOR_PATH_KEY, SOURCE_PATH_KEY);
 
     // 1. If "source.path" is specified, it will be interpreted as an IoTDB-style path,
     // ignoring the other 2 parameters.
     if (path != null) {
-      return new IoTDBPipePattern(path);
+      return new IoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, path);
     }
 
     final String pattern =
@@ -80,24 +99,24 @@ public abstract class PipePattern {
 
       // If "source.pattern.format" is not specified, use prefix format by default.
       if (patternFormat == null) {
-        return new PrefixPipePattern(pattern);
+        return new PrefixTreePattern(isTreeModelDataAllowedToBeCaptured, pattern);
       }
 
       switch (patternFormat.toLowerCase()) {
         case EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE:
-          return new IoTDBPipePattern(pattern);
+          return new IoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, pattern);
         case EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE:
-          return new PrefixPipePattern(pattern);
+          return new PrefixTreePattern(isTreeModelDataAllowedToBeCaptured, pattern);
         default:
           LOGGER.info(
               "Unknown pattern format: {}, use prefix matching format by default.", patternFormat);
-          return new PrefixPipePattern(pattern);
+          return new PrefixTreePattern(isTreeModelDataAllowedToBeCaptured, pattern);
       }
     }
 
     // 3. If neither "source.path" nor "source.pattern" is specified,
     // this pipe source will match all data.
-    return new IoTDBPipePattern(null);
+    return new IoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, null);
   }
 
   public abstract String getDefaultPattern();
@@ -114,22 +133,26 @@ public abstract class PipePattern {
   /**
    * Check if a device may have some measurements matched by the pattern.
    *
-   * <p>NOTE1: this is only called when {@link PipePattern#coversDevice} is {@code false}.
+   * <p>NOTE1: this is only called when {@link TreePattern#coversDevice} is {@code false}.
    *
    * <p>NOTE2: this is just a loose check and may have false positives. To further check if a
-   * measurement matches the pattern, please use {@link PipePattern#matchesMeasurement} after this.
+   * measurement matches the pattern, please use {@link TreePattern#matchesMeasurement} after this.
    */
   public abstract boolean mayOverlapWithDevice(final IDeviceID device);
 
   /**
    * Check if a full path with device and measurement can be matched by pattern.
    *
-   * <p>NOTE: this is only called when {@link PipePattern#mayOverlapWithDevice} is {@code true}.
+   * <p>NOTE: this is only called when {@link TreePattern#mayOverlapWithDevice} is {@code true}.
    */
   public abstract boolean matchesMeasurement(final IDeviceID device, final String measurement);
 
   @Override
   public String toString() {
-    return "{pattern='" + pattern + "'}";
+    return "{pattern='"
+        + pattern
+        + "', isTreeModelDataAllowedToBeCaptured="
+        + isTreeModelDataAllowedToBeCaptured
+        + '}';
   }
 }

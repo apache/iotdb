@@ -879,6 +879,85 @@ public class IoTDBInsertTableIT {
     }
   }
 
+  @Test
+  public void testInsertWithTTL() {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use \"test\"");
+      statement.execute("create table sg22 (id1 string id, s1 int64 measurement)");
+      statement.execute("alter table sg22 set properties TTL=1");
+      statement.execute(
+          String.format(
+              "insert into sg22(id1,time,s1) values('d1',%s,2)",
+              System.currentTimeMillis() - 10000));
+      fail();
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage().contains("less than ttl time bound"));
+    }
+  }
+
+  @Test
+  public void testInsertTabletWithTTL()
+      throws IoTDBConnectionException, StatementExecutionException {
+    long ttl = 1;
+    try (ISession session = EnvFactory.getEnv().getSessionConnection(BaseEnv.TABLE_SQL_DIALECT)) {
+      session.executeNonQueryStatement("use \"test\"");
+      session.executeNonQueryStatement("create table sg23 (id1 string id, s1 int64 measurement)");
+      session.executeNonQueryStatement("alter table sg23 set properties TTL=" + ttl);
+
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
+      final List<ColumnType> columnTypes = Arrays.asList(ColumnType.ID, ColumnType.MEASUREMENT);
+
+      // all expired
+      long timestamp = 0;
+      Tablet tablet = new Tablet("sg23", schemaList, columnTypes, 15);
+
+      for (long row = 0; row < 3; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, timestamp + row);
+        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("s1", rowIndex, row);
+      }
+      try {
+        session.insertRelationalTablet(tablet, true);
+        fail();
+      } catch (Exception e) {
+        Assert.assertTrue(e.getMessage().contains("less than ttl time bound"));
+      }
+
+      // partial expired
+      tablet.reset();
+      timestamp = System.currentTimeMillis() - 10000;
+      for (long row = 0; row < 4; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, timestamp);
+        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("s1", rowIndex, row);
+        timestamp += 10000;
+      }
+
+      try {
+        session.insertRelationalTablet(tablet, true);
+        fail();
+      } catch (Exception e) {
+        Assert.assertTrue(e.getMessage().contains("less than ttl time bound"));
+      }
+
+      // part of data is indeed inserted
+      long timeLowerBound = System.currentTimeMillis() - ttl;
+      SessionDataSet dataSet = session.executeQueryStatement("select time, s1 from sg23");
+      int count = 0;
+      while (dataSet.hasNext()) {
+        RowRecord record = dataSet.next();
+        Assert.assertTrue(record.getFields().get(0).getLongV() > timeLowerBound);
+        count++;
+      }
+      Assert.assertTrue(count > 0 && count < 4);
+    }
+  }
+
   private List<Integer> checkHeader(
       ResultSetMetaData resultSetMetaData, String expectedHeaderStrings, int[] expectedTypes)
       throws SQLException {

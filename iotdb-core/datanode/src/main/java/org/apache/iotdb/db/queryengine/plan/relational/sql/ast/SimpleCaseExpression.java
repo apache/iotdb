@@ -20,9 +20,15 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nullable;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -67,6 +73,20 @@ public class SimpleCaseExpression extends Expression {
     this.operand = requireNonNull(operand, "operand is null");
     this.whenClauses = ImmutableList.copyOf(requireNonNull(whenClauses, "whenClauses is null"));
     this.defaultValue = requireNonNull(defaultValue, "defaultValue is null");
+  }
+
+  public SimpleCaseExpression(ByteBuffer byteBuffer) {
+    super(null);
+    int len = ReadWriteIOUtils.readInt(byteBuffer);
+    Validate.isTrue(
+        len > 0, "the length of SimpleCaseExpression's whenClauses must greater than 0");
+    this.operand = Expression.deserialize(byteBuffer);
+    this.whenClauses = new ArrayList<>();
+    for (int i = 0; i < len; i++) {
+      Expression expression = Expression.deserialize(byteBuffer);
+      this.whenClauses.add((WhenClause) expression);
+    }
+    this.defaultValue = Expression.deserialize(byteBuffer);
   }
 
   public Expression getOperand() {
@@ -120,5 +140,28 @@ public class SimpleCaseExpression extends Expression {
   @Override
   public boolean shallowEquals(Node other) {
     return sameClass(this, other);
+  }
+
+  @Override
+  public TableExpressionType getExpressionType() {
+    return TableExpressionType.SIMPLE_CASE;
+  }
+
+  @Override
+  protected void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(this.whenClauses.size(), byteBuffer);
+    Expression.serialize(this.operand, byteBuffer);
+    getWhenClauses().forEach(child -> Expression.serialize(child, byteBuffer));
+    Expression.serialize(getDefaultValue().orElse(new NullLiteral()), byteBuffer);
+  }
+
+  @Override
+  protected void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(this.whenClauses.size(), stream);
+    Expression.serialize(this.operand, stream);
+    for (Expression expression : this.getWhenClauses()) {
+      Expression.serialize(expression, stream);
+    }
+    Expression.serialize(getDefaultValue().orElse(new NullLiteral()), stream);
   }
 }

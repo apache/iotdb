@@ -755,6 +755,11 @@ public class Analysis implements IAnalysis {
   }
 
   @Override
+  public List<TEndPoint> getRedirectNodeList() {
+    return redirectNodeList;
+  }
+
+  @Override
   public void setRedirectNodeList(List<TEndPoint> redirectNodeList) {
     this.redirectNodeList = redirectNodeList;
   }

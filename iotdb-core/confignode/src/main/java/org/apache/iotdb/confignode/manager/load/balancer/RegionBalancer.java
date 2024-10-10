@@ -33,7 +33,7 @@ import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyCopySetRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.IRegionGroupAllocator;
-import org.apache.iotdb.confignode.manager.load.balancer.region.PartiteGraphReplicationRegionGroupAllocator;
+import org.apache.iotdb.confignode.manager.load.balancer.region.PartiteGraphPlacementRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
@@ -59,7 +59,7 @@ public class RegionBalancer {
         this.regionGroupAllocator = new GreedyRegionGroupAllocator();
         break;
       case PGR:
-        this.regionGroupAllocator = new PartiteGraphReplicationRegionGroupAllocator();
+        this.regionGroupAllocator = new PartiteGraphPlacementRegionGroupAllocator();
         break;
       case GCR:
       default:

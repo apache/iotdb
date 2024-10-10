@@ -109,13 +109,13 @@ cd lib
 for %%i in (*.whl *.tar.gz) do (
     echo %%i | findstr "ainode" >nul && (
         echo Installing ainode body: %%i
-        %ain_interpreter_dir% -m pip install %%i %ain_force_reinstall% -i https://pypi.tuna.tsinghua.edu.cn/simple --no-warn-script-location %ain_no_dependencies% --find-links https://download.pytorch.org/whl/cpu/torch_stable.html
+        %ain_interpreter_dir% -m pip install %%i %ain_force_reinstall% --no-warn-script-location %ain_no_dependencies% --find-links https://download.pytorch.org/whl/cpu/torch_stable.html
     ) || (
         @REM if ain_only_ainode is 0 then install dependencies
         if %ain_only_ainode% == 0 (
             echo Installing dependencies: %%i
             set ain_force_reinstall=--force-reinstall
-            %ain_interpreter_dir% -m pip install %%i %ain_force_reinstall% -i https://pypi.tuna.tsinghua.edu.cn/simple --no-warn-script-location %ain_no_dependencies% --find-links https://download.pytorch.org/whl/cpu/torch_stable.html
+            %ain_interpreter_dir% -m pip install %%i %ain_force_reinstall% --no-warn-script-location %ain_no_dependencies% --find-links https://download.pytorch.org/whl/cpu/torch_stable.html
         )
     )
     if %errorlevel% == 1 (

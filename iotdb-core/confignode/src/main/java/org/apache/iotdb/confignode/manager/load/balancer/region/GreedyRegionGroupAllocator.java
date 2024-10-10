@@ -24,21 +24,46 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
-import org.apache.tsfile.utils.Pair;
-
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+import java.util.Random;
 import java.util.stream.Collectors;
-
-import static java.util.Map.Entry.comparingByValue;
 
 /** Allocate Region Greedily */
 public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
 
+  public static final Random RANDOM = new Random();
+
   public GreedyRegionGroupAllocator() {
     // Empty constructor
+  }
+
+  public static class DataNodeEntry implements Comparable<DataNodeEntry> {
+
+    public int dataNodeId;
+    public int regionCount;
+    public double freeDiskSpace;
+    public int randomWeight;
+
+    public DataNodeEntry(int dataNodeId, int regionCount, double freeDiskSpace) {
+      this.dataNodeId = dataNodeId;
+      this.regionCount = regionCount;
+      this.freeDiskSpace = freeDiskSpace;
+      this.randomWeight = RANDOM.nextInt();
+    }
+
+    @Override
+    public int compareTo(DataNodeEntry other) {
+      if (this.regionCount != other.regionCount) {
+        return this.regionCount - other.regionCount;
+      } else if (this.freeDiskSpace != other.freeDiskSpace) {
+        return (int) (other.freeDiskSpace - this.freeDiskSpace);
+      } else {
+        return this.randomWeight - other.randomWeight;
+      }
+    }
   }
 
   @Override
@@ -73,27 +98,19 @@ public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
                         regionCounter.merge(dataNodeLocation.getDataNodeId(), 1, Integer::sum)));
 
     /* Construct priority map */
-    Map<TDataNodeLocation, Pair<Integer, Double>> priorityMap =
-        new HashMap<>(availableDataNodeMap.size());
+    List<DataNodeEntry> entryList = new ArrayList<>();
     availableDataNodeMap.forEach(
         (datanodeId, dataNodeConfiguration) ->
-            priorityMap.put(
-                dataNodeConfiguration.getLocation(),
-                new Pair<>(
+            entryList.add(
+                new DataNodeEntry(
+                    datanodeId,
                     regionCounter.getOrDefault(datanodeId, 0),
                     freeDiskSpaceMap.getOrDefault(datanodeId, 0d))));
 
     // Sort weightList
-    return priorityMap.entrySet().stream()
-        .sorted(
-            comparingByValue(
-                (o1, o2) ->
-                    !Objects.equals(o1.getLeft(), o2.getLeft())
-                        // Compare the first key(The number of Regions) by ascending order
-                        ? o1.getLeft() - o2.getLeft()
-                        // Compare the second key(The free disk space) by descending order
-                        : (int) (o2.getRight() - o1.getRight())))
-        .map(entry -> entry.getKey().deepCopy())
+    return entryList.stream()
+        .sorted()
+        .map(entry -> availableDataNodeMap.get(entry.dataNodeId).getLocation())
         .collect(Collectors.toList());
   }
 }
