@@ -71,7 +71,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionUtils;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.DeviceAttributeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.IDeviceAttributeStore;
-import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.DeviceAttributeRemoteUpdater;
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.DeviceAttributeCacheUpdater;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.FakeCRC32Deserializer;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.FakeCRC32Serializer;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.SchemaLogReader;
@@ -196,7 +196,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private MTreeBelowSGMemoryImpl mtree;
   private TagManager tagManager;
   private IDeviceAttributeStore deviceAttributeStore;
-  private DeviceAttributeRemoteUpdater deviceAttributeRemoteUpdater;
+  private DeviceAttributeCacheUpdater deviceAttributeCacheUpdater;
 
   // region Interfaces and Implementation of initialization、snapshot、recover and clear
   public SchemaRegionMemoryImpl(ISchemaRegionParams schemaRegionParams) throws MetadataException {
@@ -247,7 +247,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       isRecovering = true;
 
       deviceAttributeStore = new DeviceAttributeStore(regionStatistics);
-      deviceAttributeRemoteUpdater = new DeviceAttributeRemoteUpdater(regionStatistics);
+      deviceAttributeCacheUpdater = new DeviceAttributeCacheUpdater(regionStatistics);
       tagManager = new TagManager(schemaRegionDirPath, regionStatistics);
       mtree =
           new MTreeBelowSGMemoryImpl(
@@ -507,7 +507,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         currentResult);
 
     snapshotStartTime = System.currentTimeMillis();
-    currentResult = deviceAttributeRemoteUpdater.createSnapshot(snapshotDir);
+    currentResult = deviceAttributeCacheUpdater.createSnapshot(snapshotDir);
     isSuccess = isSuccess && currentResult;
     logger.info(
         "Device attribute remote updater snapshot creation of schemaRegion {} costs {}ms. Status: {}",
@@ -549,8 +549,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           System.currentTimeMillis() - snapshotStartTime);
 
       snapshotStartTime = System.currentTimeMillis();
-      deviceAttributeRemoteUpdater = new DeviceAttributeRemoteUpdater(regionStatistics);
-      deviceAttributeRemoteUpdater.loadFromSnapshot(latestSnapshotRootDir);
+      deviceAttributeCacheUpdater = new DeviceAttributeCacheUpdater(regionStatistics);
+      deviceAttributeCacheUpdater.loadFromSnapshot(latestSnapshotRootDir);
       logger.info(
           "Device attribute remote updater snapshot loading of schemaRegion {} costs {}ms.",
           schemaRegionId,
@@ -1381,7 +1381,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           pointer -> {
             updateAttribute(
                 databaseName, tableName, deviceId, pointer, attributeNameList, attributeValueList);
-            deviceAttributeRemoteUpdater.afterUpdate();
+            deviceAttributeCacheUpdater.afterUpdate();
           });
     }
     writeToMLog(node);
@@ -1400,7 +1400,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       TableDeviceSchemaFetcher.getInstance()
           .getTableDeviceCache()
           .update(databaseName, tableName, deviceId, resultMap);
-      deviceAttributeRemoteUpdater.update(tableName, deviceId, resultMap);
+      deviceAttributeCacheUpdater.update(tableName, deviceId, resultMap);
     }
   }
 
@@ -1416,7 +1416,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         mtree.updateTableDevice(pattern, batchUpdater);
       }
     }
-    deviceAttributeRemoteUpdater.afterUpdate();
+    deviceAttributeCacheUpdater.afterUpdate();
     writeToMLog(updateNode);
   }
 
@@ -1568,19 +1568,19 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public Pair<Long, Map<TDataNodeLocation, byte[]>> getAttributeUpdateInfo(
       final AtomicInteger limit) {
-    return deviceAttributeRemoteUpdater.getAttributeUpdateInfo(limit);
+    return deviceAttributeCacheUpdater.getAttributeUpdateInfo(limit);
   }
 
   @Override
   public void commitUpdateAttribute(final TableDeviceAttributeCommitUpdateNode node)
       throws MetadataException {
-    deviceAttributeRemoteUpdater.commit(node);
+    deviceAttributeCacheUpdater.commit(node);
     writeToMLog(node);
   }
 
   @Override
   public void addNodeLocation(final TableNodeLocationAddNode node) throws MetadataException {
-    deviceAttributeRemoteUpdater.addLocation(node.getLocation());
+    deviceAttributeCacheUpdater.addLocation(node.getLocation());
     writeToMLog(node);
   }
 

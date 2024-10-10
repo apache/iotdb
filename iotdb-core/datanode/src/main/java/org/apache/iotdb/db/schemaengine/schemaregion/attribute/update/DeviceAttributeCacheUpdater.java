@@ -54,8 +54,8 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class DeviceAttributeRemoteUpdater {
-  private static final Logger logger = LoggerFactory.getLogger(DeviceAttributeRemoteUpdater.class);
+public class DeviceAttributeCacheUpdater {
+  private static final Logger logger = LoggerFactory.getLogger(DeviceAttributeCacheUpdater.class);
   private static final int UPDATE_DETAIL_CONTAINER_SEND_MIN_LIMIT_BYTES = 1024;
 
   // All the data node locations shall only have internal endpoint with all the other endpoints set
@@ -73,7 +73,7 @@ public class DeviceAttributeRemoteUpdater {
   private final Map<TDataNodeLocation, UpdateDetailContainerStatistics> updateContainerStatistics =
       new HashMap<>();
 
-  public DeviceAttributeRemoteUpdater(final MemSchemaRegionStatistics regionStatistics) {
+  public DeviceAttributeCacheUpdater(final MemSchemaRegionStatistics regionStatistics) {
     this.regionStatistics = regionStatistics;
   }
 

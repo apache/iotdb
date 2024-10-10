@@ -27,7 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
-import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.DeviceAttributeRemoteUpdater;
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.DeviceAttributeCacheUpdater;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -118,7 +118,7 @@ public class TableDeviceAttributeCommitUpdateNode extends PlanNode implements IS
     ReadWriteIOUtils.write(commitMap.size(), byteBuffer);
 
     for (final Map.Entry<TDataNodeLocation, byte[]> entry : commitMap.entrySet()) {
-      DeviceAttributeRemoteUpdater.serializeNodeLocation4AttributeUpdate(
+      DeviceAttributeCacheUpdater.serializeNodeLocation4AttributeUpdate(
           entry.getKey(), byteBuffer);
       ReadWriteIOUtils.write(entry.getValue().length, byteBuffer);
       byteBuffer.put(entry.getValue());
@@ -126,10 +126,10 @@ public class TableDeviceAttributeCommitUpdateNode extends PlanNode implements IS
 
     ReadWriteIOUtils.write(shrunkNodes.size(), byteBuffer);
     for (final TDataNodeLocation location : shrunkNodes) {
-      DeviceAttributeRemoteUpdater.serializeNodeLocation4AttributeUpdate(location, byteBuffer);
+      DeviceAttributeCacheUpdater.serializeNodeLocation4AttributeUpdate(location, byteBuffer);
     }
 
-    DeviceAttributeRemoteUpdater.serializeNodeLocation4AttributeUpdate(localLocation, byteBuffer);
+    DeviceAttributeCacheUpdater.serializeNodeLocation4AttributeUpdate(localLocation, byteBuffer);
   }
 
   @Override
@@ -139,17 +139,17 @@ public class TableDeviceAttributeCommitUpdateNode extends PlanNode implements IS
     ReadWriteIOUtils.write(commitMap.size(), stream);
 
     for (final Map.Entry<TDataNodeLocation, byte[]> entry : commitMap.entrySet()) {
-      DeviceAttributeRemoteUpdater.serializeNodeLocation4AttributeUpdate(entry.getKey(), stream);
+      DeviceAttributeCacheUpdater.serializeNodeLocation4AttributeUpdate(entry.getKey(), stream);
       ReadWriteIOUtils.write(entry.getValue().length, stream);
       stream.write(entry.getValue());
     }
 
     ReadWriteIOUtils.write(shrunkNodes.size(), stream);
     for (final TDataNodeLocation location : shrunkNodes) {
-      DeviceAttributeRemoteUpdater.serializeNodeLocation4AttributeUpdate(location, stream);
+      DeviceAttributeCacheUpdater.serializeNodeLocation4AttributeUpdate(location, stream);
     }
 
-    DeviceAttributeRemoteUpdater.serializeNodeLocation4AttributeUpdate(localLocation, stream);
+    DeviceAttributeCacheUpdater.serializeNodeLocation4AttributeUpdate(localLocation, stream);
   }
 
   public static PlanNode deserialize(final ByteBuffer buffer) {
@@ -159,7 +159,7 @@ public class TableDeviceAttributeCommitUpdateNode extends PlanNode implements IS
     final Map<TDataNodeLocation, byte[]> commitMap = new HashMap<>(size);
     for (int i = 0; i < size; ++i) {
       final TDataNodeLocation location =
-          DeviceAttributeRemoteUpdater.deserializeNodeLocationForAttributeUpdate(buffer);
+          DeviceAttributeCacheUpdater.deserializeNodeLocationForAttributeUpdate(buffer);
       final byte[] commitBuffer = new byte[ReadWriteIOUtils.readInt(buffer)];
       buffer.get(commitBuffer);
       commitMap.put(location, commitBuffer);
@@ -169,11 +169,11 @@ public class TableDeviceAttributeCommitUpdateNode extends PlanNode implements IS
     final Set<TDataNodeLocation> shrunkNodes = new HashSet<>();
     for (int i = 0; i < size; ++i) {
       shrunkNodes.add(
-          DeviceAttributeRemoteUpdater.deserializeNodeLocationForAttributeUpdate(buffer));
+          DeviceAttributeCacheUpdater.deserializeNodeLocationForAttributeUpdate(buffer));
     }
 
     final TDataNodeLocation localLocation =
-        DeviceAttributeRemoteUpdater.deserializeNodeLocationForAttributeUpdate(buffer);
+        DeviceAttributeCacheUpdater.deserializeNodeLocationForAttributeUpdate(buffer);
     final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
     return new TableDeviceAttributeCommitUpdateNode(
         planNodeId, version, commitMap, shrunkNodes, localLocation);

@@ -27,7 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
-import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.DeviceAttributeRemoteUpdater;
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.DeviceAttributeCacheUpdater;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -82,18 +82,18 @@ public class TableNodeLocationAddNode extends PlanNode implements ISchemaRegionP
   @Override
   protected void serializeAttributes(final ByteBuffer byteBuffer) {
     getType().serialize(byteBuffer);
-    DeviceAttributeRemoteUpdater.serializeNodeLocation4AttributeUpdate(location, byteBuffer);
+    DeviceAttributeCacheUpdater.serializeNodeLocation4AttributeUpdate(location, byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(final DataOutputStream stream) throws IOException {
     getType().serialize(stream);
-    DeviceAttributeRemoteUpdater.serializeNodeLocation4AttributeUpdate(location, stream);
+    DeviceAttributeCacheUpdater.serializeNodeLocation4AttributeUpdate(location, stream);
   }
 
   public static PlanNode deserialize(final ByteBuffer buffer) {
     final TDataNodeLocation location =
-        DeviceAttributeRemoteUpdater.deserializeNodeLocationForAttributeUpdate(buffer);
+        DeviceAttributeCacheUpdater.deserializeNodeLocationForAttributeUpdate(buffer);
     final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
     return new TableNodeLocationAddNode(planNodeId, location);
   }

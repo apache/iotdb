@@ -26,7 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceSourceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.DeviceAttributeRemoteUpdater;
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.DeviceAttributeCacheUpdater;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -99,7 +99,7 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
 
     if (Objects.nonNull(senderLocation)) {
       ReadWriteIOUtils.write(true, byteBuffer);
-      DeviceAttributeRemoteUpdater.serializeNodeLocation4AttributeUpdate(
+      DeviceAttributeCacheUpdater.serializeNodeLocation4AttributeUpdate(
           senderLocation, byteBuffer);
     } else {
       ReadWriteIOUtils.write(false, byteBuffer);
@@ -132,7 +132,7 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
 
     if (Objects.nonNull(senderLocation)) {
       ReadWriteIOUtils.write(true, stream);
-      DeviceAttributeRemoteUpdater.serializeNodeLocation4AttributeUpdate(senderLocation, stream);
+      DeviceAttributeCacheUpdater.serializeNodeLocation4AttributeUpdate(senderLocation, stream);
     } else {
       ReadWriteIOUtils.write(false, stream);
     }
@@ -166,7 +166,7 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
     TDataNodeLocation senderLocation = null;
     if (ReadWriteIOUtils.readBool(buffer)) {
       senderLocation =
-          DeviceAttributeRemoteUpdater.deserializeNodeLocationForAttributeUpdate(buffer);
+          DeviceAttributeCacheUpdater.deserializeNodeLocationForAttributeUpdate(buffer);
     }
 
     final long offset = isScan ? ReadWriteIOUtils.readLong(buffer) : 0;

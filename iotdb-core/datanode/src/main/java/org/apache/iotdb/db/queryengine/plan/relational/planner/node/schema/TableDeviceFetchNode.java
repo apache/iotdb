@@ -26,7 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceSourceNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.DeviceAttributeRemoteUpdater;
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.DeviceAttributeCacheUpdater;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -92,7 +92,7 @@ public class TableDeviceFetchNode extends TableDeviceSourceNode {
 
     if (Objects.nonNull(senderLocation)) {
       ReadWriteIOUtils.write(true, byteBuffer);
-      DeviceAttributeRemoteUpdater.serializeNodeLocation4AttributeUpdate(
+      DeviceAttributeCacheUpdater.serializeNodeLocation4AttributeUpdate(
           senderLocation, byteBuffer);
     } else {
       ReadWriteIOUtils.write(false, byteBuffer);
@@ -120,7 +120,7 @@ public class TableDeviceFetchNode extends TableDeviceSourceNode {
 
     if (Objects.nonNull(senderLocation)) {
       ReadWriteIOUtils.write(true, stream);
-      DeviceAttributeRemoteUpdater.serializeNodeLocation4AttributeUpdate(senderLocation, stream);
+      DeviceAttributeCacheUpdater.serializeNodeLocation4AttributeUpdate(senderLocation, stream);
     } else {
       ReadWriteIOUtils.write(false, stream);
     }
@@ -150,7 +150,7 @@ public class TableDeviceFetchNode extends TableDeviceSourceNode {
     TDataNodeLocation senderLocation = null;
     if (ReadWriteIOUtils.readBool(buffer)) {
       senderLocation =
-          DeviceAttributeRemoteUpdater.deserializeNodeLocationForAttributeUpdate(buffer);
+          DeviceAttributeCacheUpdater.deserializeNodeLocationForAttributeUpdate(buffer);
     }
 
     final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
