@@ -137,7 +137,6 @@ public class GeneralRegionAttributeSecurityService {
           sendUpdateRequestAndMayShrink(attributeUpdateCommitMap);
 
       // Commit
-      // TODO: correct shrinkage logic
       attributeUpdateCommitMap.forEach(
           (schemaRegionId, pair) -> {
             if (!new RegionWriteExecutor()
