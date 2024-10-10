@@ -42,12 +42,14 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_KEY;
@@ -80,6 +82,15 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_NODE_URLS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PLAIN_BATCH_SIZE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_SEND_PORT_CANDIDATE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_SEND_PORT_CANDIDATE_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_SEND_PORT_MAX_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_SEND_PORT_MAX_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_SEND_PORT_MIN_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_SEND_PORT_MIN_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_RANGE_STRATEGY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_STRATEGY_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_STRATEGY_SET;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_ROUND_ROBIN_STRATEGY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_STRATEGY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_STRATEGY_SET;
@@ -103,6 +114,10 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_IP_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_NODE_URLS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_PORT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SEND_PORT_CANDIDATE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SEND_PORT_MAX_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SEND_PORT_MIN_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SEND_PORT_RESTRICTION_STRATEGY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_LOAD_BALANCE_STRATEGY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_LOAD_TSFILE_STRATEGY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_RATE_LIMIT_KEY;
@@ -113,10 +128,21 @@ public abstract class IoTDBConnector implements PipeConnector {
       "Exception occurred while parsing node urls from target servers: {}";
   private static final String PARSE_URL_ERROR_MESSAGE =
       "Error occurred while parsing node urls from target servers, please check the specified 'host':'port' or 'node-urls'";
+  public static final int MIN_PORT =
+      0; // The minimum port number allocated to user processes by the operating system
+  public static final int MAX_PORT = 65535; // The maximum value for port numbers
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConnector.class);
 
   protected final List<TEndPoint> nodeUrls = new ArrayList<>();
+
+  protected int minSendPortRange;
+
+  protected int maxSendPortRange;
+
+  protected List<Integer> candidatePorts;
+
+  protected String customSendPortStrategy;
 
   protected String loadBalanceStrategy;
 
@@ -174,6 +200,76 @@ public abstract class IoTDBConnector implements PipeConnector {
         parameters.getLongOrDefault(
             Arrays.asList(CONNECTOR_IOTDB_BATCH_SIZE_KEY, SINK_IOTDB_BATCH_SIZE_KEY),
             CONNECTOR_IOTDB_PLAIN_BATCH_SIZE_DEFAULT_VALUE));
+
+    this.customSendPortStrategy =
+        parameters
+            .getStringOrDefault(
+                Arrays.asList(
+                    CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_STRATEGY_KEY,
+                    SINK_IOTDB_SEND_PORT_RESTRICTION_STRATEGY_KEY),
+                CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_RANGE_STRATEGY)
+            .trim()
+            .toLowerCase();
+
+    validator.validate(
+        arg -> CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_STRATEGY_SET.contains(customSendPortStrategy),
+        String.format(
+            "send port restriction strategy should be one of %s, but got %s.",
+            CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_STRATEGY_SET, customSendPortStrategy),
+        customSendPortStrategy);
+
+    if (CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_RANGE_STRATEGY.equals(customSendPortStrategy)) {
+      minSendPortRange =
+          parameters.getIntOrDefault(
+              Arrays.asList(CONNECTOR_IOTDB_SEND_PORT_MIN_KEY, SINK_IOTDB_SEND_PORT_MIN_KEY),
+              CONNECTOR_IOTDB_SEND_PORT_MIN_VALUE);
+      maxSendPortRange =
+          parameters.getIntOrDefault(
+              Arrays.asList(CONNECTOR_IOTDB_SEND_PORT_MAX_KEY, SINK_IOTDB_SEND_PORT_MAX_KEY),
+              CONNECTOR_IOTDB_SEND_PORT_MAX_VALUE);
+      validator.validate(
+          args -> (int) args[0] <= (int) args[1],
+          String.format(
+              "%s must be less than or equal to %s, but got %d > %d.",
+              SINK_IOTDB_SEND_PORT_MIN_KEY,
+              SINK_IOTDB_SEND_PORT_MAX_KEY,
+              minSendPortRange,
+              maxSendPortRange),
+          minSendPortRange,
+          maxSendPortRange);
+      validator.validate(
+          args -> (int) args[0] <= (int) args[1] && (int) args[2] >= (int) args[3],
+          String.format(
+              "Port range is invalid: %s must be >= %d and %s must be <= %d. Current values are %d and %d respectively.",
+              SINK_IOTDB_SEND_PORT_MIN_KEY,
+              MIN_PORT,
+              SINK_IOTDB_SEND_PORT_MAX_KEY,
+              MAX_PORT,
+              minSendPortRange,
+              maxSendPortRange),
+          MIN_PORT,
+          minSendPortRange,
+          MAX_PORT,
+          maxSendPortRange);
+    } else {
+      this.candidatePorts =
+          parseCandidatePorts(
+              parameters.getStringOrDefault(
+                  Arrays.asList(
+                      CONNECTOR_IOTDB_SEND_PORT_CANDIDATE_KEY, SINK_IOTDB_SEND_PORT_CANDIDATE_KEY),
+                  CONNECTOR_IOTDB_SEND_PORT_CANDIDATE_VALUE));
+      validator.validate(
+          arg -> (int) arg > 0,
+          "The number of candidate ports must be greater than 0.",
+          candidatePorts.size());
+      validator.validate(
+          arg -> (int) arg[0] >= MIN_PORT && (int) arg[1] <= MAX_PORT,
+          String.format(
+              "Candidate port range is invalid: Ports must be between 0 and 65535, but got minimum port: %d and maximum port: %d",
+              candidatePorts.get(0), candidatePorts.get(candidatePorts.size() - 1)),
+          candidatePorts.get(0),
+          candidatePorts.get(candidatePorts.size() - 1));
+    }
 
     loadBalanceStrategy =
         parameters
@@ -426,6 +522,17 @@ public abstract class IoTDBConnector implements PipeConnector {
         throw new PipeParameterNotValidException(PARSE_URL_ERROR_MESSAGE);
       }
     }
+  }
+
+  private static List<Integer> parseCandidatePorts(String candidate) {
+    if (candidate == null || candidate.isEmpty()) {
+      return Collections.emptyList();
+    }
+    return Arrays.stream(candidate.split(","))
+        .map(String::trim)
+        .map(Integer::parseInt)
+        .sorted()
+        .collect(Collectors.toList());
   }
 
   @Override

@@ -22,23 +22,28 @@ package org.apache.iotdb.commons.pipe.connector.client;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.commons.client.util.IoTDBConnectorPortBinder;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferSliceReq;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.TimeoutChangeableTFastFramedTransport;
 import org.apache.iotdb.rpc.TimeoutChangeableTransport;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.thrift.TException;
+import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetSocketAddress;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class IoTDBSyncClient extends IClientRPCService.Client
@@ -51,6 +56,51 @@ public class IoTDBSyncClient extends IClientRPCService.Client
   private final String ipAddress;
   private final int port;
   private final TEndPoint endPoint;
+
+  public IoTDBSyncClient(
+      ThriftClientProperty property,
+      String ipAddress,
+      int port,
+      boolean useSSL,
+      String trustStore,
+      String trustStorePwd,
+      String customSendPortStrategy,
+      int minSendPortRange,
+      int maxSendPortRange,
+      List<Integer> candidatePorts)
+      throws TTransportException {
+    super(
+        property
+            .getProtocolFactory()
+            .getProtocol(
+                useSSL
+                    ? DeepCopyRpcTransportFactory.INSTANCE.getTransport(
+                        ipAddress,
+                        port,
+                        property.getConnectionTimeoutMs(),
+                        trustStore,
+                        trustStorePwd)
+                    : DeepCopyRpcTransportFactory.INSTANCE.getTransport(
+                        ipAddress, port, property.getConnectionTimeoutMs())));
+    this.ipAddress = ipAddress;
+    this.port = port;
+    this.endPoint = new TEndPoint(ipAddress, port);
+    final TTransport transport = getInputProtocol().getTransport();
+    if (!transport.isOpen()) {
+      IoTDBConnectorPortBinder.bindPort(
+          customSendPortStrategy,
+          minSendPortRange,
+          maxSendPortRange,
+          candidatePorts,
+          (sendPort) -> {
+            final InetSocketAddress isa = new InetSocketAddress(sendPort);
+            ((TSocket) ((TimeoutChangeableTFastFramedTransport) transport).getSocket())
+                .getSocket()
+                .bind(isa);
+          });
+      transport.open();
+    }
+  }
 
   public IoTDBSyncClient(
       ThriftClientProperty property,

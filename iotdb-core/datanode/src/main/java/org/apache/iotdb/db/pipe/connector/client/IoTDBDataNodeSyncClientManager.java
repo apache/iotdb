@@ -50,7 +50,12 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
       final boolean useLeaderCache,
       final String loadBalanceStrategy,
       final boolean shouldReceiverConvertOnTypeMismatch,
-      final String loadTsFileStrategy) {
+      final String loadTsFileStrategy,
+      final String customSendPortStrategy,
+      final int minSendPortRange,
+      final int maxSendPortRange,
+      final List<Integer> candidatePorts) {
+
     super(
         endPoints,
         useSSL,
@@ -59,7 +64,11 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
         useLeaderCache,
         loadBalanceStrategy,
         shouldReceiverConvertOnTypeMismatch,
-        loadTsFileStrategy);
+        loadTsFileStrategy,
+        customSendPortStrategy,
+        minSendPortRange,
+        maxSendPortRange,
+        candidatePorts);
   }
 
   @Override
