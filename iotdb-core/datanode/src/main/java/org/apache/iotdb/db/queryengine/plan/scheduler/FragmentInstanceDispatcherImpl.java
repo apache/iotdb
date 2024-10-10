@@ -346,6 +346,13 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
             throw new FragmentInstanceDispatchException(
                 RpcUtils.getStatus(
                     TSStatusCode.EXECUTE_STATEMENT_ERROR, sendFragmentInstanceResp.message));
+          } else if (Objects.nonNull(sendFragmentInstanceReq.getConsensusGroupId())) {
+            // Assume the consensus group casting will not generate any exceptions
+            new TableSchemaQueryWriteVisitor()
+                .processFragment(
+                    instance,
+                    ConsensusGroupId.Factory.createFromTConsensusGroupId(
+                        sendFragmentInstanceReq.getConsensusGroupId()));
           }
           break;
         case WRITE:
@@ -482,6 +489,9 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                 RpcUtils.getStatus(
                     TSStatusCode.EXECUTE_STATEMENT_ERROR, executionResult.getMessage()));
           }
+        } else if (Objects.nonNull(groupId)) {
+          // Assume the consensus group casting will not generate any exceptions
+          new TableSchemaQueryWriteVisitor().processFragment(instance, groupId);
         }
         break;
       case WRITE:

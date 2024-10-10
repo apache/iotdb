@@ -32,7 +32,7 @@ public abstract class AbstractTableSchemaQueryAttributeSecurityVisitor<R>
     extends PlanVisitor<R, ConsensusGroupId> {
 
   public R processFragment(
-      final @Nonnull FragmentInstance instance, final ConsensusGroupId groupId) {
+      final @Nonnull FragmentInstance instance, final @Nonnull ConsensusGroupId groupId) {
     return instance.getFragment().getPlanNodeTree().accept(this, groupId);
   }
 
