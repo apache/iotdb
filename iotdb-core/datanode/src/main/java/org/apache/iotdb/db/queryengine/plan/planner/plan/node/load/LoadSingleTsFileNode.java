@@ -202,16 +202,16 @@ public class LoadSingleTsFileNode extends WritePlanNode {
         + '}';
   }
 
-  public void clean() {
+  public void clean(final boolean isLoadSuccess) {
     try {
-      if (deleteAfterLoad) {
+      if (isLoadSuccess && deleteAfterLoad) {
         Files.deleteIfExists(tsFile.toPath());
         Files.deleteIfExists(
             new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).toPath());
         Files.deleteIfExists(
             new File(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX).toPath());
       }
-    } catch (IOException e) {
+    } catch (final IOException e) {
       LOGGER.warn("Delete After Loading {} error.", tsFile, e);
     }
   }

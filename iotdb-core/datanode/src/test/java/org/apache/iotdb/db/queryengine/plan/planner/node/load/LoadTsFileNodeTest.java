@@ -58,7 +58,7 @@ public class LoadTsFileNodeTest {
     }
     Assert.assertEquals(0, node.allowedChildCount());
     Assert.assertEquals("LoadSingleTsFileNode{tsFile=1, needDecodeTsFile=false}", node.toString());
-    node.clean();
+    node.clean(true);
   }
 
   @Test

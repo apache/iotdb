@@ -188,7 +188,7 @@ public class LoadTsFileScheduler implements IScheduler {
                   LoadTsFileCostMetricsSet.LOAD_LOCALLY, System.nanoTime() - startTime);
             }
 
-            node.clean();
+            node.clean(isLoadSingleTsFileSuccess);
           } else { // need decode, load locally or remotely, use two phases method
             String uuid = UUID.randomUUID().toString();
             dispatcher.setUuid(uuid);
@@ -213,7 +213,7 @@ public class LoadTsFileScheduler implements IScheduler {
                   LoadTsFileCostMetricsSet.SECOND_PHASE, System.nanoTime() - startTime);
             }
 
-            node.clean();
+            node.clean(isFirstPhaseSuccess && isSecondPhaseSuccess);
             if (!isFirstPhaseSuccess || !isSecondPhaseSuccess) {
               isLoadSingleTsFileSuccess = false;
             }
