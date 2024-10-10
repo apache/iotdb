@@ -132,25 +132,28 @@ public class GeneralRegionAttributeSecurityService {
         attributeUpdateCommitMap.put(regionLeader.getSchemaRegionId(), currentResult);
       }
 
-      // Send & may shrink
-      final Map<SchemaRegionId, Set<TDataNodeLocation>> shrinkMap =
-          sendUpdateRequestAndMayShrink(attributeUpdateCommitMap);
+      if (!attributeUpdateCommitMap.isEmpty()) {
+        // Send & may shrink
+        final Map<SchemaRegionId, Set<TDataNodeLocation>> shrinkMap =
+            sendUpdateRequestAndMayShrink(attributeUpdateCommitMap);
 
-      // Commit
-      attributeUpdateCommitMap.forEach(
-          (schemaRegionId, pair) -> {
-            if (!new RegionWriteExecutor()
-                .execute(
-                    schemaRegionId,
-                    new TableDeviceAttributeCommitUpdateNode(
-                        new PlanNodeId(""),
-                        pair.getLeft(),
-                        pair.getRight(),
-                        shrinkMap.getOrDefault(schemaRegionId, Collections.emptySet())))
-                .isAccepted()) {
-              LOGGER.warn("Failed to write attribute commit message to region {}.", schemaRegionId);
-            }
-          });
+        // Commit
+        attributeUpdateCommitMap.forEach(
+            (schemaRegionId, pair) -> {
+              if (!new RegionWriteExecutor()
+                  .execute(
+                      schemaRegionId,
+                      new TableDeviceAttributeCommitUpdateNode(
+                          new PlanNodeId(""),
+                          pair.getLeft(),
+                          pair.getRight(),
+                          shrinkMap.getOrDefault(schemaRegionId, Collections.emptySet())))
+                  .isAccepted()) {
+                LOGGER.warn(
+                    "Failed to write attribute commit message to region {}.", schemaRegionId);
+              }
+            });
+      }
 
       if (!skipNext) {
         condition.await(
