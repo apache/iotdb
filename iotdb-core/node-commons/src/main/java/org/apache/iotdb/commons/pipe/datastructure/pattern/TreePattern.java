@@ -51,13 +51,16 @@ public abstract class TreePattern {
     this.pattern = pattern != null ? pattern : getDefaultPattern();
   }
 
+  public boolean isTreeModelDataAllowedToBeCaptured() {
+    return isTreeModelDataAllowedToBeCaptured;
+  }
+
   public String getPattern() {
     return pattern;
   }
 
   public boolean isRoot() {
-    return isTreeModelDataAllowedToBeCaptured
-        && (Objects.isNull(pattern) || this.pattern.equals(this.getDefaultPattern()));
+    return Objects.isNull(pattern) || this.pattern.equals(this.getDefaultPattern());
   }
 
   /**

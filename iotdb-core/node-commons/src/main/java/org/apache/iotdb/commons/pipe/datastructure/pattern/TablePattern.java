@@ -48,22 +48,20 @@ public class TablePattern {
     tablePattern = tablePatternString == null ? null : Pattern.compile(tablePatternString);
   }
 
+  public boolean isTableModelDataAllowedToBeCaptured() {
+    return isTableModelDataAllowedToBeCaptured;
+  }
+
   public boolean hasUserSpecifiedDatabasePatternOrTablePattern() {
     return databasePattern != null || tablePattern != null;
   }
 
-  public boolean needPatternMatching() {
-    return !isTableModelDataAllowedToBeCaptured || databasePattern != null || tablePattern != null;
-  }
-
   public boolean matchesDatabase(final String database) {
-    return isTableModelDataAllowedToBeCaptured
-        && (databasePattern == null || databasePattern.matcher(database).matches());
+    return databasePattern == null || databasePattern.matcher(database).matches();
   }
 
   public boolean matchesTable(final String table) {
-    return isTableModelDataAllowedToBeCaptured
-        && (tablePattern == null || tablePattern.matcher(table).matches());
+    return tablePattern == null || tablePattern.matcher(table).matches();
   }
 
   public String getDatabasePattern() {
