@@ -20,11 +20,19 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
 import org.apache.iotdb.mpp.rpc.thrift.TAttributeUpdateReq;
+import org.apache.iotdb.mpp.rpc.thrift.TSchemaRegionAttributeInfo;
 
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.stream.Collectors;
 
 public class TableDeviceCacheAttributeGuard {
+
+  // Unbounded queue
+  final LinkedBlockingDeque<Set<?>> applyQueue = new LinkedBlockingDeque<>();
   final Map<Integer, Long> fetchedSchemaRegionIds2LargestVersionMap = new ConcurrentHashMap<>();
 
   public boolean isRegionFetched(final Integer schemaRegionId) {
@@ -52,5 +60,29 @@ public class TableDeviceCacheAttributeGuard {
                   entry.getKey(), entry.getValue().getVersion());
               return false;
             });
+    applyQueue.add(
+        updateReq.getAttributeUpdateMap().values().stream()
+            .map(TSchemaRegionAttributeInfo::getBody)
+            .collect(Collectors.toSet()));
+    tryUpdateCache();
+  }
+
+  public synchronized void tryUpdateCache() {
+    while (!applyQueue.isEmpty()) {
+      final Set<?> firstElement = applyQueue.peek();
+      if (firstElement instanceof HashSet) {
+        applyUpdateMessage(firstElement);
+      } else if (firstElement.isEmpty()) {
+        applyQueue.removeFirst();
+      } else {
+        break;
+      }
+    }
+  }
+
+  private void applyUpdateMessage(final Set<?> updateContainerBytes) {
+    for (final Object element : updateContainerBytes) {
+      final byte[] containerByte = (byte[]) element;
+    }
   }
 }

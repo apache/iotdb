@@ -499,7 +499,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus updateAttribute(final TAttributeUpdateReq req) {
-    // TODO
+    TableDeviceSchemaFetcher.getInstance().getAttributeGuard().handleAttributeUpdate(req);
     return RpcUtils.SUCCESS_STATUS;
   }
 
