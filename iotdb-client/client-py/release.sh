@@ -28,7 +28,7 @@ rm -Rf iotdb_session.egg_info
 rm -f pyproject.toml
 
 # (Re-)build generated code
-(cd ../..; mvn clean package -pl iotdb-client/client-py -am)
+(cd ../..; ./mvnw clean package -pl iotdb-client/client-py -am)
 
 # Run unit tests
 if [ "$1" == "test" ]; then
