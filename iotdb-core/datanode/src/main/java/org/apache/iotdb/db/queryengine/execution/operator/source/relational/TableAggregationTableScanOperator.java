@@ -44,6 +44,7 @@ import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.LongColumn;
+import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -52,6 +53,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static java.lang.String.format;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.appendAggregationResult;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.calculateAggregationFromRawData;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.isAllAggregatorsHasFinalResult;
@@ -161,13 +163,14 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   @Override
   public TsBlock next() throws Exception {
     // start stopwatch, reset leftRuntimeOfOneNextCall
+
+    // TODO add maxRunTime optimization
     long start = System.nanoTime();
     // leftRuntimeOfOneNextCall = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     // long maxRuntime = leftRuntimeOfOneNextCall;
-
-    while (
     // System.nanoTime() - start < maxRuntime&&
-    (curTimeRange != null || timeRangeIterator.hasNextTimeRange())
+
+    while ((curTimeRange != null || timeRangeIterator.hasNextTimeRange())
         && !resultTsBlockBuilder.isFull()) {
       if (curTimeRange == null) {
         // move to the next time window
@@ -181,14 +184,33 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
       // calculate aggregation result on current time window
       // Keep curTimeRange if the calculation of this timeRange is not done
       if (calculateAggregationResultForCurrentTimeRange()) {
+        updateResultTsBlock();
         curTimeRange = null;
       }
     }
 
     if (resultTsBlockBuilder.getPositionCount() > 0) {
-      TsBlock resultTsBlock = resultTsBlockBuilder.build();
+      int declaredPositions = resultTsBlockBuilder.getPositionCount();
+      ColumnBuilder[] valueColumnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
+      Column[] valueColumns = new Column[valueColumnBuilders.length];
+      for (int i = 0; i < valueColumns.length; i++) {
+        valueColumns[i] = valueColumnBuilders[i].build();
+        if (valueColumns[i].getPositionCount() != declaredPositions) {
+          throw new IllegalStateException(
+              format(
+                  "Declared positions (%s) does not match column %s's number of entries (%s)",
+                  declaredPositions, i, valueColumns[i].getPositionCount()));
+        }
+      }
+
+      this.resultTsBlock =
+          new TsBlock(
+              resultTsBlockBuilder.getPositionCount(),
+              new RunLengthEncodedColumn(
+                  TIME_COLUMN_TEMPLATE, resultTsBlockBuilder.getPositionCount()),
+              valueColumns);
       resultTsBlockBuilder.reset();
-      return resultTsBlock;
+      return this.resultTsBlock;
     } else {
       return null;
     }
@@ -254,7 +276,6 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
       } else {
         currentDeviceIndex++;
       }
-      updateResultTsBlock();
       if (currentDeviceIndex < deviceCount) {
         // construct AlignedSeriesScanUtil for next device
         this.seriesScanUtil = constructAlignedSeriesScanUtil(deviceEntries.get(currentDeviceIndex));

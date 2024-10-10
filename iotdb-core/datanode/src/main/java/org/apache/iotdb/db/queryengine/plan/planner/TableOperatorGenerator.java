@@ -109,6 +109,7 @@ import javax.validation.constraints.NotNull;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -963,7 +964,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     return new AggregationOperator(context, child, aggregatorBuilder.build());
   }
 
-  private ImmutableMap<Symbol, Integer> makeLayoutFromOutputSymbols(List<Symbol> outputSymbols) {
+  private ImmutableMap<Symbol, Integer> makeLayoutFromOutputSymbols(
+      Collection<Symbol> outputSymbols) {
     ImmutableMap.Builder<Symbol, Integer> outputMappings = ImmutableMap.builder();
     int channel = 0;
     for (Symbol symbol : outputSymbols) {
@@ -1007,7 +1009,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     return new TableAggregator(
         accumulator,
         step,
-        getTSDataType(typeProvider.getTableModelType(aggregationSymbol)),
+        getTSDataType(aggregation.getResolvedFunction().getSignature().getReturnType()),
+        // getTSDataType(typeProvider.getTableModelType(aggregationSymbol)),
         argumentChannels,
         OptionalInt.empty());
   }
@@ -1025,8 +1028,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     List<TableAggregator> aggregators = new ArrayList<>();
 
-    // TODO fix childLayout
-    Map<Symbol, Integer> childLayout = new HashMap<>();
+    // TODO how to use the output symbols of AggregationTableScan?
+    Map<Symbol, Integer> childLayout = makeLayoutFromOutputSymbols(node.getAssignments().keySet());
 
     for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
       TableAggregator aggregator =
@@ -1039,7 +1042,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       aggregators.add(aggregator);
     }
 
-    List<Symbol> outputColumnNames = node.getOutputSymbols();
+    Collection<Symbol> outputColumnNames = node.getAssignments().keySet();
     int outputColumnCount = outputColumnNames.size();
     List<ColumnSchema> columnSchemas = new ArrayList<>(outputColumnCount);
     int[] columnsIndexArray = new int[outputColumnCount];
@@ -1109,28 +1112,40 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     ITimeRangeIterator timeRangeIterator =
         new SingleTimeWindowIterator(Long.MIN_VALUE, Long.MAX_VALUE);
 
-    return new TableAggregationTableScanOperator(
-        node.getPlanNodeId(),
-        operatorContext,
-        columnSchemas,
-        columnsIndexArray,
-        measurementColumnCount,
-        node.getDeviceEntries(),
-        node.getScanOrder(),
-        scanOptionsBuilder.build(),
-        measurementColumnNames,
-        measurementSchemas,
-        TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber(),
-        // TODO if it equals subSensor variable
-        measurementColumnCount,
-        aggregators,
-        timeRangeIterator,
-        false,
-        null,
-        calculateMaxAggregationResultSize(),
-        true);
+    TableAggregationTableScanOperator aggTableScanOperator =
+        new TableAggregationTableScanOperator(
+            node.getPlanNodeId(),
+            operatorContext,
+            columnSchemas,
+            columnsIndexArray,
+            measurementColumnCount,
+            node.getDeviceEntries(),
+            node.getScanOrder(),
+            scanOptionsBuilder.build(),
+            measurementColumnNames,
+            measurementSchemas,
+            TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber(),
+            // TODO if it equals subSensor variable
+            measurementColumnCount,
+            aggregators,
+            timeRangeIterator,
+            false,
+            null,
+            calculateMaxAggregationResultSize(),
+            true);
 
-    // throw new UnsupportedOperationException("Agg-BE not supported");
+    ((DataDriverContext) context.getDriverContext()).addSourceOperator(aggTableScanOperator);
+
+    for (int i = 0, size = node.getDeviceEntries().size(); i < size; i++) {
+      AlignedFullPath alignedPath =
+          constructAlignedPath(
+              node.getDeviceEntries().get(i), measurementColumnNames, measurementSchemas);
+      ((DataDriverContext) context.getDriverContext()).addPath(alignedPath);
+    }
+
+    context.getDriverContext().setInputDriver(true);
+
+    return aggTableScanOperator;
   }
 
   public static long calculateMaxAggregationResultSize(
