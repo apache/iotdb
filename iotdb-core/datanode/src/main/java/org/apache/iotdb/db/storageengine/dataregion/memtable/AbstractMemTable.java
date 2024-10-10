@@ -21,7 +21,6 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
@@ -96,7 +95,6 @@ public abstract class AbstractMemTable implements IMemTable {
   private static final DeviceIDFactory deviceIDFactory = DeviceIDFactory.getInstance();
 
   private boolean shouldFlush = false;
-  private boolean reachChunkSizeOrPointNumThreshold = false;
   private volatile FlushStatus flushStatus = FlushStatus.WORKING;
   private final int avgSeriesPointNumThreshold =
       IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
@@ -423,9 +421,7 @@ public abstract class AbstractMemTable implements IMemTable {
       Object[] objectValue) {
     IWritableMemChunkGroup memChunkGroup =
         createMemChunkGroupIfNotExistAndGet(deviceId, schemaList);
-    if (memChunkGroup.writeWithFlushCheck(insertTime, objectValue, schemaList)) {
-      reachChunkSizeOrPointNumThreshold = true;
-    }
+    memChunkGroup.writeRow(insertTime, objectValue, schemaList);
   }
 
   @Override
@@ -436,9 +432,7 @@ public abstract class AbstractMemTable implements IMemTable {
       Object[] objectValue) {
     IWritableMemChunkGroup memChunkGroup =
         createAlignedMemChunkGroupIfNotExistAndGet(deviceId, schemaList);
-    if (memChunkGroup.writeWithFlushCheck(insertTime, objectValue, schemaList)) {
-      reachChunkSizeOrPointNumThreshold = true;
-    }
+    memChunkGroup.writeRow(insertTime, objectValue, schemaList);
   }
 
   public void writeTabletNode(InsertTabletNode insertTabletNode, int start, int end) {
@@ -452,16 +446,14 @@ public abstract class AbstractMemTable implements IMemTable {
     }
     IWritableMemChunkGroup memChunkGroup =
         createMemChunkGroupIfNotExistAndGet(insertTabletNode.getDeviceID(), schemaList);
-    if (memChunkGroup.writeValuesWithFlushCheck(
+    memChunkGroup.writeTablet(
         insertTabletNode.getTimes(),
         insertTabletNode.getColumns(),
         insertTabletNode.getBitMaps(),
         schemaList,
         start,
         end,
-        null)) {
-      reachChunkSizeOrPointNumThreshold = true;
-    }
+        null);
   }
 
   public void writeAlignedTablet(
@@ -488,16 +480,14 @@ public abstract class AbstractMemTable implements IMemTable {
       int splitEnd = pair.right;
       IWritableMemChunkGroup memChunkGroup =
           createAlignedMemChunkGroupIfNotExistAndGet(deviceID, schemaList);
-      if (memChunkGroup.writeValuesWithFlushCheck(
+      memChunkGroup.writeTablet(
           insertTabletNode.getTimes(),
           insertTabletNode.getColumns(),
           insertTabletNode.getBitMaps(),
           schemaList,
           splitStart,
           splitEnd,
-          results)) {
-        reachChunkSizeOrPointNumThreshold = true;
-      }
+          results);
       splitStart = splitEnd;
     }
   }
@@ -542,11 +532,6 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public long memSize() {
     return memSize;
-  }
-
-  @Override
-  public boolean reachChunkSizeOrPointNumThreshold() {
-    return reachChunkSizeOrPointNumThreshold;
   }
 
   @Override
@@ -634,8 +619,7 @@ public abstract class AbstractMemTable implements IMemTable {
       long ttlLowerBound,
       Map<String, List<IChunkMetadata>> chunkMetadataMap,
       Map<String, List<IChunkHandle>> memChunkHandleMap,
-      List<Pair<Modification, IMemTable>> modsToMemTabled)
-      throws MetadataException {
+      List<Pair<Modification, IMemTable>> modsToMemTabled) {
 
     Map<IDeviceID, IWritableMemChunkGroup> memTableMap = getMemTableMap();
 

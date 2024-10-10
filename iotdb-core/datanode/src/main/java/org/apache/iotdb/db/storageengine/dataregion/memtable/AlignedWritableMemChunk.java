@@ -93,101 +93,97 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public boolean putLongWithFlushCheck(long t, long v) {
+  public void putLong(long t, long v) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
-  public boolean putIntWithFlushCheck(long t, int v) {
+  public void putInt(long t, int v) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
-  public boolean putFloatWithFlushCheck(long t, float v) {
+  public void putFloat(long t, float v) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
-  public boolean putDoubleWithFlushCheck(long t, double v) {
+  public void putDouble(long t, double v) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
-  public boolean putBinaryWithFlushCheck(long t, Binary v) {
+  public void putBinary(long t, Binary v) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
-  public boolean putBooleanWithFlushCheck(long t, boolean v) {
+  public void putBoolean(long t, boolean v) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
-  public boolean putAlignedValueWithFlushCheck(long t, Object[] v) {
+  public void putAlignedRow(long t, Object[] v) {
     list.putAlignedValue(t, v);
-    return list.reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
-  public boolean putLongsWithFlushCheck(long[] t, long[] v, BitMap bitMap, int start, int end) {
+  public void putLongs(long[] t, long[] v, BitMap bitMap, int start, int end) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
-  public boolean putIntsWithFlushCheck(long[] t, int[] v, BitMap bitMap, int start, int end) {
+  public void putInts(long[] t, int[] v, BitMap bitMap, int start, int end) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
-  public boolean putFloatsWithFlushCheck(long[] t, float[] v, BitMap bitMap, int start, int end) {
+  public void putFloats(long[] t, float[] v, BitMap bitMap, int start, int end) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
-  public boolean putDoublesWithFlushCheck(long[] t, double[] v, BitMap bitMap, int start, int end) {
+  public void putDoubles(long[] t, double[] v, BitMap bitMap, int start, int end) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
-  public boolean putBinariesWithFlushCheck(
-      long[] t, Binary[] v, BitMap bitMap, int start, int end) {
+  public void putBinaries(long[] t, Binary[] v, BitMap bitMap, int start, int end) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
-  public boolean putBooleansWithFlushCheck(
-      long[] t, boolean[] v, BitMap bitMap, int start, int end) {
+  public void putBooleans(long[] t, boolean[] v, BitMap bitMap, int start, int end) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
-  public boolean putAlignedValuesWithFlushCheck(
+  public void putAlignedTablet(
       long[] t, Object[] v, BitMap[] bitMaps, int start, int end, TSStatus[] results) {
     list.putAlignedValues(t, v, bitMaps, start, end, results);
-    return list.reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
-  public boolean writeWithFlushCheck(long insertTime, Object objectValue) {
+  public void writeNonAlignedPoint(long insertTime, Object objectValue) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
-  public boolean writeWithFlushCheck(
+  public void writeNonAlignedTablet(
       long[] times, Object valueList, BitMap bitMap, TSDataType dataType, int start, int end) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
-  public boolean writeAlignedValueWithFlushCheck(
+  public void writeAlignedPoints(
       long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
     Object[] reorderedValue =
         checkAndReorderColumnValuesInInsertPlan(schemaList, objectValue, null).left;
-    return putAlignedValueWithFlushCheck(insertTime, reorderedValue);
+    putAlignedRow(insertTime, reorderedValue);
   }
 
   @Override
-  public boolean writeAlignedValuesWithFlushCheck(
+  public void writeAlignedTablet(
       long[] times,
       Object[] valueList,
       BitMap[] bitMaps,
@@ -199,8 +195,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
         checkAndReorderColumnValuesInInsertPlan(schemaList, valueList, bitMaps);
     Object[] reorderedColumnValues = pair.left;
     BitMap[] reorderedBitMaps = pair.right;
-    return putAlignedValuesWithFlushCheck(
-        times, reorderedColumnValues, reorderedBitMaps, start, end, results);
+    putAlignedTablet(times, reorderedColumnValues, reorderedBitMaps, start, end, results);
   }
 
   /**
