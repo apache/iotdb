@@ -99,8 +99,7 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
 
     if (Objects.nonNull(senderLocation)) {
       ReadWriteIOUtils.write(true, byteBuffer);
-      DeviceAttributeCacheUpdater.serializeNodeLocation4AttributeUpdate(
-          senderLocation, byteBuffer);
+      DeviceAttributeCacheUpdater.serializeNodeLocation4AttributeUpdate(senderLocation, byteBuffer);
     } else {
       ReadWriteIOUtils.write(false, byteBuffer);
     }

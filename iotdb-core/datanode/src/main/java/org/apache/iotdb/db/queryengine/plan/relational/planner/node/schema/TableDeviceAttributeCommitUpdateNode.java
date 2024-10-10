@@ -45,7 +45,7 @@ public class TableDeviceAttributeCommitUpdateNode extends PlanNode implements IS
   private final long version;
   private final Map<TDataNodeLocation, byte[]> commitMap;
   private final Set<TDataNodeLocation> shrunkNodes;
-  private final TDataNodeLocation localLocation;
+  private final TDataNodeLocation leaderLocation;
 
   public static final TableDeviceAttributeCommitUpdateNode MOCK_INSTANCE =
       new TableDeviceAttributeCommitUpdateNode(new PlanNodeId(""), 0L, null, null, null);
@@ -55,12 +55,12 @@ public class TableDeviceAttributeCommitUpdateNode extends PlanNode implements IS
       final long version,
       final Map<TDataNodeLocation, byte[]> commitMap,
       final Set<TDataNodeLocation> shrunkNodes,
-      final TDataNodeLocation localLocation) {
+      final TDataNodeLocation leaderLocation) {
     super(id);
     this.version = version;
     this.commitMap = commitMap;
     this.shrunkNodes = shrunkNodes;
-    this.localLocation = localLocation;
+    this.leaderLocation = leaderLocation;
   }
 
   public long getVersion() {
@@ -73,6 +73,10 @@ public class TableDeviceAttributeCommitUpdateNode extends PlanNode implements IS
 
   public Set<TDataNodeLocation> getShrunkNodes() {
     return shrunkNodes;
+  }
+
+  public TDataNodeLocation getLeaderLocation() {
+    return leaderLocation;
   }
 
   @Override
@@ -93,7 +97,7 @@ public class TableDeviceAttributeCommitUpdateNode extends PlanNode implements IS
   @Override
   public PlanNode clone() {
     return new TableDeviceAttributeCommitUpdateNode(
-        id, version, commitMap, shrunkNodes, localLocation);
+        id, version, commitMap, shrunkNodes, leaderLocation);
   }
 
   @Override
@@ -118,8 +122,7 @@ public class TableDeviceAttributeCommitUpdateNode extends PlanNode implements IS
     ReadWriteIOUtils.write(commitMap.size(), byteBuffer);
 
     for (final Map.Entry<TDataNodeLocation, byte[]> entry : commitMap.entrySet()) {
-      DeviceAttributeCacheUpdater.serializeNodeLocation4AttributeUpdate(
-          entry.getKey(), byteBuffer);
+      DeviceAttributeCacheUpdater.serializeNodeLocation4AttributeUpdate(entry.getKey(), byteBuffer);
       ReadWriteIOUtils.write(entry.getValue().length, byteBuffer);
       byteBuffer.put(entry.getValue());
     }
@@ -129,7 +132,7 @@ public class TableDeviceAttributeCommitUpdateNode extends PlanNode implements IS
       DeviceAttributeCacheUpdater.serializeNodeLocation4AttributeUpdate(location, byteBuffer);
     }
 
-    DeviceAttributeCacheUpdater.serializeNodeLocation4AttributeUpdate(localLocation, byteBuffer);
+    DeviceAttributeCacheUpdater.serializeNodeLocation4AttributeUpdate(leaderLocation, byteBuffer);
   }
 
   @Override
@@ -149,7 +152,7 @@ public class TableDeviceAttributeCommitUpdateNode extends PlanNode implements IS
       DeviceAttributeCacheUpdater.serializeNodeLocation4AttributeUpdate(location, stream);
     }
 
-    DeviceAttributeCacheUpdater.serializeNodeLocation4AttributeUpdate(localLocation, stream);
+    DeviceAttributeCacheUpdater.serializeNodeLocation4AttributeUpdate(leaderLocation, stream);
   }
 
   public static PlanNode deserialize(final ByteBuffer buffer) {

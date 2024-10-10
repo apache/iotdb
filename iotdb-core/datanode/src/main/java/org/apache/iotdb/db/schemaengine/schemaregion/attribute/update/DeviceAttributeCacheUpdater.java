@@ -154,6 +154,15 @@ public class DeviceAttributeCacheUpdater {
             });
     updateContainerStatistics.keySet().removeAll(shrunkNodes);
 
+    final TDataNodeLocation leaderLocation = node.getLeaderLocation();
+    if (version.get() == node.getVersion() && attributeUpdateMap.containsKey(leaderLocation)) {
+      releaseMemory(
+          updateContainerStatistics.containsKey(leaderLocation)
+              ? updateContainerStatistics.get(leaderLocation).getContainerSize()
+              : ((UpdateClearContainer) attributeUpdateMap.get(leaderLocation)).ramBytesUsed());
+      attributeUpdateMap.remove(leaderLocation);
+    }
+
     node.getCommitMap()
         .forEach(
             ((location, bytes) ->
