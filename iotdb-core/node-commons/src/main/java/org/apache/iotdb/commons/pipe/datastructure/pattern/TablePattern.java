@@ -56,6 +56,13 @@ public class TablePattern {
     return databasePattern != null || tablePattern != null;
   }
 
+  public boolean coversDb(final String database) {
+    return !hasUserSpecifiedDatabasePatternOrTablePattern()
+        || (databasePattern != null
+            && databasePattern.matcher(database).matches()
+            && tablePattern == null);
+  }
+
   public boolean matchesDatabase(final String database) {
     return databasePattern == null || databasePattern.matcher(database).matches();
   }
