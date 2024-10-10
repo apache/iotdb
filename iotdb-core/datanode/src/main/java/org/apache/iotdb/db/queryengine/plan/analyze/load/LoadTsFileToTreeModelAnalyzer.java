@@ -19,18 +19,44 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.LoadEmptyFileException;
+import org.apache.iotdb.db.exception.LoadReadOnlyException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.TsFileSequenceReaderTimeseriesMetadataIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.BufferUnderflowException;
+import java.util.List;
+import java.util.Map;
+
 public class LoadTsFileToTreeModelAnalyzer extends LoadTsFileAnalyzer {
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileToTreeModelAnalyzer.class);
+
+  private final SchemaAutoCreatorAndVerifier schemaAutoCreatorAndVerifier;
 
   public LoadTsFileToTreeModelAnalyzer(
       LoadTsFileStatement loadTsFileStatement,
@@ -38,10 +64,157 @@ public class LoadTsFileToTreeModelAnalyzer extends LoadTsFileAnalyzer {
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
     super(loadTsFileStatement, context, partitionFetcher, schemaFetcher);
+    this.schemaAutoCreatorAndVerifier = new SchemaAutoCreatorAndVerifier(this);
   }
 
   public LoadTsFileToTreeModelAnalyzer(
       LoadTsFile loadTsFileTableStatement, Metadata metadata, MPPQueryContext context) {
     super(loadTsFileTableStatement, metadata, context);
+    this.schemaAutoCreatorAndVerifier = new SchemaAutoCreatorAndVerifier(this);
+  }
+
+  @Override
+  public IAnalysis analyzeFileByFile(IAnalysis analysis) {
+    // check if the system is read only
+    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setFailStatus(
+          RpcUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY, LoadReadOnlyException.MESSAGE));
+      return analysis;
+    }
+
+    // analyze tsfile metadata file by file
+    for (int i = 0, tsfileNum = getTsFiles().size(); i < tsfileNum; i++) {
+      final File tsFile = getTsFiles().get(i);
+
+      if (tsFile.length() == 0) {
+        if (LOGGER.isWarnEnabled()) {
+          LOGGER.warn("TsFile {} is empty.", tsFile.getPath());
+        }
+        if (LOGGER.isInfoEnabled()) {
+          LOGGER.info(
+              "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
+              i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
+        }
+        continue;
+      }
+
+      try {
+        analyzeSingleTsFile(tsFile);
+        if (LOGGER.isInfoEnabled()) {
+          LOGGER.info(
+              "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
+              i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
+        }
+      } catch (AuthException e) {
+        setFailAnalysisForAuthException(analysis, e);
+        return analysis;
+      } catch (BufferUnderflowException e) {
+        LOGGER.warn(
+            "The file {} is not a valid tsfile. Please check the input file.", tsFile.getPath(), e);
+        throw new SemanticException(
+            String.format(
+                "The file %s is not a valid tsfile. Please check the input file.",
+                tsFile.getPath()));
+      } catch (Exception e) {
+        final String exceptionMessage =
+            String.format(
+                "The file %s is not a valid tsfile. Please check the input file. Detail: %s",
+                tsFile.getPath(), e.getMessage() == null ? e.getClass().getName() : e.getMessage());
+        LOGGER.warn(exceptionMessage, e);
+        analysis.setFinishQueryAfterAnalyze(true);
+        analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));
+        return analysis;
+      }
+    }
+
+    try {
+      schemaAutoCreatorAndVerifier.flush();
+    } catch (AuthException e) {
+      setFailAnalysisForAuthException(analysis, e);
+      return analysis;
+    } catch (Exception e) {
+      final String exceptionMessage =
+          String.format(
+              "Auto create or verify schema error when executing statement %s. Detail: %s.",
+              getStatementString(),
+              e.getMessage() == null ? e.getClass().getName() : e.getMessage());
+      LOGGER.warn(exceptionMessage, e);
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));
+      return analysis;
+    }
+
+    LOGGER.info("Load - Analysis Stage: all tsfiles have been analyzed.");
+
+    // data partition will be queried in the scheduler
+    setRealStatement(analysis);
+    return analysis;
+  }
+
+  @Override
+  protected void analyzeSingleTsFile(final File tsFile) throws IOException, AuthException {
+    try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+      // can be reused when constructing tsfile resource
+      final TsFileSequenceReaderTimeseriesMetadataIterator timeseriesMetadataIterator =
+          new TsFileSequenceReaderTimeseriesMetadataIterator(reader, true, 1);
+
+      // construct tsfile resource
+      final TsFileResource tsFileResource = new TsFileResource(tsFile);
+      if (!tsFileResource.resourceFileExists()) {
+        // it will be serialized in LoadSingleTsFileNode
+        tsFileResource.updatePlanIndexes(reader.getMinPlanIndex());
+        tsFileResource.updatePlanIndexes(reader.getMaxPlanIndex());
+      } else {
+        tsFileResource.deserialize();
+      }
+
+      schemaAutoCreatorAndVerifier.setCurrentModificationsAndTimeIndex(tsFileResource, reader);
+
+      // check if the tsfile is empty
+      if (!timeseriesMetadataIterator.hasNext()) {
+        throw new LoadEmptyFileException(tsFile.getAbsolutePath());
+      }
+
+      long writePointCount = 0;
+
+      final boolean isAutoCreateSchemaOrVerifySchemaEnabled =
+          IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled() || isVerifySchema();
+      while (timeseriesMetadataIterator.hasNext()) {
+        final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
+            timeseriesMetadataIterator.next();
+
+        if (isAutoCreateSchemaOrVerifySchemaEnabled) {
+          schemaAutoCreatorAndVerifier.autoCreateAndVerify(reader, device2TimeseriesMetadata);
+        }
+
+        if (!tsFileResource.resourceFileExists()) {
+          TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
+        }
+
+        // TODO: how to get the correct write point count when
+        //  !isAutoCreateSchemaOrVerifySchemaEnabled
+        writePointCount += getWritePointCount(device2TimeseriesMetadata);
+      }
+      if (isAutoCreateSchemaOrVerifySchemaEnabled) {
+        schemaAutoCreatorAndVerifier.flushAndClearDeviceIsAlignedCacheIfNecessary();
+      }
+
+      TimestampPrecisionUtils.checkTimestampPrecision(tsFileResource.getFileEndTime());
+      tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
+
+      addTsFileResource(tsFileResource);
+      addWritePointCount(writePointCount);
+    } catch (final LoadEmptyFileException loadEmptyFileException) {
+      LOGGER.warn("Failed to load empty file: {}", tsFile.getAbsolutePath());
+      if (isDeleteAfterLoad()) {
+        FileUtils.deleteQuietly(tsFile);
+      }
+    }
+  }
+
+  @Override
+  public void close() throws Exception {
+    schemaAutoCreatorAndVerifier.close();
   }
 }

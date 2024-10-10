@@ -20,11 +20,20 @@
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.LoadEmptyFileException;
+import org.apache.iotdb.db.exception.LoadReadOnlyException;
+import org.apache.iotdb.db.exception.VerifyMetadataException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
+import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
@@ -33,7 +42,10 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
@@ -45,11 +57,17 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.BufferUnderflowException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
+
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.validateDatabaseName;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT;
+import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR_CHAR;
 
 public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
   private static final Logger LOGGER =
@@ -69,6 +87,72 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
   }
 
   @Override
+  public IAnalysis analyzeFileByFile(IAnalysis analysis) {
+    // check if the system is read only
+    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setFailStatus(
+          RpcUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY, LoadReadOnlyException.MESSAGE));
+      return analysis;
+    }
+
+    try {
+      autoCreateDatabase(getDatabase());
+    } catch (VerifyMetadataException e) {
+      LOGGER.warn("Auto create database failed: {}", getDatabase(), e);
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, e.getMessage()));
+      return analysis;
+    }
+
+    // analyze tsfile metadata file by file
+    for (int i = 0, tsfileNum = getTsFiles().size(); i < tsfileNum; i++) {
+      final File tsFile = getTsFiles().get(i);
+
+      if (tsFile.length() == 0) {
+        if (LOGGER.isWarnEnabled()) {
+          LOGGER.warn("TsFile {} is empty.", tsFile.getPath());
+        }
+        if (LOGGER.isInfoEnabled()) {
+          LOGGER.info(
+              "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
+              i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
+        }
+        continue;
+      }
+
+      try {
+        analyzeSingleTsFile(tsFile);
+        if (LOGGER.isInfoEnabled()) {
+          LOGGER.info(
+              "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
+              i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
+        }
+      } catch (AuthException e) {
+        setFailAnalysisForAuthException(analysis, e);
+        return analysis;
+      } catch (BufferUnderflowException e) {
+        LOGGER.warn(
+            "The file {} is not a valid tsfile. Please check the input file.", tsFile.getPath(), e);
+        throw new SemanticException(
+            String.format(
+                "The file %s is not a valid tsfile. Please check the input file.",
+                tsFile.getPath()));
+      } catch (Exception e) {
+        final String exceptionMessage =
+            String.format(
+                "The file %s is not a valid tsfile. Please check the input file. Detail: %s",
+                tsFile.getPath(), e.getMessage() == null ? e.getClass().getName() : e.getMessage());
+        LOGGER.warn(exceptionMessage, e);
+        analysis.setFinishQueryAfterAnalyze(true);
+        analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));
+        return analysis;
+      }
+    }
+    return analysis;
+  }
+
+  @Override
   protected void analyzeSingleTsFile(final File tsFile) throws IOException, AuthException {
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
       // can be reused when constructing tsfile resource
@@ -85,17 +169,13 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
         tsFileResource.deserialize();
       }
 
-      schemaAutoCreatorAndVerifier.setCurrentModificationsAndTimeIndex(tsFileResource, reader);
-
       // check if the tsfile is empty
       if (!timeseriesMetadataIterator.hasNext()) {
         throw new LoadEmptyFileException(tsFile.getAbsolutePath());
       }
 
-      LOGGER.error("TableSchemaMap size: {}", reader.readFileMetadata().getTableSchemaMap().size());
       for (Map.Entry<String, TableSchema> name2Schema :
           reader.readFileMetadata().getTableSchemaMap().entrySet()) {
-        LOGGER.error("validating table header: {}", name2Schema.getKey());
         org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema realSchema =
             metadata
                 .validateTableHeaderSchema(
@@ -134,9 +214,6 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
         //  !isAutoCreateSchemaOrVerifySchemaEnabled
         writePointCount += getWritePointCount(device2TimeseriesMetadata);
       }
-      if (isAutoCreateSchemaOrVerifySchemaEnabled) {
-        schemaAutoCreatorAndVerifier.flushAndClearDeviceIsAlignedCacheIfNecessary();
-      }
 
       TimestampPrecisionUtils.checkTimestampPrecision(tsFileResource.getFileEndTime());
       tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
@@ -148,6 +225,25 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
       if (isDeleteAfterLoad()) {
         FileUtils.deleteQuietly(tsFile);
       }
+    }
+  }
+
+  private void autoCreateDatabase(final String database) throws VerifyMetadataException {
+    validateDatabaseName(database);
+    final CreateDBTask task =
+        new CreateDBTask(new TDatabaseSchema(ROOT + PATH_SEPARATOR_CHAR + database), true);
+    try {
+      final ListenableFuture<ConfigTaskResult> future =
+          task.execute(ClusterConfigTaskExecutor.getInstance());
+      final ConfigTaskResult result = future.get();
+      if (result.getStatusCode().getStatusCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new VerifyMetadataException(
+            String.format(
+                "Auto create database failed: %s, status code: %s",
+                database, result.getStatusCode()));
+      }
+    } catch (final ExecutionException | InterruptedException e) {
+      throw new VerifyMetadataException("Auto create database failed because: " + e.getMessage());
     }
   }
 
@@ -182,4 +278,7 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
       }
     };
   }
+
+  @Override
+  public void close() throws Exception {}
 }
