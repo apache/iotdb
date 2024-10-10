@@ -240,8 +240,20 @@ showFunctionsStatement
 
 // -------------------------------------------- Load Statement ---------------------------------------------------------
 loadTsFileStatement
-    : LOAD fileName=string properties?
+    : LOAD fileName=string (loadFileWithAttributeClauses)?
     ;
+
+loadFileWithAttributeClauses
+    : WITH
+        '('
+        (loadFileWithAttributeClause ',')* loadFileWithAttributeClause?
+        ')'
+    ;
+
+loadFileWithAttributeClause
+    : loadFileWithKey=STRING EQ loadFileWithValue=STRING
+    ;
+
 
 
 // -------------------------------------------- Pipe Statement ---------------------------------------------------------
