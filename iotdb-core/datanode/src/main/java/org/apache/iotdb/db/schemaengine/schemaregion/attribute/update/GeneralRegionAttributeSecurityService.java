@@ -134,9 +134,7 @@ public class GeneralRegionAttributeSecurityService {
 
       // Send & may shrink
       final Map<SchemaRegionId, Set<TDataNodeLocation>> shrinkMap =
-          sendUpdateRequest(attributeUpdateCommitMap)
-              ? detectNodeShrinkage(attributeUpdateCommitMap)
-              : Collections.emptyMap();
+          sendUpdateRequestAndMayShrink(attributeUpdateCommitMap);
 
       // Commit
       // TODO: correct shrinkage logic
@@ -173,6 +171,7 @@ public class GeneralRegionAttributeSecurityService {
     }
   }
 
+  // Shrink the locations which do not exist in cluster dataNodes
   private @Nonnull Map<SchemaRegionId, Set<TDataNodeLocation>> detectNodeShrinkage(
       final Map<SchemaRegionId, Pair<Long, Map<TDataNodeLocation, byte[]>>>
           attributeUpdateCommitMap) {
@@ -185,7 +184,7 @@ public class GeneralRegionAttributeSecurityService {
       return Collections.emptyMap();
     }
     dataNodeId2FailureDurationAndTimesMap.clear();
-    final Set<TDataNodeLocation> dataNodeLocations = new HashSet<>();
+    final Set<TDataNodeLocation> realDataNodeLocations = new HashSet<>();
     showClusterResp
         .getDataNodeList()
         .forEach(
@@ -194,23 +193,19 @@ public class GeneralRegionAttributeSecurityService {
               location.setMPPDataExchangeEndPoint(null);
               location.setSchemaRegionConsensusEndPoint(null);
               location.setClientRpcEndPoint(null);
-              dataNodeLocations.add(location);
+              realDataNodeLocations.add(location);
             });
     return attributeUpdateCommitMap.entrySet().stream()
         .filter(
             entry -> {
-              entry
-                  .getValue()
-                  .getRight()
-                  .keySet()
-                  .removeIf(location -> !dataNodeLocations.contains(location));
+              entry.getValue().getRight().keySet().removeIf(realDataNodeLocations::contains);
               return !entry.getValue().getRight().isEmpty();
             })
         .collect(
             Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().getRight().keySet()));
   }
 
-  private boolean sendUpdateRequest(
+  private @Nonnull Map<SchemaRegionId, Set<TDataNodeLocation>> sendUpdateRequestAndMayShrink(
       final Map<SchemaRegionId, Pair<Long, Map<TDataNodeLocation, byte[]>>>
           attributeUpdateCommitMap) {
     final AsyncRequestContext<TAttributeUpdateReq, TSStatus, DnToDnRequestType, TDataNodeLocation>
@@ -274,6 +269,11 @@ public class GeneralRegionAttributeSecurityService {
                 })
             .map(Map.Entry::getKey)
             .collect(Collectors.toSet());
+
+    // Compute node shrinkage before failure removal in commit
+    final Map<SchemaRegionId, Set<TDataNodeLocation>> result =
+        needFetch.get() ? detectNodeShrinkage(attributeUpdateCommitMap) : Collections.emptyMap();
+
     for (final Iterator<Map.Entry<SchemaRegionId, Pair<Long, Map<TDataNodeLocation, byte[]>>>> it =
             attributeUpdateCommitMap.entrySet().iterator();
         it.hasNext(); ) {
@@ -286,7 +286,7 @@ public class GeneralRegionAttributeSecurityService {
         it.remove();
       }
     }
-    return needFetch.get();
+    return result;
   }
 
   /////////////////////////////// SingleTon ///////////////////////////////
