@@ -41,6 +41,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -320,26 +321,12 @@ public class DeviceAttributeRemoteUpdater {
   private void deserialize(final InputStream inputStream) throws IOException {
     int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; i++) {
-      targetDataNodeLocations.add(
-          new TDataNodeLocation(
-              ReadWriteIOUtils.readInt(inputStream),
-              null,
-              ThriftCommonsSerDeUtils.deserializeTEndPoint(inputStream),
-              null,
-              null,
-              null));
+      targetDataNodeLocations.add(deserializeNodeLocationForAttributeUpdate(inputStream));
     }
 
     size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
-      final TDataNodeLocation location =
-          new TDataNodeLocation(
-              ReadWriteIOUtils.readInt(inputStream),
-              null,
-              ThriftCommonsSerDeUtils.deserializeTEndPoint(inputStream),
-              null,
-              null,
-              null);
+      final TDataNodeLocation location = deserializeNodeLocationForAttributeUpdate(inputStream);
       final UpdateContainer container =
           ReadWriteIOUtils.readBool(inputStream)
               ? new UpdateDetailContainer()
@@ -349,6 +336,40 @@ public class DeviceAttributeRemoteUpdater {
     }
 
     version.set(ReadWriteIOUtils.readLong(inputStream));
+  }
+
+  public static void serializeNodeLocation4AttributeUpdate(
+      final TDataNodeLocation location, final ByteBuffer buffer) {
+    ReadWriteIOUtils.write(location.getDataNodeId(), buffer);
+    ThriftCommonsSerDeUtils.serializeTEndPoint(location.getInternalEndPoint(), buffer);
+  }
+
+  public static void serializeNodeLocation4AttributeUpdate(
+      final TDataNodeLocation location, final OutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(location.getDataNodeId(), stream);
+    ThriftCommonsSerDeUtils.serializeTEndPoint(location.getInternalEndPoint(), stream);
+  }
+
+  public static TDataNodeLocation deserializeNodeLocationForAttributeUpdate(
+      final ByteBuffer buffer) {
+    return new TDataNodeLocation(
+        ReadWriteIOUtils.readInt(buffer),
+        null,
+        ThriftCommonsSerDeUtils.deserializeTEndPoint(buffer),
+        null,
+        null,
+        null);
+  }
+
+  public static TDataNodeLocation deserializeNodeLocationForAttributeUpdate(
+      final InputStream inputStream) throws IOException {
+    return new TDataNodeLocation(
+        ReadWriteIOUtils.readInt(inputStream),
+        null,
+        ThriftCommonsSerDeUtils.deserializeTEndPoint(inputStream),
+        null,
+        null,
+        null);
   }
 
   /////////////////////////////// Memory ///////////////////////////////
