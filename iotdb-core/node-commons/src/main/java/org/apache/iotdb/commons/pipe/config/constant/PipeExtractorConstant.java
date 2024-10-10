@@ -56,6 +56,10 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE = "iotdb";
   public static final String EXTRACTOR_PATTERN_PREFIX_DEFAULT_VALUE = "root";
   public static final String EXTRACTOR_PATTERN_IOTDB_DEFAULT_VALUE = "root.**";
+  public static final String EXTRACTOR_DATABASE_NAME_KEY = "extractor.database-name";
+  public static final String SOURCE_DATABASE_NAME_KEY = "source.database-name";
+  public static final String EXTRACTOR_TABLE_NAME_KEY = "extractor.table-name";
+  public static final String SOURCE_TABLE_NAME_KEY = "source.table-name";
 
   public static final String EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY =
       "extractor.forwarding-pipe-requests";
