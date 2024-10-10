@@ -104,7 +104,7 @@ public class DeviceAttributeRemoteUpdater {
           updateContainerStatistics.computeIfPresent(
               location,
               (k, v) -> {
-                v.addSize(size);
+                v.addEntrySize(size);
                 return v;
               });
           updateMemory(size);
@@ -138,13 +138,15 @@ public class DeviceAttributeRemoteUpdater {
   public void commit(final TableDeviceAttributeCommitUpdateNode node) {
     final Set<TDataNodeLocation> shrunkNodes = node.getShrunkNodes();
     targetDataNodeLocations.removeAll(shrunkNodes);
-    attributeUpdateMap.keySet().removeAll(shrunkNodes);
     attributeUpdateMap
-        .keySet()
+        .entrySet()
         .removeIf(
-            location -> {
-              if (shrunkNodes.contains(location)) {
-                releaseMemory(1L);
+            entry -> {
+              if (shrunkNodes.contains(entry.getKey())) {
+                releaseMemory(
+                    updateContainerStatistics.containsKey(entry.getKey())
+                        ? updateContainerStatistics.get(entry.getKey()).getContainerSize()
+                        : ((UpdateClearContainer) entry.getValue()).ramBytesUsed());
                 return true;
               }
               return false;
@@ -171,7 +173,9 @@ public class DeviceAttributeRemoteUpdater {
                           updateContainerStatistics.remove(dataNode);
                           return null;
                         } else if (updateContainerStatistics.containsKey(dataNode)) {
-                          updateContainerStatistics.get(dataNode).decreaseSize(result.getLeft());
+                          updateContainerStatistics
+                              .get(dataNode)
+                              .decreaseEntrySize(result.getLeft());
                         }
                       }
                       return container;

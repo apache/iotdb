@@ -27,18 +27,17 @@ public class UpdateDetailContainerStatistics {
       IoTDBDescriptor.getInstance().getConfig().getDetailContainerMinDegradeMemoryInBytes();
   private long lastUpdateTime = System.currentTimeMillis();
 
-  // Not include instance size
   private long entrySize = 0;
 
   long getContainerSize() {
     return entrySize + UpdateDetailContainer.INSTANCE_SIZE;
   }
 
-  void addSize(final long increment) {
+  void addEntrySize(final long increment) {
     this.entrySize += increment;
   }
 
-  void decreaseSize(final long decrement) {
+  void decreaseEntrySize(final long decrement) {
     this.entrySize -= decrement;
     lastUpdateTime = System.currentTimeMillis();
   }
