@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
-import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -53,7 +53,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class PipeTsFileInsertionEvent extends EnrichedEvent
+public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     implements TsFileInsertionEvent, ReferenceTrackableEvent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileInsertionEvent.class);
@@ -80,12 +80,14 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   private volatile ProgressIndex overridingProgressIndex;
 
   public PipeTsFileInsertionEvent(
+      final String databaseName,
       final TsFileResource resource,
       final boolean isLoaded,
       final boolean isGeneratedByPipe,
       final boolean isGeneratedByHistoricalExtractor) {
     // The modFile must be copied before the event is assigned to the listening pipes
     this(
+        databaseName,
         resource,
         true,
         isLoaded,
@@ -101,6 +103,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   }
 
   public PipeTsFileInsertionEvent(
+      final String databaseName,
       final TsFileResource resource,
       final boolean isWithMod,
       final boolean isLoaded,
@@ -113,7 +116,15 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
       final TablePattern tablePattern,
       final long startTime,
       final long endTime) {
-    super(pipeName, creationTime, pipeTaskMeta, treePattern, tablePattern, startTime, endTime);
+    super(
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        treePattern,
+        tablePattern,
+        startTime,
+        endTime,
+        databaseName);
 
     this.resource = resource;
     tsFile = resource.getTsFile();
@@ -332,6 +343,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
       final long startTime,
       final long endTime) {
     return new PipeTsFileInsertionEvent(
+        getTreeModelDatabaseName(),
         resource,
         isWithMod,
         isLoaded,

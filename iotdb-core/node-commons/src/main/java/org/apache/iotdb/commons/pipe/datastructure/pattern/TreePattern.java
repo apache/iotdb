@@ -19,12 +19,15 @@
 
 package org.apache.iotdb.commons.pipe.datastructure.pattern;
 
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.Objects;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATH_KEY;
@@ -40,10 +43,16 @@ public abstract class TreePattern {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TreePattern.class);
 
+  protected final boolean isTreeModelDataAllowedToBeCaptured;
   protected final String pattern;
 
-  protected TreePattern(final String pattern) {
+  protected TreePattern(final boolean isTreeModelDataAllowedToBeCaptured, final String pattern) {
+    this.isTreeModelDataAllowedToBeCaptured = isTreeModelDataAllowedToBeCaptured;
     this.pattern = pattern != null ? pattern : getDefaultPattern();
+  }
+
+  public boolean isTreeModelDataAllowedToBeCaptured() {
+    return isTreeModelDataAllowedToBeCaptured;
   }
 
   public String getPattern() {
@@ -61,12 +70,22 @@ public abstract class TreePattern {
    */
   public static TreePattern parsePipePatternFromSourceParameters(
       final PipeParameters sourceParameters) {
+    final boolean isTreeModelDataAllowedToBeCaptured =
+        sourceParameters.getBooleanOrDefault(
+            Arrays.asList(
+                PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_KEY,
+                PipeExtractorConstant.SOURCE_CAPTURE_TREE_KEY),
+            sourceParameters
+                .getStringOrDefault(
+                    SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
+                .equals(SystemConstant.SQL_DIALECT_TREE_VALUE));
+
     final String path = sourceParameters.getStringByKeys(EXTRACTOR_PATH_KEY, SOURCE_PATH_KEY);
 
     // 1. If "source.path" is specified, it will be interpreted as an IoTDB-style path,
     // ignoring the other 2 parameters.
     if (path != null) {
-      return new IoTDBTreePattern(path);
+      return new IoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, path);
     }
 
     final String pattern =
@@ -80,24 +99,24 @@ public abstract class TreePattern {
 
       // If "source.pattern.format" is not specified, use prefix format by default.
       if (patternFormat == null) {
-        return new PrefixTreePattern(pattern);
+        return new PrefixTreePattern(isTreeModelDataAllowedToBeCaptured, pattern);
       }
 
       switch (patternFormat.toLowerCase()) {
         case EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE:
-          return new IoTDBTreePattern(pattern);
+          return new IoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, pattern);
         case EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE:
-          return new PrefixTreePattern(pattern);
+          return new PrefixTreePattern(isTreeModelDataAllowedToBeCaptured, pattern);
         default:
           LOGGER.info(
               "Unknown pattern format: {}, use prefix matching format by default.", patternFormat);
-          return new PrefixTreePattern(pattern);
+          return new PrefixTreePattern(isTreeModelDataAllowedToBeCaptured, pattern);
       }
     }
 
     // 3. If neither "source.path" nor "source.pattern" is specified,
     // this pipe source will match all data.
-    return new IoTDBTreePattern(null);
+    return new IoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, null);
   }
 
   public abstract String getDefaultPattern();
@@ -130,6 +149,10 @@ public abstract class TreePattern {
 
   @Override
   public String toString() {
-    return "{pattern='" + pattern + "'}";
+    return "{pattern='"
+        + pattern
+        + "', isTreeModelDataAllowedToBeCaptured="
+        + isTreeModelDataAllowedToBeCaptured
+        + '}';
   }
 }

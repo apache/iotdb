@@ -50,5 +50,17 @@ public abstract class InMultiColumnTransformer extends MultiColumnTransformer {
     }
   }
 
+  @Override
+  protected void doTransform(
+      List<Column> childrenColumns, ColumnBuilder builder, int positionCount, boolean[] selection) {
+    for (int i = 0; i < positionCount; i++) {
+      if (selection[i] && !childrenColumns.get(0).isNull(i)) {
+        builder.writeBoolean(satisfy(childrenColumns, i));
+      } else {
+        builder.appendNull();
+      }
+    }
+  }
+
   protected abstract boolean satisfy(List<Column> childrenColumns, int index);
 }
