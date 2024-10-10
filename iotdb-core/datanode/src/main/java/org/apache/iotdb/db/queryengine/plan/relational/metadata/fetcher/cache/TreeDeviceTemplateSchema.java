@@ -21,46 +21,29 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-import java.util.Arrays;
+public class TreeDeviceTemplateSchema implements IDeviceSchema {
+  static final int INSTANCE_SIZE =
+      (int) RamUsageEstimator.shallowSizeOfInstance(TreeDeviceTemplateSchema.class);
 
-// The reason that we don't use IDeviceID is TableDeviceId doesn't contain table name in segment 0.
-public class TableDeviceId {
+  private final String database;
+  private final int templateId;
 
-  private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(TableDeviceId.class);
-
-  private final String[] idValues;
-
-  public TableDeviceId(final String[] idValues) {
-    this.idValues = idValues;
+  TreeDeviceTemplateSchema(final String database, final int templateId) {
+    this.database = database;
+    this.templateId = templateId;
   }
 
-  public String getIdValue(final int index) {
-    return idValues[index];
+  public int getTemplateId() {
+    return templateId;
   }
 
-  public String[] getIdValues() {
-    return idValues;
+  public String getDatabase() {
+    return database;
   }
 
+  @Override
   public int estimateSize() {
-    return (int) (INSTANCE_SIZE + RamUsageEstimator.sizeOf(idValues));
-  }
-
-  @Override
-  public boolean equals(final Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (!(o instanceof TableDeviceId)) {
-      return false;
-    }
-    final TableDeviceId that = (TableDeviceId) o;
-    return Arrays.equals(idValues, that.idValues);
-  }
-
-  @Override
-  public int hashCode() {
-    return Arrays.hashCode(idValues);
+    // Do not need to calculate database because it is interned
+    return INSTANCE_SIZE;
   }
 }

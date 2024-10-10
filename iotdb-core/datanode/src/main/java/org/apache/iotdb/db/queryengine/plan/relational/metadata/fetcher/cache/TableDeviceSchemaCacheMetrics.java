@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema;
+package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -28,20 +28,20 @@ import org.apache.iotdb.metrics.utils.MetricType;
 
 import java.util.Objects;
 
-public class DataNodeSchemaCacheMetrics implements IMetricSet {
-  private DataNodeSchemaCache dataNodeSchemaCache;
+public class TableDeviceSchemaCacheMetrics implements IMetricSet {
+  private final TableDeviceSchemaCache tableDeviceSchemaCache;
 
-  public DataNodeSchemaCacheMetrics(DataNodeSchemaCache dataNodeSchemaCache) {
-    this.dataNodeSchemaCache = dataNodeSchemaCache;
+  public TableDeviceSchemaCacheMetrics(final TableDeviceSchemaCache dataNodeSchemaCache) {
+    this.tableDeviceSchemaCache = dataNodeSchemaCache;
   }
 
   @Override
-  public void bindTo(AbstractMetricService metricService) {
+  public void bindTo(final AbstractMetricService metricService) {
     metricService.createAutoGauge(
         Metric.CACHE.toString(),
         MetricLevel.IMPORTANT,
-        dataNodeSchemaCache,
-        DataNodeSchemaCache::getHitCount,
+        tableDeviceSchemaCache,
+        TableDeviceSchemaCache::getHitCount,
         Tag.NAME.toString(),
         "SchemaCache",
         Tag.TYPE.toString(),
@@ -49,8 +49,8 @@ public class DataNodeSchemaCacheMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.CACHE.toString(),
         MetricLevel.IMPORTANT,
-        dataNodeSchemaCache,
-        DataNodeSchemaCache::getRequestCount,
+        tableDeviceSchemaCache,
+        TableDeviceSchemaCache::getRequestCount,
         Tag.NAME.toString(),
         "SchemaCache",
         Tag.TYPE.toString(),
@@ -58,7 +58,7 @@ public class DataNodeSchemaCacheMetrics implements IMetricSet {
   }
 
   @Override
-  public void unbindFrom(AbstractMetricService metricService) {
+  public void unbindFrom(final AbstractMetricService metricService) {
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.CACHE.toString(),
@@ -76,19 +76,19 @@ public class DataNodeSchemaCacheMetrics implements IMetricSet {
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    DataNodeSchemaCacheMetrics that = (DataNodeSchemaCacheMetrics) o;
-    return Objects.equals(dataNodeSchemaCache, that.dataNodeSchemaCache);
+    final TableDeviceSchemaCacheMetrics that = (TableDeviceSchemaCacheMetrics) o;
+    return Objects.equals(tableDeviceSchemaCache, that.tableDeviceSchemaCache);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(dataNodeSchemaCache);
+    return Objects.hash(tableDeviceSchemaCache);
   }
 }

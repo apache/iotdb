@@ -29,12 +29,13 @@ import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceId;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,10 +43,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory.truncateTailingNull;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher.convertIdValuesToDeviceID;
 
 public class TableDeviceSchemaValidator {
   private final SqlParser relationSqlParser = new SqlParser();
@@ -93,12 +93,11 @@ public class TableDeviceSchemaValidator {
 
     for (int i = 0, size = deviceIdList.size(); i < size; i++) {
       final Map<String, String> attributeMap =
-          fetcher
-              .getTableDeviceCache()
+          TableDeviceSchemaCache.getInstance()
               .getDeviceAttribute(
                   schemaValidation.getDatabase(),
-                  schemaValidation.getTableName(),
-                  (String[]) truncateTailingNull(deviceIdList.get(i)));
+                  convertIdValuesToDeviceID(
+                      schemaValidation.getTableName(), (String[]) deviceIdList.get(i)));
       if (attributeMap == null) {
         result.missingDeviceIndexList.add(i);
       } else {
@@ -118,7 +117,7 @@ public class TableDeviceSchemaValidator {
       final ITableDeviceSchemaValidation schemaValidation,
       final ValidateResult previousValidateResult,
       final MPPQueryContext context) {
-    final Map<TableDeviceId, ConcurrentMap<String, String>> fetchedDeviceSchema =
+    final Map<IDeviceID, Map<String, String>> fetchedDeviceSchema =
         fetcher.fetchMissingDeviceSchemaForDataInsertion(
             new FetchDevice(
                 schemaValidation.getDatabase(),
@@ -130,13 +129,8 @@ public class TableDeviceSchemaValidator {
 
     fetchedDeviceSchema.forEach(
         (key, value) ->
-            fetcher
-                .getTableDeviceCache()
-                .put(
-                    schemaValidation.getDatabase(),
-                    schemaValidation.getTableName(),
-                    key.getIdValues(),
-                    value));
+            TableDeviceSchemaCache.getInstance()
+                .putAttributes(schemaValidation.getDatabase(), key, value));
 
     final List<String> attributeKeyList = schemaValidation.getAttributeColumnNameList();
     final List<Object[]> attributeValueList = schemaValidation.getAttributeValueList();
@@ -145,8 +139,9 @@ public class TableDeviceSchemaValidator {
     for (final int index : previousValidateResult.missingDeviceIndexList) {
       final Map<String, String> attributeMap =
           fetchedDeviceSchema.get(
-              new TableDeviceId(
-                  (String[]) truncateTailingNull(schemaValidation.getDeviceIdList().get(index))));
+              convertIdValuesToDeviceID(
+                  schemaValidation.getTableName(),
+                  (String[]) schemaValidation.getDeviceIdList().get(index)));
       if (attributeMap == null) {
         result.missingDeviceIndexList.add(index);
       } else {
