@@ -21,8 +21,8 @@ package org.apache.iotdb.db.pipe.event.common.tsfile.container;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.query.TsFileInsertionQueryDataContainer;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.scan.TsFileInsertionScanDataContainer;
@@ -39,7 +39,7 @@ import java.util.stream.Collectors;
 public class TsFileInsertionDataContainerProvider {
 
   private final File tsFile;
-  private final PipePattern pattern;
+  private final TreePattern pattern;
   private final long startTime;
   private final long endTime;
 
@@ -48,13 +48,13 @@ public class TsFileInsertionDataContainerProvider {
 
   public TsFileInsertionDataContainerProvider(
       final File tsFile,
-      final PipePattern pipePattern,
+      final TreePattern treePattern,
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipeTsFileInsertionEvent sourceEvent) {
     this.tsFile = tsFile;
-    this.pattern = pipePattern;
+    this.pattern = treePattern;
     this.startTime = startTime;
     this.endTime = endTime;
     this.pipeTaskMeta = pipeTaskMeta;
@@ -64,8 +64,8 @@ public class TsFileInsertionDataContainerProvider {
   public TsFileInsertionDataContainer provide() throws IOException {
     if (startTime != Long.MIN_VALUE
         || endTime != Long.MAX_VALUE
-        || pattern instanceof IoTDBPipePattern
-            && !((IoTDBPipePattern) pattern).mayMatchMultipleTimeSeriesInOneDevice()) {
+        || pattern instanceof IoTDBTreePattern
+            && !((IoTDBTreePattern) pattern).mayMatchMultipleTimeSeriesInOneDevice()) {
       // 1. If time filter exists, use query here because the scan container may filter it
       // row by row in single page chunk.
       // 2. If the pattern matches only one time series in one device, use query container here

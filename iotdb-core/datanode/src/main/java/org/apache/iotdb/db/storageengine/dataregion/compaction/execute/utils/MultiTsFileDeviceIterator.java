@@ -71,16 +71,18 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   private final Map<TsFileResource, TsFileDeviceIterator> deviceIteratorMap = new HashMap<>();
   private final Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
   private Pair<IDeviceID, Boolean> currentDevice = null;
+  private boolean ignoreAllNullRows;
+  private long ttlForCurrentDevice;
   private long timeLowerBoundForCurrentDevice;
-  private boolean ignoreAllNullRows = true;
+  private final String databaseName;
 
   /**
    * Used for compaction with read chunk performer.
    *
    * @throws IOException if io error occurred
    */
-  public MultiTsFileDeviceIterator(List<TsFileResource> tsFileResources, boolean ignoreAllNullRows)
-      throws IOException {
+  public MultiTsFileDeviceIterator(List<TsFileResource> tsFileResources) throws IOException {
+    this.databaseName = tsFileResources.get(0).getDatabaseName();
     this.tsFileResourcesSortedByDesc = new ArrayList<>(tsFileResources);
     this.tsFileResourcesSortedByAsc = new ArrayList<>(tsFileResources);
     // sort the files from the oldest to the newest
@@ -104,7 +106,6 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       }
       throw e;
     }
-    this.ignoreAllNullRows = ignoreAllNullRows;
   }
 
   /**
@@ -113,12 +114,10 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    * @throws IOException if io errors occurred
    */
   public MultiTsFileDeviceIterator(
-      List<TsFileResource> seqResources,
-      List<TsFileResource> unseqResources,
-      boolean ignoreAllNullRows)
-      throws IOException {
+      List<TsFileResource> seqResources, List<TsFileResource> unseqResources) throws IOException {
     this.tsFileResourcesSortedByDesc = new ArrayList<>(seqResources);
     tsFileResourcesSortedByDesc.addAll(unseqResources);
+    this.databaseName = tsFileResourcesSortedByDesc.get(0).getDatabaseName();
     // sort the files from the newest to the oldest
     Collections.sort(
         this.tsFileResourcesSortedByDesc, TsFileResource::compareFileCreationOrderByDesc);
@@ -128,7 +127,6 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       readerMap.put(tsFileResource, reader);
       deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithIsAligned());
     }
-    this.ignoreAllNullRows = ignoreAllNullRows;
   }
 
   /**
@@ -139,16 +137,15 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   public MultiTsFileDeviceIterator(
       List<TsFileResource> seqResources,
       List<TsFileResource> unseqResources,
-      Map<TsFileResource, TsFileSequenceReader> readerMap,
-      boolean ignoreAllNullRows)
+      Map<TsFileResource, TsFileSequenceReader> readerMap)
       throws IOException {
     this.tsFileResourcesSortedByDesc = new ArrayList<>(seqResources);
     tsFileResourcesSortedByDesc.addAll(unseqResources);
+    this.databaseName = tsFileResourcesSortedByDesc.get(0).getDatabaseName();
     // sort tsfiles from the newest to the oldest
     Collections.sort(
         this.tsFileResourcesSortedByDesc, TsFileResource::compareFileCreationOrderByDesc);
     this.readerMap = readerMap;
-    this.ignoreAllNullRows = ignoreAllNullRows;
 
     CompactionType type = null;
     if (!seqResources.isEmpty() && !unseqResources.isEmpty()) {
@@ -217,10 +214,25 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       deviceIteratorMap.remove(resource);
     }
 
-    timeLowerBoundForCurrentDevice =
-        CommonDateTimeUtils.currentTime()
-            - DataNodeTTLCache.getInstance().getTTL(currentDevice.getLeft());
+    IDeviceID deviceID = currentDevice.left;
+    boolean isAligned = currentDevice.right;
+    ignoreAllNullRows = !isAligned || deviceID.getTableName().startsWith("root.");
+    if (!ignoreAllNullRows) {
+      ttlForCurrentDevice =
+          DataNodeTTLCache.getInstance().getTTLForTable(databaseName, deviceID.getTableName());
+    } else {
+      ttlForCurrentDevice = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
+    }
+    timeLowerBoundForCurrentDevice = CommonDateTimeUtils.currentTime() - ttlForCurrentDevice;
     return currentDevice;
+  }
+
+  public long getTTLForCurrentDevice() {
+    return ttlForCurrentDevice;
+  }
+
+  public long getTimeLowerBoundForCurrentDevice() {
+    return timeLowerBoundForCurrentDevice;
   }
 
   /**

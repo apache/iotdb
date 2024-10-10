@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.event.common.tsfile.container.scan;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
@@ -64,6 +64,8 @@ import java.util.Objects;
 
 public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContainer {
 
+  private static final LocalDate EMPTY_DATE = LocalDate.of(1000, 1, 1);
+
   private final long startTime;
   private final long endTime;
   private final Filter filter;
@@ -88,7 +90,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
 
   public TsFileInsertionScanDataContainer(
       final File tsFile,
-      final PipePattern pattern,
+      final TreePattern pattern,
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
@@ -266,6 +268,13 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
         final TsPrimitiveType primitiveType = data.getVector()[i];
         if (Objects.isNull(primitiveType)) {
           tablet.bitMaps[i].mark(rowIndex);
+          final TSDataType type = tablet.getSchemas().get(i).getType();
+          if (type == TSDataType.TEXT || type == TSDataType.BLOB || type == TSDataType.STRING) {
+            ((Binary[]) columns[i])[rowIndex] = Binary.EMPTY_VALUE;
+          }
+          if (type == TSDataType.DATE) {
+            ((LocalDate[]) columns[i])[rowIndex] = EMPTY_DATE;
+          }
           continue;
         }
         switch (tablet.getSchemas().get(i).getType()) {

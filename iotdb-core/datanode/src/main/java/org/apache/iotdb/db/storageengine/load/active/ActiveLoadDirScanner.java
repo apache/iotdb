@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.load.active;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesNumberMetricsSet;
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesSizeMetricsSet;
 
@@ -39,6 +40,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
@@ -52,6 +54,8 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
   private final Set<String> listeningDirs = new CopyOnWriteArraySet<>();
 
   private final Set<String> noPermissionDirs = new CopyOnWriteArraySet<>();
+
+  private final AtomicBoolean isReadOnlyLogPrinted = new AtomicBoolean(false);
 
   private final ActiveLoadTsFileLoader activeLoadTsFileLoader;
 
@@ -72,6 +76,15 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
   }
 
   private void scan() throws IOException {
+    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+      if (!isReadOnlyLogPrinted.get()) {
+        LOGGER.warn("Current system is read-only mode. Skip active load dir scanning.");
+        isReadOnlyLogPrinted.set(true);
+      }
+      return;
+    }
+    isReadOnlyLogPrinted.set(false);
+
     hotReloadActiveLoadDirs();
 
     for (final String listeningDir : listeningDirs) {
