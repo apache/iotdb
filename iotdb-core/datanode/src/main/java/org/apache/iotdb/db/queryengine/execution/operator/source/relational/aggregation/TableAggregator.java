@@ -27,8 +27,6 @@ import java.util.OptionalInt;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator.QUERY_EXECUTION_METRICS;
-import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.AGGREGATION_FROM_STATISTICS;
 
 public class TableAggregator {
   private final Accumulator accumulator;
@@ -74,19 +72,11 @@ public class TableAggregator {
     }
   }
 
-  /** Used for SeriesAggregateScanOperator. */
-  public void processStatistics(Statistics[] valueStatistics) {
-    long startTime = System.nanoTime();
-    try {
-      // TODO verify the rightness
-      for (int valueIndex : inputChannels) {
-        // int valueIndex = inputLocations[0].getValueColumnIndex();
-        accumulator.addStatistics(valueStatistics[valueIndex]);
-      }
-    } finally {
-      QUERY_EXECUTION_METRICS.recordExecutionCost(
-          AGGREGATION_FROM_STATISTICS, System.nanoTime() - startTime);
-    }
+  /** Used for AggregateTableScanOperator. */
+  public void processStatistics(Statistics valueStatistics) {
+    // TODO verify the rightness
+    checkArgument(inputChannels.length == 1, "expected 1 input channel for processStatistics");
+    accumulator.addStatistics(valueStatistics);
   }
 
   public boolean hasFinalResult() {

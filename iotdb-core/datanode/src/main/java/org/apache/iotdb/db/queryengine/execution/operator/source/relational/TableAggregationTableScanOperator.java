@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractSeriesAggregationScanOperator;
@@ -36,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 
+import org.apache.commons.lang3.stream.Streams;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -46,6 +49,7 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
@@ -63,6 +67,9 @@ import static org.apache.iotdb.db.queryengine.execution.operator.source.relation
 import static org.apache.tsfile.read.common.block.TsBlockUtil.skipPointsOutOfTimeRange;
 
 public class TableAggregationTableScanOperator extends AbstractSeriesAggregationScanOperator {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(TableAggregationTableScanOperator.class);
 
   private final List<TableAggregator> aggregators;
 
@@ -224,7 +231,12 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
 
   @Override
   public long ramBytesUsed() {
-    return 0;
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(seriesScanUtil)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId)
+        + (resultTsBlockBuilder == null ? 0 : resultTsBlockBuilder.getRetainedSizeInBytes())
+        + RamUsageEstimator.sizeOfCollection(deviceEntries);
   }
 
   private AlignedSeriesScanUtil constructAlignedSeriesScanUtil(DeviceEntry deviceEntry) {
@@ -322,7 +334,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
    * @return left - whether the aggregation calculation of the current time range has done; right -
    *     remaining tsBlock
    */
-  public static Pair<Boolean, TsBlock> calculateAggregationFromRawData(
+  public Pair<Boolean, TsBlock> calculateAggregationFromRawData(
       TsBlock inputTsBlock,
       List<TableAggregator> aggregators,
       TimeRange curTimeRange,
@@ -352,7 +364,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
         isAllAggregatorsHasFinalResult(aggregators) || isTsBlockOutOfBound, inputTsBlock);
   }
 
-  private static TsBlock process(
+  private TsBlock process(
       TsBlock inputTsBlock, TimeRange curTimeRange, List<TableAggregator> aggregators) {
     // Get the row which need to be processed by aggregator
     IWindow curWindow = new TimeWindow(curTimeRange);
@@ -366,11 +378,27 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     }
 
     TsBlock inputRegion = inputTsBlock.getRegion(0, lastIndexToProcess + 1);
-    for (TableAggregator aggregator : aggregators) {
+    for (int i = 0; i < aggregators.size(); i++) {
+      // ID or Attribute is null, skip this aggregation logic
+      if (TsTableColumnCategory.ID == columnSchemas.get(i).getColumnCategory()
+          && deviceEntries.get(currentDeviceIndex).getNthSegment(columnsIndexArray[i]) == null) {
+        continue;
+      }
+      if (TsTableColumnCategory.ATTRIBUTE == columnSchemas.get(i).getColumnCategory()
+          && deviceEntries
+                  .get(currentDeviceIndex)
+                  .getAttributeColumnValues()
+                  .get(columnsIndexArray[i])
+              == null) {
+        continue;
+      }
+
+      TableAggregator aggregator = aggregators.get(i);
       // current agg method has been calculated
       if (aggregator.hasFinalResult()) {
         continue;
       }
+
       aggregator.processBlock(inputRegion);
     }
     int lastReadRowIndex = lastIndexToProcess + 1;
@@ -391,11 +419,30 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   }
 
   protected void calcFromStatistics(Statistics timeStatistics, Statistics[] valueStatistics) {
-    for (TableAggregator aggregator : aggregators) {
+    for (int i = 0; i < aggregators.size(); i++) {
+      // ID or Attribute is null, skip this aggregation logic
+      if (TsTableColumnCategory.ID == columnSchemas.get(i).getColumnCategory()
+          && deviceEntries.get(currentDeviceIndex).getNthSegment(columnsIndexArray[i]) == null) {
+        continue;
+      }
+      if (TsTableColumnCategory.ATTRIBUTE == columnSchemas.get(i).getColumnCategory()
+          && deviceEntries
+                  .get(currentDeviceIndex)
+                  .getAttributeColumnValues()
+                  .get(columnsIndexArray[i])
+              == null) {
+        continue;
+      }
+
+      TableAggregator aggregator = aggregators.get(i);
       if (aggregator.hasFinalResult()) {
         continue;
       }
-      aggregator.processStatistics(valueStatistics);
+      aggregator.processStatistics(
+          columnSchemas.get(i).getColumnCategory() == TsTableColumnCategory.MEASUREMENT
+              ? valueStatistics[i]
+              : timeStatistics);
+      // aggregator.processStatistics(valueStatistics);
     }
   }
 
@@ -520,8 +567,31 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
         }
 
         // calc from page data
-        TsBlock tsBlock = seriesScanUtil.nextPage();
-        if (tsBlock == null || tsBlock.isEmpty()) {
+        TsBlock originalTsBlock = seriesScanUtil.nextPage();
+        if (originalTsBlock == null) {
+          continue;
+        }
+        // TODO add optimization: if only agg measurement columns, no need to transfer
+        Column[] valueColumns = new Column[aggregators.size()];
+        for (int i = 0; i < columnsIndexArray.length; i++) {
+          ColumnSchema columnSchema = columnSchemas.get(i);
+          if (Streams.of(
+                  TsTableColumnCategory.ID,
+                  TsTableColumnCategory.ATTRIBUTE,
+                  TsTableColumnCategory.TIME)
+              .anyMatch(columnSchema.getColumnCategory()::equals)) {
+            valueColumns[i] = originalTsBlock.getTimeColumn();
+          } else {
+            valueColumns[i] = originalTsBlock.getColumn(i);
+          }
+        }
+        TsBlock tsBlock =
+            new TsBlock(
+                originalTsBlock.getPositionCount(),
+                new RunLengthEncodedColumn(
+                    TIME_COLUMN_TEMPLATE, originalTsBlock.getPositionCount()),
+                valueColumns);
+        if (tsBlock.isEmpty()) {
           continue;
         }
 
@@ -547,7 +617,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   }
 
   /** Append a row of aggregation results to the result tsBlock. */
-  public static void appendAggregationResult(
+  public void appendAggregationResult(
       TsBlockBuilder tsBlockBuilder, List<? extends TableAggregator> aggregators) {
     // TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
     // Use start time of current time range as time column

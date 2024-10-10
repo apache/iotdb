@@ -124,7 +124,10 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ATTRIBUTE;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ID;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
@@ -1009,8 +1012,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     return new TableAggregator(
         accumulator,
         step,
-        getTSDataType(aggregation.getResolvedFunction().getSignature().getReturnType()),
-        // getTSDataType(typeProvider.getTableModelType(aggregationSymbol)),
+        // getTSDataType(aggregation.getResolvedFunction().getSignature().getReturnType()),
+        getTSDataType(typeProvider.getTableModelType(aggregationSymbol)),
         argumentChannels,
         OptionalInt.empty());
   }
@@ -1026,11 +1029,10 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 node.getPlanNodeId(),
                 AggregationTableScanNode.class.getSimpleName());
 
-    List<TableAggregator> aggregators = new ArrayList<>();
+    List<TableAggregator> aggregators = new ArrayList<>(node.getAggregations().size());
 
-    // TODO how to use the output symbols of AggregationTableScan?
-    Map<Symbol, Integer> childLayout = makeLayoutFromOutputSymbols(node.getAssignments().keySet());
-
+    // TODO is assignments of AggTableScane hashmap ok?
+    Map<Symbol, Integer> childLayout = makeLayoutForAggTableScan(node);
     for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
       TableAggregator aggregator =
           buildAggregator(
@@ -1146,6 +1148,21 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     context.getDriverContext().setInputDriver(true);
 
     return aggTableScanOperator;
+  }
+
+  private Map<Symbol, Integer> makeLayoutForAggTableScan(AggregationTableScanNode node) {
+    Map<Symbol, Integer> childLayout;
+    ImmutableMap.Builder<Symbol, Integer> outputMappings = ImmutableMap.builder();
+    int channel = 0;
+
+    // TODO for aggregation function which has more than one arguements, this may by wrong
+    for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
+      Symbol symbol = Symbol.from(entry.getValue().getArguments().get(0));
+      outputMappings.put(symbol, channel);
+      channel++;
+    }
+    childLayout = outputMappings.buildOrThrow();
+    return childLayout;
   }
 
   public static long calculateMaxAggregationResultSize(
