@@ -345,6 +345,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     final List<SubscriptionEvent> events;
     final SubscriptionPollRequest request = req.getRequest();
     final long maxBytes = (long) (request.getMaxBytes() * POLL_PAYLOAD_SIZE_EXCEED_THRESHOLD);
+    final long invisibleDurationMs = request.getInvisibleDurationMs();
     try {
       final short requestType = request.getRequestType();
       if (SubscriptionPollRequestType.isValidatedRequestType(requestType)) {
@@ -392,7 +393,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                           req.getRequest());
                       // nack
                       SubscriptionAgent.broker()
-                          .commit(consumerConfig, Collections.singletonList(commitContext), true);
+                          .commit(
+                              consumerConfig, Collections.singletonList(commitContext), true, 0L);
                       return null;
                     }
 
@@ -420,6 +422,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                           consumerConfig,
                           response,
                           req.getRequest());
+                      event.changeInvisibleDuration(invisibleDurationMs);
                       return byteBuffer;
                     } catch (final Exception e) {
                       if (e instanceof SubscriptionPayloadExceedException) {
@@ -439,7 +442,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                       }
                       // nack
                       SubscriptionAgent.broker()
-                          .commit(consumerConfig, Collections.singletonList(commitContext), true);
+                          .commit(
+                              consumerConfig, Collections.singletonList(commitContext), true, 0L);
                       return null;
                     }
                   })
@@ -509,27 +513,41 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       return SUBSCRIPTION_MISSING_CUSTOMER_RESP;
     }
 
-    // commit (ack or nack)
+    // extract and check parameters
     final List<SubscriptionCommitContext> commitContexts = req.getCommitContexts();
     final boolean nack = req.isNack();
+    final long invisibleDurationMs = req.getInvisibleDurationMs();
+    if (!nack && invisibleDurationMs != 0) {
+      LOGGER.warn(
+          "Subscription: invalid commit request from consumer {} for commit contexts: {}, `invisibleDurationMs` is non-zero ({}) while `nack` is false, ack it anyway",
+          consumerConfig,
+          commitContexts,
+          invisibleDurationMs);
+    }
+
+    // commit (ack or nack)
     final List<SubscriptionCommitContext> successfulCommitContexts =
-        SubscriptionAgent.broker().commit(consumerConfig, commitContexts, nack);
+        SubscriptionAgent.broker()
+            .commit(consumerConfig, commitContexts, nack, invisibleDurationMs);
 
     if (Objects.equals(successfulCommitContexts.size(), commitContexts.size())) {
       LOGGER.info(
-          "Subscription: consumer {} commit successfully, commit contexts: {}, nack: {}",
+          "Subscription: consumer {} commit successfully, commit contexts: {}, nack: {}, invisible duration {} in ms",
           consumerConfig,
           commitContexts,
-          nack);
+          nack,
+          invisibleDurationMs);
     } else {
       LOGGER.warn(
-          "Subscription: consumer {} commit partially successful, commit contexts: {}, successful commit contexts: {}, nack: {}",
+          "Subscription: consumer {} commit partially successful, commit contexts: {}, successful commit contexts: {}, nack: {}, invisible duration {} in ms",
           consumerConfig,
           commitContexts,
           successfulCommitContexts,
-          nack);
+          nack,
+          invisibleDurationMs);
     }
 
+    // TODO: resp
     return PipeSubscribeCommitResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
   }
 
