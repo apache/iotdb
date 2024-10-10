@@ -70,7 +70,7 @@ public class Like3ColumnTransformer extends TernaryColumnTransformer {
                 secondColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET),
                 LikePattern.getEscapeCharacter(
                     Optional.of(
-                        thirdColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET))));
+                        thirdColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET))),false);
         builder.writeBoolean(
             pattern
                 .getMatcher()

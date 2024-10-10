@@ -58,7 +58,7 @@ public class Like2ColumnTransformer extends BinaryColumnTransformer {
         LikePattern pattern =
             LikePattern.compile(
                 rightColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET),
-                Optional.empty());
+                Optional.empty(),false);
         builder.writeBoolean(
             pattern
                 .getMatcher()
