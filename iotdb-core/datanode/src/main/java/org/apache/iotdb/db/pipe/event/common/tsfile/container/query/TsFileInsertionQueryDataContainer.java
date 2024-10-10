@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.event.common.tsfile.container.query;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -69,14 +69,14 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
 
   @TestOnly
   public TsFileInsertionQueryDataContainer(
-      final File tsFile, final PipePattern pattern, final long startTime, final long endTime)
+      final File tsFile, final TreePattern pattern, final long startTime, final long endTime)
       throws IOException {
     this(tsFile, pattern, startTime, endTime, null, null);
   }
 
   public TsFileInsertionQueryDataContainer(
       final File tsFile,
-      final PipePattern pattern,
+      final TreePattern pattern,
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
@@ -87,7 +87,7 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
 
   public TsFileInsertionQueryDataContainer(
       final File tsFile,
-      final PipePattern pattern,
+      final TreePattern pattern,
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,

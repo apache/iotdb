@@ -20,7 +20,8 @@
 package org.apache.iotdb.confignode.manager.pipe.event;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -90,7 +91,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
 
   public PipeConfigRegionSnapshotEvent(
       final String snapshotPath, final String templateFilePath, final CNSnapshotFileType type) {
-    this(snapshotPath, templateFilePath, type, null, 0, null, null);
+    this(snapshotPath, templateFilePath, type, null, 0, null, null, null);
   }
 
   public PipeConfigRegionSnapshotEvent(
@@ -100,8 +101,15 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pattern) {
-    super(pipeName, creationTime, pipeTaskMeta, pattern, PipeConfigNodeResourceManager.snapshot());
+      final TreePattern treePattern,
+      final TablePattern tablePattern) {
+    super(
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        treePattern,
+        tablePattern,
+        PipeConfigNodeResourceManager.snapshot());
     this.snapshotPath = snapshotPath;
     this.templateFilePath = Objects.nonNull(templateFilePath) ? templateFilePath : "";
     this.fileType = type;
@@ -160,11 +168,19 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pattern,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
       final long startTime,
       final long endTime) {
     return new PipeConfigRegionSnapshotEvent(
-        snapshotPath, templateFilePath, fileType, pipeName, creationTime, pipeTaskMeta, pattern);
+        snapshotPath,
+        templateFilePath,
+        fileType,
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        treePattern,
+        tablePattern);
   }
 
   @Override

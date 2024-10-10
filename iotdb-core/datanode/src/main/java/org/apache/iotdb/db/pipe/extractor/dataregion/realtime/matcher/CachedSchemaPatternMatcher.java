@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
@@ -93,6 +93,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     }
   }
 
+  // TODO: consider table pattern
   @Override
   public Set<PipeRealtimeDataRegionExtractor> match(final PipeRealtimeEvent event) {
     final Set<PipeRealtimeDataRegionExtractor> matchedExtractors = new HashSet<>();
@@ -144,7 +145,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
           // Match extractors by measurements.
           extractorsFilteredByDevice.forEach(
               extractor -> {
-                final PipePattern pattern = extractor.getPipePattern();
+                final TreePattern pattern = extractor.getTreePattern();
                 if (Objects.isNull(pattern) || pattern.isRoot() || pattern.coversDevice(device)) {
                   // The pattern can match all measurements of the device.
                   matchedExtractors.add(extractor);
@@ -186,8 +187,8 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
         continue;
       }
 
-      final PipePattern pipePattern = extractor.getPipePattern();
-      if (Objects.isNull(pipePattern) || pipePattern.mayOverlapWithDevice(device)) {
+      final TreePattern treePattern = extractor.getTreePattern();
+      if (Objects.isNull(treePattern) || treePattern.mayOverlapWithDevice(device)) {
         filteredExtractors.add(extractor);
       }
     }

@@ -24,7 +24,8 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;
@@ -60,7 +61,8 @@ public abstract class EnrichedEvent implements Event {
   protected long commitId = NO_COMMIT_ID;
   protected int rebootTimes = 0;
 
-  protected final PipePattern pipePattern;
+  protected final TreePattern treePattern;
+  protected final TablePattern tablePattern;
 
   protected final long startTime;
   protected final long endTime;
@@ -75,19 +77,27 @@ public abstract class EnrichedEvent implements Event {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pipePattern,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
       final long startTime,
       final long endTime) {
     referenceCount = new AtomicInteger(0);
     isReleased = new AtomicBoolean(false);
+
     this.pipeName = pipeName;
     this.creationTime = creationTime;
     this.pipeTaskMeta = pipeTaskMeta;
-    this.pipePattern = pipePattern;
+    this.treePattern = treePattern;
+    this.tablePattern = tablePattern;
     this.startTime = startTime;
     this.endTime = endTime;
-    isPatternParsed = this.pipePattern == null || this.pipePattern.isRoot();
+
+    isPatternParsed =
+        (treePattern == null || treePattern.isRoot())
+            && (tablePattern == null
+                || !tablePattern.hasUserSpecifiedDatabasePatternOrTablePattern());
     isTimeParsed = Long.MIN_VALUE == startTime && Long.MAX_VALUE == endTime;
+
     addOnCommittedHook(
         () -> {
           if (shouldReportOnCommit) {
@@ -306,12 +316,17 @@ public abstract class EnrichedEvent implements Event {
    *
    * @return the pattern string
    */
-  public final String getPatternString() {
-    return pipePattern != null ? pipePattern.getPattern() : null;
+  // TODO: consider tablePattern
+  public final String getTreePatternString() {
+    return treePattern != null ? treePattern.getPattern() : null;
   }
 
-  public final PipePattern getPipePattern() {
-    return pipePattern;
+  public final TreePattern getTreePattern() {
+    return treePattern;
+  }
+
+  public final TablePattern getTablePattern() {
+    return tablePattern;
   }
 
   public final long getStartTime() {
@@ -350,7 +365,8 @@ public abstract class EnrichedEvent implements Event {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pattern,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
       final long startTime,
       final long endTime);
 
@@ -434,8 +450,10 @@ public abstract class EnrichedEvent implements Event {
         + committerKey
         + "', commitId="
         + commitId
-        + ", pattern='"
-        + pipePattern
+        + ", treePattern='"
+        + treePattern
+        + "', tablePattern='"
+        + tablePattern
         + "', startTime="
         + startTime
         + ", endTime="
@@ -461,8 +479,10 @@ public abstract class EnrichedEvent implements Event {
         + committerKey
         + "', commitId="
         + commitId
-        + ", pattern='"
-        + pipePattern
+        + ", treePattern='"
+        + treePattern
+        + "', tablePattern='"
+        + tablePattern
         + "', startTime="
         + startTime
         + ", endTime="

@@ -41,7 +41,7 @@ import java.util.Set;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2AutoCreateSchema.class})
-public class IoTDBPipePatternFormatIT extends AbstractPipeDualAutoIT {
+public class IoTDBTreePatternFormatIT extends AbstractPipeDualAutoIT {
   @Test
   public void testPrefixPattern() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);

@@ -58,16 +58,16 @@ public class PipeRealtimeEventFactory {
   public static PipeRealtimeEvent createRealtimeEvent(
       final String dataRegionId, final boolean shouldPrintMessage) {
     return new PipeRealtimeEvent(
-        new PipeHeartbeatEvent(dataRegionId, shouldPrintMessage), null, null, null);
+        new PipeHeartbeatEvent(dataRegionId, shouldPrintMessage), null, null, null, null);
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(final DeleteDataNode node) {
     return new PipeRealtimeEvent(
-        new PipeSchemaRegionWritePlanEvent(node, node.isGeneratedByPipe()), null, null, null);
+        new PipeSchemaRegionWritePlanEvent(node, node.isGeneratedByPipe()), null, null, null, null);
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(final ProgressReportEvent event) {
-    return new PipeRealtimeEvent(event, null, null, null);
+    return new PipeRealtimeEvent(event, null, null, null, null);
   }
 
   private PipeRealtimeEventFactory() {

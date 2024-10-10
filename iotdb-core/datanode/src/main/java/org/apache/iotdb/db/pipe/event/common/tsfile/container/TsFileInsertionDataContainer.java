@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.event.common.tsfile.container;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
@@ -38,7 +38,7 @@ public abstract class TsFileInsertionDataContainer implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileInsertionDataContainer.class);
 
-  protected final PipePattern pattern; // used to filter data
+  protected final TreePattern pattern; // used to filter data
   protected final GlobalTimeExpression timeFilterExpression; // used to filter data
 
   protected final PipeTaskMeta pipeTaskMeta; // used to report progress
@@ -49,7 +49,7 @@ public abstract class TsFileInsertionDataContainer implements AutoCloseable {
   protected TsFileSequenceReader tsFileSequenceReader;
 
   protected TsFileInsertionDataContainer(
-      final PipePattern pattern,
+      final TreePattern pattern,
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,

@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.manager.pipe.extractor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
@@ -54,8 +54,8 @@ import java.util.List;
 
 public class PipeConfigPhysicalPlanPatternParseVisitorTest {
 
-  private final IoTDBPipePattern prefixPathPattern = new IoTDBPipePattern("root.db.device.**");
-  private final IoTDBPipePattern fullPathPattern = new IoTDBPipePattern("root.db.device.s1");
+  private final IoTDBTreePattern prefixPathPattern = new IoTDBTreePattern("root.db.device.**");
+  private final IoTDBTreePattern fullPathPattern = new IoTDBTreePattern("root.db.device.s1");
 
   @Test
   public void testCreateDatabase() {
