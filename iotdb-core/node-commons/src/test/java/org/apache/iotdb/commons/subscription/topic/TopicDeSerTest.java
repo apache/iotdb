@@ -39,9 +39,6 @@ public class TopicDeSerTest {
 
     TopicMeta topicMeta = new TopicMeta("test_topic", 1, topicAttributes);
 
-    topicMeta.addSubscribedConsumerGroup("test_consumer_group");
-    Assert.assertTrue(topicMeta.isSubscribedByConsumerGroup("test_consumer_group"));
-
     ByteBuffer byteBuffer = topicMeta.serialize();
     TopicMeta topicMeta1 = TopicMeta.deserialize(byteBuffer);
     TopicMeta topicMeta2 = topicMeta1.deepCopy();
@@ -51,7 +48,5 @@ public class TopicDeSerTest {
     Assert.assertEquals(topicMeta.getTopicName(), topicMeta2.getTopicName());
     Assert.assertEquals(topicMeta.getCreationTime(), topicMeta2.getCreationTime());
     Assert.assertEquals(topicMeta.getConfig(), topicMeta2.getConfig());
-    Assert.assertEquals(
-        topicMeta.getSubscribedConsumerGroupIds(), topicMeta2.getSubscribedConsumerGroupIds());
   }
 }

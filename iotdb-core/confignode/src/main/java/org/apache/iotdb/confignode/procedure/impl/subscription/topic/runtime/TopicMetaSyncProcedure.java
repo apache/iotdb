@@ -98,7 +98,8 @@ public class TopicMetaSyncProcedure extends AbstractOperateSubscriptionProcedure
   }
 
   @Override
-  public void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) {
+  public void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env)
+      throws SubscriptionException {
     LOGGER.info("TopicMetaSyncProcedure: executeFromOperateOnConfigNodes");
 
     final List<TopicMeta> topicMetaList = new ArrayList<>();
@@ -121,7 +122,8 @@ public class TopicMetaSyncProcedure extends AbstractOperateSubscriptionProcedure
   }
 
   @Override
-  public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+  public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+      throws SubscriptionException, IOException {
     LOGGER.info("TopicMetaSyncProcedure: executeFromOperateOnDataNodes");
 
     Map<Integer, TPushTopicMetaResp> respMap = pushTopicMetaToDataNodes(env);
