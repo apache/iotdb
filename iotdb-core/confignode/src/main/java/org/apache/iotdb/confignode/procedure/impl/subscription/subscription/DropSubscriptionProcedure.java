@@ -170,12 +170,11 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
         AbstractOperatePipeProcedureV2.parsePushPipeMetaExceptionForPipe(
             null, dropMultiPipeOnDataNodes(pipeNames, env));
     if (!exceptionMessage.isEmpty()) {
-      // If not all pipe meta are pushed successfully, the meta can be pushed during meta sync.
-      LOGGER.warn(
-          "Failed to drop pipes {} when dropping subscription, details: {}, metadata will be synchronized later.",
-          pipeNames,
-          exceptionMessage);
-      // NOTE HERE: potential inconsistency
+      // throw exception instead of logging warn
+      throw new SubscriptionException(
+          String.format(
+              "Failed to drop pipes %s when dropping subscription with request %s, because %s",
+              pipeNames, unsubscribeReq, exceptionMessage));
     }
 
     // Push consumer group meta to data nodes
@@ -200,22 +199,13 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
 
   @Override
   protected void rollbackFromOperateOnDataNodes(final ConfigNodeProcedureEnv env)
-      throws IOException {
+      throws SubscriptionException, IOException {
     LOGGER.info("DropSubscriptionProcedure: rollbackFromOperateOnDataNodes");
 
     // Rollback AlterConsumerGroupProcedure
     alterConsumerGroupProcedure.rollbackFromOperateOnDataNodes(env);
 
-    // Push all pipe metas to datanode, may be time-consuming
-    final String exceptionMessage =
-        AbstractOperatePipeProcedureV2.parsePushPipeMetaExceptionForPipe(
-            null, AbstractOperatePipeProcedureV2.pushPipeMetaToDataNodes(env, pipeTaskInfo));
-    if (!exceptionMessage.isEmpty()) {
-      LOGGER.warn(
-          "Failed to rollback create pipes when dropping subscription, details: {}, metadata will be synchronized later.",
-          exceptionMessage);
-      // NOTE HERE
-    }
+    // Do nothing to rollback DropPipeProcedureV2s
   }
 
   @Override

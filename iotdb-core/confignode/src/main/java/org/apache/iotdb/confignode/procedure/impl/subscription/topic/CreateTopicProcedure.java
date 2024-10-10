@@ -104,13 +104,17 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
   }
 
   @Override
-  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+      throws SubscriptionException, IOException {
     LOGGER.info("CreateTopicProcedure: executeFromOperateOnDataNodes({})", topicMeta);
 
     final List<TSStatus> statuses = env.pushSingleTopicOnDataNode(topicMeta.serialize());
     if (RpcUtils.squashResponseStatusList(statuses).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to create topic {} on data nodes, because {}", topicMeta, statuses);
+      // throw exception instead of logging warn
+      throw new SubscriptionException(
+          String.format(
+              "Failed to create topic %s on data nodes, because %s", topicMeta, statuses));
     }
   }
 
@@ -144,13 +148,18 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
   }
 
   @Override
-  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
+  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+      throws SubscriptionException {
     LOGGER.info("CreateTopicProcedure: rollbackFromCreateOnDataNodes({})", topicMeta);
 
     final List<TSStatus> statuses = env.dropSingleTopicOnDataNode(topicMeta.getTopicName());
     if (RpcUtils.squashResponseStatusList(statuses).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to rollback topic {} on data nodes, because {}", topicMeta, statuses);
+      // throw exception instead of logging warn
+      throw new SubscriptionException(
+          String.format(
+              "Failed to rollback creating topic %s on data nodes, because %s",
+              topicMeta, statuses));
     }
   }
 

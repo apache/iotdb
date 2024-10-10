@@ -108,7 +108,6 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
       response =
           new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode()).setMessage(e.getMessage());
     }
-
     if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new SubscriptionException(
           String.format(
@@ -118,18 +117,19 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
   }
 
   @Override
-  public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+  public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+      throws SubscriptionException, IOException {
     LOGGER.info(
         "AlterTopicProcedure: executeFromOperateOnDataNodes({})", updatedTopicMeta.getTopicName());
 
     final List<TSStatus> statuses = env.pushSingleTopicOnDataNode(updatedTopicMeta.serialize());
     if (RpcUtils.squashResponseStatusList(statuses).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn(
-          "Failed to alter topic ({} -> {}) on data nodes, because {}",
-          existedTopicMeta,
-          updatedTopicMeta,
-          statuses);
+      // throw exception instead of logging warn
+      throw new SubscriptionException(
+          String.format(
+              "Failed to alter topic (%s -> %s) on data nodes, because %s",
+              existedTopicMeta, updatedTopicMeta, statuses));
     }
   }
 
@@ -154,7 +154,6 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
       response =
           new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode()).setMessage(e.getMessage());
     }
-
     if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new SubscriptionException(
           String.format(
@@ -164,18 +163,19 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
   }
 
   @Override
-  public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+  public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+      throws SubscriptionException, IOException {
     LOGGER.info(
         "AlterTopicProcedure: rollbackFromOperateOnDataNodes({})", updatedTopicMeta.getTopicName());
 
     final List<TSStatus> statuses = env.pushSingleTopicOnDataNode(existedTopicMeta.serialize());
     if (RpcUtils.squashResponseStatusList(statuses).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn(
-          "Failed to rollback from altering topic ({} -> {}) on data nodes, because {}",
-          updatedTopicMeta,
-          existedTopicMeta,
-          statuses);
+      // throw exception instead of logging warn
+      throw new SubscriptionException(
+          String.format(
+              "Failed to rollback from altering topic (%s -> %s) on data nodes, because %s",
+              updatedTopicMeta, existedTopicMeta, statuses));
     }
   }
 

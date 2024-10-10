@@ -180,10 +180,10 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
     if (!exceptionMessage.isEmpty()) {
       // If not all pipe meta are pushed successfully, the meta can be pushed during meta sync.
       LOGGER.warn(
-          "Failed to create pipes {} when creating subscription, details: {}, metadata will be synchronized later.",
+          "Failed to create pipes {} when creating subscription with request {}, details: {}, metadata will be synchronized later.",
           pipeNames,
+          subscribeReq,
           exceptionMessage);
-      // NOTE HERE
     }
   }
 
@@ -193,7 +193,8 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
   }
 
   @Override
-  protected void rollbackFromOperateOnConfigNodes(final ConfigNodeProcedureEnv env) {
+  protected void rollbackFromOperateOnConfigNodes(final ConfigNodeProcedureEnv env)
+      throws SubscriptionException {
     LOGGER.info("CreateSubscriptionProcedure: rollbackFromOperateOnConfigNodes");
 
     // Rollback CreatePipeProcedureV2s
@@ -227,7 +228,7 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
 
   @Override
   protected void rollbackFromOperateOnDataNodes(final ConfigNodeProcedureEnv env)
-      throws IOException {
+      throws SubscriptionException, IOException {
     LOGGER.info("CreateSubscriptionProcedure: rollbackFromOperateOnDataNodes");
 
     // Push all pipe metas to datanode, may be time-consuming
@@ -235,10 +236,11 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
         AbstractOperatePipeProcedureV2.parsePushPipeMetaExceptionForPipe(
             null, AbstractOperatePipeProcedureV2.pushPipeMetaToDataNodes(env, pipeTaskInfo));
     if (!exceptionMessage.isEmpty()) {
-      LOGGER.warn(
-          "Failed to rollback create pipes when creating subscription, details: {}, metadata will be synchronized later.",
-          exceptionMessage);
-      // NOTE HERE: potential inconsistency
+      // throw exception instead of logging warn
+      throw new SubscriptionException(
+          String.format(
+              "Failed to rollback create pipes when creating subscription with request %s, because %s",
+              subscribeReq, exceptionMessage));
     }
 
     // Rollback AlterConsumerGroupProcedure
