@@ -58,6 +58,7 @@ public class DeviceAttributeRemoteUpdater {
 
   // All the data node locations shall only have internal endpoint with all the other endpoints set
   // to null
+  // Note that the locations in SR is also placed here in case the regions are migrated
   private final Set<TDataNodeLocation> targetDataNodeLocations = new HashSet<>();
   private final ConcurrentMap<TDataNodeLocation, UpdateContainer> attributeUpdateMap =
       new ConcurrentHashMap<>();
