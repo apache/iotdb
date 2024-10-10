@@ -22,39 +22,16 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionExecutionResult;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceSourceNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
 
 import java.util.Objects;
 
 public class TableSchemaQueryWriteVisitor
-    extends PlanVisitor<RegionExecutionResult, ConsensusGroupId> {
-  @Override
-  public RegionExecutionResult visitPlan(final PlanNode node, final ConsensusGroupId context) {
-    return null;
-  }
+    extends AbstractTableSchemaQueryAttributeSecurityVisitor<RegionExecutionResult> {
 
   @Override
-  public RegionExecutionResult visitFilter(final FilterNode node, final ConsensusGroupId context) {
-    return node.getChild().accept(this, context);
-  }
-
-  @Override
-  public RegionExecutionResult visitTableDeviceFetch(
-      final TableDeviceFetchNode node, final ConsensusGroupId context) {
-    return visitTableDeviceSourceNode(node, context);
-  }
-
-  @Override
-  public RegionExecutionResult visitTableDeviceQueryScan(
-      final TableDeviceQueryScanNode node, final ConsensusGroupId context) {
-    return visitTableDeviceSourceNode(node, context);
-  }
-
-  private RegionExecutionResult visitTableDeviceSourceNode(
+  protected RegionExecutionResult visitTableDeviceSourceNode(
       final TableDeviceSourceNode node, final ConsensusGroupId context) {
     if (Objects.nonNull(node.getSenderLocation())) {
       final RegionExecutionResult result =

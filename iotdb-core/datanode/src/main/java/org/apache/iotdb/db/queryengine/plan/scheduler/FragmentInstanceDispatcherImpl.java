@@ -456,9 +456,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         if (Objects.nonNull(groupId)) {
           // For schema query, there may be a "write" before "read"
           // the result is not null iff the "write" has failed
-          executionResult =
-              new TableSchemaQueryWriteVisitor()
-                  .visitPlan(instance.getFragment().getPlanNodeTree(), groupId);
+          executionResult = new TableSchemaQueryWriteVisitor().processFragment(instance, groupId);
         }
         if (Objects.isNull(executionResult)) {
           final RegionReadExecutor readExecutor = new RegionReadExecutor();

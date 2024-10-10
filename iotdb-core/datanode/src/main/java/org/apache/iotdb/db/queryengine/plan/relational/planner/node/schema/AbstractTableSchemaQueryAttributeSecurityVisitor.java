@@ -19,4 +19,44 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema;
 
-public abstract class AbstractTableSchemaQueryAttributeSecurityVisitor {}
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceSourceNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
+
+import javax.annotation.Nonnull;
+
+public abstract class AbstractTableSchemaQueryAttributeSecurityVisitor<R>
+    extends PlanVisitor<R, ConsensusGroupId> {
+
+  public R processFragment(
+      final @Nonnull FragmentInstance instance, final ConsensusGroupId groupId) {
+    return instance.getFragment().getPlanNodeTree().accept(this, groupId);
+  }
+
+  @Override
+  public R visitPlan(final PlanNode node, final ConsensusGroupId context) {
+    return null;
+  }
+
+  @Override
+  public R visitFilter(final FilterNode node, final ConsensusGroupId context) {
+    return node.getChild().accept(this, context);
+  }
+
+  @Override
+  public R visitTableDeviceFetch(final TableDeviceFetchNode node, final ConsensusGroupId context) {
+    return visitTableDeviceSourceNode(node, context);
+  }
+
+  @Override
+  public R visitTableDeviceQueryScan(
+      final TableDeviceQueryScanNode node, final ConsensusGroupId context) {
+    return visitTableDeviceSourceNode(node, context);
+  }
+
+  protected abstract R visitTableDeviceSourceNode(
+      final TableDeviceSourceNode node, final ConsensusGroupId context);
+}

@@ -365,8 +365,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       // For schema query, there may be a "write" before "read"
       // the result is not null iff the "write" has failed
       executionResult =
-          new TableSchemaQueryWriteVisitor()
-              .visitPlan(fragmentInstance.getFragment().getPlanNodeTree(), groupId);
+          new TableSchemaQueryWriteVisitor().processFragment(fragmentInstance, groupId);
     }
     if (Objects.isNull(executionResult)) {
       final RegionReadExecutor executor = new RegionReadExecutor();
