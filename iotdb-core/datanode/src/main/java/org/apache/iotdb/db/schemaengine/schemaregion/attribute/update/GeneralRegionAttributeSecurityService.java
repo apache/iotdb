@@ -84,23 +84,14 @@ public class GeneralRegionAttributeSecurityService implements IService {
   private final ReentrantLock lock = new ReentrantLock();
   private final Condition condition = lock.newCondition();
   private volatile boolean skipNext = false;
+  private volatile boolean allowSubmitListen = false;
 
   public void startBroadcast(final ISchemaRegion schemaRegion) {
-    if (regionLeaders.isEmpty()) {
-      securityServiceExecutor.submit(this::execute);
-      LOGGER.info("General region attribute security service is started successfully.");
-    }
-
     regionLeaders.add(schemaRegion);
   }
 
   public void stopBroadcast(final ISchemaRegion schemaRegion) {
     regionLeaders.remove(schemaRegion);
-
-    if (regionLeaders.isEmpty()) {
-      securityServiceExecutor.shutdown();
-      LOGGER.info("General region attribute security service is stopped successfully.");
-    }
   }
 
   public void notifyBroadCast() {
@@ -174,7 +165,10 @@ public class GeneralRegionAttributeSecurityService implements IService {
           "Interrupted when waiting for the next attribute broadcasting: {}", e.getMessage());
     } finally {
       lock.unlock();
-      securityServiceExecutor.submit(this::execute);
+
+      if (allowSubmitListen) {
+        securityServiceExecutor.submit(this::execute);
+      }
     }
   }
 
@@ -302,14 +296,24 @@ public class GeneralRegionAttributeSecurityService implements IService {
   /////////////////////////////// IService ///////////////////////////////
 
   @Override
-  public void start() throws StartupException {}
+  public void start() throws StartupException {
+    allowSubmitListen = true;
+    securityServiceExecutor.submit(this::execute);
+
+    LOGGER.info("General region attribute security service is started successfully.");
+  }
 
   @Override
-  public void stop() {}
+  public void stop() {
+    allowSubmitListen = false;
+    securityServiceExecutor.shutdown();
+
+    LOGGER.info("General region attribute security service is stopped successfully.");
+  }
 
   @Override
   public ServiceType getID() {
-    return null;
+    return ServiceType.GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE;
   }
 
   /////////////////////////////// SingleTon ///////////////////////////////
