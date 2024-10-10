@@ -77,9 +77,6 @@ public abstract class AlignedTVList extends TVList {
   // Index relation: columnIndex(dataTypeIndex) -> arrayIndex -> elementIndex
   protected List<List<BitMap>> bitMaps;
 
-  // If a sensor chunk size of Text datatype reaches the threshold, this flag will be set true
-  boolean reachMaxChunkSizeFlag;
-
   // not null when constructed by queries
   BitMap rowBitMap;
 
@@ -88,7 +85,6 @@ public abstract class AlignedTVList extends TVList {
     indices = new ArrayList<>(types.size());
     dataTypes = types;
     memoryBinaryChunkSize = new long[dataTypes.size()];
-    reachMaxChunkSizeFlag = false;
 
     values = new ArrayList<>(types.size());
     for (int i = 0; i < types.size(); i++) {
@@ -199,9 +195,6 @@ public abstract class AlignedTVList extends TVList {
               columnValue != null
                   ? getBinarySize((Binary) columnValue)
                   : getBinarySize(Binary.EMPTY_VALUE);
-          if (memoryBinaryChunkSize[i] >= TARGET_CHUNK_SIZE) {
-            reachMaxChunkSizeFlag = true;
-          }
           break;
         case FLOAT:
           ((float[]) columnValues.get(arrayIndex))[elementIndex] =
@@ -721,11 +714,6 @@ public abstract class AlignedTVList extends TVList {
     }
   }
 
-  @Override
-  public boolean reachChunkSizeOrPointNumThreshold() {
-    return reachMaxChunkSizeFlag || rowCount >= MAX_SERIES_POINT_NUMBER;
-  }
-
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public void putAlignedValues(
@@ -799,9 +787,6 @@ public abstract class AlignedTVList extends TVList {
           for (int i1 = 0; i1 < remaining; i1++) {
             memoryBinaryChunkSize[i] +=
                 arrayT[elementIndex + i1] != null ? getBinarySize(arrayT[elementIndex + i1]) : 0;
-          }
-          if (memoryBinaryChunkSize[i] > TARGET_CHUNK_SIZE) {
-            reachMaxChunkSizeFlag = true;
           }
           break;
         case FLOAT:
@@ -1378,6 +1363,37 @@ public abstract class AlignedTVList extends TVList {
     }
 
     return new BitMap(rowCount, rowBitsArr);
+  }
+
+  public int getAvgBinaryPointSize() {
+    long maxSize = 0;
+    int index = 0;
+    int pointNum = 0;
+    for (int i = 0; i < memoryBinaryChunkSize.length; i++) {
+      if (memoryBinaryChunkSize[i] > maxSize) {
+        maxSize = memoryBinaryChunkSize[i];
+        index = i;
+      }
+    }
+    if (maxSize == 0) {
+      return 0;
+    }
+    if (bitMaps == null || bitMaps.get(index) == null) {
+      pointNum = rowCount;
+    } else {
+      for (int i = 0; i < rowCount; i++) {
+        int arrayIndex = i / ARRAY_SIZE;
+        if (bitMaps.get(index).get(arrayIndex) == null) {
+          pointNum++;
+        } else {
+          int elementIndex = i % ARRAY_SIZE;
+          if (!bitMaps.get(index).get(arrayIndex).isMarked(elementIndex)) {
+            pointNum++;
+          }
+        }
+      }
+    }
+    return (int) (maxSize / pointNum);
   }
 
   public List<List<BitMap>> getBitMaps() {

@@ -39,6 +39,7 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class WritingMetrics implements IMetricSet {
@@ -363,7 +364,7 @@ public class WritingMetrics implements IMetricSet {
                     MAKE_CHECKPOINT,
                     Tag.TYPE.toString(),
                     type));
-    Arrays.asList(SERIALIZE_WAL_ENTRY_TOTAL)
+    Collections.singletonList(SERIALIZE_WAL_ENTRY_TOTAL)
         .forEach(
             type ->
                 metricService.remove(
@@ -416,7 +417,6 @@ public class WritingMetrics implements IMetricSet {
 
   private Counter walFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
   private Counter timedFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
-  private Counter seriesFullFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
   private Counter manualFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
   private Counter memControlFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
 
@@ -429,7 +429,6 @@ public class WritingMetrics implements IMetricSet {
     createActiveTimePartitionCounterMetrics();
     walFlushMemtableCounter = createWalFlushMemTableCounterMetrics();
     timedFlushMemtableCounter = createTimedFlushMemTableCounterMetrics();
-    seriesFullFlushMemtableCounter = createSeriesFullFlushMemTableCounterMetrics();
     manualFlushMemtableCounter = createManualFlushMemTableCounterMetrics();
     memControlFlushMemtableCounter = createMemControlFlushMemTableCounterMetrics();
 
@@ -462,7 +461,6 @@ public class WritingMetrics implements IMetricSet {
           removeActiveMemtableCounterMetrics(dataRegionId);
         });
     removeActiveTimePartitionCounterMetrics();
-    removeSeriesFullFlushMemTableCounterMetrics();
     removeTimedFlushMemTableCounterMetrics();
     removeWalFlushMemTableCounterMetrics();
     removeManualFlushMemTableCounterMetrics();
@@ -575,15 +573,6 @@ public class WritingMetrics implements IMetricSet {
             TIMED_FLUSH_MEMTABLE_COUNT);
   }
 
-  public Counter createSeriesFullFlushMemTableCounterMetrics() {
-    return MetricService.getInstance()
-        .getOrCreateCounter(
-            Metric.FLUSH_MEMTABLE_COUNT.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.TYPE.toString(),
-            SERIES_FULL_FLUSH_MEMTABLE);
-  }
-
   public Counter createManualFlushMemTableCounterMetrics() {
     return MetricService.getInstance()
         .getOrCreateCounter(
@@ -614,15 +603,6 @@ public class WritingMetrics implements IMetricSet {
   public void createActiveTimePartitionCounterMetrics() {
     MetricService.getInstance()
         .getOrCreateCounter(Metric.ACTIVE_TIME_PARTITION_COUNT.toString(), MetricLevel.IMPORTANT);
-  }
-
-  public void removeSeriesFullFlushMemTableCounterMetrics() {
-    MetricService.getInstance()
-        .remove(
-            MetricType.COUNTER,
-            Metric.FLUSH_MEMTABLE_COUNT.toString(),
-            Tag.TYPE.toString(),
-            SERIES_FULL_FLUSH_MEMTABLE);
   }
 
   public void removeTimedFlushMemTableCounterMetrics() {
@@ -927,10 +907,6 @@ public class WritingMetrics implements IMetricSet {
 
   public void recordWalFlushMemTableCount(int number) {
     walFlushMemtableCounter.inc(number);
-  }
-
-  public void recordSeriesFullFlushMemTableCount(int number) {
-    seriesFullFlushMemtableCounter.inc(number);
   }
 
   public void recordManualFlushMemTableCount(int number) {

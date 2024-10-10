@@ -247,16 +247,7 @@ public class MemTableFlushTask {
             } else {
               long starTime = System.currentTimeMillis();
               IWritableMemChunk writableMemChunk = (IWritableMemChunk) task;
-              IChunkWriter seriesWriter = writableMemChunk.createIChunkWriter();
-              writableMemChunk.encode(seriesWriter);
-              seriesWriter.sealCurrentPage();
-              seriesWriter.clearPageWriter();
-              try {
-                ioTaskQueue.put(seriesWriter);
-              } catch (InterruptedException e) {
-                LOGGER.error("Put task into ioTaskQueue Interrupted");
-                Thread.currentThread().interrupt();
-              }
+              writableMemChunk.encode(ioTaskQueue);
               long subTaskTime = System.currentTimeMillis() - starTime;
               WRITING_METRICS.recordFlushSubTaskCost(WritingMetrics.ENCODING_TASK, subTaskTime);
               memSerializeTime += subTaskTime;
