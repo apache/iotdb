@@ -31,7 +31,7 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRe
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.StringArrayDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -135,16 +135,16 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
       for (final Map.Entry<IDeviceID, String[]> entry : event.getSchemaInfo().entrySet()) {
         final IDeviceID deviceID = entry.getKey();
 
-        if (deviceID instanceof StringArrayDeviceID
-            && !deviceID.getTableName().startsWith(PATH_ROOT + PATH_SEPARATOR)) {
+        if (deviceID instanceof PlainDeviceID
+            || deviceID.getTableName().startsWith(PATH_ROOT + PATH_SEPARATOR)) {
+          matchTreeModelEvent(deviceID, entry.getValue(), matchedExtractors);
+        } else {
           matchTableModelEvent(
               event.getEvent() instanceof PipeInsertionEvent
                   ? ((PipeInsertionEvent) event.getEvent()).getTableModelDatabaseName()
                   : null,
               deviceID,
               matchedExtractors);
-        } else {
-          matchTreeModelEvent(deviceID, entry.getValue(), matchedExtractors);
         }
 
         if (matchedExtractors.size() == extractors.size()) {
@@ -156,52 +156,6 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     }
 
     return matchedExtractors;
-  }
-
-  private void matchTableModelEvent(
-      final String databaseName,
-      final IDeviceID tableName,
-      final Set<PipeRealtimeDataRegionExtractor> matchedExtractors) {
-    // this would not happen
-    if (databaseName == null) {
-      LOGGER.warn(
-          "Database name is null when matching extractors for table model event.", new Exception());
-      return;
-    }
-
-    final Set<PipeRealtimeDataRegionExtractor> extractorsFilteredByDatabaseAndTable =
-        databaseAndTableToExtractorsCache.get(
-            new Pair<>(databaseName, tableName), this::filterExtractorsByDatabaseAndTable);
-    // this would not happen
-    if (extractorsFilteredByDatabaseAndTable == null) {
-      LOGGER.warn(
-          "Extractors filtered by database and table is null when matching extractors for table model event.",
-          new Exception());
-      return;
-    }
-    matchedExtractors.addAll(extractorsFilteredByDatabaseAndTable);
-  }
-
-  protected Set<PipeRealtimeDataRegionExtractor> filterExtractorsByDatabaseAndTable(
-      final Pair<String, IDeviceID> databaseNameAndTableName) {
-    final Set<PipeRealtimeDataRegionExtractor> filteredExtractors = new HashSet<>();
-
-    for (final PipeRealtimeDataRegionExtractor extractor : extractors) {
-      // Return if the extractor only extract deletion
-      if (!extractor.shouldExtractInsertion()) {
-        continue;
-      }
-
-      final TablePattern tablePattern = extractor.getTablePattern();
-      if (Objects.isNull(tablePattern)
-          || (tablePattern.isTableModelDataAllowedToBeCaptured()
-              && tablePattern.matchesDatabase(databaseNameAndTableName.getLeft())
-              && tablePattern.matchesTable(databaseNameAndTableName.getRight().getTableName()))) {
-        filteredExtractors.add(extractor);
-      }
-    }
-
-    return filteredExtractors;
   }
 
   protected void matchTreeModelEvent(
@@ -275,6 +229,52 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
       if (Objects.isNull(treePattern)
           || (treePattern.isTreeModelDataAllowedToBeCaptured()
               && treePattern.mayOverlapWithDevice(device))) {
+        filteredExtractors.add(extractor);
+      }
+    }
+
+    return filteredExtractors;
+  }
+
+  protected void matchTableModelEvent(
+      final String databaseName,
+      final IDeviceID tableName,
+      final Set<PipeRealtimeDataRegionExtractor> matchedExtractors) {
+    // this would not happen
+    if (databaseName == null) {
+      LOGGER.warn(
+          "Database name is null when matching extractors for table model event.", new Exception());
+      return;
+    }
+
+    final Set<PipeRealtimeDataRegionExtractor> extractorsFilteredByDatabaseAndTable =
+        databaseAndTableToExtractorsCache.get(
+            new Pair<>(databaseName, tableName), this::filterExtractorsByDatabaseAndTable);
+    // this would not happen
+    if (extractorsFilteredByDatabaseAndTable == null) {
+      LOGGER.warn(
+          "Extractors filtered by database and table is null when matching extractors for table model event.",
+          new Exception());
+      return;
+    }
+    matchedExtractors.addAll(extractorsFilteredByDatabaseAndTable);
+  }
+
+  protected Set<PipeRealtimeDataRegionExtractor> filterExtractorsByDatabaseAndTable(
+      final Pair<String, IDeviceID> databaseNameAndTableName) {
+    final Set<PipeRealtimeDataRegionExtractor> filteredExtractors = new HashSet<>();
+
+    for (final PipeRealtimeDataRegionExtractor extractor : extractors) {
+      // Return if the extractor only extract deletion
+      if (!extractor.shouldExtractInsertion()) {
+        continue;
+      }
+
+      final TablePattern tablePattern = extractor.getTablePattern();
+      if (Objects.isNull(tablePattern)
+          || (tablePattern.isTableModelDataAllowedToBeCaptured()
+              && tablePattern.matchesDatabase(databaseNameAndTableName.getLeft())
+              && tablePattern.matchesTable(databaseNameAndTableName.getRight().getTableName()))) {
         filteredExtractors.add(extractor);
       }
     }
