@@ -71,7 +71,7 @@ public class PredicatePushIntoScanChecker extends PredicateVisitor<Boolean, Void
     if (inputExpression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
       throw new IllegalArgumentException("TIMESTAMP does not support LIKE/NOT LIKE");
     }
-    return !inputExpression.getExpressionType().equals(ExpressionType.TIMESERIES);
+    return inputExpression.getExpressionType().equals(ExpressionType.TIMESERIES);
   }
 
   @Override

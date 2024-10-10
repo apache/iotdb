@@ -3137,7 +3137,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new RegularExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, canUseFullPath),
         parseStringLiteral(String.valueOf(context.pattern.getText())),
-        false);
+        context.operator_not() != null);
   }
 
   private Expression parseLikeExpression(ExpressionContext context, boolean canUseFullPath) {
@@ -3147,7 +3147,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         context.ESCAPE() == null
             ? Optional.empty()
             : Optional.of(parseStringLiteral(String.valueOf(context.escapeSet.getText()))),
-        false);
+        context.operator_not() != null);
   }
 
   private Expression parseIsNullExpression(ExpressionContext context, boolean canUseFullPath) {
