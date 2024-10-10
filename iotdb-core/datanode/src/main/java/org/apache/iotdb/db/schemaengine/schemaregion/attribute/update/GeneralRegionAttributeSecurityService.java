@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
@@ -31,6 +32,7 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -72,6 +74,8 @@ import java.util.stream.Collectors;
 public class GeneralRegionAttributeSecurityService implements IService {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(GeneralRegionAttributeSecurityService.class);
+
+  private static final IoTDBConfig iotdbConfig = IoTDBDescriptor.getInstance().getConfig();
 
   private final ExecutorService securityServiceExecutor =
       IoTDBThreadPoolFactory.newSingleThreadExecutor(
@@ -143,7 +147,15 @@ public class GeneralRegionAttributeSecurityService implements IService {
                           new PlanNodeId(""),
                           pair.getLeft(),
                           pair.getRight(),
-                          shrinkMap.getOrDefault(schemaRegionId, Collections.emptySet())))
+                          shrinkMap.getOrDefault(schemaRegionId, Collections.emptySet()),
+                          new TDataNodeLocation(
+                              iotdbConfig.getDataNodeId(),
+                              null,
+                              new TEndPoint(
+                                  iotdbConfig.getInternalAddress(), iotdbConfig.getInternalPort()),
+                              null,
+                              null,
+                              null)))
                   .isAccepted()) {
                 // May fail due to region shutdown, migration or other reasons
                 // Just ignore
@@ -155,9 +167,7 @@ public class GeneralRegionAttributeSecurityService implements IService {
 
       if (!skipNext) {
         condition.await(
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getGeneralRegionAttributeSecurityServiceIntervalSeconds(),
+            iotdbConfig.getGeneralRegionAttributeSecurityServiceIntervalSeconds(),
             TimeUnit.SECONDS);
       }
       skipNext = false;
@@ -254,12 +264,10 @@ public class GeneralRegionAttributeSecurityService implements IService {
                           }
                           v.setRight(v.getRight() + 1);
                           if (System.currentTimeMillis() - v.getLeft()
-                                  >= IoTDBDescriptor.getInstance()
-                                      .getConfig()
+                                  >= iotdbConfig
                                       .getGeneralRegionAttributeSecurityServiceFailureDurationSecondsToFetch()
                               || v.getRight()
-                                  >= IoTDBDescriptor.getInstance()
-                                      .getConfig()
+                                  >= iotdbConfig
                                       .getGeneralRegionAttributeSecurityServiceFailureTimesToFetch()) {
                             needFetch.set(true);
                           }
