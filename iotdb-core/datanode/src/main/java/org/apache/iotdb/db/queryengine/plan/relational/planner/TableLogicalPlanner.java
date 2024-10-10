@@ -163,7 +163,7 @@ public class TableLogicalPlanner {
 
   private PlanNode planStatement(final Analysis analysis, final Statement statement) {
     if (statement instanceof CreateOrUpdateDevice) {
-      return planCreateDevice((CreateOrUpdateDevice) statement, analysis);
+      return planCreateOrUpdateDevice((CreateOrUpdateDevice) statement, analysis);
     }
     if (statement instanceof FetchDevice) {
       return planFetchDevice((FetchDevice) statement, analysis);
@@ -248,7 +248,8 @@ public class TableLogicalPlanner {
         analysis, symbolAllocator, queryContext, Optional.empty(), sessionInfo, ImmutableMap.of());
   }
 
-  private PlanNode planCreateDevice(final CreateOrUpdateDevice statement, final Analysis analysis) {
+  private PlanNode planCreateOrUpdateDevice(
+      final CreateOrUpdateDevice statement, final Analysis analysis) {
     final CreateOrUpdateTableDeviceNode node =
         new CreateOrUpdateTableDeviceNode(
             queryContext.getQueryId().genPlanNodeId(),
