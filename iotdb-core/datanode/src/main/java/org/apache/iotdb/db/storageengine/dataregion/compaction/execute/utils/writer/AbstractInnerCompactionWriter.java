@@ -46,7 +46,7 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
   protected final long memoryBudgetForFileWriter =
       (long)
           ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
-              / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
+              / IoTDBDescriptor.getInstance().getConfig().getTotalCompactionThreadCount()
               * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
 
   protected AbstractInnerCompactionWriter(TsFileResource targetFileResource) {

@@ -417,4 +417,9 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
   public int hashCode() {
     return Objects.hash(fullyDirtyFiles, filesView.sourceFilesInCompactionPerformer, performer);
   }
+
+  @Override
+  public long getCompactionRewriteFileSize() {
+    return (long) partiallyDirtyFileSize;
+  }
 }

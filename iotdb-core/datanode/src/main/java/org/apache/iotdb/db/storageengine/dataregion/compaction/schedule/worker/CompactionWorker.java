@@ -17,14 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.worker;
 
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.MultiWorkerTypeCompactionTaskQueues;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractCompactionEstimator;
-import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,12 +40,16 @@ import java.util.concurrent.TimeoutException;
 public class CompactionWorker implements Runnable {
   private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
   private final int threadId;
-  private final FixedPriorityBlockingQueue<AbstractCompactionTask> compactionTaskQueue;
+  private final MultiWorkerTypeCompactionTaskQueues compactionTaskQueue;
+  private final CompactionWorkerType compactionWorkerType;
 
   public CompactionWorker(
-      int threadId, FixedPriorityBlockingQueue<AbstractCompactionTask> compactionTaskQueue) {
+      int threadId,
+      MultiWorkerTypeCompactionTaskQueues compactionTaskQueue,
+      CompactionWorkerType workerType) {
     this.threadId = threadId;
     this.compactionTaskQueue = compactionTaskQueue;
+    this.compactionWorkerType = workerType;
   }
 
   @SuppressWarnings("squid:S2142")
@@ -59,9 +64,13 @@ public class CompactionWorker implements Runnable {
         }
         return;
       }
-      AbstractCompactionTask task;
+      AbstractCompactionTask task = null;
       try {
-        task = compactionTaskQueue.take();
+        task = compactionTaskQueue.tryTakeCompactionTask(compactionWorkerType);
+        if (task == null) {
+          Thread.sleep(TimeUnit.SECONDS.toMillis(1));
+          continue;
+        }
       } catch (InterruptedException e) {
         LOGGER.warn("CompactionThread-{} terminates because interruption", threadId);
         Thread.currentThread().interrupt();

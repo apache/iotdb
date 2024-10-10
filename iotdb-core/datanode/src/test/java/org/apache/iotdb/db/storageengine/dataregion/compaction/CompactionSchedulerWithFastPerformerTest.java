@@ -144,8 +144,8 @@ public class CompactionSchedulerWithFastPerformerTest {
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(true);
     int prevCompactionConcurrentThread =
-        IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount();
-    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(50);
+        IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount();
+    IoTDBDescriptor.getInstance().getConfig().setNormalCompactionThreadCount(50);
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getInnerCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(100);
@@ -241,7 +241,7 @@ public class CompactionSchedulerWithFastPerformerTest {
           .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setCompactionThreadCount(prevCompactionConcurrentThread);
+          .setNormalCompactionThreadCount(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
           .setInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
@@ -263,8 +263,8 @@ public class CompactionSchedulerWithFastPerformerTest {
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(true);
     int prevCompactionConcurrentThread =
-        IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount();
-    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(50);
+        IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount();
+    IoTDBDescriptor.getInstance().getConfig().setNormalCompactionThreadCount(50);
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getInnerCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(100);
@@ -275,7 +275,7 @@ public class CompactionSchedulerWithFastPerformerTest {
                 * 1024
                 * 1024L
                 * 1024L
-                * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
+                * IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount());
     try {
       String sgName = COMPACTION_TEST_SG + "test2";
       try {
@@ -359,7 +359,7 @@ public class CompactionSchedulerWithFastPerformerTest {
             .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
         IoTDBDescriptor.getInstance()
             .getConfig()
-            .setCompactionThreadCount(prevCompactionConcurrentThread);
+            .setNormalCompactionThreadCount(prevCompactionConcurrentThread);
         IoTDBDescriptor.getInstance()
             .getConfig()
             .setInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
@@ -383,8 +383,8 @@ public class CompactionSchedulerWithFastPerformerTest {
         IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
     int prevCompactionConcurrentThread =
-        IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount();
-    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(50);
+        IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount();
+    IoTDBDescriptor.getInstance().getConfig().setNormalCompactionThreadCount(50);
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getInnerCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(100);
@@ -457,7 +457,7 @@ public class CompactionSchedulerWithFastPerformerTest {
           .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setCompactionThreadCount(prevCompactionConcurrentThread);
+          .setNormalCompactionThreadCount(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
           .setInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
@@ -478,8 +478,8 @@ public class CompactionSchedulerWithFastPerformerTest {
         IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
     int prevCompactionConcurrentThread =
-        IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount();
-    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(50);
+        IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount();
+    IoTDBDescriptor.getInstance().getConfig().setNormalCompactionThreadCount(50);
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getInnerCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(100);
@@ -543,7 +543,7 @@ public class CompactionSchedulerWithFastPerformerTest {
           .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setCompactionThreadCount(prevCompactionConcurrentThread);
+          .setNormalCompactionThreadCount(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
           .setInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
@@ -565,8 +565,8 @@ public class CompactionSchedulerWithFastPerformerTest {
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(true);
     int prevCompactionConcurrentThread =
-        IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount();
-    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(1);
+        IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount();
+    IoTDBDescriptor.getInstance().getConfig().setNormalCompactionThreadCount(1);
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getInnerCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(100);
@@ -658,7 +658,7 @@ public class CompactionSchedulerWithFastPerformerTest {
           .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setCompactionThreadCount(prevCompactionConcurrentThread);
+          .setNormalCompactionThreadCount(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
           .setInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
@@ -680,8 +680,8 @@ public class CompactionSchedulerWithFastPerformerTest {
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(true);
     int prevCompactionConcurrentThread =
-        IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount();
-    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(1);
+        IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount();
+    IoTDBDescriptor.getInstance().getConfig().setNormalCompactionThreadCount(1);
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getInnerCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(100);
@@ -765,7 +765,7 @@ public class CompactionSchedulerWithFastPerformerTest {
           .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setCompactionThreadCount(prevCompactionConcurrentThread);
+          .setNormalCompactionThreadCount(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
           .setInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
@@ -786,8 +786,8 @@ public class CompactionSchedulerWithFastPerformerTest {
         IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
     int prevCompactionConcurrentThread =
-        IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount();
-    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(1);
+        IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount();
+    IoTDBDescriptor.getInstance().getConfig().setNormalCompactionThreadCount(1);
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getInnerCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(100);
@@ -867,7 +867,7 @@ public class CompactionSchedulerWithFastPerformerTest {
           .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setCompactionThreadCount(prevCompactionConcurrentThread);
+          .setNormalCompactionThreadCount(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
           .setInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
@@ -888,8 +888,8 @@ public class CompactionSchedulerWithFastPerformerTest {
         IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
     int prevCompactionConcurrentThread =
-        IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount();
-    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(1);
+        IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount();
+    IoTDBDescriptor.getInstance().getConfig().setNormalCompactionThreadCount(1);
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getInnerCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(100);
@@ -955,7 +955,7 @@ public class CompactionSchedulerWithFastPerformerTest {
           .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setCompactionThreadCount(prevCompactionConcurrentThread);
+          .setNormalCompactionThreadCount(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
           .setInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
@@ -976,8 +976,8 @@ public class CompactionSchedulerWithFastPerformerTest {
         IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
     int prevCompactionConcurrentThread =
-        IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount();
-    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(50);
+        IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount();
+    IoTDBDescriptor.getInstance().getConfig().setNormalCompactionThreadCount(50);
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getInnerCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
@@ -1056,7 +1056,7 @@ public class CompactionSchedulerWithFastPerformerTest {
           .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setCompactionThreadCount(prevCompactionConcurrentThread);
+          .setNormalCompactionThreadCount(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
           .setInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
@@ -1080,8 +1080,8 @@ public class CompactionSchedulerWithFastPerformerTest {
     IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
     int prevCompactionConcurrentThread =
-        IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount();
-    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(50);
+        IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount();
+    IoTDBDescriptor.getInstance().getConfig().setNormalCompactionThreadCount(50);
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getInnerCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
@@ -1164,7 +1164,7 @@ public class CompactionSchedulerWithFastPerformerTest {
           .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setCompactionThreadCount(prevCompactionConcurrentThread);
+          .setNormalCompactionThreadCount(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
           .setInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
@@ -1188,8 +1188,8 @@ public class CompactionSchedulerWithFastPerformerTest {
         IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
     int prevCompactionConcurrentThread =
-        IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount();
-    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(50);
+        IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount();
+    IoTDBDescriptor.getInstance().getConfig().setNormalCompactionThreadCount(50);
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getInnerCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
@@ -1271,7 +1271,7 @@ public class CompactionSchedulerWithFastPerformerTest {
           .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setCompactionThreadCount(prevCompactionConcurrentThread);
+          .setNormalCompactionThreadCount(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
           .setInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
@@ -1292,8 +1292,8 @@ public class CompactionSchedulerWithFastPerformerTest {
         IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
     int prevCompactionConcurrentThread =
-        IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount();
-    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(50);
+        IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount();
+    IoTDBDescriptor.getInstance().getConfig().setNormalCompactionThreadCount(50);
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getInnerCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
@@ -1377,7 +1377,7 @@ public class CompactionSchedulerWithFastPerformerTest {
           .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setCompactionThreadCount(prevCompactionConcurrentThread);
+          .setNormalCompactionThreadCount(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
           .setInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
@@ -1398,8 +1398,8 @@ public class CompactionSchedulerWithFastPerformerTest {
         IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
     int prevCompactionConcurrentThread =
-        IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount();
-    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(1);
+        IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount();
+    IoTDBDescriptor.getInstance().getConfig().setNormalCompactionThreadCount(1);
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getInnerCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
@@ -1487,7 +1487,7 @@ public class CompactionSchedulerWithFastPerformerTest {
           .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setCompactionThreadCount(prevCompactionConcurrentThread);
+          .setNormalCompactionThreadCount(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
           .setInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
@@ -1508,8 +1508,8 @@ public class CompactionSchedulerWithFastPerformerTest {
         IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
     int prevCompactionConcurrentThread =
-        IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount();
-    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(1);
+        IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount();
+    IoTDBDescriptor.getInstance().getConfig().setNormalCompactionThreadCount(1);
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getInnerCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
@@ -1605,7 +1605,7 @@ public class CompactionSchedulerWithFastPerformerTest {
           .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setCompactionThreadCount(prevCompactionConcurrentThread);
+          .setNormalCompactionThreadCount(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
           .setInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
@@ -1626,8 +1626,8 @@ public class CompactionSchedulerWithFastPerformerTest {
         IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
     int prevCompactionConcurrentThread =
-        IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount();
-    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(1);
+        IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount();
+    IoTDBDescriptor.getInstance().getConfig().setNormalCompactionThreadCount(1);
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getInnerCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
@@ -1710,7 +1710,7 @@ public class CompactionSchedulerWithFastPerformerTest {
           .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setCompactionThreadCount(prevCompactionConcurrentThread);
+          .setNormalCompactionThreadCount(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
           .setInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);

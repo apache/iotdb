@@ -34,9 +34,9 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subt
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.IDataBlockReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.SeriesDataBlockReader;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskQueue;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionWorker;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.DefaultCompactionTaskComparatorImpl;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.MultiWorkerTypeCompactionTaskQueues;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.worker.CompactionWorker;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.worker.CompactionWorkerType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -44,7 +44,6 @@ import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.tools.validate.TsFileValidationTool;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
@@ -4688,11 +4687,12 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
               0);
       Assert.assertTrue(task.setSourceFilesToCompactionCandidate());
 
-      FixedPriorityBlockingQueue<AbstractCompactionTask> queue =
-          new CompactionTaskQueue(50, new DefaultCompactionTaskComparatorImpl());
+      MultiWorkerTypeCompactionTaskQueues queue = new MultiWorkerTypeCompactionTaskQueues();
       queue.put(task);
-      CompactionWorker worker = new CompactionWorker(0, queue);
-      AbstractCompactionTask takeTask = queue.take();
+      CompactionWorker worker =
+          new CompactionWorker(0, queue, CompactionWorkerType.NORMAL_TASK_WORKER);
+      AbstractCompactionTask takeTask =
+          queue.tryTakeCompactionTask(CompactionWorkerType.NORMAL_TASK_WORKER);
       Assert.assertNotNull(takeTask);
       worker.processOneCompactionTask(takeTask);
       Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
