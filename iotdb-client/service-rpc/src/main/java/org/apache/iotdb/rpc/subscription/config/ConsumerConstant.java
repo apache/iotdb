@@ -53,7 +53,7 @@ public class ConsumerConstant {
   public static final String THRIFT_MAX_FRAME_SIZE_KEY = "thrift-max-frame-size";
 
   public static final String MAX_POLL_PARALLELISM_KEY = "max-poll-parallelism";
-  public static final int MAX_POLL_PARALLELISM_DEFAULT_VALUE = 1;
+  public static final int MAX_POLL_PARALLELISM_DEFAULT_VALUE = 4;
 
   /////////////////////////////// pull consumer ///////////////////////////////
 

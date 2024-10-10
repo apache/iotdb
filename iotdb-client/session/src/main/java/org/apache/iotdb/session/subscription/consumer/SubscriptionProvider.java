@@ -20,14 +20,11 @@
 package org.apache.iotdb.session.subscription.consumer;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
-import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
-import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeNonCriticalException;
 import org.apache.iotdb.rpc.subscription.payload.poll.PollFilePayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.PollPayload;
@@ -43,12 +40,13 @@ import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHeartbeatR
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribePollReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeUnsubscribeReq;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeCloseResp;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeCommitResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHandshakeResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHeartbeatResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribePollResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeSubscribeResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeUnsubscribeResp;
-import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.SubscriptionSessionConnection;
 
@@ -159,9 +157,9 @@ final class SubscriptionProvider extends SubscriptionSession {
           e);
       throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
-    final TPipeSubscribeResp resp;
+
     try {
-      resp = getSessionConnection().pipeSubscribe(req);
+      return (PipeSubscribeHandshakeResp) getSessionConnection().pipeSubscribe(req);
     } catch (final TException e) {
       // Assume provider unavailable
       LOGGER.warn(
@@ -172,8 +170,6 @@ final class SubscriptionProvider extends SubscriptionSession {
       setUnavailable();
       throw new SubscriptionConnectionException(e.getMessage(), e);
     }
-    verifyPipeSubscribeSuccess(resp.status);
-    return PipeSubscribeHandshakeResp.fromTPipeSubscribeResp(resp);
   }
 
   @Override
@@ -191,10 +187,10 @@ final class SubscriptionProvider extends SubscriptionSession {
     }
   }
 
-  void closeInternal() throws SubscriptionException {
-    final TPipeSubscribeResp resp;
+  PipeSubscribeCloseResp closeInternal() throws SubscriptionException {
     try {
-      resp = getSessionConnection().pipeSubscribe(PipeSubscribeCloseReq.toTPipeSubscribeReq());
+      return (PipeSubscribeCloseResp)
+          getSessionConnection().pipeSubscribe(PipeSubscribeCloseReq.toTPipeSubscribeReq());
     } catch (final TException e) {
       // Assume provider unavailable
       LOGGER.warn(
@@ -204,15 +200,14 @@ final class SubscriptionProvider extends SubscriptionSession {
       setUnavailable();
       throw new SubscriptionConnectionException(e.getMessage(), e);
     }
-    verifyPipeSubscribeSuccess(resp.status);
   }
 
   /////////////////////////////// subscription APIs ///////////////////////////////
 
-  Map<String, TopicConfig> heartbeat() throws SubscriptionException {
-    final TPipeSubscribeResp resp;
+  PipeSubscribeHeartbeatResp heartbeat() throws SubscriptionException {
     try {
-      resp = getSessionConnection().pipeSubscribe(PipeSubscribeHeartbeatReq.toTPipeSubscribeReq());
+      return (PipeSubscribeHeartbeatResp)
+          getSessionConnection().pipeSubscribe(PipeSubscribeHeartbeatReq.toTPipeSubscribeReq());
     } catch (final TException e) {
       // Assume provider unavailable
       LOGGER.warn(
@@ -222,13 +217,9 @@ final class SubscriptionProvider extends SubscriptionSession {
       setUnavailable();
       throw new SubscriptionConnectionException(e.getMessage(), e);
     }
-    verifyPipeSubscribeSuccess(resp.status);
-    final PipeSubscribeHeartbeatResp heartbeatResp =
-        PipeSubscribeHeartbeatResp.fromTPipeSubscribeResp(resp);
-    return heartbeatResp.getTopics();
   }
 
-  Map<String, TopicConfig> subscribe(final Set<String> topicNames) throws SubscriptionException {
+  PipeSubscribeSubscribeResp subscribe(final Set<String> topicNames) throws SubscriptionException {
     final PipeSubscribeSubscribeReq req;
     try {
       req = PipeSubscribeSubscribeReq.toTPipeSubscribeReq(topicNames);
@@ -240,9 +231,9 @@ final class SubscriptionProvider extends SubscriptionSession {
           e);
       throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
-    final TPipeSubscribeResp resp;
+
     try {
-      resp = getSessionConnection().pipeSubscribe(req);
+      return (PipeSubscribeSubscribeResp) getSessionConnection().pipeSubscribe(req);
     } catch (final TException e) {
       // Assume provider unavailable
       LOGGER.warn(
@@ -253,13 +244,10 @@ final class SubscriptionProvider extends SubscriptionSession {
       setUnavailable();
       throw new SubscriptionConnectionException(e.getMessage(), e);
     }
-    verifyPipeSubscribeSuccess(resp.status);
-    final PipeSubscribeSubscribeResp subscribeResp =
-        PipeSubscribeSubscribeResp.fromTPipeSubscribeResp(resp);
-    return subscribeResp.getTopics();
   }
 
-  Map<String, TopicConfig> unsubscribe(final Set<String> topicNames) throws SubscriptionException {
+  PipeSubscribeUnsubscribeResp unsubscribe(final Set<String> topicNames)
+      throws SubscriptionException {
     final PipeSubscribeUnsubscribeReq req;
     try {
       req = PipeSubscribeUnsubscribeReq.toTPipeSubscribeReq(topicNames);
@@ -271,9 +259,9 @@ final class SubscriptionProvider extends SubscriptionSession {
           e);
       throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
-    final TPipeSubscribeResp resp;
+
     try {
-      resp = getSessionConnection().pipeSubscribe(req);
+      return (PipeSubscribeUnsubscribeResp) getSessionConnection().pipeSubscribe(req);
     } catch (final TException e) {
       // Assume provider unavailable
       LOGGER.warn(
@@ -284,44 +272,40 @@ final class SubscriptionProvider extends SubscriptionSession {
       setUnavailable();
       throw new SubscriptionConnectionException(e.getMessage(), e);
     }
-    verifyPipeSubscribeSuccess(resp.status);
-    final PipeSubscribeUnsubscribeResp unsubscribeResp =
-        PipeSubscribeUnsubscribeResp.fromTPipeSubscribeResp(resp);
-    return unsubscribeResp.getTopics();
   }
 
   List<SubscriptionPollResponse> poll(final Set<String> topicNames) throws SubscriptionException {
-    return poll(
-        new SubscriptionPollRequest(
+    return poll(new SubscriptionPollRequest(
             SubscriptionPollRequestType.POLL.getType(),
             new PollPayload(topicNames),
             0L,
-            thriftMaxFrameSize));
+            thriftMaxFrameSize))
+        .getResponses();
   }
 
   List<SubscriptionPollResponse> pollFile(
       final SubscriptionCommitContext commitContext, final long writingOffset)
       throws SubscriptionException {
-    return poll(
-        new SubscriptionPollRequest(
+    return poll(new SubscriptionPollRequest(
             SubscriptionPollRequestType.POLL_FILE.getType(),
             new PollFilePayload(commitContext, writingOffset),
             0L,
-            thriftMaxFrameSize));
+            thriftMaxFrameSize))
+        .getResponses();
   }
 
   List<SubscriptionPollResponse> pollTablets(
       final SubscriptionCommitContext commitContext, final int offset)
       throws SubscriptionException {
-    return poll(
-        new SubscriptionPollRequest(
+    return poll(new SubscriptionPollRequest(
             SubscriptionPollRequestType.POLL_TABLETS.getType(),
             new PollTabletsPayload(commitContext, offset),
             0L,
-            thriftMaxFrameSize));
+            thriftMaxFrameSize))
+        .getResponses();
   }
 
-  List<SubscriptionPollResponse> poll(final SubscriptionPollRequest pollMessage)
+  PipeSubscribePollResp poll(final SubscriptionPollRequest pollMessage)
       throws SubscriptionException {
     final PipeSubscribePollReq req;
     try {
@@ -334,9 +318,9 @@ final class SubscriptionProvider extends SubscriptionSession {
           e);
       throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
-    final TPipeSubscribeResp resp;
+
     try {
-      resp = getSessionConnection().pipeSubscribe(req);
+      return (PipeSubscribePollResp) getSessionConnection().pipeSubscribe(req);
     } catch (final TException e) {
       // Assume provider unavailable
       LOGGER.warn(
@@ -347,12 +331,10 @@ final class SubscriptionProvider extends SubscriptionSession {
       setUnavailable();
       throw new SubscriptionConnectionException(e.getMessage(), e);
     }
-    verifyPipeSubscribeSuccess(resp.status);
-    final PipeSubscribePollResp pollResp = PipeSubscribePollResp.fromTPipeSubscribeResp(resp);
-    return pollResp.getResponses();
   }
 
-  void commit(final List<SubscriptionCommitContext> subscriptionCommitContexts, final boolean nack)
+  PipeSubscribeCommitResp commit(
+      final List<SubscriptionCommitContext> subscriptionCommitContexts, final boolean nack)
       throws SubscriptionException {
     final PipeSubscribeCommitReq req;
     try {
@@ -365,9 +347,9 @@ final class SubscriptionProvider extends SubscriptionSession {
           e);
       throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
-    final TPipeSubscribeResp resp;
+
     try {
-      resp = getSessionConnection().pipeSubscribe(req);
+      return (PipeSubscribeCommitResp) getSessionConnection().pipeSubscribe(req);
     } catch (final TException e) {
       // Assume provider unavailable
       LOGGER.warn(
@@ -377,36 +359,6 @@ final class SubscriptionProvider extends SubscriptionSession {
           e);
       setUnavailable();
       throw new SubscriptionConnectionException(e.getMessage(), e);
-    }
-    verifyPipeSubscribeSuccess(resp.status);
-  }
-
-  private static void verifyPipeSubscribeSuccess(final TSStatus status)
-      throws SubscriptionException {
-    switch (status.code) {
-      case 200: // SUCCESS_STATUS
-        return;
-      case 1902: // SUBSCRIPTION_HANDSHAKE_ERROR
-      case 1903: // SUBSCRIPTION_HEARTBEAT_ERROR
-      case 1904: // SUBSCRIPTION_POLL_ERROR
-      case 1905: // SUBSCRIPTION_COMMIT_ERROR
-      case 1906: // SUBSCRIPTION_CLOSE_ERROR
-      case 1907: // SUBSCRIPTION_SUBSCRIBE_ERROR
-      case 1908: // SUBSCRIPTION_UNSUBSCRIBE_ERROR
-        LOGGER.warn(
-            "Internal error occurred, status code {}, status message {}",
-            status.code,
-            status.message);
-        throw new SubscriptionRuntimeNonCriticalException(status.message);
-      case 1900: // SUBSCRIPTION_VERSION_ERROR
-      case 1901: // SUBSCRIPTION_TYPE_ERROR
-      case 1909: // SUBSCRIPTION_MISSING_CUSTOMER
-      default:
-        LOGGER.warn(
-            "Internal error occurred, status code {}, status message {}",
-            status.code,
-            status.message);
-        throw new SubscriptionRuntimeCriticalException(status.message);
     }
   }
 

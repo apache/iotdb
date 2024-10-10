@@ -20,8 +20,6 @@
 package org.apache.iotdb.rpc.subscription.payload.response;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 
 import org.apache.tsfile.utils.PublicBAOS;
@@ -59,20 +57,27 @@ public class PipeSubscribeHandshakeResp extends TPipeSubscribeResp {
    * Serialize the incoming parameters into `PipeSubscribeHandshakeResp`, called by the subscription
    * server.
    */
-  public static PipeSubscribeHandshakeResp toTPipeSubscribeResp(
-      final TSStatus status,
-      final int dataNodeId,
-      final String consumerId,
-      final String consumerGroupId) {
+  public static PipeSubscribeHandshakeResp toTPipeSubscribeResp(final TSStatus status) {
     final PipeSubscribeHandshakeResp resp = new PipeSubscribeHandshakeResp();
-
-    resp.dataNodeId = dataNodeId;
-    resp.consumerId = consumerId;
-    resp.consumerGroupId = consumerGroupId;
 
     resp.status = status;
     resp.version = PipeSubscribeResponseVersion.VERSION_1.getVersion();
     resp.type = PipeSubscribeResponseType.ACK.getType();
+
+    return resp;
+  }
+
+  /**
+   * Serialize the incoming parameters into `PipeSubscribeHandshakeResp`, called by the subscription
+   * server.
+   */
+  public static PipeSubscribeHandshakeResp toTPipeSubscribeResp(
+      final TSStatus status,
+      final int dataNodeId,
+      final String consumerId,
+      final String consumerGroupId)
+      throws IOException {
+    final PipeSubscribeHandshakeResp resp = toTPipeSubscribeResp(status);
 
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
@@ -82,9 +87,6 @@ public class PipeSubscribeHandshakeResp extends TPipeSubscribeResp {
       resp.body =
           Collections.singletonList(
               ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
-    } catch (final IOException e) {
-      resp.status = RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_HANDSHAKE_ERROR, e.getMessage());
-      return resp;
     }
 
     return resp;
