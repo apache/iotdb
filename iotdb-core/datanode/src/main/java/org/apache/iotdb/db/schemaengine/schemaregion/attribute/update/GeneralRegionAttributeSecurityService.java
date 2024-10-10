@@ -145,6 +145,8 @@ public class GeneralRegionAttributeSecurityService implements IService {
                           pair.getRight(),
                           shrinkMap.getOrDefault(schemaRegionId, Collections.emptySet())))
                   .isAccepted()) {
+                // May fail due to region shutdown, migration or other reasons
+                // Just ignore
                 LOGGER.warn(
                     "Failed to write attribute commit message to region {}.", schemaRegionId);
               }
