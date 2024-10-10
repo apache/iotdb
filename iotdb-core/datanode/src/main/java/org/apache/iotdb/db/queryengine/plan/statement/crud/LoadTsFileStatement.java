@@ -47,7 +47,7 @@ public class LoadTsFileStatement extends Statement {
   private boolean verifySchema;
   private boolean deleteAfterLoad;
   private boolean autoCreateDatabase;
-  private String model;
+  private String model = LoadTsFileConfigurator.MODEL_TREE_VALUE;
 
   private Map<String, String> loadAttributes;
 
@@ -133,6 +133,10 @@ public class LoadTsFileStatement extends Statement {
 
   public void setDatabaseLevel(int databaseLevel) {
     this.databaseLevel = databaseLevel;
+  }
+
+  public void setDatabase(String database) {
+    this.database = database;
   }
 
   public void setVerifySchema(boolean verifySchema) {

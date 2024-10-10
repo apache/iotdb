@@ -43,7 +43,7 @@ public class LoadTsFile extends Statement {
   private String database; // For loading to table-model only
   private boolean deleteAfterLoad;
   private boolean autoCreateDatabase;
-  private String model;
+  private String model = LoadTsFileConfigurator.MODEL_TABLE_VALUE;
 
   private final Map<String, String> loadAttributes;
 
