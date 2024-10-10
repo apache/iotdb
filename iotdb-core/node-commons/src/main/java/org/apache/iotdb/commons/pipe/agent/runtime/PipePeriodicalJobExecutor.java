@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.agent.runtime;
+package org.apache.iotdb.commons.pipe.agent.runtime;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.concurrent.WrappedRunnable;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.service.DataNode;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -38,8 +37,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Single thread to execute pipe periodical jobs on {@link DataNode}. This is for limiting the
- * thread num on the {@link DataNode} instance.
+ * Single thread to execute pipe periodical jobs on DataNode or ConfigNode. This is for limiting the
+ * thread num on the DataNode or ConfigNode instance.
  */
 public class PipePeriodicalJobExecutor {
 
