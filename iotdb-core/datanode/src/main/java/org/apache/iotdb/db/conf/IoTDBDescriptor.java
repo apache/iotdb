@@ -102,6 +102,10 @@ public class IoTDBDescriptor {
 
   private static final double MIN_DIR_USE_PROPORTION = 0.5;
 
+  private static final String[] DEFAULT_WAL_THRESHOLD_NAME = {
+    "iot_consensus_throttle_threshold_in_byte", "wal_throttle_threshold_in_byte"
+  };
+
   static {
     URL systemConfigUrl = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
     URL configNodeUrl = getPropsUrl(CommonConfig.OLD_CONFIG_NODE_CONFIG_NAME);
@@ -287,19 +291,6 @@ public class IoTDBDescriptor {
                 .getProperty(IoTDBConstant.DN_RPC_PORT, Integer.toString(conf.getRpcPort()))
                 .trim()));
 
-    conf.setEnableAINodeService(
-        Boolean.parseBoolean(
-            properties
-                .getProperty(
-                    "enable_ainode_rpc_service", Boolean.toString(conf.isEnableAINodeService()))
-                .trim()));
-
-    conf.setAINodePort(
-        Integer.parseInt(
-            properties
-                .getProperty("ainode_rpc_port", Integer.toString(conf.getAINodePort()))
-                .trim()));
-
     conf.setBufferedArraysMemoryProportion(
         Double.parseDouble(
             properties
@@ -443,6 +434,12 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "compaction_schedule_interval_in_ms",
                 Long.toString(conf.getCompactionScheduleIntervalInMs()))));
+
+    conf.setEnableAutoRepairCompaction(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_auto_repair_compaction",
+                Boolean.toString(conf.isEnableAutoRepairCompaction()))));
 
     conf.setEnableCrossSpaceCompaction(
         Boolean.parseBoolean(
@@ -1232,6 +1229,12 @@ public class IoTDBDescriptor {
         .setCompactionReadThroughputRate(conf.getCompactionReadThroughputMbPerSec());
     CompactionTaskManager.getInstance()
         .setWriteMergeRate(conf.getCompactionWriteThroughputMbPerSec());
+
+    conf.setEnableAutoRepairCompaction(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_auto_repair_compaction",
+                Boolean.toString(conf.isEnableAutoRepairCompaction()))));
   }
 
   private boolean loadCompactionTaskHotModifiedProps(Properties properties) throws IOException {
@@ -1570,12 +1573,7 @@ public class IoTDBDescriptor {
       conf.setDeleteWalFilesPeriodInMs(deleteWalFilesPeriod);
     }
 
-    long throttleDownThresholdInByte =
-        Long.parseLong(
-            properties.getProperty(
-                "iot_consensus_throttle_threshold_in_byte",
-                ConfigurationFileUtils.getConfigurationDefaultValue(
-                    "iot_consensus_throttle_threshold_in_byte")));
+    long throttleDownThresholdInByte = Long.parseLong(getWalThrottleThreshold(properties));
     if (throttleDownThresholdInByte > 0) {
       conf.setThrottleThreshold(throttleDownThresholdInByte);
     }
@@ -1589,6 +1587,20 @@ public class IoTDBDescriptor {
     if (cacheWindowInMs > 0) {
       conf.setCacheWindowTimeInMs(cacheWindowInMs);
     }
+  }
+
+  private String getWalThrottleThreshold(Properties prop) throws IOException {
+    String old_throttleThreshold = prop.getProperty(DEFAULT_WAL_THRESHOLD_NAME[0], null);
+    if (old_throttleThreshold != null) {
+      LOGGER.warn(
+          "The throttle threshold params: {} is deprecated, please use {}",
+          DEFAULT_WAL_THRESHOLD_NAME[0],
+          DEFAULT_WAL_THRESHOLD_NAME[1]);
+      return old_throttleThreshold;
+    }
+    return prop.getProperty(
+        DEFAULT_WAL_THRESHOLD_NAME[1],
+        ConfigurationFileUtils.getConfigurationDefaultValue(DEFAULT_WAL_THRESHOLD_NAME[1]));
   }
 
   public long getThrottleThresholdWithDirs() {

@@ -73,6 +73,7 @@ public class CompactionWithAllNullRowsTest extends AbstractCompactionTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setCompactionMaxAlignedSeriesNumInOneBatch(maxAlignedSeriesNumInOneBatch);
+    super.setUp();
   }
 
   @After
@@ -84,6 +85,7 @@ public class CompactionWithAllNullRowsTest extends AbstractCompactionTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setCompactionMaxAlignedSeriesNumInOneBatch(defaultMaxAlignedSeriesNumInOneBatch);
+    super.tearDown();
   }
 
   @Parameterized.Parameters(name = "type={0} batch_size={1}")
@@ -100,16 +102,13 @@ public class CompactionWithAllNullRowsTest extends AbstractCompactionTest {
   }
 
   public ICompactionPerformer getPerformer() {
-    ICompactionPerformer performer;
     if (performerType.equalsIgnoreCase(InnerSeqCompactionPerformer.READ_CHUNK.toString())) {
-      performer = new ReadChunkCompactionPerformer();
+      return new ReadChunkCompactionPerformer();
     } else if (performerType.equalsIgnoreCase(InnerUnseqCompactionPerformer.FAST.toString())) {
-      performer = new FastCompactionPerformer(false);
+      return new FastCompactionPerformer(false);
     } else {
-      performer = new ReadPointCompactionPerformer();
+      return new ReadPointCompactionPerformer();
     }
-    performer.setIgnoreAllNullRows(false);
-    return performer;
   }
 
   @Test

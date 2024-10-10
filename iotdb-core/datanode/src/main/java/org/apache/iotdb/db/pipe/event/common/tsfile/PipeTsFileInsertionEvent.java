@@ -22,7 +22,8 @@ package org.apache.iotdb.db.pipe.event.common.tsfile;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
@@ -94,6 +95,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
         0,
         null,
         null,
+        null,
         Long.MIN_VALUE,
         Long.MAX_VALUE);
   }
@@ -107,10 +109,11 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pattern,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
       final long startTime,
       final long endTime) {
-    super(pipeName, creationTime, pipeTaskMeta, pattern, startTime, endTime);
+    super(pipeName, creationTime, pipeTaskMeta, treePattern, tablePattern, startTime, endTime);
 
     this.resource = resource;
     tsFile = resource.getTsFile();
@@ -324,7 +327,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pattern,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
       final long startTime,
       final long endTime) {
     return new PipeTsFileInsertionEvent(
@@ -336,7 +340,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
         pipeName,
         creationTime,
         pipeTaskMeta,
-        pattern,
+        treePattern,
+        tablePattern,
         startTime,
         endTime);
   }
@@ -369,7 +374,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
                   false);
       final Set<IDeviceID> deviceSet =
           Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
-      return deviceSet.stream().anyMatch(pipePattern::mayOverlapWithDevice);
+      return deviceSet.stream().anyMatch(treePattern::mayOverlapWithDevice);
     } catch (final Exception e) {
       LOGGER.warn(
           "Pipe {}: failed to get devices from TsFile {}, extract it anyway",
@@ -417,7 +422,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
       if (dataContainer == null) {
         dataContainer =
             new TsFileInsertionDataContainerProvider(
-                    tsFile, pipePattern, startTime, endTime, pipeTaskMeta, this)
+                    tsFile, treePattern, startTime, endTime, pipeTaskMeta, this)
                 .provide();
       }
       return dataContainer;
@@ -449,7 +454,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     }
 
     try (final TsFileInsertionPointCounter counter =
-        new TsFileInsertionPointCounter(tsFile, pipePattern)) {
+        new TsFileInsertionPointCounter(tsFile, treePattern)) {
       return counter.count();
     }
   }

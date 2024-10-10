@@ -68,7 +68,7 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
   @After
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
-    DataNodeTTLCache.getInstance().clearAllTTL();
+    DataNodeTTLCache.getInstance().clearAllTTLForTree();
   }
 
   // region Handle exception

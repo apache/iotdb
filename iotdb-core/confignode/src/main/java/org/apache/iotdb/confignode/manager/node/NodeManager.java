@@ -62,7 +62,6 @@ import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeConfigura
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ClusterManager;
-import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.TTLManager;
 import org.apache.iotdb.confignode.manager.TriggerManager;
@@ -75,7 +74,7 @@ import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
-import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
+import org.apache.iotdb.confignode.procedure.env.RemoveDataNodeHandler;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartReq;
@@ -371,51 +370,59 @@ public class NodeManager {
   }
 
   /**
-   * Remove DataNodes.
+   * Removes the specified DataNodes.
    *
-   * @param removeDataNodePlan removeDataNodePlan
-   * @return DataNodeToStatusResp, The TSStatus will be SUCCEED_STATUS if the request is accepted,
-   *     DATANODE_NOT_EXIST when some datanode does not exist.
+   * @param removeDataNodePlan the plan detailing which DataNodes to remove
+   * @return DataNodeToStatusResp, where the TSStatus will be SUCCEED_STATUS if the request is
+   *     accepted, or DATANODE_NOT_EXIST if any DataNode does not exist.
    */
   public DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
+    configManager.getProcedureManager().getEnv().getSubmitRegionMigrateLock().lock();
     LOGGER.info("NodeManager start to remove DataNode {}", removeDataNodePlan);
+    try {
+      // Checks if the RemoveDataNode request is valid
+      RemoveDataNodeHandler removeDataNodeHandler =
+          configManager.getProcedureManager().getEnv().getRemoveDataNodeManager();
+      DataNodeToStatusResp preCheckStatus =
+          removeDataNodeHandler.checkRemoveDataNodeRequest(removeDataNodePlan);
+      if (preCheckStatus.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.error(
+            "The remove DataNode request check failed. req: {}, check result: {}",
+            removeDataNodePlan,
+            preCheckStatus.getStatus());
+        return preCheckStatus;
+      }
 
-    RegionMaintainHandler handler = new RegionMaintainHandler((ConfigManager) configManager);
-    DataNodeToStatusResp preCheckStatus = handler.checkRemoveDataNodeRequest(removeDataNodePlan);
-    if (preCheckStatus.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.error(
-          "The remove DataNode request check failed. req: {}, check result: {}",
-          removeDataNodePlan,
-          preCheckStatus.getStatus());
-      return preCheckStatus;
-    }
+      // Do transfer of the DataNodes before remove
+      DataNodeToStatusResp dataSet = new DataNodeToStatusResp();
+      if (configManager.transfer(removeDataNodePlan.getDataNodeLocations()).getCode()
+          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        dataSet.setStatus(
+            new TSStatus(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode())
+                .setMessage("Migrate the service on the removed DataNodes failed"));
+        return dataSet;
+      }
 
-    // Do transfer of the DataNodes before remove
-    DataNodeToStatusResp dataSet = new DataNodeToStatusResp();
-    if (configManager.transfer(removeDataNodePlan.getDataNodeLocations()).getCode()
-        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      dataSet.setStatus(
-          new TSStatus(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode())
-              .setMessage("Fail to do transfer of the DataNodes"));
+      // Add request to queue, then return to client
+      boolean removeSucceed =
+          configManager.getProcedureManager().removeDataNode(removeDataNodePlan);
+      TSStatus status;
+      if (removeSucceed) {
+        status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        status.setMessage("Server accepted the request");
+      } else {
+        status = new TSStatus(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode());
+        status.setMessage("Server rejected the request, maybe requests are too many");
+      }
+      dataSet.setStatus(status);
+
+      LOGGER.info(
+          "NodeManager submit RemoveDataNodePlan finished, removeDataNodePlan: {}",
+          removeDataNodePlan);
       return dataSet;
+    } finally {
+      configManager.getProcedureManager().getEnv().getSubmitRegionMigrateLock().unlock();
     }
-
-    // Add request to queue, then return to client
-    boolean removeSucceed = configManager.getProcedureManager().removeDataNode(removeDataNodePlan);
-    TSStatus status;
-    if (removeSucceed) {
-      status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      status.setMessage("Server accepted the request");
-    } else {
-      status = new TSStatus(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode());
-      status.setMessage("Server rejected the request, maybe requests are too many");
-    }
-    dataSet.setStatus(status);
-
-    LOGGER.info(
-        "NodeManager submit RemoveDataNodePlan finished, removeDataNodePlan: {}",
-        removeDataNodePlan);
-    return dataSet;
   }
 
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {

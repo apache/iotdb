@@ -25,18 +25,20 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyRegionGroupAllocator.DataNodeEntry;
+
+import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
-public class PartiteGraphReplicationRegionGroupAllocator implements IRegionGroupAllocator {
+public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAllocator {
 
-  private static final Random RANDOM = new Random();
   private static final GreedyRegionGroupAllocator GREEDY_ALLOCATOR =
       new GreedyRegionGroupAllocator();
 
@@ -52,12 +54,9 @@ public class PartiteGraphReplicationRegionGroupAllocator implements IRegionGroup
   private Map<Integer, Integer> fakeToRealIdMap;
 
   private int alphaDataNodeNum;
-  // First Key: the sum of overlapped 2-Region combination Regions with
-  // other allocated RegionGroups is minimal
-  private int optimalEdgeSum;
-  // Second Key: the sum of DataRegions in selected DataNodes is minimal
-  private int optimalRegionSum;
-  private int[] optimalAlphaNodes;
+  // Pair<combinationSum, RegionSum>
+  Pair<Integer, Integer> bestValue;
+  private int[] bestAlphaNodes;
 
   @Override
   public TRegionReplicaSet generateOptimalRegionReplicasDistribution(
@@ -67,7 +66,6 @@ public class PartiteGraphReplicationRegionGroupAllocator implements IRegionGroup
       List<TRegionReplicaSet> databaseAllocatedRegionGroups,
       int replicationFactor,
       TConsensusGroupId consensusGroupId) {
-
     this.regionPerDataNode =
         (int)
             (consensusGroupId.getType().equals(TConsensusGroupType.DataRegion)
@@ -75,11 +73,12 @@ public class PartiteGraphReplicationRegionGroupAllocator implements IRegionGroup
                 : ConfigNodeDescriptor.getInstance().getConf().getSchemaRegionPerDataNode());
     prepare(replicationFactor, availableDataNodeMap, allocatedRegionGroups);
 
-    // Select a set of optimal alpha nodes
+    // Select alpha nodes set
     for (int i = 0; i < subGraphCount; i++) {
-      subGraphSearch(i, 0, alphaDataNodeNum, 0, 0, new int[alphaDataNodeNum]);
+      subGraphSearch(i, freeDiskSpaceMap);
     }
-    if (optimalEdgeSum == Integer.MAX_VALUE) {
+    if (bestValue.left == Integer.MAX_VALUE) {
+      // Use greedy allocator as alternative if no alpha nodes set is found
       return GREEDY_ALLOCATOR.generateOptimalRegionReplicasDistribution(
           availableDataNodeMap,
           freeDiskSpaceMap,
@@ -89,9 +88,10 @@ public class PartiteGraphReplicationRegionGroupAllocator implements IRegionGroup
           consensusGroupId);
     }
 
-    // Select the set of optimal beta nodes
-    List<Integer> partiteNodes = partiteGraphSearch(optimalAlphaNodes[0] % subGraphCount);
-    if (partiteNodes.size() < replicationFactor - alphaDataNodeNum) {
+    // Select the beta nodes sets
+    List<Integer> betaDataNodes = partiteGraphSearch(bestAlphaNodes[0] % subGraphCount);
+    if (betaDataNodes.size() < replicationFactor - alphaDataNodeNum) {
+      // Use greedy allocator as alternative if no beta nodes set is found
       return GREEDY_ALLOCATOR.generateOptimalRegionReplicasDistribution(
           availableDataNodeMap,
           freeDiskSpaceMap,
@@ -101,15 +101,16 @@ public class PartiteGraphReplicationRegionGroupAllocator implements IRegionGroup
           consensusGroupId);
     }
 
+    // The next placement scheme is alpha \cup beta
     TRegionReplicaSet result = new TRegionReplicaSet();
     result.setRegionId(consensusGroupId);
     for (int i = 0; i < alphaDataNodeNum; i++) {
       result.addToDataNodeLocations(
-          availableDataNodeMap.get(fakeToRealIdMap.get(optimalAlphaNodes[i])).getLocation());
+          availableDataNodeMap.get(fakeToRealIdMap.get(bestAlphaNodes[i])).getLocation());
     }
     for (int i = 0; i < replicationFactor - alphaDataNodeNum; i++) {
       result.addToDataNodeLocations(
-          availableDataNodeMap.get(fakeToRealIdMap.get(partiteNodes.get(i))).getLocation());
+          availableDataNodeMap.get(fakeToRealIdMap.get(betaDataNodes.get(i))).getLocation());
     }
     return result;
   }
@@ -118,10 +119,11 @@ public class PartiteGraphReplicationRegionGroupAllocator implements IRegionGroup
       int replicationFactor,
       Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
       List<TRegionReplicaSet> allocatedRegionGroups) {
-
     this.subGraphCount = replicationFactor / 2 + (replicationFactor % 2 == 0 ? 0 : 1);
     this.replicationFactor = replicationFactor;
 
+    // Initialize the fake index for each DataNode,
+    // since the index of DataNode might not be continuous
     this.fakeToRealIdMap = new TreeMap<>();
     Map<Integer, Integer> realToFakeIdMap = new TreeMap<>();
     this.dataNodeNum = availableDataNodeMap.size();
@@ -156,101 +158,81 @@ public class PartiteGraphReplicationRegionGroupAllocator implements IRegionGroup
 
     // Reset the optimal result
     this.alphaDataNodeNum = replicationFactor / 2 + 1;
-    this.optimalEdgeSum = Integer.MAX_VALUE;
-    this.optimalRegionSum = Integer.MAX_VALUE;
-    this.optimalAlphaNodes = new int[alphaDataNodeNum];
+    this.bestValue = new Pair<>(Integer.MAX_VALUE, Integer.MAX_VALUE);
+    this.bestAlphaNodes = new int[alphaDataNodeNum];
   }
 
-  private void subGraphSearch(
-      int firstIndex,
-      int currentReplica,
-      int replicaNum,
-      int combinationSum,
-      int regionSum,
-      int[] currentReplicaSet) {
-
-    if (currentReplica == replicaNum) {
-      if (combinationSum < optimalEdgeSum
-          || (combinationSum == optimalEdgeSum && regionSum < optimalRegionSum)) {
-        // Reset the optimal result when a better one is found
-        optimalEdgeSum = combinationSum;
-        optimalRegionSum = regionSum;
-        optimalAlphaNodes = Arrays.copyOf(currentReplicaSet, replicationFactor);
-      } else if (combinationSum == optimalEdgeSum
-          && regionSum == optimalRegionSum
-          && RANDOM.nextBoolean()) {
-        optimalAlphaNodes = Arrays.copyOf(currentReplicaSet, replicationFactor);
+  private Pair<Integer, Integer> valuation(int[] nodes) {
+    int edgeSum = 0;
+    int regionSum = 0;
+    for (int iota : nodes) {
+      for (int kappa : nodes) {
+        edgeSum += combinationCounter[iota][kappa];
       }
+      regionSum += regionCounter[iota];
+    }
+    return new Pair<>(edgeSum, regionSum);
+  }
+
+  private void subGraphSearch(int firstIndex, Map<Integer, Double> freeDiskSpaceMap) {
+    List<DataNodeEntry> entryList = new ArrayList<>();
+    for (int index = firstIndex; index < dataNodeNum; index += subGraphCount) {
+      // Prune: skip filled DataNodes
+      if (regionCounter[index] < regionPerDataNode) {
+        entryList.add(
+            new DataNodeEntry(
+                index, regionCounter[index], freeDiskSpaceMap.get(fakeToRealIdMap.get(index))));
+      }
+    }
+    if (entryList.size() < alphaDataNodeNum) {
+      // Skip: not enough DataNodes
       return;
     }
-
-    for (int i = firstIndex; i < dataNodeNum; i += subGraphCount) {
-      if (regionCounter[i] >= regionPerDataNode) {
-        // Pruning: skip full DataNodes
-        continue;
+    Collections.sort(entryList);
+    int[] alphaNodes = new int[alphaDataNodeNum];
+    for (int i = 0; i < alphaDataNodeNum - 1; i++) {
+      alphaNodes[i] = entryList.get(i).dataNodeId;
+    }
+    for (int i = alphaDataNodeNum - 1; i < entryList.size(); i++) {
+      alphaNodes[alphaDataNodeNum - 1] = entryList.get(i).dataNodeId;
+      Pair<Integer, Integer> currentValue = valuation(alphaNodes);
+      if (currentValue.left < bestValue.left
+          || (currentValue.left.equals(bestValue.left) && currentValue.right < bestValue.right)) {
+        bestValue = currentValue;
+        System.arraycopy(alphaNodes, 0, bestAlphaNodes, 0, alphaDataNodeNum);
       }
-      int nxtCombinationSum = combinationSum;
-      for (int j = 0; j < currentReplica; j++) {
-        nxtCombinationSum += combinationCounter[i][currentReplicaSet[j]];
-      }
-      if (combinationSum > optimalEdgeSum) {
-        // Pruning: no needs for further searching when the first key
-        // is bigger than the historical optimal result
-        return;
-      }
-      int nxtRegionSum = regionSum + regionCounter[i];
-      if (combinationSum == optimalEdgeSum && regionSum > optimalRegionSum) {
-        // Pruning: no needs for further searching when the second key
-        // is bigger than the historical optimal result
-        return;
-      }
-      currentReplicaSet[currentReplica] = i;
-      subGraphSearch(
-          i + subGraphCount,
-          currentReplica + 1,
-          replicaNum,
-          nxtCombinationSum,
-          nxtRegionSum,
-          currentReplicaSet);
     }
   }
 
-  private List<Integer> partiteGraphSearch(int selected) {
-    List<Integer> partiteNodes = new ArrayList<>();
+  private List<Integer> partiteGraphSearch(int alphaIndex) {
+    List<Integer> betaNodes = new ArrayList<>();
+    int[] tmpNodes = new int[alphaDataNodeNum + 1];
+    System.arraycopy(bestAlphaNodes, 0, tmpNodes, 0, alphaDataNodeNum);
     for (int partiteIndex = 0; partiteIndex < subGraphCount; partiteIndex++) {
-      if (partiteIndex == selected) {
+      if (partiteIndex == alphaIndex) {
+        // Skip the alphaIndex subgraph
         continue;
       }
       int selectedDataNode = -1;
-      int bestScatterWidth = 0;
-      int bestRegionSum = Integer.MAX_VALUE;
+      Pair<Integer, Integer> tmpValue = new Pair<>(Integer.MAX_VALUE, Integer.MAX_VALUE);
       for (int i = partiteIndex; i < dataNodeNum; i += subGraphCount) {
         if (regionCounter[i] >= regionPerDataNode) {
+          // Pruning: skip filled DataNodes
           continue;
         }
-        int scatterWidth = alphaDataNodeNum;
-        for (int k = 0; k < alphaDataNodeNum; k++) {
-          scatterWidth -= combinationCounter[i][optimalAlphaNodes[k]];
-        }
-        if (scatterWidth < bestScatterWidth) {
-          continue;
-        }
-        if (scatterWidth > bestScatterWidth) {
-          bestScatterWidth = scatterWidth;
-          bestRegionSum = regionCounter[i];
-          selectedDataNode = i;
-        } else if (regionCounter[i] < bestRegionSum) {
-          bestRegionSum = regionCounter[i];
-          selectedDataNode = i;
-        } else if (regionCounter[i] == bestRegionSum && RANDOM.nextBoolean()) {
+        tmpNodes[alphaDataNodeNum] = i;
+        Pair<Integer, Integer> currentValue = valuation(tmpNodes);
+        if (currentValue.left < tmpValue.left
+            || (currentValue.left.equals(tmpValue.left) && currentValue.right < tmpValue.right)) {
+          tmpValue = currentValue;
           selectedDataNode = i;
         }
       }
       if (selectedDataNode == -1) {
         return new ArrayList<>();
       }
-      partiteNodes.add(selectedDataNode);
+      betaNodes.add(selectedDataNode);
     }
-    return partiteNodes;
+    return betaNodes;
   }
 }

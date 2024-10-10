@@ -37,9 +37,11 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * used for SessionPool.getSession need to do some other things like calling
+ * NOTICE: SessionWrapper is specific to the table model.
+ *
+ * <p>used for SessionPool.getSession need to do some other things like calling
  * cleanSessionAndMayThrowConnectionException in SessionPool while encountering connection exception
- * only need to putBack to SessionPool while closing
+ * only need to putBack to SessionPool while closing.
  */
 public class SessionWrapper implements IPooledSession {
 
@@ -144,7 +146,7 @@ public class SessionWrapper implements IPooledSession {
   public void insertTablet(Tablet tablet)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
-      session.insertTablet(tablet);
+      session.insertRelationalTablet(tablet);
     } catch (IoTDBConnectionException e) {
       sessionPool.cleanSessionAndMayThrowConnectionException(session);
       closed.set(true);

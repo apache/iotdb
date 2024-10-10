@@ -439,8 +439,8 @@ public class IoTDBConfig {
   /** Compact the unsequence files into the overlapped sequence files */
   private volatile boolean enableCrossSpaceCompaction = true;
 
-  /** Enable the service for AINode */
-  private boolean enableAINodeService = false;
+  /** Enable auto repair compaction */
+  private volatile boolean enableAutoRepairCompaction = true;
 
   /** The buffer for sort operation */
   private long sortBufferSize = 1024 * 1024L;
@@ -919,9 +919,6 @@ public class IoTDBConfig {
 
   /** Internal port for coordinator */
   private int internalPort = 10730;
-
-  /** Port for AINode */
-  private int aiNodePort = 10780;
 
   /** Internal port for dataRegion consensus protocol */
   private int dataRegionConsensusPort = 10760;
@@ -2873,12 +2870,12 @@ public class IoTDBConfig {
     this.enableCrossSpaceCompaction = enableCrossSpaceCompaction;
   }
 
-  public boolean isEnableAINodeService() {
-    return enableAINodeService;
+  public boolean isEnableAutoRepairCompaction() {
+    return enableAutoRepairCompaction;
   }
 
-  public void setEnableAINodeService(boolean enableAINodeService) {
-    this.enableAINodeService = enableAINodeService;
+  public void setEnableAutoRepairCompaction(boolean enableAutoRepairCompaction) {
+    this.enableAutoRepairCompaction = enableAutoRepairCompaction;
   }
 
   public InnerSequenceCompactionSelector getInnerSequenceCompactionSelector() {
@@ -3157,14 +3154,6 @@ public class IoTDBConfig {
 
   public void setInternalPort(int internalPort) {
     this.internalPort = internalPort;
-  }
-
-  public int getAINodePort() {
-    return aiNodePort;
-  }
-
-  public void setAINodePort(int aiNodePort) {
-    this.aiNodePort = aiNodePort;
   }
 
   public int getDataRegionConsensusPort() {
@@ -4069,6 +4058,10 @@ public class IoTDBConfig {
 
   public String getLoadActiveListeningPipeDir() {
     return loadActiveListeningPipeDir;
+  }
+
+  public void setLoadActiveListeningPipeDir(String loadActiveListeningPipeDir) {
+    this.loadActiveListeningPipeDir = loadActiveListeningPipeDir;
   }
 
   public String[] getLoadActiveListeningDirs() {
