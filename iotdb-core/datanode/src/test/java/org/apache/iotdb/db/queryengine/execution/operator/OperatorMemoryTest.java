@@ -37,14 +37,14 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContex
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.operator.process.AggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.DeviceViewOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.FillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.IntoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.LimitOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.LinearFillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.RawDataAggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.SlidingWindowAggregationOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TreeFillOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TreeLinearFillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.LinearFill;
@@ -266,8 +266,8 @@ public class OperatorMemoryTest {
     Mockito.when(child.calculateMaxReturnSize()).thenReturn(1024L);
     Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(512L);
 
-    FillOperator fillOperator =
-        new FillOperator(Mockito.mock(OperatorContext.class), new IFill[] {null, null}, child);
+    TreeFillOperator fillOperator =
+        new TreeFillOperator(Mockito.mock(OperatorContext.class), new IFill[] {null, null}, child);
 
     assertEquals(2048 * 2 + 512, fillOperator.calculateMaxPeekMemory());
     assertEquals(1024, fillOperator.calculateMaxReturnSize());
@@ -562,8 +562,8 @@ public class OperatorMemoryTest {
     Mockito.when(child.calculateMaxReturnSize()).thenReturn(1024L);
     Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(512L);
 
-    LinearFillOperator linearFillOperator =
-        new LinearFillOperator(
+    TreeLinearFillOperator linearFillOperator =
+        new TreeLinearFillOperator(
             Mockito.mock(OperatorContext.class), new LinearFill[] {null, null}, child);
 
     assertEquals(2048 * 3 + 512L, linearFillOperator.calculateMaxPeekMemory());

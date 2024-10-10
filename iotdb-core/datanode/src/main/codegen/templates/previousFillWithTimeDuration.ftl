@@ -20,17 +20,18 @@
 
 <#list allDataTypes.types as type>
 
-  <#assign className = "${type.dataType?cap_first}PreviousFill">
-  <@pp.changeOutputFile name="/org/apache/iotdb/db/queryengine/execution/operator/process/fill/previous/${className}.java" />
+    <#assign className = "${type.dataType?cap_first}PreviousFillWithTimeDuration">
+    <@pp.changeOutputFile name="/org/apache/iotdb/db/queryengine/execution/operator/process/fill/previous/${className}.java" />
 package org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous;
 
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFillFilter;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.column.${type.column};
 import org.apache.tsfile.read.common.block.column.${type.column}Builder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 <#if type.dataType == "Binary">
-  import org.apache.tsfile.utils.Binary;
+    import org.apache.tsfile.utils.Binary;
 </#if>
 
 import java.util.Optional;
@@ -49,6 +50,12 @@ public class ${className} implements IFill {
   // whether previous value is null
   private boolean previousIsNull = true;
 
+  private final IFillFilter filter;
+
+  public ${className}(IFillFilter filter) {
+    this.filter = filter;
+  }
+
   @Override
   public Column fill(Column timeColumn, Column valueColumn) {
     int size = valueColumn.getPositionCount();
@@ -56,22 +63,33 @@ public class ${className} implements IFill {
     if (size == 0) {
       return valueColumn;
     }
-    // if this valueColumn doesn't have any null value, record the last value, and then return
-    // itself.
+    // if this valueColumn doesn't have any null value, record the last value, and then return itself.
     if (!valueColumn.mayHaveNull()) {
-      previousIsNull = false;
-      // update the value using last non-null value
-      previousTime = timeColumn.getLong(size - 1);
-      value = valueColumn.get${type.dataType?cap_first}(size - 1);
+      if (!timeColumn.mayHaveNull()) {
+        previousIsNull = false;
+        // update the value using last non-null value
+        previousTime = timeColumn.getLong(size - 1);
+        value = valueColumn.get${type.dataType?cap_first}(size - 1);
+      } else {
+        // find the row that last helper column is not null
+        for (int i = size - 1; i >= 0; i--) {
+          if (!timeColumn.isNull(i)) {
+            previousIsNull = false;
+            // update the value using last non-null value
+            previousTime = timeColumn.getLong(size - 1);
+            value = valueColumn.get${type.dataType?cap_first}(size - 1);
+            break;
+          }
+        }
+      }
       return valueColumn;
     }
     // if its values are all null
     if (valueColumn instanceof RunLengthEncodedColumn) {
       if (previousIsNull) {
         return new RunLengthEncodedColumn(${type.column}Builder.NULL_VALUE_BLOCK, size);
-      } else {
-        return new RunLengthEncodedColumn(
-            new ${type.column}(1, Optional.empty(), new ${type.dataType}[] {value}), size);
+      } else if (!timeColumn.mayHaveNull() && filter.needFill(timeColumn.getLong(size - 1), previousTime)) {
+        return new RunLengthEncodedColumn(new ${type.column}(1, Optional.empty(), new ${type.dataType}[] {value}), size);
       }
     }
 
@@ -80,8 +98,9 @@ public class ${className} implements IFill {
     // have null value
     boolean hasNullValue = false;
     for (int i = 0; i < size; i++) {
+      boolean helperColumnIsNull = timeColumn.isNull(i);
       if (valueColumn.isNull(i)) {
-        if (previousIsNull) {
+        if (previousIsNull || helperColumnIsNull || !filter.needFill(timeColumn.getLong(i), previousTime)) {
           isNull[i] = true;
           hasNullValue = true;
         } else {
@@ -89,9 +108,11 @@ public class ${className} implements IFill {
         }
       } else {
         array[i] = valueColumn.get${type.dataType?cap_first}(i);
-        previousTime = timeColumn.getLong(i);
-        value = array[i];
-        previousIsNull = false;
+        if (!helperColumnIsNull) {
+          previousTime = timeColumn.getLong(i);
+          value = array[i];
+          previousIsNull = false;
+        }
       }
     }
     if (hasNullValue) {

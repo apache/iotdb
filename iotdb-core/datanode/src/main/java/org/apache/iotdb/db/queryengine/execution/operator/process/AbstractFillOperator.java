@@ -33,16 +33,16 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
 /** Used for previous and constant value fill. */
-public class FillOperator implements ProcessOperator {
+abstract class AbstractFillOperator implements ProcessOperator {
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(FillOperator.class);
+      RamUsageEstimator.shallowSizeOfInstance(AbstractFillOperator.class);
   private final OperatorContext operatorContext;
   private final IFill[] fillArray;
   private final Operator child;
   private final int outputColumnCount;
 
-  public FillOperator(OperatorContext operatorContext, IFill[] fillArray, Operator child) {
+  AbstractFillOperator(OperatorContext operatorContext, IFill[] fillArray, Operator child) {
     this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
     checkArgument(
         fillArray != null && fillArray.length > 0, "fillArray should not be null or empty");
@@ -75,12 +75,14 @@ public class FillOperator implements ProcessOperator {
     Column[] valueColumns = new Column[outputColumnCount];
 
     for (int i = 0; i < outputColumnCount; i++) {
-      valueColumns[i] = fillArray[i].fill(block.getTimeColumn(), block.getColumn(i));
+      valueColumns[i] = fillArray[i].fill(getHelperColumn(block), block.getColumn(i));
     }
 
     return TsBlock.wrapBlocksWithoutCopy(
         block.getPositionCount(), block.getTimeColumn(), valueColumns);
   }
+
+  abstract Column getHelperColumn(TsBlock tsBlock);
 
   @Override
   public boolean hasNext() throws Exception {

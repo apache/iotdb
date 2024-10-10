@@ -17,29 +17,29 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.operator.process.fill.identity;
+package org.apache.iotdb.db.queryengine.execution.operator.process;
 
+import org.apache.iotdb.db.queryengine.execution.operator.Operator;
+import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.ILinearFill;
 
 import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.read.common.block.TsBlock;
 
-public class IdentityLinearFill implements ILinearFill {
-
-  @Override
-  public Column fill(Column timeColumn, Column valueColumn, long currentRowIndex) {
-    return valueColumn;
+/** Used for linear fill. */
+public class TreeLinearFillOperator extends AbstractLinearFillOperator {
+  public TreeLinearFillOperator(
+      OperatorContext operatorContext, ILinearFill[] fillArray, Operator child) {
+    super(operatorContext, fillArray, child);
   }
 
   @Override
-  public boolean needPrepareForNext(
-      long rowIndex, Column valueColumn, int lastRowIndexForNonNullHelperColumn) {
-    return false;
+  Column getHelperColumn(TsBlock tsBlock) {
+    return tsBlock.getTimeColumn();
   }
 
   @Override
-  public boolean prepareForNext(
-      long startRowIndex, long endRowIndex, Column nextTimeColumn, Column nextValueColumn) {
-    throw new UnsupportedOperationException(
-        "IdentityLinearFill's needPrepareForNext() method should always return false.");
+  Integer getLastRowIndexForNonNullHelperColumn(TsBlock tsBlock) {
+    return tsBlock.getPositionCount() - 1;
   }
 }

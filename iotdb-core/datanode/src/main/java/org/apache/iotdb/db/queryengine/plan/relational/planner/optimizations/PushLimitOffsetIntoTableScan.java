@@ -25,6 +25,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationN
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
@@ -115,6 +117,26 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
       }
       node.setChild(node.getChild().accept(this, context));
       return node;
+    }
+
+    @Override
+    public PlanNode visitLinearFill(LinearFillNode node, Context context) {
+      context.enablePushDown = false;
+      return node;
+    }
+
+    @Override
+    public PlanNode visitPreviousFill(PreviousFillNode node, Context context) {
+      if (node.getGroupingKeys().isPresent()) {
+        context.enablePushDown = false;
+        return node;
+      } else {
+        PlanNode newNode = node.clone();
+        for (PlanNode child : node.getChildren()) {
+          newNode.addChild(child.accept(this, context));
+        }
+        return newNode;
+      }
     }
 
     @Override

@@ -21,9 +21,6 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.fill;
 
 public interface IFillFilter {
 
-  // always fill
-  IFillFilter TRUE = (time, previousTime) -> true;
-
   /**
    * @param time current timestamp
    * @param previousTime previous timestamp

@@ -60,11 +60,9 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.AggregationOpe
 import org.apache.iotdb.db.queryengine.execution.operator.process.ColumnInjectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.DeviceViewIntoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.DeviceViewOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.FillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.IntoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.LimitOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.LinearFillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProjectOperator;
@@ -73,6 +71,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.SingleDeviceVi
 import org.apache.iotdb.db.queryengine.execution.operator.process.SlidingWindowAggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TagAggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TransformOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TreeFillOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TreeLinearFillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeMergeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeTopKOperator;
@@ -96,11 +96,17 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.Fl
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.IntLinearFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.LongLinearFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.BinaryPreviousFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.BinaryPreviousFillWithTimeDuration;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.BooleanPreviousFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.BooleanPreviousFillWithTimeDuration;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.DoublePreviousFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.DoublePreviousFillWithTimeDuration;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.FloatPreviousFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.FloatPreviousFillWithTimeDuration;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.IntPreviousFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.IntPreviousFillWithTimeDuration;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.LongPreviousFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.LongPreviousFillWithTimeDuration;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.FullOuterTimeJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.HorizontallyConcatOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.InnerTimeJoinOperator;
@@ -331,7 +337,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   private static final TimeComparator DESC_TIME_COMPARATOR = new DescTimeComparator();
 
-  private static final IdentityFill IDENTITY_FILL = new IdentityFill();
+  public static final IdentityFill IDENTITY_FILL = new IdentityFill();
 
   private static final IdentityLinearFill IDENTITY_LINEAR_FILL = new IdentityLinearFill();
 
@@ -339,7 +345,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   private static final Comparator<Binary> DESC_BINARY_COMPARATOR = Comparator.reverseOrder();
 
-  private static final String UNKNOWN_DATATYPE = "Unknown data type: ";
+  public static final String UNKNOWN_DATATYPE = "Unknown data type: ";
 
   @Override
   public Operator visitPlan(PlanNode node, LocalExecutionPlanContext context) {
@@ -1317,14 +1323,14 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                FillOperator.class.getSimpleName());
+                TreeFillOperator.class.getSimpleName());
     switch (fillPolicy) {
-      case VALUE:
+      case CONSTANT:
         Literal literal = descriptor.getFillValue();
-        return new FillOperator(
+        return new TreeFillOperator(
             operatorContext, getConstantFill(inputColumns, inputDataTypes, literal), child);
       case PREVIOUS:
-        return new FillOperator(
+        return new TreeFillOperator(
             operatorContext,
             getPreviousFill(
                 inputColumns,
@@ -1333,7 +1339,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 context.getZoneId()),
             child);
       case LINEAR:
-        return new LinearFillOperator(
+        return new TreeLinearFillOperator(
             operatorContext, getLinearFill(inputColumns, inputDataTypes), child);
       default:
         throw new IllegalArgumentException("Unknown fill policy: " + fillPolicy);
@@ -1380,14 +1386,14 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     return constantFill;
   }
 
-  private IFill[] getPreviousFill(
+  public static IFill[] getPreviousFill(
       int inputColumns,
       List<TSDataType> inputDataTypes,
       TimeDuration timeDurationThreshold,
       ZoneId zoneId) {
     IFillFilter filter;
     if (timeDurationThreshold == null) {
-      filter = IFillFilter.TRUE;
+      filter = null;
     } else if (!timeDurationThreshold.containsMonth()) {
       filter = new FixedIntervalFillFilter(timeDurationThreshold.nonMonthDuration);
     } else {
@@ -1424,26 +1430,42 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     for (int i = 0; i < inputColumns; i++) {
       switch (inputDataTypes.get(i)) {
         case BOOLEAN:
-          previousFill[i] = new BooleanPreviousFill(filter);
+          previousFill[i] =
+              filter == null
+                  ? new BooleanPreviousFill()
+                  : new BooleanPreviousFillWithTimeDuration(filter);
           break;
         case TEXT:
         case STRING:
         case BLOB:
-          previousFill[i] = new BinaryPreviousFill(filter);
+          previousFill[i] =
+              filter == null
+                  ? new BinaryPreviousFill()
+                  : new BinaryPreviousFillWithTimeDuration(filter);
           break;
         case INT32:
         case DATE:
-          previousFill[i] = new IntPreviousFill(filter);
+          previousFill[i] =
+              filter == null ? new IntPreviousFill() : new IntPreviousFillWithTimeDuration(filter);
           break;
         case INT64:
         case TIMESTAMP:
-          previousFill[i] = new LongPreviousFill(filter);
+          previousFill[i] =
+              filter == null
+                  ? new LongPreviousFill()
+                  : new LongPreviousFillWithTimeDuration(filter);
           break;
         case FLOAT:
-          previousFill[i] = new FloatPreviousFill(filter);
+          previousFill[i] =
+              filter == null
+                  ? new FloatPreviousFill()
+                  : new FloatPreviousFillWithTimeDuration(filter);
           break;
         case DOUBLE:
-          previousFill[i] = new DoublePreviousFill(filter);
+          previousFill[i] =
+              filter == null
+                  ? new DoublePreviousFill()
+                  : new DoublePreviousFillWithTimeDuration(filter);
           break;
         default:
           throw new IllegalArgumentException(UNKNOWN_DATATYPE + inputDataTypes.get(i));
@@ -1452,7 +1474,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     return previousFill;
   }
 
-  private ILinearFill[] getLinearFill(int inputColumns, List<TSDataType> inputDataTypes) {
+  public static ILinearFill[] getLinearFill(int inputColumns, List<TSDataType> inputDataTypes) {
     ILinearFill[] linearFill = new ILinearFill[inputColumns];
     for (int i = 0; i < inputColumns; i++) {
       switch (inputDataTypes.get(i)) {

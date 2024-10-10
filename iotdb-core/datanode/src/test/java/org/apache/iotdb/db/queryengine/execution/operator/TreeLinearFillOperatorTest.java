@@ -25,7 +25,7 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
-import org.apache.iotdb.db.queryengine.execution.operator.process.LinearFillOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TreeLinearFillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.ILinearFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.identity.IdentityLinearFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.FloatLinearFill;
@@ -45,7 +45,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-public class LinearFillOperatorTest {
+public class TreeLinearFillOperatorTest {
 
   @Test
   public void batchLinearFillTest1() throws Exception {
@@ -61,7 +61,8 @@ public class LinearFillOperatorTest {
           createFragmentInstanceContext(instanceId, stateMachine);
       DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      driverContext.addOperatorContext(1, planNodeId1, LinearFillOperator.class.getSimpleName());
+      driverContext.addOperatorContext(
+          1, planNodeId1, TreeLinearFillOperator.class.getSimpleName());
 
       LinearFill[] fillArray =
           new LinearFill[] {
@@ -70,8 +71,8 @@ public class LinearFillOperatorTest {
             new FloatLinearFill(),
             new FloatLinearFill()
           };
-      LinearFillOperator fillOperator =
-          new LinearFillOperator(
+      TreeLinearFillOperator fillOperator =
+          new TreeLinearFillOperator(
               driverContext.getOperatorContexts().get(0),
               fillArray,
               new Operator() {
@@ -284,7 +285,8 @@ public class LinearFillOperatorTest {
           createFragmentInstanceContext(instanceId, stateMachine);
       DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      driverContext.addOperatorContext(1, planNodeId1, LinearFillOperator.class.getSimpleName());
+      driverContext.addOperatorContext(
+          1, planNodeId1, TreeLinearFillOperator.class.getSimpleName());
 
       LinearFill[] fillArray =
           new LinearFill[] {
@@ -293,8 +295,8 @@ public class LinearFillOperatorTest {
             new FloatLinearFill(),
             new FloatLinearFill()
           };
-      LinearFillOperator fillOperator =
-          new LinearFillOperator(
+      TreeLinearFillOperator fillOperator =
+          new TreeLinearFillOperator(
               driverContext.getOperatorContexts().get(0),
               fillArray,
               new Operator() {
@@ -507,7 +509,8 @@ public class LinearFillOperatorTest {
           createFragmentInstanceContext(instanceId, stateMachine);
       DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      driverContext.addOperatorContext(1, planNodeId1, LinearFillOperator.class.getSimpleName());
+      driverContext.addOperatorContext(
+          1, planNodeId1, TreeLinearFillOperator.class.getSimpleName());
 
       LinearFill[] fillArray =
           new LinearFill[] {
@@ -516,8 +519,8 @@ public class LinearFillOperatorTest {
             new FloatLinearFill(),
             new FloatLinearFill()
           };
-      LinearFillOperator fillOperator =
-          new LinearFillOperator(
+      TreeLinearFillOperator fillOperator =
+          new TreeLinearFillOperator(
               driverContext.getOperatorContexts().get(0),
               fillArray,
               new Operator() {
@@ -730,7 +733,8 @@ public class LinearFillOperatorTest {
           createFragmentInstanceContext(instanceId, stateMachine);
       DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      driverContext.addOperatorContext(1, planNodeId1, LinearFillOperator.class.getSimpleName());
+      driverContext.addOperatorContext(
+          1, planNodeId1, TreeLinearFillOperator.class.getSimpleName());
 
       LinearFill[] fillArray =
           new LinearFill[] {
@@ -739,8 +743,8 @@ public class LinearFillOperatorTest {
             new FloatLinearFill(),
             new FloatLinearFill()
           };
-      LinearFillOperator fillOperator =
-          new LinearFillOperator(
+      TreeLinearFillOperator fillOperator =
+          new TreeLinearFillOperator(
               driverContext.getOperatorContexts().get(0),
               fillArray,
               new Operator() {
@@ -953,11 +957,12 @@ public class LinearFillOperatorTest {
           createFragmentInstanceContext(instanceId, stateMachine);
       DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      driverContext.addOperatorContext(1, planNodeId1, LinearFillOperator.class.getSimpleName());
+      driverContext.addOperatorContext(
+          1, planNodeId1, TreeLinearFillOperator.class.getSimpleName());
 
       LinearFill[] fillArray = new LinearFill[] {new FloatLinearFill()};
-      LinearFillOperator fillOperator =
-          new LinearFillOperator(
+      TreeLinearFillOperator fillOperator =
+          new TreeLinearFillOperator(
               driverContext.getOperatorContexts().get(0),
               fillArray,
               new Operator() {
@@ -1083,11 +1088,12 @@ public class LinearFillOperatorTest {
           createFragmentInstanceContext(instanceId, stateMachine);
       DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      driverContext.addOperatorContext(1, planNodeId1, LinearFillOperator.class.getSimpleName());
+      driverContext.addOperatorContext(
+          1, planNodeId1, TreeLinearFillOperator.class.getSimpleName());
 
       LinearFill[] fillArray = new LinearFill[] {new FloatLinearFill()};
-      LinearFillOperator fillOperator =
-          new LinearFillOperator(
+      TreeLinearFillOperator fillOperator =
+          new TreeLinearFillOperator(
               driverContext.getOperatorContexts().get(0),
               fillArray,
               new Operator() {
@@ -1213,11 +1219,12 @@ public class LinearFillOperatorTest {
           createFragmentInstanceContext(instanceId, stateMachine);
       DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      driverContext.addOperatorContext(1, planNodeId1, LinearFillOperator.class.getSimpleName());
+      driverContext.addOperatorContext(
+          1, planNodeId1, TreeLinearFillOperator.class.getSimpleName());
 
       ILinearFill[] fillArray = new ILinearFill[] {new IdentityLinearFill()};
-      LinearFillOperator fillOperator =
-          new LinearFillOperator(
+      TreeLinearFillOperator fillOperator =
+          new TreeLinearFillOperator(
               driverContext.getOperatorContexts().get(0),
               fillArray,
               new Operator() {

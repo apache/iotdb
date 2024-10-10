@@ -337,7 +337,7 @@ public class TestPlanBuilder {
         new FillNode(
             new PlanNodeId(id),
             getRoot(),
-            new FillDescriptor(FillPolicy.VALUE, new LongLiteral(intValue), null),
+            new FillDescriptor(FillPolicy.CONSTANT, new LongLiteral(intValue), null),
             Ordering.ASC);
     return this;
   }
