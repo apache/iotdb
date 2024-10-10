@@ -67,14 +67,13 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
       TsFileManager tsFileManager,
       TsFileResource sourceFile,
       boolean sequence,
-      long serialId,
-      boolean ignoreAllNullRows) {
+      long serialId) {
     super(
         timePartition,
         tsFileManager,
         Collections.singletonList(sourceFile),
         sequence,
-        new RepairUnsortedFileCompactionPerformer(ignoreAllNullRows),
+        new RepairUnsortedFileCompactionPerformer(),
         serialId);
     this.sourceFile = sourceFile;
     if (this.sourceFile.getTsFileRepairStatus() != TsFileRepairStatus.NEED_TO_REPAIR_BY_MOVE) {
@@ -89,14 +88,13 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
       TsFileResource sourceFile,
       CountDownLatch latch,
       boolean sequence,
-      long serialId,
-      boolean ignoreAllNullRows) {
+      long serialId) {
     super(
         timePartition,
         tsFileManager,
         Collections.singletonList(sourceFile),
         sequence,
-        new RepairUnsortedFileCompactionPerformer(ignoreAllNullRows),
+        new RepairUnsortedFileCompactionPerformer(),
         serialId);
     this.sourceFile = sourceFile;
     if (this.sourceFile.getTsFileRepairStatus() != TsFileRepairStatus.NEED_TO_REPAIR_BY_MOVE) {

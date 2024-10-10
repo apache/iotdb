@@ -61,14 +61,13 @@
         <commons-cli.version>1.5.0</commons-cli.version>
         <commons-codec.version>1.16.1</commons-codec.version>
         <commons-csv.version>1.10.0</commons-csv.version>
-        <commons-io.version>2.13.0</commons-io.version>
+        <commons-io.version>2.14.0</commons-io.version>
         <commons-jexl3.version>3.3</commons-jexl3.version>
         <commons-lang3.version>3.13.0</commons-lang3.version>
         <commons-math3.version>3.6.1</commons-math3.version>
         <commons-pool2.version>2.11.1</commons-pool2.version>
         <commons.collections4.version>4.4</commons.collections4.version>
         <ctest.skip.tests>false</ctest.skip.tests>
-        <dependencyCheck.skip>true</dependencyCheck.skip>
         <disruptor.version>3.4.4</disruptor.version>
         <drill.freemarker.maven.plugin.version>1.21.1</drill.freemarker.maven.plugin.version>
         <dropwizard.metrics.version>4.2.19</dropwizard.metrics.version>
@@ -1361,90 +1360,6 @@
                     </execution>
                 </executions>
             </plugin>
-            <!-- Check if we've changed any dependencies being included -->
-            <plugin>
-                <groupId>org.cyclonedx</groupId>
-                <artifactId>cyclonedx-maven-plugin</artifactId>
-                <!-- Only run this in the root module of the project -->
-                <inherited>false</inherited>
-                <configuration>
-                    <outputName>apache-${project.artifactId}-${project.version}-sbom</outputName>
-                </configuration>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>makeAggregateBom</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>xml-maven-plugin</artifactId>
-                <version>1.1.0</version>
-                <!-- Only run this in the root module of the project -->
-                <inherited>false</inherited>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>transform</goal>
-                        </goals>
-                        <configuration>
-                            <transformationSets>
-                                <transformationSet>
-                                    <dir>${project.basedir}/target/</dir>
-                                    <includes>apache-${project.artifactId}-${project.version}-sbom.xml</includes>
-                                    <stylesheet>src/main/xslt/sbom-filter.xsl</stylesheet>
-                                    <outputDir>${project.basedir}/target/</outputDir>
-                                    <fileMappers>
-                                        <fileMapper implementation="org.codehaus.plexus.components.io.filemappers.FileExtensionMapper">
-                                            <targetExtension>transformed.json</targetExtension>
-                                        </fileMapper>
-                                    </fileMappers>
-                                </transformationSet>
-                            </transformationSets>
-                        </configuration>
-                    </execution>
-                </executions>
-                <dependencies>
-                    <dependency>
-                        <groupId>net.sf.saxon</groupId>
-                        <artifactId>Saxon-HE</artifactId>
-                        <version>12.5</version>
-                    </dependency>
-                </dependencies>
-            </plugin>
-            <plugin>
-                <groupId>org.codehaus.gmaven</groupId>
-                <artifactId>groovy-maven-plugin</artifactId>
-                <version>2.1.1</version>
-                <!-- Only run this in the root module of the project -->
-                <inherited>false</inherited>
-                <executions>
-                    <execution>
-                        <id>compare-with-reference-list</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>execute</goal>
-                        </goals>
-                        <configuration>
-                            <properties>
-                                <skipDependencyCheck>${dependencyCheck.skip}</skipDependencyCheck>
-                            </properties>
-                            <source>src/main/groovy/checkDependencies.groovy</source>
-                        </configuration>
-                    </execution>
-                </executions>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.apache.groovy</groupId>
-                        <artifactId>groovy</artifactId>
-                        <version>4.0.22</version>
-                    </dependency>
-                </dependencies>
-            </plugin>
         </plugins>
     </build>
     <licenses>
@@ -1753,6 +1668,100 @@
             <modules>
                 <module>integration-test</module>
             </modules>
+        </profile>
+        <!--
+            This profile enables a check, that uses information from the SBOM generated by the cyclonedx plugin
+            and compares this with the "known dependencies" in the "dependencies.json" file in the root of the project.
+
+            This makes it more obvious, if a PR adds or removes any dependencies.
+        -->
+        <profile>
+            <id>enable-sbom-check</id>
+            <build>
+                <plugins>
+                    <!-- Check if we've changed any dependencies being included -->
+                    <plugin>
+                        <groupId>org.cyclonedx</groupId>
+                        <artifactId>cyclonedx-maven-plugin</artifactId>
+                        <!-- Only run this in the root module of the project -->
+                        <inherited>false</inherited>
+                        <configuration>
+                            <outputName>apache-${project.artifactId}-${project.version}-sbom</outputName>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>makeAggregateBom</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>xml-maven-plugin</artifactId>
+                        <version>1.1.0</version>
+                        <!-- Only run this in the root module of the project -->
+                        <inherited>false</inherited>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>transform</goal>
+                                </goals>
+                                <configuration>
+                                    <transformationSets>
+                                        <transformationSet>
+                                            <dir>${project.basedir}/target/</dir>
+                                            <includes>apache-${project.artifactId}-${project.version}-sbom.xml</includes>
+                                            <stylesheet>src/main/xslt/sbom-filter.xsl</stylesheet>
+                                            <outputDir>${project.basedir}/target/</outputDir>
+                                            <fileMappers>
+                                                <fileMapper implementation="org.codehaus.plexus.components.io.filemappers.FileExtensionMapper">
+                                                    <targetExtension>transformed.json</targetExtension>
+                                                </fileMapper>
+                                            </fileMappers>
+                                        </transformationSet>
+                                    </transformationSets>
+                                </configuration>
+                            </execution>
+                        </executions>
+                        <dependencies>
+                            <dependency>
+                                <groupId>net.sf.saxon</groupId>
+                                <artifactId>Saxon-HE</artifactId>
+                                <version>12.5</version>
+                            </dependency>
+                        </dependencies>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.codehaus.gmaven</groupId>
+                        <artifactId>groovy-maven-plugin</artifactId>
+                        <version>2.1.1</version>
+                        <!-- Only run this in the root module of the project -->
+                        <inherited>false</inherited>
+                        <executions>
+                            <execution>
+                                <id>compare-with-reference-list</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>execute</goal>
+                                </goals>
+                                <configuration>
+                                    <source>src/main/groovy/checkDependencies.groovy</source>
+                                </configuration>
+                            </execution>
+                        </executions>
+                        <dependencies>
+                            <dependency>
+                                <groupId>org.apache.groovy</groupId>
+                                <artifactId>groovy</artifactId>
+                                <version>4.0.22</version>
+                            </dependency>
+                        </dependencies>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
         <!-- Make sure the source assembly has the right name -->
         <profile>

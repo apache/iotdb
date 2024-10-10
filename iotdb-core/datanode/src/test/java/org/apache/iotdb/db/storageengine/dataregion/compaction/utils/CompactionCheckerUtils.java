@@ -526,8 +526,7 @@ public class CompactionCheckerUtils {
   public static List<IFullPath> getAllPathsOfResources(List<TsFileResource> resources)
       throws IOException, IllegalPathException {
     Set<IFullPath> paths = new HashSet<>();
-    try (MultiTsFileDeviceIterator deviceIterator =
-        new MultiTsFileDeviceIterator(resources, false)) {
+    try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(resources)) {
       while (deviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> iDeviceIDBooleanPair = deviceIterator.nextDevice();
         IDeviceID deviceID = iDeviceIDBooleanPair.getLeft();

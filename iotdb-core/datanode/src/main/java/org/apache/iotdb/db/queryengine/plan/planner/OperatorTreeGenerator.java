@@ -2812,7 +2812,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     } else if (!LastQueryUtil.satisfyFilter(
         updateFilterUsingTTL(
             context.getGlobalTimeFilter(),
-            DataNodeTTLCache.getInstance().getTTL(seriesPath.getDevicePath().getNodes())),
+            DataNodeTTLCache.getInstance().getTTLForTree(seriesPath.getDevicePath().getNodes())),
         timeValuePair)) { // cached last value is not satisfied
 
       if (!isFilterGtOrGe(context.getGlobalTimeFilter())) {
@@ -3027,7 +3027,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       } else if (!LastQueryUtil.satisfyFilter(
           updateFilterUsingTTL(
               context.getGlobalTimeFilter(),
-              DataNodeTTLCache.getInstance().getTTL(devicePath.getNodes())),
+              DataNodeTTLCache.getInstance().getTTLForTree(devicePath.getNodes())),
           timeValuePair)) { // cached last value is not satisfied
 
         if (!isFilterGtOrGe(context.getGlobalTimeFilter())) {
@@ -3723,7 +3723,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       PartialPath devicePath = entry.getKey();
       IDeviceID deviceID = devicePath.getIDeviceID();
       deviceIDToContext.put(deviceID, entry.getValue());
-      ttlCache.put(deviceID, DataNodeTTLCache.getInstance().getTTL(deviceID));
+      ttlCache.put(deviceID, DataNodeTTLCache.getInstance().getTTLForTree(deviceID));
     }
     ActiveDeviceRegionScanOperator regionScanOperator =
         new ActiveDeviceRegionScanOperator(
@@ -3764,7 +3764,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       Map<String, TimeseriesContext> timeseriesSchemaInfoMap =
           getTimeseriesSchemaInfoMap(entryMap, dataDriverContext);
       timeseriesToSchemaInfo.put(deviceID, timeseriesSchemaInfoMap);
-      ttlCache.put(deviceID, DataNodeTTLCache.getInstance().getTTL(deviceID));
+      ttlCache.put(deviceID, DataNodeTTLCache.getInstance().getTTLForTree(deviceID));
     }
     ActiveTimeSeriesRegionScanOperator regionScanOperator =
         new ActiveTimeSeriesRegionScanOperator(

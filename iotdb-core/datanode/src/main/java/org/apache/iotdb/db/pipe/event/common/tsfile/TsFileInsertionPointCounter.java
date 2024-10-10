@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile;
 
-import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
@@ -40,7 +40,7 @@ public class TsFileInsertionPointCounter implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileInsertionPointCounter.class);
 
-  private final PipePattern pattern;
+  private final TreePattern pattern;
 
   private final TsFileSequenceReader tsFileSequenceReader;
 
@@ -50,7 +50,7 @@ public class TsFileInsertionPointCounter implements AutoCloseable {
 
   private long count = 0;
 
-  public TsFileInsertionPointCounter(final File tsFile, final PipePattern pattern)
+  public TsFileInsertionPointCounter(final File tsFile, final TreePattern pattern)
       throws IOException {
     this.pattern = pattern;
 
