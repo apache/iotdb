@@ -73,6 +73,26 @@ public class ${className} extends BinaryColumnTransformer {
   }
 
   @Override
+  protected void doTransform(
+      Column leftColumn,
+      Column rightColumn,
+      ColumnBuilder builder,
+      int positionCount,
+      boolean[] selection){
+    for (int i = 0; i < positionCount; i++) {
+      if (!leftColumn.isNull(i) && !rightColumn.isNull(i) && selection[i]) {
+        returnType.write${first.dataType?cap_first}(
+            builder,
+            transform(
+                leftTransformer.getType().get${first.dataType?cap_first}(leftColumn, i),
+                rightTransformer.getType().get${second.dataType?cap_first}(rightColumn, i)));
+      } else {
+        builder.appendNull();
+      }
+    }
+  }
+
+  @Override
   protected void checkType() {
     // do nothing
   }
@@ -167,6 +187,26 @@ public class ${className} extends BinaryColumnTransformer {
   }
 
   @Override
+  protected void doTransform(
+      Column leftColumn,
+      Column rightColumn,
+      ColumnBuilder builder,
+      int positionCount,
+      boolean[] selection){
+    for (int i = 0; i < positionCount; i++) {
+      if (!leftColumn.isNull(i) && !rightColumn.isNull(i) && selection[i]) {
+        returnType.write${second.dataType?cap_first}(
+            builder,
+            transform(
+                leftTransformer.getType().get${first.dataType?cap_first}(leftColumn, i),
+                rightTransformer.getType().get${second.dataType?cap_first}(rightColumn, i)));
+      } else {
+        builder.appendNull();
+      }
+    }
+  }
+
+  @Override
   protected void checkType() {
     // do nothing
   }
@@ -231,6 +271,26 @@ public class ${className} extends BinaryColumnTransformer {
       Column leftColumn, Column rightColumn, ColumnBuilder builder, int positionCount) {
     for (int i = 0; i < positionCount; i++) {
       if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
+        returnType.write${resultType?cap_first}(
+            builder,
+            transform(
+                leftTransformer.getType().get${first.dataType?cap_first}(leftColumn, i),
+                rightTransformer.getType().get${second.dataType?cap_first}(rightColumn, i)));
+      } else {
+        builder.appendNull();
+      }
+    }
+  }
+
+  @Override
+  protected void doTransform(
+      Column leftColumn,
+      Column rightColumn,
+      ColumnBuilder builder,
+      int positionCount,
+      boolean[] selection){
+    for (int i = 0; i < positionCount; i++) {
+      if (!leftColumn.isNull(i) && !rightColumn.isNull(i) && selection[i]) {
         returnType.write${resultType?cap_first}(
             builder,
             transform(

@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.commons.pipe.datastructure.pattern;
 
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import java.util.Arrays;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_DATABASE_NAME_KEY;
@@ -34,14 +34,22 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 
 public class TablePattern {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TablePattern.class);
+  private final boolean isTableModelDataAllowedToBeCaptured;
 
   private final Pattern databasePattern;
   private final Pattern tablePattern;
 
-  protected TablePattern(final String databasePatternString, final String tablePatternString) {
+  protected TablePattern(
+      final boolean isTableModelDataAllowedToBeCaptured,
+      final String databasePatternString,
+      final String tablePatternString) {
+    this.isTableModelDataAllowedToBeCaptured = isTableModelDataAllowedToBeCaptured;
     databasePattern = databasePatternString == null ? null : Pattern.compile(databasePatternString);
     tablePattern = tablePatternString == null ? null : Pattern.compile(tablePatternString);
+  }
+
+  public boolean isTableModelDataAllowedToBeCaptured() {
+    return isTableModelDataAllowedToBeCaptured;
   }
 
   public boolean hasUserSpecifiedDatabasePatternOrTablePattern() {
@@ -71,12 +79,22 @@ public class TablePattern {
    */
   public static TablePattern parsePipePatternFromSourceParameters(
       final PipeParameters sourceParameters) {
+    final boolean isTableModelDataAllowedToBeCaptured =
+        sourceParameters.getBooleanOrDefault(
+            Arrays.asList(
+                PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
+                PipeExtractorConstant.SOURCE_CAPTURE_TABLE_KEY),
+            !sourceParameters
+                .getStringOrDefault(
+                    SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
+                .equals(SystemConstant.SQL_DIALECT_TREE_VALUE));
     final String databaseNamePattern =
         sourceParameters.getStringByKeys(EXTRACTOR_DATABASE_NAME_KEY, SOURCE_DATABASE_NAME_KEY);
     final String tableNamePattern =
         sourceParameters.getStringByKeys(EXTRACTOR_TABLE_NAME_KEY, SOURCE_TABLE_NAME_KEY);
     try {
-      return new TablePattern(databaseNamePattern, tableNamePattern);
+      return new TablePattern(
+          isTableModelDataAllowedToBeCaptured, databaseNamePattern, tableNamePattern);
     } catch (final Exception e) {
       throw new PipeException("Illegal database or table pattern. Detail: " + e.getMessage(), e);
     }

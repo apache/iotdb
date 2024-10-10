@@ -58,10 +58,44 @@ public abstract class MultiColumnTransformer extends ColumnTransformer {
     initializeColumnCache(builder.build());
   }
 
+  @Override
+  public void evaluateWithSelection(boolean[] selection) {
+    for (ColumnTransformer child : columnTransformerList) {
+      child.evaluateWithSelection(selection);
+    }
+
+    int positionCount = columnTransformerList.get(0).getColumnCachePositionCount();
+
+    ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
+    doTransform(
+        columnTransformerList.stream()
+            .map(ColumnTransformer::getColumn)
+            .collect(Collectors.toList()),
+        builder,
+        positionCount,
+        selection);
+    initializeColumnCache(builder.build());
+
+    for (ColumnTransformer child : columnTransformerList) {
+      child.clearCache();
+    }
+  }
+
   protected abstract void doTransform(
       List<Column> childrenColumns, ColumnBuilder builder, int positionCount);
 
+  protected abstract void doTransform(
+      List<Column> childrenColumns, ColumnBuilder builder, int positionCount, boolean[] selection);
+
   public List<ColumnTransformer> getChildren() {
     return columnTransformerList;
+  }
+
+  @Override
+  public void clearCache() {
+    super.clearCache();
+    for (ColumnTransformer columnTransformer : columnTransformerList) {
+      columnTransformer.clearCache();
+    }
   }
 }
