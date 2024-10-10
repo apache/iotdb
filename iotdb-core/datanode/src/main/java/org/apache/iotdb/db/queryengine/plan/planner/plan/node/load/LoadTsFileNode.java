@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -42,10 +43,12 @@ import java.util.Objects;
 public class LoadTsFileNode extends WritePlanNode {
 
   private final List<TsFileResource> resources;
+  private final String database;
 
-  public LoadTsFileNode(PlanNodeId id, List<TsFileResource> resources) {
+  public LoadTsFileNode(PlanNodeId id, List<TsFileResource> resources, String database) {
     super(id);
     this.resources = resources;
+    this.database = database;
   }
 
   @Override
@@ -90,21 +93,48 @@ public class LoadTsFileNode extends WritePlanNode {
 
   @Override
   public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
+    if (analysis instanceof Analysis) {
+      return splitByPartitionForTreeModel((Analysis) analysis);
+    } else {
+      return splitByPartitionForTableModel(
+          (org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis) analysis);
+    }
+  }
+
+  private List<WritePlanNode> splitByPartitionForTreeModel(Analysis analysis) {
     List<WritePlanNode> res = new ArrayList<>();
     LoadTsFileStatement statement =
-        ((Analysis) analysis).getTreeStatement() instanceof PipeEnrichedStatement
+        analysis.getTreeStatement() instanceof PipeEnrichedStatement
             ? (LoadTsFileStatement)
-                ((PipeEnrichedStatement) ((Analysis) analysis).getTreeStatement())
-                    .getInnerStatement()
-            : (LoadTsFileStatement) ((Analysis) analysis).getTreeStatement();
+                ((PipeEnrichedStatement) analysis.getTreeStatement()).getInnerStatement()
+            : (LoadTsFileStatement) analysis.getTreeStatement();
 
     for (int i = 0; i < resources.size(); i++) {
       res.add(
           new LoadSingleTsFileNode(
               getPlanNodeId(),
               resources.get(i),
+              database,
               statement.isDeleteAfterLoad(),
               statement.getWritePointCount(i)));
+    }
+    return res;
+  }
+
+  private List<WritePlanNode> splitByPartitionForTableModel(
+      org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis analysis) {
+    List<WritePlanNode> res = new ArrayList<>();
+    LoadTsFile statement = (LoadTsFile) analysis.getStatement();
+    for (int i = 0; i < resources.size(); i++) {
+      if (statement != null) {
+        res.add(
+            new LoadSingleTsFileNode(
+                getPlanNodeId(),
+                resources.get(i),
+                database,
+                statement.isDeleteAfterLoad(),
+                statement.getWritePointCount(i)));
+      }
     }
     return res;
   }

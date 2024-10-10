@@ -161,6 +161,9 @@ public class LoadTsFileScheduler implements IScheduler {
         final LoadSingleTsFileNode node = tsFileNodeList.get(i);
         final String filePath = node.getTsFileResource().getTsFilePath();
 
+        final String database = node.getDatabase();
+        partitionFetcher.setDatabase(database);
+
         boolean isLoadSingleTsFileSuccess = true;
         boolean shouldRemoveFileFromLoadingSet = false;
         try {
@@ -583,8 +586,7 @@ public class LoadTsFileScheduler implements IScheduler {
                   .map(
                       data ->
                           new Pair<>(
-                              (IDeviceID)
-                                  IDeviceID.Factory.DEFAULT_FACTORY.create(data.getDevice()),
+                              IDeviceID.Factory.DEFAULT_FACTORY.create(data.getDevice()),
                               data.getTimePartitionSlot()))
                   .collect(Collectors.toList()),
               scheduler.queryContext.getSession().getUserName());
@@ -636,9 +638,14 @@ public class LoadTsFileScheduler implements IScheduler {
 
   private static class DataPartitionBatchFetcher {
     private final IPartitionFetcher fetcher;
+    private String database;
 
     public DataPartitionBatchFetcher(IPartitionFetcher fetcher) {
       this.fetcher = fetcher;
+    }
+
+    public void setDatabase(String database) {
+      this.database = database;
     }
 
     public List<TRegionReplicaSet> queryDataPartition(
@@ -653,7 +660,10 @@ public class LoadTsFileScheduler implements IScheduler {
             fetcher.getOrCreateDataPartition(toQueryParam(subSlotList), userName);
         replicaSets.addAll(
             subSlotList.stream()
-                .map(pair -> dataPartition.getDataRegionReplicaSetForWriting(pair.left, pair.right))
+                .map(
+                    pair ->
+                        dataPartition.getDataRegionReplicaSetForWriting(
+                            pair.left, pair.right, database))
                 .collect(Collectors.toList()));
       }
       return replicaSets;
@@ -668,8 +678,12 @@ public class LoadTsFileScheduler implements IScheduler {
           .entrySet()
           .stream()
           .map(
-              entry ->
-                  new DataPartitionQueryParam(entry.getKey(), new ArrayList<>(entry.getValue())))
+              entry -> {
+                DataPartitionQueryParam queryParam =
+                    new DataPartitionQueryParam(entry.getKey(), new ArrayList<>(entry.getValue()));
+                queryParam.setDatabaseName(database);
+                return queryParam;
+              })
           .collect(Collectors.toList());
     }
   }

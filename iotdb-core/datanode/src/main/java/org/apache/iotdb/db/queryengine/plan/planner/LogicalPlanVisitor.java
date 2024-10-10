@@ -514,7 +514,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   @Override
   public PlanNode visitLoadFile(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
     return new LoadTsFileNode(
-        context.getQueryId().genPlanNodeId(), loadTsFileStatement.getResources());
+        context.getQueryId().genPlanNodeId(),
+        loadTsFileStatement.getResources(),
+        loadTsFileStatement.getDatabase());
   }
 
   @Override

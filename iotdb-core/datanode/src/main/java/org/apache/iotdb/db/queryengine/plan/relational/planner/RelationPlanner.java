@@ -18,6 +18,7 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
@@ -48,6 +49,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertTablet;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Intersect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinUsing;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
@@ -691,5 +693,13 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
         new RelationalInsertRowsNode(idAllocator.genPlanNodeId(), indices, insertRowStatements);
     return new RelationPlan(
         relationalInsertRowsNode, analysis.getRootScope(), Collections.emptyList());
+  }
+
+  @Override
+  protected RelationPlan visitLoadTsFile(LoadTsFile node, Void context) {
+    return new RelationPlan(
+        new LoadTsFileNode(idAllocator.genPlanNodeId(), node.getResources(), node.getDatabase()),
+        analysis.getRootScope(),
+        Collections.emptyList());
   }
 }

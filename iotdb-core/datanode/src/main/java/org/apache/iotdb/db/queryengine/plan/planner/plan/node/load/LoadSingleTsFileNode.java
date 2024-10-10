@@ -56,6 +56,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
   private final File tsFile;
   private final TsFileResource resource;
+  private final String database;
   private final boolean deleteAfterLoad;
   private final long writePointCount;
   private boolean needDecodeTsFile;
@@ -63,10 +64,15 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   private TRegionReplicaSet localRegionReplicaSet;
 
   public LoadSingleTsFileNode(
-      PlanNodeId id, TsFileResource resource, boolean deleteAfterLoad, long writePointCount) {
+      PlanNodeId id,
+      TsFileResource resource,
+      String database,
+      boolean deleteAfterLoad,
+      long writePointCount) {
     super(id);
     this.tsFile = resource.getTsFile();
     this.resource = resource;
+    this.database = database;
     this.deleteAfterLoad = deleteAfterLoad;
     this.writePointCount = writePointCount;
   }
@@ -145,6 +151,10 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
   public TsFileResource getTsFileResource() {
     return resource;
+  }
+
+  public String getDatabase() {
+    return database;
   }
 
   @Override
