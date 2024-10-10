@@ -27,6 +27,9 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.service.IService;
+import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
@@ -57,6 +60,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -65,7 +69,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
-public class GeneralRegionAttributeSecurityService {
+public class GeneralRegionAttributeSecurityService implements IService {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(GeneralRegionAttributeSecurityService.class);
 
@@ -75,7 +79,8 @@ public class GeneralRegionAttributeSecurityService {
 
   private final Map<Integer, Pair<Long, Integer>> dataNodeId2FailureDurationAndTimesMap =
       new HashMap<>();
-  private final Set<ISchemaRegion> regionLeaders = new HashSet<>();
+  private final Set<ISchemaRegion> regionLeaders =
+      Collections.newSetFromMap(new ConcurrentHashMap<>());
   private final ReentrantLock lock = new ReentrantLock();
   private final Condition condition = lock.newCondition();
   private volatile boolean skipNext = false;
@@ -292,6 +297,19 @@ public class GeneralRegionAttributeSecurityService {
       }
     }
     return result;
+  }
+
+  /////////////////////////////// IService ///////////////////////////////
+
+  @Override
+  public void start() throws StartupException {}
+
+  @Override
+  public void stop() {}
+
+  @Override
+  public ServiceType getID() {
+    return null;
   }
 
   /////////////////////////////// SingleTon ///////////////////////////////
