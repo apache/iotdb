@@ -575,9 +575,6 @@ public class TSDIFFBOSBTest {
                 x_u_plus_value_list[gamma] = x_u_plus_value_list[gamma-1];
             }
         }
-//        System.out.println(Arrays.toString(gamma_count_list));
-//        System.out.println(Arrays.toString(x_u_minus_value_list));
-//        System.out.println(Arrays.toString(x_u_plus_value_list));
 
         for (int start_value_i = 0; start_value_i < unique_value_count-1; start_value_i++) {
             long k_start_valueL = sorted_value_list[start_value_i];

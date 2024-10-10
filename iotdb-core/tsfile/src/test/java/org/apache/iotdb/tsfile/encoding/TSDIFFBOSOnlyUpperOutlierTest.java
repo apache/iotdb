@@ -500,6 +500,7 @@ public class TSDIFFBOSOnlyUpperOutlierTest {
 
         int min_bits = 0;
         min_bits += (getBitWith(final_k_end_value - final_k_start_value - 2 ) * (block_size));
+        min_bits -= 23;
 
         int cur_k1 = 0;
 
