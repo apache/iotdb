@@ -131,17 +131,17 @@ public class CompactionTaskManager implements IService {
 
   private void initThreadPool() {
     int normalCompactionThreadNum = config.getNormalCompactionThreadCount();
-    int lightweightCompactionThreadNum = config.getNormalCompactionThreadCount();
+    int lightweightCompactionThreadNum = config.getLightweightCompactionThreadCount();
+    int totalCompactionThreadNum = normalCompactionThreadNum + lightweightCompactionThreadNum;
     this.taskExecutionPool =
         (WrappedThreadPoolExecutor)
             IoTDBThreadPoolFactory.newFixedThreadPool(
-                normalCompactionThreadNum, ThreadName.COMPACTION_WORKER.getName());
+                totalCompactionThreadNum, ThreadName.COMPACTION_WORKER.getName());
     this.taskExecutionPool.disableErrorLog();
     this.subCompactionTaskExecutionPool =
         (WrappedThreadPoolExecutor)
             IoTDBThreadPoolFactory.newFixedThreadPool(
-                (normalCompactionThreadNum + lightweightCompactionThreadNum)
-                    * config.getSubCompactionTaskNum(),
+                totalCompactionThreadNum * config.getSubCompactionTaskNum(),
                 ThreadName.COMPACTION_SUB_TASK.getName());
     this.subCompactionTaskExecutionPool.disableErrorLog();
     for (int i = 0; i < normalCompactionThreadNum; ++i) {
@@ -448,7 +448,7 @@ public class CompactionTaskManager implements IService {
 
   public void restart() throws InterruptedException {
     stopAllCompactionWorker = true;
-    if (IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount() > 0) {
+    if (IoTDBDescriptor.getInstance().getConfig().getTotalCompactionThreadCount() > 0) {
       if (subCompactionTaskExecutionPool != null) {
         this.subCompactionTaskExecutionPool.shutdownNow();
         if (!this.subCompactionTaskExecutionPool.awaitTermination(

@@ -70,7 +70,6 @@ public class CompactionTaskQueue extends FixedPriorityBlockingQueue<AbstractComp
       }
       boolean prepareTaskSuccess = prepareTask(task);
       if (!prepareTaskSuccess) {
-        Thread.sleep(TimeUnit.SECONDS.toMillis(1));
         continue;
       }
       return task;
@@ -87,6 +86,7 @@ public class CompactionTaskQueue extends FixedPriorityBlockingQueue<AbstractComp
     }
     if (!task.tryOccupyResourcesForRunning()) {
       put(task);
+      Thread.sleep(TimeUnit.SECONDS.toMillis(1));
       return false;
     }
     if (!transitTaskFileStatus(task)) {

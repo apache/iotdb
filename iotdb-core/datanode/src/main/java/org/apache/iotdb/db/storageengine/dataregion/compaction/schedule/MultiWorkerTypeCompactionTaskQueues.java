@@ -73,6 +73,9 @@ public class MultiWorkerTypeCompactionTaskQueues {
   public AbstractCompactionTask tryTakeCompactionTask(CompactionWorkerType workerType)
       throws InterruptedException {
     List<CompactionTaskQueue> compactionTaskQueues = workerQueueMap.get(workerType);
+    if (compactionTaskQueues.size() == 1) {
+      return compactionTaskQueues.get(0).take();
+    }
     AbstractCompactionTask task = null;
     for (CompactionTaskQueue taskQueue : compactionTaskQueues) {
       task = taskQueue.tryTake();
