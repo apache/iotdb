@@ -3273,7 +3273,7 @@ public class DataRegion implements IDataRegionForQuery {
 
     // Listen before the tsFile is added into tsFile manager to avoid it being compacted
     PipeInsertionDataNodeListener.getInstance()
-        .listenToTsFile(dataRegionId, tsFileResource, true, isGeneratedByPipe);
+        .listenToTsFile(dataRegionId, databaseName, tsFileResource, true, isGeneratedByPipe);
 
     // help tsfile resource degrade
     tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
