@@ -46,6 +46,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Predicate;
 
 public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
 
@@ -218,7 +219,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
    * When a pipe is dropped, the connector maybe reused and will not be closed. So we just discard
    * its queued events in the output pipe connector.
    */
-  public void discardEventsOfPipe(final String pipeNameToDrop, int regionId) {
+  public void discardEventsOfPipe(final String pipeNameToDrop, final int regionId) {
     // Try to remove the events as much as possible
     inputPendingQueue.discardEventsOfPipe(pipeNameToDrop, regionId);
 
@@ -297,33 +298,25 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
 
   // For performance, this will not acquire lock and does not guarantee the correct
   // result. However, this shall not cause any exceptions when concurrently read & written.
-  public int getEventCount(final String pipeName) {
-    final AtomicInteger count = new AtomicInteger(0);
-    try {
-      inputPendingQueue.forEach(
-          event -> {
-            if (event instanceof EnrichedEvent
-                && pipeName.equals(((EnrichedEvent) event).getPipeName())) {
-              count.incrementAndGet();
-            }
-          });
-    } catch (final Exception e) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            "Exception occurred when counting event of pipe {}, root cause: {}",
-            pipeName,
-            ErrorHandlingUtils.getRootCause(e).getMessage(),
-            e);
-      }
-    }
-    // Avoid potential NPE in "getPipeName"
+  public int getEventCount(final Predicate<EnrichedEvent> predicate) {
+    // 1. events in inputPendingQueue
+    final AtomicInteger inputPendingQueuePipeEventCount = new AtomicInteger(0);
+    inputPendingQueue.forEach(
+        event -> {
+          if (event instanceof EnrichedEvent && predicate.test((EnrichedEvent) event)) {
+            inputPendingQueuePipeEventCount.incrementAndGet();
+          }
+        });
+    // 2. events in specific connector
+    final int retryEventQueuePipeEventCount =
+        outputPipeConnector instanceof IoTDBDataRegionAsyncConnector
+            ? ((IoTDBDataRegionAsyncConnector) outputPipeConnector).getRetryEventCount(predicate)
+            : 0;
+    // 3. lastEvent: avoid potential NPE in "getPipeName"
     final EnrichedEvent event =
         lastEvent instanceof EnrichedEvent ? (EnrichedEvent) lastEvent : null;
-    return count.get()
-        + (outputPipeConnector instanceof IoTDBDataRegionAsyncConnector
-            ? ((IoTDBDataRegionAsyncConnector) outputPipeConnector).getRetryEventCount(pipeName)
-            : 0)
-        + (Objects.nonNull(event) && pipeName.equals(event.getPipeName()) ? 1 : 0);
+    final int lastEventCount = (Objects.nonNull(event) && predicate.test(event)) ? 1 : 0;
+    return inputPendingQueuePipeEventCount.get() + retryEventQueuePipeEventCount + lastEventCount;
   }
 
   //////////////////////////// Error report ////////////////////////////

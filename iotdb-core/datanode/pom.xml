@@ -540,6 +540,8 @@
                         <!-- These are used at runtime in tests -->
                         <usedDependency>io.jsonwebtoken:jjwt-impl</usedDependency>
                         <usedDependency>io.jsonwebtoken:jjwt-jackson</usedDependency>
+                        <!-- We need this dependency as it provides the metric managers used in tests -->
+                        <usedDependency>org.apache.iotdb:metrics-core</usedDependency>
                         <!-- This dependency is required at runtime, when enabling the rest service -->
                         <usedDependency>org.glassfish.jersey.inject:jersey-hk2</usedDependency>
                     </usedDependencies>

@@ -54,7 +54,6 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   private static final long READ_TABLET_BUFFER_SIZE =
       SubscriptionConfig.getInstance().getSubscriptionReadTabletBufferSize();
 
-  private final List<EnrichedEvent> enrichedEvents = new ArrayList<>();
   private final List<Tablet> tablets = new ArrayList<>();
 
   private long firstEventProcessingTime = Long.MIN_VALUE;
@@ -222,11 +221,5 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
           String.format("omit the remaining %s event(s)...", eventMessageList.size() - threshold));
     }
     return eventMessageList.toString();
-  }
-
-  //////////////////////////// APIs provided for metric framework ////////////////////////////
-
-  public int getPipeEventCount() {
-    return enrichedEvents.size();
   }
 }

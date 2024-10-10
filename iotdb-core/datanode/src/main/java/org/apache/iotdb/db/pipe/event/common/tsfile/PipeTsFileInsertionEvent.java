@@ -330,6 +330,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFi
   }
 
   @Override
+  public boolean isDataRegionRealtimeEvent() {
+    return !isGeneratedByHistoricalExtractor;
+  }
+
+  @Override
   public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       final String pipeName,
       final long creationTime,
