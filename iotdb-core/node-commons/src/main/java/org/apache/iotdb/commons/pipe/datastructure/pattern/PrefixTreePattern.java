@@ -29,9 +29,9 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.Arrays;
 
-public class PrefixPipePattern extends PipePattern {
+public class PrefixTreePattern extends TreePattern {
 
-  public PrefixPipePattern(final String pattern) {
+  public PrefixTreePattern(final String pattern) {
     super(pattern);
   }
 

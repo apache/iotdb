@@ -27,7 +27,7 @@ import org.apache.iotdb.confignode.procedure.impl.model.DropModelProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveAINodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
-import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.CreatePipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.DropPipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleLeaderChangeProcedure;
@@ -106,7 +106,7 @@ public class ProcedureFactory implements IProcedureFactory {
         procedure = new RemoveConfigNodeProcedure();
         break;
       case REMOVE_DATA_NODE_PROCEDURE:
-        procedure = new RemoveDataNodeProcedure();
+        procedure = new RemoveDataNodesProcedure();
         break;
       case REGION_MIGRATE_PROCEDURE:
         procedure = new RegionMigrateProcedure();
@@ -311,7 +311,7 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.ADD_CONFIG_NODE_PROCEDURE;
     } else if (procedure instanceof RemoveConfigNodeProcedure) {
       return ProcedureType.REMOVE_CONFIG_NODE_PROCEDURE;
-    } else if (procedure instanceof RemoveDataNodeProcedure) {
+    } else if (procedure instanceof RemoveDataNodesProcedure) {
       return ProcedureType.REMOVE_DATA_NODE_PROCEDURE;
     } else if (procedure instanceof RemoveAINodeProcedure) {
       return ProcedureType.REMOVE_AI_NODE_PROCEDURE;

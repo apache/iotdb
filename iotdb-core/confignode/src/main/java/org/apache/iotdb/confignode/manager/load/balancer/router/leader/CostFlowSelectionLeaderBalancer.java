@@ -36,48 +36,48 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 /** Leader distribution balancer that uses minimum cost flow algorithm */
-public class MinCostFlowLeaderBalancer extends AbstractLeaderBalancer {
+public class CostFlowSelectionLeaderBalancer extends AbstractLeaderBalancer {
 
   private static final int INFINITY = Integer.MAX_VALUE;
 
-  /** Graph nodes */
-  // Super source node
-  private static final int S_NODE = 0;
+  /** Graph vertices */
+  // Super source vertex
+  private static final int S_VERTEX = 0;
 
-  // Super terminal node
-  private static final int T_NODE = 1;
-  // Maximum index of graph nodes
-  private int maxNode = T_NODE + 1;
-  // Map<RegionGroupId, rNode>
-  private final Map<TConsensusGroupId, Integer> rNodeMap;
-  // Map<Database, Map<DataNodeId, sDNode>>
-  private final Map<String, Map<Integer, Integer>> sDNodeMap;
-  // Map<Database, Map<sDNode, DataNodeId>>
-  private final Map<String, Map<Integer, Integer>> sDNodeReflect;
-  // Map<DataNodeId, tDNode>
-  private final Map<Integer, Integer> tDNodeMap;
+  // Super terminal vertex
+  private static final int T_VERTEX = 1;
+  // Maximum index of graph vertices
+  private int maxVertex = T_VERTEX + 1;
+  // Map<RegionGroupId, rVertex>
+  private final Map<TConsensusGroupId, Integer> rVertexMap;
+  // Map<Database, Map<DataNodeId, sDVertex>>
+  private final Map<String, Map<Integer, Integer>> sDVertexMap;
+  // Map<Database, Map<sDVertex, DataNodeId>>
+  private final Map<String, Map<Integer, Integer>> sDVertexReflect;
+  // Map<DataNodeId, tDVertex>
+  private final Map<Integer, Integer> tDVertexMap;
 
   /** Graph edges */
   // Maximum index of graph edges
   private int maxEdge = 0;
 
-  private final List<MinCostFlowEdge> minCostFlowEdges;
-  private int[] nodeHeadEdge;
-  private int[] nodeCurrentEdge;
+  private final List<CostFlowEdge> costFlowEdges;
+  private int[] vertexHeadEdge;
+  private int[] vertexCurrentEdge;
 
-  private boolean[] isNodeVisited;
-  private int[] nodeMinimumCost;
+  private boolean[] isVertexVisited;
+  private int[] vertexMinimumCost;
 
   private int maximumFlow = 0;
   private int minimumCost = 0;
 
-  public MinCostFlowLeaderBalancer() {
+  public CostFlowSelectionLeaderBalancer() {
     super();
-    this.rNodeMap = new TreeMap<>();
-    this.sDNodeMap = new TreeMap<>();
-    this.sDNodeReflect = new TreeMap<>();
-    this.tDNodeMap = new TreeMap<>();
-    this.minCostFlowEdges = new ArrayList<>();
+    this.rVertexMap = new TreeMap<>();
+    this.sDVertexMap = new TreeMap<>();
+    this.sDVertexReflect = new TreeMap<>();
+    this.tDVertexMap = new TreeMap<>();
+    this.costFlowEdges = new ArrayList<>();
   }
 
   @Override
@@ -94,7 +94,7 @@ public class MinCostFlowLeaderBalancer extends AbstractLeaderBalancer {
         dataNodeStatisticsMap,
         regionStatisticsMap);
     Map<TConsensusGroupId, Integer> result;
-    constructMCFGraph();
+    constructFlowNetwork();
     dinicAlgorithm();
     result = collectLeaderDistribution();
     clear();
@@ -104,45 +104,47 @@ public class MinCostFlowLeaderBalancer extends AbstractLeaderBalancer {
   @Override
   protected void clear() {
     super.clear();
-    this.rNodeMap.clear();
-    this.sDNodeMap.clear();
-    this.sDNodeReflect.clear();
-    this.tDNodeMap.clear();
-    this.minCostFlowEdges.clear();
-    this.nodeHeadEdge = null;
-    this.nodeCurrentEdge = null;
-    this.isNodeVisited = null;
-    this.nodeMinimumCost = null;
-    this.maxNode = T_NODE + 1;
+    this.rVertexMap.clear();
+    this.sDVertexMap.clear();
+    this.sDVertexReflect.clear();
+    this.tDVertexMap.clear();
+    this.costFlowEdges.clear();
+    this.vertexHeadEdge = null;
+    this.vertexCurrentEdge = null;
+    this.isVertexVisited = null;
+    this.vertexMinimumCost = null;
+    this.maxVertex = T_VERTEX + 1;
     this.maxEdge = 0;
   }
 
-  private void constructMCFGraph() {
+  private void constructFlowNetwork() {
     this.maximumFlow = 0;
     this.minimumCost = 0;
 
-    /* Indicate nodes in mcf */
+    /* Indicate vertices */
     for (Map.Entry<String, List<TConsensusGroupId>> databaseEntry :
         databaseRegionGroupMap.entrySet()) {
       String database = databaseEntry.getKey();
-      sDNodeMap.put(database, new TreeMap<>());
-      sDNodeReflect.put(database, new TreeMap<>());
+      sDVertexMap.put(database, new TreeMap<>());
+      sDVertexReflect.put(database, new TreeMap<>());
       for (TConsensusGroupId regionGroupId : databaseEntry.getValue()) {
         if (regionGroupIntersection.contains(regionGroupId)) {
-          rNodeMap.put(regionGroupId, maxNode++);
+          // Map region to region vertices
+          rVertexMap.put(regionGroupId, maxVertex++);
           regionLocationMap
               .get(regionGroupId)
               .forEach(
                   dataNodeId -> {
                     if (isDataNodeAvailable(dataNodeId)) {
-                      if (!sDNodeMap.get(database).containsKey(dataNodeId)) {
-                        sDNodeMap.get(database).put(dataNodeId, maxNode);
-                        sDNodeReflect.get(database).put(maxNode, dataNodeId);
-                        maxNode += 1;
+                      // Map DataNode to DataNode vertices
+                      if (!sDVertexMap.get(database).containsKey(dataNodeId)) {
+                        sDVertexMap.get(database).put(dataNodeId, maxVertex);
+                        sDVertexReflect.get(database).put(maxVertex, dataNodeId);
+                        maxVertex += 1;
                       }
-                      if (!tDNodeMap.containsKey(dataNodeId)) {
-                        tDNodeMap.put(dataNodeId, maxNode);
-                        maxNode += 1;
+                      if (!tDVertexMap.containsKey(dataNodeId)) {
+                        tDVertexMap.put(dataNodeId, maxVertex);
+                        maxVertex += 1;
                       }
                     }
                   });
@@ -151,48 +153,49 @@ public class MinCostFlowLeaderBalancer extends AbstractLeaderBalancer {
     }
 
     /* Prepare arrays */
-    isNodeVisited = new boolean[maxNode];
-    nodeMinimumCost = new int[maxNode];
-    nodeCurrentEdge = new int[maxNode];
-    nodeHeadEdge = new int[maxNode];
-    Arrays.fill(nodeHeadEdge, -1);
+    isVertexVisited = new boolean[maxVertex];
+    vertexMinimumCost = new int[maxVertex];
+    vertexCurrentEdge = new int[maxVertex];
+    vertexHeadEdge = new int[maxVertex];
+    Arrays.fill(vertexHeadEdge, -1);
 
-    /* Construct edges: sNode -> rNodes */
-    for (int rNode : rNodeMap.values()) {
-      // Capacity: 1, Cost: 0, each RegionGroup should elect exactly 1 leader
-      addAdjacentEdges(S_NODE, rNode, 1, 0);
+    /* Construct edges: sVertex -> rVertices */
+    for (int rVertex : rVertexMap.values()) {
+      // Capacity: 1, Cost: 0, select exactly 1 leader for each RegionGroup
+      addAdjacentEdges(S_VERTEX, rVertex, 1, 0);
     }
 
-    /* Construct edges: rNodes -> sdNodes */
+    /* Construct edges: rVertices -> sDVertices */
     for (Map.Entry<String, List<TConsensusGroupId>> databaseEntry :
         databaseRegionGroupMap.entrySet()) {
       String database = databaseEntry.getKey();
       for (TConsensusGroupId regionGroupId : databaseEntry.getValue()) {
         if (regionGroupIntersection.contains(regionGroupId)) {
-          int rNode = rNodeMap.get(regionGroupId);
+          int rVertex = rVertexMap.get(regionGroupId);
           regionLocationMap
               .get(regionGroupId)
               .forEach(
                   dataNodeId -> {
                     if (isDataNodeAvailable(dataNodeId)
                         && isRegionAvailable(regionGroupId, dataNodeId)) {
-                      int sDNode = sDNodeMap.get(database).get(dataNodeId);
-                      // Capacity: 1, Cost: 1 if sDNode is the current leader of the rNode, 0
-                      // otherwise.
-                      // Therefore, the RegionGroup will keep the leader as constant as possible.
+                      int sDVertex = sDVertexMap.get(database).get(dataNodeId);
+                      // Capacity: 1, Cost: 1 if the DataNode is the current leader of the
+                      // RegionGroup;
+                      // 0 otherwise. Thus, the RegionGroup will keep the leader as constant as
+                      // possible.
                       int cost =
                           Objects.equals(
                                   regionLeaderMap.getOrDefault(regionGroupId, -1), dataNodeId)
                               ? 0
                               : 1;
-                      addAdjacentEdges(rNode, sDNode, 1, cost);
+                      addAdjacentEdges(rVertex, sDVertex, 1, cost);
                     }
                   });
         }
       }
     }
 
-    /* Construct edges: sDNodes -> tDNodes */
+    /* Construct edges: sDVertices -> tDVertices */
     for (Map.Entry<String, List<TConsensusGroupId>> databaseEntry :
         databaseRegionGroupMap.entrySet()) {
       String database = databaseEntry.getKey();
@@ -205,21 +208,20 @@ public class MinCostFlowLeaderBalancer extends AbstractLeaderBalancer {
               .forEach(
                   dataNodeId -> {
                     if (isDataNodeAvailable(dataNodeId)) {
-                      int sDNode = sDNodeMap.get(database).get(dataNodeId);
-                      int tDNode = tDNodeMap.get(dataNodeId);
+                      int sDVertex = sDVertexMap.get(database).get(dataNodeId);
+                      int tDVertex = tDVertexMap.get(dataNodeId);
                       int leaderCount = leaderCounter.merge(dataNodeId, 1, Integer::sum);
-                      // Capacity: 1, Cost: x^2 for the x-th edge at the current sDNode.
+                      // Capacity: 1, Cost: 2*x-1 for the x-th edge at the current sDVertex.
                       // Thus, the leader distribution will be as balance as possible within each
-                      // Database
-                      // based on the Jensen's-Inequality.
-                      addAdjacentEdges(sDNode, tDNode, 1, leaderCount * leaderCount);
+                      // Database according to the Jensen's-Inequality.
+                      addAdjacentEdges(sDVertex, tDVertex, 1, 2 * leaderCount - 1);
                     }
                   });
         }
       }
     }
 
-    /* Construct edges: tDNodes -> tNode */
+    /* Construct edges: tDVertices -> tVertex */
     // Map<DataNodeId, possible maximum leader>
     // Count the possible maximum number of leader in each DataNode
     Map<Integer, Integer> maxLeaderCounter = new TreeMap<>();
@@ -227,89 +229,88 @@ public class MinCostFlowLeaderBalancer extends AbstractLeaderBalancer {
         (regionGroupId, dataNodeIds) ->
             dataNodeIds.forEach(
                 dataNodeId -> {
-                  if (isDataNodeAvailable(dataNodeId) && tDNodeMap.containsKey(dataNodeId)) {
-                    int tDNode = tDNodeMap.get(dataNodeId);
+                  if (isDataNodeAvailable(dataNodeId) && tDVertexMap.containsKey(dataNodeId)) {
+                    int tDVertex = tDVertexMap.get(dataNodeId);
                     int leaderCount = maxLeaderCounter.merge(dataNodeId, 1, Integer::sum);
-                    // Cost: x^2 for the x-th edge at the current dNode.
+                    // Capacity: 1, Cost: 2*x-1 for the x-th edge at the current tDVertex.
                     // Thus, the leader distribution will be as balance as possible within the
-                    // cluster
-                    // Based on the Jensen's-Inequality.
-                    addAdjacentEdges(tDNode, T_NODE, 1, leaderCount * leaderCount);
+                    // cluster according to the Jensen's-Inequality.
+                    addAdjacentEdges(tDVertex, T_VERTEX, 1, 2 * leaderCount - 1);
                   }
                 }));
   }
 
-  private void addAdjacentEdges(int fromNode, int destNode, int capacity, int cost) {
-    addEdge(fromNode, destNode, capacity, cost);
-    addEdge(destNode, fromNode, 0, -cost);
+  private void addAdjacentEdges(int fromVertex, int destVertex, int capacity, int cost) {
+    addEdge(fromVertex, destVertex, capacity, cost);
+    addEdge(destVertex, fromVertex, 0, -cost);
   }
 
-  private void addEdge(int fromNode, int destNode, int capacity, int cost) {
-    MinCostFlowEdge edge = new MinCostFlowEdge(destNode, capacity, cost, nodeHeadEdge[fromNode]);
-    minCostFlowEdges.add(edge);
-    nodeHeadEdge[fromNode] = maxEdge++;
+  private void addEdge(int fromVertex, int destVertex, int capacity, int cost) {
+    CostFlowEdge edge = new CostFlowEdge(destVertex, capacity, cost, vertexHeadEdge[fromVertex]);
+    costFlowEdges.add(edge);
+    vertexHeadEdge[fromVertex] = maxEdge++;
   }
 
   /**
-   * Check whether there is an augmented path in the MCF graph by Bellman-Ford algorithm.
+   * Check whether there is an augmented path in the flow network by SPFA algorithm.
    *
    * <p>Notice: Never use Dijkstra algorithm to replace this since there might exist negative
    * circles.
    *
    * @return True if there exist augmented paths, false otherwise.
    */
-  private boolean bellmanFordCheck() {
-    Arrays.fill(isNodeVisited, false);
-    Arrays.fill(nodeMinimumCost, INFINITY);
+  private boolean SPFACheck() {
+    Arrays.fill(isVertexVisited, false);
+    Arrays.fill(vertexMinimumCost, INFINITY);
 
     Queue<Integer> queue = new LinkedList<>();
-    nodeMinimumCost[S_NODE] = 0;
-    isNodeVisited[S_NODE] = true;
-    queue.offer(S_NODE);
+    vertexMinimumCost[S_VERTEX] = 0;
+    isVertexVisited[S_VERTEX] = true;
+    queue.offer(S_VERTEX);
     while (!queue.isEmpty()) {
-      int currentNode = queue.poll();
-      isNodeVisited[currentNode] = false;
-      for (int currentEdge = nodeHeadEdge[currentNode];
+      int currentVertex = queue.poll();
+      isVertexVisited[currentVertex] = false;
+      for (int currentEdge = vertexHeadEdge[currentVertex];
           currentEdge >= 0;
-          currentEdge = minCostFlowEdges.get(currentEdge).nextEdge) {
-        MinCostFlowEdge edge = minCostFlowEdges.get(currentEdge);
+          currentEdge = costFlowEdges.get(currentEdge).nextEdge) {
+        CostFlowEdge edge = costFlowEdges.get(currentEdge);
         if (edge.capacity > 0
-            && nodeMinimumCost[currentNode] + edge.cost < nodeMinimumCost[edge.destNode]) {
-          nodeMinimumCost[edge.destNode] = nodeMinimumCost[currentNode] + edge.cost;
-          if (!isNodeVisited[edge.destNode]) {
-            isNodeVisited[edge.destNode] = true;
-            queue.offer(edge.destNode);
+            && vertexMinimumCost[currentVertex] + edge.cost < vertexMinimumCost[edge.destVertex]) {
+          vertexMinimumCost[edge.destVertex] = vertexMinimumCost[currentVertex] + edge.cost;
+          if (!isVertexVisited[edge.destVertex]) {
+            isVertexVisited[edge.destVertex] = true;
+            queue.offer(edge.destVertex);
           }
         }
       }
     }
 
-    return nodeMinimumCost[T_NODE] < INFINITY;
+    return vertexMinimumCost[T_VERTEX] < INFINITY;
   }
 
   /** Do augmentation by dfs algorithm */
-  private int dfsAugmentation(int currentNode, int inputFlow) {
-    if (currentNode == T_NODE || inputFlow == 0) {
+  private int dfsAugmentation(int currentVertex, int inputFlow) {
+    if (currentVertex == T_VERTEX || inputFlow == 0) {
       return inputFlow;
     }
 
     int currentEdge;
     int outputFlow = 0;
-    isNodeVisited[currentNode] = true;
-    for (currentEdge = nodeCurrentEdge[currentNode];
+    isVertexVisited[currentVertex] = true;
+    for (currentEdge = vertexCurrentEdge[currentVertex];
         currentEdge >= 0;
-        currentEdge = minCostFlowEdges.get(currentEdge).nextEdge) {
-      MinCostFlowEdge edge = minCostFlowEdges.get(currentEdge);
-      if (nodeMinimumCost[currentNode] + edge.cost == nodeMinimumCost[edge.destNode]
+        currentEdge = costFlowEdges.get(currentEdge).nextEdge) {
+      CostFlowEdge edge = costFlowEdges.get(currentEdge);
+      if (vertexMinimumCost[currentVertex] + edge.cost == vertexMinimumCost[edge.destVertex]
           && edge.capacity > 0
-          && !isNodeVisited[edge.destNode]) {
+          && !isVertexVisited[edge.destVertex]) {
 
-        int subOutputFlow = dfsAugmentation(edge.destNode, Math.min(inputFlow, edge.capacity));
+        int subOutputFlow = dfsAugmentation(edge.destVertex, Math.min(inputFlow, edge.capacity));
 
         minimumCost += subOutputFlow * edge.cost;
 
         edge.capacity -= subOutputFlow;
-        minCostFlowEdges.get(currentEdge ^ 1).capacity += subOutputFlow;
+        costFlowEdges.get(currentEdge ^ 1).capacity += subOutputFlow;
 
         inputFlow -= subOutputFlow;
         outputFlow += subOutputFlow;
@@ -319,19 +320,19 @@ public class MinCostFlowLeaderBalancer extends AbstractLeaderBalancer {
         }
       }
     }
-    nodeCurrentEdge[currentNode] = currentEdge;
+    vertexCurrentEdge[currentVertex] = currentEdge;
 
     if (outputFlow > 0) {
-      isNodeVisited[currentNode] = false;
+      isVertexVisited[currentVertex] = false;
     }
     return outputFlow;
   }
 
   private void dinicAlgorithm() {
-    while (bellmanFordCheck()) {
+    while (SPFACheck()) {
       int currentFlow;
-      System.arraycopy(nodeHeadEdge, 0, nodeCurrentEdge, 0, maxNode);
-      while ((currentFlow = dfsAugmentation(S_NODE, INFINITY)) > 0) {
+      System.arraycopy(vertexHeadEdge, 0, vertexCurrentEdge, 0, maxVertex);
+      while ((currentFlow = dfsAugmentation(S_VERTEX, INFINITY)) > 0) {
         maximumFlow += currentFlow;
       }
     }
@@ -353,13 +354,13 @@ public class MinCostFlowLeaderBalancer extends AbstractLeaderBalancer {
                     return;
                   }
                   boolean matchLeader = false;
-                  for (int currentEdge = nodeHeadEdge[rNodeMap.get(regionGroupId)];
+                  for (int currentEdge = vertexHeadEdge[rVertexMap.get(regionGroupId)];
                       currentEdge >= 0;
-                      currentEdge = minCostFlowEdges.get(currentEdge).nextEdge) {
-                    MinCostFlowEdge edge = minCostFlowEdges.get(currentEdge);
-                    if (edge.destNode != S_NODE && edge.capacity == 0) {
+                      currentEdge = costFlowEdges.get(currentEdge).nextEdge) {
+                    CostFlowEdge edge = costFlowEdges.get(currentEdge);
+                    if (edge.destVertex != S_VERTEX && edge.capacity == 0) {
                       matchLeader = true;
-                      result.put(regionGroupId, sDNodeReflect.get(database).get(edge.destNode));
+                      result.put(regionGroupId, sDVertexReflect.get(database).get(edge.destVertex));
                     }
                   }
                   if (!matchLeader) {
@@ -380,15 +381,15 @@ public class MinCostFlowLeaderBalancer extends AbstractLeaderBalancer {
     return minimumCost;
   }
 
-  private static class MinCostFlowEdge {
+  private static class CostFlowEdge {
 
-    private final int destNode;
+    private final int destVertex;
     private int capacity;
     private final int cost;
     private final int nextEdge;
 
-    private MinCostFlowEdge(int destNode, int capacity, int cost, int nextEdge) {
-      this.destNode = destNode;
+    private CostFlowEdge(int destVertex, int capacity, int cost, int nextEdge) {
+      this.destVertex = destVertex;
       this.capacity = capacity;
       this.cost = cost;
       this.nextEdge = nextEdge;

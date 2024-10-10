@@ -224,4 +224,9 @@ public class QueryDataSource implements IQueryDataSource {
     curUnSeqOrderTime = 0;
     curUnSeqSatisfied = null;
   }
+
+  public String getDatabaseName() {
+    List<TsFileResource> resources = !seqResources.isEmpty() ? seqResources : unseqResources;
+    return resources.isEmpty() ? null : resources.get(0).getDatabaseName();
+  }
 }
