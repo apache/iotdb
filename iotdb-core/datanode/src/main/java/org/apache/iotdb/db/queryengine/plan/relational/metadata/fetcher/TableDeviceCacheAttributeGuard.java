@@ -42,10 +42,15 @@ public class TableDeviceCacheAttributeGuard {
         .getAttributeUpdateMap()
         .entrySet()
         .removeIf(
-            entry ->
-                !fetchedSchemaRegionIds2LargestVersionMap.containsKey(entry.getKey())
-                    || entry.getValue().getVersion()
-                        <= fetchedSchemaRegionIds2LargestVersionMap.get(entry.getKey()));
-
+            entry -> {
+              if (!fetchedSchemaRegionIds2LargestVersionMap.containsKey(entry.getKey())
+                  || entry.getValue().getVersion()
+                      <= fetchedSchemaRegionIds2LargestVersionMap.get(entry.getKey())) {
+                return true;
+              }
+              fetchedSchemaRegionIds2LargestVersionMap.put(
+                  entry.getKey(), entry.getValue().getVersion());
+              return false;
+            });
   }
 }
