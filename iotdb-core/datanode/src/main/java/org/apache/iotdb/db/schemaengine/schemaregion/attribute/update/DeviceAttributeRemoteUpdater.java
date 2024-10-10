@@ -69,7 +69,7 @@ public class DeviceAttributeRemoteUpdater {
   private final MemSchemaRegionStatistics regionStatistics;
 
   // Only exist for update detail container
-  private final Map<TDataNodeLocation, UpdateContainerStatistics> updateContainerStatistics =
+  private final Map<TDataNodeLocation, UpdateDetailContainerStatistics> updateContainerStatistics =
       new HashMap<>();
 
   public DeviceAttributeRemoteUpdater(final MemSchemaRegionStatistics regionStatistics) {
@@ -95,7 +95,7 @@ public class DeviceAttributeRemoteUpdater {
             } else {
               newContainer = new UpdateDetailContainer();
               requestMemory(UpdateDetailContainer.INSTANCE_SIZE);
-              updateContainerStatistics.put(location, new UpdateContainerStatistics());
+              updateContainerStatistics.put(location, new UpdateDetailContainerStatistics());
             }
             attributeUpdateMap.put(location, newContainer);
           }
@@ -139,6 +139,16 @@ public class DeviceAttributeRemoteUpdater {
     final Set<TDataNodeLocation> shrunkNodes = node.getShrunkNodes();
     targetDataNodeLocations.removeAll(shrunkNodes);
     attributeUpdateMap.keySet().removeAll(shrunkNodes);
+    attributeUpdateMap
+        .keySet()
+        .removeIf(
+            location -> {
+              if (shrunkNodes.contains(location)) {
+                releaseMemory(1L);
+                return true;
+              }
+              return false;
+            });
     updateContainerStatistics.keySet().removeAll(shrunkNodes);
 
     node.getCommitMap()
@@ -213,7 +223,8 @@ public class DeviceAttributeRemoteUpdater {
       }
       final UpdateClearContainer newContainer =
           ((UpdateDetailContainer) attributeUpdateMap.get(location)).degrade();
-      updateMemory(newContainer.ramBytesUsed() - updateContainerStatistics.get(location).getSize());
+      updateMemory(
+          newContainer.ramBytesUsed() - updateContainerStatistics.get(location).getContainerSize());
       attributeUpdateMap.put(location, newContainer);
       updateContainerStatistics.remove(location);
     }

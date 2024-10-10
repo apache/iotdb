@@ -22,30 +22,32 @@ package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 // For degrade
-public class UpdateContainerStatistics {
+public class UpdateDetailContainerStatistics {
   private static final long MIN_DEGRADE_MEMORY =
       IoTDBDescriptor.getInstance().getConfig().getDetailContainerMinDegradeMemoryInBytes();
   private long lastUpdateTime = System.currentTimeMillis();
-  private long size = 0;
 
-  long getSize() {
-    return size;
+  // Not include instance size
+  private long entrySize = 0;
+
+  long getContainerSize() {
+    return entrySize + UpdateDetailContainer.INSTANCE_SIZE;
   }
 
   void addSize(final long increment) {
-    this.size += increment;
+    this.entrySize += increment;
   }
 
   void decreaseSize(final long decrement) {
-    this.size -= decrement;
+    this.entrySize -= decrement;
     lastUpdateTime = System.currentTimeMillis();
   }
 
   boolean needDegrade() {
-    return size >= MIN_DEGRADE_MEMORY;
+    return entrySize >= MIN_DEGRADE_MEMORY;
   }
 
   long getDegradePriority() {
-    return size * (System.currentTimeMillis() - lastUpdateTime);
+    return entrySize * (System.currentTimeMillis() - lastUpdateTime);
   }
 }
