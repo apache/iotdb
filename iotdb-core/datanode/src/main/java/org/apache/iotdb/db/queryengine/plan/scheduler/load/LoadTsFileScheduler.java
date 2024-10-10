@@ -161,8 +161,11 @@ public class LoadTsFileScheduler implements IScheduler {
         final LoadSingleTsFileNode node = tsFileNodeList.get(i);
         final String filePath = node.getTsFileResource().getTsFilePath();
 
-        final String database = node.getDatabase();
-        partitionFetcher.setDatabase(database);
+        if (node.isTableModel()) {
+          partitionFetcher.setDatabase(node.getDatabase());
+        } else {
+          partitionFetcher.setDatabase(null);
+        }
 
         boolean isLoadSingleTsFileSuccess = true;
         boolean shouldRemoveFileFromLoadingSet = false;
@@ -662,8 +665,12 @@ public class LoadTsFileScheduler implements IScheduler {
             subSlotList.stream()
                 .map(
                     pair ->
-                        dataPartition.getDataRegionReplicaSetForWriting(
-                            pair.left, pair.right, database))
+                        // (database != null) means this file will be loaded into table-model
+                        database != null
+                            ? dataPartition.getDataRegionReplicaSetForWriting(
+                                pair.left, pair.right, database)
+                            : dataPartition.getDataRegionReplicaSetForWriting(
+                                pair.left, pair.right))
                 .collect(Collectors.toList()));
       }
       return replicaSets;
@@ -681,7 +688,10 @@ public class LoadTsFileScheduler implements IScheduler {
               entry -> {
                 DataPartitionQueryParam queryParam =
                     new DataPartitionQueryParam(entry.getKey(), new ArrayList<>(entry.getValue()));
-                queryParam.setDatabaseName(database);
+                // (database != null) means this file will be loaded into table-model
+                if (database != null) {
+                  queryParam.setDatabaseName(database);
+                }
                 return queryParam;
               })
           .collect(Collectors.toList());

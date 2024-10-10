@@ -535,7 +535,7 @@ public class StatementAnalyzer {
         return new LoadTsFileToTableModelAnalyzer(loadTsFile, metadata, queryContext);
       } else {
         // Load to tree-model
-        return new LoadTsFileToTreeModelAnalyzer(loadTsFile, metadata, queryContext);
+        return new LoadTsFileToTreeModelAnalyzer(loadTsFile, queryContext);
       }
     }
 

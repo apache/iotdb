@@ -27,9 +27,6 @@ import org.apache.iotdb.db.exception.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
-import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -52,6 +49,7 @@ import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class LoadTsFileToTreeModelAnalyzer extends LoadTsFileAnalyzer {
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileToTreeModelAnalyzer.class);
@@ -59,17 +57,14 @@ public class LoadTsFileToTreeModelAnalyzer extends LoadTsFileAnalyzer {
   private final SchemaAutoCreatorAndVerifier schemaAutoCreatorAndVerifier;
 
   public LoadTsFileToTreeModelAnalyzer(
-      LoadTsFileStatement loadTsFileStatement,
-      MPPQueryContext context,
-      IPartitionFetcher partitionFetcher,
-      ISchemaFetcher schemaFetcher) {
-    super(loadTsFileStatement, context, partitionFetcher, schemaFetcher);
+      LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
+    super(loadTsFileStatement, context);
     this.schemaAutoCreatorAndVerifier = new SchemaAutoCreatorAndVerifier(this);
   }
 
   public LoadTsFileToTreeModelAnalyzer(
-      LoadTsFile loadTsFileTableStatement, Metadata metadata, MPPQueryContext context) {
-    super(loadTsFileTableStatement, metadata, context);
+      LoadTsFile loadTsFileTableStatement, MPPQueryContext context) {
+    super(loadTsFileTableStatement, context);
     this.schemaAutoCreatorAndVerifier = new SchemaAutoCreatorAndVerifier(this);
   }
 
@@ -84,8 +79,8 @@ public class LoadTsFileToTreeModelAnalyzer extends LoadTsFileAnalyzer {
     }
 
     // analyze tsfile metadata file by file
-    for (int i = 0, tsfileNum = getTsFiles().size(); i < tsfileNum; i++) {
-      final File tsFile = getTsFiles().get(i);
+    for (int i = 0, tsfileNum = tsFiles.size(); i < tsfileNum; i++) {
+      final File tsFile = tsFiles.get(i);
 
       if (tsFile.length() == 0) {
         if (LOGGER.isWarnEnabled()) {
@@ -159,6 +154,17 @@ public class LoadTsFileToTreeModelAnalyzer extends LoadTsFileAnalyzer {
       final TsFileSequenceReaderTimeseriesMetadataIterator timeseriesMetadataIterator =
           new TsFileSequenceReaderTimeseriesMetadataIterator(reader, true, 1);
 
+      // check if the tsfile is empty
+      if (!timeseriesMetadataIterator.hasNext()) {
+        throw new LoadEmptyFileException(tsFile.getAbsolutePath());
+      }
+
+      // check whether the tsfile is tree-model or not
+      if (Objects.nonNull(reader.readFileMetadata().getTableSchemaMap())
+          && reader.readFileMetadata().getTableSchemaMap().size() != 0) {
+        throw new SemanticException("Attempted to load a table-model TsFile into tree-model.");
+      }
+
       // construct tsfile resource
       final TsFileResource tsFileResource = new TsFileResource(tsFile);
       if (!tsFileResource.resourceFileExists()) {
@@ -170,11 +176,6 @@ public class LoadTsFileToTreeModelAnalyzer extends LoadTsFileAnalyzer {
       }
 
       schemaAutoCreatorAndVerifier.setCurrentModificationsAndTimeIndex(tsFileResource, reader);
-
-      // check if the tsfile is empty
-      if (!timeseriesMetadataIterator.hasNext()) {
-        throw new LoadEmptyFileException(tsFile.getAbsolutePath());
-      }
 
       long writePointCount = 0;
 
@@ -207,7 +208,7 @@ public class LoadTsFileToTreeModelAnalyzer extends LoadTsFileAnalyzer {
       addWritePointCount(writePointCount);
     } catch (final LoadEmptyFileException loadEmptyFileException) {
       LOGGER.warn("Failed to load empty file: {}", tsFile.getAbsolutePath());
-      if (isDeleteAfterLoad()) {
+      if (isDeleteAfterLoad) {
         FileUtils.deleteQuietly(tsFile);
       }
     }

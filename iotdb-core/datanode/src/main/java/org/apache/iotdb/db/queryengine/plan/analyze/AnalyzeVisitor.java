@@ -85,6 +85,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpre
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.MeasurementGroup;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.FillDescriptor;
@@ -3036,13 +3037,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
     if (Objects.equals(loadTsFileStatement.getModel(), LoadTsFileConfigurator.MODEL_TREE_VALUE)) {
       // Load to tree-model
-      return new LoadTsFileToTreeModelAnalyzer(
-          loadTsFileStatement, context, partitionFetcher, schemaFetcher);
+      return new LoadTsFileToTreeModelAnalyzer(loadTsFileStatement, context);
     } else {
       // Load to table-model
       if (Objects.nonNull(loadTsFileStatement.getDatabase())) {
         return new LoadTsFileToTableModelAnalyzer(
-            loadTsFileStatement, context, partitionFetcher, schemaFetcher);
+            loadTsFileStatement, LocalExecutionPlanner.getInstance().metadata, context);
       } else {
         throw new SemanticException(
             "Database name must be specified when loading data into the table model.");

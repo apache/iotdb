@@ -29,8 +29,6 @@ import org.apache.iotdb.db.exception.VerifyMetadataException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
-import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
@@ -73,17 +71,18 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(LoadTsFileToTableModelAnalyzer.class);
 
+  private final Metadata metadata;
+
   public LoadTsFileToTableModelAnalyzer(
-      LoadTsFileStatement loadTsFileStatement,
-      MPPQueryContext context,
-      IPartitionFetcher partitionFetcher,
-      ISchemaFetcher schemaFetcher) {
-    super(loadTsFileStatement, context, partitionFetcher, schemaFetcher);
+      LoadTsFileStatement loadTsFileStatement, Metadata metadata, MPPQueryContext context) {
+    super(loadTsFileStatement, context);
+    this.metadata = metadata;
   }
 
   public LoadTsFileToTableModelAnalyzer(
       LoadTsFile loadTsFileTableStatement, Metadata metadata, MPPQueryContext context) {
-    super(loadTsFileTableStatement, metadata, context);
+    super(loadTsFileTableStatement, context);
+    this.metadata = metadata;
   }
 
   @Override
@@ -97,17 +96,17 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
     }
 
     try {
-      autoCreateDatabase(getDatabase());
+      autoCreateDatabase(database);
     } catch (VerifyMetadataException e) {
-      LOGGER.warn("Auto create database failed: {}", getDatabase(), e);
+      LOGGER.warn("Auto create database failed: {}", database, e);
       analysis.setFinishQueryAfterAnalyze(true);
       analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, e.getMessage()));
       return analysis;
     }
 
     // analyze tsfile metadata file by file
-    for (int i = 0, tsfileNum = getTsFiles().size(); i < tsfileNum; i++) {
-      final File tsFile = getTsFiles().get(i);
+    for (int i = 0, tsfileNum = tsFiles.size(); i < tsfileNum; i++) {
+      final File tsFile = tsFiles.get(i);
 
       if (tsFile.length() == 0) {
         if (LOGGER.isWarnEnabled()) {
@@ -159,6 +158,17 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
       final TsFileSequenceReaderTimeseriesMetadataIterator timeseriesMetadataIterator =
           new TsFileSequenceReaderTimeseriesMetadataIterator(reader, true, 1);
 
+      // check if the tsfile is empty
+      if (!timeseriesMetadataIterator.hasNext()) {
+        throw new LoadEmptyFileException(tsFile.getAbsolutePath());
+      }
+
+      // check whether the tsfile is table-model or not
+      if (Objects.isNull(reader.readFileMetadata().getTableSchemaMap())
+          || reader.readFileMetadata().getTableSchemaMap().size() == 0) {
+        throw new SemanticException("Attempted to load a tree-model TsFile into table-model.");
+      }
+
       // construct tsfile resource
       final TsFileResource tsFileResource = new TsFileResource(tsFile);
       if (!tsFileResource.resourceFileExists()) {
@@ -169,17 +179,12 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
         tsFileResource.deserialize();
       }
 
-      // check if the tsfile is empty
-      if (!timeseriesMetadataIterator.hasNext()) {
-        throw new LoadEmptyFileException(tsFile.getAbsolutePath());
-      }
-
       for (Map.Entry<String, TableSchema> name2Schema :
           reader.readFileMetadata().getTableSchemaMap().entrySet()) {
         org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema realSchema =
             metadata
                 .validateTableHeaderSchema(
-                    getDatabase(),
+                    database,
                     org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema
                         .fromTsFileTableSchema(name2Schema.getKey(), name2Schema.getValue()),
                     context,
@@ -222,7 +227,7 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
       addWritePointCount(writePointCount);
     } catch (final LoadEmptyFileException loadEmptyFileException) {
       LOGGER.warn("Failed to load empty file: {}", tsFile.getAbsolutePath());
-      if (isDeleteAfterLoad()) {
+      if (isDeleteAfterLoad) {
         FileUtils.deleteQuietly(tsFile);
       }
     }
@@ -253,7 +258,7 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
 
       @Override
       public String getDatabase() {
-        return analyzer.getDatabase();
+        return analyzer.database;
       }
 
       @Override

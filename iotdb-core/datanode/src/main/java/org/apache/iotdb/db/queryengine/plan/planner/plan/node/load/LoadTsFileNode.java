@@ -43,11 +43,14 @@ import java.util.Objects;
 public class LoadTsFileNode extends WritePlanNode {
 
   private final List<TsFileResource> resources;
+  private final List<Boolean> isTableModel;
   private final String database;
 
-  public LoadTsFileNode(PlanNodeId id, List<TsFileResource> resources, String database) {
+  public LoadTsFileNode(
+      PlanNodeId id, List<TsFileResource> resources, List<Boolean> isTableModel, String database) {
     super(id);
     this.resources = resources;
+    this.isTableModel = isTableModel;
     this.database = database;
   }
 
@@ -114,6 +117,7 @@ public class LoadTsFileNode extends WritePlanNode {
           new LoadSingleTsFileNode(
               getPlanNodeId(),
               resources.get(i),
+              isTableModel.get(i),
               database,
               statement.isDeleteAfterLoad(),
               statement.getWritePointCount(i)));
@@ -131,6 +135,7 @@ public class LoadTsFileNode extends WritePlanNode {
             new LoadSingleTsFileNode(
                 getPlanNodeId(),
                 resources.get(i),
+                isTableModel.get(i),
                 database,
                 statement.isDeleteAfterLoad(),
                 statement.getWritePointCount(i)));
@@ -148,11 +153,13 @@ public class LoadTsFileNode extends WritePlanNode {
       return false;
     }
     LoadTsFileNode loadTsFileNode = (LoadTsFileNode) o;
-    return Objects.equals(resources, loadTsFileNode.resources);
+    return Objects.equals(resources, loadTsFileNode.resources)
+        && Objects.equals(database, loadTsFileNode.database)
+        && Objects.equals(isTableModel, loadTsFileNode.isTableModel);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(resources);
+    return Objects.hash(resources, database, isTableModel);
   }
 }

@@ -26,7 +26,6 @@ import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -36,8 +35,6 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.annotation.Nullable;
 
 import java.io.File;
 import java.io.IOException;
@@ -53,66 +50,62 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
 
   // These are only used when constructed from table model SQL
   private final LoadTsFile loadTsFileTableStatement;
-  protected final Metadata metadata;
 
   private final boolean isTableModelStatement;
 
+  protected final List<File> tsFiles;
+  protected final String statementString;
+  protected final boolean isVerifySchema;
+
+  protected final boolean isDeleteAfterLoad;
+
+  protected final boolean isAutoCreateDatabase;
+
+  protected final int databaseLevel;
+
+  protected final String database;
+
   final MPPQueryContext context;
 
-  final IPartitionFetcher partitionFetcher;
-  final ISchemaFetcher schemaFetcher;
+  final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
+  final ISchemaFetcher schemaFetcher = ClusterSchemaFetcher.getInstance();
 
-  LoadTsFileAnalyzer(
-      LoadTsFileStatement loadTsFileStatement,
-      MPPQueryContext context,
-      IPartitionFetcher partitionFetcher,
-      ISchemaFetcher schemaFetcher) {
+  LoadTsFileAnalyzer(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
     this.loadTsFileStatement = loadTsFileStatement;
+    this.tsFiles = loadTsFileStatement.getTsFiles();
+    this.statementString = loadTsFileStatement.toString();
+    this.isVerifySchema = loadTsFileStatement.isVerifySchema();
+    this.isDeleteAfterLoad = loadTsFileStatement.isDeleteAfterLoad();
+    this.isAutoCreateDatabase = loadTsFileStatement.isAutoCreateDatabase();
+    this.databaseLevel = loadTsFileStatement.getDatabaseLevel();
+    this.database = loadTsFileStatement.getDatabase();
 
     this.loadTsFileTableStatement = null;
-    this.metadata = null;
-
     this.isTableModelStatement = false;
-
     this.context = context;
-
-    this.partitionFetcher = partitionFetcher;
-    this.schemaFetcher = schemaFetcher;
   }
 
-  LoadTsFileAnalyzer(
-      LoadTsFile loadTsFileTableStatement, Metadata metadata, MPPQueryContext context) {
-    this.loadTsFileStatement = null;
-
+  LoadTsFileAnalyzer(LoadTsFile loadTsFileTableStatement, MPPQueryContext context) {
     this.loadTsFileTableStatement = loadTsFileTableStatement;
-    this.metadata = metadata;
+    this.tsFiles = loadTsFileTableStatement.getTsFiles();
+    this.statementString = loadTsFileTableStatement.toString();
+    this.isVerifySchema = true;
+    this.isDeleteAfterLoad = loadTsFileTableStatement.isDeleteAfterLoad();
+    this.isAutoCreateDatabase = loadTsFileTableStatement.isAutoCreateDatabase();
+    this.databaseLevel = loadTsFileTableStatement.getDatabaseLevel();
+    this.database = loadTsFileTableStatement.getDatabase();
 
+    this.loadTsFileStatement = null;
     this.isTableModelStatement = true;
-
     this.context = context;
-
-    this.partitionFetcher = ClusterPartitionFetcher.getInstance();
-    this.schemaFetcher = ClusterSchemaFetcher.getInstance();
   }
 
   public abstract IAnalysis analyzeFileByFile(IAnalysis analysis);
 
   protected abstract void analyzeSingleTsFile(final File tsFile) throws IOException, AuthException;
 
-  protected List<File> getTsFiles() {
-    if (isTableModelStatement) {
-      return loadTsFileTableStatement.getTsFiles();
-    } else {
-      return loadTsFileStatement.getTsFiles();
-    }
-  }
-
   protected String getStatementString() {
-    if (isTableModelStatement) {
-      return loadTsFileTableStatement.toString();
-    } else {
-      return loadTsFileStatement.toString();
-    }
+    return statementString;
   }
 
   protected void setRealStatement(IAnalysis analysis) {
@@ -140,43 +133,15 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   protected boolean isVerifySchema() {
-    if (isTableModelStatement) {
-      return true;
-    } else {
-      return loadTsFileStatement.isVerifySchema();
-    }
-  }
-
-  protected boolean isDeleteAfterLoad() {
-    if (isTableModelStatement) {
-      return loadTsFileTableStatement.isDeleteAfterLoad();
-    } else {
-      return loadTsFileStatement.isDeleteAfterLoad();
-    }
+    return isVerifySchema;
   }
 
   protected boolean isAutoCreateDatabase() {
-    if (isTableModelStatement) {
-      return loadTsFileTableStatement.isAutoCreateDatabase();
-    } else {
-      return loadTsFileStatement.isAutoCreateDatabase();
-    }
+    return isAutoCreateDatabase;
   }
 
   protected int getDatabaseLevel() {
-    if (isTableModelStatement) {
-      return loadTsFileTableStatement.getDatabaseLevel();
-    } else {
-      return loadTsFileStatement.getDatabaseLevel();
-    }
-  }
-
-  protected @Nullable String getDatabase() {
-    if (isTableModelStatement) {
-      return loadTsFileTableStatement.getDatabase();
-    } else {
-      return loadTsFileStatement.getDatabase();
-    }
+    return databaseLevel;
   }
 
   protected long getWritePointCount(

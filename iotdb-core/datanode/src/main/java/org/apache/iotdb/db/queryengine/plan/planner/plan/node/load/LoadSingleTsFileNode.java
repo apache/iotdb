@@ -56,6 +56,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
   private final File tsFile;
   private final TsFileResource resource;
+  private final boolean isTableModel;
   private final String database;
   private final boolean deleteAfterLoad;
   private final long writePointCount;
@@ -66,12 +67,14 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   public LoadSingleTsFileNode(
       PlanNodeId id,
       TsFileResource resource,
+      boolean isTableModel,
       String database,
       boolean deleteAfterLoad,
       long writePointCount) {
     super(id);
     this.tsFile = resource.getTsFile();
     this.resource = resource;
+    this.isTableModel = isTableModel;
     this.database = database;
     this.deleteAfterLoad = deleteAfterLoad;
     this.writePointCount = writePointCount;
@@ -134,6 +137,10 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
   public boolean isDeleteAfterLoad() {
     return deleteAfterLoad;
+  }
+
+  public boolean isTableModel() {
+    return isTableModel;
   }
 
   public long getWritePointCount() {
@@ -237,6 +244,8 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     LoadSingleTsFileNode loadSingleTsFileNode = (LoadSingleTsFileNode) o;
     return Objects.equals(tsFile, loadSingleTsFileNode.tsFile)
         && Objects.equals(resource, loadSingleTsFileNode.resource)
+        && Objects.equals(isTableModel, loadSingleTsFileNode.isTableModel)
+        && Objects.equals(database, loadSingleTsFileNode.database)
         && Objects.equals(needDecodeTsFile, loadSingleTsFileNode.needDecodeTsFile)
         && Objects.equals(deleteAfterLoad, loadSingleTsFileNode.deleteAfterLoad)
         && Objects.equals(localRegionReplicaSet, loadSingleTsFileNode.localRegionReplicaSet);
@@ -244,6 +253,13 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
   @Override
   public int hashCode() {
-    return Objects.hash(tsFile, resource, needDecodeTsFile, deleteAfterLoad, localRegionReplicaSet);
+    return Objects.hash(
+        tsFile,
+        resource,
+        isTableModel,
+        database,
+        needDecodeTsFile,
+        deleteAfterLoad,
+        localRegionReplicaSet);
   }
 }

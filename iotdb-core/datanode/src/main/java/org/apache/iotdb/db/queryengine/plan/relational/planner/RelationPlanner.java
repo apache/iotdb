@@ -64,6 +64,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -697,8 +698,13 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
 
   @Override
   protected RelationPlan visitLoadTsFile(LoadTsFile node, Void context) {
+    final List<Boolean> isTableModel = new ArrayList<>();
+    for (int i = 0; i < node.getResources().size(); i++) {
+      isTableModel.add(node.getModel().equals(LoadTsFileConfigurator.MODEL_TABLE_VALUE));
+    }
     return new RelationPlan(
-        new LoadTsFileNode(idAllocator.genPlanNodeId(), node.getResources(), node.getDatabase()),
+        new LoadTsFileNode(
+            idAllocator.genPlanNodeId(), node.getResources(), isTableModel, node.getDatabase()),
         analysis.getRootScope(),
         Collections.emptyList());
   }
