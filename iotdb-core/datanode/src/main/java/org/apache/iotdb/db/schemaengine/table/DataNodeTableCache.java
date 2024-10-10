@@ -271,8 +271,6 @@ public class DataNodeTableCache implements ITableCache {
       final Map<String, Map<String, Long>> previousVersions) {
     readWriteLock.writeLock().lock();
     try {
-      System.out.println(fetchedTables);
-      System.out.println(previousVersions);
       fetchedTables.forEach(
           (database, tableInfoMap) -> {
             if (preUpdateTableMap.containsKey(database)) {
