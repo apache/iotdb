@@ -20,13 +20,13 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceSourceNode;
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.DeviceAttributeRemoteUpdater;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -92,8 +92,8 @@ public class TableDeviceFetchNode extends TableDeviceSourceNode {
 
     if (Objects.nonNull(senderLocation)) {
       ReadWriteIOUtils.write(true, byteBuffer);
-      ReadWriteIOUtils.write(senderLocation.getDataNodeId(), byteBuffer);
-      ThriftCommonsSerDeUtils.serializeTEndPoint(senderLocation.getInternalEndPoint(), byteBuffer);
+      DeviceAttributeRemoteUpdater.serializeNodeLocation4AttributeUpdate(
+          senderLocation, byteBuffer);
     } else {
       ReadWriteIOUtils.write(false, byteBuffer);
     }
@@ -120,8 +120,7 @@ public class TableDeviceFetchNode extends TableDeviceSourceNode {
 
     if (Objects.nonNull(senderLocation)) {
       ReadWriteIOUtils.write(true, stream);
-      ReadWriteIOUtils.write(senderLocation.getDataNodeId(), stream);
-      ThriftCommonsSerDeUtils.serializeTEndPoint(senderLocation.getInternalEndPoint(), stream);
+      DeviceAttributeRemoteUpdater.serializeNodeLocation4AttributeUpdate(senderLocation, stream);
     } else {
       ReadWriteIOUtils.write(false, stream);
     }
@@ -151,13 +150,7 @@ public class TableDeviceFetchNode extends TableDeviceSourceNode {
     TDataNodeLocation senderLocation = null;
     if (ReadWriteIOUtils.readBool(buffer)) {
       senderLocation =
-          new TDataNodeLocation(
-              ReadWriteIOUtils.readInt(buffer),
-              null,
-              ThriftCommonsSerDeUtils.deserializeTEndPoint(buffer),
-              null,
-              null,
-              null);
+          DeviceAttributeRemoteUpdater.deserializeNodeLocationForAttributeUpdate(buffer);
     }
 
     final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
