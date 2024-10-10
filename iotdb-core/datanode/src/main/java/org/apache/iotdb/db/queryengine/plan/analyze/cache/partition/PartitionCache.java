@@ -465,7 +465,6 @@ public class PartitionCache {
           }
         }
       } catch (TException | MetadataException | ClientManagerException e) {
-        logger.error("stack trace:", e);
         throw new StatementAnalyzeException(
             "An error occurred when executing getDeviceToDatabase():" + e.getMessage());
       }
