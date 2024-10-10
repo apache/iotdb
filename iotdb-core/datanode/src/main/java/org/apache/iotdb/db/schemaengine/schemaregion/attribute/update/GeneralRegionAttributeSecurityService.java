@@ -277,12 +277,15 @@ public class GeneralRegionAttributeSecurityService {
     for (final Iterator<Map.Entry<SchemaRegionId, Pair<Long, Map<TDataNodeLocation, byte[]>>>> it =
             attributeUpdateCommitMap.entrySet().iterator();
         it.hasNext(); ) {
-      final Map<TDataNodeLocation, byte[]> dataNodeLocationMap = it.next().getValue().getRight();
+      final Map.Entry<SchemaRegionId, Pair<Long, Map<TDataNodeLocation, byte[]>>> currentEntry =
+          it.next();
+      final Map<TDataNodeLocation, byte[]> dataNodeLocationMap = currentEntry.getValue().getRight();
       dataNodeLocationMap
           .entrySet()
           .removeIf(
               locationEntry -> failedDataNodes.contains(locationEntry.getKey().getDataNodeId()));
-      if (dataNodeLocationMap.isEmpty()) {
+      // Reserve the schemaIds with shrinkage for commit convenience
+      if (dataNodeLocationMap.isEmpty() && !result.containsKey(currentEntry.getKey())) {
         it.remove();
       }
     }
