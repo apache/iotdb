@@ -282,17 +282,13 @@ public class DeviceAttributeRemoteUpdater {
   private void serialize(final OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(targetDataNodeLocations.size(), outputStream);
     for (final TDataNodeLocation targetDataNodeLocation : targetDataNodeLocations) {
-      ReadWriteIOUtils.write(targetDataNodeLocation.getDataNodeId(), outputStream);
-      ThriftCommonsSerDeUtils.serializeTEndPoint(
-          targetDataNodeLocation.getInternalEndPoint(), outputStream);
+      serializeNodeLocation4AttributeUpdate(targetDataNodeLocation, outputStream);
     }
 
     ReadWriteIOUtils.write(attributeUpdateMap.size(), outputStream);
     for (final Map.Entry<TDataNodeLocation, UpdateContainer> entry :
         attributeUpdateMap.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey().getDataNodeId(), outputStream);
-      ThriftCommonsSerDeUtils.serializeTEndPoint(
-          entry.getKey().getInternalEndPoint(), outputStream);
+      serializeNodeLocation4AttributeUpdate(entry.getKey(), outputStream);
       entry.getValue().serialize(outputStream);
     }
 

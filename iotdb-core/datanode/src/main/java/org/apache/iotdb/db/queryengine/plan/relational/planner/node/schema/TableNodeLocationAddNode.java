@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -28,8 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
-
-import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.DeviceAttributeRemoteUpdater;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -84,26 +82,18 @@ public class TableNodeLocationAddNode extends PlanNode implements ISchemaRegionP
   @Override
   protected void serializeAttributes(final ByteBuffer byteBuffer) {
     getType().serialize(byteBuffer);
-    ReadWriteIOUtils.write(location.getDataNodeId(), byteBuffer);
-    ThriftCommonsSerDeUtils.serializeTEndPoint(location.getInternalEndPoint(), byteBuffer);
+    DeviceAttributeRemoteUpdater.serializeNodeLocation4AttributeUpdate(location, byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(final DataOutputStream stream) throws IOException {
     getType().serialize(stream);
-    ReadWriteIOUtils.write(location.getDataNodeId(), stream);
-    ThriftCommonsSerDeUtils.serializeTEndPoint(location.getInternalEndPoint(), stream);
+    DeviceAttributeRemoteUpdater.serializeNodeLocation4AttributeUpdate(location, stream);
   }
 
   public static PlanNode deserialize(final ByteBuffer buffer) {
     final TDataNodeLocation location =
-        new TDataNodeLocation(
-            ReadWriteIOUtils.readInt(buffer),
-            null,
-            ThriftCommonsSerDeUtils.deserializeTEndPoint(buffer),
-            null,
-            null,
-            null);
+        DeviceAttributeRemoteUpdater.deserializeNodeLocationForAttributeUpdate(buffer);
     final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
     return new TableNodeLocationAddNode(planNodeId, location);
   }
