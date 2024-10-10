@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 public abstract class PipeInsertionEvent extends EnrichedEvent {
 
   private final String treeModelDatabaseName;
-  private String tableModelDatabaseName;
+  private String tableModelDatabaseName; // lazy initialization
 
   protected PipeInsertionEvent(
       final String pipeName,
@@ -52,9 +52,16 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
       final long startTime,
       final long endTime,
       final String databaseNameFromDataRegion) {
-    super(pipeName, creationTime, pipeTaskMeta, treePattern, tablePattern, startTime, endTime);
-    this.treeModelDatabaseName = databaseNameFromDataRegion;
-    this.tableModelDatabaseName = null; // lazy initialization
+    this(
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        treePattern,
+        tablePattern,
+        startTime,
+        endTime,
+        databaseNameFromDataRegion,
+        null);
   }
 
   public String getTreeModelDatabaseName() {
