@@ -37,7 +37,6 @@ public class LikeTransformer extends UnaryTransformer {
   public LikeTransformer(LayerReader layerReader, LikePattern pattern) {
     super(layerReader);
     this.pattern = pattern;
-
     if (layerReaderDataType != TSDataType.TEXT) {
       throw new UnSupportedDataTypeException("Unsupported data type: " + layerReaderDataType);
     }

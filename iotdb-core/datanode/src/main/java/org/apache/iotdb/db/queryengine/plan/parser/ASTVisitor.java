@@ -248,6 +248,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -3135,15 +3136,18 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private Expression parseRegularExpression(ExpressionContext context, boolean canUseFullPath) {
     return new RegularExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, canUseFullPath),
-        parseStringLiteral(context.STRING_LITERAL().getText()),
-        false);
+        parseStringLiteral(String.valueOf(context.pattern.getText())),
+        context.operator_not() != null);
   }
 
   private Expression parseLikeExpression(ExpressionContext context, boolean canUseFullPath) {
     return new LikeExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, canUseFullPath),
-        parseStringLiteral(context.STRING_LITERAL().getText()),
-        false);
+        parseStringLiteral(String.valueOf(context.pattern.getText())),
+        context.ESCAPE() == null
+            ? Optional.empty()
+            : Optional.of(parseStringLiteral(String.valueOf(context.escapeSet.getText()))),
+        context.operator_not() != null);
   }
 
   private Expression parseIsNullExpression(ExpressionContext context, boolean canUseFullPath) {
