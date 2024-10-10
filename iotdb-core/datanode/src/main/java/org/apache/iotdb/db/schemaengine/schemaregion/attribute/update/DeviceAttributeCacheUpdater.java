@@ -336,6 +336,8 @@ public class DeviceAttributeCacheUpdater {
               ? new UpdateDetailContainer()
               : new UpdateClearContainer();
       container.deserialize(inputStream);
+
+      // TODO: Update local cache for newly migrated region
       attributeUpdateMap.put(location, container);
     }
   }
