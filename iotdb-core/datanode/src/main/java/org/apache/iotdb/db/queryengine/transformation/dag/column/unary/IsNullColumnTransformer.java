@@ -41,4 +41,15 @@ public class IsNullColumnTransformer extends UnaryColumnTransformer {
       returnType.writeBoolean(columnBuilder, column.isNull(i) ^ isNot);
     }
   }
+
+  @Override
+  protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (selection[i]) {
+        returnType.writeBoolean(columnBuilder, column.isNull(i) ^ isNot);
+      } else {
+        columnBuilder.appendNull();
+      }
+    }
+  }
 }
