@@ -17,19 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
+package org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema;
 
-import java.util.HashSet;
-import java.util.Set;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceSourceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 
-public class TableDeviceCacheAttributeGuard {
-  final Set<Integer> fetchedSchemaRegionIds = new HashSet<>();
-
-  public boolean isRegionFetched(final Integer schemaRegionId) {
-    return fetchedSchemaRegionIds.contains(schemaRegionId);
-  }
-
-  public void addFetchedRegion(final Integer schemaRegionId) {
-    fetchedSchemaRegionIds.add(schemaRegionId);
+public class TableSchemaQuerySuccessfulCallbackVisitor
+    extends AbstractTableSchemaQueryAttributeSecurityVisitor<Void> {
+  @Override
+  protected Void visitTableDeviceSourceNode(
+      final TableDeviceSourceNode node, final ConsensusGroupId context) {
+    TableDeviceSchemaFetcher.getInstance().getAttributeGuard().addFetchedRegion(context.getId());
+    return null;
   }
 }

@@ -41,6 +41,7 @@ import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableSchemaQuerySuccessfulCallbackVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableSchemaQueryWriteVisitor;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstance;
@@ -348,7 +349,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                     TSStatusCode.EXECUTE_STATEMENT_ERROR, sendFragmentInstanceResp.message));
           } else if (Objects.nonNull(sendFragmentInstanceReq.getConsensusGroupId())) {
             // Assume the consensus group casting will not generate any exceptions
-            new TableSchemaQueryWriteVisitor()
+            new TableSchemaQuerySuccessfulCallbackVisitor()
                 .processFragment(
                     instance,
                     ConsensusGroupId.Factory.createFromTConsensusGroupId(
@@ -491,7 +492,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           }
         } else if (Objects.nonNull(groupId)) {
           // Assume the consensus group casting will not generate any exceptions
-          new TableSchemaQueryWriteVisitor().processFragment(instance, groupId);
+          new TableSchemaQuerySuccessfulCallbackVisitor().processFragment(instance, groupId);
         }
         break;
       case WRITE:
