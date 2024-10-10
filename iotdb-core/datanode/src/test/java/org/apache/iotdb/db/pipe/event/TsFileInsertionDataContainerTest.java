@@ -21,9 +21,9 @@ package org.apache.iotdb.db.pipe.event;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixPipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.query.TsFileInsertionQueryDataContainer;
@@ -350,14 +350,14 @@ public class TsFileInsertionDataContainerTest {
       }
     }
 
-    final PipePattern rootPattern;
+    final TreePattern rootPattern;
     switch (patternFormat) {
       case PREFIX_FORMAT:
-        rootPattern = new PrefixPipePattern("root");
+        rootPattern = new PrefixTreePattern("root");
         break;
       case IOTDB_FORMAT:
       default:
-        rootPattern = new IoTDBPipePattern("root.**");
+        rootPattern = new IoTDBTreePattern("root.**");
         break;
     }
 
@@ -411,17 +411,17 @@ public class TsFileInsertionDataContainerTest {
                           }));
     }
 
-    final PipePattern oneAlignedDevicePattern;
-    final PipePattern oneNonAlignedDevicePattern;
+    final TreePattern oneAlignedDevicePattern;
+    final TreePattern oneNonAlignedDevicePattern;
     switch (patternFormat) {
       case PREFIX_FORMAT:
-        oneAlignedDevicePattern = new PrefixPipePattern(oneDeviceInAlignedTsFile.get());
-        oneNonAlignedDevicePattern = new PrefixPipePattern(oneDeviceInUnalignedTsFile.get());
+        oneAlignedDevicePattern = new PrefixTreePattern(oneDeviceInAlignedTsFile.get());
+        oneNonAlignedDevicePattern = new PrefixTreePattern(oneDeviceInUnalignedTsFile.get());
         break;
       case IOTDB_FORMAT:
       default:
-        oneAlignedDevicePattern = new IoTDBPipePattern(oneDeviceInAlignedTsFile.get() + ".**");
-        oneNonAlignedDevicePattern = new IoTDBPipePattern(oneDeviceInUnalignedTsFile.get() + ".**");
+        oneAlignedDevicePattern = new IoTDBTreePattern(oneDeviceInAlignedTsFile.get() + ".**");
+        oneNonAlignedDevicePattern = new IoTDBTreePattern(oneDeviceInUnalignedTsFile.get() + ".**");
         break;
     }
 
@@ -440,19 +440,19 @@ public class TsFileInsertionDataContainerTest {
         isQuery,
         expectedRowNumber * measurementNumber);
 
-    final PipePattern oneAlignedMeasurementPattern;
-    final PipePattern oneNonAlignedMeasurementPattern;
+    final TreePattern oneAlignedMeasurementPattern;
+    final TreePattern oneNonAlignedMeasurementPattern;
     switch (patternFormat) {
       case PREFIX_FORMAT:
-        oneAlignedMeasurementPattern = new PrefixPipePattern(oneMeasurementInAlignedTsFile.get());
+        oneAlignedMeasurementPattern = new PrefixTreePattern(oneMeasurementInAlignedTsFile.get());
         oneNonAlignedMeasurementPattern =
-            new PrefixPipePattern(oneMeasurementInUnalignedTsFile.get());
+            new PrefixTreePattern(oneMeasurementInUnalignedTsFile.get());
         break;
       case IOTDB_FORMAT:
       default:
-        oneAlignedMeasurementPattern = new IoTDBPipePattern(oneMeasurementInAlignedTsFile.get());
+        oneAlignedMeasurementPattern = new IoTDBTreePattern(oneMeasurementInAlignedTsFile.get());
         oneNonAlignedMeasurementPattern =
-            new IoTDBPipePattern(oneMeasurementInUnalignedTsFile.get());
+            new IoTDBTreePattern(oneMeasurementInUnalignedTsFile.get());
         break;
     }
 
@@ -471,14 +471,14 @@ public class TsFileInsertionDataContainerTest {
         isQuery,
         expectedRowNumber);
 
-    final PipePattern notExistPattern;
+    final TreePattern notExistPattern;
     switch (patternFormat) {
       case PREFIX_FORMAT:
-        notExistPattern = new PrefixPipePattern("root.`not-exist-pattern`");
+        notExistPattern = new PrefixTreePattern("root.`not-exist-pattern`");
         break;
       case IOTDB_FORMAT:
       default:
-        notExistPattern = new IoTDBPipePattern("root.`not-exist-pattern`");
+        notExistPattern = new IoTDBTreePattern("root.`not-exist-pattern`");
         break;
     }
 
@@ -514,7 +514,7 @@ public class TsFileInsertionDataContainerTest {
 
     testTsFilePointNum(
         resource.getTsFile(),
-        new PrefixPipePattern("root"),
+        new PrefixTreePattern("root"),
         Long.MIN_VALUE,
         Long.MAX_VALUE,
         isQuery,
@@ -548,12 +548,12 @@ public class TsFileInsertionDataContainerTest {
       writer.writeAligned(t);
     }
     testTsFilePointNum(
-        alignedTsFile, new PrefixPipePattern("root"), Long.MIN_VALUE, Long.MAX_VALUE, isQuery, 4);
+        alignedTsFile, new PrefixTreePattern("root"), Long.MIN_VALUE, Long.MAX_VALUE, isQuery, 4);
   }
 
   private void testTsFilePointNum(
       final File tsFile,
-      final PipePattern pattern,
+      final TreePattern pattern,
       final long startTime,
       final long endTime,
       final boolean isQuery,

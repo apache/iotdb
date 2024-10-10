@@ -46,19 +46,41 @@ public class SubString2ColumnTransformer extends BinaryColumnTransformer {
     Type rightType = rightTransformer.getType();
     for (int i = 0; i < positionCount; i++) {
       if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
-        String currentValue = leftColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-        int beginPosition = rightType.getInt(rightColumn, i);
-        if (beginPosition > currentValue.length()) {
-          throw new SemanticException(
-              "Argument exception,the scalar function substring beginPosition must not be greater than the string length");
-        } else {
-          int maxMin = Math.max(1, beginPosition);
-          currentValue = currentValue.substring(maxMin - 1);
-        }
-        builder.writeBinary(BytesUtils.valueOf(currentValue));
+        transform(leftColumn, rightColumn, builder, rightType, i);
       } else {
         builder.appendNull();
       }
     }
+  }
+
+  @Override
+  protected void doTransform(
+      Column leftColumn,
+      Column rightColumn,
+      ColumnBuilder builder,
+      int positionCount,
+      boolean[] selection) {
+    Type rightType = rightTransformer.getType();
+    for (int i = 0; i < positionCount; i++) {
+      if (selection[i] && !leftColumn.isNull(i) && !rightColumn.isNull(i)) {
+        transform(leftColumn, rightColumn, builder, rightType, i);
+      } else {
+        builder.appendNull();
+      }
+    }
+  }
+
+  private void transform(
+      Column leftColumn, Column rightColumn, ColumnBuilder builder, Type rightType, int i) {
+    String currentValue = leftColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
+    int beginPosition = rightType.getInt(rightColumn, i);
+    if (beginPosition > currentValue.length()) {
+      throw new SemanticException(
+          "Argument exception,the scalar function substring beginPosition must not be greater than the string length");
+    } else {
+      int maxMin = Math.max(1, beginPosition);
+      currentValue = currentValue.substring(maxMin - 1);
+    }
+    builder.writeBinary(BytesUtils.valueOf(currentValue));
   }
 }

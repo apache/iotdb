@@ -37,18 +37,22 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class IoTDBPipePattern extends PipePattern {
+public class IoTDBTreePattern extends TreePattern {
 
   private final PartialPath patternPartialPath;
 
-  public IoTDBPipePattern(final String pattern) {
-    super(pattern);
+  public IoTDBTreePattern(final boolean isTreeModelDataAllowedToBeCaptured, final String pattern) {
+    super(isTreeModelDataAllowedToBeCaptured, pattern);
 
     try {
       patternPartialPath = new PartialPath(getPattern());
     } catch (final IllegalPathException e) {
       throw new PipeException("Illegal IoTDBPipePattern: " + getPattern(), e);
     }
+  }
+
+  public IoTDBTreePattern(final String pattern) {
+    this(true, pattern);
   }
 
   public static <T> List<T> applyIndexesOnList(
@@ -123,9 +127,9 @@ public class IoTDBPipePattern extends PipePattern {
   }
 
   /**
-   * Check if the {@link PipePattern} matches the given prefix path. In schema transmission, this
+   * Check if the {@link TreePattern} matches the given prefix path. In schema transmission, this
    * can be used to detect whether the given path can act as a parent path of the {@link
-   * PipePattern}, and to transmit possibly used schemas like database creation and template
+   * TreePattern}, and to transmit possibly used schemas like database creation and template
    * setting.
    */
   public boolean matchPrefixPath(final String path) {
@@ -156,7 +160,7 @@ public class IoTDBPipePattern extends PipePattern {
   }
 
   /**
-   * Get the intersection of the given {@link PartialPath} and the {@link PipePattern}, Only used by
+   * Get the intersection of the given {@link PartialPath} and the {@link TreePattern}, Only used by
    * schema transmission. Caller shall ensure that it is a prefix or full path pattern.
    */
   public List<PartialPath> getIntersection(final PartialPath partialPath) {
@@ -169,7 +173,7 @@ public class IoTDBPipePattern extends PipePattern {
   }
 
   /**
-   * Get the intersection of the given {@link PathPatternTree} and the {@link PipePattern}. Only
+   * Get the intersection of the given {@link PathPatternTree} and the {@link TreePattern}. Only
    * used by schema transmission. Caller shall ensure that it is a prefix or full path pattern.
    */
   public PathPatternTree getIntersection(final PathPatternTree patternTree) {

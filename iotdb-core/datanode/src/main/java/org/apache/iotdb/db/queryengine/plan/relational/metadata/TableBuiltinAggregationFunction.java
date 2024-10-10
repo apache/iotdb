@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.common.type.Type;
 
@@ -111,6 +113,15 @@ public enum TableBuiltinAggregationFunction {
       return ImmutableList.of(DOUBLE, INT32);
     } else {
       return ImmutableList.copyOf(originalArgumentTypes);
+    }
+  }
+
+  public static TAggregationType getAggregationTypeByFuncName(String funcName) {
+    if (NATIVE_FUNCTION_NAMES.contains(funcName)) {
+      return TAggregationType.valueOf(funcName.toUpperCase());
+    } else {
+      // fallback to UDAF if no enum found
+      return TAggregationType.UDAF;
     }
   }
 }

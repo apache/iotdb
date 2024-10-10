@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.commons.schema.table;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
@@ -142,6 +144,19 @@ public class TsTable {
     } finally {
       readWriteLock.readLock().unlock();
     }
+  }
+
+  public long getTableTTL() {
+    long ttl = getTableTTLInMS();
+    return ttl == Long.MAX_VALUE
+        ? ttl
+        : CommonDateTimeUtils.convertMilliTimeWithPrecision(
+            ttl, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+  }
+
+  public long getTableTTLInMS() {
+    return Long.parseLong(
+        getPropValue(TTL_PROPERTY.toLowerCase(Locale.ENGLISH)).orElse(Long.MAX_VALUE + ""));
   }
 
   public Optional<String> getPropValue(final String propKey) {

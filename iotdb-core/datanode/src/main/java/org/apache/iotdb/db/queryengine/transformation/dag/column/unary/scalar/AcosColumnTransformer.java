@@ -36,18 +36,33 @@ public class AcosColumnTransformer extends UnaryColumnTransformer {
   protected void doTransform(Column column, ColumnBuilder columnBuilder) {
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
       if (!column.isNull(i)) {
-        if (TSDataType.DOUBLE.equals(column.getDataType())) {
-          columnBuilder.writeDouble(Math.acos(column.getDouble(i)));
-        } else if (TSDataType.FLOAT.equals(column.getDataType())) {
-          columnBuilder.writeDouble(Math.acos(column.getFloat(i)));
-        } else if (TSDataType.INT32.equals(column.getDataType())) {
-          columnBuilder.writeDouble(Math.acos(column.getInt(i)));
-        } else if (TSDataType.INT64.equals(column.getDataType())) {
-          columnBuilder.writeDouble(Math.acos((double) column.getLong(i)));
-        }
+        transform(column, columnBuilder, i);
       } else {
         columnBuilder.appendNull();
       }
+    }
+  }
+
+  @Override
+  protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (selection[i] && !column.isNull(i)) {
+        transform(column, columnBuilder, i);
+      } else {
+        columnBuilder.appendNull();
+      }
+    }
+  }
+
+  private void transform(Column column, ColumnBuilder columnBuilder, int i) {
+    if (TSDataType.DOUBLE.equals(column.getDataType())) {
+      columnBuilder.writeDouble(Math.acos(column.getDouble(i)));
+    } else if (TSDataType.FLOAT.equals(column.getDataType())) {
+      columnBuilder.writeDouble(Math.acos(column.getFloat(i)));
+    } else if (TSDataType.INT32.equals(column.getDataType())) {
+      columnBuilder.writeDouble(Math.acos(column.getInt(i)));
+    } else if (TSDataType.INT64.equals(column.getDataType())) {
+      columnBuilder.writeDouble(Math.acos((double) column.getLong(i)));
     }
   }
 }

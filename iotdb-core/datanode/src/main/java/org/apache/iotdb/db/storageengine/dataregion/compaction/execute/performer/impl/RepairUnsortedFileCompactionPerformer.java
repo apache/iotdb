@@ -35,9 +35,8 @@ import java.util.List;
 /** Used for fixing files which contains internal unsorted data */
 public class RepairUnsortedFileCompactionPerformer extends ReadPointCompactionPerformer {
 
-  public RepairUnsortedFileCompactionPerformer(boolean ignoreAllNullRows) {
+  public RepairUnsortedFileCompactionPerformer() {
     super();
-    this.ignoreAllNullRows = ignoreAllNullRows;
   }
 
   @Override

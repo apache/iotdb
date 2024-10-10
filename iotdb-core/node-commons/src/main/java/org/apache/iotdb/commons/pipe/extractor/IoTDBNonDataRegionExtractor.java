@@ -22,8 +22,8 @@ package org.apache.iotdb.commons.pipe.extractor;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinkedQueue;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -45,7 +45,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
 
-  protected IoTDBPipePattern pipePattern;
+  protected IoTDBTreePattern pipePattern;
 
   private List<PipeSnapshotEvent> historicalEvents = new LinkedList<>();
   // A fixed size initialized only when the historicalEvents are first
@@ -67,16 +67,16 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
       throws Exception {
     super.customize(parameters, configuration);
 
-    final PipePattern pattern = PipePattern.parsePipePatternFromSourceParameters(parameters);
-    if (!(pattern instanceof IoTDBPipePattern
-        && (((IoTDBPipePattern) pattern).isPrefix()
-            || ((IoTDBPipePattern) pattern).isFullPath()))) {
+    final TreePattern pattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
+    if (!(pattern instanceof IoTDBTreePattern
+        && (((IoTDBTreePattern) pattern).isPrefix()
+            || ((IoTDBTreePattern) pattern).isFullPath()))) {
       throw new IllegalArgumentException(
           String.format(
               "The path pattern %s is not valid for the source. Only prefix or full path is allowed.",
               pattern.getPattern()));
     }
-    pipePattern = (IoTDBPipePattern) pattern;
+    pipePattern = (IoTDBTreePattern) pattern;
   }
 
   @Override
@@ -158,6 +158,7 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
                       creationTime,
                       pipeTaskMeta,
                       pipePattern,
+                      null,
                       Long.MIN_VALUE,
                       Long.MAX_VALUE);
 
@@ -185,7 +186,13 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
         || (!isForwardingPipeRequests && realtimeEvent.isGeneratedByPipe())) {
       final ProgressReportEvent event =
           new ProgressReportEvent(
-              pipeName, creationTime, pipeTaskMeta, pipePattern, Long.MIN_VALUE, Long.MAX_VALUE);
+              pipeName,
+              creationTime,
+              pipeTaskMeta,
+              pipePattern,
+              null,
+              Long.MIN_VALUE,
+              Long.MAX_VALUE);
       event.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
       event.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
       return event;
@@ -194,7 +201,13 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
     realtimeEvent =
         (PipeWritePlanEvent)
             realtimeEvent.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-                pipeName, creationTime, pipeTaskMeta, pipePattern, Long.MIN_VALUE, Long.MAX_VALUE);
+                pipeName,
+                creationTime,
+                pipeTaskMeta,
+                pipePattern,
+                null,
+                Long.MIN_VALUE,
+                Long.MAX_VALUE);
     realtimeEvent.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
     realtimeEvent.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
     return realtimeEvent;
