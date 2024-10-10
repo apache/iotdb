@@ -364,9 +364,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     if (Objects.nonNull(groupId)) {
       // For schema query, there may be a "write" before "read"
       // the result is not null iff the "write" has failed
-      // Note that we do not handle (either write or record as fetched) schema regions
-      // written on local because currently a successful local dispatch MUST be executed
-      // on a local schema region (either leader or follower)
       executionResult =
           new TableSchemaQueryWriteVisitor()
               .visitPlan(fragmentInstance.getFragment().getPlanNodeTree(), groupId);
