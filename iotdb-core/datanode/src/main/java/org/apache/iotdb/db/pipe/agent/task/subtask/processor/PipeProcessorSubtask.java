@@ -62,6 +62,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
   private final PipeEventCollector outputEventCollector;
 
   // Record these variables to provide corresponding value to tag key of monitoring metrics
+  private final long creationTime;
   private final String pipeName;
   private final int regionId;
 
@@ -79,6 +80,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       final PipeEventCollector outputEventCollector) {
     super(taskID, creationTime);
     this.subtaskCreationTime = System.currentTimeMillis();
+    this.creationTime = creationTime;
     this.pipeName = pipeName;
     this.regionId = regionId;
     this.inputEventSupplier = inputEventSupplier;
@@ -137,12 +139,14 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
           pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
           PipeProcessorMetrics.getInstance().markTabletEvent(taskID);
           PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-              .markCollectInvocationCount(taskID, outputEventCollector.getCollectInvocationCount());
+              .markCollectInvocationCount(
+                  pipeName + "_" + creationTime, outputEventCollector.getCollectInvocationCount());
         } else if (event instanceof TsFileInsertionEvent) {
           pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
           PipeProcessorMetrics.getInstance().markTsFileEvent(taskID);
           PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-              .markCollectInvocationCount(taskID, outputEventCollector.getCollectInvocationCount());
+              .markCollectInvocationCount(
+                  pipeName + "_" + creationTime, outputEventCollector.getCollectInvocationCount());
         } else if (event instanceof PipeHeartbeatEvent) {
           pipeProcessor.process(event, outputEventCollector);
           ((PipeHeartbeatEvent) event).onProcessed();
