@@ -21,19 +21,10 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.utils.TypeUtil;
 
-import org.apache.tsfile.read.common.type.BinaryType;
-import org.apache.tsfile.read.common.type.BlobType;
-import org.apache.tsfile.read.common.type.BooleanType;
-import org.apache.tsfile.read.common.type.DateType;
-import org.apache.tsfile.read.common.type.DoubleType;
-import org.apache.tsfile.read.common.type.FloatType;
-import org.apache.tsfile.read.common.type.StringType;
-import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.read.common.type.TypeEnum;
 import org.apache.tsfile.read.common.type.TypeFactory;
-import org.apache.tsfile.read.common.type.UnknownType;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -44,8 +35,6 @@ import java.util.StringJoiner;
 
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
-import static org.apache.tsfile.read.common.type.IntType.INT32;
-import static org.apache.tsfile.read.common.type.LongType.INT64;
 
 public class ColumnSchema {
   private final String name;
@@ -107,7 +96,7 @@ public class ColumnSchema {
 
   public static void serialize(ColumnSchema columnSchema, ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(columnSchema.getName(), byteBuffer);
-    ReadWriteIOUtils.write(columnSchema.getType().getTypeEnum().ordinal(), byteBuffer);
+    TypeUtil.serialize(columnSchema.getType(), byteBuffer);
     columnSchema.getColumnCategory().serialize(byteBuffer);
     ReadWriteIOUtils.write(columnSchema.isHidden(), byteBuffer);
   }
@@ -115,46 +104,18 @@ public class ColumnSchema {
   public static void serialize(ColumnSchema columnSchema, DataOutputStream stream)
       throws IOException {
     ReadWriteIOUtils.write(columnSchema.getName(), stream);
-    ReadWriteIOUtils.write(columnSchema.getType().getTypeEnum().ordinal(), stream);
+    TypeUtil.serialize(columnSchema.getType(), stream);
     columnSchema.getColumnCategory().serialize(stream);
     ReadWriteIOUtils.write(columnSchema.isHidden(), stream);
   }
 
   public static ColumnSchema deserialize(ByteBuffer byteBuffer) {
     String name = ReadWriteIOUtils.readString(byteBuffer);
-    TypeEnum typeEnum = TypeEnum.values()[ReadWriteIOUtils.readInt(byteBuffer)];
-    Type type = getType(typeEnum);
+    Type type = TypeUtil.deserialize(byteBuffer);
     TsTableColumnCategory columnCategory = TsTableColumnCategory.deserialize(byteBuffer);
     boolean isHidden = ReadWriteIOUtils.readBool(byteBuffer);
 
     return new ColumnSchema(name, type, isHidden, columnCategory);
-  }
-
-  public static Type getType(TypeEnum typeEnum) {
-    switch (typeEnum) {
-      case BOOLEAN:
-        return BooleanType.BOOLEAN;
-      case INT32:
-        return INT32;
-      case INT64:
-        return INT64;
-      case FLOAT:
-        return FloatType.FLOAT;
-      case DOUBLE:
-        return DoubleType.DOUBLE;
-      case TEXT:
-        return BinaryType.TEXT;
-      case STRING:
-        return StringType.STRING;
-      case BLOB:
-        return BlobType.BLOB;
-      case TIMESTAMP:
-        return TimestampType.TIMESTAMP;
-      case DATE:
-        return DateType.DATE;
-      default:
-        return UnknownType.UNKNOWN;
-    }
   }
 
   public static ColumnSchema ofTsColumnSchema(TsTableColumnSchema schema) {

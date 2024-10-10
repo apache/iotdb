@@ -24,6 +24,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionId;
 import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionKind;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 import static java.util.Objects.requireNonNull;
@@ -47,7 +52,6 @@ public class ResolvedFunction {
     this.functionKind = requireNonNull(functionKind, "functionKind is null");
     this.deterministic = deterministic;
     this.functionNullability = requireNonNull(functionNullability, "functionNullability is null");
-    ;
   }
 
   public BoundSignature getSignature() {
@@ -112,5 +116,31 @@ public class ResolvedFunction {
   @Override
   public String toString() {
     return signature.toString();
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    signature.serialize(byteBuffer);
+    ReadWriteIOUtils.write(functionId.toString(), byteBuffer);
+    functionKind.serialize(byteBuffer);
+    ReadWriteIOUtils.write(deterministic, byteBuffer);
+    functionNullability.serialize(byteBuffer);
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    signature.serialize(stream);
+    ReadWriteIOUtils.write(functionId.toString(), stream);
+    functionKind.serialize(stream);
+    ReadWriteIOUtils.write(deterministic, stream);
+    functionNullability.serialize(stream);
+  }
+
+  public static ResolvedFunction deserialize(ByteBuffer byteBuffer) {
+    BoundSignature signature = BoundSignature.deserialize(byteBuffer);
+    FunctionId functionId = new FunctionId(ReadWriteIOUtils.readString(byteBuffer));
+    FunctionKind functionKind = FunctionKind.deserialize(byteBuffer);
+    boolean deterministic = ReadWriteIOUtils.readBool(byteBuffer);
+    FunctionNullability functionNullability = FunctionNullability.deserialize(byteBuffer);
+    return new ResolvedFunction(
+        signature, functionId, functionKind, deterministic, functionNullability);
   }
 }
