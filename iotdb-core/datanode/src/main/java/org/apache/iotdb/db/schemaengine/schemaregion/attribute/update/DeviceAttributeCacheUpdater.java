@@ -149,22 +149,14 @@ public class DeviceAttributeCacheUpdater {
     shrunkNodes.forEach(
         location -> {
           if (attributeUpdateMap.containsKey(location)) {
-            releaseMemory(
-                updateContainerStatistics.containsKey(location)
-                    ? updateContainerStatistics.get(location).getContainerSize()
-                    : ((UpdateClearContainer) attributeUpdateMap.get(location)).ramBytesUsed());
-            attributeUpdateMap.remove(location);
+            removeLocation(location);
           }
         });
     updateContainerStatistics.keySet().removeAll(shrunkNodes);
 
     final TDataNodeLocation leaderLocation = node.getLeaderLocation();
     if (version.get() == node.getVersion() && attributeUpdateMap.containsKey(leaderLocation)) {
-      releaseMemory(
-          updateContainerStatistics.containsKey(leaderLocation)
-              ? updateContainerStatistics.get(leaderLocation).getContainerSize()
-              : ((UpdateClearContainer) attributeUpdateMap.get(leaderLocation)).ramBytesUsed());
-      attributeUpdateMap.remove(leaderLocation);
+      removeLocation(leaderLocation);
     }
 
     node.getCommitMap()
@@ -194,6 +186,14 @@ public class DeviceAttributeCacheUpdater {
                       }
                       return container;
                     })));
+  }
+
+  private void removeLocation(final TDataNodeLocation location) {
+    releaseMemory(
+        updateContainerStatistics.containsKey(location)
+            ? updateContainerStatistics.get(location).getContainerSize()
+            : ((UpdateClearContainer) attributeUpdateMap.get(location)).ramBytesUsed());
+    attributeUpdateMap.remove(location);
   }
 
   public static UpdateContainer getContainer(final byte[] bytes) {
