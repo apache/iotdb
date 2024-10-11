@@ -544,6 +544,12 @@ public class TableMetadataImpl implements Metadata {
         }
         break;
       case SqlConstant.MODE:
+        if (argumentTypes.size() != 1) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregate functions [%s] should only have one argument", functionName));
+        }
+        break;
       case SqlConstant.FIRST:
       case SqlConstant.LAST:
         if (argumentTypes.size() != 2) {
@@ -555,6 +561,7 @@ public class TableMetadataImpl implements Metadata {
               String.format(
                   "Second argument of Aggregate functions [%s] should be orderable", functionName));
         }
+        break;
       case SqlConstant.FIRST_BY:
       case SqlConstant.LAST_BY:
       case SqlConstant.MAX_BY:
