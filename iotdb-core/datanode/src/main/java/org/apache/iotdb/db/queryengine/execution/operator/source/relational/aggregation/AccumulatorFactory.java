@@ -49,6 +49,38 @@ public class AccumulatorFactory {
     }
   }
 
+  public static GroupedAccumulator createGroupedAccumulator(
+      String functionName,
+      TAggregationType aggregationType,
+      List<TSDataType> inputDataTypes,
+      List<Expression> inputExpressions,
+      Map<String, String> inputAttributes,
+      boolean ascending) {
+    if (aggregationType == TAggregationType.UDAF) {
+      // If UDAF accumulator receives raw input, it needs to check input's attribute
+      throw new UnsupportedOperationException();
+    } else {
+      return createBuiltinGroupedAccumulator(
+          aggregationType, inputDataTypes, inputExpressions, inputAttributes, ascending);
+    }
+  }
+
+  private static GroupedAccumulator createBuiltinGroupedAccumulator(
+      TAggregationType aggregationType,
+      List<TSDataType> inputDataTypes,
+      List<Expression> inputExpressions,
+      Map<String, String> inputAttributes,
+      boolean ascending) {
+    switch (aggregationType) {
+      case COUNT:
+        return new GroupedCountAccumulator();
+      case AVG:
+        return new GroupedAvgAccumulator(inputDataTypes.get(0));
+      default:
+        throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
+    }
+  }
+
   public static Accumulator createBuiltinAccumulator(
       TAggregationType aggregationType,
       List<TSDataType> inputDataTypes,
@@ -58,7 +90,11 @@ public class AccumulatorFactory {
     return isMultiInputAggregation(aggregationType)
         ? createBuiltinMultiInputAccumulator(aggregationType, inputDataTypes)
         : createBuiltinSingleInputAccumulator(
-            aggregationType, inputDataTypes.get(0), inputExpressions, inputAttributes, ascending);
+            aggregationType,
+            inputDataTypes.isEmpty() ? null : inputDataTypes.get(0),
+            inputExpressions,
+            inputAttributes,
+            ascending);
   }
 
   public static boolean isMultiInputAggregation(TAggregationType aggregationType) {
