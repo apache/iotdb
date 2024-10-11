@@ -1339,7 +1339,7 @@ public class PipeConsensusReceiver {
         }
         // Similarly, check pipeTask restartTimes
         if (tCommitId.getDataNodeRebootTimes() == connectorRebootTimes
-            && tCommitId.getPipeTaskRestartTimes() < connectorRebootTimes) {
+            && tCommitId.getPipeTaskRestartTimes() < pipeTaskRestartTimes) {
           final TSStatus status =
               new TSStatus(
                   RpcUtils.getStatus(
