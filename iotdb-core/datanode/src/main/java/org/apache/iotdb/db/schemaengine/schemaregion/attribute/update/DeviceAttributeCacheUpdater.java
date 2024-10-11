@@ -261,13 +261,15 @@ public class DeviceAttributeCacheUpdater {
         SystemFileFactory.INSTANCE.getFile(
             targetDir, SchemaConstant.DEVICE_ATTRIBUTE_REMOTE_UPDATER_SNAPSHOT);
 
-    try (final FileOutputStream fileOutputStream = new FileOutputStream(snapshotTmp);
-        final BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream)) {
+    try {
+      final FileOutputStream fileOutputStream = new FileOutputStream(snapshotTmp);
+      final BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream);
       try {
         serialize(outputStream);
       } finally {
         outputStream.flush();
         fileOutputStream.getFD().sync();
+        outputStream.close();
       }
       if (snapshot.exists() && !FileUtils.deleteFileIfExist(snapshot)) {
         logger.error(

@@ -69,13 +69,15 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
     final File snapshot =
         SystemFileFactory.INSTANCE.getFile(targetDir, SchemaConstant.DEVICE_ATTRIBUTE_SNAPSHOT);
 
-    try (final FileOutputStream fileOutputStream = new FileOutputStream(snapshotTmp);
-        final BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream)) {
+    try {
+      final FileOutputStream fileOutputStream = new FileOutputStream(snapshotTmp);
+      final BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream);
       try {
         serialize(outputStream);
       } finally {
         outputStream.flush();
         fileOutputStream.getFD().sync();
+        outputStream.close();
       }
       if (snapshot.exists() && !FileUtils.deleteFileIfExist(snapshot)) {
         logger.error(
