@@ -135,12 +135,7 @@ public class DeviceAttributeCacheUpdater {
       final UpdateContainer container = entry.getValue();
 
       if (location.getDataNodeId() == config.getDataNodeId()) {
-        // Remove potential entries put when the dataNodeId == -1
-        releaseMemory(
-            updateContainerStatistics.containsKey(location)
-                ? updateContainerStatistics.get(location).getContainerSize()
-                : ((UpdateClearContainer) container).ramBytesUsed());
-        it.remove();
+        // Remove when commit
         continue;
       }
       // If the remaining capacity is too low we just send clear container first
