@@ -413,7 +413,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
       if (shouldExtractDeletion) {
         // Extract deletions
         Optional.ofNullable(DeletionResourceManager.getInstance(String.valueOf(dataRegionId)))
-            .ifPresent(mgr -> extractDeletions(mgr, resourceList));
+            .ifPresent(manager -> extractDeletions(manager, resourceList));
       }
       // Sort tsFileResource and deletionResource
       long startTime = System.currentTimeMillis();
@@ -739,6 +739,12 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
           pipeName,
           dataRegionId,
           event);
+    } else {
+      Optional.ofNullable(DeletionResourceManager.getInstance(String.valueOf(dataRegionId)))
+          .ifPresent(
+              manager ->
+                  event.setDeletionResource(
+                      manager.increaseResourceReferenceAndGet(event.getDeleteDataNode())));
     }
     return isReferenceCountIncreased ? event : null;
   }
