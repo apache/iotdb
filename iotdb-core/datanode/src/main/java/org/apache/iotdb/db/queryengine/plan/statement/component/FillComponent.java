@@ -63,7 +63,7 @@ public class FillComponent extends StatementNode {
   public String toSQLString() {
     StringBuilder sqlBuilder = new StringBuilder();
     sqlBuilder.append("FILL(");
-    if (fillPolicy != FillPolicy.VALUE) {
+    if (fillPolicy != FillPolicy.CONSTANT) {
       sqlBuilder.append(fillPolicy.toString());
     } else {
       sqlBuilder.append(fillValue.toString());

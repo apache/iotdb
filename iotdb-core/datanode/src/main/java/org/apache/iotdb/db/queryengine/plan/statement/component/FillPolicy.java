@@ -20,7 +20,14 @@
 package org.apache.iotdb.db.queryengine.plan.statement.component;
 
 public enum FillPolicy {
-  PREVIOUS,
-  LINEAR,
-  VALUE
+  PREVIOUS((byte) 0),
+  LINEAR((byte) 1),
+  CONSTANT((byte) 2),
+  ;
+
+  FillPolicy(byte fillMethod) {
+    this.fillMethod = fillMethod;
+  }
+
+  final byte fillMethod;
 }
