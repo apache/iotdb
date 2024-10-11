@@ -70,6 +70,17 @@ public class IoTDBFillTableIT {
         "INSERT INTO table2(time,city,device_id,s2) values(2, 'beijing', 'd2', 01022)",
         "INSERT INTO table2(time,city,device_id,s2) values(3, 'beijing', 'd2', 01033)",
         "INSERT INTO table2(time,city,device_id,s2) values(4, 'beijing', 'd2', 01044)",
+        "CREATE TABLE table3(city STRING ID, device_id STRING ID, s1 INT32 MEASUREMENT, s2 INT64 MEASUREMENT)",
+        "INSERT INTO table3(time,city,device_id,s2) values(1, 'shanghai', 'd1', 02111)",
+        "INSERT INTO table3(time,city,device_id,s1) values(2, 'shanghai', 'd1', 0212)",
+        "INSERT INTO table3(time,city,device_id,s2) values(1, 'beijing', 'd1', 01011)",
+        "INSERT INTO table3(time,city,device_id,s1) values(2, 'beijing', 'd1', 0102)",
+        "INSERT INTO table3(time,city,device_id,s1,s2) values(3, 'beijing', 'd1', 0103,01033)",
+        "INSERT INTO table3(time,city,device_id,s1) values(4, 'beijing', 'd1', 0104)",
+        "INSERT INTO table3(time,city,device_id,s1) values(1, 'beijing', 'd2', 0101)",
+        "INSERT INTO table3(time,city,device_id,s2) values(2, 'beijing', 'd2', 01022)",
+        "INSERT INTO table3(time,city,device_id,s1,s2) values(3, 'beijing', 'd2', 0103, 01033)",
+        "INSERT INTO table3(time,city,device_id,s2) values(4, 'beijing', 'd2', 01044)",
       };
 
   @BeforeClass
@@ -472,6 +483,34 @@ public class IoTDBFillTableIT {
         };
     tableResultSetEqualTest(
         "select * from (select time,device_id,s1,s2,s3,s5,s6,s7,s8,s9,s10 from table1 order by time desc) FILL METHOD LINEAR order by time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // case10: all without time filter using linear fill with FILL_GROUP
+    expectedHeader = new String[] {"time", "city", "device_id", "s1", "s2"};
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,beijing,d1,null,1011,",
+          "1970-01-01T00:00:00.002Z,beijing,d1,102,1022,",
+          "1970-01-01T00:00:00.003Z,beijing,d1,103,1033,",
+          "1970-01-01T00:00:00.004Z,beijing,d1,104,null,",
+          "1970-01-01T00:00:00.001Z,beijing,d2,101,null,",
+          "1970-01-01T00:00:00.002Z,beijing,d2,102,1022,",
+          "1970-01-01T00:00:00.003Z,beijing,d2,103,1033,",
+          "1970-01-01T00:00:00.004Z,beijing,d2,null,1044,",
+          "1970-01-01T00:00:00.001Z,shanghai,d1,null,2111,",
+          "1970-01-01T00:00:00.002Z,shanghai,d1,212,null,",
+        };
+    tableResultSetEqualTest(
+        "select time,city,device_id,s1,s2 from table3 FILL METHOD LINEAR FILL_GROUP 2,3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // case11: all without time filter using linear fill with FILL_GROUP and TIME_COLUMN
+    tableResultSetEqualTest(
+        "select time,city,device_id,s1,s2 from table3 FILL METHOD LINEAR TIME_COLUMN 1 FILL_GROUP 2,3",
         expectedHeader,
         retArray,
         DATABASE_NAME);

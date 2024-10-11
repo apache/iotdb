@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.fill.ILinearFi
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.TsBlock;
 
+// table linear fill without GROUP_FILL
 public class TableLinearFillOperator extends AbstractLinearFillOperator {
 
   // start from 0

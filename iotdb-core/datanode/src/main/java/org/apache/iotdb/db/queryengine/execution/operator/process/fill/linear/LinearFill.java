@@ -223,6 +223,16 @@ public abstract class LinearFill implements ILinearFill {
     updateNextValueInCurrentColumn();
   }
 
+  @Override
+  public void reset() {
+    previousIsNull = true;
+    nextRowIndex = -1;
+    nextRowIndexInCurrentColumn = -1;
+    previousTime = -1;
+    nextTime = -1;
+    nextTimeInCurrentColumn = -1;
+  }
+
   abstract void fillValue(Column column, int index, Object array);
 
   abstract void fillValue(Object array, int index, double factor);

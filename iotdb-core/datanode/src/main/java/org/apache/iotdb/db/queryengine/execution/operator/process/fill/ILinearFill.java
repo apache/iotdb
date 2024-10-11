@@ -60,4 +60,6 @@ public interface ILinearFill {
    */
   boolean prepareForNext(
       long startRowIndex, long endRowIndex, Column nextTimeColumn, Column nextValueColumn);
+
+  void reset();
 }

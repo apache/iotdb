@@ -40,11 +40,13 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator
 import org.apache.iotdb.db.queryengine.execution.operator.process.PreviousFillWithGroupOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableFillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableLinearFillOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TableLinearFillWithGroupOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableMergeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableStreamSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableTopKOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.ILinearFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.BinaryConstantFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.BooleanConstantFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.DoubleConstantFill;
@@ -644,8 +646,19 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         getOutputColumnTypes(node.getChild(), context.getTypeProvider());
     int inputColumnCount = inputDataTypes.size();
     int helperColumnIndex = getColumnIndex(node.getHelperColumn(), node.getChild());
-    return new TableLinearFillOperator(
-        operatorContext, getLinearFill(inputColumnCount, inputDataTypes), child, helperColumnIndex);
+    ILinearFill[] fillArray = getLinearFill(inputColumnCount, inputDataTypes);
+
+    if (node.getGroupingKeys().isPresent()) {
+      return new TableLinearFillWithGroupOperator(
+          operatorContext,
+          fillArray,
+          child,
+          helperColumnIndex,
+          genFillGroupKeyComparator(node.getGroupingKeys().get(), node, inputDataTypes),
+          inputDataTypes);
+    } else {
+      return new TableLinearFillOperator(operatorContext, fillArray, child, helperColumnIndex);
+    }
   }
 
   @Override

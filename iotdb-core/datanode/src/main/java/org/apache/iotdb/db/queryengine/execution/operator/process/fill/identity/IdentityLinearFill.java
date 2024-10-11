@@ -42,4 +42,9 @@ public class IdentityLinearFill implements ILinearFill {
     throw new UnsupportedOperationException(
         "IdentityLinearFill's needPrepareForNext() method should always return false.");
   }
+
+  @Override
+  public void reset() {
+    // do nothing
+  }
 }
