@@ -65,7 +65,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   private final boolean isAligned;
   private final boolean isGeneratedByPipe;
 
-  private List<TabletInsertionEventTreeParser> dataContainers;
+  private List<TabletInsertionEventTreeParser> eventParsers;
 
   private final PartialPath devicePath;
 
@@ -167,9 +167,9 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     try {
       PipeDataNodeResourceManager.wal().unpin(walEntryHandler);
       // Release the containers' memory.
-      if (dataContainers != null) {
-        dataContainers.clear();
-        dataContainers = null;
+      if (eventParsers != null) {
+        eventParsers.clear();
+        eventParsers = null;
       }
       return true;
     } catch (final Exception e) {
@@ -313,7 +313,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   @Override
   public Iterable<TabletInsertionEvent> processRowByRow(
       final BiConsumer<Row, RowCollector> consumer) {
-    return initDataContainers().stream()
+    return initEventParsers().stream()
         .map(tabletInsertionEventParser -> tabletInsertionEventParser.processRowByRow(consumer))
         .flatMap(Collection::stream)
         .collect(Collectors.toList());
@@ -322,7 +322,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   @Override
   public Iterable<TabletInsertionEvent> processTablet(
       final BiConsumer<Tablet, RowCollector> consumer) {
-    return initDataContainers().stream()
+    return initEventParsers().stream()
         .map(tabletInsertionEventParser -> tabletInsertionEventParser.processTablet(consumer))
         .flatMap(Collection::stream)
         .collect(Collectors.toList());
@@ -331,35 +331,35 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   /////////////////////////// convertToTablet ///////////////////////////
 
   public boolean isAligned(final int i) {
-    return initDataContainers().get(i).isAligned();
+    return initEventParsers().get(i).isAligned();
   }
 
   public List<Tablet> convertToTablets() {
-    return initDataContainers().stream()
+    return initEventParsers().stream()
         .map(TabletInsertionEventTreeParser::convertToTablet)
         .collect(Collectors.toList());
   }
 
-  /////////////////////////// dataContainer ///////////////////////////
+  /////////////////////////// event parser ///////////////////////////
 
-  private List<TabletInsertionEventTreeParser> initDataContainers() {
+  private List<TabletInsertionEventTreeParser> initEventParsers() {
     try {
-      if (dataContainers != null) {
-        return dataContainers;
+      if (eventParsers != null) {
+        return eventParsers;
       }
 
-      dataContainers = new ArrayList<>();
+      eventParsers = new ArrayList<>();
       final InsertNode node = getInsertNode();
       switch (node.getType()) {
         case INSERT_ROW:
         case INSERT_TABLET:
         case RELATIONAL_INSERT_TABLET:
-          dataContainers.add(
+          eventParsers.add(
               new TabletInsertionEventTreeParser(pipeTaskMeta, this, node, treePattern));
           break;
         case INSERT_ROWS:
           for (final InsertRowNode insertRowNode : ((InsertRowsNode) node).getInsertRowNodeList()) {
-            dataContainers.add(
+            eventParsers.add(
                 new TabletInsertionEventTreeParser(pipeTaskMeta, this, insertRowNode, treePattern));
           }
           break;
@@ -367,12 +367,12 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
           throw new UnSupportedDataTypeException("Unsupported node type " + node.getType());
       }
 
-      final int size = dataContainers.size();
+      final int size = eventParsers.size();
       if (size > 0) {
-        dataContainers.get(size - 1).markAsNeedToReport();
+        eventParsers.get(size - 1).markAsNeedToReport();
       }
 
-      return dataContainers;
+      return eventParsers;
     } catch (final Exception e) {
       throw new PipeException("Initialize data container error.", e);
     }
@@ -390,7 +390,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
 
   public List<PipeRawTabletInsertionEvent> toRawTabletInsertionEvents() {
     final List<PipeRawTabletInsertionEvent> events =
-        initDataContainers().stream()
+        initEventParsers().stream()
             .map(
                 container ->
                     new PipeRawTabletInsertionEvent(
@@ -418,8 +418,8 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   @Override
   public String toString() {
     return String.format(
-            "PipeInsertNodeTabletInsertionEvent{walEntryHandler=%s, progressIndex=%s, isAligned=%s, isGeneratedByPipe=%s, dataContainers=%s}",
-            walEntryHandler, progressIndex, isAligned, isGeneratedByPipe, dataContainers)
+            "PipeInsertNodeTabletInsertionEvent{walEntryHandler=%s, progressIndex=%s, isAligned=%s, isGeneratedByPipe=%s, eventParsers=%s}",
+            walEntryHandler, progressIndex, isAligned, isGeneratedByPipe, eventParsers)
         + " - "
         + super.toString();
   }

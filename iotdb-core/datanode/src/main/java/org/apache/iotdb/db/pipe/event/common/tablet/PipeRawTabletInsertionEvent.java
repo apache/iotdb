@@ -53,7 +53,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   private PipeTabletMemoryBlock allocatedMemoryBlock;
 
-  private TabletInsertionEventTreeParser dataContainer;
+  private TabletInsertionEventTreeParser eventParser;
 
   private volatile ProgressIndex overridingProgressIndex;
 
@@ -169,7 +169,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
     // Actually release the occupied memory.
     tablet = null;
-    dataContainer = null;
+    eventParser = null;
     return true;
   }
 
@@ -266,21 +266,21 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   @Override
   public Iterable<TabletInsertionEvent> processRowByRow(
       final BiConsumer<Row, RowCollector> consumer) {
-    if (dataContainer == null) {
-      dataContainer =
+    if (eventParser == null) {
+      eventParser =
           new TabletInsertionEventTreeParser(pipeTaskMeta, this, tablet, isAligned, treePattern);
     }
-    return dataContainer.processRowByRow(consumer);
+    return eventParser.processRowByRow(consumer);
   }
 
   @Override
   public Iterable<TabletInsertionEvent> processTablet(
       final BiConsumer<Tablet, RowCollector> consumer) {
-    if (dataContainer == null) {
-      dataContainer =
+    if (eventParser == null) {
+      eventParser =
           new TabletInsertionEventTreeParser(pipeTaskMeta, this, tablet, isAligned, treePattern);
     }
-    return dataContainer.processTablet(consumer);
+    return eventParser.processTablet(consumer);
   }
 
   /////////////////////////// convertToTablet ///////////////////////////
@@ -295,11 +295,11 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     }
 
     // if notNullPattern is not "root", we need to convert the tablet
-    if (dataContainer == null) {
-      dataContainer =
+    if (eventParser == null) {
+      eventParser =
           new TabletInsertionEventTreeParser(pipeTaskMeta, this, tablet, isAligned, treePattern);
     }
-    return dataContainer.convertToTablet();
+    return eventParser.convertToTablet();
   }
 
   public long count() {
@@ -337,8 +337,8 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   @Override
   public String toString() {
     return String.format(
-            "PipeRawTabletInsertionEvent{tablet=%s, isAligned=%s, sourceEvent=%s, needToReport=%s, allocatedMemoryBlock=%s, dataContainer=%s}",
-            tablet, isAligned, sourceEvent, needToReport, allocatedMemoryBlock, dataContainer)
+            "PipeRawTabletInsertionEvent{tablet=%s, isAligned=%s, sourceEvent=%s, needToReport=%s, allocatedMemoryBlock=%s, eventParser=%s}",
+            tablet, isAligned, sourceEvent, needToReport, allocatedMemoryBlock, eventParser)
         + " - "
         + super.toString();
   }
