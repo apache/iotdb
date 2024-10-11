@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinkedQueue;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
@@ -67,12 +66,6 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
       final PipeParameters parameters, final PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
     super.customize(parameters, configuration);
-
-    if (TablePattern.parsePipePatternFromSourceParameters(parameters)
-        .hasUserSpecifiedDatabasePatternOrTablePattern()) {
-      throw new IllegalArgumentException(
-          "The table model pattern %s can not be specified for the source.");
-    }
 
     final TreePattern pattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
     if (!(pattern instanceof IoTDBTreePattern

@@ -327,15 +327,19 @@ public class CompactionUtils {
         FileMetrics.getInstance().decreaseModFileNum(1);
         FileMetrics.getInstance().decreaseModFileSize(resource.getModFile().getSize());
       }
-      if (!resource.remove()) {
-        logger.warn(
-            "[Compaction] delete file failed, file path is {}",
-            resource.getTsFile().getAbsolutePath());
-      } else {
-        logger.info("[Compaction] delete file: {}", resource.getTsFile().getAbsolutePath());
-      }
+      deleteTsFileResourceWithoutLock(resource);
     }
     FileMetrics.getInstance().deleteTsFile(seq, resources);
+  }
+
+  public static void deleteTsFileResourceWithoutLock(TsFileResource resource) {
+    if (!resource.remove()) {
+      logger.warn(
+          "[Compaction] delete file failed, file path is {}",
+          resource.getTsFile().getAbsolutePath());
+    } else {
+      logger.info("[Compaction] delete file: {}", resource.getTsFile().getAbsolutePath());
+    }
   }
 
   public static boolean isDiskHasSpace() {

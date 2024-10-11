@@ -25,14 +25,10 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.type.Type;
 
 public abstract class LeafColumnTransformer extends ColumnTransformer {
+  protected TsBlock input;
+
   protected LeafColumnTransformer(Type returnType) {
     super(returnType);
-  }
-
-  @Override
-  public void evaluate() {
-    System.out.println("test");
-    // do nothing
   }
 
   @Override
@@ -40,5 +36,7 @@ public abstract class LeafColumnTransformer extends ColumnTransformer {
     // do nothing
   }
 
-  public abstract void initFromTsBlock(TsBlock input);
+  public void initFromTsBlock(TsBlock input) {
+    this.input = input;
+  }
 }

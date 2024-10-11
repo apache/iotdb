@@ -44,4 +44,16 @@ public class LowerColumnTransformer extends UnaryColumnTransformer {
       }
     }
   }
+
+  @Override
+  protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (selection[i] && !column.isNull(i)) {
+        String currentValue = column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
+        columnBuilder.writeBinary(BytesUtils.valueOf(currentValue.toLowerCase()));
+      } else {
+        columnBuilder.appendNull();
+      }
+    }
+  }
 }

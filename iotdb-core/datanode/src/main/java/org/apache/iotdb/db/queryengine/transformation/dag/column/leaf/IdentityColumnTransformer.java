@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.leaf;
 
-import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 
 /**
@@ -37,7 +38,21 @@ public class IdentityColumnTransformer extends LeafColumnTransformer {
   }
 
   @Override
-  public void initFromTsBlock(TsBlock input) {
+  protected void evaluate() {
     initializeColumnCache(input.getColumn(inputIndex));
+  }
+
+  @Override
+  public void evaluateWithSelection(boolean[] selection) {
+    ColumnBuilder builder = returnType.createColumnBuilder(selection.length);
+    Column inputColumn = input.getColumn(inputIndex);
+    for (int i = 0; i < selection.length; i++) {
+      if (!selection[i] || inputColumn.isNull(i)) {
+        builder.appendNull();
+      } else {
+        builder.write(inputColumn, i);
+      }
+    }
+    initializeColumnCache(builder.build());
   }
 }

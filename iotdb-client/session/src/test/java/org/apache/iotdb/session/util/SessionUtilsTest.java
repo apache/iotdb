@@ -34,8 +34,10 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class SessionUtilsTest {
@@ -49,7 +51,7 @@ public class SessionUtilsTest {
     schema.setCompressor(CompressionType.SNAPPY.serialize());
     schema.setEncoding(TSEncoding.PLAIN.serialize());
     schemas.add(schema);
-    long[] timestamp = new long[] {1l, 2l};
+    long[] timestamp = new long[] {1L, 2L};
     Object[] values = new Object[] {true, false};
     BitMap[] partBitMap = new BitMap[2];
     Tablet tablet = new Tablet("device1", schemas, timestamp, values, partBitMap, 2);
@@ -97,10 +99,10 @@ public class SessionUtilsTest {
     schema.setEncoding(TSEncoding.PLAIN.serialize());
     schemas.add(schema);
 
-    long[] timestamp = new long[] {1l};
+    long[] timestamp = new long[] {1L};
     Object[] values = new Object[6];
     values[0] = new int[] {1, 2};
-    values[1] = new long[] {1l, 2l};
+    values[1] = new long[] {1L, 2L};
     values[2] = new float[] {1.1f, 1.2f};
     values[3] = new double[] {0.707, 0.708};
     values[4] =
@@ -114,7 +116,7 @@ public class SessionUtilsTest {
 
   @Test
   public void testGetValueBuffer2() throws IoTDBConnectionException {
-    List<Object> valueList = Arrays.asList(12, 13l, 1.2f, 0.707, "test", false);
+    List<Object> valueList = Arrays.asList(12, 13L, 1.2f, 0.707, "test", false);
     List<TSDataType> typeList =
         Arrays.asList(
             TSDataType.INT32,
@@ -128,41 +130,102 @@ public class SessionUtilsTest {
 
     valueList = new ArrayList<>();
     valueList.add(null);
-    typeList = Arrays.asList(TSDataType.INT32);
+    typeList = Collections.singletonList(TSDataType.INT32);
     timeBuffer = SessionUtils.getValueBuffer(typeList, valueList);
     Assert.assertNotNull(timeBuffer);
 
-    valueList = Arrays.asList(false);
-    typeList = Arrays.asList(TSDataType.UNKNOWN);
+    valueList = Collections.singletonList(false);
+    typeList = Collections.singletonList(TSDataType.UNKNOWN);
     try {
-      timeBuffer = SessionUtils.getValueBuffer(typeList, valueList);
+      SessionUtils.getValueBuffer(typeList, valueList);
     } catch (Exception e) {
       Assert.assertTrue(e instanceof IoTDBConnectionException);
     }
   }
 
   @Test
+  public void testGetValueBuffer3() {
+    List<IMeasurementSchema> schemas = new ArrayList<>();
+    MeasurementSchema schema = new MeasurementSchema();
+    schema.setMeasurementId("pressure0");
+    schema.setType(TSDataType.INT32);
+    schema.setCompressor(CompressionType.SNAPPY.serialize());
+    schema.setEncoding(TSEncoding.PLAIN.serialize());
+    schemas.add(schema);
+    schema = new MeasurementSchema();
+    schema.setMeasurementId("pressure1");
+    schema.setType(TSDataType.INT64);
+    schema.setCompressor(CompressionType.SNAPPY.serialize());
+    schema.setEncoding(TSEncoding.PLAIN.serialize());
+    schemas.add(schema);
+    schema = new MeasurementSchema();
+    schema.setMeasurementId("pressure2");
+    schema.setType(TSDataType.FLOAT);
+    schema.setCompressor(CompressionType.SNAPPY.serialize());
+    schema.setEncoding(TSEncoding.PLAIN.serialize());
+    schemas.add(schema);
+    schema = new MeasurementSchema();
+    schema.setMeasurementId("pressure3");
+    schema.setType(TSDataType.DOUBLE);
+    schema.setCompressor(CompressionType.SNAPPY.serialize());
+    schema.setEncoding(TSEncoding.PLAIN.serialize());
+    schemas.add(schema);
+    schema = new MeasurementSchema();
+    schema.setMeasurementId("pressure4");
+    schema.setType(TSDataType.TEXT);
+    schema.setCompressor(CompressionType.SNAPPY.serialize());
+    schema.setEncoding(TSEncoding.PLAIN.serialize());
+    schemas.add(schema);
+    schema = new MeasurementSchema();
+    schema.setMeasurementId("pressure5");
+    schema.setType(TSDataType.BOOLEAN);
+    schema.setCompressor(CompressionType.SNAPPY.serialize());
+    schema.setEncoding(TSEncoding.PLAIN.serialize());
+    schemas.add(schema);
+    schema = new MeasurementSchema();
+    schema.setMeasurementId("pressure6");
+    schema.setType(TSDataType.DATE);
+    schema.setCompressor(CompressionType.SNAPPY.serialize());
+    schema.setEncoding(TSEncoding.PLAIN.serialize());
+    schemas.add(schema);
+
+    Tablet tablet = new Tablet("device1", schemas, 2);
+    tablet.timestamps = new long[] {1L};
+    tablet.values[0] = new int[] {1, 2};
+    tablet.values[1] = new long[] {1L, 2L};
+    tablet.values[2] = new float[] {1.1f, 1.2f};
+    tablet.values[3] = new double[] {0.707, 0.708};
+    tablet.values[4] = new Binary[] {null, new Binary(new byte[] {(byte) 16})};
+    tablet.values[5] = new boolean[] {true, false};
+    tablet.values[6] = new LocalDate[] {null, LocalDate.of(2024, 4, 1)};
+    tablet.rowSize += 2;
+
+    ByteBuffer timeBuffer = SessionUtils.getValueBuffer(tablet);
+    Assert.assertNotNull(timeBuffer);
+  }
+
+  @Test
   public void testParseSeedNodeUrls() {
-    List<String> nodeUrls = Arrays.asList("127.0.0.1:1234");
+    List<String> nodeUrls = Collections.singletonList("127.0.0.1:1234");
     List<TEndPoint> tEndPoints = SessionUtils.parseSeedNodeUrls(nodeUrls);
     Assert.assertEquals(tEndPoints.size(), 1);
 
     try {
-      tEndPoints = SessionUtils.parseSeedNodeUrls(null);
+      SessionUtils.parseSeedNodeUrls(null);
     } catch (Exception e) {
       Assert.assertTrue(e instanceof NumberFormatException);
     }
 
-    nodeUrls = Arrays.asList("127.0.0.1:1234:0");
+    nodeUrls = Collections.singletonList("127.0.0.1:1234:0");
     try {
-      tEndPoints = SessionUtils.parseSeedNodeUrls(nodeUrls);
+      SessionUtils.parseSeedNodeUrls(nodeUrls);
     } catch (Exception e) {
       Assert.assertTrue(e instanceof NumberFormatException);
     }
 
-    nodeUrls = Arrays.asList("127.0.0.1:test");
+    nodeUrls = Collections.singletonList("127.0.0.1:test");
     try {
-      tEndPoints = SessionUtils.parseSeedNodeUrls(nodeUrls);
+      SessionUtils.parseSeedNodeUrls(nodeUrls);
     } catch (Exception e) {
       Assert.assertTrue(e instanceof NumberFormatException);
     }
@@ -170,7 +233,7 @@ public class SessionUtilsTest {
 
   @Test
   public void testParseSeedNodeUrlsException() {
-    List<String> nodeUrls = Arrays.asList("127.0.0.1:1234");
+    List<String> nodeUrls = Collections.singletonList("127.0.0.1:1234");
     List<TEndPoint> tEndPoints = SessionUtils.parseSeedNodeUrls(nodeUrls);
     Assert.assertEquals(tEndPoints.size(), 1);
   }

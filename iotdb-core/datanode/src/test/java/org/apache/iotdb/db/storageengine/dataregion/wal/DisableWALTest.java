@@ -43,6 +43,7 @@ public class DisableWALTest {
   @After
   public void tearDown() throws Exception {
     config.setWalMode(prevMode);
+    WALManager.getInstance().clear();
   }
 
   @Test

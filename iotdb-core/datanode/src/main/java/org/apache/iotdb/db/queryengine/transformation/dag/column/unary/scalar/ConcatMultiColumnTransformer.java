@@ -45,30 +45,46 @@ public class ConcatMultiColumnTransformer extends MultiColumnTransformer {
   protected void doTransform(
       List<Column> childrenColumns, ColumnBuilder builder, int positionCount) {
     for (int i = 0; i < positionCount; i++) {
-      boolean isNull = true;
-      int length = 0;
-      // for loop to check whether all is null, and calc the real length
+      transform(builder, childrenColumns, i);
+    }
+  }
+
+  @Override
+  protected void doTransform(
+      List<Column> childrenColumns, ColumnBuilder builder, int positionCount, boolean[] selection) {
+    for (int i = 0; i < positionCount; i++) {
+      if (selection[i]) {
+        transform(builder, childrenColumns, i);
+      } else {
+        builder.appendNull();
+      }
+    }
+  }
+
+  private void transform(ColumnBuilder builder, List<Column> childrenColumns, int i) {
+    boolean isNull = true;
+    int length = 0;
+    // for loop to check whether all is null, and calc the real length
+    for (Column childrenColumn : childrenColumns) {
+      if (!childrenColumn.isNull(i)) {
+        isNull = false;
+        length += childrenColumn.getBinary(i).getValues().length;
+      }
+    }
+    if (isNull) {
+      builder.appendNull();
+    } else {
+      byte[] result = new byte[length];
+      // for loop to append the values which is not null
+      int index = 0;
       for (Column childrenColumn : childrenColumns) {
         if (!childrenColumn.isNull(i)) {
-          isNull = false;
-          length += childrenColumn.getBinary(i).getValues().length;
+          byte[] value = childrenColumn.getBinary(i).getValues();
+          System.arraycopy(value, 0, result, index, value.length);
+          index += value.length;
         }
       }
-      if (isNull) {
-        builder.appendNull();
-      } else {
-        byte[] result = new byte[length];
-        // for loop to append the values which is not null
-        int index = 0;
-        for (Column childrenColumn : childrenColumns) {
-          if (!childrenColumn.isNull(i)) {
-            byte[] value = childrenColumn.getBinary(i).getValues();
-            System.arraycopy(value, 0, result, index, value.length);
-            index += value.length;
-          }
-        }
-        builder.writeBinary(new Binary(result));
-      }
+      builder.writeBinary(new Binary(result));
     }
   }
 }

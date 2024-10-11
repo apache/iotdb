@@ -21,6 +21,8 @@ package org.apache.iotdb.db.pipe.extractor.dataregion;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
@@ -106,6 +108,52 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
     super.validate(validator);
+
+    // Validate whether the pipe needs to extract table model data or tree model data
+    final boolean isTreeDialect =
+        validator
+            .getParameters()
+            .getStringOrDefault(
+                SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
+            .equals(SystemConstant.SQL_DIALECT_TREE_VALUE);
+    final boolean isTreeModelDataAllowedToBeCaptured =
+        validator
+            .getParameters()
+            .getBooleanOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_KEY,
+                    PipeExtractorConstant.SOURCE_CAPTURE_TREE_KEY),
+                isTreeDialect);
+    final boolean isTableModelDataAllowedToBeCaptured =
+        validator
+            .getParameters()
+            .getBooleanOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
+                    PipeExtractorConstant.SOURCE_CAPTURE_TABLE_KEY),
+                !isTreeDialect);
+    if (!isTreeModelDataAllowedToBeCaptured
+        && validator
+            .getParameters()
+            .hasAnyAttributes(
+                PipeExtractorConstant.EXTRACTOR_PATH_KEY,
+                PipeExtractorConstant.SOURCE_PATH_KEY,
+                PipeExtractorConstant.EXTRACTOR_PATTERN_KEY,
+                PipeExtractorConstant.SOURCE_PATTERN_KEY)) {
+      throw new PipeException(
+          "The pipe cannot extract tree model data when sql dialect is set to table.");
+    }
+    if (!isTableModelDataAllowedToBeCaptured
+        && validator
+            .getParameters()
+            .hasAnyAttributes(
+                PipeExtractorConstant.EXTRACTOR_DATABASE_NAME_KEY,
+                PipeExtractorConstant.SOURCE_DATABASE_NAME_KEY,
+                PipeExtractorConstant.EXTRACTOR_TABLE_NAME_KEY,
+                PipeExtractorConstant.SOURCE_TABLE_NAME_KEY)) {
+      throw new PipeException(
+          "The pipe cannot extract table model data when sql dialect is set to tree.");
+    }
 
     final Pair<Boolean, Boolean> insertionDeletionListeningOptionPair =
         DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(

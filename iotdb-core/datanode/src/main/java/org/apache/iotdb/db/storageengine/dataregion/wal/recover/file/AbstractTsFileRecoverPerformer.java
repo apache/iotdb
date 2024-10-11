@@ -25,6 +25,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.exception.NotCompatibleTsFileException;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -35,7 +36,6 @@ import org.slf4j.LoggerFactory;
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 
 /** This class is used to help recover TsFile. */
 public abstract class AbstractTsFileRecoverPerformer implements Closeable {
@@ -79,30 +79,24 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
       return;
     }
 
-    // try to remove corrupted part of the TsFile
-    try {
-      writer = new RestorableTsFileIOWriter(tsFile);
-    } catch (NotCompatibleTsFileException e) {
-      boolean result = tsFile.delete();
-      logger.warn(
-          "TsFile {} is incompatible. Try to delete it and delete result is {}", tsFile, result);
-      // if the broken TsFile is v3, we can recover the all data from wal
-      // to support it, we can regenerate an empty file here
-      Files.createFile(tsFile.toPath());
-      writer = new RestorableTsFileIOWriter(tsFile);
-      throw new DataRegionException(e);
-    } catch (IOException e) {
-      throw new DataRegionException(e);
-    }
-
-    // reconstruct .resource file when TsFile is complete
-    if (!writer.hasCrashed()) {
-      try {
-        reconstructResourceFile();
-      } catch (IOException e) {
-        throw new DataRegionException(
-            "Failed recover the resource file: " + tsFile + TsFileResource.RESOURCE_SUFFIX + e);
+    writer = new RestorableTsFileIOWriter(tsFile);
+    if (writer.hasCrashed()) {
+      byte versionNumber;
+      try (TsFileSequenceReader sequenceReader =
+          new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+        versionNumber = sequenceReader.readVersionNumber();
+      } catch (NotCompatibleTsFileException e) {
+        versionNumber = -1;
       }
+
+      if (versionNumber != TSFileConfig.VERSION_NUMBER) {
+        // cannot rewrite a file with V3 header, delete it first
+        writer.close();
+        tsFile.delete();
+        writer = new RestorableTsFileIOWriter(tsFile);
+      }
+    } else {
+      reconstructResourceFile();
     }
   }
 

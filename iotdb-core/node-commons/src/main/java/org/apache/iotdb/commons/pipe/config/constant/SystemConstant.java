@@ -19,10 +19,38 @@
 
 package org.apache.iotdb.commons.pipe.config.constant;
 
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
 public class SystemConstant {
 
   public static final String RESTART_KEY = "__system.restart";
   public static final boolean RESTART_DEFAULT_VALUE = false;
+
+  public static final String SQL_DIALECT_KEY = "__system.sql-dialect";
+  public static final String SQL_DIALECT_TREE_VALUE = "tree";
+  public static final String SQL_DIALECT_TABLE_VALUE = "table";
+
+  /////////////////////////////////// Utility ///////////////////////////////////
+
+  public static final Set<String> SYSTEM_KEYS = new HashSet<>();
+
+  static {
+    SYSTEM_KEYS.add(RESTART_KEY);
+    SYSTEM_KEYS.add(SQL_DIALECT_KEY);
+  }
+
+  public static PipeParameters addSystemKeysIfNecessary(final PipeParameters givenPipeParameters) {
+    final Map<String, String> attributes = new HashMap<>(givenPipeParameters.getAttribute());
+    attributes.putIfAbsent(SQL_DIALECT_KEY, SQL_DIALECT_TREE_VALUE);
+    return new PipeParameters(attributes);
+  }
+
+  /////////////////////////////////// Private Constructor ///////////////////////////////////
 
   private SystemConstant() {
     throw new IllegalStateException("Utility class");

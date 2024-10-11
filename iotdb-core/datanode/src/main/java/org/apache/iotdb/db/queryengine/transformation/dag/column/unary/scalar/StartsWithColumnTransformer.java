@@ -47,6 +47,18 @@ public class StartsWithColumnTransformer extends UnaryColumnTransformer {
     }
   }
 
+  @Override
+  protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (selection[i] && !column.isNull(i)) {
+        byte[] currentValue = column.getBinary(i).getValues();
+        columnBuilder.writeBoolean(equalCompare(currentValue, prefix, 0));
+      } else {
+        columnBuilder.appendNull();
+      }
+    }
+  }
+
   public static boolean equalCompare(byte[] value, byte[] pattern, int offset) {
     if (value.length < pattern.length) {
       return false;

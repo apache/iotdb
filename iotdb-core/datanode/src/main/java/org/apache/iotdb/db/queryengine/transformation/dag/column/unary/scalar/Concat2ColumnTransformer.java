@@ -45,17 +45,37 @@ public class Concat2ColumnTransformer extends BinaryColumnTransformer {
   protected void doTransform(
       Column leftColumn, Column rightColumn, ColumnBuilder columnBuilder, int positionCount) {
     for (int i = 0; i < positionCount; i++) {
-      if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
-        columnBuilder.writeBinary(
-            new Binary(
-                concat(leftColumn.getBinary(i).getValues(), rightColumn.getBinary(i).getValues())));
-      } else if (!leftColumn.isNull(i)) {
-        columnBuilder.writeBinary(leftColumn.getBinary(i));
-      } else if (!rightColumn.isNull(i)) {
-        columnBuilder.writeBinary(rightColumn.getBinary(i));
+      transform(leftColumn, rightColumn, columnBuilder, i);
+    }
+  }
+
+  @Override
+  protected void doTransform(
+      Column leftColumn,
+      Column rightColumn,
+      ColumnBuilder builder,
+      int positionCount,
+      boolean[] selection) {
+    for (int i = 0; i < positionCount; i++) {
+      if (selection[i]) {
+        transform(leftColumn, rightColumn, builder, i);
       } else {
-        columnBuilder.appendNull();
+        builder.appendNull();
       }
+    }
+  }
+
+  private void transform(Column leftColumn, Column rightColumn, ColumnBuilder builder, int i) {
+    if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
+      builder.writeBinary(
+          new Binary(
+              concat(leftColumn.getBinary(i).getValues(), rightColumn.getBinary(i).getValues())));
+    } else if (!leftColumn.isNull(i)) {
+      builder.writeBinary(leftColumn.getBinary(i));
+    } else if (!rightColumn.isNull(i)) {
+      builder.writeBinary(rightColumn.getBinary(i));
+    } else {
+      builder.appendNull();
     }
   }
 }

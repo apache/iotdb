@@ -50,6 +50,19 @@ public class ${className} extends UnaryColumnTransformer {
   }
 
   @Override
+  protected void doTransform(
+      Column column, ColumnBuilder columnBuilder, boolean[] selection) {
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (selection[i] && !column.isNull(i)) {
+        returnType.write${type.dataType?cap_first}(
+            columnBuilder, transform(childColumnTransformer.getType().get${type.dataType?cap_first}(column, i)));
+      } else {
+        columnBuilder.appendNull();
+      }
+    }
+  }
+
+  @Override
   protected void checkType() {
     // do nothing
   }

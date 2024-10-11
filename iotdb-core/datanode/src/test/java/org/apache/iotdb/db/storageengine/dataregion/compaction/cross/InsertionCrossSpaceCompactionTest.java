@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.cross;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
@@ -470,6 +471,57 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     TsFileResource targetFile3 = tsFileManager.getOrCreateSequenceListByTimePartition(2808).get(0);
     timestamp = TsFileNameGenerator.getTsFileName(targetFile3.getTsFile().getName()).getTime();
     Assert.assertEquals(4, timestamp);
+  }
+
+  @Test
+  public void testInsertionCompactionUpdateFileMetrics() throws IOException {
+    TsFileResource unseqResource1 =
+        generateSingleNonAlignedSeriesFileWithDevices(
+            "2-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(1, 4)}, false);
+    FileMetrics.getInstance()
+        .addTsFile(
+            unseqResource1.getDatabaseName(),
+            unseqResource1.getDataRegionId(),
+            unseqResource1.getTsFileSize(),
+            false,
+            unseqResource1.getTsFile().getName());
+
+    long seqFileNumBeforeCompaction = FileMetrics.getInstance().getFileCount(true);
+    long unseqFileNumBeforeCompaction = FileMetrics.getInstance().getFileCount(false);
+
+    InsertionCrossCompactionTaskResource taskResource = new InsertionCrossCompactionTaskResource();
+    taskResource.setToInsertUnSeqFile(unseqResource1);
+    InsertionCrossSpaceCompactionTask task =
+        new InsertionCrossSpaceCompactionTask(null, 0, tsFileManager, taskResource, 0);
+    Assert.assertTrue(task.start());
+    Assert.assertEquals(
+        seqFileNumBeforeCompaction + 1, FileMetrics.getInstance().getFileCount(true));
+    Assert.assertEquals(
+        unseqFileNumBeforeCompaction - 1, FileMetrics.getInstance().getFileCount(false));
+
+    // overlap
+    TsFileResource unseqResource2 =
+        generateSingleNonAlignedSeriesFileWithDevices(
+            "3-3-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(1, 4)}, false);
+    FileMetrics.getInstance()
+        .addTsFile(
+            unseqResource2.getDatabaseName(),
+            unseqResource2.getDataRegionId(),
+            unseqResource2.getTsFileSize(),
+            false,
+            unseqResource2.getTsFile().getName());
+
+    seqFileNumBeforeCompaction = FileMetrics.getInstance().getFileCount(true);
+    unseqFileNumBeforeCompaction = FileMetrics.getInstance().getFileCount(false);
+
+    taskResource = new InsertionCrossCompactionTaskResource();
+    taskResource.setToInsertUnSeqFile(unseqResource2);
+    task = new InsertionCrossSpaceCompactionTask(null, 0, tsFileManager, taskResource, 0);
+    // rollback
+    Assert.assertFalse(task.start());
+    Assert.assertEquals(seqFileNumBeforeCompaction, FileMetrics.getInstance().getFileCount(true));
+    Assert.assertEquals(
+        unseqFileNumBeforeCompaction, FileMetrics.getInstance().getFileCount(false));
   }
 
   public TsFileResource generateSingleNonAlignedSeriesFileWithDevices(

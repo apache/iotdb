@@ -21,6 +21,9 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
 
@@ -41,6 +44,12 @@ public class WhenClause extends Expression {
     super(requireNonNull(location, "location is null"));
     this.operand = requireNonNull(operand, "operand is null");
     this.result = requireNonNull(result, "result is null");
+  }
+
+  public WhenClause(ByteBuffer byteBuffer) {
+    super(null);
+    this.operand = Expression.deserialize(byteBuffer);
+    this.result = Expression.deserialize(byteBuffer);
   }
 
   public Expression getOperand() {
@@ -82,5 +91,22 @@ public class WhenClause extends Expression {
   @Override
   public boolean shallowEquals(Node other) {
     return sameClass(this, other);
+  }
+
+  @Override
+  public TableExpressionType getExpressionType() {
+    return TableExpressionType.WHEN_CLAUSE;
+  }
+
+  @Override
+  protected void serialize(ByteBuffer byteBuffer) {
+    Expression.serialize(operand, byteBuffer);
+    Expression.serialize(result, byteBuffer);
+  }
+
+  @Override
+  protected void serialize(DataOutputStream stream) throws IOException {
+    Expression.serialize(operand, stream);
+    Expression.serialize(result, stream);
   }
 }

@@ -49,6 +49,18 @@ public class TrimColumnTransformer extends UnaryColumnTransformer {
     }
   }
 
+  @Override
+  protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (selection[i] && !column.isNull(i)) {
+        byte[] currentValue = column.getBinary(i).getValues();
+        columnBuilder.writeBinary(new Binary(trim(currentValue, character)));
+      } else {
+        columnBuilder.appendNull();
+      }
+    }
+  }
+
   public static byte[] trim(byte[] source, byte[] character) {
     if (source.length == 0 || character.length == 0) {
       return source;

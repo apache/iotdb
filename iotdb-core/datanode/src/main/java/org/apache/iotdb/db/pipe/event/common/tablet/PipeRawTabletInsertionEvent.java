@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
@@ -40,7 +41,8 @@ import org.apache.tsfile.write.record.Tablet;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 
-public class PipeRawTabletInsertionEvent extends EnrichedEvent implements TabletInsertionEvent {
+public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
+    implements TabletInsertionEvent {
 
   private Tablet tablet;
   private String deviceId; // Only used when the tablet is released.
@@ -56,6 +58,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   private volatile ProgressIndex overridingProgressIndex;
 
   private PipeRawTabletInsertionEvent(
+      final String databaseName,
       final Tablet tablet,
       final boolean isAligned,
       final EnrichedEvent sourceEvent,
@@ -67,7 +70,15 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
       final TablePattern tablePattern,
       final long startTime,
       final long endTime) {
-    super(pipeName, creationTime, pipeTaskMeta, treePattern, tablePattern, startTime, endTime);
+    super(
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        treePattern,
+        tablePattern,
+        startTime,
+        endTime,
+        databaseName);
     this.tablet = Objects.requireNonNull(tablet);
     this.isAligned = isAligned;
     this.sourceEvent = sourceEvent;
@@ -75,6 +86,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   }
 
   public PipeRawTabletInsertionEvent(
+      final String databaseName,
       final Tablet tablet,
       final boolean isAligned,
       final String pipeName,
@@ -83,6 +95,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
       final EnrichedEvent sourceEvent,
       final boolean needToReport) {
     this(
+        databaseName,
         tablet,
         isAligned,
         sourceEvent,
@@ -98,13 +111,26 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   @TestOnly
   public PipeRawTabletInsertionEvent(final Tablet tablet, final boolean isAligned) {
-    this(tablet, isAligned, null, false, null, 0, null, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
+    this(
+        null,
+        tablet,
+        isAligned,
+        null,
+        false,
+        null,
+        0,
+        null,
+        null,
+        null,
+        Long.MIN_VALUE,
+        Long.MAX_VALUE);
   }
 
   @TestOnly
   public PipeRawTabletInsertionEvent(
       final Tablet tablet, final boolean isAligned, final TreePattern treePattern) {
     this(
+        null,
         tablet,
         isAligned,
         null,
@@ -121,7 +147,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   @TestOnly
   public PipeRawTabletInsertionEvent(
       final Tablet tablet, final long startTime, final long endTime) {
-    this(tablet, false, null, false, null, 0, null, null, null, startTime, endTime);
+    this(null, tablet, false, null, false, null, 0, null, null, null, startTime, endTime);
   }
 
   @Override
@@ -188,6 +214,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
       final long startTime,
       final long endTime) {
     return new PipeRawTabletInsertionEvent(
+        getTreeModelDatabaseName(),
         tablet,
         isAligned,
         sourceEvent,
@@ -286,7 +313,14 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   public PipeRawTabletInsertionEvent parseEventWithPatternOrTime() {
     return new PipeRawTabletInsertionEvent(
-        convertToTablet(), isAligned, pipeName, creationTime, pipeTaskMeta, this, needToReport);
+        getTreeModelDatabaseName(),
+        convertToTablet(),
+        isAligned,
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        this,
+        needToReport);
   }
 
   public boolean hasNoNeedParsingAndIsEmpty() {

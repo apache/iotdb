@@ -31,8 +31,12 @@ import java.util.Arrays;
 
 public class PrefixTreePattern extends TreePattern {
 
+  public PrefixTreePattern(final boolean isTreeModelDataAllowedToBeCaptured, final String pattern) {
+    super(isTreeModelDataAllowedToBeCaptured, pattern);
+  }
+
   public PrefixTreePattern(final String pattern) {
-    super(pattern);
+    this(true, pattern);
   }
 
   @Override
@@ -89,10 +93,10 @@ public class PrefixTreePattern extends TreePattern {
   @Override
   public boolean mayOverlapWithDevice(final IDeviceID device) {
     final String deviceStr = device.toString();
-    return (
-        // for example, pattern is root.a.b and device is root.a.b.c
-        // in this case, the extractor can be matched without checking the measurements
-        pattern.length() <= deviceStr.length() && deviceStr.startsWith(pattern))
+    return
+    // for example, pattern is root.a.b and device is root.a.b.c
+    // in this case, the extractor can be matched without checking the measurements
+    (pattern.length() <= deviceStr.length() && deviceStr.startsWith(pattern))
         // for example, pattern is root.a.b.c and device is root.a.b
         // in this case, the extractor can be selected as candidate, but the measurements should
         // be checked further

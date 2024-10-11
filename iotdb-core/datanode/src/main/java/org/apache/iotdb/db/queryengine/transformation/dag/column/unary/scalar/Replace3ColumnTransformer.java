@@ -69,6 +69,41 @@ public class Replace3ColumnTransformer extends TernaryColumnTransformer {
   }
 
   @Override
+  protected void doTransform(
+      Column firstColumn,
+      Column secondColumn,
+      Column thirdColumn,
+      ColumnBuilder builder,
+      int positionCount,
+      boolean[] selection) {
+    Type firstType = firstColumnTransformer.getType();
+    Type secondType = secondColumnTransformer.getType();
+    Type thirdType = thirdColumnTransformer.getType();
+    for (int i = 0, n = firstColumn.getPositionCount(); i < n; i++) {
+      if (selection[i]
+          && !firstColumn.isNull(i)
+          && !secondColumn.isNull(i)
+          && !thirdColumn.isNull(i)) {
+        returnType.writeBinary(
+            builder,
+            BytesUtils.valueOf(
+                firstType
+                    .getBinary(firstColumn, i)
+                    .getStringValue(TSFileConfig.STRING_CHARSET)
+                    .replace(
+                        secondType
+                            .getBinary(secondColumn, i)
+                            .getStringValue(TSFileConfig.STRING_CHARSET),
+                        thirdType
+                            .getBinary(thirdColumn, i)
+                            .getStringValue(TSFileConfig.STRING_CHARSET))));
+      } else {
+        builder.appendNull();
+      }
+    }
+  }
+
+  @Override
   protected void checkType() {
     // do nothing
   }

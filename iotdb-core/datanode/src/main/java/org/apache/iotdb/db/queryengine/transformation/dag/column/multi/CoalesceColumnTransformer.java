@@ -37,17 +37,33 @@ public class CoalesceColumnTransformer extends MultiColumnTransformer {
   protected void doTransform(
       List<Column> childrenColumns, ColumnBuilder builder, int positionCount) {
     for (int i = 0; i < positionCount; i++) {
-      boolean allNull = true;
-      for (Column column : childrenColumns) {
-        if (!column.isNull(i)) {
-          allNull = false;
-          builder.write(column, i);
-          break;
-        }
-      }
-      if (allNull) {
+      transform(childrenColumns, builder, i);
+    }
+  }
+
+  @Override
+  protected void doTransform(
+      List<Column> childrenColumns, ColumnBuilder builder, int positionCount, boolean[] selection) {
+    for (int i = 0; i < positionCount; i++) {
+      if (selection[i]) {
+        transform(childrenColumns, builder, i);
+      } else {
         builder.appendNull();
       }
+    }
+  }
+
+  private void transform(List<Column> childrenColumns, ColumnBuilder builder, int i) {
+    boolean allNull = true;
+    for (Column column : childrenColumns) {
+      if (!column.isNull(i)) {
+        allNull = false;
+        builder.write(column, i);
+        break;
+      }
+    }
+    if (allNull) {
+      builder.appendNull();
     }
   }
 

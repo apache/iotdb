@@ -41,14 +41,18 @@ public class IoTDBTreePattern extends TreePattern {
 
   private final PartialPath patternPartialPath;
 
-  public IoTDBTreePattern(final String pattern) {
-    super(pattern);
+  public IoTDBTreePattern(final boolean isTreeModelDataAllowedToBeCaptured, final String pattern) {
+    super(isTreeModelDataAllowedToBeCaptured, pattern);
 
     try {
       patternPartialPath = new PartialPath(getPattern());
     } catch (final IllegalPathException e) {
       throw new PipeException("Illegal IoTDBPipePattern: " + getPattern(), e);
     }
+  }
+
+  public IoTDBTreePattern(final String pattern) {
+    this(true, pattern);
   }
 
   public static <T> List<T> applyIndexesOnList(

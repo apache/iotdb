@@ -44,6 +44,18 @@ public class LogicNotColumnTransformer extends UnaryColumnTransformer {
   }
 
   @Override
+  protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (selection[i] && !column.isNull(i)) {
+        returnType.writeBoolean(
+            columnBuilder, !childColumnTransformer.getType().getBoolean(column, i));
+      } else {
+        columnBuilder.appendNull();
+      }
+    }
+  }
+
+  @Override
   protected void checkType() {
     if (!(childColumnTransformer.typeEquals(TypeEnum.BOOLEAN))) {
       throw new UnsupportedOperationException(

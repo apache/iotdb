@@ -55,23 +55,38 @@ public class SubStringColumnTransformer extends UnaryColumnTransformer {
   protected void doTransform(Column column, ColumnBuilder columnBuilder) {
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
       if (!column.isNull(i)) {
-        String currentValue = column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-        if (beginPosition > currentValue.length()) {
-          throw new SemanticException(
-              "Argument exception,the scalar function substring beginPosition must not be greater than the string length");
-        } else {
-          int maxMin = Math.max(1, beginPosition);
-          int minMax = Math.min(currentValue.length(), endPosition);
-          if (maxMin > minMax) {
-            currentValue = EMPTY_STRING;
-          } else {
-            currentValue = currentValue.substring(maxMin - 1, minMax);
-          }
-        }
-        columnBuilder.writeBinary(BytesUtils.valueOf(currentValue));
+        transform(column, columnBuilder, i);
       } else {
         columnBuilder.appendNull();
       }
     }
+  }
+
+  @Override
+  protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (selection[i] && !column.isNull(i)) {
+        transform(column, columnBuilder, i);
+      } else {
+        columnBuilder.appendNull();
+      }
+    }
+  }
+
+  private void transform(Column column, ColumnBuilder columnBuilder, int i) {
+    String currentValue = column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
+    if (beginPosition > currentValue.length()) {
+      throw new SemanticException(
+          "Argument exception,the scalar function substring beginPosition must not be greater than the string length");
+    } else {
+      int maxMin = Math.max(1, beginPosition);
+      int minMax = Math.min(currentValue.length(), endPosition);
+      if (maxMin > minMax) {
+        currentValue = EMPTY_STRING;
+      } else {
+        currentValue = currentValue.substring(maxMin - 1, minMax);
+      }
+    }
+    columnBuilder.writeBinary(BytesUtils.valueOf(currentValue));
   }
 }
