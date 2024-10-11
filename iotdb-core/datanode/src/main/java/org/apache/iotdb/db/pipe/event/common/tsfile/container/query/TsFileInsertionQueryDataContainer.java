@@ -21,8 +21,8 @@ package org.apache.iotdb.db.pipe.event.common.tsfile.container.query;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
-import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
@@ -69,29 +69,29 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
 
   @TestOnly
   public TsFileInsertionQueryDataContainer(
-      final File tsFile, final PipePattern pattern, final long startTime, final long endTime)
+      final File tsFile, final TreePattern pattern, final long startTime, final long endTime)
       throws IOException {
     this(tsFile, pattern, startTime, endTime, null, null);
   }
 
   public TsFileInsertionQueryDataContainer(
       final File tsFile,
-      final PipePattern pattern,
+      final TreePattern pattern,
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
-      final EnrichedEvent sourceEvent)
+      final PipeInsertionEvent sourceEvent)
       throws IOException {
     this(tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent, null);
   }
 
   public TsFileInsertionQueryDataContainer(
       final File tsFile,
-      final PipePattern pattern,
+      final TreePattern pattern,
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
-      final EnrichedEvent sourceEvent,
+      final PipeInsertionEvent sourceEvent,
       final Map<IDeviceID, Boolean> deviceIsAlignedMap)
       throws IOException {
     super(pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
@@ -307,6 +307,7 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
             if (!hasNext()) {
               next =
                   new PipeRawTabletInsertionEvent(
+                      sourceEvent != null ? sourceEvent.getTreeModelDatabaseName() : null,
                       tablet,
                       isAligned,
                       sourceEvent != null ? sourceEvent.getPipeName() : null,
@@ -318,6 +319,7 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
             } else {
               next =
                   new PipeRawTabletInsertionEvent(
+                      sourceEvent != null ? sourceEvent.getTreeModelDatabaseName() : null,
                       tablet,
                       isAligned,
                       sourceEvent != null ? sourceEvent.getPipeName() : null,

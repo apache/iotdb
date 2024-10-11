@@ -31,7 +31,8 @@ public class IdentityLinearFill implements ILinearFill {
   }
 
   @Override
-  public boolean needPrepareForNext(long rowIndex, Column valueColumn) {
+  public boolean needPrepareForNext(
+      long rowIndex, Column valueColumn, int lastRowIndexForNonNullHelperColumn) {
     return false;
   }
 
@@ -40,5 +41,10 @@ public class IdentityLinearFill implements ILinearFill {
       long startRowIndex, long endRowIndex, Column nextTimeColumn, Column nextValueColumn) {
     throw new UnsupportedOperationException(
         "IdentityLinearFill's needPrepareForNext() method should always return false.");
+  }
+
+  @Override
+  public void reset() {
+    // do nothing
   }
 }

@@ -4081,6 +4081,10 @@ public class IoTDBConfig {
     return loadActiveListeningPipeDir;
   }
 
+  public void setLoadActiveListeningPipeDir(String loadActiveListeningPipeDir) {
+    this.loadActiveListeningPipeDir = loadActiveListeningPipeDir;
+  }
+
   public String[] getLoadActiveListeningDirs() {
     return (Objects.isNull(this.loadActiveListeningDirs)
             || this.loadActiveListeningDirs.length == 0)

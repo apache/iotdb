@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.pipe.event.common.schema;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
@@ -78,7 +79,7 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
 
   public PipeSchemaRegionSnapshotEvent(
       final String mTreeSnapshotPath, final String tagLogSnapshotPath, final String databaseName) {
-    this(mTreeSnapshotPath, tagLogSnapshotPath, databaseName, null, 0, null, null);
+    this(mTreeSnapshotPath, tagLogSnapshotPath, databaseName, null, 0, null, null, null);
   }
 
   public PipeSchemaRegionSnapshotEvent(
@@ -88,8 +89,15 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pattern) {
-    super(pipeName, creationTime, pipeTaskMeta, pattern, PipeDataNodeResourceManager.snapshot());
+      final TreePattern treePattern,
+      final TablePattern tablePattern) {
+    super(
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        treePattern,
+        tablePattern,
+        PipeDataNodeResourceManager.snapshot());
     this.mTreeSnapshotPath = mTreeSnapshotPath;
     this.tagLogSnapshotPath = Objects.nonNull(tagLogSnapshotPath) ? tagLogSnapshotPath : "";
     this.databaseName = databaseName;
@@ -148,7 +156,8 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pattern,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
       final long startTime,
       final long endTime) {
     return new PipeSchemaRegionSnapshotEvent(
@@ -158,7 +167,8 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
         pipeName,
         creationTime,
         pipeTaskMeta,
-        pattern);
+        treePattern,
+        tablePattern);
   }
 
   @Override

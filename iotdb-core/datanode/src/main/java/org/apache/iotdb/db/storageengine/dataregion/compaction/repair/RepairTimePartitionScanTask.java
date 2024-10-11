@@ -129,8 +129,7 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
               sourceFile,
               latch,
               sourceFile.isSeq(),
-              tsFileManager.getNextCompactionTaskId(),
-              timePartition.getDatabaseName().startsWith("root."));
+              tsFileManager.getNextCompactionTaskId());
       if (!submitRepairFileTaskSafely(task)) {
         latch.countDown();
       }
@@ -162,8 +161,7 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
               overlapFile,
               latch,
               true,
-              tsFileManager.getNextCompactionTaskId(),
-              true);
+              tsFileManager.getNextCompactionTaskId());
       LOGGER.info(
           "[RepairScheduler] {} need to repair because it is overlapped with other files",
           overlapFile);

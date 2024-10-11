@@ -29,4 +29,9 @@ public class IdentityFill implements IFill {
   public Column fill(Column timeColumn, Column valueColumn) {
     return valueColumn;
   }
+
+  @Override
+  public void reset() {
+    // do nothing
+  }
 }

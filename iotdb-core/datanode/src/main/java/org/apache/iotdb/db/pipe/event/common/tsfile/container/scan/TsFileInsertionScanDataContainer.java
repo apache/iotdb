@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.pipe.event.common.tsfile.container.scan;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
-import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
@@ -90,11 +90,11 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
 
   public TsFileInsertionScanDataContainer(
       final File tsFile,
-      final PipePattern pattern,
+      final TreePattern pattern,
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
-      final EnrichedEvent sourceEvent)
+      final PipeInsertionEvent sourceEvent)
       throws IOException {
     super(pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
 
@@ -134,6 +134,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
             final boolean hasNext = hasNext();
             try {
               return new PipeRawTabletInsertionEvent(
+                  sourceEvent != null ? sourceEvent.getTreeModelDatabaseName() : null,
                   tablet,
                   currentIsAligned,
                   sourceEvent != null ? sourceEvent.getPipeName() : null,

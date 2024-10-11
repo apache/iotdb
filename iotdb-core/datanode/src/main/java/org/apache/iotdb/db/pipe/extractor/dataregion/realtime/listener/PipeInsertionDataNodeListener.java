@@ -98,6 +98,7 @@ public class PipeInsertionDataNodeListener {
 
   public void listenToTsFile(
       String dataRegionId,
+      String databaseName,
       TsFileResource tsFileResource,
       boolean isLoaded,
       boolean isGeneratedByPipe) {
@@ -113,11 +114,13 @@ public class PipeInsertionDataNodeListener {
     }
 
     assigner.publishToAssign(
-        PipeRealtimeEventFactory.createRealtimeEvent(tsFileResource, isLoaded, isGeneratedByPipe));
+        PipeRealtimeEventFactory.createRealtimeEvent(
+            databaseName, tsFileResource, isLoaded, isGeneratedByPipe));
   }
 
   public void listenToInsertNode(
       String dataRegionId,
+      String databaseName,
       WALEntryHandler walEntryHandler,
       InsertNode insertNode,
       TsFileResource tsFileResource) {
@@ -133,9 +136,11 @@ public class PipeInsertionDataNodeListener {
     }
 
     assigner.publishToAssign(
-        PipeRealtimeEventFactory.createRealtimeEvent(walEntryHandler, insertNode, tsFileResource));
+        PipeRealtimeEventFactory.createRealtimeEvent(
+            databaseName, walEntryHandler, insertNode, tsFileResource));
   }
 
+    // TODO: record database name in enriched events?
   public DeletionResource listenToDeleteData(final String regionId, final DeleteDataNode node) {
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(regionId);
     // only events from registered data region will be extracted
@@ -168,6 +173,11 @@ public class PipeInsertionDataNodeListener {
         (key, value) ->
             value.publishToAssign(
                 PipeRealtimeEventFactory.createRealtimeEvent(key, shouldPrintMessage)));
+  }
+
+  public void listenToDeleteData(DeleteDataNode node) {
+    dataRegionId2Assigner.forEach(
+        (key, value) -> value.publishToAssign(PipeRealtimeEventFactory.createRealtimeEvent(node)));
   }
 
   /////////////////////////////// singleton ///////////////////////////////

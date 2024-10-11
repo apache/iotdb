@@ -21,8 +21,11 @@ package org.apache.iotdb.db.pipe.extractor.dataregion;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBExtractor;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -106,6 +109,52 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
   public void validate(final PipeParameterValidator validator) throws Exception {
     super.validate(validator);
 
+    // Validate whether the pipe needs to extract table model data or tree model data
+    final boolean isTreeDialect =
+        validator
+            .getParameters()
+            .getStringOrDefault(
+                SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
+            .equals(SystemConstant.SQL_DIALECT_TREE_VALUE);
+    final boolean isTreeModelDataAllowedToBeCaptured =
+        validator
+            .getParameters()
+            .getBooleanOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_KEY,
+                    PipeExtractorConstant.SOURCE_CAPTURE_TREE_KEY),
+                isTreeDialect);
+    final boolean isTableModelDataAllowedToBeCaptured =
+        validator
+            .getParameters()
+            .getBooleanOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
+                    PipeExtractorConstant.SOURCE_CAPTURE_TABLE_KEY),
+                !isTreeDialect);
+    if (!isTreeModelDataAllowedToBeCaptured
+        && validator
+            .getParameters()
+            .hasAnyAttributes(
+                PipeExtractorConstant.EXTRACTOR_PATH_KEY,
+                PipeExtractorConstant.SOURCE_PATH_KEY,
+                PipeExtractorConstant.EXTRACTOR_PATTERN_KEY,
+                PipeExtractorConstant.SOURCE_PATTERN_KEY)) {
+      throw new PipeException(
+          "The pipe cannot extract tree model data when sql dialect is set to table.");
+    }
+    if (!isTableModelDataAllowedToBeCaptured
+        && validator
+            .getParameters()
+            .hasAnyAttributes(
+                PipeExtractorConstant.EXTRACTOR_DATABASE_NAME_KEY,
+                PipeExtractorConstant.SOURCE_DATABASE_NAME_KEY,
+                PipeExtractorConstant.EXTRACTOR_TABLE_NAME_KEY,
+                PipeExtractorConstant.SOURCE_TABLE_NAME_KEY)) {
+      throw new PipeException(
+          "The pipe cannot extract table model data when sql dialect is set to tree.");
+    }
+
     final Pair<Boolean, Boolean> insertionDeletionListeningOptionPair =
         DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(
             validator.getParameters());
@@ -139,12 +188,12 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
             EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE,
             EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE);
 
-    // Get the pattern format to check whether the pattern is legal
-    final PipePattern pattern =
-        PipePattern.parsePipePatternFromSourceParameters(validator.getParameters());
-
-    // Check whether the pattern is legal
-    validatePattern(pattern);
+    // Validate tree pattern and table pattern
+    final TreePattern treePattern =
+        TreePattern.parsePipePatternFromSourceParameters(validator.getParameters());
+    final TablePattern tablePattern =
+        TablePattern.parsePipePatternFromSourceParameters(validator.getParameters());
+    validatePattern(treePattern, tablePattern);
 
     // Validate extractor.history.enable and extractor.realtime.enable
     validator
@@ -218,19 +267,26 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
     realtimeExtractor.validate(validator);
   }
 
-  private void validatePattern(final PipePattern pattern) {
-    if (!pattern.isLegal()) {
-      throw new IllegalArgumentException(String.format("Pattern \"%s\" is illegal.", pattern));
+  private void validatePattern(final TreePattern treePattern, final TablePattern tablePattern) {
+    if (!treePattern.isLegal()) {
+      throw new IllegalArgumentException(String.format("Pattern \"%s\" is illegal.", treePattern));
     }
 
     if (shouldExtractDeletion
-        && !(pattern instanceof IoTDBPipePattern
-            && (((IoTDBPipePattern) pattern).isPrefix()
-                || ((IoTDBPipePattern) pattern).isFullPath()))) {
+        && !(treePattern instanceof IoTDBTreePattern
+            && (((IoTDBTreePattern) treePattern).isPrefix()
+                || ((IoTDBTreePattern) treePattern).isFullPath()))) {
       throw new IllegalArgumentException(
           String.format(
               "The path pattern %s is not valid for the source. Only prefix or full path is allowed.",
-              pattern));
+              treePattern));
+    }
+
+    if (shouldExtractDeletion && tablePattern.hasUserSpecifiedDatabasePatternOrTablePattern()) {
+      throw new IllegalArgumentException(
+          String.format(
+              "The table model pattern %s can not be specified when deletion capture is enabled.",
+              tablePattern));
     }
   }
 

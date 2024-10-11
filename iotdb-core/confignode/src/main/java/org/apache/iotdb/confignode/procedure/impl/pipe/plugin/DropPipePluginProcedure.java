@@ -32,7 +32,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
-import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodesProcedure;
 import org.apache.iotdb.confignode.procedure.state.pipe.plugin.DropPipePluginState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -53,7 +53,7 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * This class extends {@link AbstractNodeProcedure} to make sure that when a {@link
  * DropPipePluginProcedure} is executed, the {@link AddConfigNodeProcedure}, {@link
- * RemoveConfigNodeProcedure} or {@link RemoveDataNodeProcedure} will not be executed at the same
+ * RemoveConfigNodeProcedure} or {@link RemoveDataNodesProcedure} will not be executed at the same
  * time.
  */
 public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePluginState> {

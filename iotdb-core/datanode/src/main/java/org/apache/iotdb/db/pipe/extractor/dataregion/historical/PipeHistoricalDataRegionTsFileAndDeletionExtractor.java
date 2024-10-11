@@ -28,6 +28,8 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.PersistentResource;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
@@ -107,7 +109,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
 
   private int dataRegionId;
 
-  private PipePattern pipePattern;
+  private TreePattern treePattern;
+  private TablePattern tablePattern; // TODO: use like treePattern
   private boolean isDbNameCoveredByPattern = false;
 
   private boolean isHistoricalExtractorEnabled = false;
@@ -277,14 +280,16 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
       DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.putIfAbsent(dataRegionId, 0L);
     }
 
-    pipePattern = PipePattern.parsePipePatternFromSourceParameters(parameters);
+    treePattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
+    tablePattern = TablePattern.parsePipePatternFromSourceParameters(parameters);
 
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(environment.getRegionId()));
     if (Objects.nonNull(dataRegion)) {
       final String databaseName = dataRegion.getDatabaseName();
       if (Objects.nonNull(databaseName)) {
-        isDbNameCoveredByPattern = pipePattern.coversDb(databaseName);
+        isDbNameCoveredByPattern =
+            treePattern.coversDb(databaseName) && tablePattern.coversDb(databaseName);
       }
     }
 
@@ -579,7 +584,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
       return true;
     }
 
-    return deviceSet.stream().anyMatch(deviceID -> pipePattern.mayOverlapWithDevice(deviceID));
+    // TODO: consider tablePattern
+    return deviceSet.stream().anyMatch(deviceID -> treePattern.mayOverlapWithDevice(deviceID));
   }
 
   private boolean isTsFileResourceOverlappedWithTimeRange(final TsFileResource resource) {
@@ -670,6 +676,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   private Event supplyTsFileEvent(TsFileResource resource) {
     final PipeTsFileInsertionEvent event =
         new PipeTsFileInsertionEvent(
+            resource.getDatabaseName(),
             resource,
             shouldTransferModFile,
             false,
@@ -678,7 +685,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
             pipeName,
             creationTime,
             pipeTaskMeta,
-            pipePattern,
+            treePattern,
+            tablePattern,
             historicalDataExtractionStartTime,
             historicalDataExtractionEndTime);
     if (sloppyPattern || isDbNameCoveredByPattern) {

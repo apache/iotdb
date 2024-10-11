@@ -50,6 +50,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterViewReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCleanDataNodeCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructViewSchemaBlackListReq;
@@ -363,6 +364,14 @@ public class CnToDnInternalServiceAsyncRequestManager
         CnToDnRequestType.UPDATE_TABLE,
         (req, client, handler) ->
             client.updateTable((TUpdateTableReq) req, (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnRequestType.CLEAN_DATA_NODE_CACHE,
+        (req, client, handler) ->
+            client.cleanDataNodeCache(
+                (TCleanDataNodeCacheReq) req, (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnRequestType.STOP_DATA_NODE,
+        (req, client, handler) -> client.stopDataNode((DataNodeTSStatusRPCHandler) handler));
   }
 
   @Override

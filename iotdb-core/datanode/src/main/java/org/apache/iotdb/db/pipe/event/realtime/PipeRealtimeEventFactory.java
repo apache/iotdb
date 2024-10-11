@@ -35,17 +35,23 @@ public class PipeRealtimeEventFactory {
   private static final TsFileEpochManager TS_FILE_EPOCH_MANAGER = new TsFileEpochManager();
 
   public static PipeRealtimeEvent createRealtimeEvent(
-      final TsFileResource resource, final boolean isLoaded, final boolean isGeneratedByPipe) {
+      final String databaseName,
+      final TsFileResource resource,
+      final boolean isLoaded,
+      final boolean isGeneratedByPipe) {
     return TS_FILE_EPOCH_MANAGER.bindPipeTsFileInsertionEvent(
-        new PipeTsFileInsertionEvent(resource, isLoaded, isGeneratedByPipe, false), resource);
+        new PipeTsFileInsertionEvent(databaseName, resource, isLoaded, isGeneratedByPipe, false),
+        resource);
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(
+      final String databaseName,
       final WALEntryHandler walEntryHandler,
       final InsertNode insertNode,
       final TsFileResource resource) {
     return TS_FILE_EPOCH_MANAGER.bindPipeInsertNodeTabletInsertionEvent(
         new PipeInsertNodeTabletInsertionEvent(
+            databaseName,
             walEntryHandler,
             insertNode.getTargetPath(),
             insertNode.getProgressIndex(),
@@ -58,7 +64,7 @@ public class PipeRealtimeEventFactory {
   public static PipeRealtimeEvent createRealtimeEvent(
       final String dataRegionId, final boolean shouldPrintMessage) {
     return new PipeRealtimeEvent(
-        new PipeHeartbeatEvent(dataRegionId, shouldPrintMessage), null, null, null);
+        new PipeHeartbeatEvent(dataRegionId, shouldPrintMessage), null, null, null, null);
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(final DeleteDataNode node) {
@@ -67,7 +73,7 @@ public class PipeRealtimeEventFactory {
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(final ProgressReportEvent event) {
-    return new PipeRealtimeEvent(event, null, null, null);
+    return new PipeRealtimeEvent(event, null, null, null, null);
   }
 
   private PipeRealtimeEventFactory() {

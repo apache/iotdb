@@ -136,6 +136,20 @@ public class IoTDBCaseWhenThenIT {
   }
 
   @Test
+  public void testShortCircuitEvaluation() {
+    String[] retArray =
+        new String[] {"0,0.0,", "1000000,11.0,", "20000000,22.0,", "210000000,33.0,"};
+    String[] expectedHeader =
+        new String[] {
+          "Time", "CASE WHEN 1 = 0 THEN root.sg.d1.s1 / 0 WHEN 1 != 0 THEN root.sg.d1.s1 END",
+        };
+    resultSetEqualTest(
+        "select case when 1=0 then s1/0 when 1!=0 then s1 end from root.sg.d1",
+        expectedHeader,
+        retArray);
+  }
+
+  @Test
   public void testKind1InputTypeRestrict() {
     // WHEN clause must return BOOLEAN
     String sql = "select case when s1+1 then 20 else 22 end from root.sg.d1";
