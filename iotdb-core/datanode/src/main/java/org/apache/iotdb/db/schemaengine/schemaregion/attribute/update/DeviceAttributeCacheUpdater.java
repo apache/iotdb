@@ -357,9 +357,9 @@ public class DeviceAttributeCacheUpdater {
             TableDeviceSchemaFetcher.getInstance().getAttributeGuard();
         guard.setVersion(regionStatistics.getSchemaRegionId(), version.get());
         guard.handleContainer(container);
+      } else {
+        attributeUpdateMap.put(location, container);
       }
-
-      attributeUpdateMap.put(location, container);
     }
   }
 
