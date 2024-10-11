@@ -456,7 +456,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         "select count(num) as count_num, avg(num) as avg_num, count(num) as count_num,\n"
             + "count(attr2) as count_attr2, avg(num) as avg_num, count(device) as count_device,\n"
             + "count(attr1) as count_attr1, count(device) as count_device, \n"
-            + "round(avg(floatnum)) as avg_floatnum, count(date) as count_date from table0;",
+            + "round(avg(floatnum)) as avg_floatnum, count(date) as count_date from table0",
         expectedHeader,
         retArray,
         DATABASE_NAME);
