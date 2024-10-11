@@ -22,7 +22,8 @@ package org.apache.iotdb.db.pipe.event.common.deletion;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.SerializableEvent;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
@@ -47,7 +48,7 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
 
   public PipeDeleteDataNodeEvent(
       final DeleteDataNode deleteDataNode, final boolean isGeneratedByPipe) {
-    this(deleteDataNode, null, 0, null, null, isGeneratedByPipe);
+    this(deleteDataNode, null, 0, null, null, null, isGeneratedByPipe);
   }
 
   public PipeDeleteDataNodeEvent(
@@ -55,9 +56,17 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pattern,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
       final boolean isGeneratedByPipe) {
-    super(pipeName, creationTime, pipeTaskMeta, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
+    super(
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        treePattern,
+        tablePattern,
+        Long.MIN_VALUE,
+        Long.MAX_VALUE);
     this.isGeneratedByPipe = isGeneratedByPipe;
     this.deleteDataNode = deleteDataNode;
     Optional.ofNullable(deleteDataNode)
@@ -99,11 +108,18 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
       String pipeName,
       long creationTime,
       PipeTaskMeta pipeTaskMeta,
-      PipePattern pattern,
+      TreePattern treePattern,
+      TablePattern tablePattern,
       long startTime,
       long endTime) {
     return new PipeDeleteDataNodeEvent(
-        deleteDataNode, pipeName, creationTime, pipeTaskMeta, pattern, isGeneratedByPipe);
+        deleteDataNode,
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        treePattern,
+        tablePattern,
+        isGeneratedByPipe);
   }
 
   @Override

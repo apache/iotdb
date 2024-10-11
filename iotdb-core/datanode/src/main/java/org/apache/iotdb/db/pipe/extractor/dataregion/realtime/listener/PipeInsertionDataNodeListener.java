@@ -140,7 +140,7 @@ public class PipeInsertionDataNodeListener {
             databaseName, walEntryHandler, insertNode, tsFileResource));
   }
 
-    // TODO: record database name in enriched events?
+  // TODO: record database name in enriched events?
   public DeletionResource listenToDeleteData(final String regionId, final DeleteDataNode node) {
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(regionId);
     // only events from registered data region will be extracted

@@ -69,7 +69,7 @@ public class PipeRealtimeEventFactory {
 
   public static PipeRealtimeEvent createRealtimeEvent(final DeleteDataNode node) {
     return new PipeRealtimeEvent(
-        new PipeDeleteDataNodeEvent(node, node.isGeneratedByPipe()), null, null, null);
+        new PipeDeleteDataNodeEvent(node, node.isGeneratedByPipe()), null, null, null, null);
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(final ProgressReportEvent event) {
