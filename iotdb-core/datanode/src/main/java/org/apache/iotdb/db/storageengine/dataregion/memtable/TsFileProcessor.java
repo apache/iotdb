@@ -1189,42 +1189,6 @@ public class TsFileProcessor {
     return fileSize >= fileSizeThreshold;
   }
 
-  public void syncClose() {
-    logger.info(
-        "Sync close file: {}, will firstly async close it",
-        tsFileResource.getTsFile().getAbsolutePath());
-    if (shouldClose) {
-      return;
-    }
-    synchronized (flushingMemTables) {
-      try {
-        asyncClose();
-        logger.info("Start to wait until file {} is closed", tsFileResource);
-        long startTime = System.currentTimeMillis();
-        while (!flushingMemTables.isEmpty()) {
-          flushingMemTables.wait(60_000);
-          if (System.currentTimeMillis() - startTime > 60_000 && !flushingMemTables.isEmpty()) {
-            logger.warn(
-                "{} has spent {}s for waiting flushing one memtable; {} left (first: {}). FlushingManager info: {}",
-                this.tsFileResource.getTsFile().getAbsolutePath(),
-                (System.currentTimeMillis() - startTime) / 1000,
-                flushingMemTables.size(),
-                flushingMemTables.getFirst(),
-                FlushManager.getInstance());
-          }
-        }
-      } catch (InterruptedException e) {
-        logger.error(
-            "{}: {} wait close interrupted",
-            storageGroupName,
-            tsFileResource.getTsFile().getName(),
-            e);
-        Thread.currentThread().interrupt();
-      }
-    }
-    logger.info("File {} is closed synchronously", tsFileResource.getTsFile().getAbsolutePath());
-  }
-
   /** async close one tsfile, register and close it by another thread */
   public Future<?> asyncClose() {
     flushQueryLock.writeLock().lock();
