@@ -113,19 +113,23 @@ public class TableDeviceSchemaFetcher {
 
     // For the correctness of attribute remote update
     final Set<Long> queryIdSet = attributeGuard.addFetchQueryId(queryId);
-    final ExecutionResult executionResult =
-        coordinator.executeForTableModel(
-            statement,
-            relationSqlParser,
-            SessionManager.getInstance().getCurrSession(),
-            queryId,
-            SessionManager.getInstance()
-                .getSessionInfo(SessionManager.getInstance().getCurrSession()),
-            "Fetch Device for insert",
-            LocalExecutionPlanner.getInstance().metadata,
-            config.getQueryTimeoutThreshold());
-    queryIdSet.remove(queryId);
-    attributeGuard.tryUpdateCache();
+    final ExecutionResult executionResult;
+    try {
+      executionResult =
+          coordinator.executeForTableModel(
+              statement,
+              relationSqlParser,
+              SessionManager.getInstance().getCurrSession(),
+              queryId,
+              SessionManager.getInstance()
+                  .getSessionInfo(SessionManager.getInstance().getCurrSession()),
+              "Fetch Device for insert",
+              LocalExecutionPlanner.getInstance().metadata,
+              config.getQueryTimeoutThreshold());
+    } finally {
+      queryIdSet.remove(queryId);
+      attributeGuard.tryUpdateCache();
+    }
     if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new RuntimeException(
           new IoTDBException(
