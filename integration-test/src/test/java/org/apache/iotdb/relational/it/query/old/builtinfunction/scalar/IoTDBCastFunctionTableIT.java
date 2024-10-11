@@ -35,6 +35,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.fail;
@@ -93,6 +94,12 @@ public class IoTDBCastFunctionTableIT {
         "INSERT INTO special(Time, device_id ,s6) values(2, 'd1', '1.1')",
         "INSERT INTO special(Time, device_id ,s6) values(3, 'd1', '4e60')",
         "INSERT INTO special(Time, device_id ,s6) values(4, 'd1', '4e60000')",
+        "flush",
+
+        // special cases for date and timestamp
+        "create table dateType(device_id STRING ID, s1 DATE MEASUREMENT, s2 TIMESTAMP MEASUREMENT)",
+        "INSERT INTO dateType(Time,device_id, s1, s2) values(1,'d1', '9999-12-31', 253402300800)",
+        "INSERT INTO dateType(Time,device_id, s1, s2) values(1,'d1', '1000-01-01', -30610310400)",
       };
 
   @BeforeClass
@@ -774,6 +781,13 @@ public class IoTDBCastFunctionTableIT {
       e.printStackTrace();
       fail();
     }
+  }
+
+  @Test
+  public void testDateOutOfRange() {
+    tableAssertTestFail("select CAST(s1 + AS TIMESTAMP) from dateType", "752", DATABASE_NAME);
+
+    tableAssertTestFail("select CAST(s2 AS DATE) from dateType", "752", DATABASE_NAME);
   }
 
   // endregion
