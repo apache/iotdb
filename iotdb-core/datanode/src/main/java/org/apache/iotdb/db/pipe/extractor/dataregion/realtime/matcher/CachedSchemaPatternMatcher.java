@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
@@ -29,6 +31,8 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRe
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,6 +44,9 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
+import static org.apache.tsfile.common.constant.TsFileConstant.PATH_ROOT;
+import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
+
 public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
 
   protected static final Logger LOGGER = LoggerFactory.getLogger(CachedSchemaPatternMatcher.class);
@@ -47,7 +54,10 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
   protected final ReentrantReadWriteLock lock;
 
   protected final Set<PipeRealtimeDataRegionExtractor> extractors;
+
   protected final Cache<IDeviceID, Set<PipeRealtimeDataRegionExtractor>> deviceToExtractorsCache;
+  protected final Cache<Pair<String, IDeviceID>, Set<PipeRealtimeDataRegionExtractor>>
+      databaseAndTableToExtractorsCache;
 
   public CachedSchemaPatternMatcher() {
     this.lock = new ReentrantReadWriteLock();
@@ -59,6 +69,10 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
         Caffeine.newBuilder()
             .maximumSize(PipeConfig.getInstance().getPipeExtractorMatcherCacheSize())
             .build();
+    this.databaseAndTableToExtractorsCache =
+        Caffeine.newBuilder()
+            .maximumSize(PipeConfig.getInstance().getPipeExtractorMatcherCacheSize())
+            .build();
   }
 
   @Override
@@ -67,6 +81,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     try {
       extractors.add(extractor);
       deviceToExtractorsCache.invalidateAll();
+      databaseAndTableToExtractorsCache.invalidateAll();
     } finally {
       lock.writeLock().unlock();
     }
@@ -78,6 +93,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     try {
       extractors.remove(extractor);
       deviceToExtractorsCache.invalidateAll();
+      databaseAndTableToExtractorsCache.invalidateAll();
     } finally {
       lock.writeLock().unlock();
     }
@@ -93,7 +109,6 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     }
   }
 
-  // TODO: consider table pattern
   @Override
   public Set<PipeRealtimeDataRegionExtractor> match(final PipeRealtimeEvent event) {
     final Set<PipeRealtimeDataRegionExtractor> matchedExtractors = new HashSet<>();
@@ -109,6 +124,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
         return extractors;
       }
 
+      // TODO: consider table pattern?
       // Deletion event will be assigned to extractors listened to it
       if (event.getEvent() instanceof PipeSchemaRegionWritePlanEvent) {
         return extractors.stream()
@@ -117,54 +133,20 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
       }
 
       for (final Map.Entry<IDeviceID, String[]> entry : event.getSchemaInfo().entrySet()) {
-        final IDeviceID device = entry.getKey();
-        final String[] measurements = entry.getValue();
+        final IDeviceID deviceID = entry.getKey();
 
-        // 1. try to get matched extractors from cache, if not success, match them by device
-        final Set<PipeRealtimeDataRegionExtractor> extractorsFilteredByDevice =
-            deviceToExtractorsCache.get(device, this::filterExtractorsByDevice);
-        // this would not happen
-        if (extractorsFilteredByDevice == null) {
-          LOGGER.warn("Match result NPE when handle device {}", device);
-          continue;
-        }
-
-        // 2. filter matched candidate extractors by measurements
-        if (measurements.length == 0) {
-          // `measurements` is empty (only in case of tsfile event). match all extractors.
-          //
-          // case 1: the pattern can match all measurements of the device.
-          // in this case, the extractor can be matched without checking the measurements.
-          //
-          // case 2: the pattern may match some measurements of the device.
-          // in this case, we can't get all measurements efficiently here,
-          // so we just ASSUME the extractor matches and do more checks later.
-          matchedExtractors.addAll(extractorsFilteredByDevice);
+        // TODO: Check the role to determine whether to match with tree model or table model
+        if (deviceID instanceof PlainDeviceID
+            || deviceID.getTableName().startsWith(PATH_ROOT + PATH_SEPARATOR)
+            || deviceID.getTableName().equals(PATH_ROOT)) {
+          matchTreeModelEvent(deviceID, entry.getValue(), matchedExtractors);
         } else {
-          // `measurements` is not empty (only in case of tablet event).
-          // Match extractors by measurements.
-          extractorsFilteredByDevice.forEach(
-              extractor -> {
-                final TreePattern pattern = extractor.getTreePattern();
-                if (Objects.isNull(pattern) || pattern.isRoot() || pattern.coversDevice(device)) {
-                  // The pattern can match all measurements of the device.
-                  matchedExtractors.add(extractor);
-                } else {
-                  for (final String measurement : measurements) {
-                    // Ignore null measurement for partial insert
-                    if (measurement == null) {
-                      continue;
-                    }
-
-                    if (pattern.matchesMeasurement(device, measurement)) {
-                      matchedExtractors.add(extractor);
-                      // There would be no more matched extractors because the measurements are
-                      // unique
-                      break;
-                    }
-                  }
-                }
-              });
+          matchTableModelEvent(
+              event.getEvent() instanceof PipeInsertionEvent
+                  ? ((PipeInsertionEvent) event.getEvent()).getTableModelDatabaseName()
+                  : null,
+              deviceID,
+              matchedExtractors);
         }
 
         if (matchedExtractors.size() == extractors.size()) {
@@ -178,6 +160,64 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     return matchedExtractors;
   }
 
+  protected void matchTreeModelEvent(
+      final IDeviceID device,
+      final String[] measurements,
+      final Set<PipeRealtimeDataRegionExtractor> matchedExtractors) {
+    // 1. try to get matched extractors from cache, if not success, match them by device
+    final Set<PipeRealtimeDataRegionExtractor> extractorsFilteredByDevice =
+        deviceToExtractorsCache.get(device, this::filterExtractorsByDevice);
+    // this would not happen
+    if (extractorsFilteredByDevice == null) {
+      LOGGER.warn(
+          "Extractors filtered by device is null when matching extractors for tree model event.",
+          new Exception());
+      return;
+    }
+
+    // 2. filter matched candidate extractors by measurements
+    if (measurements.length == 0) {
+      // `measurements` is empty (only in case of tsfile event). match all extractors.
+      //
+      // case 1: the pattern can match all measurements of the device.
+      // in this case, the extractor can be matched without checking the measurements.
+      //
+      // case 2: the pattern may match some measurements of the device.
+      // in this case, we can't get all measurements efficiently here,
+      // so we just ASSUME the extractor matches and do more checks later.
+      matchedExtractors.addAll(extractorsFilteredByDevice);
+    } else {
+      // `measurements` is not empty (only in case of tablet event).
+      // Match extractors by measurements.
+      extractorsFilteredByDevice.forEach(
+          extractor -> {
+            if (matchedExtractors.size() == extractors.size()) {
+              return;
+            }
+
+            final TreePattern pattern = extractor.getTreePattern();
+            if (Objects.isNull(pattern) || pattern.isRoot() || pattern.coversDevice(device)) {
+              // The pattern can match all measurements of the device.
+              matchedExtractors.add(extractor);
+            } else {
+              for (final String measurement : measurements) {
+                // Ignore null measurement for partial insert
+                if (measurement == null) {
+                  continue;
+                }
+
+                if (pattern.matchesMeasurement(device, measurement)) {
+                  matchedExtractors.add(extractor);
+                  // There would be no more matched extractors because the measurements are
+                  // unique
+                  break;
+                }
+              }
+            }
+          });
+    }
+  }
+
   protected Set<PipeRealtimeDataRegionExtractor> filterExtractorsByDevice(final IDeviceID device) {
     final Set<PipeRealtimeDataRegionExtractor> filteredExtractors = new HashSet<>();
 
@@ -188,7 +228,55 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
       }
 
       final TreePattern treePattern = extractor.getTreePattern();
-      if (Objects.isNull(treePattern) || treePattern.mayOverlapWithDevice(device)) {
+      if (Objects.isNull(treePattern)
+          || (treePattern.isTreeModelDataAllowedToBeCaptured()
+              && treePattern.mayOverlapWithDevice(device))) {
+        filteredExtractors.add(extractor);
+      }
+    }
+
+    return filteredExtractors;
+  }
+
+  protected void matchTableModelEvent(
+      final String databaseName,
+      final IDeviceID tableName,
+      final Set<PipeRealtimeDataRegionExtractor> matchedExtractors) {
+    // this would not happen
+    if (databaseName == null) {
+      LOGGER.warn(
+          "Database name is null when matching extractors for table model event.", new Exception());
+      return;
+    }
+
+    final Set<PipeRealtimeDataRegionExtractor> extractorsFilteredByDatabaseAndTable =
+        databaseAndTableToExtractorsCache.get(
+            new Pair<>(databaseName, tableName), this::filterExtractorsByDatabaseAndTable);
+    // this would not happen
+    if (extractorsFilteredByDatabaseAndTable == null) {
+      LOGGER.warn(
+          "Extractors filtered by database and table is null when matching extractors for table model event.",
+          new Exception());
+      return;
+    }
+    matchedExtractors.addAll(extractorsFilteredByDatabaseAndTable);
+  }
+
+  protected Set<PipeRealtimeDataRegionExtractor> filterExtractorsByDatabaseAndTable(
+      final Pair<String, IDeviceID> databaseNameAndTableName) {
+    final Set<PipeRealtimeDataRegionExtractor> filteredExtractors = new HashSet<>();
+
+    for (final PipeRealtimeDataRegionExtractor extractor : extractors) {
+      // Return if the extractor only extract deletion
+      if (!extractor.shouldExtractInsertion()) {
+        continue;
+      }
+
+      final TablePattern tablePattern = extractor.getTablePattern();
+      if (Objects.isNull(tablePattern)
+          || (tablePattern.isTableModelDataAllowedToBeCaptured()
+              && tablePattern.matchesDatabase(databaseNameAndTableName.getLeft())
+              && tablePattern.matchesTable(databaseNameAndTableName.getRight().getTableName()))) {
         filteredExtractors.add(extractor);
       }
     }
@@ -203,6 +291,8 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
       extractors.clear();
       deviceToExtractorsCache.invalidateAll();
       deviceToExtractorsCache.cleanUp();
+      databaseAndTableToExtractorsCache.invalidateAll();
+      databaseAndTableToExtractorsCache.cleanUp();
     } finally {
       lock.writeLock().unlock();
     }

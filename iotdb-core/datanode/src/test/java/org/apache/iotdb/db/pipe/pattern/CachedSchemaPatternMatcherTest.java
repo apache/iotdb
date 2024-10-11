@@ -34,7 +34,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.StringArrayDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -146,8 +146,7 @@ public class CachedSchemaPatternMatcherTest {
     Map<IDeviceID, String[]> deviceMap =
         IntStream.range(0, deviceNum)
             .mapToObj(String::valueOf)
-            .collect(
-                Collectors.toMap(s -> new StringArrayDeviceID("root.db" + s), s -> new String[0]));
+            .collect(Collectors.toMap(s -> new PlainDeviceID("root.db" + s), s -> new String[0]));
     String[] measurements =
         IntStream.range(0, seriesNum).mapToObj(num -> "s" + num).toArray(String[]::new);
     long totalTime = 0;
@@ -157,7 +156,7 @@ public class CachedSchemaPatternMatcherTest {
             new MockedPipeRealtimeEvent(
                 null,
                 null,
-                Collections.singletonMap(new StringArrayDeviceID("root.db" + i), measurements),
+                Collections.singletonMap(new PlainDeviceID("root.db" + i), measurements),
                 null);
         long startTime = System.currentTimeMillis();
         matcher.match(event).forEach(extractor -> extractor.extract(event));
