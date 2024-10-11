@@ -397,7 +397,8 @@ public class IoTDBAlignedLastQueryIT {
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
-          statement.executeQuery("select last gongnengma,wenben from root.ln_1.tb_6141;")) {
+          statement.executeQuery(
+              "select last gongnengma,wenben from root.ln_1.tb_6141 order by timeseries asc;")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -431,7 +432,7 @@ public class IoTDBAlignedLastQueryIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select last gongnengma,mochanshuizhuangtai,wenben from root.ln_1.tb_6141;")) {
+              "select last gongnengma,mochanshuizhuangtai,wenben from root.ln_1.tb_6141 order by timeseries asc;")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
