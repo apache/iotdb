@@ -349,7 +349,10 @@ public class TabletInsertionEventTablePatternParser implements TabletInsertionEv
     final TSDataType[] originValueColumnDataTypes = new TSDataType[originColumnSize];
     for (int i = 0; i < originColumnSize; i++) {
       originColumnNameStringList[i] = originMeasurementSchemaList.get(i).getMeasurementId();
-      originColumnTypes[i] = tablet.getColumnTypes().get(i);
+      originColumnTypes[i] =
+          tablet.getColumnTypes() != null
+              ? tablet.getColumnTypes().get(i)
+              : Tablet.ColumnType.MEASUREMENT;
       originValueColumnDataTypes[i] = originMeasurementSchemaList.get(i).getType();
     }
     final Object[] originValueColumns =
