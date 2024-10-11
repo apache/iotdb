@@ -91,6 +91,8 @@ public class DeviceAttributeCacheUpdater {
         location -> {
           // Skip update on local
           if (location.getDataNodeId() == config.getDataNodeId()) {
+            // Remove potential entries put when the dataNodeId == -1
+            removeLocation(location);
             return;
           }
           if (!attributeUpdateMap.containsKey(location)) {
