@@ -325,7 +325,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             node.getPlanNodeId(),
             columnSchemas,
             columnsIndexArray,
-            measurementColumnCount,
             node.getDeviceEntries(),
             node.getScanOrder(),
             scanOptionsBuilder.build(),
@@ -1012,7 +1011,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     return new TableAggregator(
         accumulator,
         step,
-        // getTSDataType(aggregation.getResolvedFunction().getSignature().getReturnType()),
         getTSDataType(typeProvider.getTableModelType(aggregationSymbol)),
         argumentChannels,
         OptionalInt.empty());
@@ -1021,72 +1019,74 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   @Override
   public Operator visitAggregationTableScan(
       AggregationTableScanNode node, LocalExecutionPlanContext context) {
-    final OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                AggregationTableScanNode.class.getSimpleName());
 
     List<TableAggregator> aggregators = new ArrayList<>(node.getAggregations().size());
+    Map<Symbol, Integer> columnLayout = new HashMap<>(node.getAggregations().size());
 
-    // TODO is assignments of AggTableScane hashmap ok?
-    Map<Symbol, Integer> childLayout = makeLayoutForAggTableScan(node);
-    for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
-      TableAggregator aggregator =
-          buildAggregator(
-              entry.getKey(),
-              childLayout,
-              entry.getValue(),
-              node.getStep(),
-              context.getTypeProvider());
-      aggregators.add(aggregator);
-    }
-
-    Collection<Symbol> outputColumnNames = node.getAssignments().keySet();
-    int outputColumnCount = outputColumnNames.size();
-    List<ColumnSchema> columnSchemas = new ArrayList<>(outputColumnCount);
-    int[] columnsIndexArray = new int[outputColumnCount];
-    Map<Symbol, ColumnSchema> columnSchemaMap = node.getAssignments();
+    int aggregationsCount = node.getAggregations().size();
+    int[] layoutArray = new int[aggregationsCount];
+    int channel = 0;
+    int idx = -1;
+    int measurementColumnCount = 0;
     Map<Symbol, Integer> idAndAttributeColumnsIndexMap = node.getIdAndAttributeIndexMap();
+    Map<Symbol, ColumnSchema> columnSchemaMap = node.getAssignments();
+    List<ColumnSchema> columnSchemas = new ArrayList<>(aggregationsCount);
+    int[] columnsIndexArray = new int[aggregationsCount];
     List<String> measurementColumnNames = new ArrayList<>();
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
-    int measurementColumnCount = 0;
-    int idx = 0;
-    for (Symbol columnName : outputColumnNames) {
-      ColumnSchema schema =
-          requireNonNull(columnSchemaMap.get(columnName), columnName + " is null");
+
+    // TODO test aggregation function which has more than one arguements
+    for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
+      idx++;
+      Symbol symbol = Symbol.from(entry.getValue().getArguments().get(0));
+      ColumnSchema schema = requireNonNull(columnSchemaMap.get(symbol), symbol + " is null");
 
       switch (schema.getColumnCategory()) {
         case ID:
         case ATTRIBUTE:
-          columnsIndexArray[idx++] =
-              requireNonNull(
-                  idAndAttributeColumnsIndexMap.get(columnName), columnName + " is null");
+          columnsIndexArray[idx] =
+              requireNonNull(idAndAttributeColumnsIndexMap.get(symbol), symbol + " is null");
           columnSchemas.add(schema);
           break;
         case MEASUREMENT:
-          columnsIndexArray[idx++] = measurementColumnCount;
-          measurementColumnCount++;
-          measurementColumnNames.add(columnName.getName());
-          measurementSchemas.add(
-              new MeasurementSchema(schema.getName(), getTSDataType(schema.getType())));
-          columnSchemas.add(schema);
+          if (columnLayout.containsKey(symbol)) {
+            columnsIndexArray[idx] = columnsIndexArray[columnLayout.get(symbol)];
+          } else {
+            columnsIndexArray[idx] = measurementColumnCount;
+            measurementColumnCount++;
+            measurementColumnNames.add(symbol.getName());
+            measurementSchemas.add(
+                new MeasurementSchema(schema.getName(), getTSDataType(schema.getType())));
+            columnSchemas.add(schema);
+          }
           break;
         case TIME:
-          columnsIndexArray[idx++] = -1;
+          columnsIndexArray[idx] = -1;
           columnSchemas.add(schema);
           break;
         default:
           throw new IllegalArgumentException(
               "Unexpected column category: " + schema.getColumnCategory());
       }
+
+      if (!columnLayout.containsKey(symbol)) {
+        layoutArray[idx] = channel;
+        columnLayout.put(symbol, channel++);
+      } else {
+        layoutArray[idx] = columnLayout.get(symbol);
+      }
+
+      aggregators.add(
+          buildAggregator(
+              entry.getKey(),
+              columnLayout,
+              entry.getValue(),
+              node.getStep(),
+              context.getTypeProvider()));
     }
 
-    Set<Symbol> outputSet = new HashSet<>(outputColumnNames);
     for (Map.Entry<Symbol, ColumnSchema> entry : node.getAssignments().entrySet()) {
-      if (!outputSet.contains(entry.getKey())
+      if (!columnLayout.containsKey(entry.getKey())
           && entry.getValue().getColumnCategory() == MEASUREMENT) {
         measurementColumnCount++;
         measurementColumnNames.add(entry.getKey().getName());
@@ -1096,6 +1096,13 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       }
     }
 
+    final OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                AggregationTableScanNode.class.getSimpleName());
     SeriesScanOptions.Builder scanOptionsBuilder =
         node.getTimePredicate()
             .map(timePredicate -> getSeriesScanOptionsBuilder(context, timePredicate))
@@ -1104,37 +1111,33 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     scanOptionsBuilder.withPushDownOffset(node.getPushDownOffset());
     scanOptionsBuilder.withPushLimitToEachDevice(node.isPushLimitToEachDevice());
     scanOptionsBuilder.withAllSensors(new HashSet<>(measurementColumnNames));
-
     Expression pushDownPredicate = node.getPushDownPredicate();
     if (pushDownPredicate != null) {
       scanOptionsBuilder.withPushDownFilter(
           convertPredicateToFilter(pushDownPredicate, measurementColumnNames, columnSchemaMap));
     }
-
     ITimeRangeIterator timeRangeIterator =
         new SingleTimeWindowIterator(Long.MIN_VALUE, Long.MAX_VALUE);
-
     TableAggregationTableScanOperator aggTableScanOperator =
         new TableAggregationTableScanOperator(
             node.getPlanNodeId(),
             operatorContext,
             columnSchemas,
             columnsIndexArray,
-            measurementColumnCount,
             node.getDeviceEntries(),
             node.getScanOrder(),
             scanOptionsBuilder.build(),
             measurementColumnNames,
             measurementSchemas,
             TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber(),
-            // TODO if it equals subSensor variable
             measurementColumnCount,
             aggregators,
             timeRangeIterator,
             false,
             null,
             calculateMaxAggregationResultSize(),
-            true);
+            true,
+            layoutArray);
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(aggTableScanOperator);
 
@@ -1148,21 +1151,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     context.getDriverContext().setInputDriver(true);
 
     return aggTableScanOperator;
-  }
-
-  private Map<Symbol, Integer> makeLayoutForAggTableScan(AggregationTableScanNode node) {
-    Map<Symbol, Integer> childLayout;
-    ImmutableMap.Builder<Symbol, Integer> outputMappings = ImmutableMap.builder();
-    int channel = 0;
-
-    // TODO for aggregation function which has more than one arguements, this may by wrong
-    for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
-      Symbol symbol = Symbol.from(entry.getValue().getArguments().get(0));
-      outputMappings.put(symbol, channel);
-      channel++;
-    }
-    childLayout = outputMappings.buildOrThrow();
-    return childLayout;
   }
 
   public static long calculateMaxAggregationResultSize(
@@ -1190,39 +1178,4 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     //                    timeRangeIterator.getTotalIntervalNum())
     //                    * timeValueColumnsSizePerLine);
   }
-
-  //  private void aaa(AggregationTableScanNode node) {
-  //    Map<Symbol, Integer> childLayout = new HashMap<>();
-  //
-  //    for (Symbol columnName : node.getoutputColumnNames) {
-  //      ColumnSchema schema =
-  //              requireNonNull(columnSchemaMap.get(columnName), columnName + " is null");
-  //
-  //      switch (schema.getColumnCategory()) {
-  //        case ID:
-  //        case ATTRIBUTE:
-  //          columnsIndexArray[idx++] =
-  //                  requireNonNull(
-  //                          idAndAttributeColumnsIndexMap.get(columnName), columnName + " is
-  // null");
-  //          columnSchemas.add(schema);
-  //          break;
-  //        case MEASUREMENT:
-  //          columnsIndexArray[idx++] = measurementColumnCount;
-  //          measurementColumnCount++;
-  //          measurementColumnNames.add(columnName.getName());
-  //          measurementSchemas.add(
-  //                  new MeasurementSchema(schema.getName(), getTSDataType(schema.getType())));
-  //          columnSchemas.add(schema);
-  //          break;
-  //        case TIME:
-  //          columnsIndexArray[idx++] = -1;
-  //          columnSchemas.add(schema);
-  //          break;
-  //        default:
-  //          throw new IllegalArgumentException(
-  //                  "Unexpected column category: " + schema.getColumnCategory());
-  //      }
-  //    }
-  //  }
 }

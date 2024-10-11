@@ -74,7 +74,6 @@ public class TableAggregator {
 
   /** Used for AggregateTableScanOperator. */
   public void processStatistics(Statistics valueStatistics) {
-    // TODO verify the rightness
     checkArgument(inputChannels.length == 1, "expected 1 input channel for processStatistics");
     accumulator.addStatistics(valueStatistics);
   }

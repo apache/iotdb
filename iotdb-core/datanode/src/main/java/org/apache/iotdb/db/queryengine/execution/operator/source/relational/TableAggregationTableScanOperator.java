@@ -58,10 +58,6 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
-import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.appendAggregationResult;
-import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.calculateAggregationFromRawData;
-import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.isAllAggregatorsHasFinalResult;
-import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.process;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.satisfiedTimeRange;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
 import static org.apache.tsfile.read.common.block.TsBlockUtil.skipPointsOutOfTimeRange;
@@ -71,7 +67,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TableAggregationTableScanOperator.class);
 
-  private final List<TableAggregator> aggregators;
+  private final List<TableAggregator> tableAggregators;
 
   public static final LongColumn TIME_COLUMN_TEMPLATE =
       new LongColumn(1, Optional.empty(), new long[] {0});
@@ -79,8 +75,6 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   private final List<ColumnSchema> columnSchemas;
 
   private final int[] columnsIndexArray;
-
-  private final int measurementColumnCount;
 
   private final List<DeviceEntry> deviceEntries;
 
@@ -95,23 +89,22 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
 
   private final List<TSDataType> measurementColumnTSDataTypes;
 
-  private TsBlockBuilder measurementDataBuilder;
-
   // TODO calc maxTsBlockLineNum using date_bin
   private final int maxTsBlockLineNum;
-
-  private TsBlock measurementDataBlock;
 
   private QueryDataSource queryDataSource;
 
   private int currentDeviceIndex;
+
+  boolean canUseStatistics = true;
+
+  private final int[] layoutArray;
 
   public TableAggregationTableScanOperator(
       PlanNodeId sourceId,
       OperatorContext context,
       List<ColumnSchema> columnSchemas,
       int[] columnsIndexArray,
-      int measurementColumnCount,
       List<DeviceEntry> deviceEntries,
       Ordering scanOrder,
       SeriesScanOptions seriesScanOptions,
@@ -119,12 +112,13 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
       List<IMeasurementSchema> measurementSchemas,
       int maxTsBlockLineNum,
       int subSensorSize,
-      List<TableAggregator> aggregators,
+      List<TableAggregator> tableAggregators,
       ITimeRangeIterator timeRangeIterator,
       boolean ascending,
       GroupByTimeParameter groupByTimeParameter,
       long maxReturnSize,
-      boolean canUseStatistics) {
+      boolean canUseStatistics,
+      int[] layoutArray) {
 
     super(
         sourceId,
@@ -139,13 +133,12 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
         maxReturnSize,
         canUseStatistics);
 
-    this.aggregators = aggregators;
+    this.tableAggregators = tableAggregators;
 
     this.sourceId = sourceId;
     this.operatorContext = context;
     this.columnSchemas = columnSchemas;
     this.columnsIndexArray = columnsIndexArray;
-    this.measurementColumnCount = measurementColumnCount;
     this.deviceEntries = deviceEntries;
     this.deviceCount = deviceEntries.size();
     this.scanOrder = scanOrder;
@@ -155,6 +148,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     this.measurementColumnTSDataTypes =
         measurementSchemas.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
     this.currentDeviceIndex = 0;
+    this.layoutArray = layoutArray;
 
     this.maxReturnSize = maxReturnSize;
     this.maxTsBlockLineNum = maxTsBlockLineNum;
@@ -183,7 +177,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
         // move to the next time window
         curTimeRange = timeRangeIterator.nextTimeRange();
         // clear previous aggregation result
-        for (TableAggregator aggregator : aggregators) {
+        for (TableAggregator aggregator : tableAggregators) {
           aggregator.reset();
         }
       }
@@ -308,13 +302,11 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     this.seriesScanUtil.initQueryDataSource(queryDataSource);
     this.resultTsBlockBuilder = new TsBlockBuilder(getResultDataTypes());
     this.resultTsBlockBuilder.setMaxTsBlockLineNumber(this.maxTsBlockLineNum);
-    this.measurementDataBuilder = new TsBlockBuilder(this.measurementColumnTSDataTypes);
-    this.measurementDataBuilder.setMaxTsBlockLineNumber(this.maxTsBlockLineNum);
   }
 
   @Override
   protected void updateResultTsBlock() {
-    appendAggregationResult(resultTsBlockBuilder, aggregators);
+    appendAggregationResult(resultTsBlockBuilder, tableAggregators);
   }
 
   protected boolean calcFromCachedData() {
@@ -323,7 +315,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
 
   private boolean calcFromRawData(TsBlock tsBlock) {
     Pair<Boolean, TsBlock> calcResult =
-        calculateAggregationFromRawData(tsBlock, aggregators, curTimeRange, ascending);
+        calculateAggregationFromRawData(tsBlock, tableAggregators, curTimeRange, ascending);
     inputTsBlock = calcResult.getRight();
     return calcResult.getLeft();
   }
@@ -379,17 +371,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
 
     TsBlock inputRegion = inputTsBlock.getRegion(0, lastIndexToProcess + 1);
     for (int i = 0; i < aggregators.size(); i++) {
-      // ID or Attribute is null, skip this aggregation logic
-      if (TsTableColumnCategory.ID == columnSchemas.get(i).getColumnCategory()
-          && deviceEntries.get(currentDeviceIndex).getNthSegment(columnsIndexArray[i]) == null) {
-        continue;
-      }
-      if (TsTableColumnCategory.ATTRIBUTE == columnSchemas.get(i).getColumnCategory()
-          && deviceEntries
-                  .get(currentDeviceIndex)
-                  .getAttributeColumnValues()
-                  .get(columnsIndexArray[i])
-              == null) {
+      if (isNullIdOrAttribute(i)) {
         continue;
       }
 
@@ -409,6 +391,21 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     }
   }
 
+  /** ID or Attribute is null, skip this aggregation logic */
+  private boolean isNullIdOrAttribute(int i) {
+    if (TsTableColumnCategory.ID == columnSchemas.get(layoutArray[i]).getColumnCategory()
+        && deviceEntries.get(currentDeviceIndex).getNthSegment(columnsIndexArray[i]) == null) {
+      return true;
+    }
+
+    return TsTableColumnCategory.ATTRIBUTE == columnSchemas.get(layoutArray[i]).getColumnCategory()
+        && deviceEntries
+                .get(currentDeviceIndex)
+                .getAttributeColumnValues()
+                .get(columnsIndexArray[i])
+            == null;
+  }
+
   public static boolean isAllAggregatorsHasFinalResult(List<TableAggregator> aggregators) {
     for (TableAggregator aggregator : aggregators) {
       if (!aggregator.hasFinalResult()) {
@@ -419,34 +416,22 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   }
 
   protected void calcFromStatistics(Statistics timeStatistics, Statistics[] valueStatistics) {
-    for (int i = 0; i < aggregators.size(); i++) {
-      // ID or Attribute is null, skip this aggregation logic
-      if (TsTableColumnCategory.ID == columnSchemas.get(i).getColumnCategory()
-          && deviceEntries.get(currentDeviceIndex).getNthSegment(columnsIndexArray[i]) == null) {
-        continue;
-      }
-      if (TsTableColumnCategory.ATTRIBUTE == columnSchemas.get(i).getColumnCategory()
-          && deviceEntries
-                  .get(currentDeviceIndex)
-                  .getAttributeColumnValues()
-                  .get(columnsIndexArray[i])
-              == null) {
+    for (int i = 0; i < tableAggregators.size(); i++) {
+      if (isNullIdOrAttribute(i)) {
         continue;
       }
 
-      TableAggregator aggregator = aggregators.get(i);
+      TableAggregator aggregator = tableAggregators.get(i);
       if (aggregator.hasFinalResult()) {
         continue;
       }
       aggregator.processStatistics(
-          columnSchemas.get(i).getColumnCategory() == TsTableColumnCategory.MEASUREMENT
-              ? valueStatistics[i]
+          columnSchemas.get(layoutArray[i]).getColumnCategory() == TsTableColumnCategory.MEASUREMENT
+              ? valueStatistics[columnsIndexArray[i]]
               : timeStatistics);
       // aggregator.processStatistics(valueStatistics);
     }
   }
-
-  boolean canUseStatistics = true;
 
   @SuppressWarnings({"squid:S3776", "squid:S135", "squid:S3740"})
   protected boolean readAndCalcFromFile() throws IOException {
@@ -472,7 +457,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
           }
           calcFromStatistics(fileTimeStatistics, statisticsList);
           seriesScanUtil.skipCurrentFile();
-          if (isAllAggregatorsHasFinalResult(aggregators) && !isGroupByQuery) {
+          if (isAllAggregatorsHasFinalResult(tableAggregators) && !isGroupByQuery) {
             return true;
           } else {
             continue;
@@ -514,7 +499,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
           }
           calcFromStatistics(chunkTimeStatistics, statisticsList);
           seriesScanUtil.skipCurrentChunk();
-          if (isAllAggregatorsHasFinalResult(aggregators) && !isGroupByQuery) {
+          if (isAllAggregatorsHasFinalResult(tableAggregators) && !isGroupByQuery) {
             return true;
           } else {
             continue;
@@ -558,7 +543,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
             }
             calcFromStatistics(pageTimeStatistics, statisticsList);
             seriesScanUtil.skipCurrentPage();
-            if (isAllAggregatorsHasFinalResult(aggregators) && !isGroupByQuery) {
+            if (isAllAggregatorsHasFinalResult(tableAggregators) && !isGroupByQuery) {
               return true;
             } else {
               continue;
@@ -572,9 +557,9 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
           continue;
         }
         // TODO add optimization: if only agg measurement columns, no need to transfer
-        Column[] valueColumns = new Column[aggregators.size()];
-        for (int i = 0; i < columnsIndexArray.length; i++) {
-          ColumnSchema columnSchema = columnSchemas.get(i);
+        Column[] valueColumns = new Column[tableAggregators.size()];
+        for (int i = 0; i < tableAggregators.size(); i++) {
+          ColumnSchema columnSchema = columnSchemas.get(layoutArray[i]);
           if (Streams.of(
                   TsTableColumnCategory.ID,
                   TsTableColumnCategory.ATTRIBUTE,
@@ -613,7 +598,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     //      dataTypes.add(aggregator.getType());
     //    }
     //    return dataTypes;
-    return aggregators.stream().map(TableAggregator::getType).collect(Collectors.toList());
+    return tableAggregators.stream().map(TableAggregator::getType).collect(Collectors.toList());
   }
 
   /** Append a row of aggregation results to the result tsBlock. */

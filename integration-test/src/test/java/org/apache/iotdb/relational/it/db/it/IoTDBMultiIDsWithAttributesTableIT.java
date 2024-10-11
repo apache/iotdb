@@ -431,7 +431,38 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         DATABASE_NAME);
   }
 
-  // ========== Join Test =========
+  // ============================ Aggregation Test ===========================
+  @Test
+  public void aggregationTest() {
+    String[] expectedHeader =
+        new String[] {
+          "count_num",
+          "avg_num",
+          "count_num",
+          "count_attr2",
+          "avg_num",
+          "count_device",
+          "count_attr1",
+          "count_device",
+          "avg_floatnum",
+          "count_date"
+        };
+    String[] retArray =
+        new String[] {
+          "30,8.0,30,12,8.0,30,15,30,529.0,2,",
+        };
+
+    tableResultSetEqualTest(
+        "select count(num) as count_num, avg(num) as avg_num, count(num) as count_num,\n"
+            + "count(attr2) as count_attr2, avg(num) as avg_num, count(device) as count_device,\n"
+            + "count(attr1) as count_attr1, count(device) as count_device, \n"
+            + "round(avg(floatnum)) as avg_floatnum, count(date) as count_date from table0;",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  // ============================ Join Test ===========================
   // no filter
   @Test
   public void innerJoinTest1() {

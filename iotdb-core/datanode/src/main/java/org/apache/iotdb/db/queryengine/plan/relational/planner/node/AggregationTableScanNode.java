@@ -39,6 +39,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -447,7 +448,7 @@ public class AggregationTableScanNode extends TableScanNode {
     QualifiedObjectName qualifiedObjectName = new QualifiedObjectName(databaseName, tableName);
 
     int size = ReadWriteIOUtils.readInt(byteBuffer);
-    Map<Symbol, ColumnSchema> assignments = new HashMap<>(size);
+    Map<Symbol, ColumnSchema> assignments = new LinkedHashMap<>(size);
     for (int i = 0; i < size; i++) {
       assignments.put(Symbol.deserialize(byteBuffer), ColumnSchema.deserialize(byteBuffer));
     }
