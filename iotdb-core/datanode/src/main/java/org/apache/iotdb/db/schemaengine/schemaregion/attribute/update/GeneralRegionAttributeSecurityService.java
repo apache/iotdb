@@ -113,15 +113,6 @@ public class GeneralRegionAttributeSecurityService implements IService {
   private void execute() {
     lock.lock();
     try {
-      // Wait for the dataNodeId to get ready in order to clear the local location in
-      // updateMap after dataNode restart
-      if (iotdbConfig.getDataNodeId() == -1) {
-        condition.await(
-            iotdbConfig.getGeneralRegionAttributeSecurityServiceIntervalSeconds(),
-            TimeUnit.SECONDS);
-        return;
-      }
-
       // All the "detailContainer"'s size will add up to at most "limit"
       // UpdateClearContainer and version / TEndPoint are not calculated
       final AtomicInteger limit =
