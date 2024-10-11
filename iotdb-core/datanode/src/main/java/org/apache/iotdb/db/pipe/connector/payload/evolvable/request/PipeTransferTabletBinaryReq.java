@@ -43,6 +43,7 @@ import java.util.Objects;
 public class PipeTransferTabletBinaryReq extends TPipeTransferReq {
 
   private transient ByteBuffer byteBuffer;
+  private transient String dataBaseName;
 
   private PipeTransferTabletBinaryReq() {
     // Do nothing
@@ -69,6 +70,19 @@ public class PipeTransferTabletBinaryReq extends TPipeTransferReq {
     return node instanceof InsertNode ? (InsertNode) node : null;
   }
 
+  /////////////////////////////// Batch ///////////////////////////////
+
+  public static PipeTransferTabletBinaryReq toTPipeTransferBinaryReqV2(
+      final ByteBuffer byteBuffer, final String dataBaseName) {
+    final PipeTransferTabletBinaryReq req = new PipeTransferTabletBinaryReq();
+    req.byteBuffer = byteBuffer;
+    req.dataBaseName = dataBaseName;
+    req.version = IoTDBConnectorRequestVersion.VERSION_2.getVersion();
+    req.type = PipeRequestType.TRANSFER_TABLET_BINARY.getType();
+
+    return req;
+  }
+
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeTransferTabletBinaryReq toTPipeTransferReq(final ByteBuffer byteBuffer) {
@@ -86,6 +100,41 @@ public class PipeTransferTabletBinaryReq extends TPipeTransferReq {
       final TPipeTransferReq transferReq) {
     final PipeTransferTabletBinaryReq binaryReq = new PipeTransferTabletBinaryReq();
     binaryReq.byteBuffer = transferReq.body;
+
+    binaryReq.version = transferReq.version;
+    binaryReq.type = transferReq.type;
+    binaryReq.body = transferReq.body;
+
+    return binaryReq;
+  }
+
+  public static PipeTransferTabletBinaryReq toTPipeTransferReqV2(
+      final ByteBuffer byteBuffer, final String dataBaseName) throws IOException {
+    final PipeTransferTabletBinaryReq req = new PipeTransferTabletBinaryReq();
+    req.byteBuffer = byteBuffer;
+    req.dataBaseName = dataBaseName;
+    req.version = IoTDBConnectorRequestVersion.VERSION_2.getVersion();
+    req.type = PipeRequestType.TRANSFER_TABLET_BINARY.getType();
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(byteBuffer.limit(), outputStream);
+      outputStream.write(byteBuffer.array(), 0, byteBuffer.limit());
+      ReadWriteIOUtils.write(dataBaseName, outputStream);
+      req.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
+
+    return req;
+  }
+
+  public static PipeTransferTabletBinaryReq fromTPipeTransferReqV2(
+      final TPipeTransferReq transferReq) {
+    final PipeTransferTabletBinaryReq binaryReq = new PipeTransferTabletBinaryReq();
+
+    final int length = ReadWriteIOUtils.readInt(transferReq.body);
+    final byte[] body = new byte[length];
+    transferReq.body.get(body);
+    binaryReq.byteBuffer = ByteBuffer.wrap(body);
+    binaryReq.dataBaseName = ReadWriteIOUtils.readString(transferReq.body);
 
     binaryReq.version = transferReq.version;
     binaryReq.type = transferReq.type;
@@ -117,6 +166,7 @@ public class PipeTransferTabletBinaryReq extends TPipeTransferReq {
     }
     final PipeTransferTabletBinaryReq that = (PipeTransferTabletBinaryReq) obj;
     return byteBuffer.equals(that.byteBuffer)
+        && Objects.equals(dataBaseName, that.dataBaseName)
         && version == that.version
         && type == that.type
         && body.equals(that.body);
@@ -124,6 +174,6 @@ public class PipeTransferTabletBinaryReq extends TPipeTransferReq {
 
   @Override
   public int hashCode() {
-    return Objects.hash(byteBuffer, version, type, body);
+    return Objects.hash(byteBuffer, dataBaseName, version, type, body);
   }
 }

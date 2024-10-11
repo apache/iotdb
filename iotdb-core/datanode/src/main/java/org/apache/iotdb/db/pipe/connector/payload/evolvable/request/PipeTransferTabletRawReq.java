@@ -50,6 +50,7 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
 
   private transient Tablet tablet;
   private transient boolean isAligned;
+  private transient String dataBaseName;
 
   public Tablet getTablet() {
     return tablet;
@@ -103,6 +104,17 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
     return tabletReq;
   }
 
+  public static PipeTransferTabletRawReq toTPipeTransferRawReqV2(
+      final Tablet tablet, final boolean isAligned, final String dataBaseName) {
+    final PipeTransferTabletRawReq tabletReq = new PipeTransferTabletRawReq();
+
+    tabletReq.tablet = tablet;
+    tabletReq.isAligned = isAligned;
+    tabletReq.dataBaseName = dataBaseName;
+
+    return tabletReq;
+  }
+
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeTransferTabletRawReq toTPipeTransferReq(
@@ -125,11 +137,47 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
     return tabletReq;
   }
 
+  public static PipeTransferTabletRawReq toTPipeTransferReqV2(
+      final Tablet tablet, final boolean isAligned, final String dataBaseName) throws IOException {
+    final PipeTransferTabletRawReq tabletReq = new PipeTransferTabletRawReq();
+
+    tabletReq.tablet = tablet;
+    tabletReq.isAligned = isAligned;
+
+    tabletReq.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
+    tabletReq.type = PipeRequestType.TRANSFER_TABLET_RAW_V2.getType();
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      tablet.serialize(outputStream);
+      ReadWriteIOUtils.write(isAligned, outputStream);
+      ReadWriteIOUtils.write(dataBaseName, outputStream);
+      tabletReq.body =
+          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
+
+    return tabletReq;
+  }
+
   public static PipeTransferTabletRawReq fromTPipeTransferReq(final TPipeTransferReq transferReq) {
     final PipeTransferTabletRawReq tabletReq = new PipeTransferTabletRawReq();
 
     tabletReq.tablet = Tablet.deserialize(transferReq.body);
     tabletReq.isAligned = ReadWriteIOUtils.readBool(transferReq.body);
+
+    tabletReq.version = transferReq.version;
+    tabletReq.type = transferReq.type;
+    tabletReq.body = transferReq.body;
+
+    return tabletReq;
+  }
+
+  public static PipeTransferTabletRawReq fromTPipeTransferReqV2(
+      final TPipeTransferReq transferReq) {
+    final PipeTransferTabletRawReq tabletReq = new PipeTransferTabletRawReq();
+
+    tabletReq.tablet = Tablet.deserialize(transferReq.body);
+    tabletReq.isAligned = ReadWriteIOUtils.readBool(transferReq.body);
+    tabletReq.dataBaseName = ReadWriteIOUtils.readString(transferReq.body);
 
     tabletReq.version = transferReq.version;
     tabletReq.type = transferReq.type;
@@ -165,6 +213,7 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
     final PipeTransferTabletRawReq that = (PipeTransferTabletRawReq) obj;
     return Objects.equals(tablet, that.tablet)
         && isAligned == that.isAligned
+        && Objects.equals(dataBaseName, that.dataBaseName)
         && version == that.version
         && type == that.type
         && Objects.equals(body, that.body);
@@ -172,6 +221,6 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
 
   @Override
   public int hashCode() {
-    return Objects.hash(tablet, isAligned, version, type, body);
+    return Objects.hash(tablet, isAligned, dataBaseName, version, type, body);
   }
 }

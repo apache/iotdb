@@ -41,6 +41,7 @@ import java.util.Objects;
 public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
 
   private transient InsertNode insertNode;
+  private transient String dataBaseName;
 
   private PipeTransferTabletInsertNodeReq() {
     // Do nothing
@@ -70,7 +71,8 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
     final PipeTransferTabletInsertNodeReq req = new PipeTransferTabletInsertNodeReq();
 
     req.insertNode = insertNode;
-
+    req.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
+    req.type = PipeRequestType.TRANSFER_TABLET_INSERT_NODE.getType();
     return req;
   }
 
@@ -83,6 +85,19 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
 
     req.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
     req.type = PipeRequestType.TRANSFER_TABLET_INSERT_NODE.getType();
+    req.body = insertNode.serializeToByteBuffer();
+
+    return req;
+  }
+
+  public static PipeTransferTabletInsertNodeReq toTPipeTransferRawReqV2(
+      final InsertNode insertNode, final String dataBaseName) {
+    final PipeTransferTabletInsertNodeReq req = new PipeTransferTabletInsertNodeReq();
+
+    req.insertNode = insertNode;
+    req.dataBaseName = dataBaseName;
+    req.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
+    req.type = PipeRequestType.TRANSFER_TABLET_INSERT_NODE_V2.getType();
     req.body = insertNode.serializeToByteBuffer();
 
     return req;
@@ -124,6 +139,7 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
     }
     final PipeTransferTabletInsertNodeReq that = (PipeTransferTabletInsertNodeReq) obj;
     return Objects.equals(insertNode, that.insertNode)
+        && Objects.equals(dataBaseName, that.dataBaseName)
         && version == that.version
         && type == that.type
         && Objects.equals(body, that.body);
@@ -131,6 +147,6 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
 
   @Override
   public int hashCode() {
-    return Objects.hash(insertNode, version, type, body);
+    return Objects.hash(insertNode, dataBaseName, version, type, body);
   }
 }

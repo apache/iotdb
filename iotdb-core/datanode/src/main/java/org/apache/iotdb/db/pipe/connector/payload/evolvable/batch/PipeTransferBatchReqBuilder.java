@@ -140,6 +140,7 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
       return defaultBatch.onEvent(event) ? new Pair<>(null, defaultBatch) : null;
     }
 
+    // Only applies to the Leader cache of the tree model.
     String deviceId = null;
     if (event instanceof PipeRawTabletInsertionEvent) {
       deviceId = ((PipeRawTabletInsertionEvent) event).getDeviceId();

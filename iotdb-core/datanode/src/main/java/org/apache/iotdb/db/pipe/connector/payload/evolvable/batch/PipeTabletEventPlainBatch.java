@@ -48,9 +48,14 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTabletEventPlainBatch.class);
 
+  private static final String EMPTY_DATA_BASE = "";
   private final List<ByteBuffer> binaryBuffers = new ArrayList<>();
   private final List<ByteBuffer> insertNodeBuffers = new ArrayList<>();
   private final List<ByteBuffer> tabletBuffers = new ArrayList<>();
+
+  private final List<String> binaryDataBases = new ArrayList<>();
+  private final List<String> inertNodeDataBases = new ArrayList<>();
+  private final List<String> tabletDataBases = new ArrayList<>();
 
   // limit in buffer size
   private final PipeMemoryBlock allocatedMemoryBlock;
@@ -109,8 +114,13 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   }
 
   public PipeTransferTabletBatchReq toTPipeTransferReq() throws IOException {
-    return PipeTransferTabletBatchReq.toTPipeTransferReq(
-        binaryBuffers, insertNodeBuffers, tabletBuffers);
+    return PipeTransferTabletBatchReq.toTPipeTransferReqV2(
+        binaryBuffers,
+        insertNodeBuffers,
+        tabletBuffers,
+        binaryDataBases,
+        inertNodeDataBases,
+        tabletDataBases);
   }
 
   @Override
@@ -129,6 +139,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   private int buildTabletInsertionBuffer(final TabletInsertionEvent event)
       throws IOException, WALPipeException {
     final ByteBuffer buffer;
+    int dataBaseSize = 0;
     if (event instanceof PipeInsertNodeTabletInsertionEvent) {
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
           (PipeInsertNodeTabletInsertionEvent) event;
@@ -139,9 +150,21 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
       if (Objects.isNull(insertNode)) {
         buffer = pipeInsertNodeTabletInsertionEvent.getByteBuffer();
         binaryBuffers.add(buffer);
+        if (pipeInsertNodeTabletInsertionEvent.isTableModel()) {
+          dataBaseSize = pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName().length();
+          binaryDataBases.add(pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName());
+        } else {
+          binaryDataBases.add(EMPTY_DATA_BASE);
+        }
       } else {
         buffer = insertNode.serializeToByteBuffer();
         insertNodeBuffers.add(buffer);
+        if (pipeInsertNodeTabletInsertionEvent.isTableModel()) {
+          dataBaseSize = pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName().length();
+          inertNodeDataBases.add(pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName());
+        } else {
+          inertNodeDataBases.add(EMPTY_DATA_BASE);
+        }
       }
     } else {
       final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
@@ -153,8 +176,14 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
         buffer = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
       }
       tabletBuffers.add(buffer);
+      if (pipeRawTabletInsertionEvent.isTableModel()) {
+        dataBaseSize = pipeRawTabletInsertionEvent.getTableModelDatabaseName().length();
+        tabletDataBases.add(pipeRawTabletInsertionEvent.getTableModelDatabaseName());
+      } else {
+        tabletDataBases.add(EMPTY_DATA_BASE);
+      }
     }
-    return buffer.limit();
+    return buffer.limit() + dataBaseSize;
   }
 
   @Override

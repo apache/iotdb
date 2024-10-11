@@ -153,6 +153,48 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
     return batchReq;
   }
 
+  public static PipeTransferTabletBatchReq toTPipeTransferReqV2(
+      final List<ByteBuffer> binaryBuffers,
+      final List<ByteBuffer> insertNodeBuffers,
+      final List<ByteBuffer> tabletBuffers,
+      final List<String> binaryDataBases,
+      final List<String> insertNodeDataBases,
+      final List<String> tabletDataBases)
+      throws IOException {
+    final PipeTransferTabletBatchReq batchReq = new PipeTransferTabletBatchReq();
+
+    batchReq.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
+    batchReq.type = PipeRequestType.TRANSFER_TABLET_BATCH_V2.getType();
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(binaryBuffers.size(), outputStream);
+      for (int i = 0; i < binaryBuffers.size(); i++) {
+        final ByteBuffer binaryBuffer = binaryBuffers.get(i);
+        ReadWriteIOUtils.write(binaryBuffer.limit(), outputStream);
+        outputStream.write(binaryBuffer.array(), 0, binaryBuffer.limit());
+        ReadWriteIOUtils.write(binaryDataBases.get(i), outputStream);
+      }
+
+      ReadWriteIOUtils.write(insertNodeBuffers.size(), outputStream);
+      for (int i = 0; i < binaryBuffers.size(); i++) {
+        final ByteBuffer insertNodeBuffer = insertNodeBuffers.get(i);
+        outputStream.write(insertNodeBuffer.array(), 0, insertNodeBuffer.limit());
+        ReadWriteIOUtils.write(insertNodeDataBases.get(i), outputStream);
+      }
+
+      ReadWriteIOUtils.write(tabletBuffers.size(), outputStream);
+      for (int i = 0; i < binaryBuffers.size(); i++) {
+        final ByteBuffer tabletBuffer = tabletBuffers.get(i);
+        outputStream.write(tabletBuffer.array(), 0, tabletBuffer.limit());
+        ReadWriteIOUtils.write(tabletDataBases.get(i), outputStream);
+      }
+      batchReq.body =
+          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
+
+    return batchReq;
+  }
+
   public static PipeTransferTabletBatchReq fromTPipeTransferReq(
       final TPipeTransferReq transferReq) {
     final PipeTransferTabletBatchReq batchReq = new PipeTransferTabletBatchReq();
@@ -178,6 +220,44 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
       batchReq.tabletReqs.add(
           PipeTransferTabletRawReq.toTPipeTransferRawReq(
               Tablet.deserialize(transferReq.body), ReadWriteIOUtils.readBool(transferReq.body)));
+    }
+
+    batchReq.version = transferReq.version;
+    batchReq.type = transferReq.type;
+    batchReq.body = transferReq.body;
+
+    return batchReq;
+  }
+
+  public static PipeTransferTabletBatchReq fromTPipeTransferReqV2(
+      final TPipeTransferReq transferReq) {
+    final PipeTransferTabletBatchReq batchReq = new PipeTransferTabletBatchReq();
+
+    int size = ReadWriteIOUtils.readInt(transferReq.body);
+    for (int i = 0; i < size; ++i) {
+      final int length = ReadWriteIOUtils.readInt(transferReq.body);
+      final byte[] body = new byte[length];
+      transferReq.body.get(body);
+      batchReq.binaryReqs.add(
+          PipeTransferTabletBinaryReq.toTPipeTransferBinaryReqV2(
+              ByteBuffer.wrap(body), ReadWriteIOUtils.readString(transferReq.body)));
+    }
+
+    size = ReadWriteIOUtils.readInt(transferReq.body);
+    for (int i = 0; i < size; ++i) {
+      batchReq.insertNodeReqs.add(
+          PipeTransferTabletInsertNodeReq.toTPipeTransferRawReqV2(
+              (InsertNode) PlanFragment.deserializeHelper(transferReq.body, null),
+              ReadWriteIOUtils.readString(transferReq.body)));
+    }
+
+    size = ReadWriteIOUtils.readInt(transferReq.body);
+    for (int i = 0; i < size; ++i) {
+      batchReq.tabletReqs.add(
+          PipeTransferTabletRawReq.toTPipeTransferRawReqV2(
+              Tablet.deserialize(transferReq.body),
+              ReadWriteIOUtils.readBool(transferReq.body),
+              ReadWriteIOUtils.readString(transferReq.body)));
     }
 
     batchReq.version = transferReq.version;
