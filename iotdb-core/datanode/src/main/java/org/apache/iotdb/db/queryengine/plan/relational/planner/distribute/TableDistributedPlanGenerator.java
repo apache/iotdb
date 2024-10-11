@@ -378,6 +378,7 @@ public class TableDistributedPlanGenerator
                   node.getQualifiedObjectName().getDatabaseName(),
                   deviceEntry.getDeviceID(),
                   node.getTimeFilter());
+
       for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
         TableScanNode tableScanNode =
             tableScanNodeMap.computeIfAbsent(

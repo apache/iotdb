@@ -29,14 +29,14 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
 public class TableAggregator {
-  private final Accumulator accumulator;
+  private final TableAccumulator accumulator;
   private final AggregationNode.Step step;
   private final TSDataType outputType;
   private final int[] inputChannels;
   private final OptionalInt maskChannel;
 
   public TableAggregator(
-      Accumulator accumulator,
+      TableAccumulator accumulator,
       AggregationNode.Step step,
       TSDataType outputType,
       List<Integer> inputChannels,
@@ -73,9 +73,9 @@ public class TableAggregator {
   }
 
   /** Used for AggregateTableScanOperator. */
-  public void processStatistics(Statistics valueStatistics) {
+  public void processStatistics(Statistics statistics) {
     checkArgument(inputChannels.length == 1, "expected 1 input channel for processStatistics");
-    accumulator.addStatistics(valueStatistics);
+    accumulator.addStatistics(statistics);
   }
 
   public boolean hasFinalResult() {

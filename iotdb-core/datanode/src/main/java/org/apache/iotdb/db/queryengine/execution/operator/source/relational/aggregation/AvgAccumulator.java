@@ -36,7 +36,7 @@ import java.io.IOException;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class AvgAccumulator implements Accumulator {
+public class AvgAccumulator implements TableAccumulator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(AvgAccumulator.class);
   private final TSDataType argumentDataType;
@@ -54,7 +54,7 @@ public class AvgAccumulator implements Accumulator {
   }
 
   @Override
-  public Accumulator copy() {
+  public TableAccumulator copy() {
     return new AvgAccumulator(argumentDataType);
   }
 
@@ -95,7 +95,10 @@ public class AvgAccumulator implements Accumulator {
       return;
     }
     initResult = true;
-    deserialize(argument.getBinary(0).getValues());
+    long midCountValue = BytesUtils.bytesToLong(argument.getBinary(0).getValues(), Long.BYTES);
+    double midSumValue = BytesUtils.bytesToDouble(argument.getBinary(0).getValues(), Long.BYTES);
+    countValue += midCountValue;
+    sumValue += midSumValue;
     if (countValue == 0) {
       initResult = false;
     }
@@ -111,11 +114,6 @@ public class AvgAccumulator implements Accumulator {
     } else {
       columnBuilder.writeBinary(new Binary(serializeState()));
     }
-  }
-
-  private void deserialize(byte[] bytes) {
-    countValue = BytesUtils.bytesToLong(bytes, Long.BYTES);
-    sumValue = BytesUtils.bytesToDouble(bytes, Long.BYTES);
   }
 
   private byte[] serializeState() {

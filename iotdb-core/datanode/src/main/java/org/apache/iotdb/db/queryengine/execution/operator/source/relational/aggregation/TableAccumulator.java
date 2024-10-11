@@ -17,10 +17,10 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 
-public interface Accumulator {
+public interface TableAccumulator {
   long getEstimatedSize();
 
-  Accumulator copy();
+  TableAccumulator copy();
 
   void addInput(Column[] arguments);
 

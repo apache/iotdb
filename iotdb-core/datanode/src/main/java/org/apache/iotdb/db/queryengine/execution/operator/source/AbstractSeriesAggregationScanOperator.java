@@ -69,7 +69,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   private long leftRuntimeOfOneNextCall;
 
   /** Some special data types(like BLOB) cannot use statistics. */
-  private final boolean canUseStatistics;
+  protected final boolean canUseStatistics;
 
   @SuppressWarnings("squid:S107")
   protected AbstractSeriesAggregationScanOperator(

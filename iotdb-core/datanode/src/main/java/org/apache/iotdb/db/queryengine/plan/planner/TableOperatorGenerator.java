@@ -67,8 +67,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.Tabl
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableFullOuterJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableInnerJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Accumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAggregator;
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
@@ -154,10 +154,7 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ATTRIBUTE;
-import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ID;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
-import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
@@ -1243,7 +1240,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     }
 
     String functionName = aggregation.getResolvedFunction().getSignature().getName();
-    Accumulator accumulator =
+    TableAccumulator accumulator =
         createAccumulator(
             functionName,
             getAggregationTypeByFuncName(functionName),
@@ -1272,6 +1269,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     int channel = 0;
     int idx = -1;
     int measurementColumnCount = 0;
+    boolean canUseStatistic = true;
     Map<Symbol, Integer> idAndAttributeColumnsIndexMap = node.getIdAndAttributeIndexMap();
     Map<Symbol, ColumnSchema> columnSchemaMap = node.getAssignments();
     List<ColumnSchema> columnSchemas = new ArrayList<>(aggregationsCount);
@@ -1380,7 +1378,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             false,
             null,
             calculateMaxAggregationResultSize(),
-            true,
+            canUseStatistic,
             layoutArray);
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(aggTableScanOperator);

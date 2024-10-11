@@ -25,7 +25,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class CountAccumulator implements Accumulator {
+public class CountAccumulator implements TableAccumulator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(CountAccumulator.class);
   private long countState = 0;
@@ -36,7 +36,7 @@ public class CountAccumulator implements Accumulator {
   }
 
   @Override
-  public Accumulator copy() {
+  public TableAccumulator copy() {
     return new CountAccumulator();
   }
 

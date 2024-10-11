@@ -37,7 +37,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.AGGREGATION_FROM_RAW_DATA;
 import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.AGGREGATION_FROM_STATISTICS;
 
-public class TreeAggregator implements IAggregator {
+public class TreeAggregator {
 
   protected final Accumulator accumulator;
   // In some intermediate result input, inputLocation[] should include two columns

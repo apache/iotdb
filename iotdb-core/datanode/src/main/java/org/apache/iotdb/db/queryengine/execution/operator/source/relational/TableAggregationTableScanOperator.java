@@ -55,6 +55,7 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
@@ -92,13 +93,12 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   // TODO calc maxTsBlockLineNum using date_bin
   private final int maxTsBlockLineNum;
 
+  // for different aggregations aiming to same column, use this variable to point to same column
+  private final int[] layoutArray;
+
   private QueryDataSource queryDataSource;
 
   private int currentDeviceIndex;
-
-  boolean canUseStatistics = true;
-
-  private final int[] layoutArray;
 
   public TableAggregationTableScanOperator(
       PlanNodeId sourceId,
@@ -165,13 +165,12 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   public TsBlock next() throws Exception {
     // start stopwatch, reset leftRuntimeOfOneNextCall
 
-    // TODO add maxRunTime optimization
     long start = System.nanoTime();
-    // leftRuntimeOfOneNextCall = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
-    // long maxRuntime = leftRuntimeOfOneNextCall;
-    // System.nanoTime() - start < maxRuntime&&
+    leftRuntimeOfOneNextCall = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
+    long maxRuntime = leftRuntimeOfOneNextCall;
 
-    while ((curTimeRange != null || timeRangeIterator.hasNextTimeRange())
+    while (System.nanoTime() - start < maxRuntime
+        && (curTimeRange != null || timeRangeIterator.hasNextTimeRange())
         && !resultTsBlockBuilder.isFull()) {
       if (curTimeRange == null) {
         // move to the next time window
@@ -394,7 +393,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   /** ID or Attribute is null, skip this aggregation logic */
   private boolean isNullIdOrAttribute(int i) {
     if (TsTableColumnCategory.ID == columnSchemas.get(layoutArray[i]).getColumnCategory()
-        && deviceEntries.get(currentDeviceIndex).getNthSegment(columnsIndexArray[i]) == null) {
+        && deviceEntries.get(currentDeviceIndex).getNthSegment(columnsIndexArray[i] + 1) == null) {
       return true;
     }
 
@@ -429,7 +428,6 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
           columnSchemas.get(layoutArray[i]).getColumnCategory() == TsTableColumnCategory.MEASUREMENT
               ? valueStatistics[columnsIndexArray[i]]
               : timeStatistics);
-      // aggregator.processStatistics(valueStatistics);
     }
   }
 
@@ -437,7 +435,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   protected boolean readAndCalcFromFile() throws IOException {
     // start stopwatch
     long start = System.nanoTime();
-    while (seriesScanUtil.hasNextFile()) {
+    while (System.nanoTime() - start < leftRuntimeOfOneNextCall && seriesScanUtil.hasNextFile()) {
       if (canUseStatistics && seriesScanUtil.canUseCurrentFileStatistics()) {
         Statistics fileTimeStatistics = seriesScanUtil.currentFileTimeStatistics();
         if (fileTimeStatistics.getStartTime() > curTimeRange.getMax()) {
@@ -478,7 +476,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   protected boolean readAndCalcFromChunk() throws IOException {
     // start stopwatch
     long start = System.nanoTime();
-    while (seriesScanUtil.hasNextChunk()) {
+    while (System.nanoTime() - start < leftRuntimeOfOneNextCall && seriesScanUtil.hasNextChunk()) {
       if (canUseStatistics && seriesScanUtil.canUseCurrentChunkStatistics()) {
         Statistics chunkTimeStatistics = seriesScanUtil.currentChunkTimeStatistics();
         if (chunkTimeStatistics.getStartTime() > curTimeRange.getMax()) {
@@ -519,7 +517,6 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
 
   @SuppressWarnings({"squid:S3776", "squid:S135", "squid:S3740"})
   protected boolean readAndCalcFromPage() throws IOException {
-    // start stopwatch
     long start = System.nanoTime();
     try {
       while (System.nanoTime() - start < leftRuntimeOfOneNextCall && seriesScanUtil.hasNextPage()) {
@@ -556,7 +553,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
         if (originalTsBlock == null) {
           continue;
         }
-        // TODO add optimization: if only agg measurement columns, no need to transfer
+        // TODO(beyyes) add optimization: if only agg measurement columns, no need to transfer
         Column[] valueColumns = new Column[tableAggregators.size()];
         for (int i = 0; i < tableAggregators.size(); i++) {
           ColumnSchema columnSchema = columnSchemas.get(layoutArray[i]);
@@ -593,33 +590,14 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
 
   @Override
   protected List<TSDataType> getResultDataTypes() {
-    //    List<TSDataType> dataTypes = new ArrayList<>();
-    //    for (TableAggregator aggregator : aggregators) {
-    //      dataTypes.add(aggregator.getType());
-    //    }
-    //    return dataTypes;
     return tableAggregators.stream().map(TableAggregator::getType).collect(Collectors.toList());
   }
 
   /** Append a row of aggregation results to the result tsBlock. */
   public void appendAggregationResult(
       TsBlockBuilder tsBlockBuilder, List<? extends TableAggregator> aggregators) {
-    // TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
-    // Use start time of current time range as time column
-    // timeColumnBuilder.writeLong(outputTime);
     ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
-    int columnIndex = 0;
-    //    if (endTime != INVALID_END_TIME) {
-    //      columnBuilders[columnIndex].writeLong(endTime);
-    //      columnIndex++;
-    //    }
     for (int i = 0; i < aggregators.size(); i++) {
-      //      TableAggregator aggregator = aggregators.get(i);
-      //      ColumnBuilder[] columnBuilder = new ColumnBuilder[aggregator.get, length];
-      //      columnBuilder[0] = columnBuilders[columnIndex++];
-      //      if (columnBuilder.length > 1) {
-      //        columnBuilder[1] = columnBuilders[columnIndex++];
-      //      }
       aggregators.get(i).evaluate(columnBuilders[i]);
     }
     tsBlockBuilder.declarePosition();
