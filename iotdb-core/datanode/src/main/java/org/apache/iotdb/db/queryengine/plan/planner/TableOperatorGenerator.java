@@ -997,7 +997,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     // process case of count(*)
     if (argumentChannels.isEmpty()) {
       argumentChannels.add(0);
-      // count is type-unaware, any type is OK here
+      // process of count is type-unaware, any type is OK here
       argumentTypes.add(TSDataType.INT64);
     }
 
