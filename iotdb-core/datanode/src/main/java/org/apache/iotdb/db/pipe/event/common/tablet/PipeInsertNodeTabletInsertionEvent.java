@@ -336,6 +336,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     return initEventParsers().get(i).isAligned();
   }
 
+  // TODO: for table model insertion, we need to get the database name
   public List<Tablet> convertToTablets() {
     return initEventParsers().stream()
         .map(TabletInsertionEventParser::convertToTablet)
