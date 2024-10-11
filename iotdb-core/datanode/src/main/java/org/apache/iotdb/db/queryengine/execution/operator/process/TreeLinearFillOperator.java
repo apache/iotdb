@@ -17,21 +17,29 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.operator.process.fill.identity;
+package org.apache.iotdb.db.queryengine.execution.operator.process;
 
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
+import org.apache.iotdb.db.queryengine.execution.operator.Operator;
+import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.ILinearFill;
 
 import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.read.common.block.TsBlock;
 
-public class IdentityFill implements IFill {
-
-  @Override
-  public Column fill(Column timeColumn, Column valueColumn) {
-    return valueColumn;
+/** Used for linear fill. */
+public class TreeLinearFillOperator extends AbstractLinearFillOperator {
+  public TreeLinearFillOperator(
+      OperatorContext operatorContext, ILinearFill[] fillArray, Operator child) {
+    super(operatorContext, fillArray, child);
   }
 
   @Override
-  public void reset() {
-    // do nothing
+  Column getHelperColumn(TsBlock tsBlock) {
+    return tsBlock.getTimeColumn();
+  }
+
+  @Override
+  Integer getLastRowIndexForNonNullHelperColumn(TsBlock tsBlock) {
+    return tsBlock.getPositionCount() - 1;
   }
 }

@@ -17,13 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.operator.process.fill;
+package org.apache.iotdb.db.queryengine.execution.operator.process;
+
+import org.apache.iotdb.db.queryengine.execution.operator.Operator;
+import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
 
 import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.read.common.block.TsBlock;
 
-public interface IFill {
+public class TreeFillOperator extends AbstractFillOperator {
 
-  Column fill(Column timeColumn, Column valueColumn);
+  public TreeFillOperator(OperatorContext operatorContext, IFill[] fillArray, Operator child) {
+    super(operatorContext, fillArray, child);
+  }
 
-  void reset();
+  @Override
+  Column getHelperColumn(TsBlock tsBlock) {
+    return tsBlock.getTimeColumn();
+  }
 }
