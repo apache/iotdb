@@ -147,6 +147,11 @@ public class ${className} extends BinaryColumnTransformer {
           String.format("long ${operator.name} overflow: %s - %s", left, right),
           NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),
           true);
+    }catch (DateTimeParseException e) {
+      throw new IoTDBRuntimeException(
+          "Year must be between 1000 and 9999.",
+          DATE_OUT_OF_RANGE.getStatusCode(),
+          true);
     }
     <#else>
     <#--Timestamp - int || Timestamp - long-->

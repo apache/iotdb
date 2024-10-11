@@ -76,7 +76,6 @@ public class DateTimeUtils {
           return millis;
       }
     } catch (ArithmeticException e) {
-      long temp = 1728574910450000000L;
       throw new IoTDBRuntimeException(
           String.format(
               "Timestamp overflow, Millisecond: %s , Timestamp precision: %s",
