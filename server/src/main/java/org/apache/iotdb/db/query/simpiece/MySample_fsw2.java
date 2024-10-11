@@ -33,11 +33,11 @@ public class MySample_fsw2 {
     String fileDir = "D:\\desktop\\NISTPV\\";
     String[] datasetNameList = new String[]{"Qloss", "Pyra1", "RTD", "WindSpeed"};
     int[] noutList = new int[]{100};
-    double[] r = new double[]{0.1, 0.5, 1.3, -1};
+    double[] r = new double[]{0.1, 0.5, 1.3, 0};
     int[] NList = new int[]{2500000, 2500000, 2500000, 2500000};
     double[] epsilonList =
         new double[]{
-            9.999999992942321E-4, 284.40344031846143, 6.428162015438829, 12.032509993152416
+            9.999999992942321E-4, 284.40344031846143, 6.428162015438829, 8.361764705882706
         };
     for (int y = 0; y < datasetNameList.length; y++) {
       String datasetName = datasetNameList[y];
@@ -46,6 +46,9 @@ public class MySample_fsw2 {
       int N = end - start;
 
       for (int nout : noutList) {
+        if (y == 3) {
+          nout = 200; // windspeed
+        }
         boolean hasHeader = false;
         try (FileInputStream inputStream = new FileInputStream(fileDir + datasetName + ".csv")) {
           String delimiter = ",";

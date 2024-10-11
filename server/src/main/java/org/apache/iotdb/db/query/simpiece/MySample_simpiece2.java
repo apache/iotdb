@@ -34,10 +34,10 @@ public class MySample_simpiece2 {
     String fileDir = "D:\\desktop\\NISTPV\\";
     String[] datasetNameList = new String[]{"Qloss", "Pyra1", "RTD", "WindSpeed"};
     int[] noutList = new int[]{100};
-    double[] r = new double[]{0.1, 0.5, 1.3, -1};
+    double[] r = new double[]{0.1, 0.5, 1.3, 0};
     double[] epsilonList =
         new double[]{
-            9.999999992942321E-4, 316.5640427571989, 9.186666666667406, 11.485437072548848
+            9.999999992942321E-4, 316.5640427571989, 9.186666666667406, 8.968221799290404
         };
     int[] NList = new int[]{2500000, 2500000, 2500000, 2500000};
     for (int y = 0; y < datasetNameList.length; y++) {
@@ -47,6 +47,9 @@ public class MySample_simpiece2 {
       int N = end - start;
 
       for (int nout : noutList) {
+        if (y == 3) {
+          nout = 200; // windspeed
+        }
         // apply Sim-Piece on the input file, outputting nout points saved in csvFile
         boolean hasHeader = false;
         try (FileInputStream inputStream = new FileInputStream(fileDir + datasetName + ".csv")) {
