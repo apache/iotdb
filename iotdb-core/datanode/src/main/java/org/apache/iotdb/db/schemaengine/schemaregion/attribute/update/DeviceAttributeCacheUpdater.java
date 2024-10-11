@@ -51,6 +51,7 @@ import java.nio.file.Files;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -126,12 +127,26 @@ public class DeviceAttributeCacheUpdater {
     // container because the update map is read by GRASS thread, and the container's size may change
     // during the read process
     final Map<TDataNodeLocation, byte[]> updateBytes = new HashMap<>();
-    for (final Map.Entry<TDataNodeLocation, UpdateContainer> entry :
-        attributeUpdateMap.entrySet()) {
+    for (final Iterator<Map.Entry<TDataNodeLocation, UpdateContainer>> it =
+            attributeUpdateMap.entrySet().iterator();
+        it.hasNext(); ) {
+      final Map.Entry<TDataNodeLocation, UpdateContainer> entry = it.next();
+      final TDataNodeLocation location = entry.getKey();
+      final UpdateContainer container = entry.getValue();
+
+      if (location.getDataNodeId() == config.getDataNodeId()) {
+        // Remove potential entries put when the dataNodeId == -1
+        releaseMemory(
+            updateContainerStatistics.containsKey(location)
+                ? updateContainerStatistics.get(location).getContainerSize()
+                : ((UpdateClearContainer) container).ramBytesUsed());
+        it.remove();
+        continue;
+      }
       // If the remaining capacity is too low we just send clear container first
       // Because they require less capacity
       if (limit.get() < UPDATE_DETAIL_CONTAINER_SEND_MIN_LIMIT_BYTES
-          && entry.getValue() instanceof UpdateDetailContainer) {
+          && container instanceof UpdateDetailContainer) {
         hasRemaining.set(true);
         continue;
       }
@@ -141,7 +156,7 @@ public class DeviceAttributeCacheUpdater {
         break;
       }
       limit.addAndGet(-5);
-      updateBytes.put(entry.getKey(), entry.getValue().getUpdateContent(limit, hasRemaining));
+      updateBytes.put(location, container.getUpdateContent(limit, hasRemaining));
     }
     return new Pair<>(version.get(), updateBytes);
   }
