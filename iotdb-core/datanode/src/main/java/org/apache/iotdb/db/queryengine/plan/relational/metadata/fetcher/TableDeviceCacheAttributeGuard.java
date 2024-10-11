@@ -22,6 +22,8 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 import org.apache.iotdb.mpp.rpc.thrift.TAttributeUpdateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaRegionAttributeInfo;
 
+import javax.annotation.Nonnull;
+
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
@@ -46,7 +48,7 @@ public class TableDeviceCacheAttributeGuard {
   }
 
   @SuppressWarnings("unchecked")
-  public Set<Long> addFetchQueryId(final long queryId) {
+  public @Nonnull Set<Long> addFetchQueryId(final long queryId) {
     final Set<?> lastSet = applyQueue.peekLast();
     final Set<Long> longSet;
     if (Objects.isNull(lastSet) || lastSet instanceof HashSet) {

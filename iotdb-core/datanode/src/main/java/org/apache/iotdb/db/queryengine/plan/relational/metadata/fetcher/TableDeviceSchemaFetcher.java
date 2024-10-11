@@ -111,6 +111,8 @@ public class TableDeviceSchemaFetcher {
     final String table = statement.getTableName();
     final TsTable tableInstance = DataNodeTableCache.getInstance().getTable(database, table);
 
+    // For the correctness of attribute remote update
+    final Set<Long> queryIdSet = attributeGuard.addFetchQueryId(queryId);
     final ExecutionResult executionResult =
         coordinator.executeForTableModel(
             statement,
@@ -122,6 +124,8 @@ public class TableDeviceSchemaFetcher {
             "Fetch Device for insert",
             LocalExecutionPlanner.getInstance().metadata,
             config.getQueryTimeoutThreshold());
+    queryIdSet.remove(queryId);
+    attributeGuard.tryUpdateCache();
     if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new RuntimeException(
           new IoTDBException(
@@ -379,19 +383,27 @@ public class TableDeviceSchemaFetcher {
     final String table = tableInstance.getTableName();
 
     final long queryId = SessionManager.getInstance().requestQueryId();
-    final ExecutionResult executionResult =
-        coordinator.executeForTableModel(
-            statement,
-            relationSqlParser,
-            SessionManager.getInstance().getCurrSession(),
-            queryId,
-            SessionManager.getInstance()
-                .getSessionInfo(SessionManager.getInstance().getCurrSession()),
-            String.format(
-                "fetch device for query %s : %s",
-                mppQueryContext.getQueryId(), mppQueryContext.getSql()),
-            LocalExecutionPlanner.getInstance().metadata,
-            config.getQueryTimeoutThreshold());
+    // For the correctness of attribute remote update
+    final Set<Long> queryIdSet = attributeGuard.addFetchQueryId(queryId);
+    final ExecutionResult executionResult;
+    try {
+      executionResult =
+          coordinator.executeForTableModel(
+              statement,
+              relationSqlParser,
+              SessionManager.getInstance().getCurrSession(),
+              queryId,
+              SessionManager.getInstance()
+                  .getSessionInfo(SessionManager.getInstance().getCurrSession()),
+              String.format(
+                  "fetch device for query %s : %s",
+                  mppQueryContext.getQueryId(), mppQueryContext.getSql()),
+              LocalExecutionPlanner.getInstance().metadata,
+              config.getQueryTimeoutThreshold());
+    } finally {
+      queryIdSet.remove(queryId);
+      attributeGuard.tryUpdateCache();
+    }
     if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new RuntimeException(
           new IoTDBException(
