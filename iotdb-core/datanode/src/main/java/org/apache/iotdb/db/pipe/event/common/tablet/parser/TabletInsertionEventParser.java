@@ -317,7 +317,7 @@ public abstract class TabletInsertionEventParser {
     for (int i = 0; i < originColumnSize; i++) {
       originColumnNameStringList[i] = originMeasurementSchemaList.get(i).getMeasurementId();
       originColumnTypes[i] =
-          tablet.getColumnTypes() != null
+          tablet.getColumnTypes() != null && tablet.getColumnTypes().get(i) != null
               ? tablet.getColumnTypes().get(i)
               : Tablet.ColumnType.MEASUREMENT;
       originValueColumnDataTypes[i] = originMeasurementSchemaList.get(i).getType();
