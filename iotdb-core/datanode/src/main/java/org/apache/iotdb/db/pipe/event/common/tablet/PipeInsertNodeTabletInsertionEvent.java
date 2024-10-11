@@ -31,6 +31,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 import org.apache.iotdb.pipe.api.access.Row;
@@ -267,6 +270,12 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     try {
       final InsertNode insertNode = getInsertNodeViaCacheIfPossible();
       if (Objects.isNull(insertNode)) {
+        return true;
+      }
+
+      if (insertNode instanceof RelationalInsertRowNode
+          || insertNode instanceof RelationalInsertTabletNode
+          || insertNode instanceof RelationalInsertRowsNode) {
         return true;
       }
 

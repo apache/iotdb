@@ -143,6 +143,10 @@ public final class Patterns {
       return typeOf(SemiJoinNode.class);
   }*/
 
+  public static Pattern<FillNode> fill() {
+    return typeOf(FillNode.class);
+  }
+
   public static Pattern<SortNode> sort() {
     return typeOf(SortNode.class);
   }
