@@ -51,7 +51,6 @@ import java.nio.file.Files;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -127,10 +126,8 @@ public class DeviceAttributeCacheUpdater {
     // container because the update map is read by GRASS thread, and the container's size may change
     // during the read process
     final Map<TDataNodeLocation, byte[]> updateBytes = new HashMap<>();
-    for (final Iterator<Map.Entry<TDataNodeLocation, UpdateContainer>> it =
-            attributeUpdateMap.entrySet().iterator();
-        it.hasNext(); ) {
-      final Map.Entry<TDataNodeLocation, UpdateContainer> entry = it.next();
+    for (final Map.Entry<TDataNodeLocation, UpdateContainer> entry :
+        attributeUpdateMap.entrySet()) {
       final TDataNodeLocation location = entry.getKey();
       final UpdateContainer container = entry.getValue();
 
