@@ -26,7 +26,8 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
-import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTreeParser;
+import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventParser;
+import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTreePatternParser;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -65,7 +66,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   private final boolean isAligned;
   private final boolean isGeneratedByPipe;
 
-  private List<TabletInsertionEventTreeParser> eventParsers;
+  private List<TabletInsertionEventParser> eventParsers;
 
   private final PartialPath devicePath;
 
@@ -336,13 +337,13 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
 
   public List<Tablet> convertToTablets() {
     return initEventParsers().stream()
-        .map(TabletInsertionEventTreeParser::convertToTablet)
+        .map(TabletInsertionEventParser::convertToTablet)
         .collect(Collectors.toList());
   }
 
   /////////////////////////// event parser ///////////////////////////
 
-  private List<TabletInsertionEventTreeParser> initEventParsers() {
+  private List<TabletInsertionEventParser> initEventParsers() {
     try {
       if (eventParsers != null) {
         return eventParsers;
@@ -353,16 +354,19 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       switch (node.getType()) {
         case INSERT_ROW:
         case INSERT_TABLET:
-        case RELATIONAL_INSERT_TABLET:
           eventParsers.add(
-              new TabletInsertionEventTreeParser(pipeTaskMeta, this, node, treePattern));
+              new TabletInsertionEventTreePatternParser(pipeTaskMeta, this, node, treePattern));
           break;
         case INSERT_ROWS:
           for (final InsertRowNode insertRowNode : ((InsertRowsNode) node).getInsertRowNodeList()) {
             eventParsers.add(
-                new TabletInsertionEventTreeParser(pipeTaskMeta, this, insertRowNode, treePattern));
+                new TabletInsertionEventTreePatternParser(
+                    pipeTaskMeta, this, insertRowNode, treePattern));
           }
           break;
+        case RELATIONAL_INSERT_ROW:
+        case RELATIONAL_INSERT_TABLET:
+        case RELATIONAL_INSERT_ROWS:
         default:
           throw new UnSupportedDataTypeException("Unsupported node type " + node.getType());
       }

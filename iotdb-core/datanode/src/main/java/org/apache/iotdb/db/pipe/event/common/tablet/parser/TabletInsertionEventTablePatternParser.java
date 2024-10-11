@@ -58,10 +58,10 @@ import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class TabletInsertionEventTreeParser implements TabletInsertionEventParser {
+public class TabletInsertionEventTablePatternParser implements TabletInsertionEventParser {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(TabletInsertionEventTreeParser.class);
+      LoggerFactory.getLogger(TabletInsertionEventTablePatternParser.class);
 
   private final PipeTaskMeta pipeTaskMeta; // used to report progress
   private final EnrichedEvent
@@ -96,7 +96,7 @@ public class TabletInsertionEventTreeParser implements TabletInsertionEventParse
     }
   }
 
-  public TabletInsertionEventTreeParser(
+  public TabletInsertionEventTablePatternParser(
       final PipeTaskMeta pipeTaskMeta,
       final EnrichedEvent sourceEvent,
       final InsertNode insertNode,
@@ -114,7 +114,7 @@ public class TabletInsertionEventTreeParser implements TabletInsertionEventParse
     }
   }
 
-  public TabletInsertionEventTreeParser(
+  public TabletInsertionEventTablePatternParser(
       final PipeTaskMeta pipeTaskMeta,
       final EnrichedEvent sourceEvent,
       final Tablet tablet,
@@ -127,7 +127,8 @@ public class TabletInsertionEventTreeParser implements TabletInsertionEventParse
   }
 
   @TestOnly
-  public TabletInsertionEventTreeParser(final InsertNode insertNode, final TreePattern pattern) {
+  public TabletInsertionEventTablePatternParser(
+      final InsertNode insertNode, final TreePattern pattern) {
     this(null, null, insertNode, pattern);
   }
 
