@@ -66,6 +66,7 @@ public class TableDeviceSchemaCacheTest {
 
   @After
   public void rollback() {
+    TableDeviceSchemaCache.getInstance().invalidateAll();
     config.setAllocateMemoryForSchemaCache(originMemConfig);
   }
 
