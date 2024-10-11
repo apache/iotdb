@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTreeParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
@@ -52,7 +53,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   private PipeTabletMemoryBlock allocatedMemoryBlock;
 
-  private TabletInsertionDataContainer dataContainer;
+  private TabletInsertionEventTreeParser dataContainer;
 
   private volatile ProgressIndex overridingProgressIndex;
 
@@ -267,7 +268,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
       final BiConsumer<Row, RowCollector> consumer) {
     if (dataContainer == null) {
       dataContainer =
-          new TabletInsertionDataContainer(pipeTaskMeta, this, tablet, isAligned, treePattern);
+          new TabletInsertionEventTreeParser(pipeTaskMeta, this, tablet, isAligned, treePattern);
     }
     return dataContainer.processRowByRow(consumer);
   }
@@ -277,7 +278,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
       final BiConsumer<Tablet, RowCollector> consumer) {
     if (dataContainer == null) {
       dataContainer =
-          new TabletInsertionDataContainer(pipeTaskMeta, this, tablet, isAligned, treePattern);
+          new TabletInsertionEventTreeParser(pipeTaskMeta, this, tablet, isAligned, treePattern);
     }
     return dataContainer.processTablet(consumer);
   }
@@ -296,7 +297,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     // if notNullPattern is not "root", we need to convert the tablet
     if (dataContainer == null) {
       dataContainer =
-          new TabletInsertionDataContainer(pipeTaskMeta, this, tablet, isAligned, treePattern);
+          new TabletInsertionEventTreeParser(pipeTaskMeta, this, tablet, isAligned, treePattern);
     }
     return dataContainer.convertToTablet();
   }

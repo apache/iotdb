@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.event.common.tablet;
+package org.apache.iotdb.db.pipe.event.common.tablet.parser;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
@@ -58,9 +58,10 @@ import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class TabletInsertionDataContainer {
+public class TabletInsertionEventTreeParser implements TabletInsertionEventParser {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TabletInsertionDataContainer.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(TabletInsertionEventTreeParser.class);
 
   private final PipeTaskMeta pipeTaskMeta; // used to report progress
   private final EnrichedEvent
@@ -95,7 +96,7 @@ public class TabletInsertionDataContainer {
     }
   }
 
-  public TabletInsertionDataContainer(
+  public TabletInsertionEventTreeParser(
       final PipeTaskMeta pipeTaskMeta,
       final EnrichedEvent sourceEvent,
       final InsertNode insertNode,
@@ -113,7 +114,7 @@ public class TabletInsertionDataContainer {
     }
   }
 
-  public TabletInsertionDataContainer(
+  public TabletInsertionEventTreeParser(
       final PipeTaskMeta pipeTaskMeta,
       final EnrichedEvent sourceEvent,
       final Tablet tablet,
@@ -126,14 +127,16 @@ public class TabletInsertionDataContainer {
   }
 
   @TestOnly
-  public TabletInsertionDataContainer(final InsertNode insertNode, final TreePattern pattern) {
+  public TabletInsertionEventTreeParser(final InsertNode insertNode, final TreePattern pattern) {
     this(null, null, insertNode, pattern);
   }
 
+  @Override
   public boolean isAligned() {
     return isAligned;
   }
 
+  @Override
   public void markAsNeedToReport() {
     shouldReport = true;
   }
@@ -612,6 +615,7 @@ public class TabletInsertionDataContainer {
 
   ////////////////////////////  process  ////////////////////////////
 
+  @Override
   public List<TabletInsertionEvent> processRowByRow(final BiConsumer<Row, RowCollector> consumer) {
     if (valueColumns.length == 0 || timestampColumn.length == 0) {
       return Collections.emptyList();
@@ -636,6 +640,7 @@ public class TabletInsertionDataContainer {
     return rowCollector.convertToTabletInsertionEvents(shouldReport);
   }
 
+  @Override
   public List<TabletInsertionEvent> processTablet(final BiConsumer<Tablet, RowCollector> consumer) {
     final PipeRowCollector rowCollector = new PipeRowCollector(pipeTaskMeta, sourceEvent);
     consumer.accept(convertToTablet(), rowCollector);
@@ -644,6 +649,7 @@ public class TabletInsertionDataContainer {
 
   ////////////////////////////  convertToTablet  ////////////////////////////
 
+  @Override
   public Tablet convertToTablet() {
     if (tablet != null) {
       return tablet;

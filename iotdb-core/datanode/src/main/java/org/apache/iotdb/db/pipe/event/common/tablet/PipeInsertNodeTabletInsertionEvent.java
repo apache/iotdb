@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTreeParser;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -64,7 +65,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   private final boolean isAligned;
   private final boolean isGeneratedByPipe;
 
-  private List<TabletInsertionDataContainer> dataContainers;
+  private List<TabletInsertionEventTreeParser> dataContainers;
 
   private final PartialPath devicePath;
 
@@ -313,7 +314,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   public Iterable<TabletInsertionEvent> processRowByRow(
       final BiConsumer<Row, RowCollector> consumer) {
     return initDataContainers().stream()
-        .map(tabletInsertionDataContainer -> tabletInsertionDataContainer.processRowByRow(consumer))
+        .map(tabletInsertionEventParser -> tabletInsertionEventParser.processRowByRow(consumer))
         .flatMap(Collection::stream)
         .collect(Collectors.toList());
   }
@@ -322,7 +323,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   public Iterable<TabletInsertionEvent> processTablet(
       final BiConsumer<Tablet, RowCollector> consumer) {
     return initDataContainers().stream()
-        .map(tabletInsertionDataContainer -> tabletInsertionDataContainer.processTablet(consumer))
+        .map(tabletInsertionEventParser -> tabletInsertionEventParser.processTablet(consumer))
         .flatMap(Collection::stream)
         .collect(Collectors.toList());
   }
@@ -335,13 +336,13 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
 
   public List<Tablet> convertToTablets() {
     return initDataContainers().stream()
-        .map(TabletInsertionDataContainer::convertToTablet)
+        .map(TabletInsertionEventTreeParser::convertToTablet)
         .collect(Collectors.toList());
   }
 
   /////////////////////////// dataContainer ///////////////////////////
 
-  private List<TabletInsertionDataContainer> initDataContainers() {
+  private List<TabletInsertionEventTreeParser> initDataContainers() {
     try {
       if (dataContainers != null) {
         return dataContainers;
@@ -354,12 +355,12 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         case INSERT_TABLET:
         case RELATIONAL_INSERT_TABLET:
           dataContainers.add(
-              new TabletInsertionDataContainer(pipeTaskMeta, this, node, treePattern));
+              new TabletInsertionEventTreeParser(pipeTaskMeta, this, node, treePattern));
           break;
         case INSERT_ROWS:
           for (final InsertRowNode insertRowNode : ((InsertRowsNode) node).getInsertRowNodeList()) {
             dataContainers.add(
-                new TabletInsertionDataContainer(pipeTaskMeta, this, insertRowNode, treePattern));
+                new TabletInsertionEventTreeParser(pipeTaskMeta, this, insertRowNode, treePattern));
           }
           break;
         default:
