@@ -48,13 +48,11 @@ public class WritableMemChunk implements IWritableMemChunk {
   private TVList list;
   private static final String UNSUPPORTED_TYPE = "Unsupported data type:";
 
-  private static final long TARGET_CHUNK_SIZE =
-      IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
-  private static final long MAX_NUMBER_OF_POINTS_IN_CHUNK =
-      IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
   private static final Logger LOGGER = LoggerFactory.getLogger(WritableMemChunk.class);
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private final long TARGET_CHUNK_SIZE = CONFIG.getTargetChunkSize();
+  private final long MAX_NUMBER_OF_POINTS_IN_CHUNK = CONFIG.getAvgSeriesPointNumberThreshold();
 
   public WritableMemChunk(IMeasurementSchema schema) {
     this.schema = schema;

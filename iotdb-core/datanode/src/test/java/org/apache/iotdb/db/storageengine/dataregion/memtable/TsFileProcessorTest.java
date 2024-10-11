@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -72,6 +74,8 @@ import static org.junit.Assert.assertFalse;
 
 public class TsFileProcessorTest {
 
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
   private TsFileProcessor processor;
   private final String storageGroup = "root.vehicle";
   private DataRegionInfo sgInfo;
@@ -83,6 +87,7 @@ public class TsFileProcessorTest {
   private final Map<String, String> props = Collections.emptyMap();
   private QueryContext context;
   private final String systemDir = TestConstant.OUTPUT_DATA_DIR.concat("info");
+  private int defaultAvgSeriesPointNumberThreshold;
   private static final Logger logger = LoggerFactory.getLogger(TsFileProcessorTest.class);
 
   public TsFileProcessorTest() {}
@@ -93,6 +98,7 @@ public class TsFileProcessorTest {
     if (!file.getParentFile().exists()) {
       Assert.assertTrue(file.getParentFile().mkdirs());
     }
+    defaultAvgSeriesPointNumberThreshold = config.getAvgSeriesPointNumberThreshold();
     EnvironmentUtils.envSetUp();
     sgInfo = new DataRegionInfo(new DataRegionTest.DummyDataRegion(systemDir, storageGroup));
     context = EnvironmentUtils.TEST_QUERY_CONTEXT;
@@ -102,6 +108,7 @@ public class TsFileProcessorTest {
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
+    config.setAvgSeriesPointNumberThreshold(defaultAvgSeriesPointNumberThreshold);
   }
 
   @Test
@@ -158,6 +165,65 @@ public class TsFileProcessorTest {
     tsfileResourcesForQuery.clear();
     processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
     assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk(fullPath).isEmpty());
+    assertEquals(1, tsfileResourcesForQuery.get(0).getChunkMetadataList(fullPath).size());
+    processor.syncClose();
+  }
+
+  @Test
+  public void testFlushMultiChunk() throws IOException, WriteProcessException, MetadataException {
+    config.setAvgSeriesPointNumberThreshold(40);
+    processor =
+        new TsFileProcessor(
+            storageGroup,
+            SystemFileFactory.INSTANCE.getFile(filePath),
+            sgInfo,
+            this::closeTsFileProcessor,
+            (tsFileProcessor, updateMap, systemFlushTime) -> {},
+            true);
+
+    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
+    processor.setTsFileProcessorInfo(tsFileProcessorInfo);
+    this.sgInfo.initTsFileProcessorInfo(processor);
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
+    List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
+    NonAlignedFullPath fullPath =
+        new NonAlignedFullPath(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
+            new MeasurementSchema(
+                measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props));
+    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
+    assertTrue(tsfileResourcesForQuery.isEmpty());
+
+    for (int i = 1; i <= 100; i++) {
+      TSRecord record = new TSRecord(i, deviceId);
+      record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
+      processor.insert(buildInsertRowNodeByTSRecord(record), new long[4]);
+    }
+
+    // query data in memory
+    tsfileResourcesForQuery.clear();
+    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
+
+    TsFileResource tsFileResource = tsfileResourcesForQuery.get(0);
+    assertFalse(tsFileResource.getReadOnlyMemChunk(fullPath).isEmpty());
+    List<ReadOnlyMemChunk> memChunks = tsFileResource.getReadOnlyMemChunk(fullPath);
+    for (ReadOnlyMemChunk chunk : memChunks) {
+      IPointReader iterator = chunk.getPointReader();
+      for (int num = 1; num <= 100; num++) {
+        iterator.hasNextTimeValuePair();
+        TimeValuePair timeValuePair = iterator.nextTimeValuePair();
+        assertEquals(num, timeValuePair.getTimestamp());
+        assertEquals(num, timeValuePair.getValue().getInt());
+      }
+    }
+
+    // flush synchronously
+    processor.syncFlush();
+
+    tsfileResourcesForQuery.clear();
+    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
+    assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk(fullPath).isEmpty());
+    assertEquals(3, tsfileResourcesForQuery.get(0).getChunkMetadataList(fullPath).size());
     processor.syncClose();
   }
 
@@ -247,7 +313,6 @@ public class TsFileProcessorTest {
 
   @Test
   public void testMultiFlush() throws IOException, WriteProcessException, MetadataException {
-    logger.info("testWriteAndRestoreMetadata begin..");
     processor =
         new TsFileProcessor(
             storageGroup,
@@ -738,7 +803,6 @@ public class TsFileProcessorTest {
 
   @Test
   public void testWriteAndClose() throws IOException, WriteProcessException, MetadataException {
-    logger.info("testWriteAndRestoreMetadata begin..");
     processor =
         new TsFileProcessor(
             storageGroup,
