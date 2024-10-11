@@ -22,9 +22,13 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
+
+import java.util.Collections;
 
 import static org.apache.iotdb.db.utils.constant.TestConstant.TIMESTAMP_STR;
 
@@ -62,23 +66,29 @@ public class SortElimination implements PlanOptimizer {
     public PlanNode visitSort(SortNode node, Context context) {
       Context newContext = new Context();
       PlanNode child = node.getChild().accept(this, newContext);
+      context.setHasSeenFill(newContext.hasSeenFill);
       OrderingScheme orderingScheme = node.getOrderingScheme();
-      if (newContext.getTotalDeviceEntrySize() == 1
+      if (!context.hasSeenFill()
+          && newContext.getTotalDeviceEntrySize() == 1
           && TIMESTAMP_STR.equalsIgnoreCase(orderingScheme.getOrderBy().get(0).getName())) {
         return child;
       }
-
-      return node.isOrderByAllIdsAndTime() ? child : node;
+      return !context.hasSeenFill() && node.isOrderByAllIdsAndTime()
+          ? child
+          : node.replaceChildren(Collections.singletonList(child));
     }
 
     @Override
     public PlanNode visitStreamSort(StreamSortNode node, Context context) {
-      PlanNode child = node.getChild().accept(this, context);
-      return node.isOrderByAllIdsAndTime()
-              || node.getStreamCompareKeyEndIndex()
-                  == node.getOrderingScheme().getOrderBy().size() - 1
+      Context newContext = new Context();
+      PlanNode child = node.getChild().accept(this, newContext);
+      context.setHasSeenFill(newContext.hasSeenFill);
+      return !context.hasSeenFill()
+              && (node.isOrderByAllIdsAndTime()
+                  || node.getStreamCompareKeyEndIndex()
+                      == node.getOrderingScheme().getOrderBy().size() - 1)
           ? child
-          : node;
+          : node.replaceChildren(Collections.singletonList(child));
     }
 
     @Override
@@ -86,10 +96,22 @@ public class SortElimination implements PlanOptimizer {
       context.addDeviceEntrySize(node.getDeviceEntries().size());
       return node;
     }
+
+    @Override
+    public PlanNode visitFill(FillNode node, Context context) {
+      PlanNode newNode = node.clone();
+      for (PlanNode child : node.getChildren()) {
+        newNode.addChild(child.accept(this, context));
+      }
+      context.setHasSeenFill(!(node instanceof ValueFillNode));
+      return newNode;
+    }
   }
 
   private static class Context {
     private int totalDeviceEntrySize = 0;
+
+    private boolean hasSeenFill = false;
 
     Context() {}
 
@@ -99,6 +121,14 @@ public class SortElimination implements PlanOptimizer {
 
     public int getTotalDeviceEntrySize() {
       return totalDeviceEntrySize;
+    }
+
+    public boolean hasSeenFill() {
+      return hasSeenFill;
+    }
+
+    public void setHasSeenFill(boolean hasSeenFill) {
+      this.hasSeenFill = hasSeenFill;
     }
   }
 }

@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Me
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimits;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneAggregationColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneAggregationSourceColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneFillColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneFilterColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneJoinChildrenColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneJoinColumns;
@@ -72,6 +73,7 @@ public class LogicalOptimizeFactory {
             // new RemoveEmptyGlobalAggregation(),
             new PruneAggregationSourceColumns(),
             new PruneFilterColumns(),
+            new PruneFillColumns(),
             new PruneLimitColumns(),
             new PruneOffsetColumns(),
             new PruneOutputSourceColumns(),
