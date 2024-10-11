@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.event.common.tsfile.container;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
-import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -42,7 +42,7 @@ public abstract class TsFileInsertionDataContainer implements AutoCloseable {
   protected final GlobalTimeExpression timeFilterExpression; // used to filter data
 
   protected final PipeTaskMeta pipeTaskMeta; // used to report progress
-  protected final EnrichedEvent sourceEvent; // used to report progress
+  protected final PipeInsertionEvent sourceEvent; // used to report progress
 
   protected final PipeMemoryBlock allocatedMemoryBlockForTablet;
 
@@ -53,7 +53,7 @@ public abstract class TsFileInsertionDataContainer implements AutoCloseable {
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
-      final EnrichedEvent sourceEvent) {
+      final PipeInsertionEvent sourceEvent) {
     this.pattern = pattern;
     timeFilterExpression =
         (startTime == Long.MIN_VALUE && endTime == Long.MAX_VALUE)

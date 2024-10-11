@@ -327,6 +327,7 @@ public class TsFileProcessor {
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
+            dataRegionInfo.getDataRegion().getDatabaseName(),
             walFlushListener.getWalEntryHandler(),
             insertRowNode,
             tsFileResource);
@@ -414,6 +415,7 @@ public class TsFileProcessor {
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
+            dataRegionInfo.getDataRegion().getDatabaseName(),
             walFlushListener.getWalEntryHandler(),
             insertRowsNode,
             tsFileResource);
@@ -562,6 +564,7 @@ public class TsFileProcessor {
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
+            dataRegionInfo.getDataRegion().getDatabaseName(),
             walFlushListener.getWalEntryHandler(),
             insertTabletNode,
             tsFileResource);
@@ -1270,6 +1273,7 @@ public class TsFileProcessor {
         PipeInsertionDataNodeListener.getInstance()
             .listenToTsFile(
                 dataRegionInfo.getDataRegion().getDataRegionId(),
+                dataRegionInfo.getDataRegion().getDatabaseName(),
                 tsFileResource,
                 false,
                 tmpMemTable.isTotallyGeneratedByPipe());
