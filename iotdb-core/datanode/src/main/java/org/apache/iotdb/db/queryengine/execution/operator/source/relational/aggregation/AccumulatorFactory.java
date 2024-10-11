@@ -90,11 +90,7 @@ public class AccumulatorFactory {
     return isMultiInputAggregation(aggregationType)
         ? createBuiltinMultiInputAccumulator(aggregationType, inputDataTypes)
         : createBuiltinSingleInputAccumulator(
-            aggregationType,
-            inputDataTypes.isEmpty() ? null : inputDataTypes.get(0),
-            inputExpressions,
-            inputAttributes,
-            ascending);
+            aggregationType, inputDataTypes.get(0), inputExpressions, inputAttributes, ascending);
   }
 
   public static boolean isMultiInputAggregation(TAggregationType aggregationType) {
