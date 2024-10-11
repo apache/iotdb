@@ -54,19 +54,39 @@ public class Like2ColumnTransformer extends BinaryColumnTransformer {
   protected void doTransform(
       Column leftColumn, Column rightColumn, ColumnBuilder builder, int positionCount) {
     for (int i = 0; i < positionCount; i++) {
-      if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
-        LikePattern pattern =
-            LikePattern.compile(
-                rightColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET),
-                Optional.empty(),false);
-        builder.writeBoolean(
-            pattern
-                .getMatcher()
-                .match(
-                    leftColumn.getBinary(i).getValues(), 0, leftColumn.getBinary(i).getLength()));
+      transforme(leftColumn, rightColumn, builder, i);
+    }
+  }
+
+  @Override
+  protected void doTransform(
+      Column leftColumn,
+      Column rightColumn,
+      ColumnBuilder builder,
+      int positionCount,
+      boolean[] selection) {
+    for (int i = 0; i < positionCount; i++) {
+      if (selection[i]) {
+        transforme(leftColumn, rightColumn, builder, i);
       } else {
         builder.appendNull();
       }
+    }
+  }
+
+  private void transforme(Column leftColumn, Column rightColumn, ColumnBuilder builder, int i) {
+    if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
+      LikePattern pattern =
+          LikePattern.compile(
+              rightColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET),
+              Optional.empty(),
+              false);
+      builder.writeBoolean(
+          pattern
+              .getMatcher()
+              .match(leftColumn.getBinary(i).getValues(), 0, leftColumn.getBinary(i).getLength()));
+    } else {
+      builder.appendNull();
     }
   }
 }

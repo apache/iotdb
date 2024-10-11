@@ -64,21 +64,44 @@ public class Like3ColumnTransformer extends TernaryColumnTransformer {
       ColumnBuilder builder,
       int positionCount) {
     for (int i = 0; i < positionCount; i++) {
-      if (!firstColumn.isNull(i) && !secondColumn.isNull(i) && !thirdColumn.isNull(i)) {
-        LikePattern pattern =
-            LikePattern.compile(
-                secondColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET),
-                LikePattern.getEscapeCharacter(
-                    Optional.of(
-                        thirdColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET))),false);
-        builder.writeBoolean(
-            pattern
-                .getMatcher()
-                .match(
-                    firstColumn.getBinary(i).getValues(), 0, firstColumn.getBinary(i).getLength()));
+      transform(firstColumn, secondColumn, thirdColumn, builder, i);
+    }
+  }
+
+  @Override
+  protected void doTransform(
+      Column firstColumn,
+      Column secondColumn,
+      Column thirdColumn,
+      ColumnBuilder builder,
+      int positionCount,
+      boolean[] selection) {
+    for (int i = 0; i < positionCount; i++) {
+      if (selection[i]) {
+        transform(firstColumn, secondColumn, thirdColumn, builder, i);
       } else {
         builder.appendNull();
       }
+    }
+  }
+
+  private void transform(
+      Column firstColumn, Column secondColumn, Column thirdColumn, ColumnBuilder builder, int i) {
+    if (!firstColumn.isNull(i) && !secondColumn.isNull(i) && !thirdColumn.isNull(i)) {
+      LikePattern pattern =
+          LikePattern.compile(
+              secondColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET),
+              LikePattern.getEscapeCharacter(
+                  Optional.of(
+                      thirdColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET))),
+              false);
+      builder.writeBoolean(
+          pattern
+              .getMatcher()
+              .match(
+                  firstColumn.getBinary(i).getValues(), 0, firstColumn.getBinary(i).getLength()));
+    } else {
+      builder.appendNull();
     }
   }
 }

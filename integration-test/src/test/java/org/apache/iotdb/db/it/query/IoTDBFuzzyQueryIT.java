@@ -106,13 +106,15 @@ public class IoTDBFuzzyQueryIT {
     Connection connection = EnvFactory.getEnv().getConnection();
     Statement st0 = connection.createStatement();
     ResultSet resultSet =
-        st0.executeQuery("select status from root.t1.wf01.wt01 where status like '1'");
+        st0.executeQuery("select status from root.t1.wf01.wt01 where status not like '1'");
 
-    Assert.assertEquals("1", outputResultStr(resultSet));
+    Assert.assertEquals(
+        "14,616,626,6116,6%16,8[sS]*,%123,123%,\\\\\\\\", outputResultStr(resultSet));
 
     resultSet = st0.executeQuery("select status from root.t1.wf01.wt01 where status like '%'");
 
-    Assert.assertEquals("1,14,616,626,6116,6%16,8[sS]*,%123,123%,\\\\\\\\", outputResultStr(resultSet));
+    Assert.assertEquals(
+        "1,14,616,626,6116,6%16,8[sS]*,%123,123%,\\\\\\\\", outputResultStr(resultSet));
 
     resultSet = st0.executeQuery("select status from root.t1.wf01.wt01 where status like '1%'");
 
@@ -146,7 +148,9 @@ public class IoTDBFuzzyQueryIT {
 
     Assert.assertEquals("%123", outputResultStr(resultSet));
 
-    resultSet = st0.executeQuery("select status from root.t1.wf01.wt01 where status like '%\\%' escape '\\'");
+    resultSet =
+        st0.executeQuery(
+            "select status from root.t1.wf01.wt01 where status like '%\\%' escape '\\'");
 
     Assert.assertEquals("123%", outputResultStr(resultSet));
 
