@@ -121,15 +121,20 @@ public class GeneralRegionAttributeSecurityService implements IService {
                   .getConfig()
                   .getPipeConnectorRequestSliceThresholdBytes());
 
+      final AtomicBoolean hasRemaining = new AtomicBoolean(false);
       final Map<SchemaRegionId, Pair<Long, Map<TDataNodeLocation, byte[]>>>
           attributeUpdateCommitMap = new HashMap<>();
       for (final ISchemaRegion regionLeader : regionLeaders) {
         final Pair<Long, Map<TDataNodeLocation, byte[]>> currentResult =
-            regionLeader.getAttributeUpdateInfo(limit);
+            regionLeader.getAttributeUpdateInfo(limit, hasRemaining);
         if (currentResult.getRight().isEmpty()) {
           break;
         }
         attributeUpdateCommitMap.put(regionLeader.getSchemaRegionId(), currentResult);
+      }
+
+      if (hasRemaining.get()) {
+        skipNextSleep = true;
       }
 
       if (!attributeUpdateCommitMap.isEmpty()) {
@@ -159,6 +164,7 @@ public class GeneralRegionAttributeSecurityService implements IService {
                   .isAccepted()) {
                 // May fail due to region shutdown, migration or other reasons
                 // Just ignore
+                skipNextSleep = false;
                 LOGGER.warn(
                     "Failed to write attribute commit message to region {}.", schemaRegionId);
               }

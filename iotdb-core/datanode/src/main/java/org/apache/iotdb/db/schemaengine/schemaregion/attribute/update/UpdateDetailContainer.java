@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -103,10 +104,11 @@ public class UpdateDetailContainer implements UpdateContainer {
   }
 
   @Override
-  public byte[] getUpdateContent(final @Nonnull AtomicInteger limitBytes) {
+  public byte[] getUpdateContent(
+      final @Nonnull AtomicInteger limitBytes, final @Nonnull AtomicBoolean hasRemaining) {
     final RewritableByteArrayOutputStream outputStream = new RewritableByteArrayOutputStream();
     try {
-      serializeWithLimit(outputStream, limitBytes);
+      serializeWithLimit(outputStream, limitBytes, hasRemaining);
     } catch (final IOException ignored) {
       // ByteArrayOutputStream won't throw IOException
     }
@@ -114,7 +116,9 @@ public class UpdateDetailContainer implements UpdateContainer {
   }
 
   private void serializeWithLimit(
-      final RewritableByteArrayOutputStream outputStream, final AtomicInteger limitBytes)
+      final RewritableByteArrayOutputStream outputStream,
+      final AtomicInteger limitBytes,
+      final AtomicBoolean hasRemaining)
       throws IOException {
     ReadWriteIOUtils.write((byte) 1, outputStream);
     final int mapSizeOffset = outputStream.skipInt();
@@ -126,6 +130,7 @@ public class UpdateDetailContainer implements UpdateContainer {
       newSize = 2 * Integer.BYTES + tableEntryBytes.length;
       if (limitBytes.get() < newSize) {
         outputStream.rewrite(mapEntryCount, mapSizeOffset);
+        hasRemaining.set(true);
         return;
       }
       limitBytes.addAndGet(-newSize);
@@ -148,6 +153,7 @@ public class UpdateDetailContainer implements UpdateContainer {
         if (limitBytes.get() < newSize) {
           outputStream.rewrite(mapEntryCount, mapSizeOffset);
           outputStream.rewrite(deviceEntryCount, deviceSizeOffset);
+          hasRemaining.set(true);
           return;
         }
         limitBytes.addAndGet(-newSize);
@@ -172,6 +178,7 @@ public class UpdateDetailContainer implements UpdateContainer {
             outputStream.rewrite(mapEntryCount, mapSizeOffset);
             outputStream.rewrite(deviceEntryCount, deviceSizeOffset);
             outputStream.rewrite(attributeCount, attributeOffset);
+            hasRemaining.set(true);
             return;
           }
           limitBytes.addAndGet(-newSize);

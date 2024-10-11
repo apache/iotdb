@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @ThreadSafe
@@ -41,7 +42,8 @@ public interface UpdateContainer {
   // thrift threshold and low bandwidth
   // Note that a "piece" returned is also a complete "updateContainer"'s serialized bytes
   // The "limitBytes" shall be at least 5 for a "type" and "0" to indicate empty
-  byte[] getUpdateContent(final @Nonnull AtomicInteger limitBytes);
+  byte[] getUpdateContent(
+      final @Nonnull AtomicInteger limitBytes, final @Nonnull AtomicBoolean hasRemaining);
 
   Pair<Long, Boolean> updateSelfByCommitContainer(final UpdateContainer commitContainer);
 

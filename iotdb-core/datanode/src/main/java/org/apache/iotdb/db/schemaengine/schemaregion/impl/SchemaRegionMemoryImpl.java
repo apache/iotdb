@@ -1567,8 +1567,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   @Override
   public Pair<Long, Map<TDataNodeLocation, byte[]>> getAttributeUpdateInfo(
-      final AtomicInteger limit) {
-    return deviceAttributeCacheUpdater.getAttributeUpdateInfo(limit);
+      final AtomicInteger limit, final AtomicBoolean hasRemaining) {
+    return deviceAttributeCacheUpdater.getAttributeUpdateInfo(limit, hasRemaining);
   }
 
   @Override

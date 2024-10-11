@@ -1496,7 +1496,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
   @Override
   public Pair<Long, Map<TDataNodeLocation, byte[]>> getAttributeUpdateInfo(
-      final AtomicInteger limit) {
+      final AtomicInteger limit, final AtomicBoolean hasRemaining) {
     throw new UnsupportedOperationException();
   }
 

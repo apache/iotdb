@@ -34,6 +34,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -65,10 +66,11 @@ public class UpdateClearContainer implements UpdateContainer {
   }
 
   @Override
-  public byte[] getUpdateContent(final @Nonnull AtomicInteger limitBytes) {
+  public byte[] getUpdateContent(
+      final @Nonnull AtomicInteger limitBytes, final @Nonnull AtomicBoolean hasRemaining) {
     final RewritableByteArrayOutputStream outputStream = new RewritableByteArrayOutputStream();
     try {
-      serializeWithLimit(outputStream, limitBytes);
+      serializeWithLimit(outputStream, limitBytes, hasRemaining);
     } catch (final IOException ignored) {
       // ByteArrayOutputStream won't throw IOException
     }
@@ -76,7 +78,9 @@ public class UpdateClearContainer implements UpdateContainer {
   }
 
   private void serializeWithLimit(
-      final RewritableByteArrayOutputStream outputStream, final AtomicInteger limitBytes)
+      final RewritableByteArrayOutputStream outputStream,
+      final AtomicInteger limitBytes,
+      final AtomicBoolean hasRemaining)
       throws IOException {
     ReadWriteIOUtils.write((byte) 0, outputStream);
     final int setSizeOffset = outputStream.skipInt();
@@ -87,6 +91,7 @@ public class UpdateClearContainer implements UpdateContainer {
       newSize = Integer.BYTES + tableBytes.length;
       if (limitBytes.get() < newSize) {
         outputStream.rewrite(setEntryCount, setSizeOffset);
+        hasRemaining.set(true);
         return;
       }
       limitBytes.addAndGet(-newSize);
