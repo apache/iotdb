@@ -101,11 +101,13 @@ public abstract class AbstractCaseWhenThenColumnTransformer extends ColumnTransf
       }
 
       for (int j = 0; j < positionCount; j++) {
-        if (!whenColumn.isNull(j) && whenColumn.getBoolean(j)) {
-          branchIndexForEachRow[j] = i;
-          selection[j] = true;
-        } else {
-          selection[j] = false;
+        if (branchIndexForEachRow[j] == -1) {
+          if (!whenColumn.isNull(j) && whenColumn.getBoolean(j)) {
+            branchIndexForEachRow[j] = i;
+            selection[j] = true;
+          } else {
+            selection[j] = false;
+          }
         }
       }
 
