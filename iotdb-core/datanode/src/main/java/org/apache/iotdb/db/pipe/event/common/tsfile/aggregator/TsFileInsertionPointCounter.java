@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.event.common.tsfile;
+package org.apache.iotdb.db.pipe.event.common.tsfile.aggregator;
 
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 
