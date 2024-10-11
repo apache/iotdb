@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventParser;
+import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTablePatternParser;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTreePatternParser;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -366,7 +367,17 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
           break;
         case RELATIONAL_INSERT_ROW:
         case RELATIONAL_INSERT_TABLET:
+          eventParsers.add(
+              new TabletInsertionEventTablePatternParser(pipeTaskMeta, this, node, tablePattern));
+          break;
         case RELATIONAL_INSERT_ROWS:
+          for (final InsertRowNode insertRowNode :
+              ((RelationalInsertRowsNode) node).getInsertRowNodeList()) {
+            eventParsers.add(
+                new TabletInsertionEventTablePatternParser(
+                    pipeTaskMeta, this, insertRowNode, tablePattern));
+          }
+          break;
         default:
           throw new UnSupportedDataTypeException("Unsupported node type " + node.getType());
       }

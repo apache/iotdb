@@ -83,7 +83,7 @@ public class TabletInsertionEventTreePatternParser implements TabletInsertionEve
 
   private Tablet tablet;
 
-  // Whether the container shall report progress
+  // Whether the parser shall report progress
   private boolean shouldReport = false;
 
   private static final Integer CACHED_FULL_ROW_INDEX_LIST_ROW_COUNT_UPPER = 16;
