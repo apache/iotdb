@@ -24,7 +24,9 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 
@@ -32,6 +34,8 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nonnull;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -51,12 +55,14 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class DeviceAttributeCacheUpdater {
   private static final Logger logger = LoggerFactory.getLogger(DeviceAttributeCacheUpdater.class);
-  private static final int UPDATE_DETAIL_CONTAINER_SEND_MIN_LIMIT_BYTES = 1024;
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  public static final int UPDATE_DETAIL_CONTAINER_SEND_MIN_LIMIT_BYTES = 1024;
 
   // All the data node locations shall only have internal endpoint with all the other endpoints set
   // to null
@@ -84,8 +90,7 @@ public class DeviceAttributeCacheUpdater {
     targetDataNodeLocations.forEach(
         location -> {
           // Skip update on local
-          if (location.getDataNodeId()
-              == IoTDBDescriptor.getInstance().getConfig().getDataNodeId()) {
+          if (location.getDataNodeId() == config.getDataNodeId()) {
             return;
           }
           if (!attributeUpdateMap.containsKey(location)) {
@@ -113,7 +118,7 @@ public class DeviceAttributeCacheUpdater {
   }
 
   public Pair<Long, Map<TDataNodeLocation, byte[]>> getAttributeUpdateInfo(
-      final AtomicInteger limit) {
+      final @Nonnull AtomicInteger limit, final @Nonnull AtomicBoolean hasRemaining) {
     // Note that the "updateContainerStatistics" is unsafe to use here for whole read of detail
     // container because the update map is read by GRASS thread, and the container's size may change
     // during the read process
@@ -124,14 +129,16 @@ public class DeviceAttributeCacheUpdater {
       // Because they require less capacity
       if (limit.get() < UPDATE_DETAIL_CONTAINER_SEND_MIN_LIMIT_BYTES
           && entry.getValue() instanceof UpdateDetailContainer) {
+        hasRemaining.set(true);
         continue;
       }
       // type(1) + size(4)
       if (limit.get() <= 5) {
+        hasRemaining.set(true);
         break;
       }
       limit.addAndGet(-5);
-      updateBytes.put(entry.getKey(), entry.getValue().getUpdateContent(limit));
+      updateBytes.put(entry.getKey(), entry.getValue().getUpdateContent(limit, hasRemaining));
     }
     return new Pair<>(version.get(), updateBytes);
   }
@@ -189,7 +196,7 @@ public class DeviceAttributeCacheUpdater {
                     })));
   }
 
-  private UpdateContainer getContainer(final byte[] bytes) {
+  public static UpdateContainer getContainer(final byte[] bytes) {
     final ByteArrayInputStream inputStream = new ByteArrayInputStream(bytes);
     UpdateContainer result = null;
     try {
@@ -337,7 +344,13 @@ public class DeviceAttributeCacheUpdater {
               : new UpdateClearContainer();
       container.deserialize(inputStream);
 
-      // TODO: Update local cache for newly migrated region
+      // Update local cache for region migration
+      if (config.getDataNodeId() == location.getDataNodeId()
+          && config.getInternalAddress().equals(location.getInternalEndPoint().getIp())
+          && config.getInternalPort() == location.getInternalEndPoint().getPort()) {
+        TableDeviceSchemaFetcher.getInstance().getAttributeGuard().handleContainer(container);
+      }
+
       attributeUpdateMap.put(location, container);
     }
   }
