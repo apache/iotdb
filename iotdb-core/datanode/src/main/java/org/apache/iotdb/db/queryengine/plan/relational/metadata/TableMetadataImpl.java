@@ -546,12 +546,15 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.MODE:
       case SqlConstant.FIRST:
       case SqlConstant.LAST:
-        if (argumentTypes.size() != 1) {
+        if (argumentTypes.size() != 2) {
           throw new SemanticException(
               String.format(
-                  "Aggregate functions [%s] should only have one argument", functionName));
+                  "Aggregate functions [%s] should only have two arguments", functionName));
+        } else if (!isTimestampType(argumentTypes.get(1))) {
+          throw new SemanticException(
+              String.format(
+                  "Second argument of Aggregate functions [%s] should be orderable", functionName));
         }
-        break;
       case SqlConstant.FIRST_BY:
       case SqlConstant.LAST_BY:
       case SqlConstant.MAX_BY:
