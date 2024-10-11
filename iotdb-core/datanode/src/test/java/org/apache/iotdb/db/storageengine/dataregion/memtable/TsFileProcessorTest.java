@@ -48,6 +48,12 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.read.TsFileReader;
+import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.read.expression.QueryExpression;
+import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
@@ -66,6 +72,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
 import static junit.framework.TestCase.assertTrue;
 import static org.apache.iotdb.db.storageengine.dataregion.DataRegionTest.buildInsertRowNodeByTSRecord;
@@ -108,11 +115,17 @@ public class TsFileProcessorTest {
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
+    EnvironmentUtils.cleanDir(String.format(TestConstant.TEST_TSFILE_PATH, "root.vehicle", 0, 0));
     config.setAvgSeriesPointNumberThreshold(defaultAvgSeriesPointNumberThreshold);
   }
 
   @Test
-  public void testWriteAndFlush() throws IOException, WriteProcessException, MetadataException {
+  public void testWriteAndFlush()
+      throws IOException,
+          WriteProcessException,
+          MetadataException,
+          ExecutionException,
+          InterruptedException {
     logger.info("testWriteAndFlush begin..");
     processor =
         new TsFileProcessor(
@@ -166,11 +179,31 @@ public class TsFileProcessorTest {
     processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
     assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk(fullPath).isEmpty());
     assertEquals(1, tsfileResourcesForQuery.get(0).getChunkMetadataList(fullPath).size());
-    processor.syncClose();
+    processor.asyncClose().get();
+
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(filePath);
+        TsFileReader readTsFile = new TsFileReader(reader)) {
+      QueryExpression queryExpression =
+          QueryExpression.create(
+              Collections.singletonList(new Path(deviceId, measurementId, false)), null);
+      QueryDataSet queryDataSet = readTsFile.query(queryExpression);
+      int num = 1;
+      while (queryDataSet.hasNext()) {
+        RowRecord rowRecord = queryDataSet.next();
+        assertEquals(num, rowRecord.getTimestamp());
+        assertEquals(num, rowRecord.getFields().get(0).getIntV());
+        num++;
+      }
+    }
   }
 
   @Test
-  public void testFlushMultiChunk() throws IOException, WriteProcessException, MetadataException {
+  public void testFlushMultiChunk()
+      throws IOException,
+          WriteProcessException,
+          MetadataException,
+          ExecutionException,
+          InterruptedException {
     config.setAvgSeriesPointNumberThreshold(40);
     processor =
         new TsFileProcessor(
@@ -224,12 +257,31 @@ public class TsFileProcessorTest {
     processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
     assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk(fullPath).isEmpty());
     assertEquals(3, tsfileResourcesForQuery.get(0).getChunkMetadataList(fullPath).size());
-    processor.syncClose();
+    processor.asyncClose().get();
+
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(filePath);
+        TsFileReader readTsFile = new TsFileReader(reader)) {
+      QueryExpression queryExpression =
+          QueryExpression.create(
+              Collections.singletonList(new Path(deviceId, measurementId, false)), null);
+      QueryDataSet queryDataSet = readTsFile.query(queryExpression);
+      int num = 1;
+      while (queryDataSet.hasNext()) {
+        RowRecord rowRecord = queryDataSet.next();
+        assertEquals(num, rowRecord.getTimestamp());
+        assertEquals(num, rowRecord.getFields().get(0).getIntV());
+        num++;
+      }
+    }
   }
 
   @Test
   public void testWriteAndRestoreMetadata()
-      throws IOException, WriteProcessException, MetadataException {
+      throws IOException,
+          WriteProcessException,
+          MetadataException,
+          ExecutionException,
+          InterruptedException {
     logger.info("testWriteAndRestoreMetadata begin..");
     processor =
         new TsFileProcessor(
@@ -307,12 +359,17 @@ public class TsFileProcessorTest {
     }
     restorableTsFileIOWriter.close();
     logger.info("syncClose..");
-    processor.syncClose();
+    processor.asyncClose().get();
     // we need to close the tsfile writer first and then reopen it.
   }
 
   @Test
-  public void testMultiFlush() throws IOException, WriteProcessException, MetadataException {
+  public void testMultiFlush()
+      throws IOException,
+          WriteProcessException,
+          MetadataException,
+          ExecutionException,
+          InterruptedException {
     processor =
         new TsFileProcessor(
             storageGroup,
@@ -349,7 +406,7 @@ public class TsFileProcessorTest {
     processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
     assertFalse(tsfileResourcesForQuery.isEmpty());
     assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk(fullPath).isEmpty());
-    processor.syncClose();
+    processor.asyncClose().get();
   }
 
   @Test
@@ -802,7 +859,12 @@ public class TsFileProcessorTest {
   }
 
   @Test
-  public void testWriteAndClose() throws IOException, WriteProcessException, MetadataException {
+  public void testWriteAndClose()
+      throws IOException,
+          WriteProcessException,
+          MetadataException,
+          ExecutionException,
+          InterruptedException {
     processor =
         new TsFileProcessor(
             storageGroup,
@@ -849,12 +911,8 @@ public class TsFileProcessorTest {
     }
 
     // close synchronously
-    processor.syncClose();
-    try {
-      Thread.sleep(1000);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
+    processor.asyncClose().get();
+    ;
 
     assertTrue(processor.getTsFileResource().isClosed());
   }
