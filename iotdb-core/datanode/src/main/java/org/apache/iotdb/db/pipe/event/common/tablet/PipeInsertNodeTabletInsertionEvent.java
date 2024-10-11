@@ -31,6 +31,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 import org.apache.iotdb.pipe.api.access.Row;
@@ -270,20 +273,39 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         return true;
       }
 
+      if (insertNode instanceof RelationalInsertRowNode
+          || insertNode instanceof RelationalInsertTabletNode) {
+        return Objects.isNull(tablePattern)
+            || tablePattern.matchesDatabase(getTableModelDatabaseName())
+                && tablePattern.matchesTable(insertNode.getTableName());
+      }
+
+      if (insertNode instanceof RelationalInsertRowsNode) {
+        return Objects.isNull(tablePattern)
+            || ((RelationalInsertRowsNode) insertNode)
+                .getInsertRowNodeList().stream()
+                    .anyMatch(
+                        insertRowNode ->
+                            tablePattern.matchesDatabase(getTableModelDatabaseName())
+                                && tablePattern.matchesTable(insertNode.getTableName()));
+      }
+
       if (insertNode instanceof InsertRowNode || insertNode instanceof InsertTabletNode) {
         final PartialPath devicePartialPath = insertNode.getTargetPath();
-        return Objects.isNull(devicePartialPath)
-            || treePattern.mayOverlapWithDevice(devicePartialPath.getIDeviceIDAsFullDevice());
+        return Objects.isNull(treePattern)
+            || Objects.isNull(devicePartialPath)
+            || treePattern.mayOverlapWithDevice(devicePartialPath.getIDeviceID());
       }
 
       if (insertNode instanceof InsertRowsNode) {
-        return ((InsertRowsNode) insertNode)
-            .getInsertRowNodeList().stream()
-                .anyMatch(
-                    insertRowNode ->
-                        Objects.isNull(insertRowNode.getTargetPath())
-                            || treePattern.mayOverlapWithDevice(
-                                insertRowNode.getTargetPath().getIDeviceIDAsFullDevice()));
+        return Objects.isNull(treePattern)
+            || ((InsertRowsNode) insertNode)
+                .getInsertRowNodeList().stream()
+                    .anyMatch(
+                        insertRowNode ->
+                            Objects.isNull(insertRowNode.getTargetPath())
+                                || treePattern.mayOverlapWithDevice(
+                                    insertRowNode.getTargetPath().getIDeviceID()));
       }
 
       return true;
@@ -344,13 +366,24 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         case INSERT_ROW:
         case INSERT_TABLET:
         case RELATIONAL_INSERT_TABLET:
+        case RELATIONAL_INSERT_ROW:
           dataContainers.add(
-              new TabletInsertionDataContainer(pipeTaskMeta, this, node, treePattern));
+              new TabletInsertionDataContainer(
+                  pipeTaskMeta, this, node, treePattern, tablePattern));
           break;
         case INSERT_ROWS:
           for (final InsertRowNode insertRowNode : ((InsertRowsNode) node).getInsertRowNodeList()) {
             dataContainers.add(
-                new TabletInsertionDataContainer(pipeTaskMeta, this, insertRowNode, treePattern));
+                new TabletInsertionDataContainer(
+                    pipeTaskMeta, this, insertRowNode, treePattern, tablePattern));
+          }
+          break;
+        case RELATIONAL_INSERT_ROWS:
+          for (final InsertRowNode insertRowNode :
+              ((RelationalInsertRowsNode) node).getInsertRowNodeList()) {
+            dataContainers.add(
+                new TabletInsertionDataContainer(
+                    pipeTaskMeta, this, insertRowNode, treePattern, tablePattern));
           }
           break;
         default:

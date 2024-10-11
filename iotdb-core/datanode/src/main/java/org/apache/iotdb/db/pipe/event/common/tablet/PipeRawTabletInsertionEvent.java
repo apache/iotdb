@@ -270,7 +270,8 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
       final BiConsumer<Row, RowCollector> consumer) {
     if (dataContainer == null) {
       dataContainer =
-          new TabletInsertionDataContainer(pipeTaskMeta, this, tablet, isAligned, treePattern);
+          new TabletInsertionDataContainer(
+              pipeTaskMeta, this, tablet, isAligned, null, treePattern, tablePattern);
     }
     return dataContainer.processRowByRow(consumer);
   }
@@ -280,7 +281,8 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
       final BiConsumer<Tablet, RowCollector> consumer) {
     if (dataContainer == null) {
       dataContainer =
-          new TabletInsertionDataContainer(pipeTaskMeta, this, tablet, isAligned, treePattern);
+          new TabletInsertionDataContainer(
+              pipeTaskMeta, this, tablet, isAligned, null, treePattern, tablePattern);
     }
     return dataContainer.processTablet(consumer);
   }
@@ -299,7 +301,8 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     // if notNullPattern is not "root", we need to convert the tablet
     if (dataContainer == null) {
       dataContainer =
-          new TabletInsertionDataContainer(pipeTaskMeta, this, tablet, isAligned, treePattern);
+          new TabletInsertionDataContainer(
+              pipeTaskMeta, this, tablet, isAligned, null, treePattern, tablePattern);
     }
     return dataContainer.convertToTablet();
   }

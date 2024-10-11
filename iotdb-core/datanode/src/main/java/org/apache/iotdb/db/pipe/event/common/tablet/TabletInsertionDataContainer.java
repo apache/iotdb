@@ -20,14 +20,18 @@
 package org.apache.iotdb.db.pipe.event.common.tablet;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRowCollector;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -58,9 +62,14 @@ import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
+
 public class TabletInsertionDataContainer {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TabletInsertionDataContainer.class);
+
+  private static final String TREE_MODE_PREFIX = PATH_ROOT + PATH_SEPARATOR;
 
   private final PipeTaskMeta pipeTaskMeta; // used to report progress
   private final EnrichedEvent
@@ -99,14 +108,27 @@ public class TabletInsertionDataContainer {
       final PipeTaskMeta pipeTaskMeta,
       final EnrichedEvent sourceEvent,
       final InsertNode insertNode,
-      final TreePattern pattern) {
+      final TreePattern treePattern,
+      final TablePattern tablePattern) {
     this.pipeTaskMeta = pipeTaskMeta;
     this.sourceEvent = sourceEvent;
 
-    if (insertNode instanceof InsertRowNode) {
-      parse((InsertRowNode) insertNode, pattern);
+    if (insertNode instanceof RelationalInsertRowNode) {
+      final String dataBaseName =
+          sourceEvent instanceof PipeInsertionEvent
+              ? ((PipeInsertionEvent) sourceEvent).getTableModelDatabaseName()
+              : null;
+      parse((RelationalInsertRowNode) insertNode, dataBaseName, tablePattern);
+    } else if (insertNode instanceof RelationalInsertTabletNode) {
+      final String dataBaseName =
+          sourceEvent instanceof PipeInsertionEvent
+              ? ((PipeInsertionEvent) sourceEvent).getTableModelDatabaseName()
+              : null;
+      parse((RelationalInsertTabletNode) insertNode, dataBaseName, tablePattern);
+    } else if (insertNode instanceof InsertRowNode) {
+      parse((InsertRowNode) insertNode, treePattern);
     } else if (insertNode instanceof InsertTabletNode) {
-      parse((InsertTabletNode) insertNode, pattern);
+      parse((InsertTabletNode) insertNode, treePattern);
     } else {
       throw new UnSupportedDataTypeException(
           String.format("InsertNode type %s is not supported.", insertNode.getClass().getName()));
@@ -118,16 +140,19 @@ public class TabletInsertionDataContainer {
       final EnrichedEvent sourceEvent,
       final Tablet tablet,
       final boolean isAligned,
-      final TreePattern pattern) {
+      final String dataBaseName,
+      final TreePattern treePattern,
+      final TablePattern tablePattern) {
     this.pipeTaskMeta = pipeTaskMeta;
     this.sourceEvent = sourceEvent;
 
-    parse(tablet, isAligned, pattern);
+    parse(tablet, isAligned, dataBaseName, treePattern, tablePattern);
   }
 
   @TestOnly
-  public TabletInsertionDataContainer(final InsertNode insertNode, final TreePattern pattern) {
-    this(null, null, insertNode, pattern);
+  public TabletInsertionDataContainer(
+      final InsertNode insertNode, final TreePattern treePattern, final TablePattern tablePattern) {
+    this(null, null, insertNode, treePattern, tablePattern);
   }
 
   public boolean isAligned() {
@@ -139,6 +164,154 @@ public class TabletInsertionDataContainer {
   }
 
   //////////////////////////// parse ////////////////////////////
+
+  private void parse(
+      final RelationalInsertRowNode insertRowNode,
+      final String dataBaseName,
+      final TablePattern pattern) {
+    // It can't happen
+    if (dataBaseName == null || dataBaseName.isEmpty()) {
+      LOGGER.warn("Database name is null or empty.", new Exception());
+    }
+    this.deviceStr = insertRowNode.getTableName();
+    this.deviceId = insertRowNode.getDeviceID();
+    this.isAligned = insertRowNode.isAligned();
+
+    final int columnSize = insertRowNode.getMeasurements().length;
+    final long[] originTimestampColumn = new long[] {insertRowNode.getTime()};
+    final List<Integer> rowIndexList = generateRowIndexList(originTimestampColumn);
+    this.timestampColumn = rowIndexList.stream().mapToLong(i -> originTimestampColumn[i]).toArray();
+    this.rowCount = this.timestampColumn.length;
+    this.measurementSchemaList = new MeasurementSchema[columnSize];
+    this.columnNameStringList = new String[columnSize];
+    this.valueColumnTypes = new TSDataType[columnSize];
+    this.valueColumns = new Object[columnSize];
+    this.nullValueColumnBitmaps = new BitMap[columnSize];
+
+    final MeasurementSchema[] originMeasurementSchemaList = insertRowNode.getMeasurementSchemas();
+    final String[] originColumnNameStringList = insertRowNode.getMeasurements();
+    final TSDataType[] originValueColumnTypes = insertRowNode.getDataTypes();
+    final Object[] originValueColumns = insertRowNode.getValues();
+
+    final boolean isNotMatch =
+        !(Objects.isNull(pattern)
+            || Objects.isNull(dataBaseName)
+            || (pattern.matchesDatabase(dataBaseName)
+                && pattern.matchesTable(insertRowNode.getTableName())));
+    for (int i = 0; i < columnSize; i++) {
+      this.measurementSchemaList[i] = originMeasurementSchemaList[i];
+      this.columnNameStringList[i] = originColumnNameStringList[i];
+      this.valueColumnTypes[i] = originValueColumnTypes[i];
+      BitMap bitMap = new BitMap(rowCount);
+      if (isNotMatch
+          || Objects.isNull(originValueColumns[i])
+          || Objects.isNull(originValueColumnTypes[i])) {
+        this.valueColumns[i] = null;
+        bitMap.markAll();
+      } else {
+        this.valueColumns[i] =
+            filterValueColumnsByRowIndexList(
+                originValueColumnTypes[i],
+                originValueColumns[i],
+                rowIndexList,
+                true,
+                bitMap, // use the output bitmap since there is no bitmap in RelationalInsertRowNode
+                bitMap);
+      }
+      nullValueColumnBitmaps[i] = bitMap;
+    }
+
+    if (this.rowCount == 0 && LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "RelationalInsertRowNode({}) is parsed to zero rows according to the pattern({}) and time range [{}, {}], the corresponding source event({}) will be ignored.",
+          insertRowNode,
+          pattern,
+          this.sourceEvent.getStartTime(),
+          this.sourceEvent.getEndTime(),
+          this.sourceEvent);
+    }
+  }
+
+  private void parse(
+      final RelationalInsertTabletNode insertTabletNode,
+      final String dataBaseName,
+      final TablePattern pattern) {
+    // It can't happen
+    if (dataBaseName == null || dataBaseName.isEmpty()) {
+      LOGGER.warn("Database name is null or empty.", new Exception());
+    }
+    final int originColumnSize = insertTabletNode.getMeasurements().length;
+    // The full path is always cached when device path is deserialized
+    this.deviceStr = insertTabletNode.getTableName();
+    this.deviceId = insertTabletNode.getDeviceID();
+    this.isAligned = insertTabletNode.isAligned();
+
+    final long[] originTimestampColumn = insertTabletNode.getTimes();
+    final int originRowSize = originTimestampColumn.length;
+    final List<Integer> rowIndexList = generateRowIndexList(originTimestampColumn);
+    this.timestampColumn = rowIndexList.stream().mapToLong(i -> originTimestampColumn[i]).toArray();
+    this.rowCount = this.timestampColumn.length;
+    this.measurementSchemaList = new MeasurementSchema[originColumnSize];
+    this.columnNameStringList = new String[originColumnSize];
+    this.valueColumnTypes = new TSDataType[originColumnSize];
+    this.valueColumns = new Object[originColumnSize];
+    this.nullValueColumnBitmaps = new BitMap[originColumnSize];
+
+    final MeasurementSchema[] originMeasurementSchemaList =
+        insertTabletNode.getMeasurementSchemas();
+    final String[] originColumnNameStringList = insertTabletNode.getMeasurements();
+    final TSDataType[] originValueColumnTypes = insertTabletNode.getDataTypes();
+    final Object[] originValueColumns = insertTabletNode.getColumns();
+    final BitMap[] originBitMapList =
+        (insertTabletNode.getBitMaps() == null
+            ? IntStream.range(0, originColumnSize)
+                .boxed()
+                .map(o -> new BitMap(originRowSize))
+                .toArray(BitMap[]::new)
+            : insertTabletNode.getBitMaps());
+    for (int i = 0; i < originBitMapList.length; i++) {
+      if (originBitMapList[i] == null) {
+        originBitMapList[i] = new BitMap(originRowSize);
+      }
+    }
+    final boolean isNotMatch =
+        !(Objects.isNull(pattern)
+            || (pattern.matchesDatabase(dataBaseName)
+                && pattern.matchesTable(insertTabletNode.getTableName())));
+
+    for (int i = 0; i < originColumnSize; i++) {
+      final BitMap bitMap = new BitMap(this.timestampColumn.length);
+      this.measurementSchemaList[i] = originMeasurementSchemaList[i];
+      this.columnNameStringList[i] = originColumnNameStringList[i];
+      this.valueColumnTypes[i] = originValueColumnTypes[i];
+      if (isNotMatch
+          || Objects.isNull(originValueColumns[i])
+          || Objects.isNull(valueColumnTypes[i])) {
+        this.valueColumns[i] = null;
+        bitMap.markAll();
+      } else {
+        this.valueColumns[i] =
+            filterValueColumnsByRowIndexList(
+                valueColumnTypes[i],
+                originValueColumns[i],
+                rowIndexList,
+                false,
+                originBitMapList[i],
+                bitMap);
+      }
+      this.nullValueColumnBitmaps[i] = bitMap;
+    }
+
+    if (rowCount == 0 && LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "RelationalInsertTabletNode({}) is parsed to zero rows according to the pattern({}) and time range [{}, {}], the corresponding source event({}) will be ignored.",
+          insertTabletNode,
+          pattern,
+          sourceEvent.getStartTime(),
+          sourceEvent.getEndTime(),
+          sourceEvent);
+    }
+  }
 
   private void parse(final InsertRowNode insertRowNode, final TreePattern pattern) {
     final int originColumnSize = insertRowNode.getMeasurements().length;
@@ -291,6 +464,100 @@ public class TabletInsertionDataContainer {
           sourceEvent.getStartTime(),
           sourceEvent.getEndTime(),
           sourceEvent);
+    }
+  }
+
+  private void parse(
+      final Tablet tablet,
+      final boolean isAligned,
+      final String dataBaseName,
+      final TreePattern treePattern,
+      final TablePattern tablePattern) {
+    final String deviceID = tablet.getDeviceId();
+    if (deviceID.startsWith(TREE_MODE_PREFIX) || PATH_ROOT.equals(deviceID)) {
+      parse(tablet, isAligned, treePattern);
+    } else {
+      parse(tablet, isAligned, dataBaseName, tablePattern);
+    }
+  }
+
+  private void parse(
+      final Tablet tablet,
+      final boolean isAligned,
+      final String dataBaseName,
+      final TablePattern pattern) {
+    // It can't happen
+    if (dataBaseName == null || dataBaseName.isEmpty()) {
+      LOGGER.warn("Database name is null or empty.", new Exception());
+    }
+    // Only support Table-model tablet
+    this.deviceStr = tablet.getTableName();
+    this.deviceId = new StringArrayDeviceID(tablet.getDeviceId());
+    this.isAligned = isAligned;
+
+    final long[] originTimestampColumn =
+        Arrays.copyOf(
+            tablet.timestamps, tablet.rowSize); // tablet.timestamps.length == tablet.maxRowNumber
+    final List<Integer> rowIndexList = generateRowIndexList(originTimestampColumn);
+    this.timestampColumn = rowIndexList.stream().mapToLong(i -> originTimestampColumn[i]).toArray();
+
+    final int originColumnSize = tablet.getSchemas().size();
+    this.rowCount = this.timestampColumn.length;
+    this.measurementSchemaList = new MeasurementSchema[originColumnSize];
+    this.columnNameStringList = new String[originColumnSize];
+    this.valueColumnTypes = new TSDataType[originColumnSize];
+    this.valueColumns = new Object[originColumnSize];
+    this.nullValueColumnBitmaps = new BitMap[originColumnSize];
+    final List<IMeasurementSchema> originMeasurementSchemaList = tablet.getSchemas();
+    final Object[] originValueColumns =
+        tablet.values; // we do not reduce value columns here by origin row size
+    final BitMap[] originBitMapList =
+        tablet.bitMaps == null
+            ? IntStream.range(0, originColumnSize)
+                .boxed()
+                .map(o -> new BitMap(tablet.getMaxRowNumber()))
+                .toArray(BitMap[]::new)
+            : tablet.bitMaps; // We do not reduce bitmaps here by origin row size
+    for (int i = 0; i < originBitMapList.length; i++) {
+      if (originBitMapList[i] == null) {
+        originBitMapList[i] = new BitMap(tablet.getMaxRowNumber());
+      }
+    }
+    final boolean isNotMatch =
+        !(Objects.isNull(pattern)
+            || (pattern.matchesDatabase(dataBaseName)
+                && pattern.matchesTable(tablet.getTableName())));
+
+    for (int i = 0; i < originColumnSize; i++) {
+      final IMeasurementSchema m = originMeasurementSchemaList.get(i);
+      this.measurementSchemaList[i] = m;
+      this.columnNameStringList[i] = m.getMeasurementId();
+      this.valueColumnTypes[i] = m.getType();
+      final BitMap bitMap = new BitMap(rowCount);
+      if (isNotMatch || Objects.isNull(originValueColumns[i]) || Objects.isNull(m.getType())) {
+        this.valueColumns[i] = null;
+        bitMap.markAll();
+      } else {
+        this.valueColumns[i] =
+            filterValueColumnsByRowIndexList(
+                m.getType(),
+                originValueColumns[i],
+                rowIndexList,
+                false,
+                originBitMapList[i],
+                bitMap);
+      }
+      this.nullValueColumnBitmaps[i] = bitMap;
+    }
+
+    if (this.rowCount == 0 && LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "Tablet({}) is parsed to zero rows according to the pattern({}) and time range [{}, {}], the corresponding source event({}) will be ignored.",
+          tablet,
+          pattern,
+          this.sourceEvent.getStartTime(),
+          this.sourceEvent.getEndTime(),
+          this.sourceEvent);
     }
   }
 
@@ -620,7 +887,6 @@ public class TabletInsertionDataContainer {
     final PipeRowCollector rowCollector = new PipeRowCollector(pipeTaskMeta, sourceEvent);
     for (int i = 0; i < rowCount; i++) {
       consumer.accept(
-          // Used for tree model
           new PipeRow(
               i,
               getDeviceStr(),
