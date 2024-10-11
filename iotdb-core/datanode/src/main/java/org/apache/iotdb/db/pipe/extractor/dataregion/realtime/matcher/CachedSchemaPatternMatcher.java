@@ -135,6 +135,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
       for (final Map.Entry<IDeviceID, String[]> entry : event.getSchemaInfo().entrySet()) {
         final IDeviceID deviceID = entry.getKey();
 
+        // TODO: Check the role to determine whether to match with tree model or table model
         if (deviceID instanceof PlainDeviceID
             || deviceID.getTableName().startsWith(PATH_ROOT + PATH_SEPARATOR)) {
           matchTreeModelEvent(deviceID, entry.getValue(), matchedExtractors);
