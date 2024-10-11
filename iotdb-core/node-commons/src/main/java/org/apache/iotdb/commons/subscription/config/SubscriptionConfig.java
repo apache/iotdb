@@ -29,7 +29,9 @@ public class SubscriptionConfig {
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
-  /////////////////////////////// Subtask Executor ///////////////////////////////
+  public float getSubscriptionCacheMemoryUsagePercentage() {
+    return COMMON_CONFIG.getSubscriptionCacheMemoryUsagePercentage();
+  }
 
   public int getSubscriptionSubtaskExecutorMaxThreadNum() {
     return COMMON_CONFIG.getSubscriptionSubtaskExecutorMaxThreadNum();
@@ -79,11 +81,22 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionTsFileDeduplicationWindowSeconds();
   }
 
+  public long getSubscriptionMetaSyncerInitialSyncDelayMinutes() {
+    return COMMON_CONFIG.getSubscriptionMetaSyncerInitialSyncDelayMinutes();
+  }
+
+  public long getSubscriptionMetaSyncerSyncIntervalMinutes() {
+    return COMMON_CONFIG.getSubscriptionMetaSyncerSyncIntervalMinutes();
+  }
+
   /////////////////////////////// Utils ///////////////////////////////
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConfig.class);
 
   public void printAllConfigs() {
+    LOGGER.info(
+        "SubscriptionCacheMemoryUsagePercentage: {}", getSubscriptionCacheMemoryUsagePercentage());
+
     LOGGER.info(
         "SubscriptionSubtaskExecutorMaxThreadNum: {}",
         getSubscriptionSubtaskExecutorMaxThreadNum());
@@ -111,6 +124,13 @@ public class SubscriptionConfig {
     LOGGER.info(
         "SubscriptionTsFileDeduplicationWindowSeconds: {}",
         getSubscriptionTsFileDeduplicationWindowSeconds());
+
+    LOGGER.info(
+        "SubscriptionMetaSyncerInitialSyncDelayMinutes: {}",
+        getSubscriptionMetaSyncerInitialSyncDelayMinutes());
+    LOGGER.info(
+        "SubscriptionMetaSyncerSyncIntervalMinutes: {}",
+        getSubscriptionMetaSyncerSyncIntervalMinutes());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

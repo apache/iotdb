@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.subscription.event;
 
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
@@ -97,7 +97,7 @@ class SubscriptionEventBinaryCache {
     final long maxMemorySizeInBytes =
         (long)
             (PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes()
-                * PipeConfig.getInstance().getSubscriptionCacheMemoryUsagePercentage());
+                * SubscriptionConfig.getInstance().getSubscriptionCacheMemoryUsagePercentage());
 
     // properties required by pipe memory control framework
     final PipeMemoryBlock allocatedMemoryBlock =
