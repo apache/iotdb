@@ -22,8 +22,10 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 import org.apache.iotdb.mpp.rpc.thrift.TAttributeUpdateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaRegionAttributeInfo;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -41,6 +43,21 @@ public class TableDeviceCacheAttributeGuard {
 
   public void addFetchedRegion(final Integer schemaRegionId) {
     fetchedSchemaRegionIds2LargestVersionMap.put(schemaRegionId, Long.MIN_VALUE);
+  }
+
+  @SuppressWarnings("unchecked")
+  public Set<Long> addFetchQueryId(final long queryId) {
+    final Set<?> lastSet = applyQueue.peekLast();
+    final Set<Long> longSet;
+    if (Objects.isNull(lastSet) || lastSet instanceof HashSet) {
+      longSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
+      applyQueue.add(longSet);
+    } else {
+      // The elements must be Set<Long> or HashSet<byte[]>
+      longSet = (Set<Long>) lastSet;
+    }
+    longSet.add(queryId);
+    return longSet;
   }
 
   public void handleAttributeUpdate(final TAttributeUpdateReq updateReq) {
@@ -72,6 +89,7 @@ public class TableDeviceCacheAttributeGuard {
       final Set<?> firstElement = applyQueue.peek();
       if (firstElement instanceof HashSet) {
         applyUpdateMessage(firstElement);
+        applyQueue.removeFirst();
       } else if (firstElement.isEmpty()) {
         applyQueue.removeFirst();
       } else {
