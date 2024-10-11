@@ -1046,6 +1046,7 @@ public class IoTDBConfig {
 
   /** GRASS Service */
   private long generalRegionAttributeSecurityServiceIntervalSeconds = 30L;
+
   private long generalRegionAttributeSecurityServiceTimeoutSeconds = 20L;
   private long generalRegionAttributeSecurityServiceFailureDurationSecondsToFetch = 600L;
   private int generalRegionAttributeSecurityServiceFailureTimesToFetch = 20;
