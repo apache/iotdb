@@ -280,9 +280,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       final String databaseName = dataRegion.getDatabaseName();
       if (Objects.nonNull(databaseName)) {
         isDbNameCoveredByPattern =
-            treePattern.coversDb(databaseName)
-                && tablePattern.matchesDatabase(
-                    databaseName.startsWith("root.") ? databaseName.substring(5) : databaseName);
+            treePattern.coversDb(databaseName) && tablePattern.coversDb(databaseName);
       }
     }
 
@@ -608,6 +606,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
     final PipeTsFileInsertionEvent event =
         new PipeTsFileInsertionEvent(
+            resource.getDatabaseName(),
             resource,
             shouldTransferModFile,
             false,

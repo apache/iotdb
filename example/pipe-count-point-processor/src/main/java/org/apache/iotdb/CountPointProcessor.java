@@ -75,7 +75,7 @@ public class CountPointProcessor implements PipeProcessor {
       tablet.addTimestamp(0, System.currentTimeMillis());
       tablet.addValue(aggregateSeries.getMeasurement(), 0, writePointCount.get());
       eventCollector.collect(
-          new PipeRawTabletInsertionEvent(tablet, false, null, 0, null, null, false));
+          new PipeRawTabletInsertionEvent(null, tablet, false, null, 0, null, null, false));
     }
   }
 

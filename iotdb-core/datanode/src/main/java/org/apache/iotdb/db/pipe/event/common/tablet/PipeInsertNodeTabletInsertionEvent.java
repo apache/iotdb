@@ -25,12 +25,15 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
-import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 import org.apache.iotdb.pipe.api.access.Row;
@@ -51,7 +54,7 @@ import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
-public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
+public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     implements TabletInsertionEvent {
 
   private static final Logger LOGGER =
@@ -68,12 +71,14 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   private ProgressIndex progressIndex;
 
   public PipeInsertNodeTabletInsertionEvent(
+      final String databaseName,
       final WALEntryHandler walEntryHandler,
       final PartialPath devicePath,
       final ProgressIndex progressIndex,
       final boolean isAligned,
       final boolean isGeneratedByPipe) {
     this(
+        databaseName,
         walEntryHandler,
         devicePath,
         progressIndex,
@@ -89,6 +94,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   }
 
   private PipeInsertNodeTabletInsertionEvent(
+      final String databaseName,
       final WALEntryHandler walEntryHandler,
       final PartialPath devicePath,
       final ProgressIndex progressIndex,
@@ -101,7 +107,15 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       final TablePattern tablePattern,
       final long startTime,
       final long endTime) {
-    super(pipeName, creationTime, pipeTaskMeta, treePattern, tablePattern, startTime, endTime);
+    super(
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        treePattern,
+        tablePattern,
+        startTime,
+        endTime,
+        databaseName);
     this.walEntryHandler = walEntryHandler;
     // Record device path here so there's no need to get it from InsertNode cache later.
     this.devicePath = devicePath;
@@ -187,6 +201,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       final long startTime,
       final long endTime) {
     return new PipeInsertNodeTabletInsertionEvent(
+        getTreeModelDatabaseName(),
         walEntryHandler,
         devicePath,
         progressIndex,
@@ -255,6 +270,12 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     try {
       final InsertNode insertNode = getInsertNodeViaCacheIfPossible();
       if (Objects.isNull(insertNode)) {
+        return true;
+      }
+
+      if (insertNode instanceof RelationalInsertRowNode
+          || insertNode instanceof RelationalInsertTabletNode
+          || insertNode instanceof RelationalInsertRowsNode) {
         return true;
       }
 
@@ -372,6 +393,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
             .map(
                 container ->
                     new PipeRawTabletInsertionEvent(
+                        getTreeModelDatabaseName(),
                         container.convertToTablet(),
                         container.isAligned(),
                         pipeName,

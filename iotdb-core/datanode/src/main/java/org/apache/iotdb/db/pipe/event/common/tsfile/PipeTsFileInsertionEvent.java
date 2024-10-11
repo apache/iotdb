@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
-import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainerProvider;
@@ -39,6 +39,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,7 +51,10 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileInsertionEvent {
+import static org.apache.tsfile.common.constant.TsFileConstant.PATH_ROOT;
+import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
+
+public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFileInsertionEvent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileInsertionEvent.class);
 
@@ -76,12 +80,14 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   private volatile ProgressIndex overridingProgressIndex;
 
   public PipeTsFileInsertionEvent(
+      final String databaseName,
       final TsFileResource resource,
       final boolean isLoaded,
       final boolean isGeneratedByPipe,
       final boolean isGeneratedByHistoricalExtractor) {
     // The modFile must be copied before the event is assigned to the listening pipes
     this(
+        databaseName,
         resource,
         true,
         isLoaded,
@@ -97,6 +103,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   }
 
   public PipeTsFileInsertionEvent(
+      final String databaseName,
       final TsFileResource resource,
       final boolean isWithMod,
       final boolean isLoaded,
@@ -109,7 +116,15 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       final TablePattern tablePattern,
       final long startTime,
       final long endTime) {
-    super(pipeName, creationTime, pipeTaskMeta, treePattern, tablePattern, startTime, endTime);
+    super(
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        treePattern,
+        tablePattern,
+        startTime,
+        endTime,
+        databaseName);
 
     this.resource = resource;
     tsFile = resource.getTsFile();
@@ -328,6 +343,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       final long startTime,
       final long endTime) {
     return new PipeTsFileInsertionEvent(
+        getTreeModelDatabaseName(),
         resource,
         isWithMod,
         isLoaded,
@@ -370,7 +386,15 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
                   false);
       final Set<IDeviceID> deviceSet =
           Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
-      return deviceSet.stream().anyMatch(treePattern::mayOverlapWithDevice);
+      return deviceSet.stream()
+          .anyMatch(
+              deviceID ->
+                  // Table model
+                  !(deviceID instanceof PlainDeviceID
+                          || deviceID.getTableName().startsWith(PATH_ROOT + PATH_SEPARATOR)
+                          || deviceID.getTableName().equals(PATH_ROOT))
+                      // Tree model
+                      || treePattern.mayOverlapWithDevice(deviceID));
     } catch (final Exception e) {
       LOGGER.warn(
           "Pipe {}: failed to get devices from TsFile {}, extract it anyway",

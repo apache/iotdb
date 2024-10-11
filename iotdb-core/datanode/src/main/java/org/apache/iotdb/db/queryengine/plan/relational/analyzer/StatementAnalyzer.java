@@ -71,6 +71,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupBy;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingElement;
@@ -86,6 +87,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinCriteria;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinUsing;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Limit;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NaturalJoin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
@@ -128,6 +130,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Values;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
@@ -178,6 +181,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.Expressio
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractAggregateFunctions;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope.BasisType.TABLE;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.MetadataUtil.createQualifiedObjectName;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isTimestampType;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.FULL;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.INNER;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.LEFT;
@@ -191,6 +195,8 @@ public class StatementAnalyzer {
   private final StatementAnalyzerFactory statementAnalyzerFactory;
 
   private Analysis analysis;
+
+  private boolean hasFillInParentScope = false;
   private final MPPQueryContext queryContext;
 
   private final AccessControl accessControl;
@@ -504,7 +510,12 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitQuery(Query node, Optional<Scope> context) {
       Scope withScope = analyzeWith(node, context);
+      hasFillInParentScope = node.getFill().isPresent() || hasFillInParentScope;
       Scope queryBodyScope = process(node.getQueryBody(), withScope);
+
+      if (node.getFill().isPresent()) {
+        analyzeFill(node.getFill().get(), queryBodyScope);
+      }
 
       List<Expression> orderByExpressions = emptyList();
       if (node.getOrderBy().isPresent()) {
@@ -513,7 +524,8 @@ public class StatementAnalyzer {
 
         if ((queryBodyScope.getOuterQueryParent().isPresent() || !isTopLevel)
             && !node.getLimit().isPresent()
-            && !node.getOffset().isPresent()) {
+            && !node.getOffset().isPresent()
+            && !hasFillInParentScope) {
           // not the root scope and ORDER BY is ineffective
           analysis.markRedundantOrderBy(node.getOrderBy().get());
           warningCollector.add(
@@ -690,6 +702,14 @@ public class StatementAnalyzer {
               });
       withQuery
           .getQuery()
+          .getFill()
+          .ifPresent(
+              orderBy -> {
+                throw new SemanticException(
+                    "immediate FILL clause in recursive query is not supported");
+              });
+      withQuery
+          .getQuery()
           .getOrderBy()
           .ifPresent(
               orderBy -> {
@@ -771,6 +791,7 @@ public class StatementAnalyzer {
       StatementAnalyzer analyzer =
           statementAnalyzerFactory.createStatementAnalyzer(
               analysis, queryContext, sessionContext, warningCollector, CorrelationSupport.ALLOWED);
+      analyzer.hasFillInParentScope = hasFillInParentScope;
       Scope queryScope =
           analyzer.analyze(
               node.getQuery(),
@@ -782,6 +803,7 @@ public class StatementAnalyzer {
     protected Scope visitQuerySpecification(QuerySpecification node, Optional<Scope> scope) {
       // TODO: extract candidate names from SELECT, WHERE, HAVING, GROUP BY and ORDER BY expressions
       // to pass down to analyzeFrom
+      hasFillInParentScope = node.getFill().isPresent() || hasFillInParentScope;
 
       Scope sourceScope = analyzeFrom(node, scope);
 
@@ -794,6 +816,13 @@ public class StatementAnalyzer {
 
       Scope outputScope = computeAndAssignOutputScope(node, scope, sourceScope);
 
+      node.getFill()
+          .ifPresent(
+              fill -> {
+                Scope fillScope = computeAndAssignFillScope(fill, sourceScope, outputScope);
+                analyzeFill(fill, fillScope);
+              });
+
       List<Expression> orderByExpressions = emptyList();
       Optional<Scope> orderByScope = Optional.empty();
       if (node.getOrderBy().isPresent()) {
@@ -804,7 +833,8 @@ public class StatementAnalyzer {
 
         if ((sourceScope.getOuterQueryParent().isPresent() || !isTopLevel)
             && !node.getLimit().isPresent()
-            && !node.getOffset().isPresent()) {
+            && !node.getOffset().isPresent()
+            && !hasFillInParentScope) {
           // not the root scope and ORDER BY is ineffective
           analysis.markRedundantOrderBy(orderBy);
           warningCollector.add(
@@ -1459,6 +1489,18 @@ public class StatementAnalyzer {
       return orderByScope;
     }
 
+    private Scope computeAndAssignFillScope(Fill node, Scope sourceScope, Scope outputScope) {
+      // Fill should "see" both output and FROM fields during initial analysis and
+      // non-aggregation query planning
+      Scope fillScope =
+          Scope.builder()
+              .withParent(sourceScope)
+              .withRelationType(outputScope.getRelationId(), outputScope.getRelationType())
+              .build();
+      analysis.setScope(node, fillScope);
+      return fillScope;
+    }
+
     @Override
     protected Scope visitSubqueryExpression(SubqueryExpression node, Optional<Scope> context) {
       return process(node.getQuery(), context);
@@ -2076,6 +2118,158 @@ public class StatementAnalyzer {
             accessControl,
             sessionContext.getIdentity(),
             ImmutableMultimap.of(field.getOriginTable().get(), field.getOriginColumnName().get()));
+      }
+    }
+
+    private void analyzeFill(Fill node, Scope scope) {
+      Analysis.FillAnalysis fillAnalysis;
+      if (node.getFillMethod() == FillPolicy.PREVIOUS) {
+        FieldReference timeColumn = null;
+        List<FieldReference> groupingKeys = null;
+        if (node.getTimeBound().isPresent() || node.getFillGroupingElements().isPresent()) {
+          timeColumn = getHelperColumn(node, scope, FillPolicy.PREVIOUS);
+          ExpressionAnalyzer.analyzeExpression(
+              metadata,
+              queryContext,
+              sessionContext,
+              statementAnalyzerFactory,
+              accessControl,
+              scope,
+              analysis,
+              timeColumn,
+              WarningCollector.NOOP,
+              correlationSupport);
+
+          groupingKeys = analyzeFillGroup(node, scope, FillPolicy.PREVIOUS);
+        }
+        fillAnalysis =
+            new Analysis.PreviousFillAnalysis(
+                node.getTimeBound().orElse(null), timeColumn, groupingKeys);
+      } else if (node.getFillMethod() == FillPolicy.CONSTANT) {
+        Literal literal = node.getFillValue().get();
+        ExpressionAnalyzer.analyzeExpression(
+            metadata,
+            queryContext,
+            sessionContext,
+            statementAnalyzerFactory,
+            accessControl,
+            scope,
+            analysis,
+            literal,
+            WarningCollector.NOOP,
+            correlationSupport);
+        fillAnalysis = new Analysis.ValueFillAnalysis(literal);
+      } else if (node.getFillMethod() == FillPolicy.LINEAR) {
+        FieldReference helperColumn = getHelperColumn(node, scope, FillPolicy.LINEAR);
+        ExpressionAnalyzer.analyzeExpression(
+            metadata,
+            queryContext,
+            sessionContext,
+            statementAnalyzerFactory,
+            accessControl,
+            scope,
+            analysis,
+            helperColumn,
+            WarningCollector.NOOP,
+            correlationSupport);
+        List<FieldReference> groupingKeys = analyzeFillGroup(node, scope, FillPolicy.LINEAR);
+        fillAnalysis = new Analysis.LinearFillAnalysis(helperColumn, groupingKeys);
+      } else {
+        throw new IllegalArgumentException("Unknown fill method: " + node.getFillMethod());
+      }
+
+      analysis.setFill(node, fillAnalysis);
+    }
+
+    private FieldReference getHelperColumn(Fill node, Scope scope, FillPolicy fillMethod) {
+      FieldReference helperColumn;
+      if (node.getTimeColumnIndex().isPresent()) {
+        helperColumn =
+            getFieldReferenceForTimeColumn(node.getTimeColumnIndex().get(), scope, fillMethod);
+      } else {
+        // if user doesn't specify the index of helper column, we use first column whose data type
+        // is TIMESTAMP instead.
+        int index = -1;
+        for (Field field : scope.getRelationType().getVisibleFields()) {
+          if (isTimestampType(field.getType())) {
+            index = scope.getRelationType().indexOf(field);
+            break;
+          }
+        }
+        if (index == -1) {
+          throw new SemanticException(
+              String.format(
+                  "Cannot infer TIME_COLUMN for %s FILL, there exists no column whose type is TIMESTAMP",
+                  fillMethod.name()));
+        }
+        helperColumn = new FieldReference(index);
+      }
+      return helperColumn;
+    }
+
+    private List<FieldReference> analyzeFillGroup(Fill node, Scope scope, FillPolicy fillMethod) {
+      if (node.getFillGroupingElements().isPresent()) {
+        ImmutableList.Builder<FieldReference> groupingFieldsBuilder = ImmutableList.builder();
+        for (LongLiteral index : node.getFillGroupingElements().get()) {
+          FieldReference element = getFieldReferenceForFillGroup(index, scope, fillMethod);
+          groupingFieldsBuilder.add(element);
+          ExpressionAnalyzer.analyzeExpression(
+              metadata,
+              queryContext,
+              sessionContext,
+              statementAnalyzerFactory,
+              accessControl,
+              scope,
+              analysis,
+              element,
+              WarningCollector.NOOP,
+              correlationSupport);
+        }
+        return groupingFieldsBuilder.build();
+      } else {
+        return null;
+      }
+    }
+
+    private FieldReference getFieldReferenceForTimeColumn(
+        LongLiteral index, Scope scope, FillPolicy fillMethod) {
+      long ordinal = index.getParsedValue();
+      if (ordinal < 1 || ordinal > scope.getRelationType().getVisibleFieldCount()) {
+        throw new SemanticException(
+            String.format(
+                "%s FILL TIME_COLUMN position %s is not in select list",
+                fillMethod.name(), ordinal));
+      } else if (!isTimestampType(
+          scope.getRelationType().getFieldByIndex((int) ordinal - 1).getType())) {
+        throw new SemanticException(
+            String.format(
+                "Type of TIME_COLUMN for %s FILL should only be TIMESTAMP, but type of the column you specify is %s",
+                fillMethod.name(),
+                scope.getRelationType().getFieldByIndex((int) ordinal - 1).getType()));
+      } else {
+        return new FieldReference(toIntExact(ordinal - 1));
+      }
+    }
+
+    private FieldReference getFieldReferenceForFillGroup(
+        LongLiteral index, Scope scope, FillPolicy fillMethod) {
+      long ordinal = index.getParsedValue();
+      if (ordinal < 1 || ordinal > scope.getRelationType().getVisibleFieldCount()) {
+        throw new SemanticException(
+            String.format(
+                "%s FILL FILL_GROUP position %s is not in select list",
+                fillMethod.name(), ordinal));
+      } else if (!scope
+          .getRelationType()
+          .getFieldByIndex((int) ordinal - 1)
+          .getType()
+          .isOrderable()) {
+        throw new SemanticException(
+            String.format(
+                "Type %s is not orderable, and therefore cannot be used in FILL_GROUP: %s",
+                scope.getRelationType().getFieldByIndex((int) ordinal - 1).getType(), index));
+      } else {
+        return new FieldReference(toIntExact(ordinal - 1));
       }
     }
 

@@ -193,6 +193,7 @@ public class SealedTsFileRecoverPerformerTest {
     reader.close();
     // check .resource file in memory
     assertEquals(1, tsFileResource.getStartTime(DEVICE1_NAME));
+
     assertEquals(2, tsFileResource.getEndTime(DEVICE1_NAME));
     assertEquals(3, tsFileResource.getStartTime(DEVICE2_NAME));
     assertEquals(4, tsFileResource.getEndTime(DEVICE2_NAME));

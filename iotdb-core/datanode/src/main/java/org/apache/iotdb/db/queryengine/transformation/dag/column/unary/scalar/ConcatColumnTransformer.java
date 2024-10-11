@@ -44,15 +44,30 @@ public class ConcatColumnTransformer extends UnaryColumnTransformer {
   @Override
   protected void doTransform(Column column, ColumnBuilder columnBuilder) {
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
-      if (!column.isNull(i)) {
-        if (isBehind) {
-          columnBuilder.writeBinary(new Binary(concat(column.getBinary(i).getValues(), value)));
-        } else {
-          columnBuilder.writeBinary(new Binary(concat(value, column.getBinary(i).getValues())));
-        }
+      transform(column, columnBuilder, i);
+    }
+  }
+
+  @Override
+  protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (selection[i]) {
+        transform(column, columnBuilder, i);
       } else {
-        columnBuilder.writeBinary(new Binary(value));
+        columnBuilder.appendNull();
       }
+    }
+  }
+
+  private void transform(Column column, ColumnBuilder columnBuilder, int i) {
+    if (!column.isNull(i)) {
+      if (isBehind) {
+        columnBuilder.writeBinary(new Binary(concat(column.getBinary(i).getValues(), value)));
+      } else {
+        columnBuilder.writeBinary(new Binary(concat(value, column.getBinary(i).getValues())));
+      }
+    } else {
+      columnBuilder.writeBinary(new Binary(value));
     }
   }
 
