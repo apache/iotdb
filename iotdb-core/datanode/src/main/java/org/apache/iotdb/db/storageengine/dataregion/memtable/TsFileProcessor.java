@@ -106,6 +106,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -1187,6 +1188,31 @@ public class TsFileProcessor {
     long fileSize = tsFileResource.getTsFileSize();
     long fileSizeThreshold = sequence ? config.getSeqTsFileSize() : config.getUnSeqTsFileSize();
     return fileSize >= fileSizeThreshold;
+  }
+
+  @TestOnly
+  public void syncClose() throws ExecutionException {
+    logger.info(
+        "Sync close file: {}, will firstly async close it",
+        tsFileResource.getTsFile().getAbsolutePath());
+    if (shouldClose) {
+      return;
+    }
+    try {
+      asyncClose().get();
+      logger.info("Start to wait until file {} is closed", tsFileResource);
+      while (!flushingMemTables.isEmpty()) {
+        TimeUnit.MILLISECONDS.sleep(10);
+      }
+    } catch (InterruptedException e) {
+      logger.error(
+          "{}: {} wait close interrupted",
+          storageGroupName,
+          tsFileResource.getTsFile().getName(),
+          e);
+      Thread.currentThread().interrupt();
+    }
+    logger.info("File {} is closed synchronously", tsFileResource.getTsFile().getAbsolutePath());
   }
 
   /** async close one tsfile, register and close it by another thread */

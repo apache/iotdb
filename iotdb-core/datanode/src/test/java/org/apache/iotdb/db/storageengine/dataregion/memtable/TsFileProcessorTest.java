@@ -179,7 +179,7 @@ public class TsFileProcessorTest {
     processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
     assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk(fullPath).isEmpty());
     assertEquals(1, tsfileResourcesForQuery.get(0).getChunkMetadataList(fullPath).size());
-    processor.asyncClose().get();
+    processor.syncClose();
 
     try (TsFileSequenceReader reader = new TsFileSequenceReader(filePath);
         TsFileReader readTsFile = new TsFileReader(reader)) {
@@ -257,7 +257,7 @@ public class TsFileProcessorTest {
     processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
     assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk(fullPath).isEmpty());
     assertEquals(3, tsfileResourcesForQuery.get(0).getChunkMetadataList(fullPath).size());
-    processor.asyncClose().get();
+    processor.syncClose();
 
     try (TsFileSequenceReader reader = new TsFileSequenceReader(filePath);
         TsFileReader readTsFile = new TsFileReader(reader)) {
@@ -359,7 +359,7 @@ public class TsFileProcessorTest {
     }
     restorableTsFileIOWriter.close();
     logger.info("syncClose..");
-    processor.asyncClose().get();
+    processor.syncClose();
     // we need to close the tsfile writer first and then reopen it.
   }
 
@@ -406,7 +406,7 @@ public class TsFileProcessorTest {
     processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
     assertFalse(tsfileResourcesForQuery.isEmpty());
     assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk(fullPath).isEmpty());
-    processor.asyncClose().get();
+    processor.syncClose();
   }
 
   @Test
@@ -911,8 +911,7 @@ public class TsFileProcessorTest {
     }
 
     // close synchronously
-    processor.asyncClose().get();
-    ;
+    processor.syncClose();
 
     assertTrue(processor.getTsFileResource().isClosed());
   }
