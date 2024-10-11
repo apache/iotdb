@@ -27,6 +27,8 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventParser;
+import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTablePatternParser;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTreePatternParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
@@ -53,7 +55,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   private PipeTabletMemoryBlock allocatedMemoryBlock;
 
-  private TabletInsertionEventTreePatternParser eventParser;
+  private TabletInsertionEventParser eventParser;
 
   private volatile ProgressIndex overridingProgressIndex;
 
@@ -266,23 +268,13 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   @Override
   public Iterable<TabletInsertionEvent> processRowByRow(
       final BiConsumer<Row, RowCollector> consumer) {
-    if (eventParser == null) {
-      eventParser =
-          new TabletInsertionEventTreePatternParser(
-              pipeTaskMeta, this, tablet, isAligned, treePattern);
-    }
-    return eventParser.processRowByRow(consumer);
+    return initEventParser().processRowByRow(consumer);
   }
 
   @Override
   public Iterable<TabletInsertionEvent> processTablet(
       final BiConsumer<Tablet, RowCollector> consumer) {
-    if (eventParser == null) {
-      eventParser =
-          new TabletInsertionEventTreePatternParser(
-              pipeTaskMeta, this, tablet, isAligned, treePattern);
-    }
-    return eventParser.processTablet(consumer);
+    return initEventParser().processTablet(consumer);
   }
 
   /////////////////////////// convertToTablet ///////////////////////////
@@ -295,14 +287,21 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     if (!shouldParseTimeOrPattern()) {
       return tablet;
     }
+    return initEventParser().convertToTablet();
+  }
 
-    // if notNullPattern is not "root", we need to convert the tablet
+  /////////////////////////// event parser ///////////////////////////
+
+  private TabletInsertionEventParser initEventParser() {
     if (eventParser == null) {
       eventParser =
-          new TabletInsertionEventTreePatternParser(
-              pipeTaskMeta, this, tablet, isAligned, treePattern);
+          tablet.getDeviceId().startsWith("root.")
+              ? new TabletInsertionEventTreePatternParser(
+                  pipeTaskMeta, this, tablet, isAligned, treePattern)
+              : new TabletInsertionEventTablePatternParser(
+                  pipeTaskMeta, this, tablet, isAligned, tablePattern);
     }
-    return eventParser.convertToTablet();
+    return eventParser;
   }
 
   public long count() {
