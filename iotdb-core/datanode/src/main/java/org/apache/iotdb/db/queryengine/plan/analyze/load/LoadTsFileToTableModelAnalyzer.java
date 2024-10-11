@@ -148,6 +148,11 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
         return analysis;
       }
     }
+
+    LOGGER.info("Load - Analysis Stage: all tsfiles have been analyzed.");
+
+    // data partition will be queried in the scheduler
+    setRealStatement(analysis);
     return analysis;
   }
 
