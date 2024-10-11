@@ -55,7 +55,7 @@ public class TableDeviceCacheAttributeGuard {
       longSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
       applyQueue.add(longSet);
     } else {
-      // The elements must be Set<Long> or HashSet<byte[]>
+      // The elements must be SetFromMap<Long> or HashSet<byte[]>
       longSet = (Set<Long>) lastSet;
     }
     longSet.add(queryId);
