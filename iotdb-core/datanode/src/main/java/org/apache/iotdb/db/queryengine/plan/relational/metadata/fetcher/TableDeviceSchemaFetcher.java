@@ -388,7 +388,10 @@ public class TableDeviceSchemaFetcher {
 
     final long queryId = SessionManager.getInstance().requestQueryId();
     // For the correctness of attribute remote update
-    final Set<Long> queryIdSet = attributeGuard.addFetchQueryId(queryId);
+    Set<Long> queryIdSet = null;
+    if (Objects.nonNull(statement.getPartitionKeyList())) {
+      queryIdSet = attributeGuard.addFetchQueryId(queryId);
+    }
     final ExecutionResult executionResult;
     try {
       executionResult =
@@ -405,8 +408,10 @@ public class TableDeviceSchemaFetcher {
               LocalExecutionPlanner.getInstance().metadata,
               config.getQueryTimeoutThreshold());
     } finally {
-      queryIdSet.remove(queryId);
-      attributeGuard.tryUpdateCache();
+      if (Objects.nonNull(queryIdSet)) {
+        queryIdSet.remove(queryId);
+        attributeGuard.tryUpdateCache();
+      }
     }
     if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new RuntimeException(
