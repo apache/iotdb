@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.DeviceAttributeCacheUpdater;
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateContainer;
 import org.apache.iotdb.mpp.rpc.thrift.TAttributeUpdateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaRegionAttributeInfo;
 
@@ -90,7 +92,9 @@ public class TableDeviceCacheAttributeGuard {
     while (!applyQueue.isEmpty()) {
       final Set<?> firstElement = applyQueue.peek();
       if (firstElement instanceof HashSet) {
-        applyUpdateMessage(firstElement);
+        for (final Object element : firstElement) {
+          handleContainer(DeviceAttributeCacheUpdater.getContainer((byte[]) element));
+        }
         applyQueue.removeFirst();
       } else if (firstElement.isEmpty()) {
         applyQueue.removeFirst();
@@ -100,9 +104,7 @@ public class TableDeviceCacheAttributeGuard {
     }
   }
 
-  private void applyUpdateMessage(final Set<?> updateContainerBytes) {
-    for (final Object element : updateContainerBytes) {
-      final byte[] containerByte = (byte[]) element;
-    }
+  public void handleContainer(final UpdateContainer container) {
+    // TODO:
   }
 }
