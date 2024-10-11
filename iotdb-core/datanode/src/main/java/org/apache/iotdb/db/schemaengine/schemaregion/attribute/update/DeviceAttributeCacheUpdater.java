@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceCacheAttributeGuard;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
@@ -350,7 +351,10 @@ public class DeviceAttributeCacheUpdater {
       if (config.getDataNodeId() == location.getDataNodeId()
           && config.getInternalAddress().equals(location.getInternalEndPoint().getIp())
           && config.getInternalPort() == location.getInternalEndPoint().getPort()) {
-        TableDeviceSchemaFetcher.getInstance().getAttributeGuard().handleContainer(container);
+        final TableDeviceCacheAttributeGuard guard =
+            TableDeviceSchemaFetcher.getInstance().getAttributeGuard();
+        guard.setVersion(regionStatistics.getSchemaRegionId(), version.get());
+        guard.handleContainer(container);
       }
 
       attributeUpdateMap.put(location, container);

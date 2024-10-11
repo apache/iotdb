@@ -64,7 +64,7 @@ public class TableDeviceCacheAttributeGuard {
     return longSet;
   }
 
-  public void handleAttributeUpdate(final TAttributeUpdateReq updateReq) {
+  public synchronized void handleAttributeUpdate(final TAttributeUpdateReq updateReq) {
     // Trim the schema regions with lower or equal version
     // or with this node restarted before fetching
     updateReq
@@ -102,6 +102,13 @@ public class TableDeviceCacheAttributeGuard {
         break;
       }
     }
+  }
+
+  // This must be synchronized with "handleUpdate" to avoid unordered execution
+  // with region migration's "handleContainer" and stale "handleUpdate" logic
+  public synchronized void setVersion(final int schemaRegionId, final long newVersion) {
+    fetchedSchemaRegionIds2LargestVersionMap.computeIfPresent(
+        schemaRegionId, (id, version) -> Math.max(version, newVersion));
   }
 
   public void handleContainer(final UpdateContainer container) {
