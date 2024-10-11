@@ -104,6 +104,8 @@ public abstract class TabletInsertionEventParser {
     shouldReport = true;
   }
 
+  protected abstract Object getPattern();
+
   //////////////////////////// parse ////////////////////////////
 
   protected void parse(final InsertRowNode insertRowNode) {
@@ -271,8 +273,6 @@ public abstract class TabletInsertionEventParser {
           sourceEvent);
     }
   }
-
-  protected abstract Object getPattern();
 
   protected void parse(final Tablet tablet, final boolean isAligned) {
     final int originColumnSize = tablet.getSchemas().size();
