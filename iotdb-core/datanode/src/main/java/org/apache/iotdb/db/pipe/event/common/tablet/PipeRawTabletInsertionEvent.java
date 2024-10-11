@@ -35,7 +35,6 @@ import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
-import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.write.record.Tablet;
 
 import java.util.Objects;
@@ -245,9 +244,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   @Override
   public boolean mayEventPathsOverlappedWithPattern() {
-    final String deviceId = getDeviceId();
-    return Objects.isNull(deviceId)
-        || treePattern.mayOverlapWithDevice(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId));
+    return sourceEvent == null || sourceEvent.mayEventPathsOverlappedWithPattern();
   }
 
   public void markAsNeedToReport() {

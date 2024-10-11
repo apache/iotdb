@@ -24,4 +24,6 @@ import org.apache.tsfile.block.column.Column;
 public interface IFill {
 
   Column fill(Column timeColumn, Column valueColumn);
+
+  void reset();
 }
