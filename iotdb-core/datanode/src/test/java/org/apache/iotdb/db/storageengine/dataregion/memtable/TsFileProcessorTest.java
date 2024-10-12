@@ -43,6 +43,7 @@ import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -118,7 +119,12 @@ public class TsFileProcessorTest {
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
-    EnvironmentUtils.cleanDir(String.format(TestConstant.TEST_TSFILE_PATH, "root.vehicle", 0, 0));
+    File file = new File(filePath);
+    File resource = new File(filePath + ".resource");
+    FileUtils.delete(file);
+    if (resource.exists()) {
+      FileUtils.delete(resource);
+    }
     config.setAvgSeriesPointNumberThreshold(defaultAvgSeriesPointNumberThreshold);
     config.setTargetChunkSize(defaultTargetChunkSize);
   }
