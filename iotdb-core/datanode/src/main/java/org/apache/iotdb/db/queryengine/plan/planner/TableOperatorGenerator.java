@@ -128,6 +128,7 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.BlobType;
 import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -169,6 +170,8 @@ import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableBuiltinAggregationFunction.getAggregationTypeByFuncName;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST;
 
 /** This Visitor is responsible for transferring Table PlanNode Tree to Table Operator Tree. */
 public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecutionPlanContext> {
@@ -1278,11 +1281,34 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     List<String> measurementColumnNames = new ArrayList<>();
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
 
+    List<ColumnSchema> groupingKeySchemas = null;
+    int[] groupingKeyIndex = null;
+    if (!node.getGroupingKeys().isEmpty()) {
+      groupingKeySchemas = new ArrayList<>(node.getGroupingKeys().size());
+      groupingKeyIndex = new int[node.getGroupingKeys().size()];
+      for (int i = 0; i < node.getGroupingKeys().size(); i++) {
+        Symbol groupingKey = node.getGroupingKeys().get(i);
+
+        checkArgument(
+            idAndAttributeColumnsIndexMap.containsKey(groupingKey),
+            "grouping key must be ID or Attribute in AggregationTableScan");
+        groupingKeySchemas.add(columnSchemaMap.get(groupingKey));
+        groupingKeyIndex[i] = idAndAttributeColumnsIndexMap.get(groupingKey);
+      }
+    }
+
     // TODO test aggregation function which has more than one arguements
     for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
       idx++;
       Symbol symbol = Symbol.from(entry.getValue().getArguments().get(0));
       ColumnSchema schema = requireNonNull(columnSchemaMap.get(symbol), symbol + " is null");
+
+      String funcName = entry.getValue().getResolvedFunction().getSignature().getName();
+      if (schema.getType().equals(BlobType.BLOB)
+          && (FIRST.equals(funcName) || LAST.equals(funcName))) {
+        // first/last aggregation with BLOB type can not use statistics
+        canUseStatistic = false;
+      }
 
       switch (schema.getColumnCategory()) {
         case ID:
@@ -1383,6 +1409,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber(),
             measurementColumnCount,
             aggregators,
+            groupingKeySchemas,
+            groupingKeyIndex,
             timeRangeIterator,
             false,
             null,

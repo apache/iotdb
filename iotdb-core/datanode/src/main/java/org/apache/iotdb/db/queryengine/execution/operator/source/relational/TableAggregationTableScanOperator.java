@@ -48,11 +48,13 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -69,6 +71,9 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
       RamUsageEstimator.shallowSizeOfInstance(TableAggregationTableScanOperator.class);
 
   private final List<TableAggregator> tableAggregators;
+
+  private final List<ColumnSchema> groupingKeySchemas;
+  private final int[] groupingKeyIndex;
 
   public static final LongColumn TIME_COLUMN_TEMPLATE =
       new LongColumn(1, Optional.empty(), new long[] {0});
@@ -113,6 +118,8 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
       int maxTsBlockLineNum,
       int subSensorSize,
       List<TableAggregator> tableAggregators,
+      List<ColumnSchema> groupingKeySchemas,
+      int[] groupingKeyIndex,
       ITimeRangeIterator timeRangeIterator,
       boolean ascending,
       GroupByTimeParameter groupByTimeParameter,
@@ -134,6 +141,8 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
         canUseStatistics);
 
     this.tableAggregators = tableAggregators;
+    this.groupingKeySchemas = groupingKeySchemas;
+    this.groupingKeyIndex = groupingKeyIndex;
 
     this.sourceId = sourceId;
     this.operatorContext = context;
@@ -184,7 +193,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
       // calculate aggregation result on current time window
       // Keep curTimeRange if the calculation of this timeRange is not done
       if (calculateAggregationResultForCurrentTimeRange()) {
-        updateResultTsBlock();
+        // updateResultTsBlock();
         curTimeRange = null;
       }
     }
@@ -279,6 +288,10 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
           || seriesScanUtil.hasNextFile()) {
         return false;
       } else {
+        updateResultTsBlock();
+        for (TableAggregator aggregator : tableAggregators) {
+          aggregator.reset();
+        }
         currentDeviceIndex++;
       }
       if (currentDeviceIndex < deviceCount) {
@@ -590,16 +603,51 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
 
   @Override
   protected List<TSDataType> getResultDataTypes() {
-    return tableAggregators.stream().map(TableAggregator::getType).collect(Collectors.toList());
+    List<TSDataType> resultDataTypes =
+        new ArrayList<>(
+            (groupingKeyIndex != null ? groupingKeyIndex.length : 0) + tableAggregators.size());
+    if (groupingKeyIndex != null) {
+      for (int i = 0; i < groupingKeyIndex.length; i++) {
+        resultDataTypes.add(TSDataType.TEXT);
+      }
+    }
+
+    for (TableAggregator aggregator : tableAggregators) {
+      resultDataTypes.add(aggregator.getType());
+    }
+
+    return resultDataTypes;
   }
 
   /** Append a row of aggregation results to the result tsBlock. */
   public void appendAggregationResult(
       TsBlockBuilder tsBlockBuilder, List<? extends TableAggregator> aggregators) {
     ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
-    for (int i = 0; i < aggregators.size(); i++) {
-      aggregators.get(i).evaluate(columnBuilders[i]);
+
+    if (groupingKeyIndex != null) {
+      for (int i = 0; i < groupingKeyIndex.length; i++) {
+        if (TsTableColumnCategory.ID == groupingKeySchemas.get(i).getColumnCategory()) {
+          columnBuilders[i].writeBinary(
+              (Binary)
+                  deviceEntries.get(currentDeviceIndex).getNthSegment(groupingKeyIndex[i] + 1));
+        } else {
+          columnBuilders[i].writeBinary(
+              new Binary(
+                  deviceEntries
+                      .get(currentDeviceIndex)
+                      .getAttributeColumnValues()
+                      .get(groupingKeyIndex[i])
+                      .getBytes()));
+        }
+      }
     }
+
+    int groupKeyLength = groupingKeyIndex == null ? 0 : groupingKeyIndex.length;
+
+    for (int i = 0; i < aggregators.size(); i++) {
+      aggregators.get(groupKeyLength + i).evaluate(columnBuilders[groupKeyLength + i]);
+    }
+
     tsBlockBuilder.declarePosition();
   }
 }

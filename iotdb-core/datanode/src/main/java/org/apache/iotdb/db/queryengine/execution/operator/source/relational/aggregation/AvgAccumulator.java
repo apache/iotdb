@@ -91,14 +91,19 @@ public class AvgAccumulator implements TableAccumulator {
     checkArgument(
         argument instanceof BinaryColumn,
         "intermediate input and output of Avg should be BinaryColumn");
-    if (argument.isNull(0)) {
-      return;
+
+    for (int i = 0; i < argument.getPositionCount(); i++) {
+      if (argument.isNull(i)) {
+        continue;
+      }
+
+      initResult = true;
+      long midCountValue = BytesUtils.bytesToLong(argument.getBinary(i).getValues(), Long.BYTES);
+      double midSumValue = BytesUtils.bytesToDouble(argument.getBinary(i).getValues(), Long.BYTES);
+      countValue += midCountValue;
+      sumValue += midSumValue;
     }
-    initResult = true;
-    long midCountValue = BytesUtils.bytesToLong(argument.getBinary(0).getValues(), Long.BYTES);
-    double midSumValue = BytesUtils.bytesToDouble(argument.getBinary(0).getValues(), Long.BYTES);
-    countValue += midCountValue;
-    sumValue += midSumValue;
+
     if (countValue == 0) {
       initResult = false;
     }

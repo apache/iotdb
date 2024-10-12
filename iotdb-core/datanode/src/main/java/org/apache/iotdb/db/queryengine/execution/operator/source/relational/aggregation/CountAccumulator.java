@@ -57,11 +57,12 @@ public class CountAccumulator implements TableAccumulator {
 
   @Override
   public void addIntermediate(Column argument) {
-    checkArgument(argument.getPositionCount() == 1, "partialResult should always be one line");
-    if (argument.isNull(0)) {
-      return;
+    for (int i = 0; i < argument.getPositionCount(); i++) {
+      if (argument.isNull(i)) {
+        continue;
+      }
+      countState += argument.getLong(i);
     }
-    countState += argument.getLong(0);
   }
 
   @Override
