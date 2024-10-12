@@ -373,7 +373,7 @@ public class TableDeviceSchemaCache {
                 entry.setMeasurementSchema(
                         database2Use, isAligned, measurements, measurementSchemas)
                     + entry.tryUpdateLastCache(measurements, timeValuePairs),
-        true);
+        isQuery);
   }
 
   // WARNING: This is not guaranteed to affect table model's cache
