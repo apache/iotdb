@@ -31,7 +31,7 @@ public class SqlConstant {
   private static final String[] SINGLE_ROOT_ARRAY = {"root", "**"};
   private static final String[] SINGLE_TIME_ARRAY = {"time"};
   public static final PartialPath TIME_PATH = new PartialPath(SINGLE_TIME_ARRAY);
-  public static final String RESERVED_TIME = "time";
+  public static final String TABLE_TIME_COLUMN_NAME = "time";
   public static final String NOW_FUNC = "now()";
 
   public static final String ROOT = "root";
