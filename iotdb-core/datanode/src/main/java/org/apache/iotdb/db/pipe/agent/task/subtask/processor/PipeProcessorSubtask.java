@@ -57,14 +57,14 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
   private static final AtomicReference<PipeProcessorSubtaskWorkerManager> subtaskWorkerManager =
       new AtomicReference<>();
 
+  // Record these variables to provide corresponding value to tag key of monitoring metrics
+  private final String pipeName;
+  private final String pipeNameWithCreationTime; // cache for better performance
+  private final int regionId;
+
   private final EventSupplier inputEventSupplier;
   private final PipeProcessor pipeProcessor;
   private final PipeEventCollector outputEventCollector;
-
-  // Record these variables to provide corresponding value to tag key of monitoring metrics
-  private final long creationTime;
-  private final String pipeName;
-  private final int regionId;
 
   // This variable is used to distinguish between old and new subtasks before and after stuck
   // restart.
@@ -72,20 +72,20 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
 
   public PipeProcessorSubtask(
       final String taskID,
-      final long creationTime,
       final String pipeName,
+      final long creationTime,
       final int regionId,
       final EventSupplier inputEventSupplier,
       final PipeProcessor pipeProcessor,
       final PipeEventCollector outputEventCollector) {
     super(taskID, creationTime);
-    this.subtaskCreationTime = System.currentTimeMillis();
-    this.creationTime = creationTime;
     this.pipeName = pipeName;
+    this.pipeNameWithCreationTime = pipeName + "_" + creationTime;
     this.regionId = regionId;
     this.inputEventSupplier = inputEventSupplier;
     this.pipeProcessor = pipeProcessor;
     this.outputEventCollector = outputEventCollector;
+    this.subtaskCreationTime = System.currentTimeMillis();
 
     // Only register dataRegions
     if (StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))) {
@@ -140,13 +140,13 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
           PipeProcessorMetrics.getInstance().markTabletEvent(taskID);
           PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
               .markCollectInvocationCount(
-                  pipeName + "_" + creationTime, outputEventCollector.getCollectInvocationCount());
+                  pipeNameWithCreationTime, outputEventCollector.getCollectInvocationCount());
         } else if (event instanceof TsFileInsertionEvent) {
           pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
           PipeProcessorMetrics.getInstance().markTsFileEvent(taskID);
           PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
               .markCollectInvocationCount(
-                  pipeName + "_" + creationTime, outputEventCollector.getCollectInvocationCount());
+                  pipeNameWithCreationTime, outputEventCollector.getCollectInvocationCount());
         } else if (event instanceof PipeHeartbeatEvent) {
           pipeProcessor.process(event, outputEventCollector);
           ((PipeHeartbeatEvent) event).onProcessed();
