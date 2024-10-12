@@ -1201,15 +1201,10 @@ public class TsFileProcessor {
     try {
       asyncClose().get();
       logger.info("Start to wait until file {} is closed", tsFileResource);
-      while (!flushingMemTables.isEmpty()) {
+      while (writer != null) {
         TimeUnit.MILLISECONDS.sleep(10);
       }
     } catch (InterruptedException e) {
-      logger.error(
-          "{}: {} wait close interrupted",
-          storageGroupName,
-          tsFileResource.getTsFile().getName(),
-          e);
       Thread.currentThread().interrupt();
     }
     logger.info("File {} is closed synchronously", tsFileResource.getTsFile().getAbsolutePath());

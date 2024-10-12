@@ -121,11 +121,7 @@ public class TsFileProcessorTest {
 
   @Test
   public void testWriteAndFlush()
-      throws IOException,
-          WriteProcessException,
-          MetadataException,
-          ExecutionException,
-          InterruptedException {
+      throws IOException, WriteProcessException, MetadataException, ExecutionException {
     logger.info("testWriteAndFlush begin..");
     processor =
         new TsFileProcessor(
@@ -199,11 +195,7 @@ public class TsFileProcessorTest {
 
   @Test
   public void testFlushMultiChunk()
-      throws IOException,
-          WriteProcessException,
-          MetadataException,
-          ExecutionException,
-          InterruptedException {
+      throws IOException, WriteProcessException, MetadataException, ExecutionException {
     config.setAvgSeriesPointNumberThreshold(40);
     processor =
         new TsFileProcessor(
@@ -277,11 +269,7 @@ public class TsFileProcessorTest {
 
   @Test
   public void testWriteAndRestoreMetadata()
-      throws IOException,
-          WriteProcessException,
-          MetadataException,
-          ExecutionException,
-          InterruptedException {
+      throws IOException, WriteProcessException, MetadataException, ExecutionException {
     logger.info("testWriteAndRestoreMetadata begin..");
     processor =
         new TsFileProcessor(
@@ -365,11 +353,7 @@ public class TsFileProcessorTest {
 
   @Test
   public void testMultiFlush()
-      throws IOException,
-          WriteProcessException,
-          MetadataException,
-          ExecutionException,
-          InterruptedException {
+      throws IOException, WriteProcessException, MetadataException, ExecutionException {
     processor =
         new TsFileProcessor(
             storageGroup,
@@ -860,11 +844,7 @@ public class TsFileProcessorTest {
 
   @Test
   public void testWriteAndClose()
-      throws IOException,
-          WriteProcessException,
-          MetadataException,
-          ExecutionException,
-          InterruptedException {
+      throws IOException, WriteProcessException, MetadataException, ExecutionException {
     processor =
         new TsFileProcessor(
             storageGroup,
