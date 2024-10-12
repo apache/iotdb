@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.client.request.AsyncRequestRPCHandler;
 import org.apache.iotdb.commons.client.request.DataNodeInternalServiceRequestManager;
 import org.apache.iotdb.commons.client.request.TestConnectionUtils;
+import org.apache.iotdb.commons.exception.UncheckedStartupException;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.CheckTimeSeriesExistenceRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.CountPathsUsingTemplateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeAsyncRequestRPCHandler;
@@ -384,7 +385,7 @@ public class CnToDnInternalServiceAsyncRequestManager
             .filter(type -> !actionMap.containsKey(type))
             .collect(Collectors.toList());
     if (!lackList.isEmpty()) {
-      LOGGER.error("These request types should be added to actionMap: {}", lackList);
+      throw new UncheckedStartupException(String.format("These request types should be added to actionMap: %s", lackList));
     }
   }
 

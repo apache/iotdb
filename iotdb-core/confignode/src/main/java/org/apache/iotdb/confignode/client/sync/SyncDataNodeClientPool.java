@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.exception.UncheckedStartupException;
 import org.apache.iotdb.mpp.rpc.thrift.TCleanDataNodeCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
@@ -142,7 +143,7 @@ public class SyncDataNodeClientPool {
             .filter(type -> !actionMap.containsKey(type))
             .collect(Collectors.toList());
     if (!lackList.isEmpty()) {
-      LOGGER.error("These request types should be added to actionMap: {}", lackList);
+      throw new UncheckedStartupException(String.format("These request types should be added to actionMap: %s", lackList));
     }
   }
 
