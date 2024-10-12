@@ -394,6 +394,13 @@ public class TsFileProcessorTest {
       processor.insert(rowNode, new long[4]);
     }
 
+    // add another point time = 1, value = 1
+    TSRecord record = new TSRecord(1, deviceId);
+    record.addTuple(DataPoint.getDataPoint(dataType, measurementId, "1"));
+    InsertRowNode rowNode = buildInsertRowNodeByTSRecord(record);
+    rowNode.setAligned(true);
+    processor.insert(rowNode, new long[4]);
+
     // query data in memory
     tsfileResourcesForQuery.clear();
     processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
@@ -476,6 +483,12 @@ public class TsFileProcessorTest {
       rowNode.setAligned(true);
       processor.insert(rowNode, new long[4]);
     }
+    // add another point time = 1, value = "1"
+    TSRecord record = new TSRecord(1, deviceId);
+    record.addTuple(DataPoint.getDataPoint(TSDataType.TEXT, measurementId, "1"));
+    InsertRowNode rowNode = buildInsertRowNodeByTSRecord(record);
+    rowNode.setAligned(true);
+    processor.insert(rowNode, new long[4]);
 
     // query data in memory
     tsfileResourcesForQuery.clear();
