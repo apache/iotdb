@@ -414,6 +414,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
             .map(
                 container ->
                     new PipeRawTabletInsertionEvent(
+                        getRawIsTableModelEvent(),
                         getTreeModelDatabaseName(),
                         container.convertToTablet(),
                         container.isAligned(),
