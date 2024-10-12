@@ -113,9 +113,8 @@ public class TableDeviceSchemaFetcher {
 
     // For the correctness of attribute remote update
     final Set<Long> queryIdSet = attributeGuard.addFetchQueryId(queryId);
-    final ExecutionResult executionResult;
     try {
-      executionResult =
+      final ExecutionResult executionResult =
           coordinator.executeForTableModel(
               statement,
               relationSqlParser,
@@ -126,22 +125,18 @@ public class TableDeviceSchemaFetcher {
               "Fetch Device for insert",
               LocalExecutionPlanner.getInstance().metadata,
               config.getQueryTimeoutThreshold());
-    } finally {
-      queryIdSet.remove(queryId);
-      attributeGuard.tryUpdateCache();
-    }
-    if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new RuntimeException(
-          new IoTDBException(
-              executionResult.status.getMessage(), executionResult.status.getCode()));
-    }
 
-    final List<ColumnHeader> columnHeaderList =
-        coordinator.getQueryExecution(queryId).getDatasetHeader().getColumnHeaders();
-    final int idLength = DataNodeTableCache.getInstance().getTable(database, table).getIdNums();
-    final Map<TableDeviceId, ConcurrentMap<String, String>> fetchedDeviceSchema = new HashMap<>();
+      if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new RuntimeException(
+            new IoTDBException(
+                executionResult.status.getMessage(), executionResult.status.getCode()));
+      }
 
-    try {
+      final List<ColumnHeader> columnHeaderList =
+          coordinator.getQueryExecution(queryId).getDatasetHeader().getColumnHeaders();
+      final int idLength = DataNodeTableCache.getInstance().getTable(database, table).getIdNums();
+      final Map<TableDeviceId, ConcurrentMap<String, String>> fetchedDeviceSchema = new HashMap<>();
+
       while (coordinator.getQueryExecution(queryId).hasNextResult()) {
         final Optional<TsBlock> tsBlock;
         try {
@@ -165,13 +160,15 @@ public class TableDeviceSchemaFetcher {
               new TableDeviceId((String[]) truncateTailingNull(nodes)), attributeMap);
         }
       }
+      return fetchedDeviceSchema;
     } catch (final Throwable throwable) {
       t = throwable;
       throw throwable;
     } finally {
+      queryIdSet.remove(queryId);
+      attributeGuard.tryUpdateCache();
       coordinator.cleanupQueryExecution(queryId, null, t);
     }
-    return fetchedDeviceSchema;
   }
 
   public List<DeviceEntry> fetchDeviceSchemaForDataQuery(
@@ -392,9 +389,9 @@ public class TableDeviceSchemaFetcher {
     if (Objects.nonNull(statement.getPartitionKeyList())) {
       queryIdSet = attributeGuard.addFetchQueryId(queryId);
     }
-    final ExecutionResult executionResult;
+
     try {
-      executionResult =
+      final ExecutionResult executionResult =
           coordinator.executeForTableModel(
               statement,
               relationSqlParser,
@@ -407,23 +404,18 @@ public class TableDeviceSchemaFetcher {
                   mppQueryContext.getQueryId(), mppQueryContext.getSql()),
               LocalExecutionPlanner.getInstance().metadata,
               config.getQueryTimeoutThreshold());
-    } finally {
-      if (Objects.nonNull(queryIdSet)) {
-        queryIdSet.remove(queryId);
-        attributeGuard.tryUpdateCache();
-      }
-    }
-    if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new RuntimeException(
-          new IoTDBException(
-              executionResult.status.getMessage(), executionResult.status.getCode()));
-    }
 
-    final List<ColumnHeader> columnHeaderList =
-        coordinator.getQueryExecution(queryId).getDatasetHeader().getColumnHeaders();
-    final int idLength = DataNodeTableCache.getInstance().getTable(database, table).getIdNums();
-    Throwable t = null;
-    try {
+      if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new RuntimeException(
+            new IoTDBException(
+                executionResult.status.getMessage(), executionResult.status.getCode()));
+      }
+
+      final List<ColumnHeader> columnHeaderList =
+          coordinator.getQueryExecution(queryId).getDatasetHeader().getColumnHeaders();
+      final int idLength = DataNodeTableCache.getInstance().getTable(database, table).getIdNums();
+      Throwable t = null;
+
       while (coordinator.getQueryExecution(queryId).hasNextResult()) {
         final Optional<TsBlock> tsBlock;
         try {
@@ -461,6 +453,10 @@ public class TableDeviceSchemaFetcher {
       t = throwable;
       throw throwable;
     } finally {
+      if (Objects.nonNull(queryIdSet)) {
+        queryIdSet.remove(queryId);
+        attributeGuard.tryUpdateCache();
+      }
       coordinator.cleanupQueryExecution(queryId, null, t);
     }
   }
