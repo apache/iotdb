@@ -133,7 +133,8 @@ final class SubscriptionProviders {
     for (final SubscriptionProvider provider : getAllProviders()) {
       try {
         provider.close();
-      } catch (final Exception ignored) {
+      } catch (final Exception e) {
+        LOGGER.warn(e.getMessage());
       }
     }
     subscriptionProviders.clear();

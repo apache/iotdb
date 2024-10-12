@@ -40,6 +40,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionPayloadExceedException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionPipeTimeoutException;
 import org.apache.iotdb.rpc.subscription.payload.poll.PollFilePayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.PollPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.PollTabletsPayload;
@@ -259,6 +260,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   private TPipeSubscribeResp handlePipeSubscribeSubscribe(final PipeSubscribeSubscribeReq req) {
     try {
       return handlePipeSubscribeSubscribeInternal(req);
+    } catch (final SubscriptionPipeTimeoutException e) {
+      return PipeSubscribeSubscribeResp.toTPipeSubscribeResp(
+          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_PIPE_TIMEOUT_ERROR, e.getMessage()));
     } catch (final Exception e) {
       LOGGER.warn("Exception occurred when subscribing with request {}", req, e);
       final String exceptionMessage =
@@ -297,6 +301,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   private TPipeSubscribeResp handlePipeSubscribeUnsubscribe(final PipeSubscribeUnsubscribeReq req) {
     try {
       return handlePipeSubscribeUnsubscribeInternal(req);
+    } catch (final SubscriptionPipeTimeoutException e) {
+      return PipeSubscribeSubscribeResp.toTPipeSubscribeResp(
+          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_PIPE_TIMEOUT_ERROR, e.getMessage()));
     } catch (final Exception e) {
       LOGGER.warn("Exception occurred when unsubscribing with request {}", req, e);
       final String exceptionMessage =
@@ -571,7 +578,12 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           "Subscription: unsubscribe all subscribed topics {} before close consumer {}",
           topicNames,
           consumerConfig);
-      unsubscribe(consumerConfig, topicNames);
+      try {
+        unsubscribe(consumerConfig, topicNames);
+      } catch (final SubscriptionPipeTimeoutException e) {
+        LOGGER.warn(e.getMessage());
+        // continue drop consumer operation
+      } // rethrow other exceptions
     }
 
     // drop consumer if existed
@@ -670,7 +682,11 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             String.format(
                 "Subscription: Failed to subscribe topics %s for consumer %s in config node, status is %s.",
                 topicNames, consumerConfig, tsStatus);
-        throw new SubscriptionException(exceptionMessage);
+        if (TSStatusCode.SUBSCRIPTION_PIPE_TIMEOUT_ERROR.getStatusCode() == tsStatus.getCode()) {
+          throw new SubscriptionPipeTimeoutException(exceptionMessage);
+        } else {
+          throw new SubscriptionException(exceptionMessage);
+        }
       }
     } catch (final ClientManagerException | TException e) {
       LOGGER.warn(
@@ -706,7 +722,11 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             String.format(
                 "Subscription: Failed to unsubscribe topics %s for consumer %s in config node, status is %s.",
                 topicNames, consumerConfig, tsStatus);
-        throw new SubscriptionException(exceptionMessage);
+        if (TSStatusCode.SUBSCRIPTION_PIPE_TIMEOUT_ERROR.getStatusCode() == tsStatus.getCode()) {
+          throw new SubscriptionPipeTimeoutException(exceptionMessage);
+        } else {
+          throw new SubscriptionException(exceptionMessage);
+        }
       }
     } catch (final ClientManagerException | TException e) {
       LOGGER.warn(
