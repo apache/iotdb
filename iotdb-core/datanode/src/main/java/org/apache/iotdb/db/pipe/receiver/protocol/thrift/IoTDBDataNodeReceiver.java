@@ -66,7 +66,9 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
@@ -191,6 +193,17 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                     .recordTransferTabletInsertNodeTimer(System.nanoTime() - startTime);
               }
             }
+          case TRANSFER_TABLET_INSERT_NODE_V2:
+            {
+              try {
+                return handleTransferTabletInsertNode(
+                    PipeTransferTabletInsertNodeReq.fromTPipeTransferReqV2(req));
+
+              } finally {
+                PipeDataNodeReceiverMetrics.getInstance()
+                    .recordTransferTabletInsertNodeV2Timer(System.nanoTime() - startTime);
+              }
+            }
           case TRANSFER_TABLET_RAW:
             {
               try {
@@ -198,6 +211,16 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferTabletRawTimer(System.nanoTime() - startTime);
+              }
+            }
+          case TRANSFER_TABLET_RAW_V2:
+            {
+              try {
+                return handleTransferTabletRaw(
+                    PipeTransferTabletRawReq.fromTPipeTransferReqV2(req));
+              } finally {
+                PipeDataNodeReceiverMetrics.getInstance()
+                    .recordTransferTabletRawV2Timer(System.nanoTime() - startTime);
               }
             }
           case TRANSFER_TABLET_BINARY:
@@ -210,6 +233,16 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                     .recordTransferTabletBinaryTimer(System.nanoTime() - startTime);
               }
             }
+          case TRANSFER_TABLET_BINARY_V2:
+            {
+              try {
+                return handleTransferTabletBinary(
+                    PipeTransferTabletBinaryReq.fromTPipeTransferReqV2(req));
+              } finally {
+                PipeDataNodeReceiverMetrics.getInstance()
+                    .recordTransferTabletBinaryV2Timer(System.nanoTime() - startTime);
+              }
+            }
           case TRANSFER_TABLET_BATCH:
             {
               try {
@@ -218,6 +251,16 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferTabletBatchTimer(System.nanoTime() - startTime);
+              }
+            }
+          case TRANSFER_TABLET_BATCH_V2:
+            {
+              try {
+                return handleTransferTabletBatch(
+                    PipeTransferTabletBatchReq.fromTPipeTransferReqV2(req));
+              } finally {
+                PipeDataNodeReceiverMetrics.getInstance()
+                    .recordTransferTabletBatchV2Timer(System.nanoTime() - startTime);
               }
             }
           case TRANSFER_TS_FILE_PIECE:
@@ -622,7 +665,16 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         : status;
   }
 
-  private static TSStatus executeStatement(final Statement statement) {
+  private static TSStatus executeStatement(Statement statement) {
+    if (statement instanceof InsertBaseStatement
+        && ((InsertBaseStatement) statement).isWriteToTable()) {
+      return executeStatementForTableModel(statement);
+    }
+
+    return executeStatementForTreeModel(statement);
+  }
+
+  private static TSStatus executeStatementForTreeModel(final Statement statement) {
     return Coordinator.getInstance()
         .executeForTreeModel(
             new PipeEnrichedStatement(statement),
@@ -631,6 +683,20 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             "",
             ClusterPartitionFetcher.getInstance(),
             ClusterSchemaFetcher.getInstance(),
+            IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
+        .status;
+  }
+
+  private static TSStatus executeStatementForTableModel(Statement statement) {
+    return Coordinator.getInstance()
+        .executeForTableModel(
+            new PipeEnrichedStatement(statement),
+            new SqlParser(),
+            SessionManager.getInstance().getCurrSession(),
+            SessionManager.getInstance().requestQueryId(),
+            new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault()),
+            "",
+            LocalExecutionPlanner.getInstance().metadata,
             IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
         .status;
   }
