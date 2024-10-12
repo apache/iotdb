@@ -71,12 +71,13 @@ public class DeletionResourceTest {
 
   @After
   public void tearDown() throws Exception {
-    for (String FAKE_DATE_REGION_ID : FAKE_DATA_REGION_IDS) {
-      File baseDir = new File(DELETION_BASE_DIR + File.separator + FAKE_DATE_REGION_ID);
+    for (String FAKE_DATA_REGION_ID : FAKE_DATA_REGION_IDS) {
+      File baseDir = new File(DELETION_BASE_DIR + File.separator + FAKE_DATA_REGION_ID);
       if (baseDir.exists()) {
         FileUtils.deleteFileOrDirectory(baseDir);
       }
     }
+    deletionResourceManager.close();
   }
 
   @Test
@@ -119,9 +120,11 @@ public class DeletionResourceTest {
     deleteDataNode.setProgressIndex(
         new RecoverProgressIndex(THIS_DATANODE_ID, new SimpleProgressIndex(rebootTimes, 1)));
     // Only register one deletionResource
-    deletionResourceManager.registerDeletionResource(deleteDataNode);
-    // Sleep to wait deletion being persisted
-    Thread.sleep(5000);
+    DeletionResource deletionResource =
+        deletionResourceManager.registerDeletionResource(deleteDataNode);
+    if (deletionResource.waitForResult() != Status.SUCCESS) {
+      Assert.fail();
+    }
     Stream<Path> paths =
         Files.list(Paths.get(DELETION_BASE_DIR + File.separator + FAKE_DATA_REGION_IDS[2]));
     Assert.assertTrue(paths.anyMatch(Files::isRegularFile));
@@ -142,13 +145,15 @@ public class DeletionResourceTest {
           new RecoverProgressIndex(THIS_DATANODE_ID, new SimpleProgressIndex(rebootTimes, i)));
       PipeDeleteDataNodeEvent deletionEvent = new PipeDeleteDataNodeEvent(deleteDataNode, true);
       deletionEvents.add(deletionEvent);
-      deletionResourceManager.registerDeletionResource(deleteDataNode);
+      DeletionResource deletionResource =
+          deletionResourceManager.registerDeletionResource(deleteDataNode);
       deletionEvent.setDeletionResource(
-          deletionResourceManager.increaseResourceReferenceAndGet(deleteDataNode));
+          deletionResourceManager.getDeletionResource(deleteDataNode));
+      if (deletionResource.waitForResult() != Status.SUCCESS) {
+        Assert.fail();
+      }
     }
     deletionEvents.forEach(deletionEvent -> deletionEvent.increaseReferenceCount("test"));
-    // Sleep to wait deletion being persisted
-    Thread.sleep(1000);
     List<Path> paths =
         Files.list(Paths.get(DELETION_BASE_DIR + File.separator + FAKE_DATA_REGION_IDS[3]))
             .collect(Collectors.toList());
@@ -198,6 +203,9 @@ public class DeletionResourceTest {
     DeletionResource deletionResource =
         PipeInsertionDataNodeListener.getInstance()
             .listenToDeleteData(FAKE_DATA_REGION_IDS[4], deleteDataNode);
-    Assert.assertSame(deletionResource.waitForResult(), Status.SUCCESS);
+    Assert.assertSame(Status.SUCCESS, deletionResource.waitForResult());
+    // close pipe resource
+    PipeInsertionDataNodeListener.getInstance()
+        .stopListenAndAssign(FAKE_DATA_REGION_IDS[4], extractor);
   }
 }

@@ -28,6 +28,7 @@ import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -65,6 +66,14 @@ public class DeletionRecoverTest {
     }
     // Manually close to ensure all deletions are persisted
     deletionResourceManager.close();
+  }
+
+  @After
+  public void tearDown() throws Exception {
+    File baseDir = new File(DELETION_BASE_DIR + File.separator + FAKE_DATA_REGION_ID);
+    if (baseDir.exists()) {
+      FileUtils.deleteFileOrDirectory(baseDir);
+    }
   }
 
   @Test

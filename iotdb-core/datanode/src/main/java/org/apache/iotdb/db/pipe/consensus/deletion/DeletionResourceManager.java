@@ -43,7 +43,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -104,7 +103,7 @@ public class DeletionResourceManager implements AutoCloseable {
 
         for (Path path : deletionPaths) {
           try (DeletionReader deletionReader =
-              new DeletionReader(path.toFile(), this::removeDeletionResource)) {
+              new DeletionReader(path.toFile(), dataRegionId, this::removeDeletionResource)) {
             deletionReader
                 .readAllDeletions()
                 .forEach(
@@ -138,16 +137,15 @@ public class DeletionResourceManager implements AutoCloseable {
     DeletionResource deletionResource =
         deleteNode2ResourcesMap.computeIfAbsent(
             deleteDataNode,
-            key -> new DeletionResource(deleteDataNode, this::removeDeletionResource));
+            key ->
+                new DeletionResource(deleteDataNode, this::removeDeletionResource, dataRegionId));
     // register a persist task for current deletionResource
     deletionBuffer.registerDeletionResource(deletionResource);
     return deletionResource;
   }
 
-  public DeletionResource increaseResourceReferenceAndGet(DeleteDataNode deleteDataNode) {
-    DeletionResource deletionResource = deleteNode2ResourcesMap.get(deleteDataNode);
-    Optional.ofNullable(deletionResource).ifPresent(DeletionResource::increaseReference);
-    return deletionResource;
+  public DeletionResource getDeletionResource(DeleteDataNode deleteDataNode) {
+    return deleteNode2ResourcesMap.get(deleteDataNode);
   }
 
   public List<DeletionResource> getAllDeletionResources() {
@@ -317,7 +315,7 @@ public class DeletionResourceManager implements AutoCloseable {
 
       for (Path path : deletionPaths) {
         try (DeletionReader deletionReader =
-            new DeletionReader(path.toFile(), this::removeDeletionResource)) {
+            new DeletionReader(path.toFile(), dataRegionId, this::removeDeletionResource)) {
           deletionReader
               .readAllDeletions()
               .forEach(

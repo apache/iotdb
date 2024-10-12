@@ -40,13 +40,16 @@ public class DeletionReader implements Closeable {
   private static final Logger LOGGER = LoggerFactory.getLogger(DeletionReader.class);
   private static final int MAGIC_STRING_BYTES_SIZE =
       DeletionResourceManager.MAGIC_VERSION_V1.getBytes(StandardCharsets.UTF_8).length;
+  private final String regionId;
   private final Consumer<DeletionResource> removeHook;
   private final File logFile;
   private final FileInputStream fileInputStream;
   private final FileChannel fileChannel;
 
-  public DeletionReader(File logFile, Consumer<DeletionResource> removeHook) throws IOException {
+  public DeletionReader(File logFile, String regionId, Consumer<DeletionResource> removeHook)
+      throws IOException {
     this.logFile = logFile;
+    this.regionId = regionId;
     this.fileInputStream = new FileInputStream(logFile);
     this.fileChannel = fileInputStream.getChannel();
     this.removeHook = removeHook;
@@ -72,7 +75,8 @@ public class DeletionReader implements Closeable {
       List<DeletionResource> deletions = new ArrayList<>();
 
       while (byteBuffer.hasRemaining()) {
-        DeletionResource deletionResource = DeletionResource.deserialize(byteBuffer, removeHook);
+        DeletionResource deletionResource =
+            DeletionResource.deserialize(byteBuffer, regionId, removeHook);
         deletions.add(deletionResource);
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug("Read deletion: {} from file {}", deletionResource, logFile);

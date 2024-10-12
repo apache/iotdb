@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.db.pipe.consensus.deletion;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.pipe.datastructure.PersistentResource;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 
@@ -43,22 +46,26 @@ import java.util.function.Consumer;
 public class DeletionResource implements PersistentResource {
   private static final Logger LOGGER = LoggerFactory.getLogger(DeletionResource.class);
   private final Consumer<DeletionResource> removeHook;
-  private final AtomicInteger pipeTaskReferenceCount = new AtomicInteger(0);
+  private final AtomicInteger pipeTaskReferenceCount;
   private final DeleteDataNode deleteDataNode;
+  private final ConsensusGroupId consensusGroupId;
   private volatile Status currentStatus;
 
   // it's safe to use volatile here to make this reference thread-safe.
   @SuppressWarnings("squid:S3077")
   private volatile Exception cause;
 
-  public DeletionResource(DeleteDataNode deleteDataNode, Consumer<DeletionResource> removeHook) {
+  public DeletionResource(
+      DeleteDataNode deleteDataNode, Consumer<DeletionResource> removeHook, String regionId) {
     this.deleteDataNode = deleteDataNode;
     this.removeHook = removeHook;
     this.currentStatus = Status.RUNNING;
-  }
-
-  public void increaseReference() {
-    pipeTaskReferenceCount.incrementAndGet();
+    this.consensusGroupId =
+        ConsensusGroupId.Factory.create(
+            TConsensusGroupType.DataRegion.getValue(), Integer.parseInt(regionId));
+    this.pipeTaskReferenceCount =
+        new AtomicInteger(
+            DataRegionConsensusImpl.getInstance().getReplicationNum(consensusGroupId));
   }
 
   public synchronized void decreaseReference() {
@@ -140,9 +147,10 @@ public class DeletionResource implements PersistentResource {
   }
 
   public static DeletionResource deserialize(
-      final ByteBuffer buffer, final Consumer<DeletionResource> removeHook) throws IOException {
+      final ByteBuffer buffer, final String regionId, final Consumer<DeletionResource> removeHook)
+      throws IOException {
     DeleteDataNode node = DeleteDataNode.deserializeFromDAL(buffer);
-    return new DeletionResource(node, removeHook);
+    return new DeletionResource(node, removeHook, regionId);
   }
 
   public static boolean isDeleteNodeGeneratedInLocalByIoTV2(DeleteDataNode node) {

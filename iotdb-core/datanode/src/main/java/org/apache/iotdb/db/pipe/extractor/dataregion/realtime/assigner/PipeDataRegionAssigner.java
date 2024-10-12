@@ -158,7 +158,7 @@ public class PipeDataRegionAssigner implements Closeable {
                     && DeletionResource.isDeleteNodeGeneratedInLocalByIoTV2(
                         deleteDataNodeEvent.getDeleteDataNode())) {
                   deleteDataNodeEvent.setDeletionResource(
-                      manager.increaseResourceReferenceAndGet(
+                      manager.getDeletionResource(
                           ((PipeDeleteDataNodeEvent) event.getEvent()).getDeleteDataNode()));
                 }
               }

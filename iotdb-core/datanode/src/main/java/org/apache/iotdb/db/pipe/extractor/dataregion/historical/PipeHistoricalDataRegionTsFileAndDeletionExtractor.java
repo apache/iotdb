@@ -752,7 +752,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
           .ifPresent(
               manager ->
                   event.setDeletionResource(
-                      manager.increaseResourceReferenceAndGet(event.getDeleteDataNode())));
+                      manager.getDeletionResource(event.getDeleteDataNode())));
     }
     return isReferenceCountIncreased ? event : null;
   }

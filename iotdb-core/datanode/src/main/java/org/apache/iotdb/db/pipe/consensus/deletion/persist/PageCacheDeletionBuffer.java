@@ -258,7 +258,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
     // first waiting serialize and sync tasks finished, then release all resources
     waitUntilFlushAllDeletionsOrTimeOut();
     if (persistThread != null) {
-      shutdownThread(persistThread);
+      persistThread.shutdown();
     }
     // clean buffer
     MmapUtil.clean(serializeBuffer);
@@ -274,19 +274,6 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
         LOGGER.error("Interrupted when waiting for all deletions flushed.");
         Thread.currentThread().interrupt();
       }
-    }
-  }
-
-  private void shutdownThread(ExecutorService thread) {
-    ThreadName threadName = ThreadName.PIPE_CONSENSUS_DELETION_SERIALIZE;
-    thread.shutdown();
-    try {
-      if (!thread.awaitTermination(30, TimeUnit.SECONDS)) {
-        LOGGER.warn("Waiting thread {} to be terminated is timeout", threadName.getName());
-      }
-    } catch (InterruptedException e) {
-      LOGGER.warn("Thread {} still doesn't exit after 30s", threadName.getName());
-      Thread.currentThread().interrupt();
     }
   }
 
