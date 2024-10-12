@@ -38,6 +38,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -489,7 +490,7 @@ public class AggregationTableScanNode extends TableScanNode {
     }
 
     size = ReadWriteIOUtils.readInt(byteBuffer);
-    final Map<Symbol, AggregationNode.Aggregation> aggregations = new HashMap<>(size);
+    final Map<Symbol, AggregationNode.Aggregation> aggregations = new LinkedHashMap<>(size);
     while (size-- > 0) {
       aggregations.put(
           Symbol.deserialize(byteBuffer), AggregationNode.Aggregation.deserialize(byteBuffer));

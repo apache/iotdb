@@ -1336,18 +1336,22 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   private TSStatus executeSchemaBlackListTask(
       final List<TConsensusGroupId> consensusGroupIdList,
       final Function<TConsensusGroupId, TSStatus> executeOnOneRegion) {
-    final List<TSStatus> statusList = new ArrayList<>();
-    TSStatus status;
-    boolean hasFailure = false;
-    for (final TConsensusGroupId consensusGroupId : consensusGroupIdList) {
-      status = executeOnOneRegion.apply(consensusGroupId);
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && status.getCode() != TSStatusCode.ONLY_LOGICAL_VIEW.getStatusCode()) {
-        hasFailure = true;
-      }
-      statusList.add(status);
-    }
-    if (hasFailure) {
+    // Not guarantee sequence
+    final List<TSStatus> statusList = Collections.synchronizedList(new ArrayList<>());
+    final AtomicBoolean hasFailure = new AtomicBoolean(false);
+
+    consensusGroupIdList.parallelStream()
+        .forEach(
+            consensusGroupId -> {
+              final TSStatus status = executeOnOneRegion.apply(consensusGroupId);
+              if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                  && status.getCode() != TSStatusCode.ONLY_LOGICAL_VIEW.getStatusCode()) {
+                hasFailure.set(true);
+              }
+              statusList.add(status);
+            });
+
+    if (hasFailure.get()) {
       return RpcUtils.getStatus(statusList);
     } else {
       return statusList.stream()
@@ -1358,19 +1362,23 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   private TSStatus executeInternalSchemaTask(
-      List<TConsensusGroupId> consensusGroupIdList,
-      Function<TConsensusGroupId, TSStatus> executeOnOneRegion) {
-    List<TSStatus> statusList = new ArrayList<>();
-    TSStatus status;
-    boolean hasFailure = false;
-    for (TConsensusGroupId consensusGroupId : consensusGroupIdList) {
-      status = executeOnOneRegion.apply(consensusGroupId);
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        hasFailure = true;
-      }
-      statusList.add(status);
-    }
-    if (hasFailure) {
+      final List<TConsensusGroupId> consensusGroupIdList,
+      final Function<TConsensusGroupId, TSStatus> executeOnOneRegion) {
+    // Not guarantee sequence
+    final List<TSStatus> statusList = Collections.synchronizedList(new ArrayList<>());
+    final AtomicBoolean hasFailure = new AtomicBoolean(false);
+
+    consensusGroupIdList.parallelStream()
+        .forEach(
+            consensusGroupId -> {
+              final TSStatus status = executeOnOneRegion.apply(consensusGroupId);
+              if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                hasFailure.set(true);
+              }
+              statusList.add(status);
+            });
+
+    if (hasFailure.get()) {
       return RpcUtils.getStatus(statusList);
     } else {
       return RpcUtils.SUCCESS_STATUS;
