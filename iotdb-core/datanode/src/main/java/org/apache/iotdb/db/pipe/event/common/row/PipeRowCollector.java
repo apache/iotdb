@@ -102,7 +102,7 @@ public class PipeRowCollector implements RowCollector {
   private void collectTabletInsertionEvent() {
     if (tablet != null) {
       // TODO: non-PipeInsertionEvent sourceEvent is not supported?
-      PipeInsertionEvent event =
+      final PipeInsertionEvent event =
           sourceEvent instanceof PipeInsertionEvent ? ((PipeInsertionEvent) sourceEvent) : null;
       tabletInsertionEventList.add(
           new PipeRawTabletInsertionEvent(

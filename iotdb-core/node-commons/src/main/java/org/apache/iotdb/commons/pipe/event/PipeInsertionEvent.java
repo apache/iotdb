@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 
 public abstract class PipeInsertionEvent extends EnrichedEvent {
 
-  private boolean isTableModel = false;
+  private boolean isTableModel;
   private final String treeModelDatabaseName;
   private String tableModelDatabaseName; // lazy initialization
 
