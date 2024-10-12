@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 
 public abstract class PipeInsertionEvent extends EnrichedEvent {
 
+  private boolean isTableModel = false;
   private final String treeModelDatabaseName;
   private String tableModelDatabaseName; // lazy initialization
 
@@ -37,10 +38,12 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
       final long startTime,
       final long endTime,
       final String treeModelDatabaseName,
-      final String tableModelDatabaseName) {
+      final String tableModelDatabaseName,
+      final boolean isTableModel) {
     super(pipeName, creationTime, pipeTaskMeta, treePattern, tablePattern, startTime, endTime);
     this.treeModelDatabaseName = treeModelDatabaseName;
     this.tableModelDatabaseName = tableModelDatabaseName;
+    this.isTableModel = isTableModel;
   }
 
   protected PipeInsertionEvent(
@@ -51,7 +54,8 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
       final TablePattern tablePattern,
       final long startTime,
       final long endTime,
-      final String databaseNameFromDataRegion) {
+      final String databaseNameFromDataRegion,
+      final boolean isTableModel) {
     this(
         pipeName,
         creationTime,
@@ -61,7 +65,8 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
         startTime,
         endTime,
         databaseNameFromDataRegion,
-        null);
+        null,
+        isTableModel);
   }
 
   public String getTreeModelDatabaseName() {
@@ -75,5 +80,22 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
                 ? treeModelDatabaseName.substring(5)
                 : treeModelDatabaseName
         : tableModelDatabaseName;
+  }
+
+  /**
+   * Checks if the current object represents a table model.
+   *
+   * <p>This method can only be reliably used after the extractor has been run. Before the
+   * extractor's execution, it's not possible to accurately determine if the table model is matched
+   * or not.
+   *
+   * @return true if the object is a table model, false is a tree model.
+   */
+  public boolean isTableModel() {
+    return isTableModel;
+  }
+
+  public void setModelType(boolean isTableModel) {
+    this.isTableModel = isTableModel;
   }
 }

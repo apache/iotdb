@@ -96,6 +96,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   private static final Map<Integer, Long> DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP = new HashMap<>();
   private static final long PIPE_MIN_FLUSH_INTERVAL_IN_MS = 2000;
+  private static final String TREE_MODE_PREFIX = PATH_ROOT + PATH_SEPARATOR;
 
   private String pipeName;
   private long creationTime;
@@ -127,6 +128,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private volatile boolean hasBeenStarted = false;
 
   private Queue<TsFileResource> pendingQueue;
+
+  private Map<TsFileResource, Boolean> tableModelMatchStatusMap = new HashMap<>(0);
 
   @Override
   public void validate(final PipeParameterValidator validator) {
@@ -552,16 +555,24 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
         .anyMatch(
             deviceID -> {
               if (deviceID instanceof PlainDeviceID
-                  || deviceID.getTableName().startsWith(PATH_ROOT + PATH_SEPARATOR)
+                  || deviceID.getTableName().startsWith(TREE_MODE_PREFIX)
                   || deviceID.getTableName().equals(PATH_ROOT)) {
                 // In case of tree model deviceID
-                return treePattern.isTreeModelDataAllowedToBeCaptured()
-                    && treePattern.mayOverlapWithDevice(deviceID);
+                if (treePattern.isTreeModelDataAllowedToBeCaptured()
+                    && treePattern.mayOverlapWithDevice(deviceID)) {
+                  tableModelMatchStatusMap.put(resource, false);
+                  return true;
+                }
+                return false;
               } else {
                 // In case of table model deviceID
-                return tablePattern.isTableModelDataAllowedToBeCaptured()
+                if (tablePattern.isTableModelDataAllowedToBeCaptured()
                     && tablePattern.matchesDatabase(resource.getDatabaseName())
-                    && tablePattern.matchesTable(deviceID.getTableName());
+                    && tablePattern.matchesTable(deviceID.getTableName())) {
+                  tableModelMatchStatusMap.put(resource, true);
+                  return true;
+                }
+                return false;
               }
             });
   }
@@ -623,6 +634,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
     final PipeTsFileInsertionEvent event =
         new PipeTsFileInsertionEvent(
+            tableModelMatchStatusMap.remove(resource),
             resource.getDatabaseName(),
             resource,
             shouldTransferModFile,
@@ -700,6 +712,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
           });
       pendingQueue.clear();
       pendingQueue = null;
+      tableModelMatchStatusMap.clear();
+      tableModelMatchStatusMap = null;
     }
   }
 }

@@ -116,6 +116,8 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     lock.readLock().lock();
     try {
       if (extractors.isEmpty()) {
+        // There is no need to determine whether it is a table model or a tree model, because this
+        // Event will not be used later.
         return matchedExtractors;
       }
 
@@ -140,13 +142,15 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
             || deviceID.getTableName().startsWith(PATH_ROOT + PATH_SEPARATOR)
             || deviceID.getTableName().equals(PATH_ROOT)) {
           matchTreeModelEvent(deviceID, entry.getValue(), matchedExtractors);
+
         } else {
-          matchTableModelEvent(
-              event.getEvent() instanceof PipeInsertionEvent
-                  ? ((PipeInsertionEvent) event.getEvent()).getTableModelDatabaseName()
-                  : null,
-              deviceID,
-              matchedExtractors);
+          String dataBaseName = null;
+          if (event.getEvent() instanceof PipeInsertionEvent) {
+            final PipeInsertionEvent pipeInsertionEvent = (PipeInsertionEvent) event.getEvent();
+            dataBaseName = pipeInsertionEvent.getTableModelDatabaseName();
+            pipeInsertionEvent.setModelType(true);
+          }
+          matchTableModelEvent(dataBaseName, deviceID, matchedExtractors);
         }
 
         if (matchedExtractors.size() == extractors.size()) {

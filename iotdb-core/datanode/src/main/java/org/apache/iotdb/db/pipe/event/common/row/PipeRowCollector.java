@@ -101,12 +101,13 @@ public class PipeRowCollector implements RowCollector {
 
   private void collectTabletInsertionEvent() {
     if (tablet != null) {
+      // TODO: non-PipeInsertionEvent sourceEvent is not supported?
+      PipeInsertionEvent event =
+          sourceEvent instanceof PipeInsertionEvent ? ((PipeInsertionEvent) sourceEvent) : null;
       tabletInsertionEventList.add(
           new PipeRawTabletInsertionEvent(
-              // TODO: non-PipeInsertionEvent sourceEvent is not supported?
-              sourceEvent instanceof PipeInsertionEvent
-                  ? ((PipeInsertionEvent) sourceEvent).getTreeModelDatabaseName()
-                  : null,
+              event != null && event.isTableModel(),
+              event != null ? event.getTreeModelDatabaseName() : null,
               tablet,
               isAligned,
               sourceEvent == null ? null : sourceEvent.getPipeName(),
