@@ -46,8 +46,9 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -76,13 +77,26 @@ public class IoTDBSessionSimpleIT {
 
   private static Logger LOGGER = LoggerFactory.getLogger(IoTDBSessionSimpleIT.class);
 
-  @Before
-  public void setUp() throws Exception {
+  private static final String[] databasesToClear = new String[] {"root.sg", "root.sg1"};
+
+  @BeforeClass
+  public static void setUpClass() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @After
-  public void tearDown() throws Exception {
+  public void tearDown() {
+    for (String database : databasesToClear) {
+      try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        session.executeNonQueryStatement("DELETE DATABASE " + database);
+      } catch (Exception ignored) {
+
+      }
+    }
+  }
+
+  @AfterClass
+  public static void tearDownClass() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
@@ -1115,6 +1129,43 @@ public class IoTDBSessionSimpleIT {
       session.insertRecords(devices, times, measurements, datatypes, values);
     } catch (Exception e) {
       Assert.assertTrue(e.getMessage().contains("Insertion contains duplicated measurement: s2"));
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void insertRecordsWithExpiredDataTest()
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      List<Long> times = new ArrayList<>();
+      List<List<String>> measurements = new ArrayList<>();
+      List<List<TSDataType>> datatypes = new ArrayList<>();
+      List<List<Object>> values = new ArrayList<>();
+      List<String> devices = new ArrayList<>();
+
+      devices.add("root.sg.d1");
+      addLine(
+          times,
+          measurements,
+          datatypes,
+          values,
+          3L,
+          "s1",
+          "s2",
+          TSDataType.INT32,
+          TSDataType.INT32,
+          1,
+          2);
+      session.executeNonQueryStatement("set ttl to root.sg.d1 1");
+      try {
+        session.insertRecords(devices, times, measurements, datatypes, values);
+        fail();
+      } catch (Exception e) {
+        Assert.assertTrue(e.getMessage().contains("less than ttl time bound"));
+      }
+      session.executeNonQueryStatement("unset ttl to root.sg.d1");
+      SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg.d1");
+      Assert.assertFalse(dataSet.hasNext());
     }
   }
 

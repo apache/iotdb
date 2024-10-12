@@ -178,11 +178,13 @@ public enum ThreadName {
   INFLUXDB_RPC_PROCESSOR("InfluxdbRPC-Processor"),
   STORAGE_ENGINE_CACHED_POOL("StorageEngine"),
   AINODE_RPC_SERVICE("AINodeRpc-Service"),
-  IOTDB_SHUTDOWN_HOOK("IoTDB-Shutdown-Hook"),
+  DATANODE_SHUTDOWN_HOOK("DataNode-Shutdown-Hook"),
   UPGRADE_TASK("UpgradeThread"),
   REGION_MIGRATE("Region-Migrate-Pool"),
   STORAGE_ENGINE_RECOVER_TRIGGER("StorageEngine-RecoverTrigger"),
   REPAIR_DATA("RepairData"),
+  FILE_TIME_INDEX_RECORD("FileTimeIndexRecord"),
+
   // the unknown thread name is used for metrics
   UNKOWN("UNKNOWN");
 
@@ -365,7 +367,7 @@ public enum ThreadName {
               INFLUXDB_RPC_PROCESSOR,
               STORAGE_ENGINE_CACHED_POOL,
               AINODE_RPC_SERVICE,
-              IOTDB_SHUTDOWN_HOOK,
+              DATANODE_SHUTDOWN_HOOK,
               UPGRADE_TASK,
               REGION_MIGRATE,
               STORAGE_ENGINE_RECOVER_TRIGGER));

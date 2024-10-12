@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import java.util.List;
 import java.util.Set;
 
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicateCombineIntoTableScanChecker.isInListAllLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isSymbolReference;
 
 /**
@@ -65,7 +66,7 @@ public class PredicatePushIntoMetadataChecker extends PredicateVisitor<Boolean, 
 
   @Override
   protected Boolean visitInPredicate(final InPredicate node, final Void context) {
-    return isIdOrAttributeColumn(node.getValue());
+    return isIdOrAttributeColumn(node.getValue()) && isInListAllLiteral(node);
   }
 
   @Override
@@ -105,8 +106,11 @@ public class PredicatePushIntoMetadataChecker extends PredicateVisitor<Boolean, 
 
   @Override
   protected Boolean visitComparisonExpression(final ComparisonExpression node, final Void context) {
-    return (isIdOrAttributeColumn(node.getLeft()) || isStringLiteral(node.getLeft()))
-        && (isIdOrAttributeColumn(node.getRight()) || isStringLiteral(node.getRight()));
+    return isIdOrAttributeOrLiteral(node.getLeft()) && isIdOrAttributeOrLiteral(node.getRight());
+  }
+
+  private boolean isIdOrAttributeOrLiteral(final Expression expression) {
+    return isIdOrAttributeColumn(expression) || isStringLiteral(expression);
   }
 
   private boolean isIdOrAttributeColumn(final Expression expression) {
@@ -137,7 +141,9 @@ public class PredicatePushIntoMetadataChecker extends PredicateVisitor<Boolean, 
 
   @Override
   protected Boolean visitBetweenPredicate(final BetweenPredicate node, final Void context) {
-    return Boolean.FALSE;
+    return isIdOrAttributeOrLiteral(node.getValue())
+        && isIdOrAttributeOrLiteral(node.getMin())
+        && isIdOrAttributeOrLiteral(node.getMax());
   }
 
   public static boolean isStringLiteral(final Expression expression) {

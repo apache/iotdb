@@ -543,7 +543,9 @@ public class IoTDBLoadTsFileIT {
         final Statement statement = connection.createStatement()) {
 
       statement.execute(
-          String.format("load \"%s\" sglevel=2 onSuccess=none", file1.getAbsolutePath()));
+          String.format(
+              "load \"%s\" with ('database-level'='2', 'on-success'='none')",
+              file1.getAbsolutePath()));
 
       try (final ResultSet resultSet =
           statement.executeQuery("select count(*) from root.** group by level=1,2")) {
@@ -561,7 +563,9 @@ public class IoTDBLoadTsFileIT {
         final Statement statement = connection.createStatement()) {
 
       statement.execute(
-          String.format("load \"%s\" sglevel=2 onSuccess=delete", file2.getAbsolutePath()));
+          String.format(
+              "load \"%s\" with ('database-level'='2', 'on-success'='delete')",
+              file2.getAbsolutePath()));
 
       try (final ResultSet resultSet =
           statement.executeQuery("select count(*) from root.** group by level=1,2")) {
@@ -761,7 +765,6 @@ public class IoTDBLoadTsFileIT {
       generator.generateData(SchemaConfig.DEVICE_0, 100000, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_1, 100000, PARTITION_INTERVAL / 10_000, true);
       generator.generateDeletion(SchemaConfig.DEVICE_0, 10);
-      generator.generateDeletion(SchemaConfig.DEVICE_1, 10);
       writtenPoint1 = generator.getTotalNumber();
     }
 

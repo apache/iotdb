@@ -42,12 +42,21 @@ public class SubscriptionPipeTabletBatchEvents implements SubscriptionPipeEvents
   }
 
   @Override
-  public void cleanup() {
-    batch.cleanup();
+  public void cleanUp() {
+    batch.cleanUp();
   }
+
+  /////////////////////////////// stringify ///////////////////////////////
 
   @Override
   public String toString() {
     return "SubscriptionPipeTabletBatchEvents{batch=" + batch + "}";
+  }
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  @Override
+  public int getPipeEventCount() {
+    return batch.getPipeEventCount();
   }
 }

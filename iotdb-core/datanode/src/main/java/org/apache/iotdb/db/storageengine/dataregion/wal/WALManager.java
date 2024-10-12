@@ -70,10 +70,7 @@ public class WALManager implements IService {
 
   private WALManager() {
     if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
-        || config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)
-        || config
-            .getDataRegionConsensusProtocolClass()
-            .equals(ConsensusFactory.FAST_IOT_CONSENSUS)) {
+        || config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
       walNodesManager = new FirstCreateStrategy();
     } else if (config.getMaxWalNodesNum() == 0) {
       walNodesManager = new ElasticStrategy();
@@ -87,9 +84,6 @@ public class WALManager implements IService {
             || config
                 .getDataRegionConsensusProtocolClass()
                 .equals(ConsensusFactory.IOT_CONSENSUS_V2)
-            || config
-                .getDataRegionConsensusProtocolClass()
-                .equals(ConsensusFactory.FAST_IOT_CONSENSUS)
         ? storageGroupName
         : storageGroupName
             + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -112,10 +106,7 @@ public class WALManager implements IService {
         || (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
             && !config
                 .getDataRegionConsensusProtocolClass()
-                .equals(ConsensusFactory.IOT_CONSENSUS_V2)
-            && !config
-                .getDataRegionConsensusProtocolClass()
-                .equals(ConsensusFactory.FAST_IOT_CONSENSUS))) {
+                .equals(ConsensusFactory.IOT_CONSENSUS_V2))) {
       return;
     }
 
@@ -130,10 +121,7 @@ public class WALManager implements IService {
         || (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
             && !config
                 .getDataRegionConsensusProtocolClass()
-                .equals(ConsensusFactory.IOT_CONSENSUS_V2)
-            && !config
-                .getDataRegionConsensusProtocolClass()
-                .equals(ConsensusFactory.FAST_IOT_CONSENSUS))) {
+                .equals(ConsensusFactory.IOT_CONSENSUS_V2))) {
       return;
     }
 
@@ -181,7 +169,7 @@ public class WALManager implements IService {
       deleteOutdatedFilesInWALNodes();
       if (firstLoop && shouldThrottle()) {
         logger.warn(
-            "WAL disk usage {} is larger than the iot_consensus_throttle_threshold_in_byte * 0.8 {}, please check your write load, iot consensus and the pipe module. It's better to allocate more disk for WAL.",
+            "WAL disk usage {} is larger than the wal_throttle_threshold_in_byte * 0.8 {}, please check your write load, iot consensus and the pipe module. It's better to allocate more disk for WAL.",
             getTotalDiskUsage(),
             getThrottleThreshold());
       }

@@ -30,8 +30,8 @@ import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ainode.GetAINodeConfigurationPlan;
+import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorReadPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
@@ -40,6 +40,7 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateD
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.ainode.RemoveAINodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
@@ -90,6 +91,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
@@ -147,6 +149,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * A subset of services provided by {@link ConfigManager}. For use internally only, passed to
@@ -465,14 +468,14 @@ public interface IManager {
    *
    * @return status
    */
-  TSStatus operatePermission(AuthorPlan authorPlan);
+  TSStatus operatePermission(final AuthorPlan authorPlan);
 
   /**
    * Query Permission.
    *
    * @return PermissionInfoDataSet
    */
-  DataSet queryPermission(AuthorPlan authorPlan);
+  DataSet queryPermission(final AuthorReadPlan authorPlan);
 
   /** login. */
   TPermissionInfoResp login(String username, String password);
@@ -832,4 +835,6 @@ public interface IManager {
   TSStatus alterTable(final TAlterTableReq req);
 
   TShowTableResp showTables(final String database);
+
+  TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap);
 }

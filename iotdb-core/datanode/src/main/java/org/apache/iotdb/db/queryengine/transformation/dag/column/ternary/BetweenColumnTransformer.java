@@ -52,47 +52,72 @@ public class BetweenColumnTransformer extends CompareTernaryColumnTransformer {
       int positionCount) {
     for (int i = 0; i < positionCount; i++) {
       if (!firstColumn.isNull(i) && !secondColumn.isNull(i) && !thirdColumn.isNull(i)) {
-        boolean flag;
-        if (isCharType(firstColumnTransformer.getType())
-            || isBlobType(firstColumnTransformer.getType())) {
-          flag =
-              ((TransformUtils.compare(
-                              firstColumnTransformer.getType().getBinary(firstColumn, i),
-                              secondColumnTransformer.getType().getBinary(secondColumn, i))
-                          >= 0)
-                      && (TransformUtils.compare(
-                              firstColumnTransformer.getType().getBinary(firstColumn, i),
-                              thirdColumnTransformer.getType().getBinary(thirdColumn, i))
-                          <= 0))
-                  ^ isNotBetween;
-        } else if (isBool(firstColumnTransformer.getType())) {
-
-          flag =
-              ((Boolean.compare(
-                              firstColumnTransformer.getType().getBoolean(firstColumn, i),
-                              secondColumnTransformer.getType().getBoolean(secondColumn, i))
-                          >= 0)
-                      && (Boolean.compare(
-                              firstColumnTransformer.getType().getBoolean(firstColumn, i),
-                              thirdColumnTransformer.getType().getBoolean(thirdColumn, i))
-                          <= 0))
-                  ^ isNotBetween;
-        } else {
-          flag =
-              ((Double.compare(
-                              firstColumnTransformer.getType().getDouble(firstColumn, i),
-                              secondColumnTransformer.getType().getDouble(secondColumn, i))
-                          >= 0)
-                      && (Double.compare(
-                              firstColumnTransformer.getType().getDouble(firstColumn, i),
-                              thirdColumnTransformer.getType().getDouble(thirdColumn, i))
-                          <= 0))
-                  ^ isNotBetween;
-        }
-        returnType.writeBoolean(builder, flag);
+        transform(firstColumn, secondColumn, thirdColumn, builder, i);
       } else {
         builder.appendNull();
       }
     }
+  }
+
+  @Override
+  protected void doTransform(
+      Column firstColumn,
+      Column secondColumn,
+      Column thirdColumn,
+      ColumnBuilder builder,
+      int positionCount,
+      boolean[] selection) {
+    for (int i = 0; i < positionCount; i++) {
+      if (selection[i]
+          && !firstColumn.isNull(i)
+          && !secondColumn.isNull(i)
+          && !thirdColumn.isNull(i)) {
+        transform(firstColumn, secondColumn, thirdColumn, builder, i);
+      } else {
+        builder.appendNull();
+      }
+    }
+  }
+
+  private void transform(
+      Column firstColumn, Column secondColumn, Column thirdColumn, ColumnBuilder builder, int i) {
+    boolean flag;
+    if (isCharType(firstColumnTransformer.getType())
+        || isBlobType(firstColumnTransformer.getType())) {
+      flag =
+          ((TransformUtils.compare(
+                          firstColumnTransformer.getType().getBinary(firstColumn, i),
+                          secondColumnTransformer.getType().getBinary(secondColumn, i))
+                      >= 0)
+                  && (TransformUtils.compare(
+                          firstColumnTransformer.getType().getBinary(firstColumn, i),
+                          thirdColumnTransformer.getType().getBinary(thirdColumn, i))
+                      <= 0))
+              ^ isNotBetween;
+    } else if (isBool(firstColumnTransformer.getType())) {
+
+      flag =
+          ((Boolean.compare(
+                          firstColumnTransformer.getType().getBoolean(firstColumn, i),
+                          secondColumnTransformer.getType().getBoolean(secondColumn, i))
+                      >= 0)
+                  && (Boolean.compare(
+                          firstColumnTransformer.getType().getBoolean(firstColumn, i),
+                          thirdColumnTransformer.getType().getBoolean(thirdColumn, i))
+                      <= 0))
+              ^ isNotBetween;
+    } else {
+      flag =
+          ((Double.compare(
+                          firstColumnTransformer.getType().getDouble(firstColumn, i),
+                          secondColumnTransformer.getType().getDouble(secondColumn, i))
+                      >= 0)
+                  && (Double.compare(
+                          firstColumnTransformer.getType().getDouble(firstColumn, i),
+                          thirdColumnTransformer.getType().getDouble(thirdColumn, i))
+                      <= 0))
+              ^ isNotBetween;
+    }
+    returnType.writeBoolean(builder, flag);
   }
 }

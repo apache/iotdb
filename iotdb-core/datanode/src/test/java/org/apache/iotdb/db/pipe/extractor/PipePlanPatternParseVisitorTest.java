@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.extractor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOperand;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
@@ -56,8 +56,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class PipePlanPatternParseVisitorTest {
-  private final IoTDBPipePattern prefixPathPattern = new IoTDBPipePattern("root.db.device.**");
-  private final IoTDBPipePattern fullPathPattern = new IoTDBPipePattern("root.db.device.s1");
+  private final IoTDBTreePattern prefixPathPattern = new IoTDBTreePattern("root.db.device.**");
+  private final IoTDBTreePattern fullPathPattern = new IoTDBTreePattern("root.db.device.s1");
 
   @Test
   public void testCreateTimeSeries() throws IllegalPathException {

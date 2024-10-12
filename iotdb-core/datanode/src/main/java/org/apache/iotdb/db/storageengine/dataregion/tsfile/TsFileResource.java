@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.PartitionViolationException;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTimePartitionProgressIndexKeeper;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCompactionCandidateStatus;
@@ -62,6 +63,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -292,6 +294,26 @@ public class TsFileResource {
         }
       }
     }
+  }
+
+  public static int getFileTimeIndexSerializedSize() {
+    // 6 * 8 Byte means 6 long numbers of
+    // tsFileID.timePartitionId,
+    // tsFileID.timestamp,
+    // tsFileID.fileVersion,
+    // tsFileID.compactionVersion,
+    // timeIndex.getMinStartTime(),
+    // timeIndex.getMaxStartTime()
+    return 6 * Long.BYTES;
+  }
+
+  public void serializeFileTimeIndexToByteBuffer(ByteBuffer buffer) {
+    buffer.putLong(tsFileID.timePartitionId);
+    buffer.putLong(tsFileID.timestamp);
+    buffer.putLong(tsFileID.fileVersion);
+    buffer.putLong(tsFileID.compactionVersion);
+    buffer.putLong(timeIndex.getMinStartTime());
+    buffer.putLong(timeIndex.getMaxEndTime());
   }
 
   public void updateStartTime(IDeviceID device, long time) {
@@ -626,7 +648,7 @@ public class TsFileResource {
 
   @Override
   public String toString() {
-    return String.format("file is %s, status: %s", file.toString(), getStatus());
+    return String.format("{file: %s, status: %s}", file.toString(), getStatus());
   }
 
   @Override
@@ -1118,6 +1140,9 @@ public class TsFileResource {
         (maxProgressIndex == null
             ? progressIndex
             : maxProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex));
+
+    PipeTimePartitionProgressIndexKeeper.getInstance()
+        .updateProgressIndex(getDataRegionId(), getTimePartition(), maxProgressIndex);
   }
 
   public void setProgressIndex(ProgressIndex progressIndex) {
@@ -1126,6 +1151,9 @@ public class TsFileResource {
     }
 
     maxProgressIndex = progressIndex;
+
+    PipeTimePartitionProgressIndexKeeper.getInstance()
+        .updateProgressIndex(getDataRegionId(), getTimePartition(), maxProgressIndex);
   }
 
   public ProgressIndex getMaxProgressIndexAfterClose() throws IllegalStateException {

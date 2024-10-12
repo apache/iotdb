@@ -1004,7 +1004,7 @@ private:
     void initZoneId();
 
 public:
-    Session(const std::string &host, int rpcPort) : username("user"), password("password"), version(Version::V_1_0) {
+    Session(const std::string &host, int rpcPort) : username("root"), password("root"), version(Version::V_1_0) {
         this->host = host;
         this->rpcPort = rpcPort;
         initZoneId();

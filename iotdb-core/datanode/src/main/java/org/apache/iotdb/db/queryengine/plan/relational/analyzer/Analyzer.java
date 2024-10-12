@@ -23,8 +23,10 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
+import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 
@@ -32,6 +34,8 @@ import java.util.List;
 import java.util.Map;
 
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.ANALYZER;
+import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TABLE_TYPE;
 
 public class Analyzer {
 
@@ -76,11 +80,16 @@ public class Analyzer {
       analysis.setDatabaseName(session.getDatabaseName().get());
     }
 
+    long startTime = System.nanoTime();
     StatementAnalyzer analyzer =
         statementAnalyzerFactory.createStatementAnalyzer(
             analysis, context, session, warningCollector, CorrelationSupport.ALLOWED);
 
     analyzer.analyze(statement);
+    if (statement instanceof Query) {
+      QueryPlanCostMetricSet.getInstance()
+          .recordPlanCost(TABLE_TYPE, ANALYZER, System.nanoTime() - startTime);
+    }
 
     // TODO access control
     // check column access permissions for each table

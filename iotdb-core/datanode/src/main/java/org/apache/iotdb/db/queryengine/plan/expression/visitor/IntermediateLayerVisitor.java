@@ -67,6 +67,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.transformer.ternary.Be
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.ArithmeticNegationTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.InTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.IsNullTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.LikeTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.LogicNotTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.RegularTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.TransparentTransformer;
@@ -311,7 +312,7 @@ public class IntermediateLayerVisitor
         return new ArithmeticNegationTransformer(parentReader);
       case LIKE:
         LikeExpression likeExpression = (LikeExpression) expression;
-        return new RegularTransformer(parentReader, likeExpression.getPattern());
+        return new LikeTransformer(parentReader, likeExpression.getPattern());
       case REGEXP:
         RegularExpression regularExpression = (RegularExpression) expression;
         return new RegularTransformer(parentReader, regularExpression.getPattern());

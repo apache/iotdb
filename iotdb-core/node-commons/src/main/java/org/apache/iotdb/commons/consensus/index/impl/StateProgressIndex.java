@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.consensus.index.impl;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 
+import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -36,18 +37,24 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+/**
+ * NOTE: Currently, {@link StateProgressIndex} does not perform deep copies of the {@link Binary}
+ * during construction or when exposed through accessors, which may lead to unintended shared state
+ * or modifications. This behavior should be reviewed and adjusted as necessary to ensure the
+ * integrity and independence of the progress index instances.
+ */
 public class StateProgressIndex extends ProgressIndex {
 
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
-  private long version;
-  private Map<String, Binary> state;
-  private ProgressIndex innerProgressIndex;
+  private final long version;
+  private final Map<String, Binary> state;
+  private final ProgressIndex innerProgressIndex;
 
   public StateProgressIndex(
       long version, Map<String, Binary> state, ProgressIndex innerProgressIndex) {
     this.version = version;
-    this.state = state;
+    this.state = new HashMap<>(state);
     this.innerProgressIndex = innerProgressIndex;
   }
 
@@ -60,7 +67,7 @@ public class StateProgressIndex extends ProgressIndex {
   }
 
   public Map<String, Binary> getState() {
-    return state;
+    return ImmutableMap.copyOf(state);
   }
 
   @Override
@@ -162,6 +169,10 @@ public class StateProgressIndex extends ProgressIndex {
   public ProgressIndex updateToMinimumEqualOrIsAfterProgressIndex(ProgressIndex progressIndex) {
     lock.writeLock().lock();
     try {
+      long version = this.version;
+      Map<String, Binary> state = new HashMap<>(this.state);
+      ProgressIndex innerProgressIndex = this.innerProgressIndex;
+
       innerProgressIndex =
           innerProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
               progressIndex instanceof StateProgressIndex
@@ -172,7 +183,7 @@ public class StateProgressIndex extends ProgressIndex {
         version = ((StateProgressIndex) progressIndex).version;
         state = ((StateProgressIndex) progressIndex).state;
       }
-      return this;
+      return new StateProgressIndex(version, state, innerProgressIndex);
     } finally {
       lock.writeLock().unlock();
     }

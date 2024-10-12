@@ -65,6 +65,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl.DiskAlign
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl.DiskChunkHandleImpl;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl.UnclosedFileScanHandleImpl;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
 import org.apache.iotdb.db.storageengine.dataregion.utils.SharedTimeDataBuffer;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
@@ -326,6 +327,7 @@ public class TsFileProcessor {
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
+            dataRegionInfo.getDataRegion().getDatabaseName(),
             walFlushListener.getWalEntryHandler(),
             insertRowNode,
             tsFileResource);
@@ -357,10 +359,29 @@ public class TsFileProcessor {
     long[] memIncrements;
 
     long memControlStartTime = System.nanoTime();
-    if (insertRowsNode.isAligned()) {
-      memIncrements = checkAlignedMemCostAndAddToTspInfoForRows(insertRowsNode);
+    if (insertRowsNode.isMixingAlignment()) {
+      List<InsertRowNode> alignedList = new ArrayList<>();
+      List<InsertRowNode> nonAlignedList = new ArrayList<>();
+      for (InsertRowNode insertRowNode : insertRowsNode.getInsertRowNodeList()) {
+        if (insertRowNode.isAligned()) {
+          alignedList.add(insertRowNode);
+        } else {
+          nonAlignedList.add(insertRowNode);
+        }
+      }
+      long[] alignedMemIncrements = checkAlignedMemCostAndAddToTspInfoForRows(alignedList);
+      long[] nonAlignedMemIncrements = checkMemCostAndAddToTspInfoForRows(nonAlignedList);
+      memIncrements = new long[3];
+      for (int i = 0; i < 3; i++) {
+        memIncrements[i] = alignedMemIncrements[i] + nonAlignedMemIncrements[i];
+      }
     } else {
-      memIncrements = checkMemCostAndAddToTspInfoForRows(insertRowsNode);
+      if (insertRowsNode.isAligned()) {
+        memIncrements =
+            checkAlignedMemCostAndAddToTspInfoForRows(insertRowsNode.getInsertRowNodeList());
+      } else {
+        memIncrements = checkMemCostAndAddToTspInfoForRows(insertRowsNode.getInsertRowNodeList());
+      }
     }
     // recordScheduleMemoryBlockCost
     costsForMetrics[1] += System.nanoTime() - memControlStartTime;
@@ -394,6 +415,7 @@ public class TsFileProcessor {
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
+            dataRegionInfo.getDataRegion().getDatabaseName(),
             walFlushListener.getWalEntryHandler(),
             insertRowsNode,
             tsFileResource);
@@ -542,6 +564,7 @@ public class TsFileProcessor {
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
+            dataRegionInfo.getDataRegion().getDatabaseName(),
             walFlushListener.getWalEntryHandler(),
             insertTabletNode,
             tsFileResource);
@@ -626,7 +649,7 @@ public class TsFileProcessor {
   }
 
   @SuppressWarnings("squid:S3776") // High Cognitive Complexity
-  private long[] checkMemCostAndAddToTspInfoForRows(InsertRowsNode insertRowsNode)
+  private long[] checkMemCostAndAddToTspInfoForRows(List<InsertRowNode> insertRowNodeList)
       throws WriteProcessException {
     // Memory of increased PrimitiveArray and TEXT values, e.g., add a long[128], add 128*8
     long memTableIncrement = 0L;
@@ -634,7 +657,7 @@ public class TsFileProcessor {
     long chunkMetadataIncrement = 0L;
     // device -> measurement -> adding TVList size
     Map<IDeviceID, Map<String, Integer>> increasingMemTableInfo = new HashMap<>();
-    for (InsertRowNode insertRowNode : insertRowsNode.getInsertRowNodeList()) {
+    for (InsertRowNode insertRowNode : insertRowNodeList) {
       IDeviceID deviceId = insertRowNode.getDeviceID();
       TSDataType[] dataTypes = insertRowNode.getDataTypes();
       Object[] values = insertRowNode.getValues();
@@ -740,7 +763,7 @@ public class TsFileProcessor {
   }
 
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
-  private long[] checkAlignedMemCostAndAddToTspInfoForRows(InsertRowsNode insertRowsNode)
+  private long[] checkAlignedMemCostAndAddToTspInfoForRows(List<InsertRowNode> insertRowNodeList)
       throws WriteProcessException {
     // Memory of increased PrimitiveArray and TEXT values, e.g., add a long[128], add 128*8
     long memTableIncrement = 0L;
@@ -748,7 +771,7 @@ public class TsFileProcessor {
     long chunkMetadataIncrement = 0L;
     // device -> (measurements -> datatype, adding aligned TVList size)
     Map<IDeviceID, Pair<Map<String, TSDataType>, Integer>> increasingMemTableInfo = new HashMap<>();
-    for (InsertRowNode insertRowNode : insertRowsNode.getInsertRowNodeList()) {
+    for (InsertRowNode insertRowNode : insertRowNodeList) {
       IDeviceID deviceId = insertRowNode.getDeviceID();
       TSDataType[] dataTypes = insertRowNode.getDataTypes();
       Object[] values = insertRowNode.getValues();
@@ -796,9 +819,11 @@ public class TsFileProcessor {
 
           int addingPointNum = addingPointNumInfo.getRight();
           // Extending the column of aligned mem chunk
-          if ((alignedMemChunk != null && !alignedMemChunk.containsMeasurement(measurements[i]))
-              && !increasingMemTableInfo.get(deviceId).left.containsKey(measurements[i])) {
-            increasingMemTableInfo.get(deviceId).left.put(measurements[i], dataTypes[i]);
+          boolean currentMemChunkContainsMeasurement =
+              alignedMemChunk != null && alignedMemChunk.containsMeasurement(measurements[i]);
+          if (!currentMemChunkContainsMeasurement
+              && !addingPointNumInfo.left.containsKey(measurements[i])) {
+            addingPointNumInfo.left.put(measurements[i], dataTypes[i]);
             int currentArrayNum =
                 (currentChunkPointNum + addingPointNum) / PrimitiveArrayManager.ARRAY_SIZE
                     + ((currentChunkPointNum + addingPointNum) % PrimitiveArrayManager.ARRAY_SIZE
@@ -809,17 +834,17 @@ public class TsFileProcessor {
                 currentArrayNum * AlignedTVList.valueListArrayMemCost(dataTypes[i]);
           }
         }
-        int addingPointNum = increasingMemTableInfo.get(deviceId).getRight();
+        int addingPointNum = addingPointNumInfo.right;
         // Here currentChunkPointNum + addingPointNum >= 1
         if (((currentChunkPointNum + addingPointNum) % PrimitiveArrayManager.ARRAY_SIZE) == 0) {
           if (alignedMemChunk != null) {
             dataTypesInTVList.addAll(
                 ((AlignedTVList) alignedMemChunk.getTVList()).getTsDataTypes());
           }
-          dataTypesInTVList.addAll(increasingMemTableInfo.get(deviceId).getLeft().values());
+          dataTypesInTVList.addAll(addingPointNumInfo.left.values());
           memTableIncrement += AlignedTVList.alignedTvListArrayMemCost(dataTypesInTVList);
         }
-        increasingMemTableInfo.get(deviceId).setRight(addingPointNum + 1);
+        addingPointNumInfo.setRight(addingPointNum + 1);
       }
 
       for (int i = 0; i < dataTypes.length; i++) {
@@ -1252,6 +1277,7 @@ public class TsFileProcessor {
         PipeInsertionDataNodeListener.getInstance()
             .listenToTsFile(
                 dataRegionInfo.getDataRegion().getDataRegionId(),
+                dataRegionInfo.getDataRegion().getDatabaseName(),
                 tsFileResource,
                 false,
                 tmpMemTable.isTotallyGeneratedByPipe());
@@ -1708,6 +1734,7 @@ public class TsFileProcessor {
     }
     writer.endFile();
     tsFileResource.serialize();
+    FileTimeIndexCacheRecorder.getInstance().logFileTimeIndex(tsFileResource);
     if (logger.isDebugEnabled()) {
       logger.debug("Ended file {}", tsFileResource);
     }
@@ -2189,10 +2216,15 @@ public class TsFileProcessor {
   }
 
   private long getQueryTimeLowerBound(IDeviceID deviceID) {
-    long deviceTTL = DataNodeTTLCache.getInstance().getTTL(deviceID);
-    return deviceTTL != Long.MAX_VALUE
-        ? CommonDateTimeUtils.currentTime() - deviceTTL
-        : Long.MIN_VALUE;
+    long ttl;
+    if (deviceID.getTableName().startsWith("root.")) {
+      ttl = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
+    } else {
+      ttl =
+          DataNodeTTLCache.getInstance()
+              .getTTLForTable(this.storageGroupName, deviceID.getTableName());
+    }
+    return ttl != Long.MAX_VALUE ? CommonDateTimeUtils.currentTime() - ttl : Long.MIN_VALUE;
   }
 
   public long getTimeRangeId() {

@@ -24,11 +24,12 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.StateProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
-import org.apache.iotdb.commons.pipe.pattern.PipePattern;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
@@ -47,6 +48,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -84,6 +86,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_START_TIME_KEY;
+import static org.apache.tsfile.common.constant.TsFileConstant.PATH_ROOT;
+import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDataRegionExtractor {
 
@@ -101,7 +105,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   private int dataRegionId;
 
-  private PipePattern pipePattern;
+  private TreePattern treePattern;
+  private TablePattern tablePattern;
   private boolean isDbNameCoveredByPattern = false;
 
   private boolean isHistoricalExtractorEnabled = false;
@@ -118,6 +123,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   private boolean shouldTerminatePipeOnAllHistoricalEventsConsumed;
   private boolean isTerminateSignalSent = false;
+
+  private volatile boolean hasBeenStarted = false;
 
   private Queue<TsFileResource> pendingQueue;
 
@@ -267,14 +274,16 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.putIfAbsent(dataRegionId, 0L);
     }
 
-    pipePattern = PipePattern.parsePipePatternFromSourceParameters(parameters);
+    treePattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
+    tablePattern = TablePattern.parsePipePatternFromSourceParameters(parameters);
 
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(environment.getRegionId()));
     if (Objects.nonNull(dataRegion)) {
       final String databaseName = dataRegion.getDatabaseName();
       if (Objects.nonNull(databaseName)) {
-        isDbNameCoveredByPattern = pipePattern.coversDb(databaseName);
+        isDbNameCoveredByPattern =
+            treePattern.coversDb(databaseName) && tablePattern.coversDb(databaseName);
       }
     }
 
@@ -369,8 +378,17 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   @Override
   public synchronized void start() {
     if (!shouldExtractInsertion) {
+      hasBeenStarted = true;
       return;
     }
+    if (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
+      LOGGER.info(
+          "Pipe {}@{}: failed to start to extract historical TsFile, storage engine is not ready. Will retry later.",
+          pipeName,
+          dataRegionId);
+      return;
+    }
+    hasBeenStarted = true;
 
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
@@ -532,8 +550,20 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
     return deviceSet.stream()
         .anyMatch(
-            // TODO: use IDeviceID
-            deviceID -> pipePattern.mayOverlapWithDevice(deviceID));
+            deviceID -> {
+              if (deviceID instanceof PlainDeviceID
+                  || deviceID.getTableName().startsWith(PATH_ROOT + PATH_SEPARATOR)
+                  || deviceID.getTableName().equals(PATH_ROOT)) {
+                // In case of tree model deviceID
+                return treePattern.isTreeModelDataAllowedToBeCaptured()
+                    && treePattern.mayOverlapWithDevice(deviceID);
+              } else {
+                // In case of table model deviceID
+                return tablePattern.isTableModelDataAllowedToBeCaptured()
+                    && tablePattern.matchesDatabase(resource.getDatabaseName())
+                    && tablePattern.matchesTable(deviceID.getTableName());
+              }
+            });
   }
 
   private boolean isTsFileResourceOverlappedWithTimeRange(final TsFileResource resource) {
@@ -567,22 +597,33 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   @Override
   public synchronized Event supply() {
+    if (!hasBeenStarted && StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
+      start();
+    }
+
     if (Objects.isNull(pendingQueue)) {
       return null;
     }
 
     final TsFileResource resource = pendingQueue.poll();
     if (resource == null) {
-      isTerminateSignalSent = true;
       final PipeTerminateEvent terminateEvent =
           new PipeTerminateEvent(pipeName, creationTime, pipeTaskMeta, dataRegionId);
-      terminateEvent.increaseReferenceCount(
-          PipeHistoricalDataRegionTsFileExtractor.class.getName());
+      if (!terminateEvent.increaseReferenceCount(
+          PipeHistoricalDataRegionTsFileExtractor.class.getName())) {
+        LOGGER.warn(
+            "Pipe {}@{}: failed to increase reference count for terminate event, will resend it",
+            pipeName,
+            dataRegionId);
+        return null;
+      }
+      isTerminateSignalSent = true;
       return terminateEvent;
     }
 
     final PipeTsFileInsertionEvent event =
         new PipeTsFileInsertionEvent(
+            resource.getDatabaseName(),
             resource,
             shouldTransferModFile,
             false,
@@ -591,7 +632,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             pipeName,
             creationTime,
             pipeTaskMeta,
-            pipePattern,
+            treePattern,
+            tablePattern,
             historicalDataExtractionStartTime,
             historicalDataExtractionEndTime);
     if (sloppyPattern || isDbNameCoveredByPattern) {
@@ -602,27 +644,38 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       event.skipParsingTime();
     }
 
-    event.increaseReferenceCount(PipeHistoricalDataRegionTsFileExtractor.class.getName());
     try {
-      PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource);
-    } catch (final IOException e) {
-      LOGGER.warn(
-          "Pipe {}@{}: failed to unpin TsFileResource after creating event, original path: {}",
-          pipeName,
-          dataRegionId,
-          resource.getTsFilePath());
+      final boolean isReferenceCountIncreased =
+          event.increaseReferenceCount(PipeHistoricalDataRegionTsFileExtractor.class.getName());
+      if (!isReferenceCountIncreased) {
+        LOGGER.warn(
+            "Pipe {}@{}: failed to increase reference count for historical event {}, will discard it",
+            pipeName,
+            dataRegionId,
+            event);
+      }
+      return isReferenceCountIncreased ? event : null;
+    } finally {
+      try {
+        PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource);
+      } catch (final IOException e) {
+        LOGGER.warn(
+            "Pipe {}@{}: failed to unpin TsFileResource after creating event, original path: {}",
+            pipeName,
+            dataRegionId,
+            resource.getTsFilePath());
+      }
     }
-
-    return event;
   }
 
   @Override
   public synchronized boolean hasConsumedAll() {
     // If the pendingQueue is null when the function is called, it implies that the extractor only
     // extracts deletion thus the historical event has nothing to consume.
-    return Objects.isNull(pendingQueue)
-        || pendingQueue.isEmpty()
-            && (!shouldTerminatePipeOnAllHistoricalEventsConsumed || isTerminateSignalSent);
+    return hasBeenStarted
+        && (Objects.isNull(pendingQueue)
+            || pendingQueue.isEmpty()
+                && (!shouldTerminatePipeOnAllHistoricalEventsConsumed || isTerminateSignalSent));
   }
 
   @Override

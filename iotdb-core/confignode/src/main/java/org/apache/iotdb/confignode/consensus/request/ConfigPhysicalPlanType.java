@@ -160,7 +160,9 @@ public enum ConfigPhysicalPlanType {
   CommitCreateTable((short) 852),
   AddTableColumn((short) 853),
   SetTableProperties((short) 854),
-  RenameTableColumn((short) 855),
+  ShowTable((short) 855),
+  FetchTable((short) 856),
+  RenameTableColumn((short) 857),
 
   /** Deprecated types for sync, restored them for upgrade. */
   @Deprecated

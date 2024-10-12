@@ -36,17 +36,17 @@ public class PipeDataRegionEventCounter extends PipeEventCounter {
   private final AtomicInteger pipeHeartbeatEventCount = new AtomicInteger(0);
 
   @Override
-  public Integer getTsFileInsertionEventCount() {
+  public int getTsFileInsertionEventCount() {
     return tsFileInsertionEventCount.get();
   }
 
   @Override
-  public Integer getTabletInsertionEventCount() {
+  public int getTabletInsertionEventCount() {
     return tabletInsertionEventCount.get();
   }
 
   @Override
-  public Integer getPipeHeartbeatEventCount() {
+  public int getPipeHeartbeatEventCount() {
     return pipeHeartbeatEventCount.get();
   }
 

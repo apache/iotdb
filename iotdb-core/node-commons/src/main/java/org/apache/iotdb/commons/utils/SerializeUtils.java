@@ -141,16 +141,20 @@ public class SerializeUtils {
     TSDataType dataType = TSDataType.values()[buffer.get()];
     BatchData batchData = BatchDataType.deserialize(buffer.get(), dataType);
     switch (dataType) {
+      case DATE:
       case INT32:
         for (int i = 0; i < length; i++) {
           batchData.putInt(buffer.getLong(), buffer.getInt());
         }
         break;
+      case TIMESTAMP:
       case INT64:
         for (int i = 0; i < length; i++) {
           batchData.putLong(buffer.getLong(), buffer.getLong());
         }
         break;
+      case BLOB:
+      case STRING:
       case TEXT:
         for (int i = 0; i < length; i++) {
           long time = buffer.getLong();
@@ -193,15 +197,19 @@ public class SerializeUtils {
                 case FLOAT:
                   values[j] = new TsPrimitiveType.TsFloat(buffer.getFloat());
                   break;
+                case BLOB:
+                case STRING:
                 case TEXT:
                   int len = buffer.getInt();
                   byte[] bytes = new byte[len];
                   buffer.get(bytes);
                   values[j] = new TsPrimitiveType.TsBinary(new Binary(bytes));
                   break;
+                case TIMESTAMP:
                 case INT64:
                   values[j] = new TsPrimitiveType.TsLong(buffer.getLong());
                   break;
+                case DATE:
                 case INT32:
                   values[j] = new TsPrimitiveType.TsInt(buffer.getInt());
                   break;
@@ -286,15 +294,19 @@ public class SerializeUtils {
       dataOutputStream.write(dataType.ordinal());
       dataOutputStream.writeInt(timeValuePairs.size());
       switch (timeValuePairs.get(0).getValue().getDataType()) {
+        case BLOB:
+        case STRING:
         case TEXT:
           serializeTextTVPairs(timeValuePairs, dataOutputStream);
           break;
         case BOOLEAN:
           serializeBooleanTVPairs(timeValuePairs, dataOutputStream);
           break;
+        case TIMESTAMP:
         case INT64:
           serializeLongTVPairs(timeValuePairs, dataOutputStream);
           break;
+        case DATE:
         case INT32:
           serializeIntTVPairs(timeValuePairs, dataOutputStream);
           break;
@@ -321,6 +333,8 @@ public class SerializeUtils {
     try {
       dataOutputStream.write(dataType.ordinal());
       switch (dataType) {
+        case STRING:
+        case BLOB:
         case TEXT:
           dataOutputStream.writeLong(timeValuePair.getTimestamp());
           if (timeValuePair.getTimestamp() != Long.MIN_VALUE) {
@@ -334,12 +348,14 @@ public class SerializeUtils {
             dataOutputStream.writeBoolean(timeValuePair.getValue().getBoolean());
           }
           break;
+        case TIMESTAMP:
         case INT64:
           dataOutputStream.writeLong(timeValuePair.getTimestamp());
           if (timeValuePair.getTimestamp() != Long.MIN_VALUE) {
             dataOutputStream.writeLong(timeValuePair.getValue().getLong());
           }
           break;
+        case DATE:
         case INT32:
           dataOutputStream.writeLong(timeValuePair.getTimestamp());
           if (timeValuePair.getTimestamp() != Long.MIN_VALUE) {
@@ -458,15 +474,19 @@ public class SerializeUtils {
       case FLOAT:
         deserializeFloatTVPairs(buffer, ret, size, dataType);
         break;
+      case DATE:
       case INT32:
         deserializeIntTVPairs(buffer, ret, size, dataType);
         break;
+      case TIMESTAMP:
       case INT64:
         deserializeLongTVPairs(buffer, ret, size, dataType);
         break;
       case BOOLEAN:
         deserializeBooleanTVPairs(buffer, ret, size, dataType);
         break;
+      case BLOB:
+      case STRING:
       case TEXT:
         deserializeTextTVPairs(buffer, ret, size, dataType);
         break;
@@ -490,12 +510,16 @@ public class SerializeUtils {
         return new TimeValuePair(time, TsPrimitiveType.getByType(dataType, buffer.getDouble()));
       case FLOAT:
         return new TimeValuePair(time, TsPrimitiveType.getByType(dataType, buffer.getFloat()));
+      case DATE:
       case INT32:
         return new TimeValuePair(time, TsPrimitiveType.getByType(dataType, buffer.getInt()));
+      case TIMESTAMP:
       case INT64:
         return new TimeValuePair(time, TsPrimitiveType.getByType(dataType, buffer.getLong()));
       case BOOLEAN:
         return new TimeValuePair(time, TsPrimitiveType.getByType(dataType, buffer.get() == 1));
+      case BLOB:
+      case STRING:
       case TEXT:
         int bytesLen = buffer.getInt();
         byte[] bytes = new byte[bytesLen];

@@ -102,6 +102,10 @@ public class IoTDBDescriptor {
 
   private static final double MIN_DIR_USE_PROPORTION = 0.5;
 
+  private static final String[] DEFAULT_WAL_THRESHOLD_NAME = {
+    "iot_consensus_throttle_threshold_in_byte", "wal_throttle_threshold_in_byte"
+  };
+
   static {
     URL systemConfigUrl = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
     URL configNodeUrl = getPropsUrl(CommonConfig.OLD_CONFIG_NODE_CONFIG_NAME);
@@ -287,19 +291,6 @@ public class IoTDBDescriptor {
                 .getProperty(IoTDBConstant.DN_RPC_PORT, Integer.toString(conf.getRpcPort()))
                 .trim()));
 
-    conf.setEnableAINodeService(
-        Boolean.parseBoolean(
-            properties
-                .getProperty(
-                    "enable_ainode_rpc_service", Boolean.toString(conf.isEnableAINodeService()))
-                .trim()));
-
-    conf.setAINodePort(
-        Integer.parseInt(
-            properties
-                .getProperty("ainode_rpc_port", Integer.toString(conf.getAINodePort()))
-                .trim()));
-
     conf.setBufferedArraysMemoryProportion(
         Double.parseDouble(
             properties
@@ -443,6 +434,12 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "compaction_schedule_interval_in_ms",
                 Long.toString(conf.getCompactionScheduleIntervalInMs()))));
+
+    conf.setEnableAutoRepairCompaction(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_auto_repair_compaction",
+                Boolean.toString(conf.isEnableAutoRepairCompaction()))));
 
     conf.setEnableCrossSpaceCompaction(
         Boolean.parseBoolean(
@@ -1073,13 +1070,19 @@ public class IoTDBDescriptor {
         properties.getProperty(
             "datanode_schema_cache_eviction_policy", conf.getDataNodeSchemaCacheEvictionPolicy()));
 
+    conf.setDataNodeTableCacheSemaphorePermitNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "datanode_table_cache_semaphore_permit_num",
+                String.valueOf(conf.getDataNodeTableCacheSemaphorePermitNum()))));
+
     loadIoTConsensusProps(properties);
-    loadPipeConsensusProps(properties);
+    loadIoTConsensusV2Props(properties);
   }
 
   private void reloadConsensusProps(Properties properties) throws IOException {
     loadIoTConsensusProps(properties);
-    loadPipeConsensusProps(properties);
+    loadIoTConsensusV2Props(properties);
     DataRegionConsensusImpl.reloadConsensusConfig();
   }
 
@@ -1126,16 +1129,20 @@ public class IoTDBDescriptor {
                 .trim()));
   }
 
-  private void loadPipeConsensusProps(Properties properties) throws IOException {
-    conf.setPipeConsensusPipelineSize(
+  private void loadIoTConsensusV2Props(Properties properties) throws IOException {
+    conf.setIotConsensusV2PipelineSize(
         Integer.parseInt(
             properties.getProperty(
-                "fast_iot_consensus_pipeline_size",
+                "iot_consensus_v2_pipeline_size",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
-                    "fast_iot_consensus_pipeline_size"))));
-    if (conf.getPipeConsensusPipelineSize() <= 0) {
-      conf.setPipeConsensusPipelineSize(5);
+                    "iot_consensus_v2_pipeline_size"))));
+    if (conf.getIotConsensusV2PipelineSize() <= 0) {
+      conf.setIotConsensusV2PipelineSize(5);
     }
+    conf.setIotConsensusV2Mode(
+        properties.getProperty(
+            "iot_consensus_v2_mode",
+            ConfigurationFileUtils.getConfigurationDefaultValue("iot_consensus_v2_mode")));
   }
 
   private void loadAuthorCache(Properties properties) {
@@ -1177,6 +1184,15 @@ public class IoTDBDescriptor {
       conf.setWalBufferQueueCapacity(walBufferQueueCapacity);
     }
 
+    boolean WALInsertNodeCacheShrinkClearEnabled =
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "wal_cache_shrink_clear_enabled",
+                Boolean.toString(conf.getWALCacheShrinkClearEnabled())));
+    if (conf.getWALCacheShrinkClearEnabled() != WALInsertNodeCacheShrinkClearEnabled) {
+      conf.setWALCacheShrinkClearEnabled(WALInsertNodeCacheShrinkClearEnabled);
+    }
+
     loadWALHotModifiedProps(properties);
   }
 
@@ -1213,6 +1229,12 @@ public class IoTDBDescriptor {
         .setCompactionReadThroughputRate(conf.getCompactionReadThroughputMbPerSec());
     CompactionTaskManager.getInstance()
         .setWriteMergeRate(conf.getCompactionWriteThroughputMbPerSec());
+
+    conf.setEnableAutoRepairCompaction(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_auto_repair_compaction",
+                Boolean.toString(conf.isEnableAutoRepairCompaction()))));
   }
 
   private boolean loadCompactionTaskHotModifiedProps(Properties properties) throws IOException {
@@ -1551,12 +1573,7 @@ public class IoTDBDescriptor {
       conf.setDeleteWalFilesPeriodInMs(deleteWalFilesPeriod);
     }
 
-    long throttleDownThresholdInByte =
-        Long.parseLong(
-            properties.getProperty(
-                "iot_consensus_throttle_threshold_in_byte",
-                ConfigurationFileUtils.getConfigurationDefaultValue(
-                    "iot_consensus_throttle_threshold_in_byte")));
+    long throttleDownThresholdInByte = Long.parseLong(getWalThrottleThreshold(properties));
     if (throttleDownThresholdInByte > 0) {
       conf.setThrottleThreshold(throttleDownThresholdInByte);
     }
@@ -1570,6 +1587,20 @@ public class IoTDBDescriptor {
     if (cacheWindowInMs > 0) {
       conf.setCacheWindowTimeInMs(cacheWindowInMs);
     }
+  }
+
+  private String getWalThrottleThreshold(Properties prop) throws IOException {
+    String old_throttleThreshold = prop.getProperty(DEFAULT_WAL_THRESHOLD_NAME[0], null);
+    if (old_throttleThreshold != null) {
+      LOGGER.warn(
+          "The throttle threshold params: {} is deprecated, please use {}",
+          DEFAULT_WAL_THRESHOLD_NAME[0],
+          DEFAULT_WAL_THRESHOLD_NAME[1]);
+      return old_throttleThreshold;
+    }
+    return prop.getProperty(
+        DEFAULT_WAL_THRESHOLD_NAME[1],
+        ConfigurationFileUtils.getConfigurationDefaultValue(DEFAULT_WAL_THRESHOLD_NAME[1]));
   }
 
   public long getThrottleThresholdWithDirs() {
@@ -2248,6 +2279,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_tsfile_analyze_schema_memory_size_in_bytes",
                 String.valueOf(conf.getLoadTsFileAnalyzeSchemaMemorySizeInBytes()))));
+    conf.setLoadTsFileMaxDeviceCountToUseDeviceTimeIndex(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_max_device_count_to_use_device_index",
+                String.valueOf(conf.getLoadTsFileMaxDeviceCountToUseDeviceTimeIndex()))));
     conf.setLoadCleanupTaskExecutionDelayTimeSeconds(
         Long.parseLong(
             properties.getProperty(
@@ -2277,19 +2313,30 @@ public class IoTDBDescriptor {
     conf.setLoadActiveListeningFailDir(
         properties.getProperty(
             "load_active_listening_fail_dir", conf.getLoadActiveListeningFailDir()));
-    conf.setLoadActiveListeningCheckIntervalSeconds(
+
+    final long loadActiveListeningCheckIntervalSeconds =
         Long.parseLong(
             properties.getProperty(
                 "load_active_listening_check_interval_seconds",
-                Long.toString(conf.getLoadActiveListeningCheckIntervalSeconds()))));
-    conf.setLoadActiveListeningMaxThreadNum(
+                Long.toString(conf.getLoadActiveListeningCheckIntervalSeconds())));
+    conf.setLoadActiveListeningCheckIntervalSeconds(
+        loadActiveListeningCheckIntervalSeconds <= 0
+            ? conf.getLoadActiveListeningCheckIntervalSeconds()
+            : loadActiveListeningCheckIntervalSeconds);
+
+    final int defaultLoadActiveListeningMaxThreadNum =
+        Math.min(
+            conf.getLoadActiveListeningMaxThreadNum(),
+            Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
+    final int loadActiveListeningMaxThreadNum =
         Integer.parseInt(
             properties.getProperty(
                 "load_active_listening_max_thread_num",
-                Integer.toString(
-                    Math.min(
-                        conf.getLoadActiveListeningMaxThreadNum(),
-                        Math.max(1, Runtime.getRuntime().availableProcessors() / 2))))));
+                Integer.toString(defaultLoadActiveListeningMaxThreadNum)));
+    conf.setLoadActiveListeningMaxThreadNum(
+        loadActiveListeningMaxThreadNum <= 0
+            ? defaultLoadActiveListeningMaxThreadNum
+            : loadActiveListeningMaxThreadNum);
   }
 
   private void loadLoadTsFileHotModifiedProp(Properties properties) throws IOException {
@@ -2446,12 +2493,12 @@ public class IoTDBDescriptor {
             .filter(dir -> !dir.isEmpty())
             .toArray(String[]::new));
 
-    conf.setPipeConsensusReceiverFileDirs(
+    conf.setIotConsensusV2ReceiverFileDirs(
         Arrays.stream(
                 properties
                     .getProperty(
-                        "pipe_consensus_receiver_file_dirs",
-                        String.join(",", conf.getPipeConsensusReceiverFileDirs()))
+                        "iot_consensus_v2_receiver_file_dirs",
+                        String.join(",", conf.getIotConsensusV2ReceiverFileDirs()))
                     .trim()
                     .split(","))
             .filter(dir -> !dir.isEmpty())
@@ -2578,6 +2625,9 @@ public class IoTDBDescriptor {
         return conf.getDefaultFloatEncoding();
       case DOUBLE:
         return conf.getDefaultDoubleEncoding();
+      case STRING:
+      case BLOB:
+      case TEXT:
       default:
         return conf.getDefaultTextEncoding();
     }

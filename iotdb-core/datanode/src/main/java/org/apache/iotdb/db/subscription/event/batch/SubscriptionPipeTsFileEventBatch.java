@@ -30,63 +30,78 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
+import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
-public class SubscriptionPipeTsFileEventBatch {
-
-  private final SubscriptionPrefetchingTsFileQueue prefetchingQueue;
+public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch {
 
   private final PipeTabletEventTsFileBatch batch;
-
-  private boolean isSealed = false;
+  private final List<EnrichedEvent> enrichedEvents;
 
   public SubscriptionPipeTsFileEventBatch(
+      final int regionId,
       final SubscriptionPrefetchingTsFileQueue prefetchingQueue,
       final int maxDelayInMs,
-      final long requestMaxBatchSizeInBytes) {
-    this.prefetchingQueue = prefetchingQueue;
-    this.batch = new PipeTabletEventTsFileBatch(maxDelayInMs, requestMaxBatchSizeInBytes);
+      final long maxBatchSizeInBytes) {
+    super(regionId, prefetchingQueue, maxDelayInMs, maxBatchSizeInBytes);
+    this.batch = new PipeTabletEventTsFileBatch(maxDelayInMs, maxBatchSizeInBytes);
+    this.enrichedEvents = new ArrayList<>();
   }
 
-  public synchronized List<SubscriptionEvent> onEvent(@Nullable final TabletInsertionEvent event)
-      throws Exception {
-    if (isSealed) {
-      return Collections.emptyList();
-    }
-    if (Objects.nonNull(event)) {
-      batch.onEvent(event);
-      if (event instanceof EnrichedEvent) {
-        ((EnrichedEvent) event)
-            .decreaseReferenceCount(
-                SubscriptionPipeTsFileEventBatch.class.getName(),
-                false); // missing releaseLastEvent decreases reference count
+  @Override
+  public synchronized boolean onEvent(final Consumer<SubscriptionEvent> consumer) throws Exception {
+    if (batch.shouldEmit() && !enrichedEvents.isEmpty()) {
+      if (Objects.isNull(events)) {
+        events = generateSubscriptionEvents();
       }
+      if (Objects.nonNull(events)) {
+        events.forEach(consumer);
+        return true;
+      }
+      return false;
     }
-    if (batch.shouldEmit()) {
-      final List<SubscriptionEvent> events = generateSubscriptionEvents();
-      isSealed = true;
-      return events;
+    return false;
+  }
+
+  @Override
+  public synchronized boolean onEvent(
+      final @NonNull EnrichedEvent event, final Consumer<SubscriptionEvent> consumer)
+      throws Exception {
+    if (event instanceof TabletInsertionEvent) {
+      batch.onEvent((TabletInsertionEvent) event); // no exceptions will be thrown
+      enrichedEvents.add(event);
+      event.decreaseReferenceCount(
+          SubscriptionPipeTsFileEventBatch.class.getName(),
+          false); // missing releaseLastEvent decreases reference count
     }
-    return Collections.emptyList();
+    return onEvent(consumer);
+  }
+
+  @Override
+  public synchronized void cleanUp() {
+    // close batch, it includes clearing the reference count of events
+    batch.close();
+    enrichedEvents.clear();
   }
 
   public synchronized void ack() {
     batch.decreaseEventsReferenceCount(this.getClass().getName(), true);
   }
 
-  public synchronized void cleanup() {
-    // close batch, it includes clearing the reference count of events
-    batch.close();
-  }
+  /////////////////////////////// utility ///////////////////////////////
 
   private List<SubscriptionEvent> generateSubscriptionEvents() throws Exception {
+    if (batch.isEmpty()) {
+      return null;
+    }
+
     final List<SubscriptionEvent> events = new ArrayList<>();
     final List<File> tsFiles = batch.sealTsFiles();
     final AtomicInteger referenceCount = new AtomicInteger(tsFiles.size());
@@ -106,7 +121,21 @@ public class SubscriptionPipeTsFileEventBatch {
 
   /////////////////////////////// stringify ///////////////////////////////
 
+  @Override
   public String toString() {
-    return "SubscriptionPipeTsFileEventBatch{batch=" + batch + ", isSealed=" + isSealed + "}";
+    return "SubscriptionPipeTsFileEventBatch" + this.coreReportMessage();
+  }
+
+  @Override
+  protected Map<String, String> coreReportMessage() {
+    final Map<String, String> coreReportMessage = super.coreReportMessage();
+    coreReportMessage.put("batch", batch.toString());
+    return coreReportMessage;
+  }
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  public int getPipeEventCount() {
+    return enrichedEvents.size();
   }
 }

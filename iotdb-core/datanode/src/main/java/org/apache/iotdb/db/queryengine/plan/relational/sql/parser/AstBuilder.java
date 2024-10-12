@@ -26,10 +26,12 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllRows;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
@@ -42,6 +44,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpress
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentTime;
@@ -55,16 +59,18 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropIndex;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupBy;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupByTime;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingElement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
@@ -110,25 +116,29 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowIndex;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleGroupBy;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableExpressionType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TimeRange;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TypeParameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Union;
@@ -161,6 +171,8 @@ import org.apache.tsfile.utils.TimeDuration;
 
 import javax.annotation.Nullable;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.ZoneId;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -170,6 +182,7 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -569,13 +582,194 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitCreatePipeStatement(RelationalSqlParser.CreatePipeStatementContext ctx) {
+    final String pipeName = ((Identifier) visit(ctx.identifier())).getValue();
+    final boolean hasIfNotExistsCondition =
+        ctx.IF() != null && ctx.NOT() != null && ctx.EXISTS() != null;
+
+    final Map<String, String> extractorAttributes =
+        ctx.extractorAttributesClause() != null
+            ? parseExtractorAttributesClause(
+                ctx.extractorAttributesClause().extractorAttributeClause())
+            : new HashMap<>(); // DO NOT USE Collections.emptyMap() here
+    final Map<String, String> processorAttributes =
+        ctx.processorAttributesClause() != null
+            ? parseProcessorAttributesClause(
+                ctx.processorAttributesClause().processorAttributeClause())
+            : new HashMap<>(); // DO NOT USE Collections.emptyMap() here
+    final Map<String, String> connectorAttributes =
+        ctx.connectorAttributesClause() != null
+            ? parseConnectorAttributesClause(
+                ctx.connectorAttributesClause().connectorAttributeClause())
+            : parseConnectorAttributesClause(
+                ctx.connectorAttributesWithoutWithSinkClause().connectorAttributeClause());
+
+    return new CreatePipe(
+        pipeName,
+        hasIfNotExistsCondition,
+        extractorAttributes,
+        processorAttributes,
+        connectorAttributes);
+  }
+
+  private Map<String, String> parseExtractorAttributesClause(
+      List<RelationalSqlParser.ExtractorAttributeClauseContext> contexts) {
+    final Map<String, String> collectorMap = new HashMap<>();
+    for (RelationalSqlParser.ExtractorAttributeClauseContext context : contexts) {
+      collectorMap.put(
+          ((StringLiteral) visit(context.extractorKey)).getValue(),
+          ((StringLiteral) visit(context.extractorValue)).getValue());
+    }
+    return collectorMap;
+  }
+
+  private Map<String, String> parseProcessorAttributesClause(
+      List<RelationalSqlParser.ProcessorAttributeClauseContext> contexts) {
+    final Map<String, String> processorMap = new HashMap<>();
+    for (RelationalSqlParser.ProcessorAttributeClauseContext context : contexts) {
+      processorMap.put(
+          ((StringLiteral) visit(context.processorKey)).getValue(),
+          ((StringLiteral) visit(context.processorValue)).getValue());
+    }
+    return processorMap;
+  }
+
+  private Map<String, String> parseConnectorAttributesClause(
+      List<RelationalSqlParser.ConnectorAttributeClauseContext> contexts) {
+    final Map<String, String> connectorMap = new HashMap<>();
+    for (RelationalSqlParser.ConnectorAttributeClauseContext context : contexts) {
+      connectorMap.put(
+          ((StringLiteral) visit(context.connectorKey)).getValue(),
+          ((StringLiteral) visit(context.connectorValue)).getValue());
+    }
+    return connectorMap;
+  }
+
+  @Override
+  public Node visitAlterPipeStatement(RelationalSqlParser.AlterPipeStatementContext ctx) {
+    final String pipeName = ((Identifier) visit(ctx.identifier())).getValue();
+    final boolean hasIfExistsCondition = ctx.IF() != null && ctx.EXISTS() != null;
+
+    final Map<String, String> extractorAttributes;
+    final boolean isReplaceAllExtractorAttributes;
+    if (ctx.alterExtractorAttributesClause() != null) {
+      extractorAttributes =
+          parseExtractorAttributesClause(
+              ctx.alterExtractorAttributesClause().extractorAttributeClause());
+      isReplaceAllExtractorAttributes =
+          Objects.nonNull(ctx.alterExtractorAttributesClause().REPLACE());
+    } else {
+      extractorAttributes = new HashMap<>(); // DO NOT USE Collections.emptyMap() here
+      isReplaceAllExtractorAttributes = false;
+    }
+
+    final Map<String, String> processorAttributes;
+    final boolean isReplaceAllProcessorAttributes;
+    if (ctx.alterProcessorAttributesClause() != null) {
+      processorAttributes =
+          parseProcessorAttributesClause(
+              ctx.alterProcessorAttributesClause().processorAttributeClause());
+      isReplaceAllProcessorAttributes =
+          Objects.nonNull(ctx.alterProcessorAttributesClause().REPLACE());
+    } else {
+      processorAttributes = new HashMap<>(); // DO NOT USE Collections.emptyMap() here
+      isReplaceAllProcessorAttributes = false;
+    }
+
+    final Map<String, String> connectorAttributes;
+    final boolean isReplaceAllConnectorAttributes;
+    if (ctx.alterConnectorAttributesClause() != null) {
+      connectorAttributes =
+          parseConnectorAttributesClause(
+              ctx.alterConnectorAttributesClause().connectorAttributeClause());
+      isReplaceAllConnectorAttributes =
+          Objects.nonNull(ctx.alterConnectorAttributesClause().REPLACE());
+    } else {
+      connectorAttributes = new HashMap<>(); // DO NOT USE Collections.emptyMap() here
+      isReplaceAllConnectorAttributes = false;
+    }
+
+    return new AlterPipe(
+        pipeName,
+        hasIfExistsCondition,
+        extractorAttributes,
+        processorAttributes,
+        connectorAttributes,
+        isReplaceAllExtractorAttributes,
+        isReplaceAllProcessorAttributes,
+        isReplaceAllConnectorAttributes);
+  }
+
+  @Override
+  public Node visitDropPipeStatement(RelationalSqlParser.DropPipeStatementContext ctx) {
+    final String pipeName = ((Identifier) visit(ctx.identifier())).getValue();
+    final boolean hasIfExistsCondition = ctx.IF() != null && ctx.EXISTS() != null;
+    return new DropPipe(pipeName, hasIfExistsCondition);
+  }
+
+  @Override
+  public Node visitStartPipeStatement(RelationalSqlParser.StartPipeStatementContext ctx) {
+    return new StartPipe(((Identifier) visit(ctx.identifier())).getValue());
+  }
+
+  @Override
+  public Node visitStopPipeStatement(RelationalSqlParser.StopPipeStatementContext ctx) {
+    return new StopPipe(((Identifier) visit(ctx.identifier())).getValue());
+  }
+
+  @Override
+  public Node visitShowPipesStatement(RelationalSqlParser.ShowPipesStatementContext ctx) {
+    final String pipeName =
+        getIdentifierIfPresent(ctx.identifier()).map(Identifier::getValue).orElse(null);
+    final boolean hasWhereClause = ctx.WHERE() != null;
+    return new ShowPipes(pipeName, hasWhereClause);
+  }
+
+  @Override
+  public Node visitCreatePipePluginStatement(
+      RelationalSqlParser.CreatePipePluginStatementContext ctx) {
+    final String pluginName = ((Identifier) visit(ctx.identifier())).getValue();
+    final boolean hasIfNotExistsCondition =
+        ctx.IF() != null && ctx.NOT() != null && ctx.EXISTS() != null;
+    final String className = ((StringLiteral) visit(ctx.className)).getValue();
+    final String uriString = parseAndValidateURI(ctx.uriClause());
+    return new CreatePipePlugin(pluginName, hasIfNotExistsCondition, className, uriString);
+  }
+
+  private String parseAndValidateURI(RelationalSqlParser.UriClauseContext ctx) {
+    final String uriString =
+        ctx.uri.identifier() != null
+            ? ((Identifier) visit(ctx.uri.identifier())).getValue()
+            : ((StringLiteral) visit(ctx.uri.string())).getValue();
+    try {
+      new URI(uriString);
+    } catch (URISyntaxException e) {
+      throw new SemanticException(String.format("Invalid URI: %s", uriString));
+    }
+    return uriString;
+  }
+
+  @Override
+  public Node visitDropPipePluginStatement(RelationalSqlParser.DropPipePluginStatementContext ctx) {
+    final String pluginName = ((Identifier) visit(ctx.identifier())).getValue();
+    final boolean hasIfExistsCondition = ctx.IF() != null && ctx.EXISTS() != null;
+    return new DropPipePlugin(pluginName, hasIfExistsCondition);
+  }
+
+  @Override
+  public Node visitShowPipePluginsStatement(
+      RelationalSqlParser.ShowPipePluginsStatementContext ctx) {
+    return new ShowPipePlugins();
+  }
+
+  @Override
   public Node visitShowDevicesStatement(final RelationalSqlParser.ShowDevicesStatementContext ctx) {
     return new ShowDevice(
         getLocation(ctx),
         new Table(getLocation(ctx), getQualifiedName(ctx.qualifiedName())),
         visitIfPresent(ctx.where, Expression.class).orElse(null),
-        visitIfPresent(ctx.offset, Offset.class).orElse(null),
-        visitIfPresent(ctx.limit, Node.class).orElse(null));
+        visitIfPresent(ctx.limitOffsetClause().offset, Offset.class).orElse(null),
+        visitIfPresent(ctx.limitOffsetClause().limit, Node.class).orElse(null));
   }
 
   @Override
@@ -627,6 +821,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   public Node visitShowConfigNodesStatement(
       RelationalSqlParser.ShowConfigNodesStatementContext ctx) {
     return new ShowConfigNodes();
+  }
+
+  @Override
+  public Node visitShowAINodesStatement(RelationalSqlParser.ShowAINodesStatementContext ctx) {
+    return new ShowAINodes();
   }
 
   @Override
@@ -748,7 +947,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             propertyValue.getExpressionType() + " is not supported for 'set configuration'");
       }
       String value = ((StringLiteral) propertyValue).getValue();
-      configItems.put(key, value);
+      configItems.put(key.trim(), value.trim());
     }
     setConfigurationStatement.setNodeId(nodeId);
     setConfigurationStatement.setConfigItems(configItems);
@@ -784,6 +983,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         getLocation(ctx),
         visitIfPresent(ctx.with(), With.class),
         body.getQueryBody(),
+        body.getFill(),
         body.getOrderBy(),
         body.getOffset(),
         body.getLimit());
@@ -811,6 +1011,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   public Node visitQueryNoWith(RelationalSqlParser.QueryNoWithContext ctx) {
     QueryBody term = (QueryBody) visit(ctx.queryTerm());
 
+    Optional<Fill> fill = Optional.empty();
+    if (ctx.fillClause() != null) {
+      fill = visitIfPresent(ctx.fillClause().fillMethod(), Fill.class);
+    }
+
     Optional<OrderBy> orderBy = Optional.empty();
     if (ctx.ORDER() != null) {
       orderBy =
@@ -818,16 +1023,16 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     }
 
     Optional<Offset> offset = Optional.empty();
-    if (ctx.OFFSET() != null) {
-      offset = visitIfPresent(ctx.offset, Offset.class);
+    if (ctx.limitOffsetClause().OFFSET() != null) {
+      offset = visitIfPresent(ctx.limitOffsetClause().offset, Offset.class);
     }
 
     Optional<Node> limit = Optional.empty();
-    if (ctx.LIMIT() != null) {
-      if (ctx.limit == null) {
+    if (ctx.limitOffsetClause().LIMIT() != null) {
+      if (ctx.limitOffsetClause().limit == null) {
         throw new IllegalStateException("Missing LIMIT value");
       }
-      limit = visitIfPresent(ctx.limit, Node.class);
+      limit = visitIfPresent(ctx.limitOffsetClause().limit, Node.class);
     }
 
     if (term instanceof QuerySpecification) {
@@ -849,15 +1054,78 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
               query.getWhere(),
               query.getGroupBy(),
               query.getHaving(),
+              fill,
               orderBy,
               offset,
               limit),
           Optional.empty(),
           Optional.empty(),
+          Optional.empty(),
           Optional.empty());
     }
 
-    return new Query(getLocation(ctx), Optional.empty(), term, orderBy, offset, limit);
+    return new Query(getLocation(ctx), Optional.empty(), term, fill, orderBy, offset, limit);
+  }
+
+  @Override
+  public Node visitPreviousFill(RelationalSqlParser.PreviousFillContext ctx) {
+    TimeDuration timeBound = null;
+    LongLiteral timeColumn = null;
+    List<LongLiteral> fillGroupingElements = null;
+    if (ctx.timeBoundClause() != null) {
+      timeBound =
+          DateTimeUtils.constructTimeDuration(ctx.timeBoundClause().timeDuration().getText());
+
+      if (timeBound.monthDuration != 0 && timeBound.nonMonthDuration != 0) {
+        throw new SemanticException(
+            "Simultaneous setting of monthly and non-monthly intervals is not supported.");
+      }
+    }
+
+    if (ctx.timeColumnClause() != null) {
+      timeColumn =
+          new LongLiteral(
+              getLocation(ctx.timeColumnClause().INTEGER_VALUE()),
+              ctx.timeColumnClause().INTEGER_VALUE().getText());
+    }
+
+    if (ctx.fillGroupClause() != null) {
+      fillGroupingElements =
+          ctx.fillGroupClause().INTEGER_VALUE().stream()
+              .map(index -> new LongLiteral(getLocation(index), index.getText()))
+              .collect(toList());
+    }
+
+    if (timeColumn != null && (timeBound == null && fillGroupingElements == null)) {
+      throw new SemanticException(
+          "Don't need to specify TIME_COLUMN while either TIME_BOUND or FILL_GROUP parameter is not specified");
+    }
+    return new Fill(getLocation(ctx), timeBound, timeColumn, fillGroupingElements);
+  }
+
+  @Override
+  public Node visitLinearFill(RelationalSqlParser.LinearFillContext ctx) {
+    LongLiteral timeColumn = null;
+    List<LongLiteral> fillGroupingElements = null;
+    if (ctx.timeColumnClause() != null) {
+      timeColumn =
+          new LongLiteral(
+              getLocation(ctx.timeColumnClause().INTEGER_VALUE()),
+              ctx.timeColumnClause().INTEGER_VALUE().getText());
+    }
+    if (ctx.fillGroupClause() != null) {
+      fillGroupingElements =
+          ctx.fillGroupClause().INTEGER_VALUE().stream()
+              .map(index -> new LongLiteral(getLocation(index), index.getText()))
+              .collect(toList());
+    }
+
+    return new Fill(getLocation(ctx), timeColumn, fillGroupingElements);
+  }
+
+  @Override
+  public Node visitValueFill(RelationalSqlParser.ValueFillContext ctx) {
+    return new Fill(getLocation(ctx), (Literal) visit(ctx.literalExpression()));
   }
 
   @Override
@@ -914,6 +1182,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         visitIfPresent(ctx.having, Expression.class),
         Optional.empty(),
         Optional.empty(),
+        Optional.empty(),
         Optional.empty());
   }
 
@@ -949,115 +1218,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         getLocation(ctx),
         isDistinct(ctx.setQuantifier()),
         visit(ctx.groupingElement(), GroupingElement.class));
-  }
-
-  @Override
-  public Node visitTimenGrouping(RelationalSqlParser.TimenGroupingContext ctx) {
-    long startTime = 0;
-    long endTime = 0;
-    boolean leftCRightO = true;
-    if (ctx.timeRange() != null) {
-      TimeRange timeRange = (TimeRange) visit(ctx.timeRange());
-      startTime = timeRange.getStartTime();
-      endTime = timeRange.getEndTime();
-      leftCRightO = timeRange.isLeftCRightO();
-    }
-    // Parse time interval
-    TimeDuration interval = DateTimeUtils.constructTimeDuration(ctx.windowInterval.getText());
-    TimeDuration slidingStep = interval;
-    if (ctx.windowStep != null) {
-      slidingStep = DateTimeUtils.constructTimeDuration(ctx.windowStep.getText());
-    }
-
-    if (interval.monthDuration <= 0 && interval.nonMonthDuration <= 0) {
-      throw new SemanticException(
-          "The second parameter time interval should be a positive integer.");
-    }
-
-    if (slidingStep.monthDuration <= 0 && slidingStep.nonMonthDuration <= 0) {
-      throw new SemanticException(
-          "The third parameter time slidingStep should be a positive integer.");
-    }
-    return new GroupByTime(
-        getLocation(ctx), startTime, endTime, interval, slidingStep, leftCRightO);
-  }
-
-  @Override
-  public Node visitLeftClosedRightOpen(RelationalSqlParser.LeftClosedRightOpenContext ctx) {
-    return getTimeRange(ctx.timeValue(0), ctx.timeValue(1), true);
-  }
-
-  @Override
-  public Node visitLeftOpenRightClosed(RelationalSqlParser.LeftOpenRightClosedContext ctx) {
-    return getTimeRange(ctx.timeValue(0), ctx.timeValue(1), false);
-  }
-
-  private TimeRange getTimeRange(
-      RelationalSqlParser.TimeValueContext left,
-      RelationalSqlParser.TimeValueContext right,
-      boolean leftCRightO) {
-    long currentTime = CommonDateTimeUtils.currentTime();
-    long startTime = parseTimeValue(left, currentTime);
-    long endTime = parseTimeValue(right, currentTime);
-    if (startTime >= endTime) {
-      throw new SemanticException("Start time should be smaller than endTime in GroupBy");
-    }
-    return new TimeRange(startTime, endTime, leftCRightO);
-  }
-
-  private long parseTimeValue(RelationalSqlParser.TimeValueContext ctx, long currentTime) {
-    if (ctx.INTEGER_VALUE() != null) {
-      try {
-        if (ctx.MINUS() != null) {
-          return -Long.parseLong(ctx.INTEGER_VALUE().getText());
-        }
-        return Long.parseLong(ctx.INTEGER_VALUE().getText());
-      } catch (NumberFormatException e) {
-        throw new SemanticException(
-            String.format("Can not parse %s to long value", ctx.INTEGER_VALUE().getText()));
-      }
-    } else {
-      return parseDateExpression(ctx.dateExpression(), currentTime);
-    }
-  }
-
-  private Long parseDateExpression(
-      RelationalSqlParser.DateExpressionContext ctx, long currentTime) {
-    long time;
-    time = parseDateTimeFormat(ctx.getChild(0).getText(), currentTime, zoneId);
-    for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
-      if ("+".equals(ctx.getChild(i).getText())) {
-        time += DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText(), false);
-      } else {
-        time -= DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText(), false);
-      }
-    }
-    return time;
-  }
-
-  @Override
-  public Node visitVariationGrouping(RelationalSqlParser.VariationGroupingContext ctx) {
-    return super.visitVariationGrouping(ctx);
-  }
-
-  @Override
-  public Node visitConditionGrouping(RelationalSqlParser.ConditionGroupingContext ctx) {
-    return super.visitConditionGrouping(ctx);
-  }
-
-  @Override
-  public Node visitSessionGrouping(RelationalSqlParser.SessionGroupingContext ctx) {
-    return super.visitSessionGrouping(ctx);
-  }
-
-  @Override
-  public Node visitCountGrouping(RelationalSqlParser.CountGroupingContext ctx) {
-    return super.visitCountGrouping(ctx);
-  }
-
-  @Override
-  public Node visitKeepExpression(RelationalSqlParser.KeepExpressionContext ctx) {
-    return super.visitKeepExpression(ctx);
   }
 
   @Override
@@ -1503,6 +1663,20 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             parseDateExpression(ctx.dateExpression(), CommonDateTimeUtils.currentTime())));
   }
 
+  private Long parseDateExpression(
+      RelationalSqlParser.DateExpressionContext ctx, long currentTime) {
+    long time;
+    time = parseDateTimeFormat(ctx.getChild(0).getText(), currentTime, zoneId);
+    for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
+      if ("+".equals(ctx.getChild(i).getText())) {
+        time += DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText(), false);
+      } else {
+        time -= DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText(), false);
+      }
+    }
+    return time;
+  }
+
   @Override
   public Node visitTrim(RelationalSqlParser.TrimContext ctx) {
     if (ctx.FROM() != null && ctx.trimsSpecification() == null && ctx.trimChar == null) {
@@ -1661,9 +1835,28 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
               new DereferenceExpression(getLocation(ctx.label), (Identifier) visit(ctx.label)));
     }
 
+    if (name.toString().equalsIgnoreCase("first") || name.toString().equalsIgnoreCase("last")) {
+      if (arguments.size() == 1) {
+        arguments.add(
+            new Identifier(
+                TimestampOperand.TIMESTAMP_EXPRESSION_STRING.toLowerCase(Locale.ENGLISH)));
+      } else if (arguments.size() == 2) {
+        check(
+            arguments
+                .get(1)
+                .toString()
+                .equalsIgnoreCase(TimestampOperand.TIMESTAMP_EXPRESSION_STRING),
+            "The second argument of 'first' or 'last' function must be 'time'",
+            ctx);
+      } else {
+        throw parseError("Invalid number of arguments for 'first' or 'last' function", ctx);
+      }
+    }
+
     return new FunctionCall(getLocation(ctx), name, distinct, arguments);
   }
 
+  @Override
   public Node visitDateBin(RelationalSqlParser.DateBinContext ctx) {
     TimeDuration timeDuration = DateTimeUtils.constructTimeDuration(ctx.timeDuration().getText());
 
@@ -1690,6 +1883,22 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             monthDuration, nonMonthDuration, (Expression) visit(ctx.valueExpression()), origin);
     return new FunctionCall(
         getLocation(ctx), QualifiedName.of(DATE_BIN.getFunctionName()), arguments);
+  }
+
+  private long parseTimeValue(RelationalSqlParser.TimeValueContext ctx, long currentTime) {
+    if (ctx.INTEGER_VALUE() != null) {
+      try {
+        if (ctx.MINUS() != null) {
+          return -Long.parseLong(ctx.INTEGER_VALUE().getText());
+        }
+        return Long.parseLong(ctx.INTEGER_VALUE().getText());
+      } catch (NumberFormatException e) {
+        throw new SemanticException(
+            String.format("Can not parse %s to long value", ctx.INTEGER_VALUE().getText()));
+      }
+    } else {
+      return parseDateExpression(ctx.dateExpression(), currentTime);
+    }
   }
 
   // ************** literals **************

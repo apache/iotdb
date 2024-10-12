@@ -30,35 +30,36 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class TsTableInternalRPCUtil {
 
   private TsTableInternalRPCUtil() {
-    // do nothing
+    // Do nothing
   }
 
-  public static byte[] serializeBatchTsTable(Map<String, List<TsTable>> tableMap) {
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+  public static byte[] serializeBatchTsTable(final Map<String, List<TsTable>> tableMap) {
+    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {
       ReadWriteIOUtils.write(tableMap.size(), outputStream);
-      for (Map.Entry<String, List<TsTable>> entry : tableMap.entrySet()) {
+      for (final Map.Entry<String, List<TsTable>> entry : tableMap.entrySet()) {
         ReadWriteIOUtils.write(entry.getKey(), outputStream);
         ReadWriteIOUtils.write(entry.getValue().size(), outputStream);
-        for (TsTable table : entry.getValue()) {
+        for (final TsTable table : entry.getValue()) {
           table.serialize(outputStream);
         }
       }
-    } catch (IOException ignored) {
-      // won't happen
+    } catch (final IOException ignored) {
+      // ByteArrayOutputStream won't throw IOException
     }
     return outputStream.toByteArray();
   }
 
-  public static Map<String, List<TsTable>> deserializeBatchTsTable(byte[] bytes) {
-    InputStream inputStream = new ByteArrayInputStream(bytes);
-    Map<String, List<TsTable>> result = new HashMap<>();
+  public static Map<String, List<TsTable>> deserializeBatchTsTable(final byte[] bytes) {
+    final InputStream inputStream = new ByteArrayInputStream(bytes);
+    final Map<String, List<TsTable>> result = new HashMap<>();
     try {
-      int dbNum = ReadWriteIOUtils.readInt(inputStream);
+      final int dbNum = ReadWriteIOUtils.readInt(inputStream);
       String database;
       int tableNum;
       List<TsTable> tableList;
@@ -71,8 +72,8 @@ public class TsTableInternalRPCUtil {
         }
         result.put(database, tableList);
       }
-    } catch (IOException ignored) {
-      // won't happen
+    } catch (final IOException ignored) {
+      // ByteArrayInputStream won't throw IOException
     }
     return result;
   }
@@ -89,29 +90,76 @@ public class TsTableInternalRPCUtil {
   }
 
   public static Pair<String, TsTable> deserializeSingleTsTable(final byte[] bytes) {
-    InputStream inputStream = new ByteArrayInputStream(bytes);
+    final InputStream inputStream = new ByteArrayInputStream(bytes);
     try {
-      String database = ReadWriteIOUtils.readString(inputStream);
-      TsTable table = TsTable.deserialize(inputStream);
-      return new Pair<>(database, table);
-    } catch (IOException ignored) {
+      return new Pair<>(ReadWriteIOUtils.readString(inputStream), TsTable.deserialize(inputStream));
+    } catch (final IOException ignored) {
       // ByteArrayInputStream won't throw IOException
     }
     throw new IllegalStateException();
   }
 
   public static byte[] serializeTableInitializationInfo(
-      Map<String, List<TsTable>> usingTableMap, Map<String, List<TsTable>> preCreateTableMap) {
-    byte[] usingBytes = serializeBatchTsTable(usingTableMap);
-    byte[] preCreateBytes = serializeBatchTsTable(preCreateTableMap);
-    byte[] result = new byte[usingBytes.length + preCreateBytes.length];
+      final Map<String, List<TsTable>> usingTableMap,
+      final Map<String, List<TsTable>> preCreateTableMap) {
+    final byte[] usingBytes = serializeBatchTsTable(usingTableMap);
+    final byte[] preCreateBytes = serializeBatchTsTable(preCreateTableMap);
+    final byte[] result = new byte[usingBytes.length + preCreateBytes.length];
     System.arraycopy(usingBytes, 0, result, 0, usingBytes.length);
     System.arraycopy(preCreateBytes, 0, result, usingBytes.length, preCreateBytes.length);
     return result;
   }
 
   public static Pair<Map<String, List<TsTable>>, Map<String, List<TsTable>>>
-      deserializeTableInitializationInfo(byte[] bytes) {
+      deserializeTableInitializationInfo(final byte[] bytes) {
     return new Pair<>(deserializeBatchTsTable(bytes), deserializeBatchTsTable(bytes));
+  }
+
+  public static byte[] serializeTableFetchResult(
+      final Map<String, Map<String, TsTable>> fetchTableMap) {
+    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try {
+      ReadWriteIOUtils.write(fetchTableMap.size(), outputStream);
+      for (final Map.Entry<String, Map<String, TsTable>> entry : fetchTableMap.entrySet()) {
+        ReadWriteIOUtils.write(entry.getKey(), outputStream);
+        ReadWriteIOUtils.write(entry.getValue().size(), outputStream);
+        for (final Map.Entry<String, TsTable> tableEntry : entry.getValue().entrySet()) {
+          ReadWriteIOUtils.write(tableEntry.getKey(), outputStream);
+          ReadWriteIOUtils.write(Objects.nonNull(tableEntry.getValue()), outputStream);
+          if (Objects.nonNull(tableEntry.getValue())) {
+            tableEntry.getValue().serialize(outputStream);
+          }
+        }
+      }
+    } catch (final IOException ignored) {
+      // ByteArrayOutputStream won't throw IOException
+    }
+    return outputStream.toByteArray();
+  }
+
+  public static Map<String, Map<String, TsTable>> deserializeTsTableFetchResult(
+      final byte[] bytes) {
+    final InputStream inputStream = new ByteArrayInputStream(bytes);
+    final Map<String, Map<String, TsTable>> result = new HashMap<>();
+    try {
+      int dbNum = ReadWriteIOUtils.readInt(inputStream);
+      String database;
+      int tableNum;
+      Map<String, TsTable> tableMap;
+      for (int i = 0; i < dbNum; i++) {
+        database = ReadWriteIOUtils.readString(inputStream);
+        tableNum = ReadWriteIOUtils.readInt(inputStream);
+        tableMap = new HashMap<>(tableNum);
+        for (int j = 0; j < tableNum; j++) {
+          tableMap.put(
+              ReadWriteIOUtils.readString(inputStream),
+              ReadWriteIOUtils.readBool(inputStream) ? TsTable.deserialize(inputStream) : null);
+        }
+        result.put(database, tableMap);
+      }
+    } catch (final IOException ignored) {
+      // ByteArrayInputStream won't throw IOException
+    }
+    return result;
   }
 }

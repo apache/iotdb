@@ -37,7 +37,6 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.apache.iotdb.itbase.constant.TestConstant.count;
 import static org.junit.Assert.fail;
 
@@ -170,7 +169,7 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
 
   @Test
   public void deleteTimeSeriesMultiIntervalTest() {
-    String[] retArray1 = new String[] {"0,0"};
+    String[] retArray1 = new String[] {"0"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -188,10 +187,7 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
           statement.executeQuery(
               "select count(s1) from root.sg.d1 where time >= 3 and time <= 4")) {
         while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(count("root.sg.d1.s1"));
+          String ans = resultSet.getString(count("root.sg.d1.s1"));
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
@@ -205,7 +201,7 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
 
   @Test
   public void deleteTimeSeriesAndAutoDeleteDeviceTest() throws Exception {
-    String[] retArray1 = new String[] {"0,4,4,4,4"};
+    String[] retArray1 = new String[] {"4,4,4,4"};
 
     String insertSql = "insert into root.sg.d1(time, s1, s2, s3, s4) values(%d, %d, %d, %d, %d)";
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -219,8 +215,8 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
           statement.executeQuery(
               "select count(s1), count(s2), count(s3), count(s4) from root.sg.d1")) {
         while (resultSet.next()) {
-          StringBuilder ans = new StringBuilder(resultSet.getString(TIMESTAMP_STR));
-          for (int i = 1; i <= 4; i++) {
+          StringBuilder ans = new StringBuilder(resultSet.getString(count("root.sg.d1.s1")));
+          for (int i = 2; i <= 4; i++) {
             ans.append(",").append(resultSet.getString(count("root.sg.d1.s" + i)));
           }
           Assert.assertEquals(retArray1[cnt], ans.toString());
@@ -246,7 +242,7 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
 
   @Test
   public void deleteTimeSeriesCrossSchemaRegionTest() throws Exception {
-    String[] retArray1 = new String[] {"0,4,4,4,4"};
+    String[] retArray1 = new String[] {"4,4,4,4"};
 
     String insertSql = "insert into root.sg.d%d(time, s1, s2) values(%d, %d, %d)";
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -260,8 +256,8 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
       int cnt = 0;
       try (ResultSet resultSet = statement.executeQuery("select count(s1) from root.sg.*")) {
         while (resultSet.next()) {
-          StringBuilder ans = new StringBuilder(resultSet.getString(TIMESTAMP_STR));
-          for (int i = 1; i <= 4; i++) {
+          StringBuilder ans = new StringBuilder(resultSet.getString(count("root.sg.d1.s1")));
+          for (int i = 2; i <= 4; i++) {
             ans.append(",").append(resultSet.getString(count("root.sg.d" + i + ".s1")));
           }
           Assert.assertEquals(retArray1[cnt], ans.toString());
@@ -282,8 +278,8 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
       cnt = 0;
       try (ResultSet resultSet = statement.executeQuery("select count(s2) from root.sg.*")) {
         while (resultSet.next()) {
-          StringBuilder ans = new StringBuilder(resultSet.getString(TIMESTAMP_STR));
-          for (int i = 1; i <= 4; i++) {
+          StringBuilder ans = new StringBuilder(resultSet.getString(count("root.sg.d1.s2")));
+          for (int i = 2; i <= 4; i++) {
             ans.append(",").append(resultSet.getString(count("root.sg.d" + i + ".s2")));
           }
           Assert.assertEquals(retArray1[cnt], ans.toString());
@@ -296,7 +292,7 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
 
   @Test
   public void deleteTimeSeriesCrossStorageGroupTest() throws Exception {
-    String[] retArray1 = new String[] {"0,4,4,4,4"};
+    String[] retArray1 = new String[] {"4,4,4,4"};
 
     String insertSql = "insert into root.sg%d.d1(time, s1, s2) values(%d, %d, %d)";
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -310,8 +306,8 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
       int cnt = 0;
       try (ResultSet resultSet = statement.executeQuery("select count(s1) from root.*.d1")) {
         while (resultSet.next()) {
-          StringBuilder ans = new StringBuilder(resultSet.getString(TIMESTAMP_STR));
-          for (int i = 1; i <= 4; i++) {
+          StringBuilder ans = new StringBuilder(resultSet.getString(count("root.sg1.d1.s1")));
+          for (int i = 2; i <= 4; i++) {
             ans.append(",").append(resultSet.getString(count("root.sg" + i + ".d1.s1")));
           }
           Assert.assertEquals(retArray1[cnt], ans.toString());
@@ -332,8 +328,8 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
       cnt = 0;
       try (ResultSet resultSet = statement.executeQuery("select count(s2) from root.*.*")) {
         while (resultSet.next()) {
-          StringBuilder ans = new StringBuilder(resultSet.getString(TIMESTAMP_STR));
-          for (int i = 1; i <= 4; i++) {
+          StringBuilder ans = new StringBuilder(resultSet.getString(count("root.sg1.d1.s2")));
+          for (int i = 2; i <= 4; i++) {
             ans.append(",").append(resultSet.getString(count("root.sg" + i + ".d1.s2")));
           }
           Assert.assertEquals(retArray1[cnt], ans.toString());
@@ -351,12 +347,12 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
         Assert.assertFalse(resultSet.next());
       }
 
-      retArray1 = new String[] {"0,4,4"};
+      retArray1 = new String[] {"4,4"};
       cnt = 0;
       try (ResultSet resultSet = statement.executeQuery("select count(s2) from root.*.*")) {
         while (resultSet.next()) {
-          StringBuilder ans = new StringBuilder(resultSet.getString(TIMESTAMP_STR));
-          for (int i = 3; i <= 4; i++) {
+          StringBuilder ans = new StringBuilder(resultSet.getString(count("root.sg3.d1.s2")));
+          for (int i = 4; i <= 4; i++) {
             ans.append(",").append(resultSet.getString(count("root.sg" + i + ".d1.s2")));
           }
           Assert.assertEquals(retArray1[cnt], ans.toString());
@@ -369,7 +365,7 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
 
   @Test
   public void deleteTimeSeriesWithMultiPatternTest() throws Exception {
-    String[] retArray1 = new String[] {"0,4,4,4,4"};
+    String[] retArray1 = new String[] {"4,4,4,4"};
 
     String insertSql = "insert into root.sg%d.d1(time, s1, s2) values(%d, %d, %d)";
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -383,8 +379,8 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
       int cnt = 0;
       try (ResultSet resultSet = statement.executeQuery("select count(s1) from root.*.d1")) {
         while (resultSet.next()) {
-          StringBuilder ans = new StringBuilder(resultSet.getString(TIMESTAMP_STR));
-          for (int i = 1; i <= 4; i++) {
+          StringBuilder ans = new StringBuilder(resultSet.getString(count("root.sg1.d1.s1")));
+          for (int i = 2; i <= 4; i++) {
             ans.append(",").append(resultSet.getString(count("root.sg" + i + ".d1.s1")));
           }
           Assert.assertEquals(retArray1[cnt], ans.toString());
@@ -450,7 +446,7 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
                         + ": Timeseries [root.**] does not exist or is represented by device template"));
       }
 
-      String[] retArray1 = new String[] {"0,4,4,4,4"};
+      String[] retArray1 = new String[] {"4,4,4,4"};
 
       String insertSql = "insert into root.sg%d.d1(time, s1, s2) values(%d, %d, %d)";
       for (int i = 1; i <= 4; i++) {
@@ -463,8 +459,8 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
 
       try (ResultSet resultSet = statement.executeQuery("select count(s1) from root.*.d1")) {
         while (resultSet.next()) {
-          StringBuilder ans = new StringBuilder(resultSet.getString(TIMESTAMP_STR));
-          for (int i = 1; i <= 4; i++) {
+          StringBuilder ans = new StringBuilder(resultSet.getString(count("root.sg1.d1.s1")));
+          for (int i = 2; i <= 4; i++) {
             ans.append(",").append(resultSet.getString(count("root.sg" + i + ".d1.s1")));
           }
           Assert.assertEquals(retArray1[cnt], ans.toString());

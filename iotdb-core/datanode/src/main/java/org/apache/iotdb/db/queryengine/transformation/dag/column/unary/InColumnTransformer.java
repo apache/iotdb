@@ -20,11 +20,6 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 
 import org.apache.tsfile.block.column.Column;
@@ -32,11 +27,11 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
-import org.apache.tsfile.utils.DateUtils;
+import org.apache.tsfile.utils.Binary;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class InColumnTransformer extends UnaryColumnTransformer {
   private final Satisfy satisfy;
@@ -48,7 +43,7 @@ public class InColumnTransformer extends UnaryColumnTransformer {
   private Set<Float> floatSet;
   private Set<Double> doubleSet;
   private Set<Boolean> booleanSet;
-  private Set<String> stringSet;
+  private Set<Binary> stringSet;
 
   public InColumnTransformer(
       Type returnType,
@@ -64,51 +59,54 @@ public class InColumnTransformer extends UnaryColumnTransformer {
     initTypedSet(values);
   }
 
-  public InColumnTransformer(
-      Type returnType, ColumnTransformer childColumnTransformer, List<Literal> values) {
-    super(returnType, childColumnTransformer);
-    satisfy = new InSatisfy();
-    this.childType =
-        childColumnTransformer.getType() == null
-            ? null
-            : childColumnTransformer.getType().getTypeEnum();
-    initTypedSet(values);
-  }
-
   @Override
   protected void doTransform(Column column, ColumnBuilder columnBuilder) {
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
       if (!column.isNull(i)) {
-        switch (childType) {
-          case INT32:
-          case DATE:
-            returnType.writeBoolean(columnBuilder, satisfy.of(column.getInt(i)));
-            break;
-          case INT64:
-          case TIMESTAMP:
-            returnType.writeBoolean(columnBuilder, satisfy.of(column.getLong(i)));
-            break;
-          case FLOAT:
-            returnType.writeBoolean(columnBuilder, satisfy.of(column.getFloat(i)));
-            break;
-          case DOUBLE:
-            returnType.writeBoolean(columnBuilder, satisfy.of(column.getDouble(i)));
-            break;
-          case BOOLEAN:
-            returnType.writeBoolean(columnBuilder, satisfy.of(column.getBoolean(i)));
-            break;
-          case STRING:
-          case TEXT:
-            returnType.writeBoolean(
-                columnBuilder,
-                satisfy.of(column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET)));
-            break;
-          default:
-            throw new UnsupportedOperationException("unsupported data type: " + childType);
-        }
+        transform(column, columnBuilder, i);
       } else {
         columnBuilder.appendNull();
       }
+    }
+  }
+
+  @Override
+  protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (selection[i] && !column.isNull(i)) {
+        transform(column, columnBuilder, i);
+      } else {
+        columnBuilder.appendNull();
+      }
+    }
+  }
+
+  private void transform(Column column, ColumnBuilder columnBuilder, int i) {
+    switch (childType) {
+      case INT32:
+      case DATE:
+        returnType.writeBoolean(columnBuilder, satisfy.of(column.getInt(i)));
+        break;
+      case INT64:
+      case TIMESTAMP:
+        returnType.writeBoolean(columnBuilder, satisfy.of(column.getLong(i)));
+        break;
+      case FLOAT:
+        returnType.writeBoolean(columnBuilder, satisfy.of(column.getFloat(i)));
+        break;
+      case DOUBLE:
+        returnType.writeBoolean(columnBuilder, satisfy.of(column.getDouble(i)));
+        break;
+      case BOOLEAN:
+        returnType.writeBoolean(columnBuilder, satisfy.of(column.getBoolean(i)));
+        break;
+      case STRING:
+      case TEXT:
+      case BLOB:
+        returnType.writeBoolean(columnBuilder, satisfy.of(column.getBinary(i)));
+        break;
+      default:
+        throw new UnsupportedOperationException("unsupported data type: " + childType);
     }
   }
 
@@ -167,79 +165,13 @@ public class InColumnTransformer extends UnaryColumnTransformer {
         break;
       case TEXT:
       case STRING:
-        stringSet = values;
+        stringSet =
+            values.stream()
+                .map(v -> new Binary(v, TSFileConfig.STRING_CHARSET))
+                .collect(Collectors.toSet());
         break;
-      default:
-        throw new UnsupportedOperationException("unsupported data type: " + childType);
-    }
-  }
-
-  private void initTypedSet(List<Literal> values) {
-    if (childType == null) {
-      return;
-    }
-    String errorMsg = "\"%s\" cannot be cast to [%s]";
-    switch (childType) {
-      case INT32:
-        intSet = new HashSet<>();
-        for (Literal value : values) {
-          try {
-            intSet.add((int) ((LongLiteral) value).getParsedValue());
-          } catch (IllegalArgumentException e) {
-            throw new SemanticException(String.format(errorMsg, value, childType));
-          }
-        }
-        break;
+      case BLOB:
       case DATE:
-        intSet = new HashSet<>();
-        for (Literal value : values) {
-          intSet.add(DateUtils.parseDateExpressionToInt(((StringLiteral) value).getValue()));
-        }
-        break;
-      case INT64:
-      case TIMESTAMP:
-        longSet = new HashSet<>();
-        for (Literal value : values) {
-          try {
-            longSet.add((((LongLiteral) value).getParsedValue()));
-          } catch (IllegalArgumentException e) {
-            throw new SemanticException(String.format(errorMsg, value, childType));
-          }
-        }
-        break;
-      case FLOAT:
-        floatSet = new HashSet<>();
-        for (Literal value : values) {
-          try {
-            floatSet.add((float) ((DoubleLiteral) value).getValue());
-          } catch (IllegalArgumentException e) {
-            throw new SemanticException(String.format(errorMsg, value, childType));
-          }
-        }
-        break;
-      case DOUBLE:
-        doubleSet = new HashSet<>();
-        for (Literal value : values) {
-          try {
-            doubleSet.add(((DoubleLiteral) value).getValue());
-          } catch (IllegalArgumentException e) {
-            throw new SemanticException(String.format(errorMsg, value, childType));
-          }
-        }
-        break;
-      case BOOLEAN:
-        booleanSet = new HashSet<>();
-        for (Literal value : values) {
-          booleanSet.add(((BooleanLiteral) value).getValue());
-        }
-        break;
-      case TEXT:
-      case STRING:
-        stringSet = new HashSet<>();
-        for (Literal value : values) {
-          stringSet.add(((StringLiteral) value).getValue());
-        }
-        break;
       default:
         throw new UnsupportedOperationException("unsupported data type: " + childType);
     }
@@ -266,7 +198,7 @@ public class InColumnTransformer extends UnaryColumnTransformer {
 
     boolean of(boolean booleanValue);
 
-    boolean of(String stringValue);
+    boolean of(Binary stringValue);
   }
 
   private class InSatisfy implements Satisfy {
@@ -297,7 +229,7 @@ public class InColumnTransformer extends UnaryColumnTransformer {
     }
 
     @Override
-    public boolean of(String stringValue) {
+    public boolean of(Binary stringValue) {
       return stringSet.contains(stringValue);
     }
   }
@@ -330,7 +262,7 @@ public class InColumnTransformer extends UnaryColumnTransformer {
     }
 
     @Override
-    public boolean of(String stringValue) {
+    public boolean of(Binary stringValue) {
       return !stringSet.contains(stringValue);
     }
   }

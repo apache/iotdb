@@ -112,6 +112,12 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
+  protected Void visitFill(Fill node, C context) {
+    node.getFillValue().ifPresent(this::process);
+    return null;
+  }
+
+  @Override
   protected Void visitOrderBy(OrderBy node, C context) {
     for (SortItem sortItem : node.getSortItems()) {
       process(sortItem, context);

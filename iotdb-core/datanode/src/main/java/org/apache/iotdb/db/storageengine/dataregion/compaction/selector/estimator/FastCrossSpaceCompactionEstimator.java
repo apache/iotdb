@@ -19,9 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -41,12 +40,7 @@ public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimat
                 * taskInfo.getMaxChunkMetadataSize());
 
     // add ChunkMetadata size of targetFileWriter
-    long sizeForFileWriter =
-        (long)
-            ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
-                / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
-                * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
-    cost += sizeForFileWriter;
+    cost += memoryBudgetForFileWriter;
 
     return cost;
   }
@@ -92,6 +86,14 @@ public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimat
     List<TsFileResource> sourceFiles = new ArrayList<>(seqResources.size() + unseqResources.size());
     sourceFiles.addAll(seqResources);
     sourceFiles.addAll(unseqResources);
+
+    long metadataCost =
+        CompactionEstimateUtils.roughEstimateMetadataCostInCompaction(
+            sourceFiles, CompactionType.CROSS_COMPACTION);
+    if (metadataCost < 0) {
+      return metadataCost;
+    }
+
     int maxConcurrentSeriesNum =
         Math.max(
             config.getCompactionMaxAlignedSeriesNumInOneBatch(), config.getSubCompactionTaskNum());
@@ -100,6 +102,8 @@ public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimat
     int maxOverlapFileNum = calculatingMaxOverlapFileNumInSubCompactionTask(sourceFiles);
     // source files (chunk + uncompressed page) * overlap file num
     // target files (chunk + unsealed page writer)
-    return (maxOverlapFileNum + 1) * maxConcurrentSeriesNum * (maxChunkSize + maxPageSize);
+    return (maxOverlapFileNum + 1) * maxConcurrentSeriesNum * (maxChunkSize + maxPageSize)
+        + memoryBudgetForFileWriter
+        + metadataCost;
   }
 }

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.receiver.visitor;
 
-import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -36,12 +36,12 @@ import java.util.stream.IntStream;
 
 /**
  * The {@link PipeStatementPatternParseVisitor} will transform the schema {@link Statement}s using
- * {@link IoTDBPipePattern}. Rule:
+ * {@link IoTDBTreePattern}. Rule:
  *
  * <p>1. All patterns in the output {@link Statement} will be the intersection of the original
- * {@link Statement}'s patterns and the given {@link IoTDBPipePattern}.
+ * {@link Statement}'s patterns and the given {@link IoTDBTreePattern}.
  *
- * <p>2. If a pattern does not intersect with the {@link IoTDBPipePattern}, it's dropped.
+ * <p>2. If a pattern does not intersect with the {@link IoTDBTreePattern}, it's dropped.
  *
  * <p>3. If all the patterns in the {@link Statement} is dropped, the {@link Statement} is dropped.
  *
@@ -49,16 +49,16 @@ import java.util.stream.IntStream;
  * from the {@link SRStatementGenerator} and will no longer be used.
  */
 public class PipeStatementPatternParseVisitor
-    extends StatementVisitor<Optional<Statement>, IoTDBPipePattern> {
+    extends StatementVisitor<Optional<Statement>, IoTDBTreePattern> {
   @Override
   public Optional<Statement> visitNode(
-      final StatementNode statement, final IoTDBPipePattern pattern) {
+      final StatementNode statement, final IoTDBTreePattern pattern) {
     return Optional.of((Statement) statement);
   }
 
   @Override
   public Optional<Statement> visitCreateTimeseries(
-      final CreateTimeSeriesStatement statement, final IoTDBPipePattern pattern) {
+      final CreateTimeSeriesStatement statement, final IoTDBTreePattern pattern) {
     return pattern.matchesMeasurement(
             statement.getPath().getIDeviceID(), statement.getPath().getMeasurement())
         ? Optional.of(statement)
@@ -67,7 +67,7 @@ public class PipeStatementPatternParseVisitor
 
   @Override
   public Optional<Statement> visitCreateAlignedTimeseries(
-      final CreateAlignedTimeSeriesStatement statement, final IoTDBPipePattern pattern) {
+      final CreateAlignedTimeSeriesStatement statement, final IoTDBTreePattern pattern) {
     final int[] filteredIndexes =
         IntStream.range(0, statement.getMeasurements().size())
             .filter(
@@ -107,7 +107,7 @@ public class PipeStatementPatternParseVisitor
   // For logical view with tags/attributes
   @Override
   public Optional<Statement> visitAlterTimeSeries(
-      final AlterTimeSeriesStatement alterTimeSeriesStatement, final IoTDBPipePattern pattern) {
+      final AlterTimeSeriesStatement alterTimeSeriesStatement, final IoTDBTreePattern pattern) {
     return pattern.matchesMeasurement(
             alterTimeSeriesStatement.getPath().getIDeviceID(),
             alterTimeSeriesStatement.getPath().getMeasurement())
@@ -117,7 +117,7 @@ public class PipeStatementPatternParseVisitor
 
   @Override
   public Optional<Statement> visitActivateTemplate(
-      final ActivateTemplateStatement activateTemplateStatement, final IoTDBPipePattern pattern) {
+      final ActivateTemplateStatement activateTemplateStatement, final IoTDBTreePattern pattern) {
     return pattern.matchDevice(activateTemplateStatement.getPath().getFullPath())
         ? Optional.of(activateTemplateStatement)
         : Optional.empty();
@@ -125,7 +125,7 @@ public class PipeStatementPatternParseVisitor
 
   @Override
   public Optional<Statement> visitCreateLogicalView(
-      final CreateLogicalViewStatement createLogicalViewStatement, final IoTDBPipePattern pattern) {
+      final CreateLogicalViewStatement createLogicalViewStatement, final IoTDBTreePattern pattern) {
     final int[] filteredIndexes =
         IntStream.range(0, createLogicalViewStatement.getTargetPathList().size())
             .filter(
@@ -141,10 +141,10 @@ public class PipeStatementPatternParseVisitor
       return Optional.empty();
     }
     createLogicalViewStatement.setTargetFullPaths(
-        IoTDBPipePattern.applyIndexesOnList(
+        IoTDBTreePattern.applyIndexesOnList(
             filteredIndexes, createLogicalViewStatement.getTargetPathList()));
     createLogicalViewStatement.setViewExpressions(
-        IoTDBPipePattern.applyIndexesOnList(
+        IoTDBTreePattern.applyIndexesOnList(
             filteredIndexes, createLogicalViewStatement.getViewExpressions()));
 
     return Optional.of(createLogicalViewStatement);

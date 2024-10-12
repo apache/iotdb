@@ -191,12 +191,6 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   @Override
   protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
     if (CommonUtils.checkCanCastType(dataTypes[columnIndex], dataType)) {
-      LOGGER.warn(
-          "Inserting to {}.{} : Cast from {} to {}",
-          devicePath,
-          measurements[columnIndex],
-          dataTypes[columnIndex],
-          dataType);
       values[columnIndex] =
           CommonUtils.castValue(dataTypes[columnIndex], dataType, values[columnIndex]);
       dataTypes[columnIndex] = dataType;
@@ -274,6 +268,20 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     measurements[index] = null;
     dataTypes[index] = null;
     values[index] = null;
+  }
+
+  @Override
+  public void removeAllFailedMeasurementMarks() {
+    if (failedMeasurementIndex2Info == null) {
+      return;
+    }
+    failedMeasurementIndex2Info.forEach(
+        (index, info) -> {
+          measurements[index] = info.getMeasurement();
+          dataTypes[index] = info.getDataType();
+          values[index] = info.getValue();
+        });
+    failedMeasurementIndex2Info.clear();
   }
 
   @Override

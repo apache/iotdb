@@ -237,7 +237,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
       byte[] resultArr = new byte[resultLen];
       byteBuffer.get(resultArr);
     }
-    //  has  lock
+    //  has lock
     if (byteBuffer.get() == 1) {
       this.lockedWhenLoading();
     }

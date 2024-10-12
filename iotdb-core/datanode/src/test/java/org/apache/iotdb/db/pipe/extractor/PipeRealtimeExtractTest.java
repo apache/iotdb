@@ -274,8 +274,16 @@ public class PipeRealtimeExtractTest {
                     String.join(TsFileConstant.PATH_SEPARATOR, device)),
                 0);
 
+            try {
+              resource.close();
+            } catch (IOException e) {
+              e.printStackTrace();
+              throw new RuntimeException(e);
+            }
+
             PipeInsertionDataNodeListener.getInstance()
                 .listenToInsertNode(
+                    dataRegionId,
                     dataRegionId,
                     mock(WALEntryHandler.class),
                     new InsertRowNode(
@@ -291,6 +299,7 @@ public class PipeRealtimeExtractTest {
             PipeInsertionDataNodeListener.getInstance()
                 .listenToInsertNode(
                     dataRegionId,
+                    dataRegionId,
                     mock(WALEntryHandler.class),
                     new InsertRowNode(
                         new PlanNodeId(String.valueOf(i)),
@@ -303,7 +312,7 @@ public class PipeRealtimeExtractTest {
                         false),
                     resource);
             PipeInsertionDataNodeListener.getInstance()
-                .listenToTsFile(dataRegionId, resource, false, false);
+                .listenToTsFile(dataRegionId, dataRegionId, resource, false, false);
           }
         });
   }

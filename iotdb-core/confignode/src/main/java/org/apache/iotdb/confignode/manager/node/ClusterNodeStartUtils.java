@@ -211,6 +211,7 @@ public class ClusterNodeStartUtils {
   public static TSStatus confirmNodeRestart(
       NodeType nodeType,
       String clusterName,
+      String clusterId,
       int nodeId,
       Object nodeLocation,
       ConfigManager configManager) {
@@ -257,6 +258,14 @@ public class ClusterNodeStartUtils {
               matchRegisteredConfigNode(
                   (TConfigNodeLocation) nodeLocation,
                   configManager.getNodeManager().getRegisteredConfigNodes());
+        }
+        break;
+      case AINode:
+        if (nodeLocation instanceof TAINodeLocation) {
+          matchedNodeLocation =
+              matchRegisteredAINode(
+                  (TAINodeLocation) nodeLocation,
+                  configManager.getNodeManager().getRegisteredAINodes());
         }
         break;
       case DataNode:
@@ -312,6 +321,24 @@ public class ClusterNodeStartUtils {
           }
         }
         break;
+    }
+
+    // check clusterId if not empty
+    if (clusterId != null
+        && !clusterId.isEmpty()
+        && !clusterId.equals(configManager.getClusterManager().getClusterId())) {
+      status.setCode(TSStatusCode.REJECT_NODE_START.getStatusCode());
+      status.setMessage(
+          String.format(
+              "Reject %s restart. Because the clusterId of the current %s and the target cluster are inconsistent. "
+                  + "ClusterId of the current Node: %s, ClusterId of the target cluster: %s."
+                  + POSSIBLE_SOLUTIONS
+                  + "\t1. Please check if the node configuration or path is correct.",
+              nodeType.getNodeType(),
+              nodeType.getNodeType(),
+              clusterId,
+              configManager.getClusterManager().getClusterId()));
+      return status;
     }
 
     if (!acceptRestart) {
@@ -407,6 +434,24 @@ public class ClusterNodeStartUtils {
     for (TConfigNodeLocation registeredConfigNode : registeredConfigNodes) {
       if (registeredConfigNode.getConfigNodeId() == configNodeLocation.getConfigNodeId()) {
         return registeredConfigNode;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Check if there exists a registered AINode who has the same index of the given one.
+   *
+   * @param aiNodeLocation The given AINode
+   * @param registeredAINodes Registered AINodes
+   * @return The AINodeLocation who has the same index of the given one, null otherwise.
+   */
+  public static TAINodeLocation matchRegisteredAINode(
+      TAINodeLocation aiNodeLocation, List<TAINodeConfiguration> registeredAINodes) {
+    for (TAINodeConfiguration registeredAINode : registeredAINodes) {
+      if (registeredAINode.getLocation().getAiNodeId() == aiNodeLocation.getAiNodeId()) {
+        return registeredAINode.getLocation();
       }
     }
 

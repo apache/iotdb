@@ -28,9 +28,9 @@ import org.apache.iotdb.commons.client.container.PipeConsensusClientMgrContainer
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorRetryTimesConfigurableException;
+import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeConnector;
 import org.apache.iotdb.consensus.pipe.metric.PipeConsensusSyncLagManager;
@@ -92,7 +92,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
   private final BlockingQueue<Event> retryEventQueue = new LinkedBlockingQueue<>();
   // We use enrichedEvent here to make use of EnrichedEvent.equalsInPipeConsensus
   private final BlockingQueue<EnrichedEvent> transferBuffer =
-      new LinkedBlockingDeque<>(IOTDB_CONFIG.getPipeConsensusPipelineSize());
+      new LinkedBlockingDeque<>(IOTDB_CONFIG.getIotConsensusV2PipelineSize());
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
   private final int thisDataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
   private PipeConsensusConnectorMetrics pipeConsensusConnectorMetrics;
@@ -206,7 +206,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
           consensusGroupId,
           event,
           transferBuffer.size(),
-          IOTDB_CONFIG.getPipeConsensusPipelineSize());
+          IOTDB_CONFIG.getIotConsensusV2PipelineSize());
     }
     if (transferBuffer.isEmpty()) {
       LOGGER.info(
@@ -274,8 +274,6 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
       // We increase the reference count for this event to determine if the event may be released.
       if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
           PipeConsensusAsyncConnector.class.getName())) {
-        pipeInsertNodeTabletInsertionEvent.decreaseReferenceCount(
-            PipeConsensusAsyncConnector.class.getName(), false);
         return;
       }
 
@@ -354,8 +352,6 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
     // We increase the reference count for this event to determine if the event may be released.
     if (!pipeTsFileInsertionEvent.increaseReferenceCount(
         PipeConsensusAsyncConnector.class.getName())) {
-      pipeTsFileInsertionEvent.decreaseReferenceCount(
-          PipeConsensusAsyncConnector.class.getName(), false);
       return;
     }
 
@@ -588,10 +584,11 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
 
   @Override
   public long getConsensusPipeCommitProgress() {
-    long creationTime = PipeDataNodeAgent.task().getPipeCreationTime(consensusPipeName);
-    String committerKey =
-        String.format("%s_%s_%s", consensusPipeName, consensusGroupId, creationTime);
-    return PipeEventCommitManager.getInstance().getGivenConsensusPipeCommitId(committerKey);
+    return PipeEventCommitManager.getInstance()
+        .getGivenConsensusPipeCommitId(
+            consensusPipeName,
+            PipeDataNodeAgent.task().getPipeCreationTime(consensusPipeName),
+            consensusGroupId);
   }
 
   @Override

@@ -111,12 +111,12 @@ public class WriteBackConnector implements PipeConnector {
   private void doTransferWrapper(
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, WALPipeException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
+        WriteBackConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
-          WriteBackConnector.class.getName())) {
-        return;
-      }
       doTransfer(pipeInsertNodeTabletInsertionEvent);
     } finally {
       pipeInsertNodeTabletInsertionEvent.decreaseReferenceCount(
@@ -155,11 +155,11 @@ public class WriteBackConnector implements PipeConnector {
 
   private void doTransferWrapper(final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeRawTabletInsertionEvent.increaseReferenceCount(WriteBackConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeRawTabletInsertionEvent.increaseReferenceCount(WriteBackConnector.class.getName())) {
-        return;
-      }
       doTransfer(pipeRawTabletInsertionEvent);
     } finally {
       pipeRawTabletInsertionEvent.decreaseReferenceCount(WriteBackConnector.class.getName(), false);

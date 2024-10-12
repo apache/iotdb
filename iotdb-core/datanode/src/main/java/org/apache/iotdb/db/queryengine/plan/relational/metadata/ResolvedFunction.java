@@ -22,7 +22,13 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
 import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionId;
 import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionKind;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 import static java.util.Objects.requireNonNull;
@@ -33,15 +39,19 @@ public class ResolvedFunction {
   private final FunctionKind functionKind;
   private final boolean deterministic;
 
+  private final FunctionNullability functionNullability;
+
   public ResolvedFunction(
       BoundSignature signature,
       FunctionId functionId,
       FunctionKind functionKind,
-      boolean deterministic) {
+      boolean deterministic,
+      FunctionNullability functionNullability) {
     this.signature = requireNonNull(signature, "signature is null");
     this.functionId = requireNonNull(functionId, "functionId is null");
     this.functionKind = requireNonNull(functionKind, "functionKind is null");
     this.deterministic = deterministic;
+    this.functionNullability = requireNonNull(functionNullability, "functionNullability is null");
   }
 
   public BoundSignature getSignature() {
@@ -60,15 +70,18 @@ public class ResolvedFunction {
     return deterministic;
   }
 
+  public FunctionNullability getFunctionNullability() {
+    return functionNullability;
+  }
+
   //  public static boolean isResolved(QualifiedName name) {
   //    return SerializedResolvedFunction.isSerializedResolvedFunction(name);
   //  }
   //
-  //  public QualifiedName toQualifiedName() {
-  //    CatalogSchemaFunctionName name = toCatalogSchemaFunctionName();
-  //    return QualifiedName.of(name.getCatalogName(), name.getSchemaName(),
-  // name.getFunctionName());
-  //  }
+  public QualifiedName toQualifiedName() {
+    return QualifiedName.of(signature.getName());
+  }
+
   //
   //  public CatalogSchemaFunctionName toCatalogSchemaFunctionName() {
   //    return ResolvedFunctionDecoder.toCatalogSchemaFunctionName(this);
@@ -103,5 +116,31 @@ public class ResolvedFunction {
   @Override
   public String toString() {
     return signature.toString();
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    signature.serialize(byteBuffer);
+    ReadWriteIOUtils.write(functionId.toString(), byteBuffer);
+    functionKind.serialize(byteBuffer);
+    ReadWriteIOUtils.write(deterministic, byteBuffer);
+    functionNullability.serialize(byteBuffer);
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    signature.serialize(stream);
+    ReadWriteIOUtils.write(functionId.toString(), stream);
+    functionKind.serialize(stream);
+    ReadWriteIOUtils.write(deterministic, stream);
+    functionNullability.serialize(stream);
+  }
+
+  public static ResolvedFunction deserialize(ByteBuffer byteBuffer) {
+    BoundSignature signature = BoundSignature.deserialize(byteBuffer);
+    FunctionId functionId = new FunctionId(ReadWriteIOUtils.readString(byteBuffer));
+    FunctionKind functionKind = FunctionKind.deserialize(byteBuffer);
+    boolean deterministic = ReadWriteIOUtils.readBool(byteBuffer);
+    FunctionNullability functionNullability = FunctionNullability.deserialize(byteBuffer);
+    return new ResolvedFunction(
+        signature, functionId, functionKind, deterministic, functionNullability);
   }
 }

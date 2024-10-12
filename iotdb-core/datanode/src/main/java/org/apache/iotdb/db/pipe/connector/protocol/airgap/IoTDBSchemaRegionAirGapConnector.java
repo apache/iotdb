@@ -86,12 +86,12 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
   private void doTransferWrapper(
       final AirGapSocket socket, final PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)
       throws PipeException, IOException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeSchemaRegionSnapshotEvent.increaseReferenceCount(
+        IoTDBSchemaRegionAirGapConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeSchemaRegionSnapshotEvent.increaseReferenceCount(
-          IoTDBSchemaRegionAirGapConnector.class.getName())) {
-        return;
-      }
       doTransfer(socket, pipeSchemaRegionSnapshotEvent);
     } finally {
       pipeSchemaRegionSnapshotEvent.decreaseReferenceCount(
@@ -119,7 +119,7 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
         socket,
         PipeTransferSchemaSnapshotSealReq.toTPipeTransferBytes(
             // The pattern is surely Non-null
-            pipeSchemaRegionSnapshotEvent.getPatternString(),
+            pipeSchemaRegionSnapshotEvent.getTreePatternString(),
             mtreeSnapshotFile.getName(),
             mtreeSnapshotFile.length(),
             Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.getName() : null,

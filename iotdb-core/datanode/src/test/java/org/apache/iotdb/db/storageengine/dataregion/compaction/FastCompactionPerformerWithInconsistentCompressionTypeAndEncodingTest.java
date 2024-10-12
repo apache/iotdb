@@ -622,7 +622,8 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
       throws IOException {
     Map<String, CompressionType> compressionTypeMap = new HashMap<>();
     for (IDeviceID device : reader.getAllDevices()) {
-      List<AlignedChunkMetadata> alignedChunkMetadataList = reader.getAlignedChunkMetadata(device);
+      List<AlignedChunkMetadata> alignedChunkMetadataList =
+          reader.getAlignedChunkMetadata(device, true);
       for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
         IChunkMetadata timeChunkMetadata = alignedChunkMetadata.getTimeChunkMetadata();
         List<IChunkMetadata> valueChunkMetadataList =

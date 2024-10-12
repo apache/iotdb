@@ -24,6 +24,11 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_KEY = "extractor";
   public static final String SOURCE_KEY = "source";
 
+  public static final String EXTRACTOR_CAPTURE_TREE_KEY = "extractor.capture.tree";
+  public static final String SOURCE_CAPTURE_TREE_KEY = "source.capture.tree";
+  public static final String EXTRACTOR_CAPTURE_TABLE_KEY = "extractor.capture.table";
+  public static final String SOURCE_CAPTURE_TABLE_KEY = "source.capture.table";
+
   public static final String EXTRACTOR_INCLUSION_KEY = "extractor.inclusion";
   public static final String SOURCE_INCLUSION_KEY = "source.inclusion";
   public static final String EXTRACTOR_INCLUSION_DEFAULT_VALUE = "data.insert";
@@ -50,6 +55,10 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE = "iotdb";
   public static final String EXTRACTOR_PATTERN_PREFIX_DEFAULT_VALUE = "root";
   public static final String EXTRACTOR_PATTERN_IOTDB_DEFAULT_VALUE = "root.**";
+  public static final String EXTRACTOR_DATABASE_NAME_KEY = "extractor.database-name";
+  public static final String SOURCE_DATABASE_NAME_KEY = "source.database-name";
+  public static final String EXTRACTOR_TABLE_NAME_KEY = "extractor.table-name";
+  public static final String SOURCE_TABLE_NAME_KEY = "source.table-name";
 
   public static final String EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY =
       "extractor.forwarding-pipe-requests";

@@ -47,7 +47,7 @@ import java.util.List;
  * PullConsumer
  * pattern: TS
  * history
- * Tsfile
+ * tsfile
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegressionConsumer.class})

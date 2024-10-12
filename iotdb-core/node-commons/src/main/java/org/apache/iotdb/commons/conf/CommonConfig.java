@@ -202,12 +202,14 @@ public class CommonConfig {
   private int pipeNonForwardingEventsProgressReportInterval = 100;
 
   private int pipeDataStructureTabletRowSize = 2048;
+  private int pipeDataStructureTabletSizeInBytes = 2097152;
   private double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold = 0.4;
 
   private int pipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount = 10_000;
   private long pipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration = 10 * 1000L;
   private long pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs = 1000;
   private long pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds = 20;
+  private long pipeSubtaskExecutorForcedRestartIntervalMs = Long.MAX_VALUE;
 
   private int pipeExtractorAssignerDisruptorRingBufferSize = 65536;
   private long pipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes = 50; // 50B
@@ -281,12 +283,10 @@ public class CommonConfig {
   private int subscriptionPollMaxBlockingTimeMs = 500;
   private int subscriptionSerializeMaxBlockingTimeMs = 100;
   private long subscriptionLaunchRetryIntervalMs = 1000;
-  private int subscriptionRecycleUncommittedEventIntervalMs = 60000; // 60s
+  private int subscriptionRecycleUncommittedEventIntervalMs = 600000; // 600s
   private long subscriptionReadFileBufferSize = 8 * MB;
+  private long subscriptionReadTabletBufferSize = 8 * MB;
   private long subscriptionTsFileDeduplicationWindowSeconds = 120; // 120s
-
-  // default to SessionConfig.DEFAULT_MAX_FRAME_SIZE
-  private long subscriptionPollPayloadMaxSize = 64 * MB;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -675,6 +675,14 @@ public class CommonConfig {
     this.pipeDataStructureTabletRowSize = pipeDataStructureTabletRowSize;
   }
 
+  public int getPipeDataStructureTabletSizeInBytes() {
+    return pipeDataStructureTabletSizeInBytes;
+  }
+
+  public void setPipeDataStructureTabletSizeInBytes(int pipeDataStructureTabletSizeInBytes) {
+    this.pipeDataStructureTabletSizeInBytes = pipeDataStructureTabletSizeInBytes;
+  }
+
   public double getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold() {
     return pipeDataStructureTabletMemoryBlockAllocationRejectThreshold;
   }
@@ -883,6 +891,15 @@ public class CommonConfig {
       long pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds) {
     this.pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds =
         pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds;
+  }
+
+  public long getPipeSubtaskExecutorForcedRestartIntervalMs() {
+    return pipeSubtaskExecutorForcedRestartIntervalMs;
+  }
+
+  public void setPipeSubtaskExecutorForcedRestartIntervalMs(
+      long pipeSubtaskExecutorForcedRestartIntervalMs) {
+    this.pipeSubtaskExecutorForcedRestartIntervalMs = pipeSubtaskExecutorForcedRestartIntervalMs;
   }
 
   public int getPipeRealTimeQueuePollHistoryThreshold() {
@@ -1267,6 +1284,14 @@ public class CommonConfig {
     this.subscriptionReadFileBufferSize = subscriptionReadFileBufferSize;
   }
 
+  public long getSubscriptionReadTabletBufferSize() {
+    return subscriptionReadTabletBufferSize;
+  }
+
+  public void setSubscriptionReadTabletBufferSize(long subscriptionReadTabletBufferSize) {
+    this.subscriptionReadTabletBufferSize = subscriptionReadTabletBufferSize;
+  }
+
   public long getSubscriptionTsFileDeduplicationWindowSeconds() {
     return subscriptionTsFileDeduplicationWindowSeconds;
   }
@@ -1275,14 +1300,6 @@ public class CommonConfig {
       long subscriptionTsFileDeduplicationWindowSeconds) {
     this.subscriptionTsFileDeduplicationWindowSeconds =
         subscriptionTsFileDeduplicationWindowSeconds;
-  }
-
-  public long getSubscriptionPollPayloadMaxSize() {
-    return subscriptionPollPayloadMaxSize;
-  }
-
-  public void setSubscriptionPollPayloadMaxSize(long subscriptionPollPayloadMaxSize) {
-    this.subscriptionPollPayloadMaxSize = subscriptionPollPayloadMaxSize;
   }
 
   public String getSchemaEngineMode() {

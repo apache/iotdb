@@ -104,9 +104,15 @@ public abstract class ColumnTransformer {
   /** Responsible for the calculation. */
   protected abstract void evaluate();
 
+  public abstract void evaluateWithSelection(boolean[] selection);
+
   protected abstract void checkType();
 
   public void close() {
     // do nothing
+  }
+
+  public void clearCache() {
+    this.columnCache.clear();
   }
 }

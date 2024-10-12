@@ -35,6 +35,8 @@ import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.read.table.FetchTablePlan;
+import org.apache.iotdb.confignode.consensus.request.read.table.ShowTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
@@ -63,12 +65,13 @@ import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaT
 import org.apache.iotdb.confignode.consensus.response.database.CountDatabaseResp;
 import org.apache.iotdb.confignode.consensus.response.database.DatabaseSchemaResp;
 import org.apache.iotdb.confignode.consensus.response.partition.PathInfoResp;
+import org.apache.iotdb.confignode.consensus.response.table.FetchTableResp;
+import org.apache.iotdb.confignode.consensus.response.table.ShowTableResp;
 import org.apache.iotdb.confignode.consensus.response.template.AllTemplateSetInfoResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
-import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -150,15 +153,15 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * Cache DatabaseSchema.
    *
    * @param plan DatabaseSchemaPlan
-   * @return SUCCESS_STATUS if the Database is set successfully.
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if the Database is set successfully.
    */
-  public TSStatus createDatabase(DatabaseSchemaPlan plan) {
-    TSStatus result = new TSStatus();
+  public TSStatus createDatabase(final DatabaseSchemaPlan plan) {
+    final TSStatus result = new TSStatus();
     databaseReadWriteLock.writeLock().lock();
     try {
       // Set Database
-      TDatabaseSchema databaseSchema = plan.getSchema();
-      PartialPath partialPathName = new PartialPath(databaseSchema.getName());
+      final TDatabaseSchema databaseSchema = plan.getSchema();
+      final PartialPath partialPathName = PartialPath.getDatabasePath(databaseSchema.getName());
       mTree.setStorageGroup(partialPathName);
 
       // Set DatabaseSchema
@@ -168,7 +171,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           .setDatabaseSchema(databaseSchema);
 
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       LOGGER.error(ERROR_NAME, e);
       result.setCode(e.getErrorCode()).setMessage(e.getMessage());
     } finally {
@@ -181,14 +184,14 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * Alter DatabaseSchema.
    *
    * @param plan DatabaseSchemaPlan
-   * @return SUCCESS_STATUS if the DatabaseSchema is altered successfully.
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if the DatabaseSchema is altered successfully.
    */
-  public TSStatus alterDatabase(DatabaseSchemaPlan plan) {
-    TSStatus result = new TSStatus();
+  public TSStatus alterDatabase(final DatabaseSchemaPlan plan) {
+    final TSStatus result = new TSStatus();
     databaseReadWriteLock.writeLock().lock();
     try {
-      TDatabaseSchema alterSchema = plan.getSchema();
-      PartialPath partialPathName = new PartialPath(alterSchema.getName());
+      final TDatabaseSchema alterSchema = plan.getSchema();
+      final PartialPath partialPathName = new PartialPath(alterSchema.getName());
 
       TDatabaseSchema currentSchema =
           mTree.getDatabaseNodeByDatabasePath(partialPathName).getAsMNode().getDatabaseSchema();
@@ -242,19 +245,17 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * Delete Database.
    *
    * @param plan DeleteDatabasePlan
-   * @return SUCCESS_STATUS
+   * @return {@link TSStatusCode#SUCCESS_STATUS}
    */
-  public TSStatus deleteDatabase(DeleteDatabasePlan plan) {
-    TSStatus result = new TSStatus();
+  public TSStatus deleteDatabase(final DeleteDatabasePlan plan) {
+    final TSStatus result = new TSStatus();
     databaseReadWriteLock.writeLock().lock();
     try {
       // Delete Database
-      String storageGroup = plan.getName();
-      PartialPath partialPathName = new PartialPath(storageGroup);
-      mTree.deleteDatabase(partialPathName);
+      mTree.deleteDatabase(getQualifiedDatabasePartialPath(plan.getName()));
 
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       LOGGER.warn("Database not exist", e);
       result
           .setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode())
@@ -291,14 +292,14 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   /**
    * @return The number of matched Databases by the specified Database pattern
    */
-  public CountDatabaseResp countMatchedDatabases(CountDatabasePlan plan) {
-    CountDatabaseResp result = new CountDatabaseResp();
+  public CountDatabaseResp countMatchedDatabases(final CountDatabasePlan plan) {
+    final CountDatabaseResp result = new CountDatabaseResp();
     databaseReadWriteLock.readLock().lock();
     try {
-      PartialPath patternPath = new PartialPath(plan.getDatabasePattern());
+      final PartialPath patternPath = new PartialPath(plan.getDatabasePattern());
       result.setCount(mTree.getDatabaseNum(patternPath, plan.getScope(), false));
       result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       LOGGER.error(ERROR_NAME, e);
       result.setStatus(
           new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
@@ -312,22 +313,22 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   /**
    * @return All DatabaseSchemas that matches to the specified Database pattern
    */
-  public DatabaseSchemaResp getMatchedDatabaseSchemas(GetDatabasePlan plan) {
-    DatabaseSchemaResp result = new DatabaseSchemaResp();
+  public DatabaseSchemaResp getMatchedDatabaseSchemas(final GetDatabasePlan plan) {
+    final DatabaseSchemaResp result = new DatabaseSchemaResp();
     databaseReadWriteLock.readLock().lock();
     try {
-      Map<String, TDatabaseSchema> schemaMap = new HashMap<>();
-      PartialPath patternPath = new PartialPath(plan.getDatabasePattern());
-      List<PartialPath> matchedPaths =
+      final Map<String, TDatabaseSchema> schemaMap = new HashMap<>();
+      final PartialPath patternPath = new PartialPath(plan.getDatabasePattern());
+      final List<PartialPath> matchedPaths =
           mTree.getMatchedDatabases(patternPath, plan.getScope(), false);
-      for (PartialPath path : matchedPaths) {
+      for (final PartialPath path : matchedPaths) {
         schemaMap.put(
             path.getFullPath(),
             mTree.getDatabaseNodeByDatabasePath(path).getAsMNode().getDatabaseSchema());
       }
       result.setSchemaMap(schemaMap);
       result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       LOGGER.error(ERROR_NAME, e);
       result.setStatus(
           new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
@@ -338,12 +339,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return result;
   }
 
-  public TSStatus setSchemaReplicationFactor(SetSchemaReplicationFactorPlan plan) {
-    TSStatus result = new TSStatus();
+  public TSStatus setSchemaReplicationFactor(final SetSchemaReplicationFactorPlan plan) {
+    final TSStatus result = new TSStatus();
     databaseReadWriteLock.writeLock().lock();
-    String databaseName = PathUtils.qualifyDatabaseName(plan.getDatabase());
     try {
-      PartialPath path = new PartialPath(databaseName);
+      final PartialPath path = getQualifiedDatabasePartialPath(plan.getDatabase());
       if (mTree.isDatabaseAlreadySet(path)) {
         mTree
             .getDatabaseNodeByDatabasePath(path)
@@ -354,7 +354,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       } else {
         result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
       }
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       LOGGER.error(ERROR_NAME, e);
       result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()).setMessage(ERROR_NAME);
     } finally {
@@ -363,12 +363,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return result;
   }
 
-  public TSStatus setDataReplicationFactor(SetDataReplicationFactorPlan plan) {
-    TSStatus result = new TSStatus();
+  public TSStatus setDataReplicationFactor(final SetDataReplicationFactorPlan plan) {
+    final TSStatus result = new TSStatus();
     databaseReadWriteLock.writeLock().lock();
-    String databaseName = PathUtils.qualifyDatabaseName(plan.getDatabase());
     try {
-      PartialPath path = new PartialPath(databaseName);
+      final PartialPath path = getQualifiedDatabasePartialPath(plan.getDatabase());
       if (mTree.isDatabaseAlreadySet(path)) {
         mTree
             .getDatabaseNodeByDatabasePath(path)
@@ -379,7 +378,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       } else {
         result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
       }
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       LOGGER.error(ERROR_NAME, e);
       result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()).setMessage(ERROR_NAME);
     } finally {
@@ -388,12 +387,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return result;
   }
 
-  public TSStatus setTimePartitionInterval(SetTimePartitionIntervalPlan plan) {
-    TSStatus result = new TSStatus();
+  public TSStatus setTimePartitionInterval(final SetTimePartitionIntervalPlan plan) {
+    final TSStatus result = new TSStatus();
     databaseReadWriteLock.writeLock().lock();
-    String databaseName = PathUtils.qualifyDatabaseName(plan.getDatabase());
     try {
-      PartialPath path = new PartialPath(databaseName);
+      final PartialPath path = getQualifiedDatabasePartialPath(plan.getDatabase());
       if (mTree.isDatabaseAlreadySet(path)) {
         mTree
             .getDatabaseNodeByDatabasePath(path)
@@ -404,7 +402,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       } else {
         result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
       }
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       LOGGER.error(ERROR_NAME, e);
       result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()).setMessage(ERROR_NAME);
     } finally {
@@ -417,22 +415,24 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * Adjust the maximum RegionGroup count of each Database.
    *
    * @param plan AdjustMaxRegionGroupCountPlan
-   * @return SUCCESS_STATUS
+   * @return {@link TSStatusCode#SUCCESS_STATUS}
    */
-  public TSStatus adjustMaxRegionGroupCount(AdjustMaxRegionGroupNumPlan plan) {
-    TSStatus result = new TSStatus();
+  public TSStatus adjustMaxRegionGroupCount(final AdjustMaxRegionGroupNumPlan plan) {
+    final TSStatus result = new TSStatus();
     databaseReadWriteLock.writeLock().lock();
     try {
-      for (Map.Entry<String, Pair<Integer, Integer>> entry :
+      for (final Map.Entry<String, Pair<Integer, Integer>> entry :
           plan.getMaxRegionGroupNumMap().entrySet()) {
-        PartialPath path = new PartialPath(entry.getKey());
-        TDatabaseSchema databaseSchema =
-            mTree.getDatabaseNodeByDatabasePath(path).getAsMNode().getDatabaseSchema();
+        final TDatabaseSchema databaseSchema =
+            mTree
+                .getDatabaseNodeByDatabasePath(getQualifiedDatabasePartialPath(entry.getKey()))
+                .getAsMNode()
+                .getDatabaseSchema();
         databaseSchema.setMaxSchemaRegionGroupNum(entry.getValue().getLeft());
         databaseSchema.setMaxDataRegionGroupNum(entry.getValue().getRight());
       }
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       LOGGER.error(ERROR_NAME, e);
       result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
     } finally {
@@ -451,17 +451,14 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * @return List {@literal <}DatabaseName{@literal >}, all Databases' name.
    */
   public List<String> getDatabaseNames() {
-    List<String> databases = new ArrayList<>();
     databaseReadWriteLock.readLock().lock();
     try {
-      List<PartialPath> namePaths = mTree.getAllDatabasePaths();
-      for (PartialPath path : namePaths) {
-        databases.add(path.getFullPath());
-      }
+      return mTree.getAllDatabasePaths().stream()
+          .map(PartialPath::getFullPath)
+          .collect(Collectors.toList());
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }
-    return databases;
   }
 
   /**
@@ -471,10 +468,10 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * @throws MetadataException If the DatabaseName invalid i.e. the specified DatabaseName is
    *     already exist, or it's a prefix of another DatabaseName
    */
-  public void isDatabaseNameValid(String databaseName) throws MetadataException {
+  public void isDatabaseNameValid(final String databaseName) throws MetadataException {
     databaseReadWriteLock.readLock().lock();
     try {
-      mTree.checkDatabaseAlreadySet(new PartialPath(databaseName));
+      mTree.checkDatabaseAlreadySet(getQualifiedDatabasePartialPath(databaseName));
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }
@@ -487,15 +484,15 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * @return The specific DatabaseSchema
    * @throws DatabaseNotExistsException When the specific Database doesn't exist
    */
-  public TDatabaseSchema getMatchedDatabaseSchemaByName(String database)
+  public TDatabaseSchema getMatchedDatabaseSchemaByName(final String database)
       throws DatabaseNotExistsException {
     databaseReadWriteLock.readLock().lock();
     try {
       return mTree
-          .getDatabaseNodeByDatabasePath(new PartialPath(database))
+          .getDatabaseNodeByDatabasePath(getQualifiedDatabasePartialPath(database))
           .getAsMNode()
           .getDatabaseSchema();
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       throw new DatabaseNotExistsException(database);
     } finally {
       databaseReadWriteLock.readLock().unlock();
@@ -508,21 +505,22 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * @param rawPathList Databases' path patterns or full paths
    * @return All DatabaseSchemas that matches to the specific Database patterns
    */
-  public Map<String, TDatabaseSchema> getMatchedDatabaseSchemasByName(List<String> rawPathList) {
-    Map<String, TDatabaseSchema> schemaMap = new HashMap<>();
+  public Map<String, TDatabaseSchema> getMatchedDatabaseSchemasByName(
+      final List<String> rawPathList) {
+    final Map<String, TDatabaseSchema> schemaMap = new HashMap<>();
     databaseReadWriteLock.readLock().lock();
     try {
-      for (String rawPath : rawPathList) {
-        PartialPath patternPath = new PartialPath(rawPath);
-        List<PartialPath> matchedPaths =
+      for (final String rawPath : rawPathList) {
+        final PartialPath patternPath = getQualifiedDatabasePartialPath(rawPath);
+        final List<PartialPath> matchedPaths =
             mTree.getMatchedDatabases(patternPath, ALL_MATCH_SCOPE, false);
-        for (PartialPath path : matchedPaths) {
+        for (final PartialPath path : matchedPaths) {
           schemaMap.put(
               path.getFullPath(),
               mTree.getDatabaseNodeByPath(path).getAsMNode().getDatabaseSchema());
         }
       }
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       LOGGER.warn(ERROR_NAME, e);
     } finally {
       databaseReadWriteLock.readLock().unlock();
@@ -560,12 +558,15 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * @param consensusGroupType SchemaRegion or DataRegion
    * @return maxSchemaRegionGroupNum or maxDataRegionGroupNum
    */
-  public int getMinRegionGroupNum(String database, TConsensusGroupType consensusGroupType) {
+  public int getMinRegionGroupNum(
+      final String database, final TConsensusGroupType consensusGroupType) {
     databaseReadWriteLock.readLock().lock();
     try {
-      PartialPath path = new PartialPath(database);
-      TDatabaseSchema storageGroupSchema =
-          mTree.getDatabaseNodeByDatabasePath(path).getAsMNode().getDatabaseSchema();
+      final TDatabaseSchema storageGroupSchema =
+          mTree
+              .getDatabaseNodeByDatabasePath(PartialPath.getDatabasePath(database))
+              .getAsMNode()
+              .getDatabaseSchema();
       switch (consensusGroupType) {
         case SchemaRegion:
           return storageGroupSchema.getMinSchemaRegionGroupNum();
@@ -573,7 +574,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
         default:
           return storageGroupSchema.getMinDataRegionGroupNum();
       }
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       LOGGER.warn(ERROR_NAME, e);
       return -1;
     } finally {
@@ -588,12 +589,15 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * @param consensusGroupType SchemaRegion or DataRegion
    * @return maxSchemaRegionGroupNum or maxDataRegionGroupNum
    */
-  public int getMaxRegionGroupNum(String database, TConsensusGroupType consensusGroupType) {
+  public int getMaxRegionGroupNum(
+      final String database, final TConsensusGroupType consensusGroupType) {
     databaseReadWriteLock.readLock().lock();
     try {
-      PartialPath path = new PartialPath(database);
-      TDatabaseSchema storageGroupSchema =
-          mTree.getDatabaseNodeByDatabasePath(path).getAsMNode().getDatabaseSchema();
+      final TDatabaseSchema storageGroupSchema =
+          mTree
+              .getDatabaseNodeByDatabasePath(PartialPath.getDatabasePath(database))
+              .getAsMNode()
+              .getDatabaseSchema();
       switch (consensusGroupType) {
         case SchemaRegion:
           return storageGroupSchema.getMaxSchemaRegionGroupNum();
@@ -601,7 +605,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
         default:
           return storageGroupSchema.getMaxDataRegionGroupNum();
       }
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       LOGGER.warn(ERROR_NAME, e);
       return -1;
     } finally {
@@ -1018,17 +1022,17 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   public Map<String, TDatabaseSchema> getMatchedDatabaseSchemasByOneName(
-      String[] databasePathPattern) {
-    Map<String, TDatabaseSchema> schemaMap = new HashMap<>();
+      final String[] databasePathPattern) {
+    final Map<String, TDatabaseSchema> schemaMap = new HashMap<>();
     databaseReadWriteLock.readLock().lock();
     try {
-      PartialPath patternPath = new PartialPath(databasePathPattern);
-      List<PartialPath> matchedPaths = mTree.getBelongedDatabases(patternPath);
-      for (PartialPath path : matchedPaths) {
+      final PartialPath patternPath = new PartialPath(databasePathPattern);
+      final List<PartialPath> matchedPaths = mTree.getBelongedDatabases(patternPath);
+      for (final PartialPath path : matchedPaths) {
         schemaMap.put(
             path.getFullPath(), mTree.getDatabaseNodeByPath(path).getAsMNode().getDatabaseSchema());
       }
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       LOGGER.warn(ERROR_NAME, e);
     } finally {
       databaseReadWriteLock.readLock().unlock();
@@ -1038,63 +1042,85 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   // region table management
 
-  public TSStatus preCreateTable(PreCreateTablePlan preCreateTablePlan) {
-    String databaseName = PathUtils.qualifyDatabaseName(preCreateTablePlan.getDatabase());
+  public TSStatus preCreateTable(final PreCreateTablePlan plan) {
     databaseReadWriteLock.writeLock().lock();
     try {
-      mTree.preCreateTable(new PartialPath(databaseName), preCreateTablePlan.getTable());
+      mTree.preCreateTable(getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTable());
       return RpcUtils.SUCCESS_STATUS;
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } finally {
       databaseReadWriteLock.writeLock().unlock();
     }
   }
 
-  public TSStatus rollbackCreateTable(RollbackCreateTablePlan rollbackCreateTablePlan) {
-    String databaseName = PathUtils.qualifyDatabaseName(rollbackCreateTablePlan.getDatabase());
+  public TSStatus rollbackCreateTable(final RollbackCreateTablePlan plan) {
     databaseReadWriteLock.writeLock().lock();
     try {
       mTree.rollbackCreateTable(
-          new PartialPath(databaseName), rollbackCreateTablePlan.getTableName());
+          getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName());
       return RpcUtils.SUCCESS_STATUS;
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } finally {
       databaseReadWriteLock.writeLock().unlock();
     }
   }
 
-  public TSStatus commitCreateTable(CommitCreateTablePlan commitCreateTablePlan) {
-    String databaseName = PathUtils.qualifyDatabaseName(commitCreateTablePlan.getDatabase());
+  public TSStatus commitCreateTable(final CommitCreateTablePlan plan) {
     databaseReadWriteLock.writeLock().lock();
     try {
-      mTree.commitCreateTable(new PartialPath(databaseName), commitCreateTablePlan.getTableName());
+      mTree.commitCreateTable(
+          getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName());
       return RpcUtils.SUCCESS_STATUS;
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } finally {
       databaseReadWriteLock.writeLock().unlock();
     }
   }
 
-  public TShowTableResp showTables(String database) {
-    database = PathUtils.qualifyDatabaseName(database);
+  public ShowTableResp showTables(final ShowTablePlan plan) {
     databaseReadWriteLock.readLock().lock();
     try {
-      return new TShowTableResp(StatusUtils.OK)
-          .setTableInfoList(
-              mTree.getAllUsingTablesUnderSpecificDatabase(new PartialPath(database)).stream()
-                  .map(
-                      tsTable ->
-                          new TTableInfo(
-                              tsTable.getTableName(),
-                              tsTable
-                                  .getPropValue(TTL_PROPERTY.toLowerCase(Locale.ENGLISH))
-                                  .orElse(TTL_INFINITE)))
-                  .collect(Collectors.toList()));
+      return new ShowTableResp(
+          StatusUtils.OK,
+          mTree
+              .getAllUsingTablesUnderSpecificDatabase(
+                  getQualifiedDatabasePartialPath(plan.getDatabase()))
+              .stream()
+              .map(
+                  tsTable ->
+                      new TTableInfo(
+                          tsTable.getTableName(),
+                          tsTable
+                              .getPropValue(TTL_PROPERTY.toLowerCase(Locale.ENGLISH))
+                              .orElse(TTL_INFINITE)))
+              .collect(Collectors.toList()));
     } catch (final MetadataException e) {
-      return new TShowTableResp(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+      return new ShowTableResp(
+          RpcUtils.getStatus(e.getErrorCode(), e.getMessage()), Collections.emptyList());
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
+  public FetchTableResp fetchTables(final FetchTablePlan plan) {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      final Map<String, Map<String, TsTable>> result = new HashMap<>();
+      for (final Map.Entry<String, Set<String>> database2Tables :
+          plan.getFetchTableMap().entrySet()) {
+        result.put(
+            database2Tables.getKey(),
+            mTree.getSpecificTablesUnderSpecificDatabase(
+                getQualifiedDatabasePartialPath(database2Tables.getKey()),
+                database2Tables.getValue()));
+      }
+      return new FetchTableResp(StatusUtils.OK, result);
+    } catch (final MetadataException e) {
+      return new FetchTableResp(
+          RpcUtils.getStatus(e.getErrorCode(), e.getMessage()), Collections.emptyMap());
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }
@@ -1124,7 +1150,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public Optional<TsTable> getTsTableIfExists(final String database, final String tableName) {
     databaseReadWriteLock.readLock().lock();
     try {
-      return mTree.getTableIfExists(new PartialPath(database), tableName);
+      return mTree.getTableIfExists(getQualifiedDatabasePartialPath(database), tableName);
     } catch (final MetadataException e) {
       LOGGER.warn(e.getMessage(), e);
       throw new RuntimeException(e);
@@ -1134,15 +1160,18 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   public TSStatus addTableColumn(final AddTableColumnPlan plan) {
-    final String databaseName = PathUtils.qualifyDatabaseName(plan.getDatabase());
     databaseReadWriteLock.writeLock().lock();
     try {
       if (plan.isRollback()) {
         mTree.rollbackAddTableColumn(
-            new PartialPath(databaseName), plan.getTableName(), plan.getColumnSchemaList());
+            getQualifiedDatabasePartialPath(plan.getDatabase()),
+            plan.getTableName(),
+            plan.getColumnSchemaList());
       } else {
         mTree.addTableColumn(
-            new PartialPath(databaseName), plan.getTableName(), plan.getColumnSchemaList());
+            getQualifiedDatabasePartialPath(plan.getDatabase()),
+            plan.getTableName(),
+            plan.getColumnSchemaList());
       }
       return RpcUtils.SUCCESS_STATUS;
     } catch (final MetadataException e) {
@@ -1169,11 +1198,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   public TSStatus setTableProperties(final SetTablePropertiesPlan plan) {
-    final String databaseName = PathUtils.qualifyDatabaseName(plan.getDatabase());
     databaseReadWriteLock.writeLock().lock();
     try {
       mTree.setTableProperties(
-          new PartialPath(databaseName), plan.getTableName(), plan.getProperties());
+          getQualifiedDatabasePartialPath(plan.getDatabase()),
+          plan.getTableName(),
+          plan.getProperties());
       return RpcUtils.SUCCESS_STATUS;
     } catch (final MetadataException e) {
       LOGGER.warn(e.getMessage(), e);
@@ -1181,6 +1211,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     } finally {
       databaseReadWriteLock.writeLock().unlock();
     }
+  }
+
+  private PartialPath getQualifiedDatabasePartialPath(final String database)
+      throws IllegalPathException {
+    return PartialPath.getDatabasePath(PathUtils.qualifyDatabaseName(database));
   }
 
   // endregion

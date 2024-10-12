@@ -127,6 +127,7 @@ struct TDataNodeRestartReq {
   1: required string clusterName
   2: required common.TDataNodeConfiguration dataNodeConfiguration
   3: optional TNodeVersionInfo versionInfo
+  4: optional string clusterId
 }
 
 struct TDataNodeRestartResp {
@@ -1006,6 +1007,7 @@ struct TAINodeRestartReq{
   1: required string clusterName
   2: required common.TAINodeConfiguration aiNodeConfiguration
   3: optional TNodeVersionInfo versionInfo
+  4: optional string clusterId
 }
 
 struct TAINodeRestartResp{
@@ -1040,6 +1042,11 @@ struct TAlterTableReq {
 struct TShowTableResp {
    1: required common.TSStatus status
    2: optional list<TTableInfo> tableInfoList
+}
+
+struct TFetchTableResp {
+   1: required common.TSStatus status
+   2: optional binary tableInfoMap
 }
 
 struct TTableInfo {
@@ -1783,5 +1790,7 @@ service IConfigNodeRPCService {
   common.TSStatus alterTable(TAlterTableReq req)
 
   TShowTableResp showTables(string database)
+
+  TFetchTableResp fetchTables(map<string, set<string>> fetchTableMap)
 }
 

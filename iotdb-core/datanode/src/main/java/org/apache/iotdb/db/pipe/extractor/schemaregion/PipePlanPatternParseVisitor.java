@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.extractor.schemaregion;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -54,27 +54,27 @@ import java.util.stream.IntStream;
 
 /**
  * The {@link PipePlanPatternParseVisitor} will transform the schema {@link PlanNode}s using {@link
- * IoTDBPipePattern}. Rule:
+ * IoTDBTreePattern}. Rule:
  *
  * <p>1. All patterns in the output {@link PlanNode} will be the intersection of the original {@link
- * PlanNode}'s patterns and the given {@link IoTDBPipePattern}.
+ * PlanNode}'s patterns and the given {@link IoTDBTreePattern}.
  *
- * <p>2. If a pattern does not intersect with the {@link IoTDBPipePattern}, it's dropped.
+ * <p>2. If a pattern does not intersect with the {@link IoTDBTreePattern}, it's dropped.
  *
  * <p>3. If all the patterns in the {@link PlanNode} is dropped, the {@link PlanNode} is dropped.
  *
  * <p>4. The output {@link PlanNode} shall be a copied form of the original one because the original
  * one is used in the {@link PipeSchemaRegionWritePlanEvent} in {@link SchemaRegionListeningQueue}.
  */
-public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>, IoTDBPipePattern> {
+public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>, IoTDBTreePattern> {
   @Override
-  public Optional<PlanNode> visitPlan(final PlanNode node, final IoTDBPipePattern pattern) {
+  public Optional<PlanNode> visitPlan(final PlanNode node, final IoTDBTreePattern pattern) {
     return Optional.of(node);
   }
 
   @Override
   public Optional<PlanNode> visitCreateTimeSeries(
-      final CreateTimeSeriesNode node, final IoTDBPipePattern pattern) {
+      final CreateTimeSeriesNode node, final IoTDBTreePattern pattern) {
     return pattern.matchesMeasurement(
             node.getPath().getIDeviceID(), node.getPath().getMeasurement())
         ? Optional.of(node)
@@ -83,7 +83,7 @@ public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>,
 
   @Override
   public Optional<PlanNode> visitCreateAlignedTimeSeries(
-      final CreateAlignedTimeSeriesNode node, final IoTDBPipePattern pattern) {
+      final CreateAlignedTimeSeriesNode node, final IoTDBTreePattern pattern) {
     final int[] filteredIndexes =
         IntStream.range(0, node.getMeasurements().size())
             .filter(
@@ -97,19 +97,19 @@ public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>,
             new CreateAlignedTimeSeriesNode(
                 node.getPlanNodeId(),
                 node.getDevicePath(),
-                IoTDBPipePattern.applyIndexesOnList(filteredIndexes, node.getMeasurements()),
-                IoTDBPipePattern.applyIndexesOnList(filteredIndexes, node.getDataTypes()),
-                IoTDBPipePattern.applyIndexesOnList(filteredIndexes, node.getEncodings()),
-                IoTDBPipePattern.applyIndexesOnList(filteredIndexes, node.getCompressors()),
-                IoTDBPipePattern.applyIndexesOnList(filteredIndexes, node.getAliasList()),
-                IoTDBPipePattern.applyIndexesOnList(filteredIndexes, node.getTagsList()),
-                IoTDBPipePattern.applyIndexesOnList(filteredIndexes, node.getAttributesList())))
+                IoTDBTreePattern.applyIndexesOnList(filteredIndexes, node.getMeasurements()),
+                IoTDBTreePattern.applyIndexesOnList(filteredIndexes, node.getDataTypes()),
+                IoTDBTreePattern.applyIndexesOnList(filteredIndexes, node.getEncodings()),
+                IoTDBTreePattern.applyIndexesOnList(filteredIndexes, node.getCompressors()),
+                IoTDBTreePattern.applyIndexesOnList(filteredIndexes, node.getAliasList()),
+                IoTDBTreePattern.applyIndexesOnList(filteredIndexes, node.getTagsList()),
+                IoTDBTreePattern.applyIndexesOnList(filteredIndexes, node.getAttributesList())))
         : Optional.empty();
   }
 
   @Override
   public Optional<PlanNode> visitCreateMultiTimeSeries(
-      final CreateMultiTimeSeriesNode node, final IoTDBPipePattern pattern) {
+      final CreateMultiTimeSeriesNode node, final IoTDBTreePattern pattern) {
     final Map<PartialPath, MeasurementGroup> filteredMeasurementGroupMap =
         node.getMeasurementGroupMap().entrySet().stream()
             .filter(entry -> pattern.matchPrefixPath(entry.getKey().getFullPath()))
@@ -128,7 +128,7 @@ public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>,
   }
 
   private static MeasurementGroup trimMeasurementGroup(
-      final IDeviceID device, final MeasurementGroup group, final IoTDBPipePattern pattern) {
+      final IDeviceID device, final MeasurementGroup group, final IoTDBTreePattern pattern) {
     final int[] filteredIndexes =
         IntStream.range(0, group.size())
             .filter(index -> pattern.matchesMeasurement(device, group.getMeasurements().get(index)))
@@ -163,7 +163,7 @@ public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>,
 
   @Override
   public Optional<PlanNode> visitAlterTimeSeries(
-      final AlterTimeSeriesNode node, final IoTDBPipePattern pattern) {
+      final AlterTimeSeriesNode node, final IoTDBTreePattern pattern) {
     return pattern.matchesMeasurement(
             node.getPath().getIDeviceID(), node.getPath().getMeasurement())
         ? Optional.of(node)
@@ -172,7 +172,7 @@ public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>,
 
   @Override
   public Optional<PlanNode> visitInternalCreateTimeSeries(
-      final InternalCreateTimeSeriesNode node, final IoTDBPipePattern pattern) {
+      final InternalCreateTimeSeriesNode node, final IoTDBTreePattern pattern) {
     final MeasurementGroup group =
         pattern.matchPrefixPath(node.getDevicePath().getFullPath())
             ? trimMeasurementGroup(
@@ -189,7 +189,7 @@ public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>,
 
   @Override
   public Optional<PlanNode> visitActivateTemplate(
-      final ActivateTemplateNode node, final IoTDBPipePattern pattern) {
+      final ActivateTemplateNode node, final IoTDBTreePattern pattern) {
     return pattern.matchDevice(node.getActivatePath().getFullPath())
         ? Optional.of(node)
         : Optional.empty();
@@ -197,7 +197,7 @@ public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>,
 
   @Override
   public Optional<PlanNode> visitInternalBatchActivateTemplate(
-      final InternalBatchActivateTemplateNode node, final IoTDBPipePattern pattern) {
+      final InternalBatchActivateTemplateNode node, final IoTDBTreePattern pattern) {
     final Map<PartialPath, Pair<Integer, Integer>> filteredTemplateActivationMap =
         node.getTemplateActivationMap().entrySet().stream()
             .filter(entry -> pattern.matchDevice(entry.getKey().getFullPath()))
@@ -211,7 +211,7 @@ public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>,
 
   @Override
   public Optional<PlanNode> visitInternalCreateMultiTimeSeries(
-      final InternalCreateMultiTimeSeriesNode node, final IoTDBPipePattern pattern) {
+      final InternalCreateMultiTimeSeriesNode node, final IoTDBTreePattern pattern) {
     final Map<PartialPath, Pair<Boolean, MeasurementGroup>> filteredDeviceMap =
         node.getDeviceMap().entrySet().stream()
             .filter(entry -> pattern.matchPrefixPath(entry.getKey().getFullPath()))
@@ -235,7 +235,7 @@ public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>,
 
   @Override
   public Optional<PlanNode> visitBatchActivateTemplate(
-      final BatchActivateTemplateNode node, final IoTDBPipePattern pattern) {
+      final BatchActivateTemplateNode node, final IoTDBTreePattern pattern) {
     final Map<PartialPath, Pair<Integer, Integer>> filteredTemplateActivationMap =
         node.getTemplateActivationMap().entrySet().stream()
             .filter(entry -> pattern.matchDevice(entry.getKey().getFullPath()))
@@ -248,7 +248,7 @@ public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>,
 
   @Override
   public Optional<PlanNode> visitCreateLogicalView(
-      final CreateLogicalViewNode node, final IoTDBPipePattern pattern) {
+      final CreateLogicalViewNode node, final IoTDBTreePattern pattern) {
     final Map<PartialPath, ViewExpression> filteredViewPathToSourceMap =
         node.getViewPathToSourceExpressionMap().entrySet().stream()
             .filter(
@@ -263,7 +263,7 @@ public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>,
 
   @Override
   public Optional<PlanNode> visitAlterLogicalView(
-      final AlterLogicalViewNode node, final IoTDBPipePattern pattern) {
+      final AlterLogicalViewNode node, final IoTDBTreePattern pattern) {
     final Map<PartialPath, ViewExpression> filteredViewPathToSourceMap =
         node.getViewPathToSourceMap().entrySet().stream()
             .filter(
@@ -278,7 +278,7 @@ public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>,
 
   @Override
   public Optional<PlanNode> visitDeleteData(
-      final DeleteDataNode node, final IoTDBPipePattern pattern) {
+      final DeleteDataNode node, final IoTDBTreePattern pattern) {
     final List<MeasurementPath> intersectedPaths =
         node.getPathList().stream()
             .map(pattern::getIntersection)

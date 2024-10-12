@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -40,8 +39,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class RelationalInsertRowNode extends InsertRowNode {
-  // deviceId cache for Table-view insertion
-  private IDeviceID deviceID;
 
   public RelationalInsertRowNode(
       PlanNodeId id,
@@ -85,6 +82,7 @@ public class RelationalInsertRowNode extends InsertRowNode {
     setColumnCategories(columnCategories);
   }
 
+  @Override
   public IDeviceID getDeviceID() {
     if (deviceID == null) {
       String[] deviceIdSegments = new String[idColumnIndices.size() + 1];
@@ -141,9 +139,7 @@ public class RelationalInsertRowNode extends InsertRowNode {
     RelationalInsertRowNode insertNode = new RelationalInsertRowNode(new PlanNodeId(""));
     insertNode.setTime(stream.readLong());
     try {
-      insertNode.setDevicePath(
-          DataNodeDevicePathCache.getInstance()
-              .getPartialPath(ReadWriteIOUtils.readString(stream)));
+      insertNode.setTargetPath(insertNode.readTargetPath(stream));
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException(DESERIALIZE_ERROR, e);
     }
@@ -162,9 +158,7 @@ public class RelationalInsertRowNode extends InsertRowNode {
     RelationalInsertRowNode insertNode = new RelationalInsertRowNode(new PlanNodeId(""));
     insertNode.setTime(buffer.getLong());
     try {
-      insertNode.setDevicePath(
-          DataNodeDevicePathCache.getInstance()
-              .getPartialPath(ReadWriteIOUtils.readString(buffer)));
+      insertNode.setTargetPath(insertNode.readTargetPath(buffer));
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException(DESERIALIZE_ERROR, e);
     }
@@ -228,6 +222,15 @@ public class RelationalInsertRowNode extends InsertRowNode {
   }
 
   public String getTableName() {
-    return devicePath.getFullPath();
+    return targetPath.getFullPath();
+  }
+
+  protected PartialPath readTargetPath(ByteBuffer buffer) throws IllegalPathException {
+    return new PartialPath(ReadWriteIOUtils.readString(buffer), false);
+  }
+
+  protected PartialPath readTargetPath(DataInputStream stream)
+      throws IllegalPathException, IOException {
+    return new PartialPath(ReadWriteIOUtils.readString(stream), false);
   }
 }

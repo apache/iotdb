@@ -46,7 +46,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisi
 import org.apache.iotdb.db.queryengine.plan.execution.config.TreeConfigTaskVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.TreeModelPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.RelationalModelPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.TableModelPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
@@ -54,8 +54,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
@@ -291,8 +293,8 @@ public class Coordinator {
     queryContext.setTableQuery(true);
     queryContext.setTimeOut(timeOut);
     queryContext.setStartTime(startTime);
-    RelationalModelPlanner relationalModelPlanner =
-        new RelationalModelPlanner(
+    TableModelPlanner tableModelPlanner =
+        new TableModelPlanner(
             statement.toRelationalStatement(queryContext),
             sqlParser,
             metadata,
@@ -301,7 +303,7 @@ public class Coordinator {
             scheduledExecutor,
             SYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
             ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER);
-    return new QueryExecution(relationalModelPlanner, queryContext, executor);
+    return new QueryExecution(tableModelPlanner, queryContext, executor);
   }
 
   private IQueryExecution createQueryExecutionForTableModel(
@@ -329,8 +331,10 @@ public class Coordinator {
         || statement instanceof ShowRegions
         || statement instanceof ShowDataNodes
         || statement instanceof ShowConfigNodes
+        || statement instanceof ShowAINodes
         || statement instanceof Flush
-        || statement instanceof SetConfiguration) {
+        || statement instanceof SetConfiguration
+        || statement instanceof PipeStatement) {
       return new ConfigExecution(
           queryContext,
           null,
@@ -340,8 +344,8 @@ public class Coordinator {
     if (statement instanceof WrappedInsertStatement) {
       ((WrappedInsertStatement) statement).setContext(queryContext);
     }
-    RelationalModelPlanner relationalModelPlanner =
-        new RelationalModelPlanner(
+    TableModelPlanner tableModelPlanner =
+        new TableModelPlanner(
             statement,
             sqlParser,
             metadata,
@@ -350,7 +354,7 @@ public class Coordinator {
             scheduledExecutor,
             SYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
             ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER);
-    return new QueryExecution(relationalModelPlanner, queryContext, executor);
+    return new QueryExecution(tableModelPlanner, queryContext, executor);
   }
 
   public IQueryExecution getQueryExecution(Long queryId) {

@@ -35,6 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALRecoverException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALRecoverListener;
@@ -217,6 +218,9 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
         case DELETE_DATA_NODE:
           walRedoer.redoDelete((DeleteDataNode) walEntry.getValue());
           break;
+        case CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE:
+          // The CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE doesn't need redo
+          break;
         default:
           throw new RuntimeException("Unsupported type " + walEntry.getType());
       }
@@ -287,6 +291,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
         // currently, we close this file anyway
         writer.endFile();
         tsFileResource.serialize();
+        FileTimeIndexCacheRecorder.getInstance().logFileTimeIndex(tsFileResource);
       } catch (IOException | ExecutionException e) {
         throw new WALRecoverException(e);
       } catch (InterruptedException e) {

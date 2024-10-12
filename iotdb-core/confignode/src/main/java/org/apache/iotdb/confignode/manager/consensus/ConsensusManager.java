@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 import org.apache.iotdb.confignode.consensus.statemachine.ConfigRegionStateMachine;
 import org.apache.iotdb.confignode.exception.AddPeerException;
 import org.apache.iotdb.confignode.manager.IManager;
@@ -332,7 +333,7 @@ public class ConsensusManager {
    *
    * @throws ConsensusException When read doesn't success
    */
-  public DataSet read(ConfigPhysicalPlan plan) throws ConsensusException {
+  public DataSet read(final ConfigPhysicalReadPlan plan) throws ConsensusException {
     return consensusImpl.read(DEFAULT_CONSENSUS_GROUP_ID, plan);
   }
 

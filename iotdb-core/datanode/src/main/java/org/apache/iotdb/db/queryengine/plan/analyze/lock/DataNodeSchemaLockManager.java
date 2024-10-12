@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.analyze.lock;
 
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 
-import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class DataNodeSchemaLockManager {
@@ -45,18 +44,16 @@ public class DataNodeSchemaLockManager {
   }
 
   public void takeReadLock(final MPPQueryContext context, final SchemaLockType lockType) {
-    locks[lockType.ordinal()].readLock().lock();
-    context.addAcquiredLockNum(lockType);
+    if (context.addAcquiredLock(lockType)) {
+      locks[lockType.ordinal()].readLock().lock();
+    }
   }
 
   public void releaseReadLock(final MPPQueryContext queryContext) {
-    if (queryContext != null && !queryContext.getAcquiredLockNumMap().isEmpty()) {
-      final Map<SchemaLockType, Integer> lockMap = queryContext.getAcquiredLockNumMap();
-      for (final Map.Entry<SchemaLockType, Integer> entry : lockMap.entrySet()) {
-        for (int i = 0; i < entry.getValue(); i++) {
-          locks[entry.getKey().ordinal()].readLock().unlock();
-        }
-      }
+    if (queryContext != null && !queryContext.getAcquiredLocks().isEmpty()) {
+      queryContext
+          .getAcquiredLocks()
+          .forEach(lockType -> locks[lockType.ordinal()].readLock().unlock());
     }
   }
 

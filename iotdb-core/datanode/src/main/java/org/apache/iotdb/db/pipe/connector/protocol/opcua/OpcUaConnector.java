@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.opcua;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -36,8 +37,10 @@ import org.eclipse.milo.opcua.stack.core.UaException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -117,9 +120,14 @@ public class OpcUaConnector implements PipeConnector {
             Arrays.asList(CONNECTOR_IOTDB_PASSWORD_KEY, SINK_IOTDB_PASSWORD_KEY),
             CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE);
     final String securityDir =
-        parameters.getStringOrDefault(
-            Arrays.asList(CONNECTOR_OPC_UA_SECURITY_DIR_KEY, SINK_OPC_UA_SECURITY_DIR_KEY),
-            CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE);
+        IoTDBConfig.addDataHomeDir(
+            parameters.getStringOrDefault(
+                Arrays.asList(CONNECTOR_OPC_UA_SECURITY_DIR_KEY, SINK_OPC_UA_SECURITY_DIR_KEY),
+                CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE
+                    + File.separatorChar
+                    + httpsBindPort
+                    + "_"
+                    + tcpBindPort));
     final boolean enableAnonymousAccess =
         parameters.getBooleanOrDefault(
             Arrays.asList(
@@ -132,31 +140,41 @@ public class OpcUaConnector implements PipeConnector {
 
       nameSpace =
           SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP
-              .computeIfAbsent(
+              .compute(
                   serverKey,
-                  key -> {
+                  (key, oldValue) -> {
                     try {
-                      final OpcUaServer newServer =
-                          new OpcUaServerBuilder()
-                              .setTcpBindPort(tcpBindPort)
-                              .setHttpsBindPort(httpsBindPort)
-                              .setUser(user)
-                              .setPassword(password)
-                              .setSecurityDir(securityDir)
-                              .setEnableAnonymousAccess(enableAnonymousAccess)
-                              .build();
-                      nameSpace =
-                          new OpcUaNameSpace(
-                              newServer,
-                              parameters
-                                  .getStringOrDefault(
-                                      Arrays.asList(
-                                          CONNECTOR_OPC_UA_MODEL_KEY, SINK_OPC_UA_MODEL_KEY),
-                                      CONNECTOR_OPC_UA_MODEL_DEFAULT_VALUE)
-                                  .equals(CONNECTOR_OPC_UA_MODEL_DEFAULT_VALUE));
-                      nameSpace.startup();
-                      newServer.startup().get();
-                      return new Pair<>(new AtomicInteger(0), nameSpace);
+                      if (Objects.isNull(oldValue)) {
+                        final OpcUaServerBuilder builder =
+                            new OpcUaServerBuilder()
+                                .setTcpBindPort(tcpBindPort)
+                                .setHttpsBindPort(httpsBindPort)
+                                .setUser(user)
+                                .setPassword(password)
+                                .setSecurityDir(securityDir)
+                                .setEnableAnonymousAccess(enableAnonymousAccess);
+                        final OpcUaServer newServer = builder.build();
+                        nameSpace =
+                            new OpcUaNameSpace(
+                                newServer,
+                                parameters
+                                    .getStringOrDefault(
+                                        Arrays.asList(
+                                            CONNECTOR_OPC_UA_MODEL_KEY, SINK_OPC_UA_MODEL_KEY),
+                                        CONNECTOR_OPC_UA_MODEL_DEFAULT_VALUE)
+                                    .equals(CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE),
+                                builder);
+                        nameSpace.startup();
+                        newServer.startup().get();
+                        return new Pair<>(new AtomicInteger(0), nameSpace);
+                      } else {
+                        oldValue
+                            .getRight()
+                            .checkEquals(user, password, securityDir, enableAnonymousAccess);
+                        return oldValue;
+                      }
+                    } catch (final PipeException e) {
+                      throw e;
                     } catch (final Exception e) {
                       throw new PipeException("Failed to build and startup OpcUaServer", e);
                     }
@@ -204,12 +222,12 @@ public class OpcUaConnector implements PipeConnector {
   private void transferTabletWrapper(
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws UaException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
+        OpcUaConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
-          OpcUaConnector.class.getName())) {
-        return;
-      }
       for (final Tablet tablet : pipeInsertNodeTabletInsertionEvent.convertToTablets()) {
         nameSpace.transfer(tablet);
       }
@@ -221,11 +239,11 @@ public class OpcUaConnector implements PipeConnector {
 
   private void transferTabletWrapper(final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws UaException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeRawTabletInsertionEvent.increaseReferenceCount(OpcUaConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeRawTabletInsertionEvent.increaseReferenceCount(OpcUaConnector.class.getName())) {
-        return;
-      }
       nameSpace.transfer(pipeRawTabletInsertionEvent.convertToTablet());
     } finally {
       pipeRawTabletInsertionEvent.decreaseReferenceCount(OpcUaConnector.class.getName(), false);
