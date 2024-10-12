@@ -149,16 +149,16 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
         };
   }
 
-  public Iterable<Tablet> toTablets() {
+  public Iterable<Pair<Tablet, Boolean>> toTabletWithIsAligneds() {
     return () ->
-        new Iterator<Tablet>() {
+        new Iterator<Pair<Tablet, Boolean>>() {
           @Override
           public boolean hasNext() {
             return Objects.nonNull(chunkReader);
           }
 
           @Override
-          public Tablet next() {
+          public Pair<Tablet, Boolean> next() {
             if (!hasNext()) {
               close();
               throw new NoSuchElementException();
@@ -167,7 +167,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
             final Tablet tablet = getNextTablet();
             final boolean hasNext = hasNext();
             try {
-              return tablet;
+              return new Pair<>(tablet, currentIsAligned);
             } finally {
               if (!hasNext) {
                 close();
