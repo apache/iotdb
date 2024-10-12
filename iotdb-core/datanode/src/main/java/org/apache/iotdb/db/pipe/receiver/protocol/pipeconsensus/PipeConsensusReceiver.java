@@ -1482,27 +1482,29 @@ public class PipeConsensusReceiver {
       LOGGER.info(
           "PipeConsensus-PipeName-{}: receiver detected an newer rebootTimes, which indicates the leader has rebooted. receiver will reset all its data.",
           consensusPipeName);
-      // since pipe task will resend all data that hasn't synchronized, it's safe to clear all
-      // events in buffer.
-      this.reqExecutionOrderBuffer.clear();
-      this.onSyncedCommitIndex = 0;
-      // sync the follower's connectorRebootTimes with connector's actual rebootTimes
+      // since pipe task will resend all data that hasn't synchronized after dataNode reboots, it's
+      // safe to clear all events in buffer.
+      clear();
+      // sync the follower's connectorRebootTimes with connector's actual rebootTimes.
       this.connectorRebootTimes = connectorRebootTimes;
-      // Note: dataNode reboot will reset pipeTaskRestartTimes
+      // Note: dataNode rebooting will reset pipeTaskRestartTimes.
       this.pipeTaskRestartTimes = 0;
-      this.tsFileWriterPool.handleExit(consensusPipeName);
     }
 
     private void resetWithNewestRestartTime(int pipeTaskRestartTimes) {
       LOGGER.info(
           "PipeConsensus-PipeName-{}: receiver detected an newer pipeTaskRestartTimes, which indicates the pipe task has restarted. receiver will reset all its data.",
           consensusPipeName);
-      // since pipe task will resend all data that hasn't synchronized, it's safe to clear all
-      // events in buffer.
-      this.reqExecutionOrderBuffer.clear();
-      this.onSyncedCommitIndex = 0;
+      // since pipe task will resend all data that hasn't synchronized after restarts, it's safe to
+      // clear all events in buffer.
+      clear();
       this.pipeTaskRestartTimes = pipeTaskRestartTimes;
+    }
+
+    private void clear() {
+      this.reqExecutionOrderBuffer.clear();
       this.tsFileWriterPool.handleExit(consensusPipeName);
+      this.onSyncedCommitIndex = 0;
     }
   }
 
