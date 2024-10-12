@@ -56,11 +56,11 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   private final List<IMeasurementSchema> schemaList;
   private AlignedTVList list;
 
-  private static final int MAX_NUMBER_OF_POINTS_IN_PAGE =
-      TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private final long TARGET_CHUNK_SIZE = CONFIG.getTargetChunkSize();
   private final long MAX_NUMBER_OF_POINTS_IN_CHUNK = CONFIG.getAvgSeriesPointNumberThreshold();
+  private final int MAX_NUMBER_OF_POINTS_IN_PAGE =
+      TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
 
   private static final String UNSUPPORTED_TYPE = "Unsupported data type:";
 
@@ -336,9 +336,9 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
     boolean[] timeDuplicateInfo = null;
 
-    // Eg.((0,9,12),(13,15)) means this TVList contains 2 chunks,
-    // chunk 1 contains 2 pages, chunk 2 contains 1 page.
     List<List<Integer>> chunkRange = new ArrayList<>();
+    // Eg. chunkRange: ((0,9,10,12),(13,15)) means this TVList contains 2 chunks,
+    // 1st chunk contains 2 pages, 2nd chunk contains 1 page.
     List<Integer> pageRange = new ArrayList<>();
 
     int pointNumInPage = 0;
