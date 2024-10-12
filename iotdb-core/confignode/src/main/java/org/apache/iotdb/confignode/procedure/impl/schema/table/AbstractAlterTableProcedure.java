@@ -96,7 +96,6 @@ public abstract class AbstractAlterTableProcedure<T>
           database,
           table.getTableName(),
           failedResults);
-      // TODO: Handle commit failure
     }
   }
 
