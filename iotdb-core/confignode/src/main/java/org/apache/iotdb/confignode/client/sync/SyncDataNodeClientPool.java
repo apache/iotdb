@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
-import org.apache.iotdb.confignode.client.CnToDnRequestType;
 import org.apache.iotdb.mpp.rpc.thrift.TCleanDataNodeCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
@@ -101,8 +100,8 @@ public class SyncDataNodeClientPool {
         CnToDnSyncRequestType.INVALIDATE_PERMISSION_CACHE,
         (req, client) -> client.invalidatePermissionCache((TInvalidatePermissionCacheReq) req));
     actionMapBuilder.put(
-        CnToDnSyncRequestType.DISABLE_DATA_NODE,
-        (req, client) -> client.disableDataNode((TDisableDataNodeReq) req));
+        CnToDnSyncRequestType.CLEAN_DATA_NODE_CACHE,
+        (req, client) -> client.cleanDataNodeCache((TCleanDataNodeCacheReq) req));
     actionMapBuilder.put(
         CnToDnSyncRequestType.STOP_DATA_NODE, (req, client) -> client.stopDataNode());
     actionMapBuilder.put(
@@ -143,8 +142,7 @@ public class SyncDataNodeClientPool {
             .filter(type -> !actionMap.containsKey(type))
             .collect(Collectors.toList());
     if (!lackList.isEmpty()) {
-      LOGGER.error("These request types must be added to actionMap: {}", lackList);
-      System.exit(-1);
+      LOGGER.error("These request types should be added to actionMap: {}", lackList);
     }
   }
 

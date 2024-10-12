@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.client.sync;
 
 public enum CnToDnSyncRequestType {
   // Node Maintenance
-  DISABLE_DATA_NODE,
+  CLEAN_DATA_NODE_CACHE,
   STOP_DATA_NODE,
   SET_SYSTEM_STATUS,
   SHOW_CONFIGURATION,

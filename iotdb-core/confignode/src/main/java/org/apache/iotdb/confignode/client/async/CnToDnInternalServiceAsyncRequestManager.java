@@ -363,18 +363,18 @@ public class CnToDnInternalServiceAsyncRequestManager
         CnToDnAsyncRequestType.TEST_CONNECTION,
         (req, client, handler) ->
             client.testConnectionEmptyRPC((DataNodeTSStatusRPCHandler) handler));
-      actionMapBuilder.put(
-              CnToDnAsyncRequestType.UPDATE_TABLE,
-              (req, client, handler) ->
-                      client.updateTable((TUpdateTableReq) req, (DataNodeTSStatusRPCHandler) handler));
-      actionMapBuilder.put(
-              CnToDnAsyncRequestType.CLEAN_DATA_NODE_CACHE,
-              (req, client, handler) ->
-                      client.cleanDataNodeCache(
-                              (TCleanDataNodeCacheReq) req, (DataNodeTSStatusRPCHandler) handler));
-      actionMapBuilder.put(
-              CnToDnAsyncRequestType.STOP_DATA_NODE,
-              (req, client, handler) -> client.stopDataNode((DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.UPDATE_TABLE,
+        (req, client, handler) ->
+            client.updateTable((TUpdateTableReq) req, (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.CLEAN_DATA_NODE_CACHE,
+        (req, client, handler) ->
+            client.cleanDataNodeCache(
+                (TCleanDataNodeCacheReq) req, (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.STOP_DATA_NODE,
+        (req, client, handler) -> client.stopDataNode((DataNodeTSStatusRPCHandler) handler));
   }
 
   @Override
@@ -384,8 +384,7 @@ public class CnToDnInternalServiceAsyncRequestManager
             .filter(type -> !actionMap.containsKey(type))
             .collect(Collectors.toList());
     if (!lackList.isEmpty()) {
-      LOGGER.error("These request types must be added to actionMap: {}", lackList);
-      System.exit(-1);
+      LOGGER.error("These request types should be added to actionMap: {}", lackList);
     }
   }
 
