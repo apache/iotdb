@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.resource.ref;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 
 import org.slf4j.Logger;
@@ -50,6 +51,10 @@ public abstract class PipePhantomReferenceManager {
   }
 
   protected void gcHook() {
+    if (!PipeConfig.getInstance().getPipeEventReferenceTrackingEnabled()) {
+      return;
+    }
+
     Reference<? extends EnrichedEvent> reference;
     try {
       while ((reference = REFERENCE_QUEUE.remove(500)) != null) {
@@ -76,7 +81,7 @@ public abstract class PipePhantomReferenceManager {
 
   private static class PipeEventPhantomReference extends PhantomReference<EnrichedEvent> {
 
-    private final String coreReportMessageSnapshot;
+    private final String holderMessage;
     private PipeEventResource resource;
 
     private PipeEventPhantomReference(
@@ -84,14 +89,14 @@ public abstract class PipePhantomReferenceManager {
         final PipeEventResource resource,
         final ReferenceQueue<? super EnrichedEvent> queue) {
       super(event, queue);
-      this.coreReportMessageSnapshot = event.coreReportMessage();
+      this.holderMessage = event.getClass().getSimpleName();
       this.resource = resource;
     }
 
     private void finalizeResources() {
       if (this.resource != null) {
         try {
-          this.resource.clearReferenceCount(coreReportMessageSnapshot);
+          this.resource.clearReferenceCount(holderMessage);
         } finally {
           this.resource = null;
         }
@@ -124,7 +129,7 @@ public abstract class PipePhantomReferenceManager {
       }
 
       if (referenceCount.get() >= 1) {
-        LOGGER.info("finalize resource for event with holder message {}", holderMessage);
+        LOGGER.error("PIPE EVENT RESOURCE LEAK DETECTED: {}", holderMessage);
         finalizeResource();
       }
 
