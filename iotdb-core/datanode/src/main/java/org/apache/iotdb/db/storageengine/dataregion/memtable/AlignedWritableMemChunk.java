@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
@@ -57,10 +58,9 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   private static final int MAX_NUMBER_OF_POINTS_IN_PAGE =
       TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
-  private static final long MAX_NUMBER_OF_POINTS_IN_CHUNK =
-      IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
-  private static final long TARGET_CHUNK_SIZE =
-      IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private final long TARGET_CHUNK_SIZE = CONFIG.getTargetChunkSize();
+  private final long MAX_NUMBER_OF_POINTS_IN_CHUNK = CONFIG.getAvgSeriesPointNumberThreshold();
 
   private static final String UNSUPPORTED_TYPE = "Unsupported data type:";
 
