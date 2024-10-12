@@ -59,6 +59,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFi
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileInsertionEvent.class);
 
+  private static final String TREE_MODEL_EVENT_TABLE_NAME_PREFIX = PATH_ROOT + PATH_SEPARATOR;
+
   private final TsFileResource resource;
   private File tsFile;
 
@@ -393,13 +395,19 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFi
           Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
       return deviceSet.stream()
           .anyMatch(
-              deviceID ->
-                  // Table model
-                  !(deviceID instanceof PlainDeviceID
-                          || deviceID.getTableName().startsWith(PATH_ROOT + PATH_SEPARATOR)
-                          || deviceID.getTableName().equals(PATH_ROOT))
-                      // Tree model
-                      || treePattern.mayOverlapWithDevice(deviceID));
+              deviceID -> {
+                // Tree model
+                if (deviceID instanceof PlainDeviceID
+                    || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
+                    || deviceID.getTableName().equals(PATH_ROOT)) {
+                  markAsTreeModelEvent();
+                  return treePattern.mayOverlapWithDevice(deviceID);
+                }
+
+                // Table model
+                markAsTableModelEvent();
+                return true;
+              });
     } catch (final Exception e) {
       LOGGER.warn(
           "Pipe {}: failed to get devices from TsFile {}, extract it anyway",
@@ -408,6 +416,44 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFi
           e);
       return true;
     }
+  }
+
+  /////////////////////////// PipeInsertionEvent ///////////////////////////
+
+  @Override
+  public boolean isTableModelEvent() {
+    if (getRawIsTableModelEvent() == null) {
+      try {
+        final Map<IDeviceID, Boolean> deviceIsAlignedMap =
+            PipeDataNodeResourceManager.tsfile()
+                .getDeviceIsAlignedMapFromCache(
+                    PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+                        resource.getTsFile()),
+                    false);
+        final Set<IDeviceID> deviceSet =
+            Objects.nonNull(deviceIsAlignedMap)
+                ? deviceIsAlignedMap.keySet()
+                : resource.getDevices();
+        for (final IDeviceID deviceID : deviceSet) {
+          if (deviceID instanceof PlainDeviceID
+              || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
+              || deviceID.getTableName().equals(PATH_ROOT)) {
+            markAsTreeModelEvent();
+          } else {
+            markAsTableModelEvent();
+          }
+          break;
+        }
+      } catch (final Exception e) {
+        throw new PipeException(
+            String.format(
+                "Pipe %s: failed to judge whether TsFile %s is table model or tree model",
+                pipeName, resource.getTsFilePath()),
+            e);
+      }
+    }
+
+    return getRawIsTableModelEvent();
   }
 
   /////////////////////////// TsFileInsertionEvent ///////////////////////////
