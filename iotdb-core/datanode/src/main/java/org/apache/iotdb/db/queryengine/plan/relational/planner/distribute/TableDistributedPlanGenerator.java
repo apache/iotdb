@@ -51,9 +51,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNo
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
+import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 
@@ -210,11 +211,20 @@ public class TableDistributedPlanGenerator
       return Collections.singletonList(node);
     }
 
-    for (Expression expression : node.getAssignments().getMap().values()) {
-      if (containsDiffFunction(expression)) {
-        node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
-        return Collections.singletonList(node);
-      }
+    boolean canCopyThis = true;
+    if (childOrdering != null) {
+      // the column used for order by has been pruned, we can't copy this node to sub nodeTrees.
+      canCopyThis =
+          ImmutableSet.copyOf(node.getOutputSymbols()).containsAll(childOrdering.getOrderBy());
+    }
+    canCopyThis =
+        canCopyThis
+            && node.getAssignments().getMap().values().stream()
+                .noneMatch(PushPredicateIntoTableScan::containsDiffFunction);
+
+    if (!canCopyThis) {
+      node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
+      return Collections.singletonList(node);
     }
 
     List<PlanNode> resultNodeList = new ArrayList<>();
