@@ -61,9 +61,9 @@ public class GapFillStartAndEndTimeExtractVisitor
       "could not infer startTime or endTime from WHERE clause";
 
   @Override
-  public Boolean process(Node node, @Nullable Context context) {
+  public Boolean visitNode(Node node, GapFillStartAndEndTimeExtractVisitor.Context context) {
     for (Node child : node.getChildren()) {
-      if (Boolean.TRUE.equals(process(child, context))) {
+      if (Boolean.TRUE.equals(super.process(child, context))) {
         throw new SemanticException(CAN_NOT_INFER_TIME_RANGE);
       }
     }
@@ -71,30 +71,27 @@ public class GapFillStartAndEndTimeExtractVisitor
   }
 
   @Override
-  protected Boolean visitSymbolReference(SymbolReference node, Context context) {
+  protected Boolean visitSymbolReference(
+      SymbolReference node, GapFillStartAndEndTimeExtractVisitor.Context context) {
     return isTimeIdentifier(node);
   }
 
   @Override
   protected Boolean visitLogicalExpression(
       LogicalExpression node, GapFillStartAndEndTimeExtractVisitor.Context context) {
-    boolean hasMeetGapFillTimeFilter = false;
     if (node.getOperator() == AND) {
+      boolean hasMeetGapFillTimeFilter = false;
       for (Expression term : node.getTerms()) {
-        hasMeetGapFillTimeFilter = process(term, context) || hasMeetGapFillTimeFilter;
+        hasMeetGapFillTimeFilter = term.accept(this, context) || hasMeetGapFillTimeFilter;
       }
       return hasMeetGapFillTimeFilter;
     } else if (node.getOperator() == OR) {
       for (Expression term : node.getTerms()) {
-        if (Boolean.TRUE.equals(process(term, context))) {
-          if (!hasMeetGapFillTimeFilter) {
-            hasMeetGapFillTimeFilter = true;
-          } else {
-            throw new SemanticException(CAN_NOT_INFER_TIME_RANGE);
-          }
+        if (Boolean.TRUE.equals(term.accept(this, context))) {
+          throw new SemanticException(CAN_NOT_INFER_TIME_RANGE);
         }
       }
-      return hasMeetGapFillTimeFilter;
+      return false;
     } else {
       throw new IllegalStateException("Illegal state in visitLogicalExpression");
     }
@@ -126,8 +123,12 @@ public class GapFillStartAndEndTimeExtractVisitor
     Expression secondExpression = node.getMin();
     Expression thirdExpression = node.getMax();
 
-    if (checkIsValidTimeFilter(firstExpression, secondExpression, GREATER_THAN_OR_EQUAL, context)
-        || checkIsValidTimeFilter(firstExpression, thirdExpression, LESS_THAN_OR_EQUAL, context)) {
+    boolean result1 =
+        checkIsValidTimeFilter(firstExpression, secondExpression, GREATER_THAN_OR_EQUAL, context);
+    boolean result2 =
+        checkIsValidTimeFilter(firstExpression, thirdExpression, LESS_THAN_OR_EQUAL, context);
+
+    if (result1 || result2) {
       return Boolean.TRUE;
     } else {
       if (Boolean.TRUE.equals(firstExpression.accept(this, context))

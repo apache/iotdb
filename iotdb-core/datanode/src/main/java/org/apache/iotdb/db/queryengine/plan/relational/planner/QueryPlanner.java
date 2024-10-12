@@ -164,16 +164,26 @@ public class QueryPlanner {
     if (builder.getRoot() instanceof FilterNode) {
       wherePredicate = ((FilterNode) builder.getRoot()).getPredicate();
     }
+
+    Symbol timeColumnForGapFill = null;
+    FunctionCall gapFillColumn = analysis.getGapFill(node);
+    if (gapFillColumn != null) {
+      timeColumnForGapFill = builder.translate((Expression) gapFillColumn.getChildren().get(2));
+    }
     builder = aggregate(builder, node);
     builder = filter(builder, analysis.getHaving(node));
 
-    FunctionCall gapFillColumn = analysis.getGapFill(node);
     if (gapFillColumn != null) {
       if (wherePredicate == null) {
         throw new SemanticException(CAN_NOT_INFER_TIME_RANGE);
       }
       builder =
-          gapFill(builder, gapFillColumn, analysis.getGapFillGroupingKeys(node), wherePredicate);
+          gapFill(
+              builder,
+              timeColumnForGapFill,
+              gapFillColumn,
+              analysis.getGapFillGroupingKeys(node),
+              wherePredicate);
     }
 
     List<Analysis.SelectExpression> selectExpressions = analysis.getSelectExpressions(node);
@@ -660,11 +670,11 @@ public class QueryPlanner {
 
   private PlanBuilder gapFill(
       PlanBuilder subPlan,
+      @Nonnull Symbol timeColumn,
       @Nonnull FunctionCall gapFillColumn,
       @Nonnull List<Expression> gapFillGroupingKeys,
       @Nonnull Expression wherePredicate) {
     Symbol gapFillColumnSymbol = subPlan.translate(gapFillColumn);
-    Symbol timeColumn = subPlan.translate((Expression) gapFillColumn.getChildren().get(2));
     List<Symbol> groupingKeys = Collections.emptyList();
     if (!gapFillGroupingKeys.isEmpty()) {
       groupingKeys = new ArrayList<>(gapFillGroupingKeys.size());
