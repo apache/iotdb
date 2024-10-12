@@ -188,6 +188,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.RIGHT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil.preOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction.DATE_BIN;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 
 public class StatementAnalyzer {
@@ -1205,6 +1206,8 @@ public class StatementAnalyzer {
         ImmutableList.Builder<List<Set<FieldId>>> sets = ImmutableList.builder();
         ImmutableList.Builder<Expression> complexExpressions = ImmutableList.builder();
         ImmutableList.Builder<Expression> groupingExpressions = ImmutableList.builder();
+        FunctionCall gapFillColumn = null;
+        ImmutableList.Builder<Expression> gapFillGroupingExpressions = ImmutableList.builder();
 
         checkGroupingSetsCount(node.getGroupBy().get());
         for (GroupingElement groupingElement : node.getGroupBy().get().getGroupingElements()) {
@@ -1231,6 +1234,15 @@ public class StatementAnalyzer {
               } else {
                 analysis.recordSubqueries(node, analyzeExpression(column, scope));
                 complexExpressions.add(column);
+              }
+
+              if (isDateBinGapFill(column)) {
+                if (gapFillColumn != null) {
+                  throw new SemanticException("multiple date_bin_gapfill calls not allowed");
+                }
+                gapFillColumn = (FunctionCall) column;
+              } else {
+                gapFillGroupingExpressions.add(column);
               }
 
               groupingExpressions.add(column);
@@ -1290,7 +1302,10 @@ public class StatementAnalyzer {
                 sets.build(),
                 complexExpressions.build());
         analysis.setGroupingSets(node, groupingSets);
-
+        if (gapFillColumn != null) {
+          analysis.setGapFill(node, gapFillColumn);
+          analysis.setGapFillGroupingKeys(node, gapFillGroupingExpressions.build());
+        }
         return groupingSets;
       }
 
@@ -1307,6 +1322,14 @@ public class StatementAnalyzer {
       }
 
       return result;
+    }
+
+    private boolean isDateBinGapFill(Expression column) {
+      return column instanceof FunctionCall
+          && DATE_BIN
+              .getFunctionName()
+              .equalsIgnoreCase(((FunctionCall) column).getName().getSuffix())
+          && ((FunctionCall) column).getArguments().size() == 5;
     }
 
     private boolean hasAggregates(QuerySpecification node) {

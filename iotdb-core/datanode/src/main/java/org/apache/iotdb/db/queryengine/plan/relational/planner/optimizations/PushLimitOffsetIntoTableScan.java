@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
@@ -116,6 +117,12 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
         }
       }
       node.setChild(node.getChild().accept(this, context));
+      return node;
+    }
+
+    @Override
+    public PlanNode visitGapFill(GapFillNode node, Context context) {
+      context.enablePushDown = false;
       return node;
     }
 
