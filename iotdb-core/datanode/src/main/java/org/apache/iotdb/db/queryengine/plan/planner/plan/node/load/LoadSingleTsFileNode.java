@@ -202,9 +202,9 @@ public class LoadSingleTsFileNode extends WritePlanNode {
         + '}';
   }
 
-  public void clean(final boolean isLoadSuccess) {
+  public void clean() {
     try {
-      if (isLoadSuccess && deleteAfterLoad) {
+      if (deleteAfterLoad) {
         Files.deleteIfExists(tsFile.toPath());
         Files.deleteIfExists(
             new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).toPath());
