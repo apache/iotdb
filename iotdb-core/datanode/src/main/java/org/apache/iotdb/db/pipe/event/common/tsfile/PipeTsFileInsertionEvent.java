@@ -347,7 +347,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFi
       final long startTime,
       final long endTime) {
     return new PipeTsFileInsertionEvent(
-        getIsTableModelEvent(),
+        getRawIsTableModelEvent(),
         getTreeModelDatabaseName(),
         resource,
         isWithMod,

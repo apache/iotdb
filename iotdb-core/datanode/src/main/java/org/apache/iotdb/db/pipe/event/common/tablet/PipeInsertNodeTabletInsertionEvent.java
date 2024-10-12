@@ -207,7 +207,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       final long startTime,
       final long endTime) {
     return new PipeInsertNodeTabletInsertionEvent(
-        getIsTableModelEvent(),
+        getRawIsTableModelEvent(),
         getTreeModelDatabaseName(),
         walEntryHandler,
         devicePath,

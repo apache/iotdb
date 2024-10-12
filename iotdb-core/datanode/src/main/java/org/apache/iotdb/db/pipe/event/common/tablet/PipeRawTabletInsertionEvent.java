@@ -90,6 +90,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   }
 
   public PipeRawTabletInsertionEvent(
+      final Boolean isTableModelEvent,
       final String databaseName,
       final Tablet tablet,
       final boolean isAligned,
@@ -221,7 +222,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
       final long startTime,
       final long endTime) {
     return new PipeRawTabletInsertionEvent(
-        getIsTableModelEvent(),
+        getRawIsTableModelEvent(),
         getTreeModelDatabaseName(),
         tablet,
         isAligned,
@@ -319,6 +320,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   public PipeRawTabletInsertionEvent parseEventWithPatternOrTime() {
     return new PipeRawTabletInsertionEvent(
+        getRawIsTableModelEvent(),
         getTreeModelDatabaseName(),
         convertToTablet(),
         isAligned,
