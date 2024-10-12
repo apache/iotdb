@@ -358,9 +358,12 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     try {
       final TPipeTransferReq req =
           compressIfNeeded(
-              PipeTransferTabletRawReq.toTPipeTransferReq(
+              PipeTransferTabletRawReq.toTPipeTransferReqV2(
                   pipeRawTabletInsertionEvent.convertToTablet(),
-                  pipeRawTabletInsertionEvent.isAligned()));
+                  pipeRawTabletInsertionEvent.isAligned(),
+                  pipeRawTabletInsertionEvent.isTableModel()
+                      ? pipeRawTabletInsertionEvent.getTableModelDatabaseName()
+                      : EMPTY_DATA_BASE));
       rateLimitIfNeeded(
           pipeRawTabletInsertionEvent.getPipeName(),
           pipeRawTabletInsertionEvent.getCreationTime(),
@@ -408,7 +411,10 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
                   pipeTsFileInsertionEvent.getCreationTime()),
               1.0),
           pipeTsFileInsertionEvent.getTsFile(),
-          pipeTsFileInsertionEvent.isWithMod() ? pipeTsFileInsertionEvent.getModFile() : null);
+          pipeTsFileInsertionEvent.isWithMod() ? pipeTsFileInsertionEvent.getModFile() : null,
+          pipeTsFileInsertionEvent.isTableModel()
+              ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
+              : EMPTY_DATA_BASE);
     } finally {
       pipeTsFileInsertionEvent.decreaseReferenceCount(
           IoTDBDataRegionSyncConnector.class.getName(), false);
@@ -418,7 +424,8 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
   private void doTransfer(
       final Map<Pair<String, Long>, Double> pipeName2WeightMap,
       final File tsFile,
-      final File modFile)
+      final File modFile,
+      final String dataBaseName)
       throws PipeException, IOException {
 
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
@@ -434,7 +441,11 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
         final TPipeTransferReq req =
             compressIfNeeded(
                 PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                    modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length()));
+                    modFile.getName(),
+                    modFile.length(),
+                    tsFile.getName(),
+                    tsFile.length(),
+                    dataBaseName));
 
         pipeName2WeightMap.forEach(
             (pipePair, weight) ->
@@ -459,7 +470,8 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
       try {
         final TPipeTransferReq req =
             compressIfNeeded(
-                PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()));
+                PipeTransferTsFileSealReq.toTPipeTransferReq(
+                    tsFile.getName(), tsFile.length(), dataBaseName));
 
         pipeName2WeightMap.forEach(
             (pipePair, weight) ->

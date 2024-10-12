@@ -26,8 +26,11 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Map;
 
 public class PipeTransferTsFileSealWithModReq extends PipeTransferFileSealReqV2 {
+
+  private static final String DATABASE_NAME_KEY = "DATABASE_NAME";
 
   private PipeTransferTsFileSealWithModReq() {
     // Empty constructor
@@ -35,20 +38,26 @@ public class PipeTransferTsFileSealWithModReq extends PipeTransferFileSealReqV2 
 
   @Override
   protected PipeRequestType getPlanType() {
-    return PipeRequestType.TRANSFER_TS_FILE_SEAL_WITH_MOD;
+    return PipeRequestType.TRANSFER_TS_FILE_SEAL_WITH_MOD_V2;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeTransferTsFileSealWithModReq toTPipeTransferReq(
-      String modFileName, long modFileLength, String tsFileName, long tsFileLength)
+      String modFileName,
+      long modFileLength,
+      String tsFileName,
+      long tsFileLength,
+      String dataBaseName)
       throws IOException {
+    Map<String, String> parameters = new HashMap<>();
+    parameters.put(DATABASE_NAME_KEY, dataBaseName);
     return (PipeTransferTsFileSealWithModReq)
         new PipeTransferTsFileSealWithModReq()
             .convertToTPipeTransferReq(
                 Arrays.asList(modFileName, tsFileName),
                 Arrays.asList(modFileLength, tsFileLength),
-                new HashMap<>());
+                parameters);
   }
 
   public static PipeTransferTsFileSealWithModReq fromTPipeTransferReq(TPipeTransferReq req) {

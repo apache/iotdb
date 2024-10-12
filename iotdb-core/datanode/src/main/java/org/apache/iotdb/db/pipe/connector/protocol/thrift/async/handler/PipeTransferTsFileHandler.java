@@ -88,6 +88,8 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
   private IoTDBDataNodeAsyncClientManager clientManager;
   private AsyncPipeDataTransferServiceClient client;
 
+  private final String dataBaseName;
+
   public PipeTransferTsFileHandler(
       final IoTDBDataRegionAsyncConnector connector,
       final Map<Pair<String, Long>, Double> pipeName2WeightMap,
@@ -96,7 +98,8 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
       final AtomicBoolean eventsHadBeenAddedToRetryQueue,
       final File tsFile,
       final File modFile,
-      final boolean transferMod)
+      final boolean transferMod,
+      final String dataBaseName)
       throws FileNotFoundException {
     this.connector = connector;
 
@@ -109,6 +112,7 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
     this.tsFile = tsFile;
     this.modFile = modFile;
     this.transferMod = transferMod;
+    this.dataBaseName = dataBaseName;
     currentFile = transferMod ? modFile : tsFile;
 
     readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
@@ -152,8 +156,13 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
         final TPipeTransferReq uncompressedReq =
             transferMod
                 ? PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                    modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length())
-                : PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length());
+                    modFile.getName(),
+                    modFile.length(),
+                    tsFile.getName(),
+                    tsFile.length(),
+                    dataBaseName)
+                : PipeTransferTsFileSealReq.toTPipeTransferReq(
+                    tsFile.getName(), tsFile.length(), dataBaseName);
         final TPipeTransferReq req =
             connector.isRpcCompressionEnabled()
                 ? PipeTransferCompressedReq.toTPipeTransferReq(

@@ -86,6 +86,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       "Failed to borrow client from client pool when sending to receiver.";
   private static final String THRIFT_ERROR_FORMATTER_WITH_ENDPOINT =
       "Exception occurred while sending to receiver %s:%s.";
+  private static final String EMPTY_DATA_BASE = "";
 
   private IoTDBDataNodeAsyncClientManager clientManager;
 
@@ -196,7 +197,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
                 eventsHadBeenAddedToRetryQueue,
                 sealedFile,
                 null,
-                false));
+                false,
+                EMPTY_DATA_BASE));
       }
     } else {
       LOGGER.warn(
@@ -219,12 +221,16 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
       final InsertNode insertNode =
           pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
+      final String tableName =
+          pipeInsertNodeTabletInsertionEvent.isTableModel()
+              ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
+              : EMPTY_DATA_BASE;
       final TPipeTransferReq pipeTransferReq =
           compressIfNeeded(
               Objects.isNull(insertNode)
-                  ? PipeTransferTabletBinaryReq.toTPipeTransferReq(
-                      pipeInsertNodeTabletInsertionEvent.getByteBuffer())
-                  : PipeTransferTabletInsertNodeReq.toTPipeTransferReq(insertNode));
+                  ? PipeTransferTabletBinaryReq.toTPipeTransferReqV2(
+                      pipeInsertNodeTabletInsertionEvent.getByteBuffer(), tableName)
+                  : PipeTransferTabletInsertNodeReq.toTPipeTransferReqV2(insertNode, tableName));
       final PipeTransferTabletInsertNodeEventHandler pipeTransferInsertNodeReqHandler =
           new PipeTransferTabletInsertNodeEventHandler(
               pipeInsertNodeTabletInsertionEvent, pipeTransferReq, this);
@@ -243,9 +249,12 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
       final TPipeTransferReq pipeTransferTabletRawReq =
           compressIfNeeded(
-              PipeTransferTabletRawReq.toTPipeTransferReq(
+              PipeTransferTabletRawReq.toTPipeTransferReqV2(
                   pipeRawTabletInsertionEvent.convertToTablet(),
-                  pipeRawTabletInsertionEvent.isAligned()));
+                  pipeRawTabletInsertionEvent.isAligned(),
+                  pipeRawTabletInsertionEvent.isTableModel()
+                      ? pipeRawTabletInsertionEvent.getTableModelDatabaseName()
+                      : EMPTY_DATA_BASE));
       final PipeTransferTabletRawEventHandler pipeTransferTabletReqHandler =
           new PipeTransferTabletRawEventHandler(
               pipeRawTabletInsertionEvent, pipeTransferTabletRawReq, this);
@@ -338,7 +347,10 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
               pipeTsFileInsertionEvent.getTsFile(),
               pipeTsFileInsertionEvent.getModFile(),
               pipeTsFileInsertionEvent.isWithMod()
-                  && clientManager.supportModsIfIsDataNodeReceiver());
+                  && clientManager.supportModsIfIsDataNodeReceiver(),
+              pipeTsFileInsertionEvent.isTableModel()
+                  ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
+                  : EMPTY_DATA_BASE);
 
       transfer(pipeTransferTsFileHandler);
     } catch (final Exception e) {

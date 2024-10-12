@@ -33,20 +33,21 @@ public class PipeTransferTsFileSealReq extends PipeTransferFileSealReqV1 {
 
   @Override
   protected PipeRequestType getPlanType() {
-    return PipeRequestType.TRANSFER_TS_FILE_SEAL;
+    return PipeRequestType.TRANSFER_TS_FILE_SEAL_V2;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferTsFileSealReq toTPipeTransferReq(String fileName, long fileLength)
-      throws IOException {
+  public static PipeTransferTsFileSealReq toTPipeTransferReq(
+      String fileName, long fileLength, String dataBaseName) throws IOException {
     return (PipeTransferTsFileSealReq)
-        new PipeTransferTsFileSealReq().convertToTPipeTransferReq(fileName, fileLength);
+        new PipeTransferTsFileSealReq()
+            .convertToTPipeTransferReqV2(fileName, fileLength, dataBaseName);
   }
 
   public static PipeTransferTsFileSealReq fromTPipeTransferReq(TPipeTransferReq req) {
     return (PipeTransferTsFileSealReq)
-        new PipeTransferTsFileSealReq().translateFromTPipeTransferReq(req);
+        new PipeTransferTsFileSealReq().translateFromTPipeTransferReqV2(req);
   }
 
   /////////////////////////////// Air Gap ///////////////////////////////

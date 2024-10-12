@@ -78,7 +78,7 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
   }
 
   public static PipeTransferTabletInsertNodeReq toTPipeTransferRawReqV2(
-          final InsertNode insertNode, final String dataBaseName) {
+      final InsertNode insertNode, final String dataBaseName) {
     final PipeTransferTabletInsertNodeReq req = new PipeTransferTabletInsertNodeReq();
 
     req.insertNode = insertNode;
@@ -102,7 +102,8 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
     return req;
   }
 
-  public static PipeTransferTabletInsertNodeReq toTPipeTransferReqV2(final InsertNode insertNode,final String dataBaseName) {
+  public static PipeTransferTabletInsertNodeReq toTPipeTransferReqV2(
+      final InsertNode insertNode, final String dataBaseName) {
     final PipeTransferTabletInsertNodeReq req = new PipeTransferTabletInsertNodeReq();
 
     req.insertNode = insertNode;
@@ -112,16 +113,15 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
     req.body = insertNode.serializeToByteBuffer();
 
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
-         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       insertNode.serialize(outputStream);
       ReadWriteIOUtils.write(dataBaseName, outputStream);
-      req.body =
-              ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+      req.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     } catch (IOException e) {
-        throw new RuntimeException(e);
+      throw new RuntimeException(e);
     }
 
-      return req;
+    return req;
   }
 
   public static PipeTransferTabletInsertNodeReq fromTPipeTransferReq(
@@ -139,7 +139,7 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
   }
 
   public static PipeTransferTabletInsertNodeReq fromTPipeTransferReqV2(
-          final TPipeTransferReq transferReq) {
+      final TPipeTransferReq transferReq) {
     final PipeTransferTabletInsertNodeReq insertNodeReq = new PipeTransferTabletInsertNodeReq();
 
     insertNodeReq.insertNode = (InsertNode) PlanNodeType.deserialize(transferReq.body);

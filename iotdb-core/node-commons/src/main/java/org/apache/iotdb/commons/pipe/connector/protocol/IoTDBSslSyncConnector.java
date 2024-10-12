@@ -62,6 +62,8 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSslSyncConnector.class);
 
+  protected static final String EMPTY_DATA_BASE = "";
+
   protected IoTDBSyncClientManager clientManager;
 
   @Override

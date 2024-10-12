@@ -48,11 +48,11 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTabletEventPlainBatch.class);
 
-  private static final String EMPTY_DATA_BASE = "";
   private final List<ByteBuffer> binaryBuffers = new ArrayList<>();
   private final List<ByteBuffer> insertNodeBuffers = new ArrayList<>();
   private final List<ByteBuffer> tabletBuffers = new ArrayList<>();
 
+  private static final String EMPTY_DATA_BASE = "";
   private final List<String> binaryDataBases = new ArrayList<>();
   private final List<String> inertNodeDataBases = new ArrayList<>();
   private final List<String> tabletDataBases = new ArrayList<>();
