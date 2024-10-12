@@ -121,9 +121,12 @@ public class TsFileProcessorTest {
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
     File file = new File(filePath);
     File resource = new File(filePath + ".resource");
-    FileUtils.delete(file);
-    if (resource.exists()) {
-      FileUtils.delete(resource);
+    try {
+      FileUtils.delete(file);
+      if (resource.exists()) {
+        FileUtils.delete(resource);
+      }
+    } catch (IOException ignored) {
     }
     config.setAvgSeriesPointNumberThreshold(defaultAvgSeriesPointNumberThreshold);
     config.setTargetChunkSize(defaultTargetChunkSize);
