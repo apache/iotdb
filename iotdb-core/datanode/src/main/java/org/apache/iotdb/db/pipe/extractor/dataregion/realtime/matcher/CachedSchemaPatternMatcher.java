@@ -142,7 +142,9 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
             || deviceID.getTableName().startsWith(PATH_ROOT + PATH_SEPARATOR)
             || deviceID.getTableName().equals(PATH_ROOT)) {
           matchTreeModelEvent(deviceID, entry.getValue(), matchedExtractors);
-
+          if (event.getEvent() instanceof PipeInsertionEvent) {
+            ((PipeInsertionEvent) event.getEvent()).setModelType(false);
+          }
         } else {
           String dataBaseName = null;
           if (event.getEvent() instanceof PipeInsertionEvent) {
