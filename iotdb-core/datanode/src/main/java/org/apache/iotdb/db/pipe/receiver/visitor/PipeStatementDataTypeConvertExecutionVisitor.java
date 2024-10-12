@@ -34,9 +34,12 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDevice
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -123,7 +126,23 @@ public class PipeStatementDataTypeConvertExecutionVisitor
     }
 
     if (loadTsFileStatement.isDeleteAfterLoad()) {
-      loadTsFileStatement.getTsFiles().forEach(FileUtils::deleteQuietly);
+      loadTsFileStatement
+          .getTsFiles()
+          .forEach(
+              file -> {
+                // delete resource if exist
+                FileUtils.deleteQuietly(
+                    FSFactoryProducer.getFSFactory()
+                        .getFile(file.getAbsoluteFile() + TsFileResource.RESOURCE_SUFFIX));
+
+                // delete mods if exist
+                FileUtils.deleteQuietly(
+                    FSFactoryProducer.getFSFactory()
+                        .getFile(file.getAbsoluteFile() + ModificationFile.FILE_SUFFIX));
+
+                // delete file if exist
+                FileUtils.deleteQuietly(file);
+              });
     }
 
     LOGGER.warn(

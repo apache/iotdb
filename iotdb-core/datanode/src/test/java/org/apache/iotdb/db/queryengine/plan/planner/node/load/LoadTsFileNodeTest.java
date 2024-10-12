@@ -30,6 +30,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -37,9 +38,10 @@ import java.util.Collections;
 public class LoadTsFileNodeTest {
 
   @Test
-  public void testLoadSingleTsFileNode() {
+  public void testLoadSingleTsFileNode() throws FileNotFoundException {
     TsFileResource resource = new TsFileResource(new File("1"));
-    LoadSingleTsFileNode node = new LoadSingleTsFileNode(new PlanNodeId(""), resource, true, 0L);
+    LoadSingleTsFileNode node =
+        new LoadSingleTsFileNode(new PlanNodeId(""), resource, true, 0L, null);
     Assert.assertTrue(node.isDeleteAfterLoad());
     Assert.assertEquals(resource, node.getTsFileResource());
     Assert.assertNull(node.getLocalRegionReplicaSet());
