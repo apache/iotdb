@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.event.common.tsfile.container.scan;
+package org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan;
 
 import org.apache.tsfile.encoding.decoder.Decoder;
 import org.apache.tsfile.enums.TSDataType;

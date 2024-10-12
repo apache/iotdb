@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.event.common.tsfile.container.query;
+package org.apache.iotdb.db.pipe.event.common.tsfile.parser.query;
 
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
@@ -48,7 +48,7 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class TsFileInsertionQueryDataTabletIterator implements Iterator<Tablet> {
+public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<Tablet> {
 
   private final TsFileReader tsFileReader;
   private final Map<String, TSDataType> measurementDataTypeMap;
@@ -62,7 +62,7 @@ public class TsFileInsertionQueryDataTabletIterator implements Iterator<Tablet> 
 
   private final PipeMemoryBlock allocatedBlockForTablet;
 
-  TsFileInsertionQueryDataTabletIterator(
+  TsFileInsertionEventQueryParserTabletIterator(
       final TsFileReader tsFileReader,
       final Map<String, TSDataType> measurementDataTypeMap,
       final IDeviceID deviceId,
