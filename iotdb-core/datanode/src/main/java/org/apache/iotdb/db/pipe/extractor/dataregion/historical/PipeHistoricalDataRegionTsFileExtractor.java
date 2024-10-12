@@ -48,6 +48,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,6 +86,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_START_TIME_KEY;
+import static org.apache.tsfile.common.constant.TsFileConstant.PATH_ROOT;
+import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDataRegionExtractor {
 
@@ -103,7 +106,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private int dataRegionId;
 
   private TreePattern treePattern;
-  private TablePattern tablePattern; // TODO: use like treePattern
+  private TablePattern tablePattern;
   private boolean isDbNameCoveredByPattern = false;
 
   private boolean isHistoricalExtractorEnabled = false;
@@ -545,8 +548,22 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       return true;
     }
 
-    // TODO: consider tablePattern
-    return deviceSet.stream().anyMatch(deviceID -> treePattern.mayOverlapWithDevice(deviceID));
+    return deviceSet.stream()
+        .anyMatch(
+            deviceID -> {
+              if (deviceID instanceof PlainDeviceID
+                  || deviceID.getTableName().startsWith(PATH_ROOT + PATH_SEPARATOR)
+                  || deviceID.getTableName().equals(PATH_ROOT)) {
+                // In case of tree model deviceID
+                return treePattern.isTreeModelDataAllowedToBeCaptured()
+                    && treePattern.mayOverlapWithDevice(deviceID);
+              } else {
+                // In case of table model deviceID
+                return tablePattern.isTableModelDataAllowedToBeCaptured()
+                    && tablePattern.matchesDatabase(resource.getDatabaseName())
+                    && tablePattern.matchesTable(deviceID.getTableName());
+              }
+            });
   }
 
   private boolean isTsFileResourceOverlappedWithTimeRange(final TsFileResource resource) {

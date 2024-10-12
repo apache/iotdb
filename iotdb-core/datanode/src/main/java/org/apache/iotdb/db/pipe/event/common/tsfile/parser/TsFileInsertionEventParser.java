@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.event.common.tsfile.container;
+package org.apache.iotdb.db.pipe.event.common.tsfile.parser;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
@@ -34,9 +34,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-public abstract class TsFileInsertionDataContainer implements AutoCloseable {
+public abstract class TsFileInsertionEventParser implements AutoCloseable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileInsertionDataContainer.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileInsertionEventParser.class);
 
   protected final TreePattern pattern; // used to filter data
   protected final GlobalTimeExpression timeFilterExpression; // used to filter data
@@ -48,7 +48,7 @@ public abstract class TsFileInsertionDataContainer implements AutoCloseable {
 
   protected TsFileSequenceReader tsFileSequenceReader;
 
-  protected TsFileInsertionDataContainer(
+  protected TsFileInsertionEventParser(
       final TreePattern pattern,
       final long startTime,
       final long endTime,
