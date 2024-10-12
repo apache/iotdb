@@ -25,6 +25,7 @@ import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionPipeTimeoutException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeNonCriticalException;
 import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
@@ -1211,6 +1212,11 @@ abstract class SubscriptionConsumer implements AutoCloseable {
         subscribedTopics = provider.subscribe(topicNames);
         return;
       } catch (final Exception e) {
+        if (e instanceof SubscriptionPipeTimeoutException) {
+          // degrade exception to log for pipe timeout
+          LOGGER.warn(e.getMessage());
+          return;
+        }
         LOGGER.warn(
             "{} failed to subscribe topics {} from subscription provider {}, try next subscription provider...",
             this,
@@ -1241,6 +1247,11 @@ abstract class SubscriptionConsumer implements AutoCloseable {
         subscribedTopics = provider.unsubscribe(topicNames);
         return;
       } catch (final Exception e) {
+        if (e instanceof SubscriptionPipeTimeoutException) {
+          // degrade exception to log for pipe timeout
+          LOGGER.warn(e.getMessage());
+          return;
+        }
         LOGGER.warn(
             "{} failed to unsubscribe topics {} from subscription provider {}, try next subscription provider...",
             this,

@@ -26,8 +26,9 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
-import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainerProvider;
+import org.apache.iotdb.db.pipe.event.common.tsfile.aggregator.TsFileInsertionPointCounter;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParserProvider;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTimePartitionProgressIndexKeeper;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
@@ -58,6 +59,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFi
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileInsertionEvent.class);
 
+  private static final String TREE_MODEL_EVENT_TABLE_NAME_PREFIX = PATH_ROOT + PATH_SEPARATOR;
+
   private final TsFileResource resource;
   private File tsFile;
 
@@ -71,7 +74,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFi
   private final boolean isGeneratedByHistoricalExtractor;
 
   private final AtomicBoolean isClosed;
-  private TsFileInsertionDataContainer dataContainer;
+  private TsFileInsertionEventParser eventParser;
 
   // The point count of the TsFile. Used for metrics on PipeConsensus' receiver side.
   // May be updated after it is flushed. Should be negative if not set.
@@ -87,6 +90,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFi
       final boolean isGeneratedByHistoricalExtractor) {
     // The modFile must be copied before the event is assigned to the listening pipes
     this(
+        null,
         databaseName,
         resource,
         true,
@@ -103,6 +107,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFi
   }
 
   public PipeTsFileInsertionEvent(
+      final Boolean isTableModelEvent,
       final String databaseName,
       final TsFileResource resource,
       final boolean isWithMod,
@@ -124,6 +129,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFi
         tablePattern,
         startTime,
         endTime,
+        isTableModelEvent,
         databaseName);
 
     this.resource = resource;
@@ -343,6 +349,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFi
       final long startTime,
       final long endTime) {
     return new PipeTsFileInsertionEvent(
+        getRawIsTableModelEvent(),
         getTreeModelDatabaseName(),
         resource,
         isWithMod,
@@ -388,13 +395,19 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFi
           Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
       return deviceSet.stream()
           .anyMatch(
-              deviceID ->
-                  // Table model
-                  !(deviceID instanceof PlainDeviceID
-                          || deviceID.getTableName().startsWith(PATH_ROOT + PATH_SEPARATOR)
-                          || deviceID.getTableName().equals(PATH_ROOT))
-                      // Tree model
-                      || treePattern.mayOverlapWithDevice(deviceID));
+              deviceID -> {
+                // Tree model
+                if (deviceID instanceof PlainDeviceID
+                    || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
+                    || deviceID.getTableName().equals(PATH_ROOT)) {
+                  markAsTreeModelEvent();
+                  return treePattern.mayOverlapWithDevice(deviceID);
+                }
+
+                // Table model
+                markAsTableModelEvent();
+                return true;
+              });
     } catch (final Exception e) {
       LOGGER.warn(
           "Pipe {}: failed to get devices from TsFile {}, extract it anyway",
@@ -403,6 +416,44 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFi
           e);
       return true;
     }
+  }
+
+  /////////////////////////// PipeInsertionEvent ///////////////////////////
+
+  @Override
+  public boolean isTableModelEvent() {
+    if (getRawIsTableModelEvent() == null) {
+      try {
+        final Map<IDeviceID, Boolean> deviceIsAlignedMap =
+            PipeDataNodeResourceManager.tsfile()
+                .getDeviceIsAlignedMapFromCache(
+                    PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+                        resource.getTsFile()),
+                    false);
+        final Set<IDeviceID> deviceSet =
+            Objects.nonNull(deviceIsAlignedMap)
+                ? deviceIsAlignedMap.keySet()
+                : resource.getDevices();
+        for (final IDeviceID deviceID : deviceSet) {
+          if (deviceID instanceof PlainDeviceID
+              || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
+              || deviceID.getTableName().equals(PATH_ROOT)) {
+            markAsTreeModelEvent();
+          } else {
+            markAsTableModelEvent();
+          }
+          break;
+        }
+      } catch (final Exception e) {
+        throw new PipeException(
+            String.format(
+                "Pipe %s: failed to judge whether TsFile %s is table model or tree model",
+                pipeName, resource.getTsFilePath()),
+            e);
+      }
+    }
+
+    return getRawIsTableModelEvent();
   }
 
   /////////////////////////// TsFileInsertionEvent ///////////////////////////
@@ -415,7 +466,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFi
             "Pipe skipping temporary TsFile's parsing which shouldn't be transferred: {}", tsFile);
         return Collections.emptyList();
       }
-      return initDataContainer().toTabletInsertionEvents();
+      return initEventParser().toTabletInsertionEvents();
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
       close();
@@ -437,15 +488,15 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFi
     return isGeneratedByHistoricalExtractor;
   }
 
-  private TsFileInsertionDataContainer initDataContainer() {
+  private TsFileInsertionEventParser initEventParser() {
     try {
-      if (dataContainer == null) {
-        dataContainer =
-            new TsFileInsertionDataContainerProvider(
+      if (eventParser == null) {
+        eventParser =
+            new TsFileInsertionEventParserProvider(
                     tsFile, treePattern, startTime, endTime, pipeTaskMeta, this)
                 .provide();
       }
-      return dataContainer;
+      return eventParser;
     } catch (final IOException e) {
       close();
 
@@ -479,12 +530,12 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFi
     }
   }
 
-  /** Release the resource of {@link TsFileInsertionDataContainer}. */
+  /** Release the resource of {@link TsFileInsertionEventParser}. */
   @Override
   public void close() {
-    if (dataContainer != null) {
-      dataContainer.close();
-      dataContainer = null;
+    if (eventParser != null) {
+      eventParser.close();
+      eventParser = null;
     }
   }
 
@@ -493,8 +544,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFi
   @Override
   public String toString() {
     return String.format(
-            "PipeTsFileInsertionEvent{resource=%s, tsFile=%s, isLoaded=%s, isGeneratedByPipe=%s, isClosed=%s, dataContainer=%s}",
-            resource, tsFile, isLoaded, isGeneratedByPipe, isClosed.get(), dataContainer)
+            "PipeTsFileInsertionEvent{resource=%s, tsFile=%s, isLoaded=%s, isGeneratedByPipe=%s, isClosed=%s, eventParser=%s}",
+            resource, tsFile, isLoaded, isGeneratedByPipe, isClosed.get(), eventParser)
         + " - "
         + super.toString();
   }

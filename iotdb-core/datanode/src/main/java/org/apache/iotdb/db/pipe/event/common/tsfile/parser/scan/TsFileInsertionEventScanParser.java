@@ -17,13 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.event.common.tsfile.container.scan;
+package org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -62,7 +62,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
-public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContainer {
+public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
   private static final LocalDate EMPTY_DATE = LocalDate.of(1000, 1, 1);
 
@@ -88,7 +88,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
 
   private byte lastMarker = Byte.MIN_VALUE;
 
-  public TsFileInsertionScanDataContainer(
+  public TsFileInsertionEventScanParser(
       final File tsFile,
       final TreePattern pattern,
       final long startTime,
@@ -134,6 +134,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
             final boolean hasNext = hasNext();
             try {
               return new PipeRawTabletInsertionEvent(
+                  sourceEvent != null ? sourceEvent.getRawIsTableModelEvent() : null,
                   sourceEvent != null ? sourceEvent.getTreeModelDatabaseName() : null,
                   tablet,
                   currentIsAligned,
@@ -151,16 +152,16 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
         };
   }
 
-  public Iterable<Tablet> toTablets() {
+  public Iterable<Pair<Tablet, Boolean>> toTabletWithIsAligneds() {
     return () ->
-        new Iterator<Tablet>() {
+        new Iterator<Pair<Tablet, Boolean>>() {
           @Override
           public boolean hasNext() {
             return Objects.nonNull(chunkReader);
           }
 
           @Override
-          public Tablet next() {
+          public Pair<Tablet, Boolean> next() {
             if (!hasNext()) {
               close();
               throw new NoSuchElementException();
@@ -169,7 +170,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
             final Tablet tablet = getNextTablet();
             final boolean hasNext = hasNext();
             try {
-              return tablet;
+              return new Pair<>(tablet, currentIsAligned);
             } finally {
               if (!hasNext) {
                 close();

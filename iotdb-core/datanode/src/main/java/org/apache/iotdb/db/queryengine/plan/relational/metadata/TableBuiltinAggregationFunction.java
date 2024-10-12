@@ -31,7 +31,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
-import static org.apache.tsfile.read.common.type.IntType.INT32;
+import static org.apache.tsfile.read.common.type.LongType.INT64;
 
 public enum TableBuiltinAggregationFunction {
   SUM("sum"),
@@ -109,8 +109,10 @@ public enum TableBuiltinAggregationFunction {
   }
 
   public static List<Type> getIntermediateTypes(String name, List<Type> originalArgumentTypes) {
-    if (AVG.functionName.equalsIgnoreCase(name)) {
-      return ImmutableList.of(DOUBLE, INT32);
+    if (COUNT.functionName.equalsIgnoreCase(name)) {
+      return ImmutableList.of(INT64);
+    } else if (AVG.functionName.equalsIgnoreCase(name)) {
+      return ImmutableList.of(DOUBLE, INT64);
     } else {
       return ImmutableList.copyOf(originalArgumentTypes);
     }
