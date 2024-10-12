@@ -66,6 +66,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericDataType;
@@ -963,6 +964,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         getLocation(ctx),
         visitIfPresent(ctx.with(), With.class),
         body.getQueryBody(),
+        body.getFill(),
         body.getOrderBy(),
         body.getOffset(),
         body.getLimit());
@@ -989,6 +991,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitQueryNoWith(RelationalSqlParser.QueryNoWithContext ctx) {
     QueryBody term = (QueryBody) visit(ctx.queryTerm());
+
+    Optional<Fill> fill = Optional.empty();
+    if (ctx.fillClause() != null) {
+      fill = visitIfPresent(ctx.fillClause().fillMethod(), Fill.class);
+    }
 
     Optional<OrderBy> orderBy = Optional.empty();
     if (ctx.ORDER() != null) {
@@ -1028,15 +1035,78 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
               query.getWhere(),
               query.getGroupBy(),
               query.getHaving(),
+              fill,
               orderBy,
               offset,
               limit),
           Optional.empty(),
           Optional.empty(),
+          Optional.empty(),
           Optional.empty());
     }
 
-    return new Query(getLocation(ctx), Optional.empty(), term, orderBy, offset, limit);
+    return new Query(getLocation(ctx), Optional.empty(), term, fill, orderBy, offset, limit);
+  }
+
+  @Override
+  public Node visitPreviousFill(RelationalSqlParser.PreviousFillContext ctx) {
+    TimeDuration timeBound = null;
+    LongLiteral timeColumn = null;
+    List<LongLiteral> fillGroupingElements = null;
+    if (ctx.timeBoundClause() != null) {
+      timeBound =
+          DateTimeUtils.constructTimeDuration(ctx.timeBoundClause().timeDuration().getText());
+
+      if (timeBound.monthDuration != 0 && timeBound.nonMonthDuration != 0) {
+        throw new SemanticException(
+            "Simultaneous setting of monthly and non-monthly intervals is not supported.");
+      }
+    }
+
+    if (ctx.timeColumnClause() != null) {
+      timeColumn =
+          new LongLiteral(
+              getLocation(ctx.timeColumnClause().INTEGER_VALUE()),
+              ctx.timeColumnClause().INTEGER_VALUE().getText());
+    }
+
+    if (ctx.fillGroupClause() != null) {
+      fillGroupingElements =
+          ctx.fillGroupClause().INTEGER_VALUE().stream()
+              .map(index -> new LongLiteral(getLocation(index), index.getText()))
+              .collect(toList());
+    }
+
+    if (timeColumn != null && (timeBound == null && fillGroupingElements == null)) {
+      throw new SemanticException(
+          "Don't need to specify TIME_COLUMN while either TIME_BOUND or FILL_GROUP parameter is not specified");
+    }
+    return new Fill(getLocation(ctx), timeBound, timeColumn, fillGroupingElements);
+  }
+
+  @Override
+  public Node visitLinearFill(RelationalSqlParser.LinearFillContext ctx) {
+    LongLiteral timeColumn = null;
+    List<LongLiteral> fillGroupingElements = null;
+    if (ctx.timeColumnClause() != null) {
+      timeColumn =
+          new LongLiteral(
+              getLocation(ctx.timeColumnClause().INTEGER_VALUE()),
+              ctx.timeColumnClause().INTEGER_VALUE().getText());
+    }
+    if (ctx.fillGroupClause() != null) {
+      fillGroupingElements =
+          ctx.fillGroupClause().INTEGER_VALUE().stream()
+              .map(index -> new LongLiteral(getLocation(index), index.getText()))
+              .collect(toList());
+    }
+
+    return new Fill(getLocation(ctx), timeColumn, fillGroupingElements);
+  }
+
+  @Override
+  public Node visitValueFill(RelationalSqlParser.ValueFillContext ctx) {
+    return new Fill(getLocation(ctx), (Literal) visit(ctx.literalExpression()));
   }
 
   @Override
@@ -1091,6 +1161,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         visitIfPresent(ctx.where, Expression.class),
         visitIfPresent(ctx.groupBy(), GroupBy.class),
         visitIfPresent(ctx.having, Expression.class),
+        Optional.empty(),
         Optional.empty(),
         Optional.empty(),
         Optional.empty());

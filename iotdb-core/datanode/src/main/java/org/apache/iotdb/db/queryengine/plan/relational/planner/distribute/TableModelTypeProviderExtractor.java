@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkN
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
@@ -40,7 +41,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.read.common.type.BooleanType;
 import org.apache.tsfile.read.common.type.TypeFactory;
 
 import java.util.HashMap;
@@ -152,9 +152,6 @@ public class TableModelTypeProviderExtractor {
     @Override
     public Void visitFilter(FilterNode node, Void context) {
       node.getChild().accept(this, context);
-      // TODO consider complex filter expression
-      beTypeProvider.putTableModelType(
-          new Symbol(node.getPredicate().toString()), BooleanType.BOOLEAN);
       return null;
     }
 
@@ -191,6 +188,12 @@ public class TableModelTypeProviderExtractor {
     @Override
     public Void visitMergeSort(MergeSortNode node, Void context) {
       node.getChildren().forEach(c -> c.accept(this, context));
+      return null;
+    }
+
+    @Override
+    public Void visitFill(FillNode node, Void context) {
+      node.getChild().accept(this, context);
       return null;
     }
 
