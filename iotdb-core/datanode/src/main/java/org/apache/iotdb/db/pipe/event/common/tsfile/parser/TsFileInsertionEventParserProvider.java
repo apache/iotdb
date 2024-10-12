@@ -17,15 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.event.common.tsfile.container;
+package org.apache.iotdb.db.pipe.event.common.tsfile.parser;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.pipe.event.common.tsfile.container.query.TsFileInsertionQueryDataContainer;
-import org.apache.iotdb.db.pipe.event.common.tsfile.container.scan.TsFileInsertionScanDataContainer;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.query.TsFileInsertionEventQueryParser;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.TsFileInsertionEventScanParser;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -36,7 +36,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class TsFileInsertionDataContainerProvider {
+public class TsFileInsertionEventParserProvider {
 
   private final File tsFile;
   private final TreePattern pattern;
@@ -46,7 +46,7 @@ public class TsFileInsertionDataContainerProvider {
   protected final PipeTaskMeta pipeTaskMeta;
   protected final PipeTsFileInsertionEvent sourceEvent;
 
-  public TsFileInsertionDataContainerProvider(
+  public TsFileInsertionEventParserProvider(
       final File tsFile,
       final TreePattern treePattern,
       final long startTime,
@@ -61,7 +61,7 @@ public class TsFileInsertionDataContainerProvider {
     this.sourceEvent = sourceEvent;
   }
 
-  public TsFileInsertionDataContainer provide() throws IOException {
+  public TsFileInsertionEventParser provide() throws IOException {
     if (startTime != Long.MIN_VALUE
         || endTime != Long.MAX_VALUE
         || pattern instanceof IoTDBTreePattern
@@ -74,7 +74,7 @@ public class TsFileInsertionDataContainerProvider {
       // Note: We judge prefix pattern as matching multiple timeseries in one device because it's
       // hard to know whether it only matches one timeseries, while matching multiple is often the
       // case.
-      return new TsFileInsertionQueryDataContainer(
+      return new TsFileInsertionEventQueryParser(
           tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
     }
 
@@ -83,7 +83,7 @@ public class TsFileInsertionDataContainerProvider {
     if (Objects.isNull(deviceIsAlignedMap)) {
       // If we failed to get from cache, it indicates that the memory usage is high.
       // We use scan data container because it requires less memory.
-      return new TsFileInsertionScanDataContainer(
+      return new TsFileInsertionEventScanParser(
           tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
     }
 
@@ -93,9 +93,9 @@ public class TsFileInsertionDataContainerProvider {
     // Use scan data container if we need enough amount to data thus it's better to scan than query.
     return (double) filteredDeviceIsAlignedMap.size() / originalSize
             > PipeConfig.getInstance().getPipeTsFileScanParsingThreshold()
-        ? new TsFileInsertionScanDataContainer(
+        ? new TsFileInsertionEventScanParser(
             tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent)
-        : new TsFileInsertionQueryDataContainer(
+        : new TsFileInsertionEventQueryParser(
             tsFile,
             pattern,
             startTime,

@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.receiver.visitor;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
-import org.apache.iotdb.db.pipe.event.common.tsfile.container.scan.TsFileInsertionScanDataContainer;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.TsFileInsertionEventScanParser;
 import org.apache.iotdb.db.pipe.receiver.transform.statement.PipeConvertedInsertRowStatement;
 import org.apache.iotdb.db.pipe.receiver.transform.statement.PipeConvertedInsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -95,8 +95,8 @@ public class PipeStatementDataTypeConvertExecutionVisitor
         loadTsFileStatement);
 
     for (final File file : loadTsFileStatement.getTsFiles()) {
-      try (final TsFileInsertionScanDataContainer container =
-          new TsFileInsertionScanDataContainer(
+      try (final TsFileInsertionEventScanParser container =
+          new TsFileInsertionEventScanParser(
               file, new IoTDBTreePattern(null), Long.MIN_VALUE, Long.MAX_VALUE, null, null)) {
         for (final Tablet tablet : container.toTablets()) {
           final PipeConvertedInsertTabletStatement statement =

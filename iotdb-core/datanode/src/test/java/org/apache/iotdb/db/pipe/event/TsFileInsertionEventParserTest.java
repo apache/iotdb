@@ -25,9 +25,9 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
-import org.apache.iotdb.db.pipe.event.common.tsfile.container.query.TsFileInsertionQueryDataContainer;
-import org.apache.iotdb.db.pipe.event.common.tsfile.container.scan.TsFileInsertionScanDataContainer;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.query.TsFileInsertionEventQueryParser;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.TsFileInsertionEventScanParser;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -68,10 +68,10 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.fail;
 
-public class TsFileInsertionDataContainerTest {
+public class TsFileInsertionEventParserTest {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(TsFileInsertionDataContainerTest.class);
+      LoggerFactory.getLogger(TsFileInsertionEventParserTest.class);
 
   private static final long TSFILE_START_TIME = 300L;
 
@@ -558,11 +558,10 @@ public class TsFileInsertionDataContainerTest {
       final long endTime,
       final boolean isQuery,
       final int expectedCount) {
-    try (final TsFileInsertionDataContainer tsFileContainer =
+    try (final TsFileInsertionEventParser tsFileContainer =
         isQuery
-            ? new TsFileInsertionQueryDataContainer(tsFile, pattern, startTime, endTime)
-            : new TsFileInsertionScanDataContainer(
-                tsFile, pattern, startTime, endTime, null, null)) {
+            ? new TsFileInsertionEventQueryParser(tsFile, pattern, startTime, endTime)
+            : new TsFileInsertionEventScanParser(tsFile, pattern, startTime, endTime, null, null)) {
       final AtomicInteger count1 = new AtomicInteger(0);
       final AtomicInteger count2 = new AtomicInteger(0);
       final AtomicInteger count3 = new AtomicInteger(0);

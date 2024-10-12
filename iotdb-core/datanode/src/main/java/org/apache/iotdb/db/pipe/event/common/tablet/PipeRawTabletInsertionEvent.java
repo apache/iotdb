@@ -29,6 +29,9 @@ import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventParser;
+import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTablePatternParser;
+import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTreePatternParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
@@ -56,7 +59,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   private PipeTabletMemoryBlock allocatedMemoryBlock;
 
-  private TabletInsertionDataContainer dataContainer;
+  private TabletInsertionEventParser eventParser;
 
   private volatile ProgressIndex overridingProgressIndex;
 
@@ -172,7 +175,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
     // Actually release the occupied memory.
     tablet = null;
-    dataContainer = null;
+    eventParser = null;
     return true;
   }
 
@@ -269,21 +272,13 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   @Override
   public Iterable<TabletInsertionEvent> processRowByRow(
       final BiConsumer<Row, RowCollector> consumer) {
-    if (dataContainer == null) {
-      dataContainer =
-          new TabletInsertionDataContainer(pipeTaskMeta, this, tablet, isAligned, treePattern);
-    }
-    return dataContainer.processRowByRow(consumer);
+    return initEventParser().processRowByRow(consumer);
   }
 
   @Override
   public Iterable<TabletInsertionEvent> processTablet(
       final BiConsumer<Tablet, RowCollector> consumer) {
-    if (dataContainer == null) {
-      dataContainer =
-          new TabletInsertionDataContainer(pipeTaskMeta, this, tablet, isAligned, treePattern);
-    }
-    return dataContainer.processTablet(consumer);
+    return initEventParser().processTablet(consumer);
   }
 
   /////////////////////////// convertToTablet ///////////////////////////
@@ -296,13 +291,21 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     if (!shouldParseTimeOrPattern()) {
       return tablet;
     }
+    return initEventParser().convertToTablet();
+  }
 
-    // if notNullPattern is not "root", we need to convert the tablet
-    if (dataContainer == null) {
-      dataContainer =
-          new TabletInsertionDataContainer(pipeTaskMeta, this, tablet, isAligned, treePattern);
+  /////////////////////////// event parser ///////////////////////////
+
+  private TabletInsertionEventParser initEventParser() {
+    if (eventParser == null) {
+      eventParser =
+          tablet.getDeviceId().startsWith("root.")
+              ? new TabletInsertionEventTreePatternParser(
+                  pipeTaskMeta, this, tablet, isAligned, treePattern)
+              : new TabletInsertionEventTablePatternParser(
+                  pipeTaskMeta, this, tablet, isAligned, tablePattern);
     }
-    return dataContainer.convertToTablet();
+    return eventParser;
   }
 
   public long count() {
@@ -340,8 +343,8 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   @Override
   public String toString() {
     return String.format(
-            "PipeRawTabletInsertionEvent{tablet=%s, isAligned=%s, sourceEvent=%s, needToReport=%s, allocatedMemoryBlock=%s, dataContainer=%s}",
-            tablet, isAligned, sourceEvent, needToReport, allocatedMemoryBlock, dataContainer)
+            "PipeRawTabletInsertionEvent{tablet=%s, isAligned=%s, sourceEvent=%s, needToReport=%s, allocatedMemoryBlock=%s, eventParser=%s}",
+            tablet, isAligned, sourceEvent, needToReport, allocatedMemoryBlock, eventParser)
         + " - "
         + super.toString();
   }

@@ -28,8 +28,9 @@ import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
-import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainerProvider;
+import org.apache.iotdb.db.pipe.event.common.tsfile.aggregator.TsFileInsertionPointCounter;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParserProvider;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTimePartitionProgressIndexKeeper;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
@@ -75,7 +76,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   private final boolean isGeneratedByHistoricalExtractor;
 
   private final AtomicBoolean isClosed;
-  private TsFileInsertionDataContainer dataContainer;
+  private TsFileInsertionEventParser eventParser;
 
   // The point count of the TsFile. Used for metrics on PipeConsensus' receiver side.
   // May be updated after it is flushed. Should be negative if not set.
@@ -419,7 +420,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
             "Pipe skipping temporary TsFile's parsing which shouldn't be transferred: {}", tsFile);
         return Collections.emptyList();
       }
-      return initDataContainer().toTabletInsertionEvents();
+      return initEventParser().toTabletInsertionEvents();
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
       close();
@@ -441,15 +442,15 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     return isGeneratedByHistoricalExtractor;
   }
 
-  private TsFileInsertionDataContainer initDataContainer() {
+  private TsFileInsertionEventParser initEventParser() {
     try {
-      if (dataContainer == null) {
-        dataContainer =
-            new TsFileInsertionDataContainerProvider(
+      if (eventParser == null) {
+        eventParser =
+            new TsFileInsertionEventParserProvider(
                     tsFile, treePattern, startTime, endTime, pipeTaskMeta, this)
                 .provide();
       }
-      return dataContainer;
+      return eventParser;
     } catch (final IOException e) {
       close();
 
@@ -483,12 +484,12 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     }
   }
 
-  /** Release the resource of {@link TsFileInsertionDataContainer}. */
+  /** Release the resource of {@link TsFileInsertionEventParser}. */
   @Override
   public void close() {
-    if (dataContainer != null) {
-      dataContainer.close();
-      dataContainer = null;
+    if (eventParser != null) {
+      eventParser.close();
+      eventParser = null;
     }
   }
 
@@ -497,8 +498,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   @Override
   public String toString() {
     return String.format(
-            "PipeTsFileInsertionEvent{resource=%s, tsFile=%s, isLoaded=%s, isGeneratedByPipe=%s, isClosed=%s, dataContainer=%s}",
-            resource, tsFile, isLoaded, isGeneratedByPipe, isClosed.get(), dataContainer)
+            "PipeTsFileInsertionEvent{resource=%s, tsFile=%s, isLoaded=%s, isGeneratedByPipe=%s, isClosed=%s, eventParser=%s}",
+            resource, tsFile, isLoaded, isGeneratedByPipe, isClosed.get(), eventParser)
         + " - "
         + super.toString();
   }
