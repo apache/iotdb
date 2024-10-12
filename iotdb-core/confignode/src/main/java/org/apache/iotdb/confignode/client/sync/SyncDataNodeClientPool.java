@@ -143,7 +143,8 @@ public class SyncDataNodeClientPool {
             .filter(type -> !actionMap.containsKey(type))
             .collect(Collectors.toList());
     if (!lackList.isEmpty()) {
-      throw new UncheckedStartupException(String.format("These request types should be added to actionMap: %s", lackList));
+      throw new UncheckedStartupException(
+          String.format("These request types should be added to actionMap: %s", lackList));
     }
   }
 
