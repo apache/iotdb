@@ -38,7 +38,7 @@ public class BoundSignature {
 
   private final String functionName;
   private final Type returnType;
-  private List<Type> argumentTypes;
+  private final List<Type> argumentTypes;
 
   public BoundSignature(String functionName, Type returnType, List<Type> argumentTypes) {
     this.functionName = requireNonNull(functionName, "functionName is null");
