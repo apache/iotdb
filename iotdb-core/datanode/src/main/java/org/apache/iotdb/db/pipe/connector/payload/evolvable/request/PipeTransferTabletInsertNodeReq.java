@@ -52,6 +52,10 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
     return insertNode;
   }
 
+  public String getDataBaseName() {
+    return dataBaseName;
+  }
+
   public InsertBaseStatement constructStatement() {
     if (!(insertNode instanceof InsertRowNode
         || insertNode instanceof InsertTabletNode
@@ -62,8 +66,15 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
               insertNode));
     }
 
-    return (InsertBaseStatement)
-        IoTDBDataNodeReceiver.PLAN_TO_STATEMENT_VISITOR.process(insertNode, null);
+    final InsertBaseStatement statement =
+        (InsertBaseStatement)
+            IoTDBDataNodeReceiver.PLAN_TO_STATEMENT_VISITOR.process(insertNode, null);
+    if (Objects.isNull(dataBaseName) || dataBaseName.isEmpty()) {
+      return statement;
+    }
+    statement.setWriteToTable(true);
+    statement.setDatabaseName(dataBaseName);
+    return statement;
   }
 
   /////////////////////////////// WriteBack & Batch ///////////////////////////////
