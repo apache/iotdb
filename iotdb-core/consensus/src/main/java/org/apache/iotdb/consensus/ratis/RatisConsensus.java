@@ -73,12 +73,15 @@ import org.apache.ratis.protocol.RaftPeerId;
 import org.apache.ratis.protocol.SnapshotManagementRequest;
 import org.apache.ratis.protocol.exceptions.AlreadyExistsException;
 import org.apache.ratis.protocol.exceptions.GroupMismatchException;
+import org.apache.ratis.protocol.exceptions.LeaderNotReadyException;
+import org.apache.ratis.protocol.exceptions.LeaderSteppingDownException;
 import org.apache.ratis.protocol.exceptions.NotLeaderException;
 import org.apache.ratis.protocol.exceptions.RaftException;
 import org.apache.ratis.protocol.exceptions.ReadException;
 import org.apache.ratis.protocol.exceptions.ReadIndexException;
 import org.apache.ratis.protocol.exceptions.ResourceUnavailableException;
 import org.apache.ratis.protocol.exceptions.ServerNotReadyException;
+import org.apache.ratis.protocol.exceptions.StateMachineException;
 import org.apache.ratis.server.DivisionInfo;
 import org.apache.ratis.server.RaftServer;
 import org.apache.ratis.server.RaftServerConfigKeys;
@@ -181,7 +184,10 @@ class RatisConsensus implements IConsensus {
             .setRetryHandler(
                 reply ->
                     !reply.isSuccess()
-                        && (reply.getException() instanceof ResourceUnavailableException))
+                        && (reply.getException() instanceof ResourceUnavailableException)
+                        && (reply.getException() instanceof LeaderNotReadyException)
+                        && (reply.getException() instanceof LeaderSteppingDownException)
+                        && (reply.getException() instanceof StateMachineException))
             .setMaxAttempts(this.config.getImpl().getRetryTimesMax())
             .setWaitTime(
                 TimeDuration.valueOf(
