@@ -33,9 +33,9 @@ import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.IDataBlockReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.SeriesDataBlockReader;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 

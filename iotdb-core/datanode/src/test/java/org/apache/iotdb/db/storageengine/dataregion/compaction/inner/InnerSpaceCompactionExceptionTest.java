@@ -28,8 +28,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subt
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 

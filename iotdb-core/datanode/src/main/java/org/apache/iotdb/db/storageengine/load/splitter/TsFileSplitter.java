@@ -21,9 +21,9 @@ package org.apache.iotdb.db.storageengine.load.splitter;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFile;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;

@@ -26,9 +26,9 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResource;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFile;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;

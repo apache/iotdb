@@ -30,7 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 

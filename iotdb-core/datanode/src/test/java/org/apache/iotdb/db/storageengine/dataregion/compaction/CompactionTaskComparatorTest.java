@@ -32,7 +32,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.DefaultCompactionTaskComparatorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionPriority;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionConfigRestorer;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;

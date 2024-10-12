@@ -21,8 +21,8 @@ package org.apache.iotdb.it.utils;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFile;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.exception.write.WriteProcessException;

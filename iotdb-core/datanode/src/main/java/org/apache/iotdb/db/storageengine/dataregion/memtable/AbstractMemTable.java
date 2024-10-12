@@ -40,7 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushStatus;
 import org.apache.iotdb.db.storageengine.dataregion.flush.NotifyFlushMemTable;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl.MemAlignedChunkHandleImpl;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl.MemChunkHandleImpl;

@@ -30,7 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;

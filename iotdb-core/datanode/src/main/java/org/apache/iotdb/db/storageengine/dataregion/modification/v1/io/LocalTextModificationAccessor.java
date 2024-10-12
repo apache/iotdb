@@ -17,13 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.modification.io;
+package org.apache.iotdb.db.storageengine.dataregion.modification.v1.io;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
 
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;

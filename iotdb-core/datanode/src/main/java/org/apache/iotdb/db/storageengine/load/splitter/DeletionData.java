@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.storageengine.load.splitter;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFile;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 

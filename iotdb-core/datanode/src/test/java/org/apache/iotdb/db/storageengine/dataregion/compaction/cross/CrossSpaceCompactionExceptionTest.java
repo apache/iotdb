@@ -37,7 +37,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
