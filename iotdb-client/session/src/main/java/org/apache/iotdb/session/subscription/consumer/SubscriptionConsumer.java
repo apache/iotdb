@@ -1208,7 +1208,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     }
     for (final SubscriptionProvider provider : providers) {
       try {
-        subscribedTopics = provider.subscribe(topicNames);
+        subscribedTopics = provider.subscribe(topicNames).getTopics();
         return;
       } catch (final Exception e) {
         LOGGER.warn(
@@ -1238,7 +1238,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     }
     for (final SubscriptionProvider provider : providers) {
       try {
-        subscribedTopics = provider.unsubscribe(topicNames);
+        subscribedTopics = provider.unsubscribe(topicNames).getTopics();
         return;
       } catch (final Exception e) {
         LOGGER.warn(
