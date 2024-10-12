@@ -134,6 +134,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     if (event instanceof PipeInsertNodeTabletInsertionEvent) {
       final PipeInsertNodeTabletInsertionEvent insertNodeTabletInsertionEvent =
           (PipeInsertNodeTabletInsertionEvent) event;
+      // TODO: for table model insertion, we need to get the database name
       final List<Tablet> tablets = insertNodeTabletInsertionEvent.convertToTablets();
       for (int i = 0; i < tablets.size(); ++i) {
         final Tablet tablet = tablets.get(i);
