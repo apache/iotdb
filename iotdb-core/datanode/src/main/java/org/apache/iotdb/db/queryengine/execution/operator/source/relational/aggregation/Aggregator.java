@@ -20,12 +20,14 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 
 import java.util.List;
 import java.util.OptionalInt;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 
 public class Aggregator {
   private final Accumulator accumulator;
@@ -55,11 +57,18 @@ public class Aggregator {
   }
 
   public void processBlock(TsBlock block) {
+    Column[] arguments = block.getColumns(inputChannels);
+
+    // process count(*)
+    if (arguments.length == 0) {
+      arguments =
+          new Column[] {new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, block.getPositionCount())};
+    }
+
     if (step.isInputRaw()) {
-      Column[] arguments = block.getColumns(inputChannels);
       accumulator.addInput(arguments);
     } else {
-      accumulator.addIntermediate(block.getColumn(inputChannels[0]));
+      accumulator.addIntermediate(arguments[0]);
     }
   }
 

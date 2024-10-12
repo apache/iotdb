@@ -714,4 +714,25 @@ public class IoTDBMultiIDsWithAttributesTableIT {
             + "ORDER BY time, t1.device, t2.device";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
+
+  // ========== Aggregation Test =========
+  @Test
+  public void globalAggregationTest() {
+    String[] expectedHeader = new String[] {"_col0"};
+    String[] retArray = new String[] {"30,"};
+
+    String sql = "SELECT count(num+1) from table0";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+  }
+
+  @Test
+  public void countStarTest() {
+    String[] expectedHeader = new String[] {"_col0", "_col1"};
+    String[] retArray = new String[] {"1,1,"};
+
+    String sql = "select count(*),count(t1) from (select avg(num+1) as t1 from table0)";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    // TODO select count(*),count(t1) from (select avg(num+1) as t1 from table0) where time < 0
+  }
 }
