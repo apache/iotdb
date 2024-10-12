@@ -160,6 +160,10 @@ public class TableDeviceSchemaFetcher {
               new TableDeviceId((String[]) truncateTailingNull(nodes)), attributeMap);
         }
       }
+
+      fetchedDeviceSchema.forEach(
+          (key, value) -> cache.put(database, table, key.getIdValues(), value));
+
       return fetchedDeviceSchema;
     } catch (final Throwable throwable) {
       t = throwable;

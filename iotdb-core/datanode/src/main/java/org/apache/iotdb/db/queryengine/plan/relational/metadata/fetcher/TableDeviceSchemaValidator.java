@@ -128,16 +128,6 @@ public class TableDeviceSchemaValidator {
                     .collect(Collectors.toList())),
             context);
 
-    fetchedDeviceSchema.forEach(
-        (key, value) ->
-            fetcher
-                .getTableDeviceCache()
-                .put(
-                    schemaValidation.getDatabase(),
-                    schemaValidation.getTableName(),
-                    key.getIdValues(),
-                    value));
-
     final List<String> attributeKeyList = schemaValidation.getAttributeColumnNameList();
     final List<Object[]> attributeValueList = schemaValidation.getAttributeValueList();
 
