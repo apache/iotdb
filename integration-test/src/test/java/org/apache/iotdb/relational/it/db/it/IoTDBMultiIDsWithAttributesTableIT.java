@@ -109,6 +109,10 @@ public class IoTDBMultiIDsWithAttributesTableIT {
             + "values('l999', 31536000000, 6, 2147483650, 1231.21, 'banana', TRUE, '2023-10-01', X'108DCD62')",
       };
 
+  String[] expectedHeader;
+
+  String[] retArray;
+
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getDataNodeCommonConfig().setSortBufferSize(1024 * 1024L);
@@ -480,7 +484,6 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         new String[] {
           "30,30,8.0,30,12,8.0,30,15,30,529.0,2,30,30,",
         };
-
     tableResultSetEqualTest(
         "select count(num) as count_num, count(*) as count_star, avg(num) as avg_num, count(num) as count_num,\n"
             + "count(attr2) as count_attr2, avg(num) as avg_num, count(device) as count_device,\n"
@@ -496,7 +499,6 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         new String[] {
           "8,8,5.5,8,3,5.5,8,4,8,1341.0,0,8,8,",
         };
-
     tableResultSetEqualTest(
         "select count(num) as count_num, count(*) as count_star, avg(num) as avg_num, count(num) as count_num,\n"
             + "count(attr2) as count_attr2, avg(num) as avg_num, count(device) as count_device,\n"
@@ -530,7 +532,6 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         new String[] {
           "8,5.125,8,4,5.125,7,4,7,1134.0,3,7,8,8,",
         };
-
     tableResultSetEqualTest(
         "select count(num) as count_num, avg(num) as avg_num, count(num) as count_num,\n"
             + "count(attr2) as count_attr2, avg(num) as avg_num, count(device) as count_device,\n"
@@ -542,6 +543,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         retArray,
         DATABASE_NAME);
 
+    // count star with subquery
     // TODO(beyyes) add first/last blob type test
   }
 
@@ -841,11 +843,49 @@ public class IoTDBMultiIDsWithAttributesTableIT {
 
   @Test
   public void countStarTest() {
-    String[] expectedHeader = new String[] {"_col0", "_col1"};
-    String[] retArray = new String[] {"1,1,"};
-
+    expectedHeader = new String[] {"_col0", "_col1"};
+    retArray = new String[] {"1,1,"};
     String sql = "select count(*),count(t1) from (select avg(num+1) as t1 from table0)";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = new String[] {"count_star"};
+    retArray =
+        new String[] {
+          "30,",
+        };
+    tableResultSetEqualTest(
+        "select count(*) as count_star from table0", expectedHeader, retArray, DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "1,",
+        };
+    tableResultSetEqualTest(
+        "select count(*) as count_star from (select count(*) from table0)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "1,",
+        };
+    tableResultSetEqualTest(
+        "select count(*) as count_star from (select count(*), avg(num) from table0)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"sum"};
+    retArray =
+        new String[] {
+          "38.0,",
+        };
+    tableResultSetEqualTest(
+        "select count_star + avg_num as sum from (select count(*) as count_star, avg(num) as avg_num from table0)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
 
     // TODO select count(*),count(t1) from (select avg(num+1) as t1 from table0) where time < 0
   }

@@ -172,8 +172,16 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
 
   @Override
   public TsBlock next() throws Exception {
-    // start stopwatch, reset leftRuntimeOfOneNextCall
 
+    // optimize for sql: select count(*) from (select count(s1), sum(s1) from table)
+    if (tableAggregators.isEmpty()) {
+      retainedTsBlock = null;
+      currentDeviceIndex = deviceCount;
+      Column[] valueColumns = new Column[0];
+      return new TsBlock(1, new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, 1), valueColumns);
+    }
+
+    // start stopwatch, reset leftRuntimeOfOneNextCall
     long start = System.nanoTime();
     leftRuntimeOfOneNextCall = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long maxRuntime = leftRuntimeOfOneNextCall;
