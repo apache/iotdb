@@ -382,6 +382,7 @@ public class TableDeviceSchemaFetcher {
       final MPPQueryContext mppQueryContext) {
 
     final String table = tableInstance.getTableName();
+    Throwable t = null;
 
     final long queryId = SessionManager.getInstance().requestQueryId();
     // For the correctness of attribute remote update
@@ -414,7 +415,6 @@ public class TableDeviceSchemaFetcher {
       final List<ColumnHeader> columnHeaderList =
           coordinator.getQueryExecution(queryId).getDatasetHeader().getColumnHeaders();
       final int idLength = DataNodeTableCache.getInstance().getTable(database, table).getIdNums();
-      Throwable t = null;
 
       while (coordinator.getQueryExecution(queryId).hasNextResult()) {
         final Optional<TsBlock> tsBlock;
