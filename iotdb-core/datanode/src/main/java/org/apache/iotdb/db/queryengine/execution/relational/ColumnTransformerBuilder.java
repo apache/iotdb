@@ -176,10 +176,10 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression.getEscapeCharacter;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoMetadataChecker.isStringLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
-import static org.apache.tsfile.common.regexp.LikePattern.getEscapeCharacter;
 import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
@@ -1161,17 +1161,15 @@ public class ColumnTransformerBuilder
         ColumnTransformer childColumnTransformer = process(node.getValue(), context);
         if ((isStringLiteral(node.getPattern()) && !node.getEscape().isPresent())
             || (isStringLiteral(node.getPattern()) && isStringLiteral(node.getEscape().get()))) {
-          Optional<String> escapeValueOpt =
+          Optional<Character> escapeSet =
               node.getEscape().isPresent()
-                  ? Optional.ofNullable(((StringLiteral) node.getEscape().get()).getValue())
+                  ? getEscapeCharacter(((StringLiteral) node.getEscape().get()).getValue())
                   : Optional.empty();
           likeColumnTransformer =
               new LikeColumnTransformer(
                   BOOLEAN,
                   childColumnTransformer,
-                  LikePattern.compile(
-                      ((StringLiteral) node.getPattern()).getValue(),
-                      getEscapeCharacter(escapeValueOpt)));
+                  LikePattern.compile(((StringLiteral) node.getPattern()).getValue(), escapeSet));
         } else {
           ColumnTransformer patternColumnTransformer = process(node.getPattern(), context);
           if (node.getEscape().isPresent()) {

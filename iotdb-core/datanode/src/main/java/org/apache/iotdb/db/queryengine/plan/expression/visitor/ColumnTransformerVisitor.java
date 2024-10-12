@@ -445,9 +445,7 @@ public class ColumnTransformerVisitor
       case LIKE:
         LikeExpression likeExpression = (LikeExpression) expression;
         LikePattern pattern =
-            LikePattern.compile(
-                likeExpression.getPattern(),
-                LikePattern.getEscapeCharacter(likeExpression.getEscape()));
+            LikePattern.compile(likeExpression.getPattern(), likeExpression.getEscape());
         return new LikeColumnTransformer(returnType, childColumnTransformer, pattern);
       case REGEXP:
         RegularExpression regularExpression = (RegularExpression) expression;

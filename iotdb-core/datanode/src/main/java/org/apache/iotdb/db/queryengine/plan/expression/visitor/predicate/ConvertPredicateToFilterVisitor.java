@@ -161,9 +161,7 @@ public class ConvertPredicateToFilterVisitor
     int measurementIndex = context.getMeasurementIndex(path.getMeasurement());
     TSDataType dataType = context.getType(path);
     LikePattern pattern =
-        LikePattern.compile(
-            likeExpression.getPattern(),
-            LikePattern.getEscapeCharacter(likeExpression.getEscape()));
+        LikePattern.compile(likeExpression.getPattern(), likeExpression.getEscape());
     if (likeExpression.isNot()) {
       return ValueFilterApi.notLike(measurementIndex, pattern, dataType);
     } else {

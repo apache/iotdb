@@ -32,8 +32,6 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 import java.util.Optional;
 
-import static org.apache.tsfile.common.regexp.LikePattern.getEscapeCharacter;
-
 public class LikeFilter extends SchemaFilter {
   private final LikePattern pattern;
 
@@ -46,7 +44,7 @@ public class LikeFilter extends SchemaFilter {
         LikePattern.compile(
             ReadWriteIOUtils.readString(byteBuffer),
             ReadWriteIOUtils.readBool(byteBuffer)
-                ? getEscapeCharacter(Optional.of(ReadWriteIOUtils.readString(byteBuffer)))
+                ? Optional.of(ReadWriteIOUtils.readString(byteBuffer).charAt(0))
                 : Optional.empty());
   }
 

@@ -256,6 +256,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
+import static org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression.getEscapeCharacter;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.canPushDownLimitOffsetToGroupByTime;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.pushDownLimitOffsetToTimeParameter;
 import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.TIMESTAMP_PRECISION;
@@ -3146,7 +3147,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         parseStringLiteral(String.valueOf(context.pattern.getText())),
         context.ESCAPE() == null
             ? Optional.empty()
-            : Optional.of(parseStringLiteral(String.valueOf(context.escapeSet.getText()))),
+            : getEscapeCharacter(parseStringLiteral(String.valueOf(context.escapeSet.getText()))),
         context.operator_not() != null);
   }
 

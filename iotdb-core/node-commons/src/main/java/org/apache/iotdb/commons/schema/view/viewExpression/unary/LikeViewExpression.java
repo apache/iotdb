@@ -35,11 +35,11 @@ public class LikeViewExpression extends UnaryViewExpression {
 
   // region member variables and init functions
   private final String pattern;
-  private final Optional<String> escape;
+  private final Optional<Character> escape;
   private final boolean isNot;
 
   public LikeViewExpression(
-      ViewExpression expression, String pattern, Optional<String> escape, boolean isNot) {
+      ViewExpression expression, String pattern, Optional<Character> escape, boolean isNot) {
     super(expression);
     this.pattern = pattern;
     this.escape = escape;
@@ -57,7 +57,7 @@ public class LikeViewExpression extends UnaryViewExpression {
     super(ViewExpression.deserialize(byteBuffer));
     pattern = ReadWriteIOUtils.readString(byteBuffer);
     if (ReadWriteIOUtils.readBool(byteBuffer)) {
-      escape = Optional.of(ReadWriteIOUtils.readString(byteBuffer));
+      escape = Optional.of(ReadWriteIOUtils.readString(byteBuffer).charAt(0));
     } else {
       escape = Optional.empty();
     }
@@ -69,7 +69,7 @@ public class LikeViewExpression extends UnaryViewExpression {
     try {
       pattern = ReadWriteIOUtils.readString(inputStream);
       if (ReadWriteIOUtils.readBool(inputStream)) {
-        escape = Optional.of(ReadWriteIOUtils.readString(inputStream));
+        escape = Optional.of(ReadWriteIOUtils.readString(inputStream).charAt(0));
       } else {
         escape = Optional.empty();
       }
@@ -137,7 +137,7 @@ public class LikeViewExpression extends UnaryViewExpression {
     return pattern;
   }
 
-  public Optional<String> getEscape() {
+  public Optional<Character> getEscape() {
     return escape;
   }
 

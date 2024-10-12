@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.unary;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
@@ -38,12 +39,12 @@ public class LikeExpression extends UnaryExpression {
       RamUsageEstimator.shallowSizeOfInstance(LikeExpression.class);
 
   private final String pattern;
-  private final Optional<String> escape;
+  private final Optional<Character> escape;
 
   private final boolean isNot;
 
   public LikeExpression(
-      Expression expression, String pattern, Optional<String> escape, boolean isNot) {
+      Expression expression, String pattern, Optional<Character> escape, boolean isNot) {
     super(expression);
     this.pattern = pattern;
     this.escape = escape;
@@ -61,7 +62,7 @@ public class LikeExpression extends UnaryExpression {
     super(Expression.deserialize(byteBuffer));
     pattern = ReadWriteIOUtils.readString(byteBuffer);
     if (ReadWriteIOUtils.readBool(byteBuffer)) {
-      escape = Optional.ofNullable(ReadWriteIOUtils.readString(byteBuffer));
+      escape = Optional.of(ReadWriteIOUtils.readString(byteBuffer).charAt(0));
     } else {
       escape = Optional.empty();
     }
@@ -72,7 +73,7 @@ public class LikeExpression extends UnaryExpression {
     return pattern;
   }
 
-  public Optional<String> getEscape() {
+  public Optional<Character> getEscape() {
     return escape;
   }
 
@@ -147,5 +148,13 @@ public class LikeExpression extends UnaryExpression {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(expression)
         + RamUsageEstimator.sizeOf(pattern);
+  }
+
+  public static Optional<Character> getEscapeCharacter(String escape) {
+    if (escape.length() == 1) {
+      return Optional.of(escape.charAt(0));
+    } else {
+      throw new SemanticException("Escape string must be a single character");
+    }
   }
 }

@@ -27,8 +27,7 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.regexp.LikePattern;
 import org.apache.tsfile.read.common.type.Type;
 
-import java.util.Optional;
-
+import static org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression.getEscapeCharacter;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isCharType;
 
 public class Like3ColumnTransformer extends TernaryColumnTransformer {
@@ -91,9 +90,8 @@ public class Like3ColumnTransformer extends TernaryColumnTransformer {
       LikePattern pattern =
           LikePattern.compile(
               secondColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET),
-              LikePattern.getEscapeCharacter(
-                  Optional.of(
-                      thirdColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET))),
+              getEscapeCharacter(
+                  thirdColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET)),
               false);
       builder.writeBoolean(
           pattern
