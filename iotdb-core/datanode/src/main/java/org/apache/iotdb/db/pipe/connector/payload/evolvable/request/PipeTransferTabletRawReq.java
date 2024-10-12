@@ -60,6 +60,10 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
     return isAligned;
   }
 
+  public String getDataBaseName() {
+    return dataBaseName;
+  }
+
   public InsertTabletStatement constructStatement() {
     new PipeTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
 
@@ -85,7 +89,13 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
       request.setMeasurements(
           PathUtils.checkIsLegalSingleMeasurementsAndUpdate(request.getMeasurements()));
 
-      return StatementGenerator.createStatement(request);
+      final InsertTabletStatement statement = StatementGenerator.createStatement(request);
+      if (Objects.isNull(dataBaseName) || dataBaseName.isEmpty()) {
+        return statement;
+      }
+      statement.setWriteToTable(true);
+      statement.setDatabaseName(dataBaseName);
+      return statement;
     } catch (final MetadataException e) {
       LOGGER.warn("Generate Statement from tablet {} error.", tablet, e);
       return null;
