@@ -32,12 +32,15 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import javax.annotation.Nullable;
 
+import java.time.ZoneId;
+
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.GREATER_THAN;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.LESS_THAN;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.LESS_THAN_OR_EQUAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.Operator.AND;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.Operator.OR;
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.DateBinFunctionColumnTransformer.dateBin;
 
 public class GapFillStartAndEndTimeExtractVisitor
     extends AstVisitor<Boolean, GapFillStartAndEndTimeExtractVisitor.Context> {
@@ -235,11 +238,20 @@ public class GapFillStartAndEndTimeExtractVisitor
       }
     }
 
-    public long[] getTimeRange(long origin, int monthDuration, long nonMonthDuration) {
+    public long[] getTimeRange(
+        long origin, int monthDuration, long nonMonthDuration, ZoneId zoneId) {
       if (leftOperator == null || rightOperator == null) {
         throw new SemanticException(CAN_NOT_INFER_TIME_RANGE);
       }
       long[] result = new long[2];
+      if (leftOperator == GREATER_THAN) {
+        startTime++;
+      }
+      result[0] = dateBin(startTime, origin, monthDuration, nonMonthDuration, zoneId);
+      if (rightOperator == LESS_THAN) {
+        endTime--;
+      }
+      result[1] = dateBin(endTime, origin, monthDuration, nonMonthDuration, zoneId);
 
       return result;
     }

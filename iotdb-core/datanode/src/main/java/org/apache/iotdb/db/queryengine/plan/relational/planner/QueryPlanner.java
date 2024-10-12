@@ -703,7 +703,8 @@ public class QueryPlanner {
     if (!Boolean.TRUE.equals(wherePredicate.accept(visitor, context))) {
       throw new SemanticException(CAN_NOT_INFER_TIME_RANGE);
     } else {
-      return context.getTimeRange(origin, monthDuration, nonMonthDuration);
+      return context.getTimeRange(
+          origin, monthDuration, nonMonthDuration, queryContext.getZoneId());
     }
   }
 
