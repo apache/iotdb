@@ -88,6 +88,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFi
       final boolean isGeneratedByHistoricalExtractor) {
     // The modFile must be copied before the event is assigned to the listening pipes
     this(
+        null,
         databaseName,
         resource,
         true,
@@ -104,6 +105,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFi
   }
 
   public PipeTsFileInsertionEvent(
+      final Boolean isTableModelEvent,
       final String databaseName,
       final TsFileResource resource,
       final boolean isWithMod,
@@ -125,6 +127,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFi
         tablePattern,
         startTime,
         endTime,
+        isTableModelEvent,
         databaseName);
 
     this.resource = resource;
@@ -344,6 +347,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFi
       final long startTime,
       final long endTime) {
     return new PipeTsFileInsertionEvent(
+        getIsTableModelEvent(),
         getTreeModelDatabaseName(),
         resource,
         isWithMod,

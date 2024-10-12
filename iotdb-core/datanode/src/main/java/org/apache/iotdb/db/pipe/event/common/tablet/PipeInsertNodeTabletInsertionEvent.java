@@ -81,6 +81,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       final boolean isAligned,
       final boolean isGeneratedByPipe) {
     this(
+        null,
         databaseName,
         walEntryHandler,
         devicePath,
@@ -97,6 +98,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   }
 
   private PipeInsertNodeTabletInsertionEvent(
+      final Boolean isTableModelEvent,
       final String databaseName,
       final WALEntryHandler walEntryHandler,
       final PartialPath devicePath,
@@ -118,6 +120,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         tablePattern,
         startTime,
         endTime,
+        isTableModelEvent,
         databaseName);
     this.walEntryHandler = walEntryHandler;
     // Record device path here so there's no need to get it from InsertNode cache later.
@@ -204,6 +207,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       final long startTime,
       final long endTime) {
     return new PipeInsertNodeTabletInsertionEvent(
+        getIsTableModelEvent(),
         getTreeModelDatabaseName(),
         walEntryHandler,
         devicePath,
