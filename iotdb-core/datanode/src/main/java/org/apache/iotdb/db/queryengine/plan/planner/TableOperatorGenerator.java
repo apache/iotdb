@@ -1214,8 +1214,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             symbol ->
                 aggregatorBuilder.add(
                     buildAggregator(
-                        symbol,
                         childLayout,
+                        symbol,
                         aggregationMap.get(symbol),
                         node.getStep(),
                         typeProvider)));
@@ -1223,8 +1223,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   }
 
   private TableAggregator buildAggregator(
-      Symbol aggregationSymbol,
       Map<Symbol, Integer> childLayout,
+      Symbol symbol,
       AggregationNode.Aggregation aggregation,
       AggregationNode.Step step,
       TypeProvider typeProvider) {
@@ -1256,7 +1256,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     return new TableAggregator(
         accumulator,
         step,
-        getTSDataType(typeProvider.getTableModelType(aggregationSymbol)),
+        getTSDataType(typeProvider.getTableModelType(symbol)),
         argumentChannels,
         OptionalInt.empty());
   }
@@ -1355,8 +1355,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
       aggregators.add(
           buildAggregator(
-              entry.getKey(),
               columnLayout,
+              entry.getKey(),
               entry.getValue(),
               node.getStep(),
               context.getTypeProvider()));

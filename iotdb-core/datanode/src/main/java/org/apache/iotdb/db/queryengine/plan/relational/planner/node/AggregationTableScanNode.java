@@ -504,7 +504,7 @@ public class AggregationTableScanNode extends TableScanNode {
     }
 
     size = ReadWriteIOUtils.readInt(byteBuffer);
-    final Map<Symbol, AggregationNode.Aggregation> aggregations = new HashMap<>(size);
+    final Map<Symbol, AggregationNode.Aggregation> aggregations = new LinkedHashMap<>(size);
     while (size-- > 0) {
       aggregations.put(
           Symbol.deserialize(byteBuffer), AggregationNode.Aggregation.deserialize(byteBuffer));

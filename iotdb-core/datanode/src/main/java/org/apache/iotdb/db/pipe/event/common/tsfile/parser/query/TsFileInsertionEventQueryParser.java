@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.event.common.tsfile.container.query;
+package org.apache.iotdb.db.pipe.event.common.tsfile.parser.query;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
@@ -55,10 +55,10 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 
-public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContainer {
+public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(TsFileInsertionQueryDataContainer.class);
+      LoggerFactory.getLogger(TsFileInsertionEventQueryParser.class);
 
   private final PipeMemoryBlock allocatedMemoryBlock;
   private final TsFileReader tsFileReader;
@@ -68,13 +68,13 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
   private final Map<String, TSDataType> measurementDataTypeMap;
 
   @TestOnly
-  public TsFileInsertionQueryDataContainer(
+  public TsFileInsertionEventQueryParser(
       final File tsFile, final TreePattern pattern, final long startTime, final long endTime)
       throws IOException {
     this(tsFile, pattern, startTime, endTime, null, null);
   }
 
-  public TsFileInsertionQueryDataContainer(
+  public TsFileInsertionEventQueryParser(
       final File tsFile,
       final TreePattern pattern,
       final long startTime,
@@ -85,7 +85,7 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
     this(tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent, null);
   }
 
-  public TsFileInsertionQueryDataContainer(
+  public TsFileInsertionEventQueryParser(
       final File tsFile,
       final TreePattern pattern,
       final long startTime,
@@ -261,7 +261,7 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
     return () ->
         new Iterator<TabletInsertionEvent>() {
 
-          private TsFileInsertionQueryDataTabletIterator tabletIterator = null;
+          private TsFileInsertionEventQueryParserTabletIterator tabletIterator = null;
 
           @Override
           public boolean hasNext() {
@@ -275,7 +275,7 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
 
               try {
                 tabletIterator =
-                    new TsFileInsertionQueryDataTabletIterator(
+                    new TsFileInsertionEventQueryParserTabletIterator(
                         tsFileReader,
                         measurementDataTypeMap,
                         entry.getKey(),
