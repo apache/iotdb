@@ -24,7 +24,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTas
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-public class AlterTableDropColumnTask extends AbstractAlterTableTask {
+public class AlterTableDropColumnTask extends AbstractAlterOrDropTableTask {
 
   private final String columnName;
   private final boolean columnIfExists;

@@ -24,7 +24,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTas
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-public class AlterTableRenameColumnTask extends AbstractAlterTableTask {
+public class AlterTableRenameColumnTask extends AbstractAlterOrDropTableTask {
 
   private final String oldName;
 

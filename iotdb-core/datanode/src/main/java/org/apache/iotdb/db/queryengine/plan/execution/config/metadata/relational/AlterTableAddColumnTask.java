@@ -27,7 +27,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.List;
 
-public class AlterTableAddColumnTask extends AbstractAlterTableTask {
+public class AlterTableAddColumnTask extends AbstractAlterOrDropTableTask {
   private final List<TsTableColumnSchema> columnList;
   private final boolean columnIfExists;
 

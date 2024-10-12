@@ -22,7 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relationa
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 
-abstract class AbstractAlterTableTask implements IConfigTask {
+abstract class AbstractAlterOrDropTableTask implements IConfigTask {
 
   protected final String database;
 
@@ -32,7 +32,7 @@ abstract class AbstractAlterTableTask implements IConfigTask {
 
   protected final boolean tableIfExists;
 
-  protected AbstractAlterTableTask(
+  protected AbstractAlterOrDropTableTask(
       String database, final String tableName, final String queryId, final boolean tableIfExists) {
     database = PathUtils.qualifyDatabaseName(database);
     this.database = database;

@@ -26,7 +26,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.Map;
 
-public class AlterTableSetPropertiesTask extends AbstractAlterTableTask {
+public class AlterTableSetPropertiesTask extends AbstractAlterOrDropTableTask {
 
   private final Map<String, String> properties;
 
