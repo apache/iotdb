@@ -547,6 +547,64 @@ public class IoTDBMultiIDsWithAttributesTableIT {
     // TODO(beyyes) add first/last blob type test
   }
 
+  @Test
+  public void globalAggregationTest() {
+    String[] expectedHeader = new String[] {"_col0"};
+    String[] retArray = new String[] {"30,"};
+
+    String sql = "SELECT count(num+1) from table0";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+  }
+
+  @Test
+  public void countStarTest() {
+    expectedHeader = new String[] {"_col0", "_col1"};
+    retArray = new String[] {"1,1,"};
+    String sql = "select count(*),count(t1) from (select avg(num+1) as t1 from table0)";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = new String[] {"count_star"};
+    retArray =
+        new String[] {
+          "30,",
+        };
+    tableResultSetEqualTest(
+        "select count(*) as count_star from table0", expectedHeader, retArray, DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "1,",
+        };
+    tableResultSetEqualTest(
+        "select count(*) as count_star from (select count(*) from table0)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "1,",
+        };
+    tableResultSetEqualTest(
+        "select count(*) as count_star from (select count(*), avg(num) from table0)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"sum"};
+    retArray =
+        new String[] {
+          "38.0,",
+        };
+    tableResultSetEqualTest(
+        "select count_star + avg_num as sum from (select count(*) as count_star, avg(num) as avg_num from table0)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // TODO select count(*),count(t1) from (select avg(num+1) as t1 from table0) where time < 0
+  }
+
   // ============================ Join Test ===========================
   // no filter
   @Test
@@ -829,64 +887,5 @@ public class IoTDBMultiIDsWithAttributesTableIT {
             + "ON t1.time = t2.time \n"
             + "ORDER BY time, t1.device, t2.device";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
-  }
-
-  // ========== Aggregation Test =========
-  @Test
-  public void globalAggregationTest() {
-    String[] expectedHeader = new String[] {"_col0"};
-    String[] retArray = new String[] {"30,"};
-
-    String sql = "SELECT count(num+1) from table0";
-    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
-  }
-
-  @Test
-  public void countStarTest() {
-    expectedHeader = new String[] {"_col0", "_col1"};
-    retArray = new String[] {"1,1,"};
-    String sql = "select count(*),count(t1) from (select avg(num+1) as t1 from table0)";
-    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
-
-    expectedHeader = new String[] {"count_star"};
-    retArray =
-        new String[] {
-          "30,",
-        };
-    tableResultSetEqualTest(
-        "select count(*) as count_star from table0", expectedHeader, retArray, DATABASE_NAME);
-
-    retArray =
-        new String[] {
-          "1,",
-        };
-    tableResultSetEqualTest(
-        "select count(*) as count_star from (select count(*) from table0)",
-        expectedHeader,
-        retArray,
-        DATABASE_NAME);
-
-    retArray =
-        new String[] {
-          "1,",
-        };
-    tableResultSetEqualTest(
-        "select count(*) as count_star from (select count(*), avg(num) from table0)",
-        expectedHeader,
-        retArray,
-        DATABASE_NAME);
-
-    expectedHeader = new String[] {"sum"};
-    retArray =
-        new String[] {
-          "38.0,",
-        };
-    tableResultSetEqualTest(
-        "select count_star + avg_num as sum from (select count(*) as count_star, avg(num) as avg_num from table0)",
-        expectedHeader,
-        retArray,
-        DATABASE_NAME);
-
-    // TODO select count(*),count(t1) from (select avg(num+1) as t1 from table0) where time < 0
   }
 }
