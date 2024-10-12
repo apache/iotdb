@@ -1580,8 +1580,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   @Override
   public void addNodeLocation(final TableNodeLocationAddNode node) throws MetadataException {
-    deviceAttributeCacheUpdater.addLocation(node.getLocation());
-    writeToMLog(node);
+    if (deviceAttributeCacheUpdater.addLocation(node.getLocation())) {
+      writeToMLog(node);
+    }
   }
 
   // endregion

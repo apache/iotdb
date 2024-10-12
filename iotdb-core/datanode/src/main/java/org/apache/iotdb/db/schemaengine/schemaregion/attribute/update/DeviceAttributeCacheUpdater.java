@@ -221,8 +221,8 @@ public class DeviceAttributeCacheUpdater {
     return result;
   }
 
-  public void addLocation(final TDataNodeLocation dataNodeLocation) {
-    targetDataNodeLocations.add(dataNodeLocation);
+  public boolean addLocation(final TDataNodeLocation dataNodeLocation) {
+    return targetDataNodeLocations.add(dataNodeLocation);
   }
 
   public void afterUpdate() {
