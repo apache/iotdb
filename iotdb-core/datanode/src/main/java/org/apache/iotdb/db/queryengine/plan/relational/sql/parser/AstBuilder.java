@@ -301,27 +301,25 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitDropTableStatement(RelationalSqlParser.DropTableStatementContext ctx) {
+  public Node visitDropTableStatement(final RelationalSqlParser.DropTableStatementContext ctx) {
     return new DropTable(
         getLocation(ctx), getQualifiedName(ctx.qualifiedName()), ctx.EXISTS() != null);
   }
 
   @Override
-  public Node visitShowTableStatement(RelationalSqlParser.ShowTableStatementContext ctx) {
-    if (ctx.database == null) {
-      return new ShowTables(getLocation(ctx));
-    } else {
-      return new ShowTables(getLocation(ctx), lowerIdentifier((Identifier) visit(ctx.database)));
-    }
+  public Node visitShowTableStatement(final RelationalSqlParser.ShowTableStatementContext ctx) {
+    return Objects.nonNull(ctx.database)
+        ? new ShowTables(getLocation(ctx), lowerIdentifier((Identifier) visit(ctx.database)))
+        : new ShowTables(getLocation(ctx));
   }
 
   @Override
-  public Node visitDescTableStatement(RelationalSqlParser.DescTableStatementContext ctx) {
+  public Node visitDescTableStatement(final RelationalSqlParser.DescTableStatementContext ctx) {
     return new DescribeTable(getLocation(ctx), getQualifiedName(ctx.table));
   }
 
   @Override
-  public Node visitRenameTable(RelationalSqlParser.RenameTableContext ctx) {
+  public Node visitRenameTable(final RelationalSqlParser.RenameTableContext ctx) {
     return new RenameTable(
         getLocation(ctx),
         getQualifiedName(ctx.from),

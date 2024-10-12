@@ -629,7 +629,7 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitDropTable(DropTable node, Integer indent) {
+    protected Void visitDropTable(final DropTable node, final Integer indent) {
       builder.append("DROP TABLE ");
       if (node.isExists()) {
         builder.append("IF EXISTS ");
