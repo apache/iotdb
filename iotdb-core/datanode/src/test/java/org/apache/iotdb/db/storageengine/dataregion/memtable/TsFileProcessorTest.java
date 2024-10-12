@@ -95,6 +95,7 @@ public class TsFileProcessorTest {
   private QueryContext context;
   private final String systemDir = TestConstant.OUTPUT_DATA_DIR.concat("info");
   private int defaultAvgSeriesPointNumberThreshold;
+  private long defaultTargetChunkSize;
   private static final Logger logger = LoggerFactory.getLogger(TsFileProcessorTest.class);
 
   public TsFileProcessorTest() {}
@@ -106,6 +107,7 @@ public class TsFileProcessorTest {
       Assert.assertTrue(file.getParentFile().mkdirs());
     }
     defaultAvgSeriesPointNumberThreshold = config.getAvgSeriesPointNumberThreshold();
+    defaultTargetChunkSize = config.getTargetChunkSize();
     EnvironmentUtils.envSetUp();
     sgInfo = new DataRegionInfo(new DataRegionTest.DummyDataRegion(systemDir, storageGroup));
     context = EnvironmentUtils.TEST_QUERY_CONTEXT;
@@ -117,6 +119,7 @@ public class TsFileProcessorTest {
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
     EnvironmentUtils.cleanDir(String.format(TestConstant.TEST_TSFILE_PATH, "root.vehicle", 0, 0));
     config.setAvgSeriesPointNumberThreshold(defaultAvgSeriesPointNumberThreshold);
+    config.setTargetChunkSize(defaultTargetChunkSize);
   }
 
   @Test
@@ -262,6 +265,84 @@ public class TsFileProcessorTest {
         RowRecord rowRecord = queryDataSet.next();
         assertEquals(num, rowRecord.getTimestamp());
         assertEquals(num, rowRecord.getFields().get(0).getIntV());
+        num++;
+      }
+    }
+  }
+
+  @Test
+  public void testFlushMultiBinaryChunk()
+      throws IOException, WriteProcessException, MetadataException, ExecutionException {
+    config.setTargetChunkSize(1536L);
+    processor =
+        new TsFileProcessor(
+            storageGroup,
+            SystemFileFactory.INSTANCE.getFile(filePath),
+            sgInfo,
+            this::closeTsFileProcessor,
+            (tsFileProcessor, updateMap, systemFlushTime) -> {},
+            true);
+
+    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
+    processor.setTsFileProcessorInfo(tsFileProcessorInfo);
+    this.sgInfo.initTsFileProcessorInfo(processor);
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
+    List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
+    NonAlignedFullPath fullPath =
+        new NonAlignedFullPath(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
+            new MeasurementSchema(
+                measurementId,
+                TSDataType.TEXT,
+                TSEncoding.PLAIN,
+                CompressionType.UNCOMPRESSED,
+                props));
+    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
+    assertTrue(tsfileResourcesForQuery.isEmpty());
+
+    for (int i = 1; i <= 100; i++) {
+      TSRecord record = new TSRecord(i, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.TEXT, measurementId, String.valueOf(i)));
+      processor.insert(buildInsertRowNodeByTSRecord(record), new long[4]);
+    }
+
+    // query data in memory
+    tsfileResourcesForQuery.clear();
+    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
+
+    TsFileResource tsFileResource = tsfileResourcesForQuery.get(0);
+    assertFalse(tsFileResource.getReadOnlyMemChunk(fullPath).isEmpty());
+    List<ReadOnlyMemChunk> memChunks = tsFileResource.getReadOnlyMemChunk(fullPath);
+    for (ReadOnlyMemChunk chunk : memChunks) {
+      IPointReader iterator = chunk.getPointReader();
+      for (int num = 1; num <= 100; num++) {
+        iterator.hasNextTimeValuePair();
+        TimeValuePair timeValuePair = iterator.nextTimeValuePair();
+        assertEquals(num, timeValuePair.getTimestamp());
+        assertEquals(String.valueOf(num), timeValuePair.getValue().getStringValue());
+      }
+    }
+
+    // flush synchronously
+    processor.syncFlush();
+
+    tsfileResourcesForQuery.clear();
+    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
+    assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk(fullPath).isEmpty());
+    assertEquals(3, tsfileResourcesForQuery.get(0).getChunkMetadataList(fullPath).size());
+    processor.syncClose();
+
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(filePath);
+        TsFileReader readTsFile = new TsFileReader(reader)) {
+      QueryExpression queryExpression =
+          QueryExpression.create(
+              Collections.singletonList(new Path(deviceId, measurementId, false)), null);
+      QueryDataSet queryDataSet = readTsFile.query(queryExpression);
+      int num = 1;
+      while (queryDataSet.hasNext()) {
+        RowRecord rowRecord = queryDataSet.next();
+        assertEquals(num, rowRecord.getTimestamp());
+        assertEquals(String.valueOf(num), rowRecord.getFields().get(0).getStringValue());
         num++;
       }
     }

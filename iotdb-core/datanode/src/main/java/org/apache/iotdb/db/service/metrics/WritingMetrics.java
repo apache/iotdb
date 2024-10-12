@@ -408,7 +408,6 @@ public class WritingMetrics implements IMetricSet {
   public static final String WAL_FLUSH_MEMTABLE_COUNT = "wal_flush_memtable_count";
   public static final String MANUAL_FLUSH_MEMTABLE_COUNT = "manual_flush_memtable_count";
   public static final String MEM_CONTROL_FLUSH_MEMTABLE_COUNT = "mem_control_flush_memtable_count";
-  public static final String SERIES_FULL_FLUSH_MEMTABLE = "series_full_flush_memtable";
 
   private Gauge flushThreholdGauge = DoNothingMetricManager.DO_NOTHING_GAUGE;
   private Gauge rejectThreholdGauge = DoNothingMetricManager.DO_NOTHING_GAUGE;
