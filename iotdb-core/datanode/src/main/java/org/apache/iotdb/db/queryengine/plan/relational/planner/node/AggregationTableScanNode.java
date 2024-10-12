@@ -336,10 +336,15 @@ public class AggregationTableScanNode extends TableScanNode {
     ReadWriteIOUtils.write(pushDownOffset, byteBuffer);
     ReadWriteIOUtils.write(pushLimitToEachDevice, byteBuffer);
 
-    ReadWriteIOUtils.write(projection.getMap().size(), byteBuffer);
-    for (Map.Entry<Symbol, Expression> entry : projection.getMap().entrySet()) {
-      Symbol.serialize(entry.getKey(), byteBuffer);
-      Expression.serialize(entry.getValue(), byteBuffer);
+    if (projection != null) {
+      ReadWriteIOUtils.write(true, byteBuffer);
+      ReadWriteIOUtils.write(projection.getMap().size(), byteBuffer);
+      for (Map.Entry<Symbol, Expression> entry : projection.getMap().entrySet()) {
+        Symbol.serialize(entry.getKey(), byteBuffer);
+        Expression.serialize(entry.getValue(), byteBuffer);
+      }
+    } else {
+      ReadWriteIOUtils.write(false, byteBuffer);
     }
 
     ReadWriteIOUtils.write(aggregations.size(), byteBuffer);
@@ -411,10 +416,15 @@ public class AggregationTableScanNode extends TableScanNode {
     ReadWriteIOUtils.write(pushDownOffset, stream);
     ReadWriteIOUtils.write(pushLimitToEachDevice, stream);
 
-    ReadWriteIOUtils.write(projection.getMap().size(), stream);
-    for (Map.Entry<Symbol, Expression> entry : projection.getMap().entrySet()) {
-      Symbol.serialize(entry.getKey(), stream);
-      Expression.serialize(entry.getValue(), stream);
+    if (projection != null) {
+      ReadWriteIOUtils.write(true, stream);
+      ReadWriteIOUtils.write(projection.getMap().size(), stream);
+      for (Map.Entry<Symbol, Expression> entry : projection.getMap().entrySet()) {
+        Symbol.serialize(entry.getKey(), stream);
+        Expression.serialize(entry.getValue(), stream);
+      }
+    } else {
+      ReadWriteIOUtils.write(false, stream);
     }
 
     ReadWriteIOUtils.write(aggregations.size(), stream);
@@ -484,10 +494,13 @@ public class AggregationTableScanNode extends TableScanNode {
     long pushDownOffset = ReadWriteIOUtils.readLong(byteBuffer);
     boolean pushLimitToEachDevice = ReadWriteIOUtils.readBool(byteBuffer);
 
-    size = ReadWriteIOUtils.readInt(byteBuffer);
     Assignments.Builder projection = Assignments.builder();
-    while (size-- > 0) {
-      projection.put(Symbol.deserialize(byteBuffer), Expression.deserialize(byteBuffer));
+    boolean hasProjection = ReadWriteIOUtils.readBool(byteBuffer);
+    if (hasProjection) {
+      size = ReadWriteIOUtils.readInt(byteBuffer);
+      while (size-- > 0) {
+        projection.put(Symbol.deserialize(byteBuffer), Expression.deserialize(byteBuffer));
+      }
     }
 
     size = ReadWriteIOUtils.readInt(byteBuffer);

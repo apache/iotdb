@@ -155,6 +155,7 @@ import java.util.stream.Collectors;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
@@ -1286,9 +1287,13 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       switch (schema.getColumnCategory()) {
         case ID:
         case ATTRIBUTE:
-          columnsIndexArray[idx] =
-              requireNonNull(idAndAttributeColumnsIndexMap.get(symbol), symbol + " is null");
-          columnSchemas.add(schema);
+          if (columnLayout.containsKey(symbol)) {
+            columnsIndexArray[idx] = columnsIndexArray[columnLayout.get(symbol)];
+          } else {
+            columnsIndexArray[idx] =
+                requireNonNull(idAndAttributeColumnsIndexMap.get(symbol), symbol + " is null");
+            columnSchemas.add(schema);
+          }
           break;
         case MEASUREMENT:
           if (columnLayout.containsKey(symbol)) {
@@ -1303,8 +1308,12 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           }
           break;
         case TIME:
-          columnsIndexArray[idx] = -1;
-          columnSchemas.add(schema);
+          if (columnLayout.containsKey(symbol)) {
+            columnsIndexArray[idx] = columnsIndexArray[columnLayout.get(symbol)];
+          } else {
+            columnsIndexArray[idx] = -1;
+            columnSchemas.add(schema);
+          }
           break;
         default:
           throw new IllegalArgumentException(

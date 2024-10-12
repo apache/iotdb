@@ -38,7 +38,7 @@ public class BoundSignature {
 
   private final String functionName;
   private final Type returnType;
-  private final List<Type> argumentTypes;
+  private List<Type> argumentTypes;
 
   public BoundSignature(String functionName, Type returnType, List<Type> argumentTypes) {
     this.functionName = requireNonNull(functionName, "functionName is null");
@@ -61,6 +61,10 @@ public class BoundSignature {
 
   public Type getArgumentType(int index) {
     return argumentTypes.get(index);
+  }
+
+  public void setArgumentTypes(List<Type> argumentTypes) {
+    this.argumentTypes = argumentTypes;
   }
 
   public List<Type> getArgumentTypes() {

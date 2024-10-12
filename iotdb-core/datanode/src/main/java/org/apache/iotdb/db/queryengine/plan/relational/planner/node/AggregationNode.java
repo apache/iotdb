@@ -31,6 +31,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
+import org.apache.tsfile.read.common.type.LongType;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -534,7 +535,12 @@ public class AggregationNode extends SingleChildProcessNode {
         Optional<OrderingScheme> orderingScheme,
         Optional<Symbol> mask) {
       this.resolvedFunction = requireNonNull(resolvedFunction, "resolvedFunction is null");
-      this.arguments = ImmutableList.copyOf(requireNonNull(arguments, "arguments is null"));
+      if (arguments.isEmpty()) {
+        this.arguments = ImmutableList.of(new SymbolReference("time"));
+        this.resolvedFunction.getSignature().setArgumentTypes(ImmutableList.of(LongType.INT64));
+      } else {
+        this.arguments = requireNonNull(arguments, "arguments is null");
+      }
       for (Expression argument : arguments) {
         checkArgument(
             argument instanceof SymbolReference,

@@ -463,6 +463,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
     String[] expectedHeader =
         new String[] {
           "count_num",
+          "count_star",
           "avg_num",
           "count_num",
           "count_attr2",
@@ -471,32 +472,38 @@ public class IoTDBMultiIDsWithAttributesTableIT {
           "count_attr1",
           "count_device",
           "avg_floatnum",
-          "count_date"
+          "count_date",
+          "count_time",
+          "count_star"
         };
     String[] retArray =
         new String[] {
-          "30,8.0,30,12,8.0,30,15,30,529.0,2,",
+          "30,30,8.0,30,12,8.0,30,15,30,529.0,2,30,30,",
         };
 
     tableResultSetEqualTest(
-        "select count(num) as count_num, avg(num) as avg_num, count(num) as count_num,\n"
+        "select count(num) as count_num, count(*) as count_star, avg(num) as avg_num, count(num) as count_num,\n"
             + "count(attr2) as count_attr2, avg(num) as avg_num, count(device) as count_device,\n"
             + "count(attr1) as count_attr1, count(device) as count_device, \n"
-            + "round(avg(floatnum)) as avg_floatnum, count(date) as count_date from table0",
+            + "round(avg(floatnum)) as avg_floatnum, count(date) as count_date, "
+            + "count(time) as count_time, count(*) as count_star "
+            + "from table0",
         expectedHeader,
         retArray,
         DATABASE_NAME);
 
     retArray =
         new String[] {
-          "8,5.5,8,3,5.5,8,4,8,1341.0,0,",
+          "8,8,5.5,8,3,5.5,8,4,8,1341.0,0,8,8,",
         };
 
     tableResultSetEqualTest(
-        "select count(num) as count_num, avg(num) as avg_num, count(num) as count_num,\n"
+        "select count(num) as count_num, count(*) as count_star, avg(num) as avg_num, count(num) as count_num,\n"
             + "count(attr2) as count_attr2, avg(num) as avg_num, count(device) as count_device,\n"
             + "count(attr1) as count_attr1, count(device) as count_device, \n"
-            + "round(avg(floatnum)) as avg_floatnum, count(date) as count_date from table0 "
+            + "round(avg(floatnum)) as avg_floatnum, count(date) as count_date, "
+            + "count(time) as count_time, count(*) as count_star "
+            + "from table0 "
             + "where time<200 and num>1 ",
         expectedHeader,
         retArray,
@@ -515,18 +522,22 @@ public class IoTDBMultiIDsWithAttributesTableIT {
           "count_device",
           "avg_floatnum",
           "count_date",
-          "count_level"
+          "count_level",
+          "count_time",
+          "count_star"
         };
     retArray =
         new String[] {
-          "8,5.125,8,4,5.125,7,4,7,1134.0,3,7,",
+          "8,5.125,8,4,5.125,7,4,7,1134.0,3,7,8,8,",
         };
 
     tableResultSetEqualTest(
         "select count(num) as count_num, avg(num) as avg_num, count(num) as count_num,\n"
             + "count(attr2) as count_attr2, avg(num) as avg_num, count(device) as count_device,\n"
             + "count(attr1) as count_attr1, count(device) as count_device, \n"
-            + "round(avg(floatnum)) as avg_floatnum, count(date) as count_date, count(level) as count_level from table1",
+            + "round(avg(floatnum)) as avg_floatnum, count(date) as count_date, count(level) as count_level,"
+            + "count(time) as count_time, count(*) as count_star "
+            + "from table1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
