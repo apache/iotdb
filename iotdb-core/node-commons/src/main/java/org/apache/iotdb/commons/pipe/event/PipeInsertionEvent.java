@@ -23,14 +23,8 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 
-import java.util.Objects;
-
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
-
 public abstract class PipeInsertionEvent extends EnrichedEvent {
 
-  private static final String TREE_MODE_PREFIX = PATH_ROOT + PATH_SEPARATOR;
   private final String treeModelDatabaseName;
   private String tableModelDatabaseName; // lazy initialization
 
@@ -77,13 +71,9 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
   public String getTableModelDatabaseName() {
     return tableModelDatabaseName == null
         ? tableModelDatabaseName =
-            treeModelDatabaseName != null && (treeModelDatabaseName.startsWith(TREE_MODE_PREFIX))
+            treeModelDatabaseName != null && treeModelDatabaseName.startsWith("root.")
                 ? treeModelDatabaseName.substring(5)
                 : treeModelDatabaseName
         : tableModelDatabaseName;
-  }
-
-  public boolean isTableModel() {
-    return !Objects.isNull(tableModelDatabaseName) || !Objects.isNull(getTableModelDatabaseName());
   }
 }
