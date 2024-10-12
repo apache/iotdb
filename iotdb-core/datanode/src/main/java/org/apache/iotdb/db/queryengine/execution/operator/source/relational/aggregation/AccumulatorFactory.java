@@ -55,10 +55,14 @@ public class AccumulatorFactory {
       List<Expression> inputExpressions,
       Map<String, String> inputAttributes,
       boolean ascending) {
-    return isMultiInputAggregation(aggregationType)
-        ? createBuiltinMultiInputAccumulator(aggregationType, inputDataTypes)
-        : createBuiltinSingleInputAccumulator(
-            aggregationType, inputDataTypes.get(0), inputExpressions, inputAttributes, ascending);
+    switch (aggregationType) {
+      case COUNT:
+        return new CountAccumulator();
+      case AVG:
+        return new AvgAccumulator(inputDataTypes.get(0));
+      default:
+        throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
+    }
   }
 
   public static boolean isMultiInputAggregation(TAggregationType aggregationType) {

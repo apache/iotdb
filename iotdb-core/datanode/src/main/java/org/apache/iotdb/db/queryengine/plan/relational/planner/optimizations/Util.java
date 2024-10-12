@@ -27,7 +27,7 @@ import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Pair;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -46,8 +46,8 @@ public class Util {
    */
   public static Pair<AggregationNode, AggregationNode> split(
       AggregationNode node, SymbolAllocator symbolAllocator, QueryId queryId) {
-    Map<Symbol, AggregationNode.Aggregation> intermediateAggregation = new HashMap<>();
-    Map<Symbol, AggregationNode.Aggregation> finalAggregation = new HashMap<>();
+    Map<Symbol, AggregationNode.Aggregation> intermediateAggregation = new LinkedHashMap<>();
+    Map<Symbol, AggregationNode.Aggregation> finalAggregation = new LinkedHashMap<>();
     for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
       AggregationNode.Aggregation originalAggregation = entry.getValue();
       ResolvedFunction resolvedFunction = originalAggregation.getResolvedFunction();
@@ -116,8 +116,8 @@ public class Util {
    */
   public static Pair<AggregationNode, AggregationTableScanNode> split(
       AggregationTableScanNode node, SymbolAllocator symbolAllocator, QueryId queryId) {
-    Map<Symbol, AggregationNode.Aggregation> intermediateAggregation = new HashMap<>();
-    Map<Symbol, AggregationNode.Aggregation> finalAggregation = new HashMap<>();
+    Map<Symbol, AggregationNode.Aggregation> intermediateAggregation = new LinkedHashMap<>();
+    Map<Symbol, AggregationNode.Aggregation> finalAggregation = new LinkedHashMap<>();
     for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
       AggregationNode.Aggregation originalAggregation = entry.getValue();
       ResolvedFunction resolvedFunction = originalAggregation.getResolvedFunction();
