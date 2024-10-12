@@ -36,6 +36,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
@@ -76,6 +77,17 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
     return req;
   }
 
+  public static PipeTransferTabletInsertNodeReq toTPipeTransferRawReqV2(
+          final InsertNode insertNode, final String dataBaseName) {
+    final PipeTransferTabletInsertNodeReq req = new PipeTransferTabletInsertNodeReq();
+
+    req.insertNode = insertNode;
+    req.dataBaseName = dataBaseName;
+    req.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
+    req.type = PipeRequestType.TRANSFER_TABLET_INSERT_NODE_V2.getType();
+    return req;
+  }
+
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeTransferTabletInsertNodeReq toTPipeTransferReq(final InsertNode insertNode) {
@@ -90,17 +102,26 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
     return req;
   }
 
-  public static PipeTransferTabletInsertNodeReq toTPipeTransferRawReqV2(
-      final InsertNode insertNode, final String dataBaseName) {
+  public static PipeTransferTabletInsertNodeReq toTPipeTransferReqV2(final InsertNode insertNode,final String dataBaseName) {
     final PipeTransferTabletInsertNodeReq req = new PipeTransferTabletInsertNodeReq();
 
     req.insertNode = insertNode;
-    req.dataBaseName = dataBaseName;
+
     req.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
     req.type = PipeRequestType.TRANSFER_TABLET_INSERT_NODE_V2.getType();
     req.body = insertNode.serializeToByteBuffer();
 
-    return req;
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      insertNode.serialize(outputStream);
+      ReadWriteIOUtils.write(dataBaseName, outputStream);
+      req.body =
+              ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    } catch (IOException e) {
+        throw new RuntimeException(e);
+    }
+
+      return req;
   }
 
   public static PipeTransferTabletInsertNodeReq fromTPipeTransferReq(
@@ -109,6 +130,22 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
 
     insertNodeReq.insertNode = (InsertNode) PlanNodeType.deserialize(transferReq.body);
 
+    transferReq.body.position(0);
+    insertNodeReq.version = transferReq.version;
+    insertNodeReq.type = transferReq.type;
+    insertNodeReq.body = transferReq.body;
+
+    return insertNodeReq;
+  }
+
+  public static PipeTransferTabletInsertNodeReq fromTPipeTransferReqV2(
+          final TPipeTransferReq transferReq) {
+    final PipeTransferTabletInsertNodeReq insertNodeReq = new PipeTransferTabletInsertNodeReq();
+
+    insertNodeReq.insertNode = (InsertNode) PlanNodeType.deserialize(transferReq.body);
+    insertNodeReq.dataBaseName = ReadWriteIOUtils.readString(transferReq.body);
+
+    transferReq.body.position(0);
     insertNodeReq.version = transferReq.version;
     insertNodeReq.type = transferReq.type;
     insertNodeReq.body = transferReq.body;

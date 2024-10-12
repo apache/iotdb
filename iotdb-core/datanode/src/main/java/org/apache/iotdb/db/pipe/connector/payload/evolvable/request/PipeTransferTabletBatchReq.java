@@ -222,6 +222,7 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
               Tablet.deserialize(transferReq.body), ReadWriteIOUtils.readBool(transferReq.body)));
     }
 
+    transferReq.body.position(0);
     batchReq.version = transferReq.version;
     batchReq.type = transferReq.type;
     batchReq.body = transferReq.body;
@@ -260,6 +261,7 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
               ReadWriteIOUtils.readString(transferReq.body)));
     }
 
+    transferReq.body.position(0);
     batchReq.version = transferReq.version;
     batchReq.type = transferReq.type;
     batchReq.body = transferReq.body;

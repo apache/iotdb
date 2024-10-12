@@ -77,8 +77,8 @@ public class PipeTransferTabletBinaryReq extends TPipeTransferReq {
     final PipeTransferTabletBinaryReq req = new PipeTransferTabletBinaryReq();
     req.byteBuffer = byteBuffer;
     req.dataBaseName = dataBaseName;
-    req.version = IoTDBConnectorRequestVersion.VERSION_2.getVersion();
-    req.type = PipeRequestType.TRANSFER_TABLET_BINARY.getType();
+    req.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
+    req.type = PipeRequestType.TRANSFER_TABLET_BINARY_V2.getType();
 
     return req;
   }
@@ -101,6 +101,7 @@ public class PipeTransferTabletBinaryReq extends TPipeTransferReq {
     final PipeTransferTabletBinaryReq binaryReq = new PipeTransferTabletBinaryReq();
     binaryReq.byteBuffer = transferReq.body;
 
+    transferReq.body.position(0);
     binaryReq.version = transferReq.version;
     binaryReq.type = transferReq.type;
     binaryReq.body = transferReq.body;
@@ -113,8 +114,8 @@ public class PipeTransferTabletBinaryReq extends TPipeTransferReq {
     final PipeTransferTabletBinaryReq req = new PipeTransferTabletBinaryReq();
     req.byteBuffer = byteBuffer;
     req.dataBaseName = dataBaseName;
-    req.version = IoTDBConnectorRequestVersion.VERSION_2.getVersion();
-    req.type = PipeRequestType.TRANSFER_TABLET_BINARY.getType();
+    req.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
+    req.type = PipeRequestType.TRANSFER_TABLET_BINARY_V2.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(byteBuffer.limit(), outputStream);
@@ -136,6 +137,7 @@ public class PipeTransferTabletBinaryReq extends TPipeTransferReq {
     binaryReq.byteBuffer = ByteBuffer.wrap(body);
     binaryReq.dataBaseName = ReadWriteIOUtils.readString(transferReq.body);
 
+    transferReq.body.position(0);
     binaryReq.version = transferReq.version;
     binaryReq.type = transferReq.type;
     binaryReq.body = transferReq.body;
