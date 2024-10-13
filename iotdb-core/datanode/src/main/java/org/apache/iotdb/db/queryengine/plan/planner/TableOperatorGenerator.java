@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
+import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.SingleTimeWindowIterator;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
@@ -37,10 +39,22 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.CollectOperato
 import org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.LimitOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.PreviousFillWithGroupOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TableFillOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TableLinearFillOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TableLinearFillWithGroupOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableMergeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableStreamSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableTopKOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.ILinearFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.BinaryConstantFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.BooleanConstantFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.DoubleConstantFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.FloatConstantFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.IntConstantFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.LongConstantFill;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.CountMergeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaCountOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaQueryScanOperator;
@@ -49,12 +63,13 @@ import org.apache.iotdb.db.queryengine.execution.operator.schema.source.SchemaSo
 import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableAggregationTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableFullOuterJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableInnerJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Accumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAggregator;
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -71,34 +86,53 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOpt
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToBlobLiteralVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToBooleanLiteralVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToDateLiteralVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToDoubleLiteralVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToFloatLiteralVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToInt32LiteralVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToInt64LiteralVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToStringLiteralVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToTimestampLiteralVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
+import org.apache.iotdb.db.utils.datastructure.SortKey;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.BlobType;
 import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
@@ -107,6 +141,7 @@ import javax.validation.constraints.NotNull;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -121,14 +156,22 @@ import java.util.stream.Collectors;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.createAccumulator;
 import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.convertPredicateToFilter;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.ASC_TIME_COMPARATOR;
+import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.IDENTITY_FILL;
+import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.UNKNOWN_DATATYPE;
+import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.getLinearFill;
+import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.getPreviousFill;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableBuiltinAggregationFunction.getAggregationTypeByFuncName;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST;
 
 /** This Visitor is responsible for transferring Table PlanNode Tree to Table Operator Tree. */
 public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecutionPlanContext> {
@@ -318,7 +361,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             node.getPlanNodeId(),
             columnSchemas,
             columnsIndexArray,
-            measurementColumnCount,
             node.getDeviceEntries(),
             node.getScanOrder(),
             scanOptionsBuilder.build(),
@@ -355,6 +397,16 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       tsBlockIndex++;
     }
     return outputMappings;
+  }
+
+  private ImmutableMap<Symbol, Integer> makeLayoutFromOutputSymbols(List<Symbol> outputSymbols) {
+    ImmutableMap.Builder<Symbol, Integer> outputMappings = ImmutableMap.builder();
+    int channel = 0;
+    for (Symbol symbol : outputSymbols) {
+      outputMappings.put(symbol, channel);
+      channel++;
+    }
+    return outputMappings.buildOrThrow();
   }
 
   private SeriesScanOptions.Builder getSeriesScanOptionsBuilder(
@@ -514,6 +566,216 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         .flatMap(List::stream)
         .map(s -> getTSDataType(typeProvider.getTableModelType(s)))
         .collect(Collectors.toList());
+  }
+
+  @Override
+  public Operator visitPreviousFill(PreviousFillNode node, LocalExecutionPlanContext context) {
+    Operator child = node.getChild().accept(this, context);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                TableFillOperator.class.getSimpleName());
+    List<TSDataType> inputDataTypes =
+        getOutputColumnTypes(node.getChild(), context.getTypeProvider());
+    int inputColumnCount = inputDataTypes.size();
+    int helperColumnIndex = -1;
+    if (node.getHelperColumn().isPresent()) {
+      helperColumnIndex = getColumnIndex(node.getHelperColumn().get(), node.getChild());
+    }
+    IFill[] fillArray =
+        getPreviousFill(
+            inputColumnCount,
+            inputDataTypes,
+            node.getTimeBound().orElse(null),
+            context.getZoneId());
+
+    if (node.getGroupingKeys().isPresent()) {
+      return new PreviousFillWithGroupOperator(
+          operatorContext,
+          fillArray,
+          child,
+          helperColumnIndex,
+          genFillGroupKeyComparator(node.getGroupingKeys().get(), node, inputDataTypes),
+          inputDataTypes);
+    } else {
+      return new TableFillOperator(operatorContext, fillArray, child, helperColumnIndex);
+    }
+  }
+
+  private Comparator<SortKey> genFillGroupKeyComparator(
+      List<Symbol> groupingKeys, FillNode node, List<TSDataType> inputDataTypes) {
+    int groupKeysCount = groupingKeys.size();
+    List<SortOrder> sortOrderList = new ArrayList<>(groupKeysCount);
+    List<Integer> groupItemIndexList = new ArrayList<>(groupKeysCount);
+    List<TSDataType> groupItemDataTypeList = new ArrayList<>(groupKeysCount);
+    Map<Symbol, Integer> columnIndex =
+        makeLayoutFromOutputSymbols(node.getChild().getOutputSymbols());
+    for (Symbol symbol : groupingKeys) {
+      // sort order for fill_group should always be ASC_NULLS_LAST, it should be same as
+      // QueryPlanner.fillGroup
+      sortOrderList.add(ASC_NULLS_LAST);
+      int index = columnIndex.get(symbol);
+      groupItemIndexList.add(index);
+      groupItemDataTypeList.add(inputDataTypes.get(index));
+    }
+    return getComparatorForTable(sortOrderList, groupItemIndexList, groupItemDataTypeList);
+  }
+
+  // index starts from 0
+  private int getColumnIndex(Symbol symbol, PlanNode node) {
+    String name = symbol.getName();
+    int channel = 0;
+    for (Symbol columnName : node.getOutputSymbols()) {
+      if (columnName.getName().equals(name)) {
+        return channel;
+      }
+      channel++;
+    }
+    throw new IllegalStateException(
+        String.format("Found no column %s in %s", symbol, node.getOutputSymbols()));
+  }
+
+  @Override
+  public Operator visitLinearFill(LinearFillNode node, LocalExecutionPlanContext context) {
+    Operator child = node.getChild().accept(this, context);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                TableFillOperator.class.getSimpleName());
+    List<TSDataType> inputDataTypes =
+        getOutputColumnTypes(node.getChild(), context.getTypeProvider());
+    int inputColumnCount = inputDataTypes.size();
+    int helperColumnIndex = getColumnIndex(node.getHelperColumn(), node.getChild());
+    ILinearFill[] fillArray = getLinearFill(inputColumnCount, inputDataTypes);
+
+    if (node.getGroupingKeys().isPresent()) {
+      return new TableLinearFillWithGroupOperator(
+          operatorContext,
+          fillArray,
+          child,
+          helperColumnIndex,
+          genFillGroupKeyComparator(node.getGroupingKeys().get(), node, inputDataTypes),
+          inputDataTypes);
+    } else {
+      return new TableLinearFillOperator(operatorContext, fillArray, child, helperColumnIndex);
+    }
+  }
+
+  @Override
+  public Operator visitValueFill(ValueFillNode node, LocalExecutionPlanContext context) {
+    Operator child = node.getChild().accept(this, context);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                TableFillOperator.class.getSimpleName());
+    List<TSDataType> inputDataTypes =
+        getOutputColumnTypes(node.getChild(), context.getTypeProvider());
+    int inputColumnCount = inputDataTypes.size();
+    Literal filledValue = node.getFilledValue();
+    return new TableFillOperator(
+        operatorContext,
+        getValueFill(inputColumnCount, inputDataTypes, filledValue, context),
+        child,
+        -1);
+  }
+
+  private IFill[] getValueFill(
+      int inputColumnCount,
+      List<TSDataType> inputDataTypes,
+      Literal filledValue,
+      LocalExecutionPlanContext context) {
+    IFill[] constantFill = new IFill[inputColumnCount];
+    for (int i = 0; i < inputColumnCount; i++) {
+      switch (inputDataTypes.get(i)) {
+        case BOOLEAN:
+          Boolean bool = filledValue.accept(new CastToBooleanLiteralVisitor(), null);
+          if (bool == null) {
+            constantFill[i] = IDENTITY_FILL;
+          } else {
+            constantFill[i] = new BooleanConstantFill(bool);
+          }
+          break;
+        case TEXT:
+        case STRING:
+          Binary binary =
+              filledValue.accept(new CastToStringLiteralVisitor(TSFileConfig.STRING_CHARSET), null);
+          if (binary == null) {
+            constantFill[i] = IDENTITY_FILL;
+          } else {
+            constantFill[i] = new BinaryConstantFill(binary);
+          }
+          break;
+        case BLOB:
+          Binary blob = filledValue.accept(new CastToBlobLiteralVisitor(), null);
+          if (blob == null) {
+            constantFill[i] = IDENTITY_FILL;
+          } else {
+            constantFill[i] = new BinaryConstantFill(blob);
+          }
+          break;
+        case INT32:
+          Integer intValue = filledValue.accept(new CastToInt32LiteralVisitor(), null);
+          if (intValue == null) {
+            constantFill[i] = IDENTITY_FILL;
+          } else {
+            constantFill[i] = new IntConstantFill(intValue);
+          }
+          break;
+        case DATE:
+          Integer dateValue = filledValue.accept(new CastToDateLiteralVisitor(), null);
+          if (dateValue == null) {
+            constantFill[i] = IDENTITY_FILL;
+          } else {
+            constantFill[i] = new IntConstantFill(dateValue);
+          }
+          break;
+        case INT64:
+          Long longValue = filledValue.accept(new CastToInt64LiteralVisitor(), null);
+          if (longValue == null) {
+            constantFill[i] = IDENTITY_FILL;
+          } else {
+            constantFill[i] = new LongConstantFill(longValue);
+          }
+          break;
+        case TIMESTAMP:
+          Long timestampValue =
+              filledValue.accept(new CastToTimestampLiteralVisitor(context.getZoneId()), null);
+          if (timestampValue == null) {
+            constantFill[i] = IDENTITY_FILL;
+          } else {
+            constantFill[i] = new LongConstantFill(timestampValue);
+          }
+          break;
+        case FLOAT:
+          Float floatValue = filledValue.accept(new CastToFloatLiteralVisitor(), null);
+          if (floatValue == null) {
+            constantFill[i] = IDENTITY_FILL;
+          } else {
+            constantFill[i] = new FloatConstantFill(floatValue);
+          }
+          break;
+        case DOUBLE:
+          Double doubleValue = filledValue.accept(new CastToDoubleLiteralVisitor(), null);
+          if (doubleValue == null) {
+            constantFill[i] = IDENTITY_FILL;
+          } else {
+            constantFill[i] = new DoubleConstantFill(doubleValue);
+          }
+          break;
+        default:
+          throw new IllegalArgumentException(UNKNOWN_DATATYPE + inputDataTypes.get(i));
+      }
+    }
+    return constantFill;
   }
 
   @Override
@@ -943,7 +1205,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       AggregationNode node, Operator child, TypeProvider typeProvider, OperatorContext context) {
 
     Map<Symbol, AggregationNode.Aggregation> aggregationMap = node.getAggregations();
-    ImmutableList.Builder<Aggregator> aggregatorBuilder = new ImmutableList.Builder<>();
+    ImmutableList.Builder<TableAggregator> aggregatorBuilder = new ImmutableList.Builder<>();
     Map<Symbol, Integer> childLayout =
         makeLayoutFromOutputSymbols(node.getChild().getOutputSymbols());
 
@@ -952,22 +1214,17 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             symbol ->
                 aggregatorBuilder.add(
                     buildAggregator(
-                        childLayout, aggregationMap.get(symbol), node.getStep(), typeProvider)));
+                        childLayout,
+                        symbol,
+                        aggregationMap.get(symbol),
+                        node.getStep(),
+                        typeProvider)));
     return new AggregationOperator(context, child, aggregatorBuilder.build());
   }
 
-  private ImmutableMap<Symbol, Integer> makeLayoutFromOutputSymbols(List<Symbol> outputSymbols) {
-    ImmutableMap.Builder<Symbol, Integer> outputMappings = ImmutableMap.builder();
-    int channel = 0;
-    for (Symbol symbol : outputSymbols) {
-      outputMappings.put(symbol, channel);
-      channel++;
-    }
-    return outputMappings.buildOrThrow();
-  }
-
-  private Aggregator buildAggregator(
+  private TableAggregator buildAggregator(
       Map<Symbol, Integer> childLayout,
+      Symbol symbol,
       AggregationNode.Aggregation aggregation,
       AggregationNode.Step step,
       TypeProvider typeProvider) {
@@ -987,7 +1244,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     }
 
     String functionName = aggregation.getResolvedFunction().getSignature().getName();
-    Accumulator accumulator =
+    TableAccumulator accumulator =
         createAccumulator(
             functionName,
             getAggregationTypeByFuncName(functionName),
@@ -996,10 +1253,10 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             Collections.emptyMap(),
             true);
 
-    return new Aggregator(
+    return new TableAggregator(
         accumulator,
         step,
-        getTSDataType(aggregation.getResolvedFunction().getSignature().getReturnType()),
+        getTSDataType(typeProvider.getTableModelType(symbol)),
         argumentChannels,
         OptionalInt.empty());
   }
@@ -1007,6 +1264,197 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   @Override
   public Operator visitAggregationTableScan(
       AggregationTableScanNode node, LocalExecutionPlanContext context) {
-    throw new UnsupportedOperationException("Agg-BE not supported");
+
+    List<TableAggregator> aggregators = new ArrayList<>(node.getAggregations().size());
+    Map<Symbol, Integer> columnLayout = new HashMap<>(node.getAggregations().size());
+
+    int aggregationsCount = node.getAggregations().size();
+    int[] layoutArray = new int[aggregationsCount];
+    int channel = 0;
+    int idx = -1;
+    int measurementColumnCount = 0;
+    boolean canUseStatistic = true;
+    Map<Symbol, Integer> idAndAttributeColumnsIndexMap = node.getIdAndAttributeIndexMap();
+    Map<Symbol, ColumnSchema> columnSchemaMap = node.getAssignments();
+    List<ColumnSchema> columnSchemas = new ArrayList<>(aggregationsCount);
+    int[] columnsIndexArray = new int[aggregationsCount];
+    List<String> measurementColumnNames = new ArrayList<>();
+    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+
+    List<ColumnSchema> groupingKeySchemas = null;
+    int[] groupingKeyIndex = null;
+    if (!node.getGroupingKeys().isEmpty()) {
+      groupingKeySchemas = new ArrayList<>(node.getGroupingKeys().size());
+      groupingKeyIndex = new int[node.getGroupingKeys().size()];
+      for (int i = 0; i < node.getGroupingKeys().size(); i++) {
+        Symbol groupingKey = node.getGroupingKeys().get(i);
+
+        checkArgument(
+            idAndAttributeColumnsIndexMap.containsKey(groupingKey),
+            "grouping key must be ID or Attribute in AggregationTableScan");
+        groupingKeySchemas.add(columnSchemaMap.get(groupingKey));
+        groupingKeyIndex[i] = idAndAttributeColumnsIndexMap.get(groupingKey);
+      }
+    }
+
+    // TODO test aggregation function which has more than one arguements
+    for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
+      idx++;
+      Symbol symbol = Symbol.from(entry.getValue().getArguments().get(0));
+      ColumnSchema schema = requireNonNull(columnSchemaMap.get(symbol), symbol + " is null");
+
+      String funcName = entry.getValue().getResolvedFunction().getSignature().getName();
+      if (schema.getType().equals(BlobType.BLOB)
+          && (FIRST.equals(funcName) || LAST.equals(funcName))) {
+        // first/last aggregation with BLOB type can not use statistics
+        canUseStatistic = false;
+      }
+
+      switch (schema.getColumnCategory()) {
+        case ID:
+        case ATTRIBUTE:
+          if (columnLayout.containsKey(symbol)) {
+            columnsIndexArray[idx] = columnsIndexArray[columnLayout.get(symbol)];
+          } else {
+            columnsIndexArray[idx] =
+                requireNonNull(idAndAttributeColumnsIndexMap.get(symbol), symbol + " is null");
+            columnSchemas.add(schema);
+          }
+          break;
+        case MEASUREMENT:
+          if (columnLayout.containsKey(symbol)) {
+            columnsIndexArray[idx] = columnsIndexArray[columnLayout.get(symbol)];
+          } else {
+            columnsIndexArray[idx] = measurementColumnCount;
+            measurementColumnCount++;
+            measurementColumnNames.add(symbol.getName());
+            measurementSchemas.add(
+                new MeasurementSchema(schema.getName(), getTSDataType(schema.getType())));
+            columnSchemas.add(schema);
+          }
+          break;
+        case TIME:
+          if (columnLayout.containsKey(symbol)) {
+            columnsIndexArray[idx] = columnsIndexArray[columnLayout.get(symbol)];
+          } else {
+            columnsIndexArray[idx] = -1;
+            columnSchemas.add(schema);
+          }
+          break;
+        default:
+          throw new IllegalArgumentException(
+              "Unexpected column category: " + schema.getColumnCategory());
+      }
+
+      if (!columnLayout.containsKey(symbol)) {
+        layoutArray[idx] = channel;
+        columnLayout.put(symbol, channel++);
+      } else {
+        layoutArray[idx] = columnLayout.get(symbol);
+      }
+
+      aggregators.add(
+          buildAggregator(
+              columnLayout,
+              entry.getKey(),
+              entry.getValue(),
+              node.getStep(),
+              context.getTypeProvider()));
+    }
+
+    for (Map.Entry<Symbol, ColumnSchema> entry : node.getAssignments().entrySet()) {
+      if (!columnLayout.containsKey(entry.getKey())
+          && entry.getValue().getColumnCategory() == MEASUREMENT) {
+        measurementColumnCount++;
+        measurementColumnNames.add(entry.getKey().getName());
+        measurementSchemas.add(
+            new MeasurementSchema(
+                entry.getValue().getName(), getTSDataType(entry.getValue().getType())));
+      }
+    }
+
+    final OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                AggregationTableScanNode.class.getSimpleName());
+    SeriesScanOptions.Builder scanOptionsBuilder =
+        node.getTimePredicate()
+            .map(timePredicate -> getSeriesScanOptionsBuilder(context, timePredicate))
+            .orElse(new SeriesScanOptions.Builder());
+    scanOptionsBuilder.withPushDownLimit(node.getPushDownLimit());
+    scanOptionsBuilder.withPushDownOffset(node.getPushDownOffset());
+    scanOptionsBuilder.withPushLimitToEachDevice(node.isPushLimitToEachDevice());
+    scanOptionsBuilder.withAllSensors(new HashSet<>(measurementColumnNames));
+    Expression pushDownPredicate = node.getPushDownPredicate();
+    if (pushDownPredicate != null) {
+      scanOptionsBuilder.withPushDownFilter(
+          convertPredicateToFilter(pushDownPredicate, measurementColumnNames, columnSchemaMap));
+    }
+    ITimeRangeIterator timeRangeIterator =
+        new SingleTimeWindowIterator(Long.MIN_VALUE, Long.MAX_VALUE);
+    TableAggregationTableScanOperator aggTableScanOperator =
+        new TableAggregationTableScanOperator(
+            node.getPlanNodeId(),
+            operatorContext,
+            columnSchemas,
+            columnsIndexArray,
+            node.getDeviceEntries(),
+            node.getScanOrder(),
+            scanOptionsBuilder.build(),
+            measurementColumnNames,
+            measurementSchemas,
+            TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber(),
+            measurementColumnCount,
+            aggregators,
+            groupingKeySchemas,
+            groupingKeyIndex,
+            timeRangeIterator,
+            false,
+            null,
+            calculateMaxAggregationResultSize(),
+            canUseStatistic,
+            layoutArray);
+
+    ((DataDriverContext) context.getDriverContext()).addSourceOperator(aggTableScanOperator);
+
+    for (int i = 0, size = node.getDeviceEntries().size(); i < size; i++) {
+      AlignedFullPath alignedPath =
+          constructAlignedPath(
+              node.getDeviceEntries().get(i), measurementColumnNames, measurementSchemas);
+      ((DataDriverContext) context.getDriverContext()).addPath(alignedPath);
+    }
+
+    context.getDriverContext().setInputDriver(true);
+
+    return aggTableScanOperator;
+  }
+
+  public static long calculateMaxAggregationResultSize(
+      // List<? extends AggregationDescriptor> aggregationDescriptors,
+      // ITimeRangeIterator timeRangeIterator
+      ) {
+    // TODO perfect max aggregation result size logic
+    return TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+
+    //    long timeValueColumnsSizePerLine = TimeColumn.SIZE_IN_BYTES_PER_POSITION;
+    //    for (AggregationDescriptor descriptor : aggregationDescriptors) {
+    //      List<TSDataType> outPutDataTypes =
+    //              descriptor.getOutputColumnNames().stream()
+    //                      .map(typeProvider::getTableModelType)
+    //                      .collect(Collectors.toList());
+    //      for (TSDataType tsDataType : outPutDataTypes) {
+    //        timeValueColumnsSizePerLine += getOutputColumnSizePerLine(tsDataType);
+    //      }
+    //    }
+    //
+    //    return Math.min(
+    //            TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
+    //            Math.min(
+    //                    TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber(),
+    //                    timeRangeIterator.getTotalIntervalNum())
+    //                    * timeValueColumnsSizePerLine);
   }
 }

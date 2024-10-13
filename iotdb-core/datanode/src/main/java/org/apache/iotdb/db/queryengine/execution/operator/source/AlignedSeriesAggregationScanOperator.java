@@ -21,7 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source;
 
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -47,7 +47,7 @@ public class AlignedSeriesAggregationScanOperator extends AbstractSeriesAggregat
       Ordering scanOrder,
       SeriesScanOptions scanOptions,
       OperatorContext context,
-      List<Aggregator> aggregators,
+      List<TreeAggregator> aggregators,
       ITimeRangeIterator timeRangeIterator,
       GroupByTimeParameter groupByTimeParameter,
       long maxReturnSize,
@@ -73,7 +73,7 @@ public class AlignedSeriesAggregationScanOperator extends AbstractSeriesAggregat
       boolean outputEndTime,
       SeriesScanOptions scanOptions,
       OperatorContext context,
-      List<Aggregator> aggregators,
+      List<TreeAggregator> aggregators,
       ITimeRangeIterator timeRangeIterator,
       GroupByTimeParameter groupByTimeParameter,
       long maxReturnSize,

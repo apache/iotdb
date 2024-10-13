@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.aggregation.slidingwindow;
 
 import org.apache.iotdb.db.queryengine.execution.aggregation.Accumulator;
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 
@@ -37,7 +37,7 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public abstract class SlidingWindowAggregator extends Aggregator {
+public abstract class SlidingWindowAggregator extends TreeAggregator {
 
   // cached partial aggregation result of pre-aggregate windows
   protected Deque<PartialAggregationResult> deque;

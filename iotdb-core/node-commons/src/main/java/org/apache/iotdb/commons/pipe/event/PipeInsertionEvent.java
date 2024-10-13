@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 
 public abstract class PipeInsertionEvent extends EnrichedEvent {
 
+  private Boolean isTableModelEvent; // lazy initialization
+
   private final String treeModelDatabaseName;
   private String tableModelDatabaseName; // lazy initialization
 
@@ -36,9 +38,11 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
       final TablePattern tablePattern,
       final long startTime,
       final long endTime,
+      final Boolean isTableModelEvent,
       final String treeModelDatabaseName,
       final String tableModelDatabaseName) {
     super(pipeName, creationTime, pipeTaskMeta, treePattern, tablePattern, startTime, endTime);
+    this.isTableModelEvent = isTableModelEvent;
     this.treeModelDatabaseName = treeModelDatabaseName;
     this.tableModelDatabaseName = tableModelDatabaseName;
   }
@@ -51,6 +55,7 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
       final TablePattern tablePattern,
       final long startTime,
       final long endTime,
+      final Boolean isTableModelEvent,
       final String databaseNameFromDataRegion) {
     this(
         pipeName,
@@ -60,8 +65,29 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
         tablePattern,
         startTime,
         endTime,
+        isTableModelEvent,
         databaseNameFromDataRegion,
         null);
+  }
+
+  public void markAsTableModelEvent() {
+    isTableModelEvent = true;
+  }
+
+  public void markAsTreeModelEvent() {
+    isTableModelEvent = false;
+  }
+
+  public boolean isTableModelEvent() {
+    if (isTableModelEvent == null) {
+      throw new IllegalStateException("isTableModelEvent is not initialized");
+    }
+    return isTableModelEvent;
+  }
+
+  /** Only for internal use. */
+  public Boolean getRawIsTableModelEvent() {
+    return isTableModelEvent;
   }
 
   public String getTreeModelDatabaseName() {

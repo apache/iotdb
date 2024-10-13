@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
@@ -49,6 +50,8 @@ import java.util.Calendar;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
+import static org.apache.iotdb.rpc.TSStatusCode.NUMERIC_VALUE_OUT_OF_RANGE;
+
 public class DateTimeUtils {
 
   private DateTimeUtils() {
@@ -59,17 +62,26 @@ public class DateTimeUtils {
       CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
 
   public static long correctPrecision(long millis) {
-    switch (TIMESTAMP_PRECISION) {
-      case "us":
-      case "microsecond":
-        return millis * 1_000L;
-      case "ns":
-      case "nanosecond":
-        return millis * 1_000_000L;
-      case "ms":
-      case "millisecond":
-      default:
-        return millis;
+    try {
+      switch (TIMESTAMP_PRECISION) {
+        case "us":
+        case "microsecond":
+          return Math.multiplyExact(millis, 1_000L);
+        case "ns":
+        case "nanosecond":
+          return Math.multiplyExact(millis, 1_000_000L);
+        case "ms":
+        case "millisecond":
+        default:
+          return millis;
+      }
+    } catch (ArithmeticException e) {
+      throw new IoTDBRuntimeException(
+          String.format(
+              "Timestamp overflow, Millisecond: %s , Timestamp precision: %s",
+              millis, TIMESTAMP_PRECISION),
+          NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),
+          true);
     }
   }
 

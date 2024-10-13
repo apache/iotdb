@@ -170,6 +170,8 @@ public class PipeInfo implements SnapshotProcessor {
               .handleSinglePipeMetaChanges(
                   pipeTaskInfo.getPipeMetaByPipeName(plan.getPipeStaticMeta().getPipeName()));
       if (message == null) {
+        PipeConfigNodeAgent.runtime()
+            .increaseListenerReference(plan.getPipeStaticMeta().getExtractorParameters());
         pipeMetaBeforeAlter.ifPresent(
             meta -> {
               try {
@@ -179,8 +181,6 @@ public class PipeInfo implements SnapshotProcessor {
                 throw new PipeException("Failed to decrease listener reference", e);
               }
             });
-        PipeConfigNodeAgent.runtime()
-            .increaseListenerReference(plan.getPipeStaticMeta().getExtractorParameters());
         PipeTemporaryMetaMetrics.getInstance()
             .handleTemporaryMetaChanges(pipeTaskInfo.getPipeMetaList());
         return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());

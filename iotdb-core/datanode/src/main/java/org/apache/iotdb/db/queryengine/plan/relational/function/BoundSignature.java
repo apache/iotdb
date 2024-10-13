@@ -55,10 +55,6 @@ public class BoundSignature {
     return returnType;
   }
 
-  public int getArity() {
-    return argumentTypes.size();
-  }
-
   public Type getArgumentType(int index) {
     return argumentTypes.get(index);
   }

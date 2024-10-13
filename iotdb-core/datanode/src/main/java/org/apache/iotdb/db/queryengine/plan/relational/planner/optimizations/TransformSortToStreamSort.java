@@ -141,11 +141,13 @@ public class TransformSortToStreamSort implements PlanOptimizer {
       return node;
     }
 
+    @Override
     public PlanNode visitAggregation(AggregationNode node, Context context) {
       context.setCanTransform(false);
       return visitSingleChildProcess(node, context);
     }
 
+    @Override
     public PlanNode visitAggregationTableScan(AggregationTableScanNode node, Context context) {
       context.setCanTransform(false);
       return visitTableScan(node, context);
@@ -154,6 +156,7 @@ public class TransformSortToStreamSort implements PlanOptimizer {
 
   private static class Context {
     private TableScanNode tableScanNode;
+
     private boolean canTransform = true;
 
     public TableScanNode getTableScanNode() {

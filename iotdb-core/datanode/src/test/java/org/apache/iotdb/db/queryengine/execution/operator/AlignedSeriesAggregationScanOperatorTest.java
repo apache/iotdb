@@ -28,7 +28,7 @@ import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
@@ -101,13 +101,13 @@ public class AlignedSeriesAggregationScanOperatorTest {
 
   @Test
   public void testAggregationWithoutTimeFilter() throws Exception {
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     for (int i = 0; i < measurementSchemas.size(); i++) {
       TSDataType dataType = measurementSchemas.get(i).getType();
       List<InputLocation[]> inputLocations = new ArrayList<>();
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
-          new Aggregator(
+          new TreeAggregator(
               AccumulatorFactory.createBuiltinAccumulator(
                   TAggregationType.COUNT,
                   Collections.singletonList(dataType),
@@ -132,13 +132,13 @@ public class AlignedSeriesAggregationScanOperatorTest {
 
   @Test
   public void testAggregationWithoutTimeFilterOrderByTimeDesc() throws Exception {
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     for (int i = 0; i < measurementSchemas.size(); i++) {
       TSDataType dataType = measurementSchemas.get(i).getType();
       List<InputLocation[]> inputLocations = new ArrayList<>();
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
-          new Aggregator(
+          new TreeAggregator(
               AccumulatorFactory.createBuiltinAccumulator(
                   TAggregationType.COUNT,
                   Collections.singletonList(dataType),
@@ -168,13 +168,13 @@ public class AlignedSeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.COUNT);
     aggregationTypes.add(TAggregationType.SUM);
 
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     for (int i = 0; i < 2; i++) {
       TSDataType dataType = measurementSchemas.get(i).getType();
       List<InputLocation[]> inputLocations = new ArrayList<>();
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
-          new Aggregator(
+          new TreeAggregator(
               AccumulatorFactory.createBuiltinAccumulator(
                   aggregationTypes.get(i),
                   Collections.singletonList(dataType),
@@ -206,13 +206,13 @@ public class AlignedSeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.MIN_TIME);
     aggregationTypes.add(TAggregationType.MAX_TIME);
 
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     for (int i = 0; i < 6; i++) {
       TSDataType dataType = measurementSchemas.get(i).getType();
       List<InputLocation[]> inputLocations = new ArrayList<>();
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
-          new Aggregator(
+          new TreeAggregator(
               AccumulatorFactory.createBuiltinAccumulator(
                   aggregationTypes.get(i),
                   Collections.singletonList(dataType),
@@ -248,13 +248,13 @@ public class AlignedSeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.MIN_TIME);
     aggregationTypes.add(TAggregationType.MAX_TIME);
 
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     for (int i = 0; i < 6; i++) {
       TSDataType dataType = measurementSchemas.get(i).getType();
       List<InputLocation[]> inputLocations = new ArrayList<>();
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
-          new Aggregator(
+          new TreeAggregator(
               AccumulatorFactory.createBuiltinAccumulator(
                   aggregationTypes.get(i),
                   Collections.singletonList(dataType),
@@ -282,13 +282,13 @@ public class AlignedSeriesAggregationScanOperatorTest {
 
   @Test
   public void testAggregationWithTimeFilter1() throws Exception {
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     for (int i = 0; i < measurementSchemas.size(); i++) {
       TSDataType dataType = measurementSchemas.get(i).getType();
       List<InputLocation[]> inputLocations = new ArrayList<>();
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
-          new Aggregator(
+          new TreeAggregator(
               AccumulatorFactory.createBuiltinAccumulator(
                   TAggregationType.COUNT,
                   Collections.singletonList(dataType),
@@ -316,13 +316,13 @@ public class AlignedSeriesAggregationScanOperatorTest {
   @Test
   public void testAggregationWithTimeFilter2() throws Exception {
     Filter timeFilter = TimeFilterApi.ltEq(379);
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     for (int i = 0; i < measurementSchemas.size(); i++) {
       TSDataType dataType = measurementSchemas.get(i).getType();
       List<InputLocation[]> inputLocations = new ArrayList<>();
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
-          new Aggregator(
+          new TreeAggregator(
               AccumulatorFactory.createBuiltinAccumulator(
                   TAggregationType.COUNT,
                   Collections.singletonList(dataType),
@@ -349,13 +349,13 @@ public class AlignedSeriesAggregationScanOperatorTest {
   @Test
   public void testAggregationWithTimeFilter3() throws Exception {
     Filter timeFilter = FilterFactory.and(TimeFilterApi.gtEq(100), TimeFilterApi.ltEq(399));
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     for (int i = 0; i < measurementSchemas.size(); i++) {
       TSDataType dataType = measurementSchemas.get(i).getType();
       List<InputLocation[]> inputLocations = new ArrayList<>();
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
-          new Aggregator(
+          new TreeAggregator(
               AccumulatorFactory.createBuiltinAccumulator(
                   TAggregationType.COUNT,
                   Collections.singletonList(dataType),
@@ -388,13 +388,13 @@ public class AlignedSeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.MIN_TIME);
     aggregationTypes.add(TAggregationType.MAX_TIME);
 
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     for (int i = 0; i < 6; i++) {
       TSDataType dataType = measurementSchemas.get(i).getType();
       List<InputLocation[]> inputLocations = new ArrayList<>();
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
-          new Aggregator(
+          new TreeAggregator(
               AccumulatorFactory.createBuiltinAccumulator(
                   aggregationTypes.get(i),
                   Collections.singletonList(dataType),
@@ -427,13 +427,13 @@ public class AlignedSeriesAggregationScanOperatorTest {
     int[] result = new int[] {100, 100, 100, 99};
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     for (int i = 0; i < measurementSchemas.size(); i++) {
       TSDataType dataType = measurementSchemas.get(i).getType();
       List<InputLocation[]> inputLocations = new ArrayList<>();
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
-          new Aggregator(
+          new TreeAggregator(
               AccumulatorFactory.createBuiltinAccumulator(
                   TAggregationType.COUNT,
                   Collections.singletonList(dataType),
@@ -467,13 +467,13 @@ public class AlignedSeriesAggregationScanOperatorTest {
     Filter timeFilter = FilterFactory.and(TimeFilterApi.gtEq(120), TimeFilterApi.ltEq(379));
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     for (int i = 0; i < measurementSchemas.size(); i++) {
       TSDataType dataType = measurementSchemas.get(i).getType();
       List<InputLocation[]> inputLocations = new ArrayList<>();
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
-          new Aggregator(
+          new TreeAggregator(
               AccumulatorFactory.createBuiltinAccumulator(
                   TAggregationType.COUNT,
                   Collections.singletonList(dataType),
@@ -518,7 +518,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
 
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     List<InputLocation[]> inputLocations =
         Collections.singletonList(new InputLocation[] {new InputLocation(0, 1)});
     AccumulatorFactory.createBuiltinAccumulators(
@@ -527,7 +527,8 @@ public class AlignedSeriesAggregationScanOperatorTest {
             Collections.emptyList(),
             Collections.emptyMap(),
             true)
-        .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE, inputLocations)));
+        .forEach(
+            o -> aggregators.add(new TreeAggregator(o, AggregationStep.SINGLE, inputLocations)));
     AlignedSeriesAggregationScanOperator seriesAggregationScanOperator =
         initAlignedSeriesAggregationScanOperator(aggregators, null, true, groupByTimeParameter);
     int count = 0;
@@ -563,7 +564,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
 
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     List<InputLocation[]> inputLocations =
         Collections.singletonList(new InputLocation[] {new InputLocation(0, 1)});
     AccumulatorFactory.createBuiltinAccumulators(
@@ -572,7 +573,8 @@ public class AlignedSeriesAggregationScanOperatorTest {
             Collections.emptyList(),
             Collections.emptyMap(),
             false)
-        .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE, inputLocations)));
+        .forEach(
+            o -> aggregators.add(new TreeAggregator(o, AggregationStep.SINGLE, inputLocations)));
     AlignedSeriesAggregationScanOperator seriesAggregationScanOperator =
         initAlignedSeriesAggregationScanOperator(aggregators, null, false, groupByTimeParameter);
     int count = 0;
@@ -598,7 +600,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
         new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 50), true);
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
 
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     List<InputLocation[]> inputLocations =
         Collections.singletonList(new InputLocation[] {new InputLocation(0, 1)});
     AccumulatorFactory.createBuiltinAccumulators(
@@ -607,7 +609,8 @@ public class AlignedSeriesAggregationScanOperatorTest {
             Collections.emptyList(),
             Collections.emptyMap(),
             true)
-        .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE, inputLocations)));
+        .forEach(
+            o -> aggregators.add(new TreeAggregator(o, AggregationStep.SINGLE, inputLocations)));
     AlignedSeriesAggregationScanOperator seriesAggregationScanOperator =
         initAlignedSeriesAggregationScanOperator(aggregators, null, true, groupByTimeParameter);
     int count = 0;
@@ -630,7 +633,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 149, new TimeDuration(0, 50), new TimeDuration(0, 30), true);
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     List<InputLocation[]> inputLocations =
         Collections.singletonList(new InputLocation[] {new InputLocation(0, 1)});
     AccumulatorFactory.createBuiltinAccumulators(
@@ -639,7 +642,8 @@ public class AlignedSeriesAggregationScanOperatorTest {
             Collections.emptyList(),
             Collections.emptyMap(),
             true)
-        .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE, inputLocations)));
+        .forEach(
+            o -> aggregators.add(new TreeAggregator(o, AggregationStep.SINGLE, inputLocations)));
     AlignedSeriesAggregationScanOperator seriesAggregationScanOperator =
         initAlignedSeriesAggregationScanOperator(aggregators, null, true, groupByTimeParameter);
     int count = 0;
@@ -673,7 +677,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
 
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 149, new TimeDuration(0, 50), new TimeDuration(0, 30), true);
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     List<InputLocation[]> inputLocations =
         Collections.singletonList(new InputLocation[] {new InputLocation(0, 1)});
     AccumulatorFactory.createBuiltinAccumulators(
@@ -682,7 +686,8 @@ public class AlignedSeriesAggregationScanOperatorTest {
             Collections.emptyList(),
             Collections.emptyMap(),
             true)
-        .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE, inputLocations)));
+        .forEach(
+            o -> aggregators.add(new TreeAggregator(o, AggregationStep.SINGLE, inputLocations)));
     AlignedSeriesAggregationScanOperator seriesAggregationScanOperator =
         initAlignedSeriesAggregationScanOperator(aggregators, null, true, groupByTimeParameter);
     int count = 0;
@@ -702,7 +707,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
   }
 
   public AlignedSeriesAggregationScanOperator initAlignedSeriesAggregationScanOperator(
-      List<Aggregator> aggregators,
+      List<TreeAggregator> aggregators,
       Filter timeFilter,
       boolean ascending,
       GroupByTimeParameter groupByTimeParameter)

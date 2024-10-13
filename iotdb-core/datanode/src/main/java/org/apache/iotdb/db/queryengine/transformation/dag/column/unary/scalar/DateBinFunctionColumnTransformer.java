@@ -34,10 +34,10 @@ public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
   private static final long NANOSECONDS_IN_MILLISECOND = 1_000_000;
   private static final long NANOSECONDS_IN_MICROSECOND = 1_000;
 
-  private static long monthDuration;
-  private static long nonMonthDuration;
-  private static long origin;
-  private static ZoneId zoneId;
+  private long monthDuration;
+  private long nonMonthDuration;
+  private long origin;
+  private ZoneId zoneId;
 
   public DateBinFunctionColumnTransformer(
       Type returnType,

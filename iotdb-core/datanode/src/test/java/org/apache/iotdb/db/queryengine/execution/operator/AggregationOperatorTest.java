@@ -29,7 +29,7 @@ import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.aggregation.Accumulator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
@@ -325,14 +325,14 @@ public class AggregationOperatorTest {
         new NonAlignedFullPath(
             IDeviceID.Factory.DEFAULT_FACTORY.create(AGGREGATION_OPERATOR_TEST_SG + ".device0"),
             new MeasurementSchema("sensor0", TSDataType.INT32));
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     AccumulatorFactory.createBuiltinAccumulators(
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
             Collections.emptyMap(),
             true)
-        .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.PARTIAL)));
+        .forEach(o -> aggregators.add(new TreeAggregator(o, AggregationStep.PARTIAL)));
 
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
     scanOptionsBuilder.withAllSensors(Collections.singleton("sensor0"));
@@ -387,7 +387,7 @@ public class AggregationOperatorTest {
     children.add(seriesAggregationScanOperator1);
     children.add(seriesAggregationScanOperator2);
 
-    List<Aggregator> finalAggregators = new ArrayList<>();
+    List<TreeAggregator> finalAggregators = new ArrayList<>();
     List<Accumulator> accumulators =
         AccumulatorFactory.createBuiltinAccumulators(
             aggregationTypes,
@@ -397,7 +397,7 @@ public class AggregationOperatorTest {
             true);
     for (int i = 0; i < accumulators.size(); i++) {
       finalAggregators.add(
-          new Aggregator(accumulators.get(i), AggregationStep.FINAL, inputLocations.get(i)));
+          new TreeAggregator(accumulators.get(i), AggregationStep.FINAL, inputLocations.get(i)));
     }
 
     return new AggregationOperator(

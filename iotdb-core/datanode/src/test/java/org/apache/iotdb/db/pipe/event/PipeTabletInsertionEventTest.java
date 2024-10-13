@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixTreePattern;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.event.common.tablet.TabletInsertionDataContainer;
+import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTreePatternParser;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
@@ -258,15 +258,15 @@ public class PipeTabletInsertionEventTest {
 
   @Test
   public void convertToTabletForTest() {
-    TabletInsertionDataContainer container1 =
-        new TabletInsertionDataContainer(insertRowNode, new PrefixTreePattern(pattern));
+    TabletInsertionEventTreePatternParser container1 =
+        new TabletInsertionEventTreePatternParser(insertRowNode, new PrefixTreePattern(pattern));
     Tablet tablet1 = container1.convertToTablet();
     boolean isAligned1 = container1.isAligned();
     Assert.assertEquals(tablet1, tabletForInsertRowNode);
     Assert.assertFalse(isAligned1);
 
-    TabletInsertionDataContainer container2 =
-        new TabletInsertionDataContainer(insertTabletNode, new PrefixTreePattern(pattern));
+    TabletInsertionEventTreePatternParser container2 =
+        new TabletInsertionEventTreePatternParser(insertTabletNode, new PrefixTreePattern(pattern));
     Tablet tablet2 = container2.convertToTablet();
     boolean isAligned2 = container2.isAligned();
     Assert.assertEquals(tablet2, tabletForInsertTabletNode);
@@ -289,15 +289,17 @@ public class PipeTabletInsertionEventTest {
 
   @Test
   public void convertToAlignedTabletForTest() {
-    TabletInsertionDataContainer container1 =
-        new TabletInsertionDataContainer(insertRowNodeAligned, new PrefixTreePattern(pattern));
+    TabletInsertionEventTreePatternParser container1 =
+        new TabletInsertionEventTreePatternParser(
+            insertRowNodeAligned, new PrefixTreePattern(pattern));
     Tablet tablet1 = container1.convertToTablet();
     boolean isAligned1 = container1.isAligned();
     Assert.assertEquals(tablet1, tabletForInsertRowNode);
     Assert.assertTrue(isAligned1);
 
-    TabletInsertionDataContainer container2 =
-        new TabletInsertionDataContainer(insertTabletNodeAligned, new PrefixTreePattern(pattern));
+    TabletInsertionEventTreePatternParser container2 =
+        new TabletInsertionEventTreePatternParser(
+            insertTabletNodeAligned, new PrefixTreePattern(pattern));
     Tablet tablet2 = container2.convertToTablet();
     boolean isAligned2 = container2.isAligned();
     Assert.assertEquals(tablet2, tabletForInsertTabletNode);
@@ -320,8 +322,8 @@ public class PipeTabletInsertionEventTest {
 
   @Test
   public void convertToTabletWithFilteredRowsForTest() {
-    TabletInsertionDataContainer container1 =
-        new TabletInsertionDataContainer(
+    TabletInsertionEventTreePatternParser container1 =
+        new TabletInsertionEventTreePatternParser(
             null,
             new PipeRawTabletInsertionEvent(tabletForInsertRowNode, 111L, 113L),
             insertRowNode,
@@ -331,8 +333,8 @@ public class PipeTabletInsertionEventTest {
     boolean isAligned1 = container1.isAligned();
     Assert.assertFalse(isAligned1);
 
-    TabletInsertionDataContainer container2 =
-        new TabletInsertionDataContainer(
+    TabletInsertionEventTreePatternParser container2 =
+        new TabletInsertionEventTreePatternParser(
             null,
             new PipeRawTabletInsertionEvent(tabletForInsertRowNode, 110L, 110L),
             insertRowNode,
@@ -342,8 +344,8 @@ public class PipeTabletInsertionEventTest {
     boolean isAligned2 = container2.isAligned();
     Assert.assertFalse(isAligned2);
 
-    TabletInsertionDataContainer container3 =
-        new TabletInsertionDataContainer(
+    TabletInsertionEventTreePatternParser container3 =
+        new TabletInsertionEventTreePatternParser(
             null,
             new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, 111L, 113L),
             insertTabletNode,
@@ -353,8 +355,8 @@ public class PipeTabletInsertionEventTest {
     boolean isAligned3 = container3.isAligned();
     Assert.assertFalse(isAligned3);
 
-    TabletInsertionDataContainer container4 =
-        new TabletInsertionDataContainer(
+    TabletInsertionEventTreePatternParser container4 =
+        new TabletInsertionEventTreePatternParser(
             null,
             new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, Long.MIN_VALUE, 109L),
             insertTabletNode,

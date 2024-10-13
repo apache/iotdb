@@ -84,7 +84,6 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
     if (hasBeenStarted.get() || hasBeenClosed.get()) {
       return;
     }
-    super.start();
 
     final ProgressIndex progressIndex = pipeTaskMeta.getProgressIndex();
     final long nextIndex =
@@ -96,6 +95,7 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
             ? getNextIndexAfterSnapshot()
             : ((MetaProgressIndex) progressIndex).getIndex() + 1;
     iterator = getListeningQueue().newIterator(nextIndex);
+    super.start();
   }
 
   private long getNextIndexAfterSnapshot() {
@@ -145,6 +145,11 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
     // In config region: to avoid triggering snapshot under a consensus write causing deadlock
     if (!hasBeenStarted.get()) {
       start();
+      // Failed to start, due to sudden switch of schema leader
+      // Simply return
+      if (!hasBeenStarted.get()) {
+        return null;
+      }
     }
 
     // Historical

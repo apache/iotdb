@@ -14,6 +14,7 @@
 
 package org.apache.iotdb.relational.it.query.old.query;
 
+import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
@@ -50,6 +51,8 @@ public class IoTDBArithmeticTableIT {
 
   private static final String DATABASE_NAME = "test";
 
+  private static final long MILLISECONDS_IN_DAY = 24 * 60 * 60 * 1000;
+
   private static final double[][] BASE_ANS = {{1, 1, 1.0, 1.0}, {2, 2, 2.0, 2.0}, {3, 3, 3.0, 3.0}};
 
   private static final Map<String, BiFunction<Double, Double, Double>> OPERATIONS = new HashMap<>();
@@ -69,6 +72,9 @@ public class IoTDBArithmeticTableIT {
     "insert into table1(device, time, s1, s2, s3, s4, s5, s6, s7, s8) values ('d1', 1, 1, 1, 1.0, 1.0, '2024-01-01', 10, true, 'test')",
     "insert into table1(device, time, s1, s2, s3, s4, s5, s6, s7, s8) values ('d1', 2, 2, 2, 2.0, 2.0, '2024-02-01', 20, true, 'test')",
     "insert into table1(device, time, s1, s2, s3, s4, s5, s6, s7, s8) values ('d1', 3, 3, 3, 3.0, 3.0, '2024-03-01', 30, true, 'test')",
+    "CREATE TABLE table2 (device STRING ID, date DATE MEASUREMENT)",
+    "insert into table2(device, time, date) values ('d1', 1, '9999-12-31')",
+    "insert into table2(device, time, date) values ('d1', 2, '1000-01-01')",
   };
 
   @BeforeClass
@@ -332,6 +338,23 @@ public class IoTDBArithmeticTableIT {
 
     tableAssertTestFail("select s1%0 from table1", "751: Division by zero", "test");
     tableAssertTestFail("select s2%0 from table1", "751: Division by zero", "test");
+  }
+
+  @Test
+  public void testDateOutOfRange() {
+    tableAssertTestFail(
+        String.format(
+            "select date + %s from table2 where time = 1",
+            DateTimeUtils.correctPrecision(MILLISECONDS_IN_DAY)),
+        "752: Year must be between 1000 and 9999.",
+        "test");
+
+    tableAssertTestFail(
+        String.format(
+            "select date - %s from table2 where time = 2",
+            DateTimeUtils.correctPrecision(MILLISECONDS_IN_DAY)),
+        "752: Year must be between 1000 and 9999.",
+        "test");
   }
 
   private void testBinaryDifferentCombinationsFail(

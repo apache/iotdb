@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -54,6 +55,8 @@ public abstract class EnrichedEvent implements Event {
 
   protected final String pipeName;
   protected final long creationTime;
+  private final String pipeNameWithCreationTime; // cache for better performance
+
   protected final PipeTaskMeta pipeTaskMeta;
 
   protected CommitterKey committerKey;
@@ -86,6 +89,7 @@ public abstract class EnrichedEvent implements Event {
 
     this.pipeName = pipeName;
     this.creationTime = creationTime;
+    this.pipeNameWithCreationTime = pipeName + "_" + creationTime;
     this.pipeTaskMeta = pipeTaskMeta;
     this.treePattern = treePattern;
     this.tablePattern = tablePattern;
@@ -105,6 +109,10 @@ public abstract class EnrichedEvent implements Event {
           }
           return null;
         });
+  }
+
+  protected void trackResource() {
+    // do nothing by default
   }
 
   /**
@@ -134,7 +142,10 @@ public abstract class EnrichedEvent implements Event {
     }
 
     if (isSuccessful) {
-      referenceCount.incrementAndGet();
+      if (referenceCount.incrementAndGet() == 1
+          && PipeConfig.getInstance().getPipeEventReferenceTrackingEnabled()) {
+        trackResource();
+      }
     } else {
       LOGGER.warn(
           "increase reference count failed, EnrichedEvent: {}, stack trace: {}",
@@ -300,6 +311,10 @@ public abstract class EnrichedEvent implements Event {
 
   public final long getCreationTime() {
     return creationTime;
+  }
+
+  public String getPipeNameWithCreationTime() {
+    return pipeNameWithCreationTime;
   }
 
   public final int getRegionId() {

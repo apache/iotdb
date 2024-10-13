@@ -39,11 +39,13 @@ public interface ILinearFill {
    *
    * @param rowIndex row index for end time of current valueColumn that need to be filled
    * @param valueColumn valueColumn that need to be filled
+   * @param lastRowIndexForNonNullHelperColumn index for last non-null helper column
    * @return true if valueColumn can't be filled using current information, and we need to get next
    *     TsBlock and then call prepareForNext. false if valueColumn can be filled using current
    *     information, and we can directly call fill() function
    */
-  boolean needPrepareForNext(long rowIndex, Column valueColumn);
+  boolean needPrepareForNext(
+      long rowIndex, Column valueColumn, int lastRowIndexForNonNullHelperColumn);
 
   /**
    * prepare for next.
@@ -58,4 +60,6 @@ public interface ILinearFill {
    */
   boolean prepareForNext(
       long startRowIndex, long endRowIndex, Column nextTimeColumn, Column nextValueColumn);
+
+  void reset();
 }

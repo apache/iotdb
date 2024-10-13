@@ -41,6 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Intersect;
@@ -79,6 +80,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Values;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
+import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
@@ -227,6 +229,44 @@ public final class SqlFormatter {
       node.getOrderBy().ifPresent(orderBy -> process(orderBy, indent));
       node.getOffset().ifPresent(offset -> process(offset, indent));
       node.getLimit().ifPresent(limit -> process(limit, indent));
+      return null;
+    }
+
+    @Override
+    protected Void visitFill(Fill node, Integer indent) {
+      append(indent, "FILL METHOD ").append(node.getFillMethod().name());
+
+      if (node.getFillMethod() == FillPolicy.CONSTANT) {
+        builder.append(formatExpression(node.getFillValue().get()));
+      } else if (node.getFillMethod() == FillPolicy.LINEAR) {
+        node.getTimeColumnIndex()
+            .ifPresent(index -> builder.append(" TIME_COLUMN ").append(String.valueOf(index)));
+        node.getFillGroupingElements()
+            .ifPresent(
+                elements ->
+                    builder
+                        .append(" FILL_GROUP ")
+                        .append(
+                            elements.stream()
+                                .map(SqlFormatter::formatExpression)
+                                .collect(joining(", "))));
+      } else if (node.getFillMethod() == FillPolicy.PREVIOUS) {
+        node.getTimeBound()
+            .ifPresent(timeBound -> builder.append(" TIME_BOUND ").append(timeBound.toString()));
+        node.getTimeColumnIndex()
+            .ifPresent(index -> builder.append(" TIME_COLUMN ").append(String.valueOf(index)));
+        node.getFillGroupingElements()
+            .ifPresent(
+                elements ->
+                    builder
+                        .append(" FILL_GROUP ")
+                        .append(
+                            elements.stream()
+                                .map(SqlFormatter::formatExpression)
+                                .collect(joining(", "))));
+      } else {
+        throw new IllegalArgumentException("Unknown fill method: " + node.getFillMethod());
+      }
       return null;
     }
 

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.metric;
 
+import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
@@ -66,6 +67,12 @@ public class PipeResourceMetrics implements IMetricSet {
         MetricLevel.IMPORTANT,
         PipeDataNodeResourceManager.tsfile(),
         PipeTsFileResourceManager::getLinkedTsfileCount);
+    // phantom reference count
+    metricService.createAutoGauge(
+        Metric.PIPE_PHANTOM_REFERENCE_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        PipeDataNodeResourceManager.ref(),
+        PipePhantomReferenceManager::getPhantomReferenceCount);
   }
 
   @Override
@@ -78,6 +85,8 @@ public class PipeResourceMetrics implements IMetricSet {
     // resource reference count
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_PINNED_MEMTABLE_COUNT.toString());
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_LINKED_TSFILE_COUNT.toString());
+    // phantom reference count
+    metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_PHANTOM_REFERENCE_COUNT.toString());
   }
 
   //////////////////////////// singleton ////////////////////////////

@@ -28,7 +28,7 @@ import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.slidingwindow.SlidingWindowAggregatorFactory;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
@@ -241,7 +241,7 @@ public class SlidingWindowAggregationOperatorTest {
             IDeviceID.Factory.DEFAULT_FACTORY.create(AGGREGATION_OPERATOR_TEST_SG + ".device0"),
             new MeasurementSchema("sensor0", TSDataType.INT32));
 
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     AccumulatorFactory.createBuiltinAccumulators(
             leafAggregationTypes,
             TSDataType.INT32,
@@ -249,7 +249,8 @@ public class SlidingWindowAggregationOperatorTest {
             Collections.emptyMap(),
             ascending)
         .forEach(
-            accumulator -> aggregators.add(new Aggregator(accumulator, AggregationStep.PARTIAL)));
+            accumulator ->
+                aggregators.add(new TreeAggregator(accumulator, AggregationStep.PARTIAL)));
 
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
     scanOptionsBuilder.withAllSensors(Collections.singleton("sensor0"));
@@ -268,7 +269,7 @@ public class SlidingWindowAggregationOperatorTest {
     seriesAggregationScanOperator.initQueryDataSource(
         new QueryDataSource(seqResources, unSeqResources));
 
-    List<Aggregator> finalAggregators = new ArrayList<>();
+    List<TreeAggregator> finalAggregators = new ArrayList<>();
     for (int i = 0; i < rootAggregationTypes.size(); i++) {
       finalAggregators.add(
           SlidingWindowAggregatorFactory.createSlidingWindowAggregator(

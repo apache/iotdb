@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.helper.CastFunctionHelper;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
@@ -38,6 +39,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 
 import static org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.helper.CastFunctionHelper.ERROR_MSG;
+import static org.apache.iotdb.rpc.TSStatusCode.DATE_OUT_OF_RANGE;
 
 public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
 
@@ -178,38 +180,44 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
   }
 
   private void castTimestamp(ColumnBuilder columnBuilder, long value) {
-    switch (returnType.getTypeEnum()) {
-      case INT32:
-        returnType.writeInt(columnBuilder, (CastFunctionHelper.castLongToInt(value)));
-        break;
-      case DATE:
-        returnType.writeInt(
-            columnBuilder,
-            DateUtils.parseDateExpressionToInt(DateTimeUtils.convertToLocalDate(value, zoneId)));
-        break;
-      case INT64:
-      case TIMESTAMP:
-        returnType.writeLong(columnBuilder, value);
-        break;
-      case FLOAT:
-        returnType.writeFloat(columnBuilder, value);
-        break;
-      case DOUBLE:
-        returnType.writeDouble(columnBuilder, value);
-        break;
-      case BOOLEAN:
-        returnType.writeBoolean(columnBuilder, value != 0L);
-        break;
-      case TEXT:
-      case STRING:
-        returnType.writeBinary(
-            columnBuilder, BytesUtils.valueOf(DateTimeUtils.convertLongToDate(value, zoneId)));
-        break;
-      case BLOB:
-        returnType.writeBinary(columnBuilder, new Binary(BytesUtils.longToBytes(value)));
-        break;
-      default:
-        throw new UnsupportedOperationException(String.format(ERROR_MSG, returnType.getTypeEnum()));
+    try {
+      switch (returnType.getTypeEnum()) {
+        case INT32:
+          returnType.writeInt(columnBuilder, (CastFunctionHelper.castLongToInt(value)));
+          break;
+        case DATE:
+          returnType.writeInt(
+              columnBuilder,
+              DateUtils.parseDateExpressionToInt(DateTimeUtils.convertToLocalDate(value, zoneId)));
+          break;
+        case INT64:
+        case TIMESTAMP:
+          returnType.writeLong(columnBuilder, value);
+          break;
+        case FLOAT:
+          returnType.writeFloat(columnBuilder, value);
+          break;
+        case DOUBLE:
+          returnType.writeDouble(columnBuilder, value);
+          break;
+        case BOOLEAN:
+          returnType.writeBoolean(columnBuilder, value != 0L);
+          break;
+        case TEXT:
+        case STRING:
+          returnType.writeBinary(
+              columnBuilder, BytesUtils.valueOf(DateTimeUtils.convertLongToDate(value, zoneId)));
+          break;
+        case BLOB:
+          returnType.writeBinary(columnBuilder, new Binary(BytesUtils.longToBytes(value)));
+          break;
+        default:
+          throw new UnsupportedOperationException(
+              String.format(ERROR_MSG, returnType.getTypeEnum()));
+      }
+    } catch (DateTimeParseException e) {
+      throw new IoTDBRuntimeException(
+          "Year must be between 1000 and 9999.", DATE_OUT_OF_RANGE.getStatusCode(), true);
     }
   }
 

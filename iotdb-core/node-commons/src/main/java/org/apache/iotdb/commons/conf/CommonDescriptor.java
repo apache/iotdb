@@ -604,6 +604,17 @@ public class CommonDescriptor {
             properties.getProperty(
                 "two_stage_aggregate_sender_end_points_cache_in_ms",
                 String.valueOf(config.getTwoStageAggregateSenderEndPointsCacheInMs()))));
+
+    config.setPipeEventReferenceTrackingEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_event_reference_tracking_enabled",
+                String.valueOf(config.getPipeEventReferenceTrackingEnabled()))));
+    config.setPipeEventReferenceEliminateIntervalSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_event_reference_eliminate_interval_seconds",
+                String.valueOf(config.getPipeEventReferenceEliminateIntervalSeconds()))));
   }
 
   private void loadSubscriptionProps(Properties properties) {

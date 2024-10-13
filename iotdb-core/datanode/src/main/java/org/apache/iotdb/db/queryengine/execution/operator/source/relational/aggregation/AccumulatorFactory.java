@@ -33,7 +33,7 @@ import static com.google.common.base.Preconditions.checkState;
 
 public class AccumulatorFactory {
 
-  public static Accumulator createAccumulator(
+  public static TableAccumulator createAccumulator(
       String functionName,
       TAggregationType aggregationType,
       List<TSDataType> inputDataTypes,
@@ -49,16 +49,20 @@ public class AccumulatorFactory {
     }
   }
 
-  public static Accumulator createBuiltinAccumulator(
+  public static TableAccumulator createBuiltinAccumulator(
       TAggregationType aggregationType,
       List<TSDataType> inputDataTypes,
       List<Expression> inputExpressions,
       Map<String, String> inputAttributes,
       boolean ascending) {
-    return isMultiInputAggregation(aggregationType)
-        ? createBuiltinMultiInputAccumulator(aggregationType, inputDataTypes)
-        : createBuiltinSingleInputAccumulator(
-            aggregationType, inputDataTypes.get(0), inputExpressions, inputAttributes, ascending);
+    switch (aggregationType) {
+      case COUNT:
+        return new CountAccumulator();
+      case AVG:
+        return new AvgAccumulator(inputDataTypes.get(0));
+      default:
+        throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
+    }
   }
 
   public static boolean isMultiInputAggregation(TAggregationType aggregationType) {
@@ -71,7 +75,7 @@ public class AccumulatorFactory {
     }
   }
 
-  public static Accumulator createBuiltinMultiInputAccumulator(
+  public static TableAccumulator createBuiltinMultiInputAccumulator(
       TAggregationType aggregationType, List<TSDataType> inputDataTypes) {
     switch (aggregationType) {
       case MAX_BY:
@@ -85,7 +89,7 @@ public class AccumulatorFactory {
     }
   }
 
-  private static Accumulator createBuiltinSingleInputAccumulator(
+  private static TableAccumulator createBuiltinSingleInputAccumulator(
       TAggregationType aggregationType,
       TSDataType tsDataType,
       List<Expression> inputExpressions,
