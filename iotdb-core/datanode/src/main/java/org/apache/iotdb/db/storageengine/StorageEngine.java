@@ -281,6 +281,7 @@ public class StorageEngine implements IService {
 
   @Override
   public void start() throws StartupException {
+    recoverDataRegionNum = 0;
     // build time Interval to divide time partition
     initTimePartition();
     // create systemDir
@@ -760,9 +761,6 @@ public class StorageEngine implements IService {
         if (CONFIG.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
             || CONFIG
                 .getDataRegionConsensusProtocolClass()
-                .equals(ConsensusFactory.FAST_IOT_CONSENSUS)
-            || CONFIG
-                .getDataRegionConsensusProtocolClass()
                 .equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
           // delete wal
           WALManager.getInstance()
@@ -864,20 +862,20 @@ public class StorageEngine implements IService {
     long ttl = req.getTTL();
     boolean isDataBase = req.isDataBase;
     if (ttl == TTLCache.NULL_TTL) {
-      DataNodeTTLCache.getInstance().unsetTTL(path);
+      DataNodeTTLCache.getInstance().unsetTTLForTree(path);
       if (isDataBase) {
         // unset ttl to path.**
         String[] pathWithWildcard = Arrays.copyOf(path, path.length + 1);
         pathWithWildcard[pathWithWildcard.length - 1] = IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-        DataNodeTTLCache.getInstance().unsetTTL(pathWithWildcard);
+        DataNodeTTLCache.getInstance().unsetTTLForTree(pathWithWildcard);
       }
     } else {
-      DataNodeTTLCache.getInstance().setTTL(path, ttl);
+      DataNodeTTLCache.getInstance().setTTLForTree(path, ttl);
       if (isDataBase) {
         // set ttl to path.**
         String[] pathWithWildcard = Arrays.copyOf(path, path.length + 1);
         pathWithWildcard[pathWithWildcard.length - 1] = IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-        DataNodeTTLCache.getInstance().setTTL(pathWithWildcard, ttl);
+        DataNodeTTLCache.getInstance().setTTLForTree(pathWithWildcard, ttl);
       }
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);

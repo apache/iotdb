@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.pipe.event.common.row;
 
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.pipe.api.access.Row;
@@ -100,8 +101,13 @@ public class PipeRowCollector implements RowCollector {
 
   private void collectTabletInsertionEvent() {
     if (tablet != null) {
+      // TODO: non-PipeInsertionEvent sourceEvent is not supported?
+      final PipeInsertionEvent pipeInsertionEvent =
+          sourceEvent instanceof PipeInsertionEvent ? ((PipeInsertionEvent) sourceEvent) : null;
       tabletInsertionEventList.add(
           new PipeRawTabletInsertionEvent(
+              pipeInsertionEvent == null ? null : pipeInsertionEvent.getRawIsTableModelEvent(),
+              pipeInsertionEvent == null ? null : pipeInsertionEvent.getTreeModelDatabaseName(),
               tablet,
               isAligned,
               sourceEvent == null ? null : sourceEvent.getPipeName(),

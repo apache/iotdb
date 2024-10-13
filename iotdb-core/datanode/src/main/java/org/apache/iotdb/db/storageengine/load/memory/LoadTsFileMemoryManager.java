@@ -44,7 +44,7 @@ public class LoadTsFileMemoryManager {
   private final AtomicLong usedMemorySizeInBytes = new AtomicLong(0);
   private LoadTsFileDataCacheMemoryBlock dataCacheMemoryBlock;
 
-  private synchronized void forceAllocatedFromQuery(long sizeInBytes)
+  private synchronized void forceAllocateFromQuery(long sizeInBytes)
       throws LoadRuntimeOutOfMemoryException {
     for (int i = 0; i < MEMORY_ALLOCATE_MAX_RETRIES; i++) {
       // allocate memory from queryEngine
@@ -90,7 +90,7 @@ public class LoadTsFileMemoryManager {
   public synchronized LoadTsFileAnalyzeSchemaMemoryBlock allocateAnalyzeSchemaMemoryBlock(
       long sizeInBytes) throws LoadRuntimeOutOfMemoryException {
     try {
-      forceAllocatedFromQuery(sizeInBytes);
+      forceAllocateFromQuery(sizeInBytes);
     } catch (LoadRuntimeOutOfMemoryException e) {
       if (dataCacheMemoryBlock != null && dataCacheMemoryBlock.doShrink(sizeInBytes)) {
         return new LoadTsFileAnalyzeSchemaMemoryBlock(sizeInBytes);
@@ -98,6 +98,30 @@ public class LoadTsFileMemoryManager {
       throw e;
     }
     return new LoadTsFileAnalyzeSchemaMemoryBlock(sizeInBytes);
+  }
+
+  /**
+   * Resize the memory block to the new size.
+   *
+   * @throws LoadRuntimeOutOfMemoryException if failed to allocate enough memory
+   */
+  synchronized void forceResize(LoadTsFileAnalyzeSchemaMemoryBlock memoryBlock, long newSizeInBytes)
+      throws LoadRuntimeOutOfMemoryException {
+    if (memoryBlock.getTotalMemorySizeInBytes() >= newSizeInBytes) {
+      releaseToQuery(memoryBlock.getTotalMemorySizeInBytes() - newSizeInBytes);
+      memoryBlock.setTotalMemorySizeInBytes(newSizeInBytes);
+      return;
+    }
+
+    long bytesNeeded = newSizeInBytes - memoryBlock.getTotalMemorySizeInBytes();
+    try {
+      forceAllocateFromQuery(bytesNeeded);
+    } catch (LoadRuntimeOutOfMemoryException e) {
+      if (dataCacheMemoryBlock == null || !dataCacheMemoryBlock.doShrink(bytesNeeded)) {
+        throw e;
+      }
+    }
+    memoryBlock.setTotalMemorySizeInBytes(newSizeInBytes);
   }
 
   public synchronized LoadTsFileDataCacheMemoryBlock allocateDataCacheMemoryBlock()

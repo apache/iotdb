@@ -414,6 +414,7 @@ public class Analysis implements IAnalysis {
     this.schemaTree = schemaTree;
   }
 
+  @Override
   public List<TEndPoint> getRedirectNodeList() {
     return redirectNodeList;
   }

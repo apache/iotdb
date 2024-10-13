@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.memory.TableModelStatement
 import org.apache.iotdb.db.queryengine.plan.planner.plan.TimePredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
@@ -40,9 +41,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
@@ -55,6 +59,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
@@ -65,6 +70,7 @@ import com.google.common.collect.Streams;
 import com.google.errorprone.annotations.Immutable;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.utils.TimeDuration;
 
 import javax.annotation.Nullable;
 
@@ -123,6 +129,7 @@ public class Analysis implements IAnalysis {
   private final Map<AccessControlInfo, Map<QualifiedObjectName, Set<String>>>
       tableColumnReferences = new LinkedHashMap<>();
 
+  private final Map<NodeRef<Fill>, FillAnalysis> fill = new LinkedHashMap<>();
   private final Map<NodeRef<Offset>, Long> offset = new LinkedHashMap<>();
   private final Map<NodeRef<Node>, OptionalLong> limit = new LinkedHashMap<>();
   private final Map<NodeRef<AllColumns>, List<Field>> selectAllResultFields = new LinkedHashMap<>();
@@ -139,6 +146,7 @@ public class Analysis implements IAnalysis {
   private final Set<NodeRef<Expression>> typeOnlyCoercions = new LinkedHashSet<>();
 
   private final Map<NodeRef<Relation>, List<Type>> relationCoercions = new LinkedHashMap<>();
+  private final Map<NodeRef<Node>, RoutineEntry> resolvedFunctions = new LinkedHashMap<>();
 
   private final Map<NodeRef<QuerySpecification>, List<FunctionCall>> aggregates =
       new LinkedHashMap<>();
@@ -285,6 +293,20 @@ public class Analysis implements IAnalysis {
     scopes.put(NodeRef.of(node), scope);
   }
 
+  public Set<ResolvedFunction> getResolvedFunctions() {
+    return resolvedFunctions.values().stream()
+        .map(RoutineEntry::getFunction)
+        .collect(toImmutableSet());
+  }
+
+  public ResolvedFunction getResolvedFunction(Node node) {
+    return resolvedFunctions.get(NodeRef.of(node)).getFunction();
+  }
+
+  public void addResolvedFunction(Node node, ResolvedFunction function, String authorization) {
+    resolvedFunctions.put(NodeRef.of(node), new RoutineEntry(function, authorization));
+  }
+
   public void addColumnReferences(Map<NodeRef<Expression>, ResolvedField> columnReferences) {
     this.columnReferences.putAll(columnReferences);
   }
@@ -303,6 +325,10 @@ public class Analysis implements IAnalysis {
 
   public List<FunctionCall> getAggregates(QuerySpecification query) {
     return aggregates.get(NodeRef.of(query));
+  }
+
+  public boolean hasAggregates() {
+    return !aggregates.isEmpty();
   }
 
   public void setOrderByAggregates(OrderBy node, List<Expression> aggregates) {
@@ -408,6 +434,15 @@ public class Analysis implements IAnalysis {
     return redundantOrderBy.contains(NodeRef.of(orderBy));
   }
 
+  public void setFill(Fill node, FillAnalysis fillAnalysis) {
+    fill.put(NodeRef.of(node), fillAnalysis);
+  }
+
+  public FillAnalysis getFill(Fill node) {
+    checkState(fill.containsKey(NodeRef.of(node)), "missing FillAnalysis for node %s", node);
+    return fill.get(NodeRef.of(node));
+  }
+
   public void setOffset(Offset node, long rowCount) {
     offset.put(NodeRef.of(node), rowCount);
   }
@@ -468,6 +503,10 @@ public class Analysis implements IAnalysis {
 
   public Expression getJoinCriteria(Join join) {
     return joins.get(NodeRef.of(join));
+  }
+
+  public boolean hasJoinNode() {
+    return !joinUsing.isEmpty() || !joins.isEmpty();
   }
 
   public void recordSubqueries(Node node, ExpressionAnalysis expressionAnalysis) {
@@ -731,6 +770,11 @@ public class Analysis implements IAnalysis {
   }
 
   @Override
+  public List<TEndPoint> getRedirectNodeList() {
+    return redirectNodeList;
+  }
+
+  @Override
   public void setRedirectNodeList(List<TEndPoint> redirectNodeList) {
     this.redirectNodeList = redirectNodeList;
   }
@@ -959,6 +1003,24 @@ public class Analysis implements IAnalysis {
     }
   }
 
+  private static class RoutineEntry {
+    private final ResolvedFunction function;
+    private final String authorization;
+
+    public RoutineEntry(ResolvedFunction function, String authorization) {
+      this.function = requireNonNull(function, "function is null");
+      this.authorization = requireNonNull(authorization, "authorization is null");
+    }
+
+    public ResolvedFunction getFunction() {
+      return function;
+    }
+
+    public String getAuthorization() {
+      return authorization;
+    }
+  }
+
   public static class SubqueryAnalysis {
     private final List<InPredicate> inPredicatesSubqueries = new ArrayList<>();
     private final List<SubqueryExpression> subqueries = new ArrayList<>();
@@ -996,6 +1058,78 @@ public class Analysis implements IAnalysis {
 
     public List<QuantifiedComparisonExpression> getQuantifiedComparisonSubqueries() {
       return unmodifiableList(quantifiedComparisonSubqueries);
+    }
+  }
+
+  public static class FillAnalysis {
+    protected final FillPolicy fillMethod;
+
+    protected FillAnalysis(FillPolicy fillMethod) {
+      this.fillMethod = fillMethod;
+    }
+
+    public FillPolicy getFillMethod() {
+      return fillMethod;
+    }
+  }
+
+  public static class ValueFillAnalysis extends FillAnalysis {
+    private final Literal filledValue;
+
+    public ValueFillAnalysis(Literal filledValue) {
+      super(FillPolicy.CONSTANT);
+      requireNonNull(filledValue, "filledValue is null");
+      this.filledValue = filledValue;
+    }
+
+    public Literal getFilledValue() {
+      return filledValue;
+    }
+  }
+
+  public static class PreviousFillAnalysis extends FillAnalysis {
+    @Nullable private final TimeDuration timeBound;
+    @Nullable private final FieldReference fieldReference;
+    @Nullable private final List<FieldReference> groupingKeys;
+
+    public PreviousFillAnalysis(
+        TimeDuration timeBound, FieldReference fieldReference, List<FieldReference> groupingKeys) {
+      super(FillPolicy.PREVIOUS);
+      this.timeBound = timeBound;
+      this.fieldReference = fieldReference;
+      this.groupingKeys = groupingKeys;
+    }
+
+    public Optional<TimeDuration> getTimeBound() {
+      return Optional.ofNullable(timeBound);
+    }
+
+    public Optional<FieldReference> getFieldReference() {
+      return Optional.ofNullable(fieldReference);
+    }
+
+    public Optional<List<FieldReference>> getGroupingKeys() {
+      return Optional.ofNullable(groupingKeys);
+    }
+  }
+
+  public static class LinearFillAnalysis extends FillAnalysis {
+    private final FieldReference fieldReference;
+    @Nullable private final List<FieldReference> groupingKeys;
+
+    public LinearFillAnalysis(FieldReference fieldReference, List<FieldReference> groupingKeys) {
+      super(FillPolicy.LINEAR);
+      requireNonNull(fieldReference, "fieldReference is null");
+      this.fieldReference = fieldReference;
+      this.groupingKeys = groupingKeys;
+    }
+
+    public FieldReference getFieldReference() {
+      return fieldReference;
+    }
+
+    public Optional<List<FieldReference>> getGroupingKeys() {
+      return Optional.ofNullable(groupingKeys);
     }
   }
 

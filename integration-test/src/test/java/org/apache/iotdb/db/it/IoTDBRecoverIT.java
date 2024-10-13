@@ -52,7 +52,6 @@ public class IoTDBRecoverIT {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBRecoverIT.class);
 
-  private static final String TIMESTAMP_STR = "Time";
   private static final String TEMPERATURE_STR = "root.ln.wf01.wt01.temperature";
   private static final String[] creationSqls =
       new String[] {
@@ -110,7 +109,7 @@ public class IoTDBRecoverIT {
     logger.info("All DataNodes are started");
     // check cluster whether restart
     ((AbstractEnv) EnvFactory.getEnv()).checkClusterStatusWithoutUnknown();
-    String[] retArray = new String[] {"0,2", "0,4", "0,3"};
+    String[] retArray = new String[] {"2", "4", "3"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
@@ -118,8 +117,7 @@ public class IoTDBRecoverIT {
       try (ResultSet resultSet = statement.executeQuery(selectSql)) {
         assertNotNull(resultSet);
         resultSet.next();
-        String ans =
-            resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(TEMPERATURE_STR));
+        String ans = resultSet.getString(count(TEMPERATURE_STR));
         Assert.assertEquals(retArray[0], ans);
       }
 
@@ -127,10 +125,7 @@ public class IoTDBRecoverIT {
       try (ResultSet resultSet = statement.executeQuery(selectSql)) {
         assertNotNull(resultSet);
         resultSet.next();
-        String ans =
-            resultSet.getString(TIMESTAMP_STR)
-                + ","
-                + resultSet.getString(minTime(TEMPERATURE_STR));
+        String ans = resultSet.getString(minTime(TEMPERATURE_STR));
         Assert.assertEquals(retArray[1], ans);
       }
 
@@ -138,10 +133,7 @@ public class IoTDBRecoverIT {
       try (ResultSet resultSet = statement.executeQuery(selectSql)) {
         assertNotNull(resultSet);
         resultSet.next();
-        String ans =
-            resultSet.getString(TIMESTAMP_STR)
-                + ","
-                + resultSet.getString(minTime(TEMPERATURE_STR));
+        String ans = resultSet.getString(minTime(TEMPERATURE_STR));
         Assert.assertEquals(retArray[2], ans);
       }
 
@@ -151,7 +143,7 @@ public class IoTDBRecoverIT {
     }
 
     // max min ValueTest
-    retArray = new String[] {"0,8499,500.0", "0,2499,500.0"};
+    retArray = new String[] {"8499,500.0", "2499,500.0"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
@@ -162,11 +154,7 @@ public class IoTDBRecoverIT {
         assertNotNull(resultSet);
         resultSet.next();
         String ans =
-            resultSet.getString(TIMESTAMP_STR)
-                + ","
-                + resultSet.getString(maxValue(d0s0))
-                + ","
-                + resultSet.getString(minValue(d0s2));
+            resultSet.getString(maxValue(d0s0)) + "," + resultSet.getString(minValue(d0s2));
         Assert.assertEquals(retArray[0], ans);
       }
 
@@ -175,11 +163,7 @@ public class IoTDBRecoverIT {
         assertNotNull(resultSet);
         resultSet.next();
         String ans =
-            resultSet.getString(TIMESTAMP_STR)
-                + ","
-                + resultSet.getString(maxValue(d0s0))
-                + ","
-                + resultSet.getString(minValue(d0s2));
+            resultSet.getString(maxValue(d0s0)) + "," + resultSet.getString(minValue(d0s2));
         Assert.assertEquals(retArray[1], ans);
       }
     } catch (Exception e) {
@@ -202,7 +186,7 @@ public class IoTDBRecoverIT {
     // wait for cluster to start and check
     ((AbstractEnv) EnvFactory.getEnv()).checkClusterStatusWithoutUnknown();
     // count test
-    String[] retArray = new String[] {"0,2001,2001,2001,2001", "0,7500,7500,7500,7500"};
+    String[] retArray = new String[] {"2001,2001,2001,2001", "7500,7500,7500,7500"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
@@ -213,9 +197,7 @@ public class IoTDBRecoverIT {
         assertNotNull(resultSet);
         resultSet.next();
         String ans =
-            resultSet.getString(TIMESTAMP_STR)
-                + ","
-                + resultSet.getString(count(d0s0))
+            resultSet.getString(count(d0s0))
                 + ","
                 + resultSet.getString(count(d0s1))
                 + ","
@@ -230,9 +212,7 @@ public class IoTDBRecoverIT {
         assertNotNull(resultSet);
         resultSet.next();
         String ans =
-            resultSet.getString(TIMESTAMP_STR)
-                + ","
-                + resultSet.getString(count(d0s0))
+            resultSet.getString(count(d0s0))
                 + ","
                 + resultSet.getString(count(d0s1))
                 + ","

@@ -530,11 +530,11 @@ public class StatementGenerator {
     return insertStatement;
   }
 
-  public static DatabaseSchemaStatement createStatement(String database)
+  public static DatabaseSchemaStatement createStatement(final String database)
       throws IllegalPathException {
-    long startTime = System.nanoTime();
+    final long startTime = System.nanoTime();
     // construct create database statement
-    DatabaseSchemaStatement statement =
+    final DatabaseSchemaStatement statement =
         new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
     statement.setDatabasePath(parseDatabaseRawString(database));
     PERFORMANCE_OVERVIEW_METRICS.recordParseCost(System.nanoTime() - startTime);
@@ -889,8 +889,9 @@ public class StatementGenerator {
     insertRowStatement.setMeasurements(newMeasurements.toArray(new String[0]));
   }
 
-  private static PartialPath parseDatabaseRawString(String database) throws IllegalPathException {
-    PartialPath databasePath = new PartialPath(database);
+  private static PartialPath parseDatabaseRawString(final String database)
+      throws IllegalPathException {
+    final PartialPath databasePath = new PartialPath(database);
     if (databasePath.getNodeLength() < 2) {
       throw new IllegalPathException(database);
     }

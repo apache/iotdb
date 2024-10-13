@@ -81,25 +81,22 @@ public class JoinTest {
     assertInnerJoinTest1(
         "SELECT t1.time, t1.tag1, t1.tag2, t1.attr2, t1.s1, t1.s2,"
             + "t2.tag1, t2.tag3, t2.attr2, t2.s1, t2.s3 "
-            + "FROM table1 t1 JOIN table1 t2 ON t1.time = t2.time OFFSET 3 LIMIT 6",
-        false);
+            + "FROM table1 t1 JOIN table1 t2 ON t1.time = t2.time OFFSET 3 LIMIT 6");
 
     // implicit join
     assertInnerJoinTest1(
         "SELECT t1.time, t1.tag1, t1.tag2, t1.attr2, t1.s1, t1.s2,"
             + "t2.tag1, t2.tag3, t2.attr2, t2.s1, t2.s3 "
-            + "FROM table1 t1, table1 t2 WHERE t1.time = t2.time OFFSET 3 LIMIT 6",
-        false);
+            + "FROM table1 t1, table1 t2 WHERE t1.time = t2.time OFFSET 3 LIMIT 6");
 
     // join using
     assertInnerJoinTest1(
         "SELECT time, t1.tag1, t1.tag2, t1.attr2, t1.s1, t1.s2,"
             + "t2.tag1, t2.tag3, t2.attr2, t2.s1, t2.s3 "
-            + "FROM table1 t1 JOIN table1 t2 USING(time) OFFSET 3 LIMIT 6",
-        true);
+            + "FROM table1 t1 JOIN table1 t2 USING(time) OFFSET 3 LIMIT 6");
   }
 
-  private void assertInnerJoinTest1(String sql, boolean joinUsing) {
+  private void assertInnerJoinTest1(String sql) {
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     logicalQueryPlan =
         new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
@@ -107,45 +104,24 @@ public class JoinTest {
 
     // LogicalPlan: `Output-Offset-Limit-Join-(Left + Right)-Sort-(Project)-TableScan`
     logicalPlanNode = logicalQueryPlan.getRootNode();
-    if (joinUsing) {
-      assertNodeMatches(
-          logicalPlanNode,
-          OutputNode.class,
-          OffsetNode.class,
-          ProjectNode.class,
-          LimitNode.class,
-          JoinNode.class);
-    } else {
-      assertNodeMatches(
-          logicalPlanNode, OutputNode.class, OffsetNode.class, LimitNode.class, JoinNode.class);
-    }
+    assertNodeMatches(
+        logicalPlanNode, OutputNode.class, OffsetNode.class, LimitNode.class, JoinNode.class);
 
-    joinNode =
-        joinUsing
-            ? (JoinNode) getChildrenNode(logicalPlanNode, 4)
-            : (JoinNode) getChildrenNode(logicalPlanNode, 3);
+    joinNode = (JoinNode) getChildrenNode(logicalPlanNode, 3);
     List<JoinNode.EquiJoinClause> joinCriteria =
-        joinUsing
-            ? Collections.singletonList(
-                new JoinNode.EquiJoinClause(Symbol.of("time_9"), Symbol.of("time_10")))
-            : Collections.singletonList(
-                new JoinNode.EquiJoinClause(Symbol.of("time"), Symbol.of("time_0")));
+        Collections.singletonList(
+            new JoinNode.EquiJoinClause(Symbol.of("time"), Symbol.of("time_0")));
     assertJoinNodeEquals(
         joinNode,
         INNER,
         joinCriteria,
-        joinUsing
-            ? buildSymbols("tag1", "tag2", "attr2", "s1", "s2", "time_9")
-            : buildSymbols("time", "tag1", "tag2", "attr2", "s1", "s2"),
-        joinUsing
-            ? buildSymbols("tag1_1", "tag3_3", "attr2_5", "s1_6", "s3_8", "time_10")
-            : buildSymbols("tag1_1", "tag3_3", "attr2_5", "s1_6", "s3_8"));
+        buildSymbols("time", "tag1", "tag2", "attr2", "s1", "s2"),
+        buildSymbols("tag1_1", "tag3_3", "attr2_5", "s1_6", "s3_8"));
     assertTrue(joinNode.getLeftChild() instanceof SortNode);
     assertTrue(joinNode.getRightChild() instanceof SortNode);
     SortNode leftSortNode = (SortNode) joinNode.getLeftChild();
-    assertTrue(getChildrenNode(leftSortNode, joinUsing ? 2 : 1) instanceof TableScanNode);
-    TableScanNode leftTableScanNode =
-        (TableScanNode) getChildrenNode(leftSortNode, joinUsing ? 2 : 1);
+    assertTrue(getChildrenNode(leftSortNode, 1) instanceof TableScanNode);
+    TableScanNode leftTableScanNode = (TableScanNode) getChildrenNode(leftSortNode, 1);
     assertTableScan(leftTableScanNode, ALL_DEVICE_ENTRIES, Ordering.ASC, 0, 0, true, "");
     SortNode rightSortNode = (SortNode) joinNode.getRightChild();
     assertTrue(getChildrenNode(rightSortNode, 1) instanceof ProjectNode);
@@ -171,37 +147,51 @@ public class JoinTest {
      *                       │       └──TableScanNode-123
      *                       └──ExchangeNode-175: [SourceAddress:192.0.10.1/test_query.3.0/177]
      *
-     * IdentitySinkNode-176
-     *   ├──SortNode-116
-     *   │   └──TableScanNode-112
-     *   └──SortNode-129
-     *       └──ProjectNode-125
-     *           └──TableScanNode-122
+     * IdentitySinkNode-201
+     *   └──SortNode-141
+     *       └──TableScanNode-137
      *
-     * IdentitySinkNode-177
-     *   ├──SortNode-118
-     *   │   └──TableScanNode-114
-     *   └──SortNode-131
-     *       └──ProjectNode-127
-     *           └──TableScanNode-124
+     * IdentitySinkNode-201
+     *   └──SortNode-141
+     *       └──TableScanNode-137
+     *
+     * IdentitySinkNode-203
+     *   └──SortNode-154
+     *       └──ProjectNode-150
+     *           └──TableScanNode-147
+     *
+     * IdentitySinkNode-203
+     *   └──SortNode-154
+     *       └──ProjectNode-150
+     *           └──TableScanNode-147
      */
     distributedQueryPlan = new TableDistributedPlanner(analysis, logicalQueryPlan).plan();
-    assertEquals(3, distributedQueryPlan.getFragments().size());
+    assertEquals(5, distributedQueryPlan.getFragments().size());
     IdentitySinkNode identitySinkNode =
         (IdentitySinkNode) distributedQueryPlan.getFragments().get(0).getPlanNodeTree();
     outputNode = (OutputNode) getChildrenNode(identitySinkNode, 1);
-    assertTrue(getChildrenNode(outputNode, joinUsing ? 4 : 3) instanceof JoinNode);
-    joinNode = (JoinNode) getChildrenNode(outputNode, joinUsing ? 4 : 3);
+    assertTrue(getChildrenNode(outputNode, 3) instanceof JoinNode);
+    joinNode = (JoinNode) getChildrenNode(outputNode, 3);
     assertTrue(joinNode.getLeftChild() instanceof MergeSortNode);
     MergeSortNode mergeSortNode = (MergeSortNode) joinNode.getLeftChild();
     assertMergeSortNode(mergeSortNode);
     leftSortNode = (SortNode) mergeSortNode.getChildren().get(1);
-    tableScanNode = (TableScanNode) getChildrenNode(leftSortNode, joinUsing ? 2 : 1);
+    tableScanNode = (TableScanNode) getChildrenNode(leftSortNode, 1);
     assertTableScan(tableScanNode, SHANGHAI_SHENZHEN_DEVICE_ENTRIES, Ordering.ASC, 0, 0, true, "");
 
     identitySinkNode =
         (IdentitySinkNode) distributedQueryPlan.getFragments().get(1).getPlanNodeTree();
-    tableScanNode = (TableScanNode) getChildrenNode(identitySinkNode.getChildren().get(1), 2);
+    assertTrue(getChildrenNode(identitySinkNode, 1) instanceof SortNode);
+    assertTrue(getChildrenNode(identitySinkNode, 2) instanceof TableScanNode);
+    tableScanNode = (TableScanNode) getChildrenNode(identitySinkNode, 2);
+    assertTableScan(tableScanNode, SHENZHEN_DEVICE_ENTRIES, Ordering.ASC, 0, 0, true, "");
+
+    identitySinkNode =
+        (IdentitySinkNode) distributedQueryPlan.getFragments().get(3).getPlanNodeTree();
+    assertTrue(getChildrenNode(identitySinkNode, 1) instanceof SortNode);
+    assertTrue(getChildrenNode(identitySinkNode, 2) instanceof ProjectNode);
+    assertTrue(getChildrenNode(identitySinkNode, 3) instanceof TableScanNode);
+    tableScanNode = (TableScanNode) getChildrenNode(identitySinkNode, 3);
     assertTableScan(tableScanNode, SHENZHEN_DEVICE_ENTRIES, Ordering.ASC, 0, 0, true, "");
   }
 
@@ -274,27 +264,19 @@ public class JoinTest {
     }
     joinNode = (JoinNode) getChildrenNode(logicalPlanNode, 4);
     List<JoinNode.EquiJoinClause> joinCriteria =
-        joinUsing
-            ? Collections.singletonList(
-                new JoinNode.EquiJoinClause(Symbol.of("time_9"), Symbol.of("time_10")))
-            : Collections.singletonList(
-                new JoinNode.EquiJoinClause(Symbol.of("time"), Symbol.of("time_0")));
+        Collections.singletonList(
+            new JoinNode.EquiJoinClause(Symbol.of("time"), Symbol.of("time_0")));
     assertJoinNodeEquals(
         joinNode,
         INNER,
         joinCriteria,
-        joinUsing
-            ? buildSymbols("tag1", "tag2", "attr2", "s1", "s2", "time_9")
-            : buildSymbols("time", "tag1", "tag2", "attr2", "s1", "s2"),
-        joinUsing
-            ? buildSymbols("tag1_1", "tag3_3", "attr2_5", "s1_6", "s3_8", "time_10")
-            : buildSymbols("tag1_1", "tag3_3", "attr2_5", "s1_6", "s3_8"));
+        buildSymbols("time", "tag1", "tag2", "attr2", "s1", "s2"),
+        buildSymbols("tag1_1", "tag3_3", "attr2_5", "s1_6", "s3_8"));
     assertTrue(joinNode.getLeftChild() instanceof SortNode);
     assertTrue(joinNode.getRightChild() instanceof SortNode);
     SortNode leftSortNode = (SortNode) joinNode.getLeftChild();
-    assertEquals(TableScanNode.class, getChildrenNode(leftSortNode, joinUsing ? 2 : 1).getClass());
-    TableScanNode leftTableScanNode =
-        (TableScanNode) getChildrenNode(leftSortNode, joinUsing ? 2 : 1);
+    assertEquals(TableScanNode.class, getChildrenNode(leftSortNode, 1).getClass());
+    TableScanNode leftTableScanNode = (TableScanNode) getChildrenNode(leftSortNode, 1);
     assertTableScan(leftTableScanNode, BEIJING_A1_DEVICE_ENTRY, Ordering.ASC, 0, 0, true, "");
     SortNode rightSortNode = (SortNode) joinNode.getRightChild();
     assertTrue(getChildrenNode(rightSortNode, 1) instanceof ProjectNode);
@@ -340,7 +322,7 @@ public class JoinTest {
 
     identitySinkNode =
         (IdentitySinkNode) distributedQueryPlan.getFragments().get(1).getPlanNodeTree();
-    tableScanNode = (TableScanNode) getChildrenNode(identitySinkNode, joinUsing ? 2 : 1);
+    tableScanNode = (TableScanNode) getChildrenNode(identitySinkNode, 1);
     assertTableScan(tableScanNode, BEIJING_A1_DEVICE_ENTRY, Ordering.ASC, 0, 0, true, "");
   }
 
@@ -403,15 +385,7 @@ public class JoinTest {
         "SELECT * FROM table1 t1 INNER JOIN table1 t2 USING(tag1, time)",
         ONLY_SUPPORT_TIME_COLUMN_IN_USING_CLAUSE);
 
-    // FULL, LEFT, RIGHT JOIN
-    assertAnalyzeSemanticException(
-        "SELECT * FROM table1 t1 FULL JOIN table1 t2 ON t1.time=t2.time",
-        "FULL JOIN is not supported, only support INNER JOIN in current version");
-
-    assertAnalyzeSemanticException(
-        "SELECT * FROM table1 t1 FULL JOIN table1 t2 ON t1.time=t2.time WHERE t1.time>1",
-        "FULL JOIN is not supported, only support INNER JOIN in current version");
-
+    // LEFT, RIGHT JOIN
     assertAnalyzeSemanticException(
         "SELECT * FROM table1 t1 LEFT JOIN table1 t2 ON t1.time=t2.time",
         "LEFT JOIN is not supported, only support INNER JOIN in current version");

@@ -53,4 +53,22 @@ public class LTrim2ColumnTransformer extends BinaryColumnTransformer {
       }
     }
   }
+
+  @Override
+  protected void doTransform(
+      Column leftColumn,
+      Column rightColumn,
+      ColumnBuilder builder,
+      int positionCount,
+      boolean[] selection) {
+    for (int i = 0; i < positionCount; i++) {
+      if (selection[i] && !leftColumn.isNull(i) && !rightColumn.isNull(i)) {
+        byte[] leftValue = leftColumn.getBinary(i).getValues();
+        byte[] rightValue = rightColumn.getBinary(i).getValues();
+        builder.writeBinary(new Binary(ltrim(leftValue, rightValue)));
+      } else {
+        builder.appendNull();
+      }
+    }
+  }
 }

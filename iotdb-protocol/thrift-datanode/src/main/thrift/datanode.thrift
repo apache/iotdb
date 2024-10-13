@@ -196,8 +196,8 @@ struct TSchemaFetchResponse {
   1: required binary serializedSchemaTree
 }
 
-struct TDisableDataNodeReq {
-  1: required common.TDataNodeLocation dataNodeLocation
+struct TCleanDataNodeCacheReq {
+  1: required list<common.TDataNodeLocation> dataNodeLocations
 }
 
 struct TCreateFunctionInstanceReq {
@@ -767,10 +767,10 @@ service IDataNodeRPCService {
   TRegionMigrateResult getRegionMaintainResult(i64 taskId)
 
   /**
-   * Config node will disable the Data node, the Data node will not accept read/write request when disabled
+   * Config node will clean DataNode cache, the Data node will not accept read/write request when disabled
    * @param data node location
    */
-  common.TSStatus disableDataNode(TDisableDataNodeReq req)
+  common.TSStatus cleanDataNodeCache(TCleanDataNodeCacheReq req)
 
   /**
    * Config node will stop the Data node.
@@ -1057,17 +1057,4 @@ service MPPDataExchangeService {
 
   /** Empty rpc, only for connection test */
   common.TSStatus testConnectionEmptyRPC()
-}
-
-service IAINodeInternalRPCService{
- /**
-  * Fecth the data of the specified time series
-  */
-  TFetchTimeseriesResp fetchTimeseries(TFetchTimeseriesReq req)
-
-  /**
-  * Fetch rest data for a specified fetchTimeseries
-  */
-  TFetchMoreDataResp fetchMoreData(TFetchMoreDataReq req)
-
 }

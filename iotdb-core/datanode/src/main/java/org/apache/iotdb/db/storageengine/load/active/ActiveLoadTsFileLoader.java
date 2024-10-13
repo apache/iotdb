@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -77,6 +78,10 @@ public class ActiveLoadTsFileLoader {
   }
 
   public void tryTriggerTsFileLoad(String absolutePath, boolean isGeneratedByPipe) {
+    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+      return;
+    }
+
     if (pendingQueue.enqueue(absolutePath, isGeneratedByPipe)) {
       initFailDirIfNecessary();
       adjustExecutorIfNecessary();
@@ -206,12 +211,24 @@ public class ActiveLoadTsFileLoader {
   }
 
   private void handleLoadFailure(final Pair<String, Boolean> filePair, final TSStatus status) {
-    LOGGER.warn(
-        "Failed to auto load tsfile {} (isGeneratedByPipe = {}), status: {}. File will be moved to fail directory.",
-        filePair.getLeft(),
-        filePair.getRight(),
-        status);
-    removeFileAndResourceAndModsToFailDir(filePair.getLeft());
+    if (status.getMessage() != null && status.getMessage().contains("memory")) {
+      LOGGER.info(
+          "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to memory constraints, will retry later.",
+          filePair.getLeft(),
+          filePair.getRight());
+    } else if (status.getMessage() != null && status.getMessage().contains("read only")) {
+      LOGGER.info(
+          "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to the system is read only, will retry later.",
+          filePair.getLeft(),
+          filePair.getRight());
+    } else {
+      LOGGER.warn(
+          "Failed to auto load tsfile {} (isGeneratedByPipe = {}), status: {}. File will be moved to fail directory.",
+          filePair.getLeft(),
+          filePair.getRight(),
+          status);
+      removeFileAndResourceAndModsToFailDir(filePair.getLeft());
+    }
   }
 
   private void handleFileNotFoundException(final Pair<String, Boolean> filePair) {
@@ -226,6 +243,11 @@ public class ActiveLoadTsFileLoader {
     if (e.getMessage() != null && e.getMessage().contains("memory")) {
       LOGGER.info(
           "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to memory constraints, will retry later.",
+          filePair.getLeft(),
+          filePair.getRight());
+    } else if (e.getMessage() != null && e.getMessage().contains("read only")) {
+      LOGGER.info(
+          "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to the system is read only, will retry later.",
           filePair.getLeft(),
           filePair.getRight());
     } else {

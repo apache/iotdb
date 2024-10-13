@@ -84,6 +84,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlann
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.coerceIfNecessary;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.extractPredicates;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.CROSS;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.FULL;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.IMPLICIT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.INNER;
 
@@ -330,11 +331,15 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       Symbol output = symbolAllocator.newSymbol(column, analysis.getType(column));
       outputs.add(output);
       queryContext.getTypeProvider().putTableModelType(output, LongType.INT64);
-      assignments.put(
-          output,
-          new CoalesceExpression(
-              leftJoinColumns.get(column).toSymbolReference(),
-              rightJoinColumns.get(column).toSymbolReference()));
+      if (node.getType() == INNER) {
+        assignments.put(output, leftJoinColumns.get(column).toSymbolReference());
+      } else if (node.getType() == FULL) {
+        assignments.put(
+            output,
+            new CoalesceExpression(
+                leftJoinColumns.get(column).toSymbolReference(),
+                rightJoinColumns.get(column).toSymbolReference()));
+      }
     }
 
     for (int field : joinAnalysis.getOtherLeftFields()) {

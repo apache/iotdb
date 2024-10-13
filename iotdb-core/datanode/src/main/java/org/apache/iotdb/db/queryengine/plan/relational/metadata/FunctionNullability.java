@@ -19,7 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -34,6 +40,15 @@ public class FunctionNullability {
     this.returnNullable = returnNullable;
     this.argumentNullable =
         new ArrayList<>(requireNonNull(argumentNullable, "argumentNullable is null"));
+  }
+
+  public static FunctionNullability getAggregationFunctionNullability(int argumentsNumber) {
+    return new FunctionNullability(false, Collections.nCopies(argumentsNumber, true));
+  }
+
+  // TODO modify for each scalar function
+  public static FunctionNullability getScalarFunctionNullability(int argumentsNumber) {
+    return new FunctionNullability(true, Collections.nCopies(argumentsNumber, true));
   }
 
   public boolean isReturnNullable() {
@@ -69,5 +84,31 @@ public class FunctionNullability {
   public String toString() {
     return argumentNullable.stream().map(Objects::toString).collect(joining(", ", "(", ")"))
         + returnNullable;
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(returnNullable, byteBuffer);
+    ReadWriteIOUtils.write(argumentNullable.size(), byteBuffer);
+    for (boolean eachNullable : argumentNullable) {
+      ReadWriteIOUtils.write(eachNullable, byteBuffer);
+    }
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(returnNullable, stream);
+    ReadWriteIOUtils.write(argumentNullable.size(), stream);
+    for (boolean eachNullable : argumentNullable) {
+      ReadWriteIOUtils.write(eachNullable, stream);
+    }
+  }
+
+  public static FunctionNullability deserialize(ByteBuffer byteBuffer) {
+    boolean returnNullable = ReadWriteIOUtils.readBool(byteBuffer);
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    List<Boolean> argumentNullable = new ArrayList<>(size);
+    while (size-- > 0) {
+      argumentNullable.add(ReadWriteIOUtils.readBool(byteBuffer));
+    }
+    return new FunctionNullability(returnNullable, argumentNullable);
   }
 }

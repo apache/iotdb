@@ -119,24 +119,20 @@ public class IoTDBPaginationTableIT {
         Arrays.asList(
             "SELECT time,s1 FROM vehicle WHERE time<200 limit 3",
             "SELECT time,s0 FROM vehicle WHERE s1 > 190 limit 3",
-            "SELECT time,s1,s2 FROM vehicle WHERE s1 > 190 or s2 < 10.0 limit 3 offset 2",
-            "SELECT * FROM vehicle slimit 1",
-            "SELECT * FROM vehicle slimit 1 soffset 2",
-            "SELECT * FROM vehicle WHERE s1 > 190 or s2 < 10.0 limit 3 offset 1 slimit 1 soffset 2");
+            "SELECT time,s1,s2 FROM vehicle WHERE s1 > 190 or s2 < 10.0 offset 2 limit 3",
+            "SELECT time,s2 FROM vehicle WHERE s1 > 190 or s2 < 10.0 offset 1 limit 3");
     List<List<String>> expectHeaders =
         Arrays.asList(
             Arrays.asList("time", "s1"),
             Arrays.asList("time", "s0"),
             Arrays.asList("time", "s1", "s2"),
-            Arrays.asList("time", "s0"),
-            Arrays.asList("time", "s2"),
             Arrays.asList("time", "s2"));
     List<String[]> retArrays =
         Arrays.asList(
             new String[] {
               defaultFormatDataTime(1) + ",1101,",
               defaultFormatDataTime(2) + ",40000,",
-              defaultFormatDataTime(50) + ",50000,"
+              defaultFormatDataTime(3) + ",null,",
             },
             new String[] {
               defaultFormatDataTime(1) + ",101,",
@@ -144,42 +140,21 @@ public class IoTDBPaginationTableIT {
               defaultFormatDataTime(50) + ",10000,"
             },
             new String[] {
-              defaultFormatDataTime(1) + ",null,3.33,",
+              defaultFormatDataTime(3) + ",null,3.33,",
               defaultFormatDataTime(4) + ",null,4.44,",
               defaultFormatDataTime(50) + ",50000,null,"
-            },
-            new String[] {
-              defaultFormatDataTime(1) + ",101,",
-              defaultFormatDataTime(2) + ",10000,",
-              defaultFormatDataTime(1) + ",10000,",
-              defaultFormatDataTime(100) + ",99,",
-              defaultFormatDataTime(101) + ",99,",
-              defaultFormatDataTime(102) + ",80,",
-              defaultFormatDataTime(103) + ",99,",
-              defaultFormatDataTime(104) + ",90,",
-              defaultFormatDataTime(105) + ",99,",
-              defaultFormatDataTime(106) + ",99,",
-              defaultFormatDataTime(1000) + ",22222,"
             },
             new String[] {
               defaultFormatDataTime(2) + ",2.22,",
               defaultFormatDataTime(3) + ",3.33,",
               defaultFormatDataTime(4) + ",4.44,",
-              defaultFormatDataTime(102) + ",10.0,",
-              defaultFormatDataTime(105) + ",11.11,",
-              defaultFormatDataTime(1000) + ",1000.11,"
-            },
-            new String[] {
-              defaultFormatDataTime(3) + ",3.33,",
-              defaultFormatDataTime(4) + ",4.44,",
-              defaultFormatDataTime(105) + ",11.11,"
             });
 
     for (int i = 0; i < querySQLs.size(); i++) {
       tableResultSetEqualTest(
-          querySQLs.get(0),
-          expectHeaders.get(0).toArray(new String[0]),
-          retArrays.get(0),
+          querySQLs.get(i),
+          expectHeaders.get(i).toArray(new String[0]),
+          retArrays.get(i),
           DATABASE_NAME);
     }
   }

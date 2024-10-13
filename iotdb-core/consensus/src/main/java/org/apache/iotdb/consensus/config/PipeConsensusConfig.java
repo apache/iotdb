@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.consensus.config;
 
-import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeDispatcher;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeGuardian;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeReceiver;
@@ -31,15 +31,11 @@ import java.util.concurrent.TimeUnit;
 public class PipeConsensusConfig {
   private final RPC rpc;
   private final Pipe pipe;
-  // Use stream mode by default. User can configure it
-  private ReplicateMode replicateMode = ReplicateMode.STREAM;
+  private final ReplicateMode replicateMode;
 
-  public PipeConsensusConfig(RPC rpc, Pipe pipe) {
+  public PipeConsensusConfig(RPC rpc, Pipe pipe, ReplicateMode replicateMode) {
     this.rpc = rpc;
     this.pipe = pipe;
-  }
-
-  public void setReplicateMode(ReplicateMode replicateMode) {
     this.replicateMode = replicateMode;
   }
 
@@ -62,6 +58,7 @@ public class PipeConsensusConfig {
   public static class Builder {
     private RPC rpc;
     private Pipe pipe;
+    private ReplicateMode replicateMode;
 
     public Builder setPipe(Pipe pipe) {
       this.pipe = pipe;
@@ -73,8 +70,13 @@ public class PipeConsensusConfig {
       return this;
     }
 
+    public Builder setReplicateMode(ReplicateMode replicateMode) {
+      this.replicateMode = replicateMode;
+      return this;
+    }
+
     public PipeConsensusConfig build() {
-      return new PipeConsensusConfig(rpc, pipe);
+      return new PipeConsensusConfig(rpc, pipe, replicateMode);
     }
   }
 
@@ -353,6 +355,16 @@ public class PipeConsensusConfig {
 
     public String getValue() {
       return value;
+    }
+
+    public static ReplicateMode fromValue(String value) {
+      if (value.equalsIgnoreCase(STREAM.getValue())) {
+        return STREAM;
+      } else if (value.equalsIgnoreCase(BATCH.getValue())) {
+        return BATCH;
+      }
+      // return batch by default
+      return BATCH;
     }
   }
 }

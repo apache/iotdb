@@ -21,9 +21,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
@@ -83,10 +86,8 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
       node.setLeftChild(leftChild);
       node.setRightChild(rightChild);
 
-      // TODO(beyyes) when outer, left, right join is introduced, fix the condition
-      if (node.getJoinType() == JoinNode.JoinType.INNER) {
-        context.enablePushDown = false;
-      }
+      // TODO(beyyes) optimize for outer, left, right join
+      context.enablePushDown = false;
 
       return node;
     }
@@ -116,6 +117,26 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
       }
       node.setChild(node.getChild().accept(this, context));
       return node;
+    }
+
+    @Override
+    public PlanNode visitLinearFill(LinearFillNode node, Context context) {
+      context.enablePushDown = false;
+      return node;
+    }
+
+    @Override
+    public PlanNode visitPreviousFill(PreviousFillNode node, Context context) {
+      if (node.getGroupingKeys().isPresent()) {
+        context.enablePushDown = false;
+        return node;
+      } else {
+        PlanNode newNode = node.clone();
+        for (PlanNode child : node.getChildren()) {
+          newNode.addChild(child.accept(this, context));
+        }
+        return newNode;
+      }
     }
 
     @Override
@@ -185,6 +206,12 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
     @Override
     public PlanNode visitStreamSort(StreamSortNode node, Context context) {
       return visitSort(node, context);
+    }
+
+    @Override
+    public PlanNode visitAggregation(AggregationNode node, Context context) {
+      context.enablePushDown = false;
+      return node;
     }
 
     @Override

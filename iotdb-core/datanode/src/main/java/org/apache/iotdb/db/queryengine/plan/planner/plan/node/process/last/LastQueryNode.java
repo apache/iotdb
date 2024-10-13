@@ -110,6 +110,9 @@ public class LastQueryNode extends MultiChildProcessNode {
       return false;
     }
     LastQueryNode that = (LastQueryNode) o;
+    if (timeseriesOrdering == null) {
+      return that.timeseriesOrdering == null;
+    }
     return timeseriesOrdering.equals(that.timeseriesOrdering);
   }
 

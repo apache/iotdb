@@ -101,15 +101,16 @@ public class IoTDBQuotedPathIT {
 
   @Test
   public void testIllegalStorageGroup() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute("CREATE DATABASE root.`\"ln`");
-    } catch (SQLException e) {
+    } catch (final SQLException e) {
       Assert.assertTrue(
           e.getMessage().contains("Error StorageGroup name")
               || e.getMessage()
-                  .contains("The database name can only be characters, numbers and underscores."));
-    } catch (Exception e) {
+                  .contains(
+                      "The database name can only contain english or chinese characters, numbers, backticks and underscores."));
+    } catch (final Exception e) {
       e.printStackTrace();
       Assert.fail();
     }

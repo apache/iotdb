@@ -14,6 +14,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
@@ -43,6 +44,7 @@ import java.util.List;
 import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector.NOOP;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.DISTRIBUTION_PLANNER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TABLE_TYPE;
@@ -50,12 +52,26 @@ import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TABL
 public class TableDistributedPlanner {
 
   private final Analysis analysis;
+  private final SymbolAllocator symbolAllocator;
   private final LogicalQueryPlan logicalQueryPlan;
   private final MPPQueryContext mppQueryContext;
   private final List<PlanOptimizer> optimizers;
 
+  public TableDistributedPlanner(
+      Analysis analysis, SymbolAllocator symbolAllocator, LogicalQueryPlan logicalQueryPlan) {
+    this.analysis = analysis;
+    this.symbolAllocator = requireNonNull(symbolAllocator, "symbolAllocator is null");
+    this.logicalQueryPlan = logicalQueryPlan;
+    this.mppQueryContext = logicalQueryPlan.getContext();
+    this.optimizers =
+        new DistributedOptimizeFactory(new PlannerContext(null, new InternalTypeManager()))
+            .getPlanOptimizers();
+  }
+
+  @TestOnly
   public TableDistributedPlanner(Analysis analysis, LogicalQueryPlan logicalQueryPlan) {
     this.analysis = analysis;
+    this.symbolAllocator = new SymbolAllocator();
     this.logicalQueryPlan = logicalQueryPlan;
     this.mppQueryContext = logicalQueryPlan.getContext();
     this.optimizers =
@@ -90,7 +106,7 @@ public class TableDistributedPlanner {
     // generate table model distributed plan
 
     List<PlanNode> distributedPlanResult =
-        new TableDistributedPlanGenerator(mppQueryContext, analysis)
+        new TableDistributedPlanGenerator(mppQueryContext, analysis, symbolAllocator)
             .genResult(logicalQueryPlan.getRootNode(), planContext);
     checkArgument(distributedPlanResult.size() == 1, "Root node must return only one");
 
@@ -114,6 +130,13 @@ public class TableDistributedPlanner {
                     PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector()));
       }
     }
+
+    // Add all Symbol Types in SymbolAllocator into TypeProvider
+    // TODO Remove redundant logic in LogicalPlan generation or Optimizer
+    symbolAllocator
+        .getTypes()
+        .allTableModelTypes()
+        .forEach((k, v) -> mppQueryContext.getTypeProvider().putTableModelType(k, v));
 
     // add exchange node for distributed plan
     return new AddExchangeNodes(mppQueryContext).addExchangeNodes(distributedPlan, planContext);
@@ -194,10 +217,15 @@ public class TableDistributedPlanner {
       if (child instanceof ExchangeNode) {
         ExchangeNode exchangeNode = (ExchangeNode) child;
 
+        //        IdentitySinkNode identitySinkNode =
+        //            regionNodeMap.computeIfAbsent(
+        //
+        // context.getNodeDistribution(exchangeNode.getChild().getPlanNodeId()).getRegion(),
+        //                k -> new IdentitySinkNode(mppQueryContext.getQueryId().genPlanNodeId()));
+
+        // In table model, each ExchangeNode matches only one IdentitySinkNode
         IdentitySinkNode identitySinkNode =
-            regionNodeMap.computeIfAbsent(
-                context.getNodeDistribution(exchangeNode.getChild().getPlanNodeId()).getRegion(),
-                k -> new IdentitySinkNode(mppQueryContext.getQueryId().genPlanNodeId()));
+            new IdentitySinkNode(mppQueryContext.getQueryId().genPlanNodeId());
         identitySinkNode.addChild(exchangeNode.getChild());
         identitySinkNode.addDownStreamChannelLocation(
             new DownStreamChannelLocation(exchangeNode.getPlanNodeId().toString()));

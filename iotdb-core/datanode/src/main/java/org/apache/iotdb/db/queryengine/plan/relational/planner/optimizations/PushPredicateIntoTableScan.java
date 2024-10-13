@@ -1,15 +1,20 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
@@ -34,10 +39,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.EqualityInference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ReplaceSymbolInExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
@@ -77,14 +84,15 @@ import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TABL
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTimePartitionSlotList;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor.extractUnique;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator.isDeterministic;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.extractGlobalTimeFilter;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.combineConjuncts;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.extractConjuncts;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.filterDeterministicConjuncts;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.INNER;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.extractJoinPredicate;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.joinEqualityExpression;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.processInnerJoin;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.tryNormalizeToOuterToInnerJoin;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 
 /**
@@ -218,12 +226,141 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     //    }
 
     @Override
-    public PlanNode visitTableScan(TableScanNode node, RewriteContext context) {
-      if (!TRUE_LITERAL.equals(context.inheritedPredicate)) {
-        return combineFilterAndScan(node, context.inheritedPredicate);
+    public PlanNode visitAggregation(AggregationNode node, RewriteContext context) {
+      if (node.hasEmptyGroupingSet()) {
+        // TODO: in case of grouping sets, we should be able to push the filters over grouping keys
+        // below the aggregation
+        // and also preserve the filter above the aggregation if it has an empty grouping set
+        return visitPlan(node, context);
       }
 
-      return tableMetadataIndexScan(node, Collections.emptyList());
+      Expression inheritedPredicate = context.inheritedPredicate;
+
+      EqualityInference equalityInference = new EqualityInference(metadata, inheritedPredicate);
+
+      List<Expression> pushdownConjuncts = new ArrayList<>();
+      List<Expression> postAggregationConjuncts = new ArrayList<>();
+
+      // Strip out non-deterministic conjuncts
+      extractConjuncts(inheritedPredicate).stream()
+          .filter(expression -> !isDeterministic(expression))
+          .forEach(postAggregationConjuncts::add);
+      inheritedPredicate = filterDeterministicConjuncts(inheritedPredicate);
+
+      // Sort non-equality predicates by those that can be pushed down and those that cannot
+      Set<Symbol> groupingKeys = ImmutableSet.copyOf(node.getGroupingKeys());
+      EqualityInference.nonInferrableConjuncts(metadata, inheritedPredicate)
+          .forEach(
+              conjunct -> {
+                if (node.getGroupIdSymbol().isPresent()
+                    && extractUnique(conjunct).contains(node.getGroupIdSymbol().get())) {
+                  // aggregation operator synthesizes outputs for group ids corresponding to the
+                  // global grouping set (i.e., ()), so we
+                  // need to preserve any predicates that evaluate the group id to run after the
+                  // aggregation
+                  // TODO: we should be able to infer if conditions on grouping() correspond to
+                  // global grouping sets to determine whether
+                  // we need to do this for each specific case
+                  postAggregationConjuncts.add(conjunct);
+                } else {
+                  Expression rewrittenConjunct = equalityInference.rewrite(conjunct, groupingKeys);
+                  if (rewrittenConjunct != null) {
+                    pushdownConjuncts.add(rewrittenConjunct);
+                  } else {
+                    postAggregationConjuncts.add(conjunct);
+                  }
+                }
+              });
+
+      // Add the equality predicates back in
+      EqualityInference.EqualityPartition equalityPartition =
+          equalityInference.generateEqualitiesPartitionedBy(groupingKeys);
+      pushdownConjuncts.addAll(equalityPartition.getScopeEqualities());
+      postAggregationConjuncts.addAll(equalityPartition.getScopeComplementEqualities());
+      postAggregationConjuncts.addAll(equalityPartition.getScopeStraddlingEqualities());
+
+      // PlanNode rewrittenSource = context.rewrite(node.getSource(),
+      // combineConjuncts(pushdownConjuncts));
+
+      // if (rewrittenSource != node.getChild()) {
+      context.inheritedPredicate = combineConjuncts(pushdownConjuncts);
+      PlanNode output =
+          AggregationNode.builderFrom(node)
+              .setSource(node.getChild().accept(this, context))
+              .setPreGroupedSymbols(ImmutableList.of())
+              .build();
+      if (!postAggregationConjuncts.isEmpty()) {
+        output =
+            new FilterNode(
+                queryId.genPlanNodeId(), output, combineConjuncts(postAggregationConjuncts));
+      }
+      return output;
+    }
+
+    @Override
+    public PlanNode visitTableScan(TableScanNode tableScanNode, RewriteContext context) {
+      // columnSymbols in TableScanNode may be added suffix in Join situation(such as self join),
+      // in which we need add a new ProjectNode above TableScanNode.
+      boolean hasSuffixInScanNodeColumns = false;
+      for (Map.Entry<Symbol, ColumnSchema> entry : tableScanNode.getAssignments().entrySet()) {
+        Symbol columnSymbol = entry.getKey();
+        ColumnSchema columnSchema = entry.getValue();
+        if (!columnSymbol.getName().equals(columnSchema.getName())) {
+          hasSuffixInScanNodeColumns = true;
+          break;
+        }
+      }
+
+      Map<Symbol, Expression> newProjectAssignments = null;
+      if (hasSuffixInScanNodeColumns) {
+        newProjectAssignments = getProjectAssignments(tableScanNode, context);
+      }
+
+      // no predicate, just scan all matched deviceEntries
+      if (TRUE_LITERAL.equals(context.inheritedPredicate)) {
+        getDeviceEntriesWithDataPartitions(tableScanNode, Collections.emptyList());
+        return hasSuffixInScanNodeColumns
+            ? new ProjectNode(
+                queryId.genPlanNodeId(), tableScanNode, new Assignments(newProjectAssignments))
+            : tableScanNode;
+      }
+
+      // has predicate, deal with split predicate
+      PlanNode result = combineFilterAndScan(tableScanNode, context.inheritedPredicate);
+      return hasSuffixInScanNodeColumns
+          ? new ProjectNode(queryId.genPlanNodeId(), result, new Assignments(newProjectAssignments))
+          : result;
+    }
+
+    private Map<Symbol, Expression> getProjectAssignments(
+        TableScanNode tableScanNode, RewriteContext context) {
+      context.inheritedPredicate =
+          ReplaceSymbolInExpression.transform(
+              context.inheritedPredicate, tableScanNode.getAssignments());
+
+      int size = tableScanNode.getOutputSymbols().size();
+      Map<Symbol, Expression> projectAssignments = new LinkedHashMap<>(size);
+      List<Symbol> newTableScanSymbols = new ArrayList<>(size);
+      Map<Symbol, ColumnSchema> newTableScanAssignments = new LinkedHashMap<>(size);
+      for (Symbol originalSymbol : tableScanNode.getOutputSymbols()) {
+        ColumnSchema columnSchema = tableScanNode.getAssignments().get(originalSymbol);
+
+        Symbol realSymbol = Symbol.of(columnSchema.getName());
+        newTableScanSymbols.add(realSymbol);
+        newTableScanAssignments.put(realSymbol, columnSchema);
+        projectAssignments.put(originalSymbol, new SymbolReference(columnSchema.getName()));
+        queryContext.getTypeProvider().putTableModelType(originalSymbol, columnSchema.getType());
+        Map<Symbol, Integer> idAndAttributeIndexMap = tableScanNode.getIdAndAttributeIndexMap();
+        if (idAndAttributeIndexMap.containsKey(originalSymbol)) {
+          Integer idx = idAndAttributeIndexMap.get(originalSymbol);
+          idAndAttributeIndexMap.remove(originalSymbol);
+          idAndAttributeIndexMap.put(realSymbol, idx);
+        }
+      }
+
+      tableScanNode.setOutputSymbols(newTableScanSymbols);
+      tableScanNode.setAssignments(newTableScanAssignments);
+      return projectAssignments;
     }
 
     public PlanNode combineFilterAndScan(TableScanNode tableScanNode, Expression predicate) {
@@ -256,21 +393,20 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
 
       // do index scan after expressionCanPushDown is processed
-      PlanNode resultNode =
-          tableMetadataIndexScan(tableScanNode, splitExpression.getMetadataExpressions());
+      getDeviceEntriesWithDataPartitions(tableScanNode, splitExpression.getMetadataExpressions());
 
       // exist expressions can not push down to scan operator
       if (!splitExpression.getExpressionsCannotPushDown().isEmpty()) {
         List<Expression> expressions = splitExpression.getExpressionsCannotPushDown();
         return new FilterNode(
             queryId.genPlanNodeId(),
-            resultNode,
+            tableScanNode,
             expressions.size() == 1
                 ? expressions.get(0)
                 : new LogicalExpression(LogicalExpression.Operator.AND, expressions));
       }
 
-      return resultNode;
+      return tableScanNode;
     }
 
     private SplitExpression splitPredicate(TableScanNode node, Expression predicate) {
@@ -319,72 +455,6 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
       return new SplitExpression(
           metadataExpressions, expressionsCanPushDown, expressionsCannotPushDown);
-    }
-
-    /** Get deviceEntries and DataPartition used in TableScan. */
-    private PlanNode tableMetadataIndexScan(
-        TableScanNode tableScanNode, List<Expression> metadataExpressions) {
-
-      ProjectNode newProjectNode =
-          addProjectNodeIfColumnRenamed(tableScanNode, metadataExpressions);
-
-      getDeviceEntriesWithDataPartitions(tableScanNode, metadataExpressions);
-
-      return newProjectNode != null ? newProjectNode : tableScanNode;
-    }
-
-    private ProjectNode addProjectNodeIfColumnRenamed(
-        TableScanNode tableScanNode, List<Expression> metadataExpressions) {
-
-      // for join operator, columnSymbols in TableScanNode may be renamed in Join situation,
-      // in this situation we need add a new ProjectNode above TableScanNode.
-      boolean hasColumnRenamed = false;
-      for (Map.Entry<Symbol, ColumnSchema> entry : tableScanNode.getAssignments().entrySet()) {
-        Symbol columnSymbol = entry.getKey();
-        ColumnSchema columnSchema = entry.getValue();
-        if (!columnSymbol.getName().equals(columnSchema.getName())) {
-          hasColumnRenamed = true;
-          break;
-        }
-      }
-
-      if (!hasColumnRenamed) {
-        return null;
-      }
-
-      metadataExpressions.replaceAll(
-          expression ->
-              ReplaceSymbolInExpression.transform(expression, tableScanNode.getAssignments()));
-      if (tableScanNode.getPushDownPredicate() != null) {
-        ReplaceSymbolInExpression.transform(
-            tableScanNode.getPushDownPredicate(), tableScanNode.getAssignments());
-      }
-
-      int size = tableScanNode.getOutputSymbols().size();
-      List<Symbol> newTableScanSymbols = new ArrayList<>(size);
-      Map<Symbol, ColumnSchema> newTableScanAssignments = new LinkedHashMap<>(size);
-      Map<Symbol, Expression> projectAssignments = new LinkedHashMap<>(size);
-      for (Map.Entry<Symbol, ColumnSchema> entry : tableScanNode.getAssignments().entrySet()) {
-        Symbol originalSymbol = entry.getKey();
-        ColumnSchema columnSchema = entry.getValue();
-
-        Symbol realSymbol = Symbol.of(columnSchema.getName());
-        newTableScanSymbols.add(realSymbol);
-        newTableScanAssignments.put(realSymbol, columnSchema);
-        projectAssignments.put(originalSymbol, new SymbolReference(columnSchema.getName()));
-        queryContext.getTypeProvider().putTableModelType(originalSymbol, columnSchema.getType());
-        Map<Symbol, Integer> idAndAttributeIndexMap = tableScanNode.getIdAndAttributeIndexMap();
-        if (idAndAttributeIndexMap.containsKey(originalSymbol)) {
-          Integer idx = idAndAttributeIndexMap.get(originalSymbol);
-          idAndAttributeIndexMap.remove(originalSymbol);
-          idAndAttributeIndexMap.put(realSymbol, idx);
-        }
-      }
-
-      tableScanNode.setOutputSymbols(newTableScanSymbols);
-      tableScanNode.setAssignments(newTableScanAssignments);
-      return new ProjectNode(
-          queryId.genPlanNodeId(), tableScanNode, new Assignments(projectAssignments));
     }
 
     private void getDeviceEntriesWithDataPartitions(
@@ -453,7 +523,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           context.inheritedPredicate != null ? context.inheritedPredicate : TRUE_LITERAL;
 
       // See if we can rewrite outer joins in terms of a plain inner join
-      node = tryNormalizeToOuterToInnerJoin(node, inheritedPredicate);
+      // node = tryNormalizeToOuterToInnerJoin(node, inheritedPredicate);
 
       Expression leftEffectivePredicate = TRUE_LITERAL;
       // effectivePredicateExtractor.extract(session, node.getLeftChild(), types, typeAnalyzer);
@@ -481,6 +551,12 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           rightPredicate = innerJoinPushDownResult.getRightPredicate();
           postJoinPredicate = innerJoinPushDownResult.getPostJoinPredicate();
           newJoinPredicate = innerJoinPushDownResult.getJoinPredicate();
+          break;
+        case FULL:
+          leftPredicate = TRUE_LITERAL;
+          rightPredicate = TRUE_LITERAL;
+          postJoinPredicate = inheritedPredicate;
+          newJoinPredicate = joinPredicate;
           break;
         default:
           throw new IllegalStateException("Only support INNER JOIN in current version");
@@ -597,23 +673,28 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                 newJoinFilter,
                 node.isSpillable());
       }
-      Symbol timeSymbol = Symbol.of("time");
-      OrderingScheme orderingScheme =
+
+      JoinNode.EquiJoinClause joinCriteria = ((JoinNode) output).getCriteria().get(0);
+      OrderingScheme leftOrderingScheme =
           new OrderingScheme(
-              Collections.singletonList(timeSymbol),
-              Collections.singletonMap(timeSymbol, ASC_NULLS_LAST));
+              Collections.singletonList(joinCriteria.getLeft()),
+              Collections.singletonMap(joinCriteria.getLeft(), ASC_NULLS_LAST));
+      OrderingScheme rightOrderingScheme =
+          new OrderingScheme(
+              Collections.singletonList(joinCriteria.getRight()),
+              Collections.singletonMap(joinCriteria.getRight(), ASC_NULLS_LAST));
       SortNode leftSortNode =
           new SortNode(
               queryId.genPlanNodeId(),
               ((JoinNode) output).getLeftChild(),
-              orderingScheme,
+              leftOrderingScheme,
               false,
               false);
       SortNode rightSortNode =
           new SortNode(
               queryId.genPlanNodeId(),
               ((JoinNode) output).getRightChild(),
-              orderingScheme,
+              rightOrderingScheme,
               false,
               false);
       ((JoinNode) output).setLeftChild(leftSortNode);

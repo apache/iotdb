@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSche
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableBuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
@@ -75,6 +76,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMeta
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
+import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
 public class TestMatadata implements Metadata {
 
@@ -91,7 +93,7 @@ public class TestMatadata implements Metadata {
   private static final String S1 = "s1";
   private static final String S2 = "s2";
   private static final String S3 = "s3";
-  private static final ColumnMetadata TIME_CM = new ColumnMetadata(TIME, INT64);
+  private static final ColumnMetadata TIME_CM = new ColumnMetadata(TIME, TIMESTAMP);
   private static final ColumnMetadata TAG1_CM = new ColumnMetadata(TAG1, StringType.STRING);
   private static final ColumnMetadata TAG2_CM = new ColumnMetadata(TAG2, StringType.STRING);
   private static final ColumnMetadata TAG3_CM = new ColumnMetadata(TAG3, StringType.STRING);
@@ -307,6 +309,11 @@ public class TestMatadata implements Metadata {
   public DataPartition getDataPartitionWithUnclosedTimeRange(
       String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
     return DATA_PARTITION;
+  }
+
+  @Override
+  public boolean canUseStatistics(String name, boolean withTime) {
+    return TableBuiltinAggregationFunction.canUseStatistics(name, withTime);
   }
 
   private static final DataPartition DATA_PARTITION =

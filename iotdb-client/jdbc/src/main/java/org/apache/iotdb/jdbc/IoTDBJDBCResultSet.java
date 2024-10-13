@@ -60,6 +60,8 @@ import java.time.ZoneId;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.apache.iotdb.rpc.RpcUtils.convertToTimestamp;
 
@@ -95,7 +97,8 @@ public class IoTDBJDBCResultSet implements ResultSet {
       boolean moreData,
       ZoneId zoneId,
       Charset charset,
-      boolean tableModel)
+      boolean tableModel,
+      List<Integer> columnIndex2TsBlockColumnIndexList)
       throws SQLException {
     this.ioTDBRpcDataSet =
         new IoTDBRpcDataSet(
@@ -115,7 +118,8 @@ public class IoTDBJDBCResultSet implements ResultSet {
             zoneId,
             timeFormat,
             statement.getTimeFactor(),
-            tableModel);
+            tableModel,
+            columnIndex2TsBlockColumnIndexList);
     this.statement = statement;
     this.columnTypeList = columnTypeList;
     if (tracingInfo != null) {
@@ -160,7 +164,8 @@ public class IoTDBJDBCResultSet implements ResultSet {
             zoneId,
             timeFormat,
             ((IoTDBStatement) statement).getTimeFactor(),
-            false);
+            false,
+            IntStream.range(0, columnNameList.size()).boxed().collect(Collectors.toList()));
     this.statement = (IoTDBStatement) statement;
     this.columnTypeList = columnTypeList;
     if (tracingInfo != null) {
@@ -421,7 +426,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   @Override
   public double getDouble(int columnIndex) throws SQLException {
     try {
-      if (ioTDBRpcDataSet.columnTypeList.get(columnIndex - 1).equals("FLOAT")) {
+      if (TSDataType.FLOAT == ioTDBRpcDataSet.getDataType(columnIndex)) {
         return ioTDBRpcDataSet.getFloat(columnIndex);
       }
       return getDouble(ioTDBRpcDataSet.findColumnNameByIndex(columnIndex));
@@ -433,10 +438,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   @Override
   public double getDouble(String columnName) throws SQLException {
     try {
-      if (ioTDBRpcDataSet
-          .columnTypeList
-          .get(ioTDBRpcDataSet.columnNameList.indexOf(columnName))
-          .equals("FLOAT")) {
+      if (TSDataType.FLOAT == ioTDBRpcDataSet.getDataType(columnName)) {
         return ioTDBRpcDataSet.getFloat(columnName);
       }
       return ioTDBRpcDataSet.getDouble(columnName);
@@ -540,9 +542,9 @@ public class IoTDBJDBCResultSet implements ResultSet {
         nonAlign,
         sgColumns,
         operationTypeColumn,
-        ioTDBRpcDataSet.columnNameList,
-        ioTDBRpcDataSet.columnTypeList,
-        ioTDBRpcDataSet.ignoreTimeStamp);
+        ioTDBRpcDataSet.getColumnNameList(),
+        ioTDBRpcDataSet.getColumnTypeList(),
+        ioTDBRpcDataSet.isIgnoreTimeStamp());
   }
 
   @Override
@@ -761,7 +763,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public boolean isClosed() {
-    return ioTDBRpcDataSet.isClosed;
+    return ioTDBRpcDataSet.isClosed();
   }
 
   @Override
@@ -1245,12 +1247,12 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public boolean wasNull() {
-    return ioTDBRpcDataSet.lastReadWasNull;
+    return ioTDBRpcDataSet.isLastReadWasNull();
   }
 
   protected String getValueByName(String columnName) throws SQLException {
     try {
-      return ioTDBRpcDataSet.getValueByName(columnName);
+      return ioTDBRpcDataSet.getString(columnName);
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -1258,7 +1260,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   protected Object getObjectByName(String columnName) throws SQLException {
     try {
-      return ioTDBRpcDataSet.getObjectByName(columnName);
+      return ioTDBRpcDataSet.getObject(columnName);
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -1288,7 +1290,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   }
 
   public boolean isIgnoreTimeStamp() {
-    return ioTDBRpcDataSet.ignoreTimeStamp;
+    return ioTDBRpcDataSet.isIgnoreTimeStamp();
   }
 
   public String getOperationType() {
@@ -1303,11 +1305,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
     return sgColumns;
   }
 
-  public String getColumnTypeByIndex(int columnIndex) {
-    if (!isIgnoreTimeStamp() && columnIndex == 1) {
-      return TSDataType.TIMESTAMP.name();
-    }
-
-    return ioTDBRpcDataSet.columnTypeList.get(columnIndex - 1);
+  public TSDataType getColumnTypeByIndex(int columnIndex) {
+    return ioTDBRpcDataSet.getDataType(columnIndex);
   }
 }

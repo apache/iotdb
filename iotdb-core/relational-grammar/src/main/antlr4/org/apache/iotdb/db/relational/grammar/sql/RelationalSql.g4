@@ -73,6 +73,16 @@ statement
     // Load Statement
     | loadTsFileStatement
 
+    // Pipe Statement
+    | createPipeStatement
+    | alterPipeStatement
+    | dropPipeStatement
+    | startPipeStatement
+    | stopPipeStatement
+    | showPipesStatement
+    | createPipePluginStatement
+    | dropPipePluginStatement
+    | showPipePluginsStatement
 
     // Show Statement
     | showDevicesStatement
@@ -83,6 +93,7 @@ statement
     | showRegionsStatement
     | showDataNodesStatement
     | showConfigNodesStatement
+    | showAINodesStatement
     | showClusterIdStatement
     | showRegionIdStatement
     | showTimeSlotListStatement
@@ -233,12 +244,115 @@ loadTsFileStatement
     ;
 
 
+// -------------------------------------------- Pipe Statement ---------------------------------------------------------
+createPipeStatement
+    : CREATE PIPE (IF NOT EXISTS)? pipeName=identifier
+        ((extractorAttributesClause? processorAttributesClause? connectorAttributesClause)
+        | connectorAttributesWithoutWithSinkClause)
+    ;
+
+extractorAttributesClause
+    : WITH (EXTRACTOR | SOURCE)
+        '('
+        (extractorAttributeClause ',')* extractorAttributeClause?
+        ')'
+    ;
+
+extractorAttributeClause
+    : extractorKey=string EQ extractorValue=string
+    ;
+
+processorAttributesClause
+    : WITH PROCESSOR
+        '('
+        (processorAttributeClause ',')* processorAttributeClause?
+        ')'
+    ;
+
+processorAttributeClause
+    : processorKey=string EQ processorValue=string
+    ;
+
+connectorAttributesClause
+    : WITH (CONNECTOR | SINK)
+        '('
+        (connectorAttributeClause ',')* connectorAttributeClause?
+        ')'
+    ;
+
+connectorAttributesWithoutWithSinkClause
+    : '('
+      (connectorAttributeClause ',')* connectorAttributeClause?
+      ')'
+    ;
+
+connectorAttributeClause
+    : connectorKey=string EQ connectorValue=string
+    ;
+
+alterPipeStatement
+    : ALTER PIPE (IF EXISTS)? pipeName=identifier
+        alterExtractorAttributesClause?
+        alterProcessorAttributesClause?
+        alterConnectorAttributesClause?
+    ;
+
+alterExtractorAttributesClause
+    : (MODIFY | REPLACE) (EXTRACTOR | SOURCE)
+        '('
+        (extractorAttributeClause ',')* extractorAttributeClause?
+        ')'
+    ;
+
+alterProcessorAttributesClause
+    : (MODIFY | REPLACE) PROCESSOR
+        '('
+        (processorAttributeClause ',')* processorAttributeClause?
+        ')'
+    ;
+
+alterConnectorAttributesClause
+    : (MODIFY | REPLACE) (CONNECTOR | SINK)
+        '('
+        (connectorAttributeClause ',')* connectorAttributeClause?
+        ')'
+    ;
+
+dropPipeStatement
+    : DROP PIPE (IF EXISTS)? pipeName=identifier
+    ;
+
+startPipeStatement
+    : START PIPE pipeName=identifier
+    ;
+
+stopPipeStatement
+    : STOP PIPE pipeName=identifier
+    ;
+
+showPipesStatement
+    : SHOW ((PIPE pipeName=identifier) | PIPES (WHERE (CONNECTOR | SINK) USED BY pipeName=identifier)?)
+    ;
+
+createPipePluginStatement
+    : CREATE PIPEPLUGIN (IF NOT EXISTS)? pluginName=identifier AS className=string uriClause
+    ;
+
+dropPipePluginStatement
+    : DROP PIPEPLUGIN (IF EXISTS)? pluginName=identifier
+    ;
+
+showPipePluginsStatement
+    : SHOW PIPEPLUGINS
+    ;
+
+
+
 // -------------------------------------------- Show Statement ---------------------------------------------------------
 showDevicesStatement
     : SHOW DEVICES FROM tableName=qualifiedName
         (WHERE where=booleanExpression)?
-        (OFFSET offset=rowCount (ROW | ROWS)?)?
-        (LIMIT limit=limitRowCount)?
+        limitOffsetClause
     ;
 
 countDevicesStatement
@@ -265,6 +379,10 @@ showDataNodesStatement
 
 showConfigNodesStatement
     : SHOW CONFIGNODES
+    ;
+
+showAINodesStatement
+    : SHOW AINODES
     ;
 
 showClusterIdStatement
@@ -322,8 +440,7 @@ showQueriesStatement
     : SHOW (QUERIES | QUERY PROCESSLIST)
         (WHERE where=booleanExpression)?
         (ORDER BY sortItem (',' sortItem)*)?
-        (OFFSET offset=rowCount (ROW | ROWS)?)?
-        (LIMIT limit=limitRowCount)?
+        limitOffsetClause
     ;
 
 
@@ -381,11 +498,38 @@ propertyValue
 
 queryNoWith
     : queryTerm
+      fillClause?
       (ORDER BY sortItem (',' sortItem)*)?
-      (FILL '(' (LINEAR | PREVIOUS | literalExpression) (',' duration=timeDuration)? ')')?
-      (OFFSET offset=rowCount)?
-      (LIMIT limit=limitRowCount)?
+      limitOffsetClause
     ;
+
+fillClause
+    : FILL METHOD fillMethod
+    ;
+
+fillMethod
+    : LINEAR timeColumnClause? fillGroupClause?                                    #linearFill
+    | PREVIOUS timeBoundClause? timeColumnClause? fillGroupClause?                 #previousFill
+    | CONSTANT literalExpression                                                   #valueFill
+    ;
+
+timeColumnClause
+    : TIME_COLUMN INTEGER_VALUE
+    ;
+
+fillGroupClause
+    : FILL_GROUP INTEGER_VALUE (',' INTEGER_VALUE)*
+    ;
+
+timeBoundClause
+    : TIME_BOUND duration=timeDuration
+    ;
+
+limitOffsetClause
+    : (OFFSET offset=rowCount)? (LIMIT limit=limitRowCount)?
+    | (LIMIT limit=limitRowCount)? (OFFSET offset=rowCount)?
+    ;
+
 
 limitRowCount
     : ALL
@@ -710,26 +854,26 @@ nonReserved
     // IMPORTANT: this rule must only contain tokens. Nested rules are not supported. See SqlParser.exitNonReserved
     : ABSENT | ADD | ADMIN | AFTER | ALL | ANALYZE | ANY | ARRAY | ASC | AT | ATTRIBUTE | AUTHORIZATION
     | BEGIN | BERNOULLI | BOTH
-    | CACHE | CALL | CALLED | CASCADE | CATALOG | CATALOGS | CHAR | CHARACTER | CHARSET | CLEAR | CLUSTER | CLUSTERID | COLUMN | COLUMNS | COMMENT | COMMIT | COMMITTED | CONDITION | CONDITIONAL | CONFIGNODES | CONFIGURATION | COPARTITION | COUNT | CURRENT
+    | CACHE | CALL | CALLED | CASCADE | CATALOG | CATALOGS | CHAR | CHARACTER | CHARSET | CLEAR | CLUSTER | CLUSTERID | COLUMN | COLUMNS | COMMENT | COMMIT | COMMITTED | CONDITION | CONDITIONAL | CONFIGNODES | CONFIGURATION | CONNECTOR | CONSTANT | COPARTITION | COUNT | CURRENT
     | DATA | DATABASE | DATABASES | DATANODES | DATE | DAY | DECLARE | DEFAULT | DEFINE | DEFINER | DENY | DESC | DESCRIPTOR | DETAILS| DETERMINISTIC | DEVICES | DISTRIBUTED | DO | DOUBLE
-    | ELSEIF | EMPTY | ENCODING | ERROR | EXCLUDING | EXPLAIN
-    | FETCH | FILL | FILTER | FINAL | FIRST | FLUSH | FOLLOWING | FORMAT | FUNCTION | FUNCTIONS
+    | ELSEIF | EMPTY | ENCODING | ERROR | EXCLUDING | EXPLAIN | EXTRACTOR
+    | FETCH | FILTER | FINAL | FIRST | FLUSH | FOLLOWING | FORMAT | FUNCTION | FUNCTIONS
     | GRACE | GRANT | GRANTED | GRANTS | GRAPHVIZ | GROUPS
     | HOUR
     | ID | INDEX | INDEXES | IF | IGNORE | IMMEDIATE | INCLUDING | INITIAL | INPUT | INTERVAL | INVOKER | IO | ITERATE | ISOLATION
     | JSON
     | KEEP | KEY | KEYS | KILL
     | LANGUAGE | LAST | LATERAL | LEADING | LEAVE | LEVEL | LIMIT | LINEAR | LOAD | LOCAL | LOGICAL | LOOP
-    | MAP | MATCH | MATCHED | MATCHES | MATCH_RECOGNIZE | MATERIALIZED | MEASUREMENT | MEASURES | MERGE | MICROSECOND | MIGRATE | MILLISECOND | MINUTE | MONTH
+    | MAP | MATCH | MATCHED | MATCHES | MATCH_RECOGNIZE | MATERIALIZED | MEASUREMENT | MEASURES | METHOD | MERGE | MICROSECOND | MIGRATE | MILLISECOND | MINUTE | MODIFY | MONTH
     | NANOSECOND | NESTED | NEXT | NFC | NFD | NFKC | NFKD | NO | NODEID | NONE | NULLIF | NULLS
     | OBJECT | OF | OFFSET | OMIT | ONE | ONLY | OPTION | ORDINALITY | OUTPUT | OVER | OVERFLOW
-    | PARTITION | PARTITIONS | PASSING | PAST | PATH | PATTERN | PER | PERIOD | PERMUTE | PLAN | POSITION | PRECEDING | PRECISION | PRIVILEGES | PREVIOUS | PROCESSLIST | PROPERTIES | PRUNE
+    | PARTITION | PARTITIONS | PASSING | PAST | PATH | PATTERN | PER | PERIOD | PERMUTE | PIPE | PIPEPLUGIN | PIPEPLUGINS | PIPES | PLAN | POSITION | PRECEDING | PRECISION | PRIVILEGES | PREVIOUS | PROCESSLIST | PROCESSOR | PROPERTIES | PRUNE
     | QUERIES | QUERY | QUOTES
     | RANGE | READ | READONLY | REFRESH | REGION | REGIONID | REGIONS | RENAME | REPAIR | REPEAT  | REPEATABLE | REPLACE | RESET | RESPECT | RESTRICT | RETURN | RETURNING | RETURNS | REVOKE | ROLE | ROLES | ROLLBACK | ROW | ROWS | RUNNING
     | SERIESSLOTID | SCALAR | SCHEMA | SCHEMAS | SECOND | SECURITY | SEEK | SERIALIZABLE | SESSION | SET | SETS
-    | SHOW | SOME | START | STATS | SUBSET | SUBSTRING | SYSTEM
+    | SHOW | SINK | SOME | SOURCE | START | STATS | STOP | SUBSET | SUBSTRING | SYSTEM
     | TABLES | TABLESAMPLE | TEXT | TEXT_STRING | TIES | TIME | TIMEPARTITION | TIMESERIES | TIMESLOTID | TIMESTAMP | TO | TRAILING | TRANSACTION | TRUNCATE | TRY_CAST | TYPE
-    | UNBOUNDED | UNCOMMITTED | UNCONDITIONAL | UNIQUE | UNKNOWN | UNMATCHED | UNTIL | UPDATE | URI | USE | USER | UTF16 | UTF32 | UTF8
+    | UNBOUNDED | UNCOMMITTED | UNCONDITIONAL | UNIQUE | UNKNOWN | UNMATCHED | UNTIL | UPDATE | URI | USE | USED | USER | UTF16 | UTF32 | UTF8
     | VALIDATE | VALUE | VARIABLES | VARIATION | VERBOSE | VERSION | VIEW
     | WEEK | WHILE | WINDOW | WITHIN | WITHOUT | WORK | WRAPPER | WRITE
     | YEAR
@@ -740,6 +884,7 @@ ABSENT: 'ABSENT';
 ADD: 'ADD';
 ADMIN: 'ADMIN';
 AFTER: 'AFTER';
+AINODES: 'AINODES';
 ALL: 'ALL';
 ALTER: 'ALTER';
 ANALYZE: 'ANALYZE';
@@ -779,6 +924,8 @@ CONDITION: 'CONDITION';
 CONDITIONAL: 'CONDITIONAL';
 CONFIGNODES: 'CONFIGNODES';
 CONFIGURATION: 'CONFIGURATION';
+CONNECTOR: 'CONNECTOR';
+CONSTANT: 'CONSTANT';
 CONSTRAINT: 'CONSTRAINT';
 COUNT: 'COUNT';
 COPARTITION: 'COPARTITION';
@@ -833,9 +980,11 @@ EXECUTE: 'EXECUTE';
 EXISTS: 'EXISTS';
 EXPLAIN: 'EXPLAIN';
 EXTRACT: 'EXTRACT';
+EXTRACTOR: 'EXTRACTOR';
 FALSE: 'FALSE';
 FETCH: 'FETCH';
 FILL: 'FILL';
+FILL_GROUP: 'FILL_GROUP';
 FILTER: 'FILTER';
 FINAL: 'FINAL';
 FIRST: 'FIRST';
@@ -914,11 +1063,13 @@ MATCH_RECOGNIZE: 'MATCH_RECOGNIZE';
 MATERIALIZED: 'MATERIALIZED';
 MEASUREMENT: 'MEASUREMENT';
 MEASURES: 'MEASURES';
+METHOD: 'METHOD';
 MERGE: 'MERGE';
 MICROSECOND: 'US';
 MIGRATE: 'MIGRATE';
 MILLISECOND: 'MS';
 MINUTE: 'MINUTE' | 'M';
+MODIFY: 'MODIFY';
 MONTH: 'MONTH' | 'MO';
 NANOSECOND: 'NS';
 NATURAL: 'NATURAL';
@@ -961,6 +1112,10 @@ PATTERN: 'PATTERN';
 PER: 'PER';
 PERIOD: 'PERIOD';
 PERMUTE: 'PERMUTE';
+PIPE: 'PIPE';
+PIPEPLUGIN: 'PIPEPLUGIN';
+PIPEPLUGINS: 'PIPEPLUGINS';
+PIPES: 'PIPES';
 PLAN : 'PLAN';
 POSITION: 'POSITION';
 PRECEDING: 'PRECEDING';
@@ -969,6 +1124,7 @@ PREPARE: 'PREPARE';
 PRIVILEGES: 'PRIVILEGES';
 PREVIOUS: 'PREVIOUS';
 PROCESSLIST: 'PROCESSLIST';
+PROCESSOR: 'PROCESSOR';
 PROPERTIES: 'PROPERTIES';
 PRUNE: 'PRUNE';
 QUERIES: 'QUERIES';
@@ -1015,9 +1171,13 @@ SESSION: 'SESSION';
 SET: 'SET';
 SETS: 'SETS';
 SHOW: 'SHOW';
+SINK: 'SINK';
+SKIP_TOKEN: 'SKIP';
 SOME: 'SOME';
+SOURCE: 'SOURCE';
 START: 'START';
 STATS: 'STATS';
+STOP: 'STOP';
 SUBSET: 'SUBSET';
 SUBSTRING: 'SUBSTRING';
 SYSTEM: 'SYSTEM';
@@ -1029,6 +1189,8 @@ TEXT_STRING: 'STRING';
 THEN: 'THEN';
 TIES: 'TIES';
 TIME: 'TIME';
+TIME_BOUND: 'TIME_BOUND';
+TIME_COLUMN: 'TIME_COLUMN';
 TIMEPARTITION: 'TIMEPARTITION';
 TIMESERIES: 'TIMESERIES';
 TIMESLOTID: 'TIMESLOTID';
@@ -1054,6 +1216,7 @@ UNTIL: 'UNTIL';
 UPDATE: 'UPDATE';
 URI: 'URI';
 USE: 'USE';
+USED: 'USED';
 USER: 'USER';
 USING: 'USING';
 UTF16: 'UTF16';

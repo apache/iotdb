@@ -22,12 +22,13 @@ package org.apache.iotdb.db.pipe.pattern;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.pattern.PipePattern;
-import org.apache.iotdb.commons.pipe.pattern.PrefixPipePattern;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpoch;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher.CachedSchemaPatternMatcher;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -58,8 +59,8 @@ public class CachedSchemaPatternMatcherTest {
         EnrichedEvent event,
         TsFileEpoch tsFileEpoch,
         Map<IDeviceID, String[]> device2Measurements,
-        PipePattern pattern) {
-      super(event, tsFileEpoch, device2Measurements, pattern);
+        TreePattern pattern) {
+      super(event, tsFileEpoch, device2Measurements, pattern, null);
     }
 
     @Override
@@ -179,7 +180,7 @@ public class CachedSchemaPatternMatcherTest {
   public static class PipeRealtimeDataRegionFakeExtractor extends PipeRealtimeDataRegionExtractor {
 
     public PipeRealtimeDataRegionFakeExtractor() {
-      pipePattern = new PrefixPipePattern(null);
+      treePattern = new PrefixTreePattern(null);
     }
 
     @Override
@@ -199,13 +200,13 @@ public class CachedSchemaPatternMatcherTest {
                     match[0] =
                         match[0]
                             || (k + TsFileConstant.PATH_SEPARATOR + s)
-                                .startsWith(getPatternString());
+                                .startsWith(getTreePattern().getPattern());
                   }
                 } else {
                   match[0] =
                       match[0]
-                          || (getPatternString().startsWith(k.toString())
-                              || k.toString().startsWith(getPatternString()));
+                          || (getTreePattern().getPattern().startsWith(k.toString())
+                              || k.toString().startsWith(getTreePattern().getPattern()));
                 }
               });
       Assert.assertTrue(match[0]);

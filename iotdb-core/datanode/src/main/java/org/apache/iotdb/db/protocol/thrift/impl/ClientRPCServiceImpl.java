@@ -63,7 +63,7 @@ import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
@@ -752,8 +752,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     scanOptionsBuilder.withGlobalTimeFilter(timeFilter);
 
     String aggregationName = SchemaUtils.getBuiltinAggregationName(aggregationType);
-    Aggregator aggregator =
-        new Aggregator(
+    TreeAggregator aggregator =
+        new TreeAggregator(
             AccumulatorFactory.createAccumulator(
                 aggregationName,
                 aggregationType,
@@ -1123,7 +1123,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       List<ColumnHeader> columnHeaders =
           Collections.singletonList(new ColumnHeader(outputColumnName, dataType));
       DatasetHeader header = new DatasetHeader(columnHeaders, false);
-      header.setColumnToTsBlockIndexMap(Collections.singletonList(outputColumnName));
+      header.setTreeColumnToTsBlockIndexMap(Collections.singletonList(outputColumnName));
 
       TSExecuteStatementResp resp = createResponse(header, 1);
       TSQueryDataSet queryDataSet = convertTsBlockByFetchSize(blockResult);
@@ -2937,6 +2937,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     resp.setDataTypeList(header.getRespDataTypeList());
     resp.setAliasColumns(header.getRespAliasColumns());
     resp.setIgnoreTimeStamp(header.isIgnoreTimestamp());
+    resp.setColumnIndex2TsBlockColumnIndexList(header.getColumnIndex2TsBlockColumnIndexList());
     resp.setQueryId(queryId);
     resp.setTableModel(
         SESSION_MANAGER.getCurrSessionAndUpdateIdleTime().getSqlDialect()

@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -525,12 +524,12 @@ public class TableMetadataImpl implements Metadata {
 
     // builtin aggregation function
     // check argument type
-    switch (functionName.toLowerCase()) {
+    switch (functionName.toLowerCase(Locale.ENGLISH)) {
       case SqlConstant.AVG:
       case SqlConstant.SUM:
       case SqlConstant.EXTREME:
-      case SqlConstant.MIN_VALUE:
-      case SqlConstant.MAX_VALUE:
+      case SqlConstant.MIN:
+      case SqlConstant.MAX:
       case SqlConstant.STDDEV:
       case SqlConstant.STDDEV_POP:
       case SqlConstant.STDDEV_SAMP:
@@ -544,11 +543,6 @@ public class TableMetadataImpl implements Metadata {
                   functionName));
         }
         break;
-      case SqlConstant.MIN_TIME:
-      case SqlConstant.MAX_TIME:
-      case SqlConstant.FIRST_VALUE:
-      case SqlConstant.LAST_VALUE:
-      case SqlConstant.TIME_DURATION:
       case SqlConstant.MODE:
         if (argumentTypes.size() != 1) {
           throw new SemanticException(
@@ -556,6 +550,20 @@ public class TableMetadataImpl implements Metadata {
                   "Aggregate functions [%s] should only have one argument", functionName));
         }
         break;
+      case SqlConstant.FIRST:
+      case SqlConstant.LAST:
+        if (argumentTypes.size() != 2) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregate functions [%s] should only have two arguments", functionName));
+        } else if (!isTimestampType(argumentTypes.get(1))) {
+          throw new SemanticException(
+              String.format(
+                  "Second argument of Aggregate functions [%s] should be orderable", functionName));
+        }
+        break;
+      case SqlConstant.FIRST_BY:
+      case SqlConstant.LAST_BY:
       case SqlConstant.MAX_BY:
       case SqlConstant.MIN_BY:
         if (argumentTypes.size() != 2) {
@@ -576,18 +584,17 @@ public class TableMetadataImpl implements Metadata {
     }
 
     // get return type
-    switch (functionName.toLowerCase()) {
-      case SqlConstant.MIN_TIME:
-      case SqlConstant.MAX_TIME:
+    switch (functionName.toLowerCase(Locale.ENGLISH)) {
       case SqlConstant.COUNT:
-      case SqlConstant.TIME_DURATION:
         return INT64;
-      case SqlConstant.MIN_VALUE:
-      case SqlConstant.LAST_VALUE:
-      case SqlConstant.FIRST_VALUE:
-      case SqlConstant.MAX_VALUE:
+      case SqlConstant.FIRST:
+      case SqlConstant.LAST:
+      case SqlConstant.FIRST_BY:
+      case SqlConstant.LAST_BY:
       case SqlConstant.EXTREME:
       case SqlConstant.MODE:
+      case SqlConstant.MAX:
+      case SqlConstant.MIN:
       case SqlConstant.MAX_BY:
       case SqlConstant.MIN_BY:
         return argumentTypes.get(0);
@@ -614,7 +621,7 @@ public class TableMetadataImpl implements Metadata {
   @Override
   public boolean isAggregationFunction(
       SessionInfo session, String functionName, AccessControl accessControl) {
-    return BuiltinAggregationFunction.getNativeFunctionNames()
+    return TableBuiltinAggregationFunction.getNativeFunctionNames()
         .contains(functionName.toLowerCase(Locale.ENGLISH));
   }
 
@@ -696,6 +703,11 @@ public class TableMetadataImpl implements Metadata {
       String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
     return partitionFetcher.getDataPartitionWithUnclosedTimeRange(
         Collections.singletonMap(database, sgNameToQueryParamsMap));
+  }
+
+  @Override
+  public boolean canUseStatistics(String functionName, boolean withTime) {
+    return TableBuiltinAggregationFunction.canUseStatistics(functionName, withTime);
   }
 
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {

@@ -70,7 +70,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
 
   @Override
   public synchronized boolean onEvent(final Consumer<SubscriptionEvent> consumer) {
-    if (shouldEmit()) {
+    if (shouldEmit() && !enrichedEvents.isEmpty()) {
       if (Objects.isNull(events)) {
         events = generateSubscriptionEvents();
       }
@@ -98,6 +98,8 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     for (final EnrichedEvent enrichedEvent : enrichedEvents) {
       enrichedEvent.clearReferenceCount(this.getClass().getName());
     }
+    enrichedEvents.clear();
+    tablets.clear();
   }
 
   public synchronized void ack() {
@@ -220,5 +222,11 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
           String.format("omit the remaining %s event(s)...", eventMessageList.size() - threshold));
     }
     return eventMessageList.toString();
+  }
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  public int getPipeEventCount() {
+    return enrichedEvents.size();
   }
 }

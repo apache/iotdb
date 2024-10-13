@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.commons.schema.table;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
@@ -144,6 +146,19 @@ public class TsTable {
     }
   }
 
+  public long getTableTTL() {
+    long ttl = getTableTTLInMS();
+    return ttl == Long.MAX_VALUE
+        ? ttl
+        : CommonDateTimeUtils.convertMilliTimeWithPrecision(
+            ttl, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+  }
+
+  public long getTableTTLInMS() {
+    return Long.parseLong(
+        getPropValue(TTL_PROPERTY.toLowerCase(Locale.ENGLISH)).orElse(Long.MAX_VALUE + ""));
+  }
+
   public Optional<String> getPropValue(final String propKey) {
     readWriteLock.readLock().lock();
     try {
@@ -189,10 +204,10 @@ public class TsTable {
     return stream.toByteArray();
   }
 
-  public void serialize(OutputStream stream) throws IOException {
+  public void serialize(final OutputStream stream) throws IOException {
     ReadWriteIOUtils.write(tableName, stream);
     ReadWriteIOUtils.write(columnSchemaMap.size(), stream);
-    for (TsTableColumnSchema columnSchema : columnSchemaMap.values()) {
+    for (final TsTableColumnSchema columnSchema : columnSchemaMap.values()) {
       TsTableColumnSchemaUtil.serialize(columnSchema, stream);
     }
     ReadWriteIOUtils.write(props, stream);

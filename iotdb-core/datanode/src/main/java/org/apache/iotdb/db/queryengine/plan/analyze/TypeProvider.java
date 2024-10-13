@@ -20,12 +20,11 @@
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.utils.TypeUtil;
 
 import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.read.common.type.TypeEnum;
-import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -138,6 +137,10 @@ public class TypeProvider {
     return Collections.unmodifiableMap(tableModelTypes);
   }
 
+  public void setTableModelTypes(Map<Symbol, Type> tableModelTypes) {
+    this.tableModelTypes = tableModelTypes;
+  }
+
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(treeModelTypeMap.size(), byteBuffer);
     for (Map.Entry<String, TSDataType> entry : treeModelTypeMap.entrySet()) {
@@ -158,7 +161,7 @@ public class TypeProvider {
       ReadWriteIOUtils.write(tableModelTypes.size(), byteBuffer);
       for (Map.Entry<Symbol, Type> entry : tableModelTypes.entrySet()) {
         ReadWriteIOUtils.write(entry.getKey().getName(), byteBuffer);
-        ReadWriteIOUtils.write(entry.getValue().getTypeEnum().ordinal(), byteBuffer);
+        TypeUtil.serialize(entry.getValue(), byteBuffer);
       }
     }
   }
@@ -186,7 +189,7 @@ public class TypeProvider {
       ReadWriteIOUtils.write(tableModelTypes.size(), stream);
       for (Map.Entry<Symbol, Type> entry : tableModelTypes.entrySet()) {
         ReadWriteIOUtils.write(entry.getKey().getName(), stream);
-        ReadWriteIOUtils.write(entry.getValue().getTypeEnum().ordinal(), stream);
+        TypeUtil.serialize(entry.getValue(), stream);
       }
     }
   }
@@ -214,8 +217,7 @@ public class TypeProvider {
       tableModelTypes = new HashMap<>(mapSize);
       while (mapSize > 0) {
         tableModelTypes.put(
-            new Symbol(ReadWriteIOUtils.readString(byteBuffer)),
-            TypeFactory.getType(TypeEnum.values()[ReadWriteIOUtils.readInt(byteBuffer)]));
+            new Symbol(ReadWriteIOUtils.readString(byteBuffer)), TypeUtil.deserialize(byteBuffer));
         mapSize--;
       }
     }
