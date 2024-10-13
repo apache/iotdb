@@ -19,6 +19,7 @@ import com.google.common.primitives.Ints;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 
@@ -29,15 +30,15 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 
-public class Aggregator {
-  private final Accumulator accumulator;
+public class TableAggregator {
+  private final TableAccumulator accumulator;
   private final AggregationNode.Step step;
   private final TSDataType outputType;
   private final int[] inputChannels;
   private final OptionalInt maskChannel;
 
-  public Aggregator(
-      Accumulator accumulator,
+  public TableAggregator(
+      TableAccumulator accumulator,
       AggregationNode.Step step,
       TSDataType outputType,
       List<Integer> inputChannels,
@@ -78,6 +79,16 @@ public class Aggregator {
     } else {
       accumulator.evaluateFinal(columnBuilder);
     }
+  }
+
+  /** Used for AggregateTableScanOperator. */
+  public void processStatistics(Statistics statistics) {
+    checkArgument(inputChannels.length == 1, "expected 1 input channel for processStatistics");
+    accumulator.addStatistics(statistics);
+  }
+
+  public boolean hasFinalResult() {
+    return accumulator.hasFinalResult();
   }
 
   public void reset() {
