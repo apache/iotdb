@@ -22,20 +22,26 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.util;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Intersect;
@@ -61,8 +67,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Union;
@@ -70,6 +80,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Values;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
+import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
@@ -218,6 +229,44 @@ public final class SqlFormatter {
       node.getOrderBy().ifPresent(orderBy -> process(orderBy, indent));
       node.getOffset().ifPresent(offset -> process(offset, indent));
       node.getLimit().ifPresent(limit -> process(limit, indent));
+      return null;
+    }
+
+    @Override
+    protected Void visitFill(Fill node, Integer indent) {
+      append(indent, "FILL METHOD ").append(node.getFillMethod().name());
+
+      if (node.getFillMethod() == FillPolicy.CONSTANT) {
+        builder.append(formatExpression(node.getFillValue().get()));
+      } else if (node.getFillMethod() == FillPolicy.LINEAR) {
+        node.getTimeColumnIndex()
+            .ifPresent(index -> builder.append(" TIME_COLUMN ").append(String.valueOf(index)));
+        node.getFillGroupingElements()
+            .ifPresent(
+                elements ->
+                    builder
+                        .append(" FILL_GROUP ")
+                        .append(
+                            elements.stream()
+                                .map(SqlFormatter::formatExpression)
+                                .collect(joining(", "))));
+      } else if (node.getFillMethod() == FillPolicy.PREVIOUS) {
+        node.getTimeBound()
+            .ifPresent(timeBound -> builder.append(" TIME_BOUND ").append(timeBound.toString()));
+        node.getTimeColumnIndex()
+            .ifPresent(index -> builder.append(" TIME_COLUMN ").append(String.valueOf(index)));
+        node.getFillGroupingElements()
+            .ifPresent(
+                elements ->
+                    builder
+                        .append(" FILL_GROUP ")
+                        .append(
+                            elements.stream()
+                                .map(SqlFormatter::formatExpression)
+                                .collect(joining(", "))));
+      } else {
+        throw new IllegalArgumentException("Unknown fill method: " + node.getFillMethod());
+      }
       return null;
     }
 
@@ -745,6 +794,205 @@ public final class SqlFormatter {
     protected Void visitDropFunction(DropFunction node, Integer indent) {
       builder.append("DROP FUNCTION ");
       builder.append(node.getUdfName());
+      return null;
+    }
+
+    @Override
+    protected Void visitCreatePipe(CreatePipe node, Integer context) {
+      builder.append("CREATE PIPE ");
+      if (node.hasIfNotExistsCondition()) {
+        builder.append("IF NOT EXISTS ");
+      }
+      builder.append(node.getPipeName());
+      builder.append(" \n");
+
+      if (!node.getExtractorAttributes().isEmpty()) {
+        builder
+            .append("WITH SOURCE (")
+            .append("\n")
+            .append(
+                node.getExtractorAttributes().entrySet().stream()
+                    .map(
+                        entry ->
+                            indentString(1)
+                                + "\""
+                                + entry.getKey()
+                                + "\" = \""
+                                + entry.getValue()
+                                + "\"")
+                    .collect(joining(", " + "\n")))
+            .append(")\n");
+      }
+
+      if (!node.getProcessorAttributes().isEmpty()) {
+        builder
+            .append("WITH PROCESSOR (")
+            .append("\n")
+            .append(
+                node.getProcessorAttributes().entrySet().stream()
+                    .map(
+                        entry ->
+                            indentString(1)
+                                + "\""
+                                + entry.getKey()
+                                + "\" = \""
+                                + entry.getValue()
+                                + "\"")
+                    .collect(joining(", " + "\n")))
+            .append(")\n");
+      }
+
+      if (!node.getConnectorAttributes().isEmpty()) {
+        builder
+            .append("WITH SINK (")
+            .append("\n")
+            .append(
+                node.getConnectorAttributes().entrySet().stream()
+                    .map(
+                        entry ->
+                            indentString(1)
+                                + "\""
+                                + entry.getKey()
+                                + "\" = \""
+                                + entry.getValue()
+                                + "\"")
+                    .collect(joining(", " + "\n")))
+            .append(")");
+      }
+
+      return null;
+    }
+
+    @Override
+    protected Void visitAlterPipe(AlterPipe node, Integer context) {
+      builder.append("ALTER PIPE ");
+      if (node.hasIfExistsCondition()) {
+        builder.append("IF EXISTS ");
+      }
+      builder.append(node.getPipeName());
+      builder.append(" \n");
+
+      builder
+          .append(node.isReplaceAllExtractorAttributes() ? "REPLACE" : "MODIFY")
+          .append(" SOURCE (")
+          .append("\n")
+          .append(
+              node.getExtractorAttributes().entrySet().stream()
+                  .map(
+                      entry ->
+                          indentString(1)
+                              + "\""
+                              + entry.getKey()
+                              + "\" = \""
+                              + entry.getValue()
+                              + "\"")
+                  .collect(joining(", " + "\n")))
+          .append(")\n");
+
+      builder
+          .append(node.isReplaceAllProcessorAttributes() ? "REPLACE" : "MODIFY")
+          .append(" PROCESSOR (")
+          .append("\n")
+          .append(
+              node.getProcessorAttributes().entrySet().stream()
+                  .map(
+                      entry ->
+                          indentString(1)
+                              + "\""
+                              + entry.getKey()
+                              + "\" = \""
+                              + entry.getValue()
+                              + "\"")
+                  .collect(joining(", " + "\n")))
+          .append(")\n");
+
+      builder
+          .append(node.isReplaceAllConnectorAttributes() ? "REPLACE" : "MODIFY")
+          .append(" SINK (")
+          .append("\n")
+          .append(
+              node.getConnectorAttributes().entrySet().stream()
+                  .map(
+                      entry ->
+                          indentString(1)
+                              + "\""
+                              + entry.getKey()
+                              + "\" = \""
+                              + entry.getValue()
+                              + "\"")
+                  .collect(joining(", " + "\n")))
+          .append(")");
+
+      return null;
+    }
+
+    @Override
+    protected Void visitDropPipe(DropPipe node, Integer context) {
+      builder.append("DROP PIPE ");
+      if (node.hasIfExistsCondition()) {
+        builder.append("IF EXISTS ");
+      }
+      builder.append(node.getPipeName());
+
+      return null;
+    }
+
+    @Override
+    protected Void visitStartPipe(StartPipe node, Integer context) {
+      builder.append("START PIPE ").append(node.getPipeName());
+
+      return null;
+    }
+
+    @Override
+    protected Void visitStopPipe(StopPipe node, Integer context) {
+      builder.append("STOP PIPE ").append(node.getPipeName());
+
+      return null;
+    }
+
+    @Override
+    protected Void visitShowPipes(ShowPipes node, Integer context) {
+      builder.append("SHOW PIPES");
+
+      return null;
+    }
+
+    @Override
+    protected Void visitCreatePipePlugin(CreatePipePlugin node, Integer context) {
+      builder.append("CREATE PIPEPLUGIN ");
+      if (node.hasIfNotExistsCondition()) {
+        builder.append("IF NOT EXISTS ");
+      }
+      builder.append(node.getPluginName());
+      builder.append("\n");
+
+      builder.append("AS \"");
+      builder.append(node.getClassName());
+      builder.append("\"\n");
+
+      builder.append("USING URI \"");
+      builder.append(node.getUriString());
+      builder.append("\"");
+
+      return null;
+    }
+
+    @Override
+    protected Void visitDropPipePlugin(DropPipePlugin node, Integer context) {
+      builder.append("DROP PIPEPLUGIN ");
+      if (node.hasIfExistsCondition()) {
+        builder.append("IF EXISTS ");
+      }
+      builder.append(node.getPluginName());
+
+      return null;
+    }
+
+    @Override
+    protected Void visitShowPipePlugins(ShowPipePlugins node, Integer context) {
+      builder.append("SHOW PIPEPLUGINS");
+
       return null;
     }
 

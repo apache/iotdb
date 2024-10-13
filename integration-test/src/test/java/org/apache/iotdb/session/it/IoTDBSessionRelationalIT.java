@@ -676,6 +676,82 @@ public class IoTDBSessionRelationalIT {
 
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void insertRelationalTabletWithCacheLeaderTest()
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection(TABLE_SQL_DIALECT)) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      session.executeNonQueryStatement(
+          "CREATE TABLE table5 (id1 string id, attr1 string attribute, "
+              + "m1 double "
+              + "measurement)");
+
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
+      final List<ColumnType> columnTypes =
+          Arrays.asList(ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT);
+
+      long timestamp = 0;
+      Tablet tablet = new Tablet("table5", schemaList, columnTypes, 15);
+
+      for (long row = 0; row < 15; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, timestamp + row);
+        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("attr1", rowIndex, "attr:" + row);
+        tablet.addValue("m1", rowIndex, row * 1.0);
+        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+          session.insertRelationalTablet(tablet, true);
+          tablet.reset();
+        }
+      }
+
+      if (tablet.rowSize != 0) {
+        session.insertRelationalTablet(tablet);
+        tablet.reset();
+      }
+
+      session.executeNonQueryStatement("FLush");
+
+      for (long row = 15; row < 30; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, timestamp + row);
+        // cache leader should work for devices that have inserted before
+        tablet.addValue("id1", rowIndex, "id:" + (row - 15));
+        tablet.addValue("attr1", rowIndex, "attr:" + (row - 15));
+        tablet.addValue("m1", rowIndex, row * 1.0);
+        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+          session.insertRelationalTablet(tablet, true);
+          tablet.reset();
+        }
+      }
+
+      if (tablet.rowSize != 0) {
+        session.insertRelationalTablet(tablet);
+        tablet.reset();
+      }
+
+      int cnt = 0;
+      SessionDataSet dataSet = session.executeQueryStatement("select * from table5 order by time");
+      while (dataSet.hasNext()) {
+        RowRecord rowRecord = dataSet.next();
+        timestamp = rowRecord.getFields().get(0).getLongV();
+        assertEquals(
+            "id:" + (timestamp < 15 ? timestamp : timestamp - 15),
+            rowRecord.getFields().get(1).getBinaryV().toString());
+        assertEquals(
+            "attr:" + (timestamp < 15 ? timestamp : timestamp - 15),
+            rowRecord.getFields().get(2).getBinaryV().toString());
+        assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
+        cnt++;
+      }
+      assertEquals(30, cnt);
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void autoCreateTableTest() throws IoTDBConnectionException, StatementExecutionException {
     try (ISession session = EnvFactory.getEnv().getSessionConnection(TABLE_SQL_DIALECT)) {
       session.executeNonQueryStatement("USE \"db1\"");

@@ -257,6 +257,7 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.canPushDownLimitOffsetToGroupByTime;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.pushDownLimitOffsetToTimeParameter;
+import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.TIMESTAMP_PRECISION;
 import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.currPrecision;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.CAST_FUNCTION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.CAST_TYPE;
@@ -1796,7 +1797,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       fillComponent.setFillPolicy(FillPolicy.PREVIOUS);
 
     } else if (ctx.constant() != null) {
-      fillComponent.setFillPolicy(FillPolicy.VALUE);
+      fillComponent.setFillPolicy(FillPolicy.CONSTANT);
       Literal fillValue = parseLiteral(ctx.constant());
       fillComponent.setFillValue(fillValue);
     } else {
@@ -1992,7 +1993,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         return Long.parseLong(constant.INTEGER_LITERAL().getText());
       } catch (NumberFormatException e) {
         throw new SemanticException(
-            String.format("Can not parse %s to long value", constant.INTEGER_LITERAL().getText()));
+            String.format(
+                "Current system timestamp precision is %s, "
+                    + "please check whether the timestamp %s is correct.",
+                TIMESTAMP_PRECISION, constant.INTEGER_LITERAL().getText()));
       }
     } else if (constant.dateExpression() != null) {
       return parseDateExpression(constant.dateExpression(), CommonDateTimeUtils.currentTime());

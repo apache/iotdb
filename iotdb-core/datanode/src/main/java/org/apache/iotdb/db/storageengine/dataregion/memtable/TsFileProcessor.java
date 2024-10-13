@@ -327,6 +327,7 @@ public class TsFileProcessor {
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
+            dataRegionInfo.getDataRegion().getDatabaseName(),
             walFlushListener.getWalEntryHandler(),
             insertRowNode,
             tsFileResource);
@@ -414,6 +415,7 @@ public class TsFileProcessor {
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
+            dataRegionInfo.getDataRegion().getDatabaseName(),
             walFlushListener.getWalEntryHandler(),
             insertRowsNode,
             tsFileResource);
@@ -562,6 +564,7 @@ public class TsFileProcessor {
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
+            dataRegionInfo.getDataRegion().getDatabaseName(),
             walFlushListener.getWalEntryHandler(),
             insertTabletNode,
             tsFileResource);
@@ -1274,6 +1277,7 @@ public class TsFileProcessor {
         PipeInsertionDataNodeListener.getInstance()
             .listenToTsFile(
                 dataRegionInfo.getDataRegion().getDataRegionId(),
+                dataRegionInfo.getDataRegion().getDatabaseName(),
                 tsFileResource,
                 false,
                 tmpMemTable.isTotallyGeneratedByPipe());
@@ -2212,10 +2216,15 @@ public class TsFileProcessor {
   }
 
   private long getQueryTimeLowerBound(IDeviceID deviceID) {
-    long deviceTTL = DataNodeTTLCache.getInstance().getTTL(deviceID);
-    return deviceTTL != Long.MAX_VALUE
-        ? CommonDateTimeUtils.currentTime() - deviceTTL
-        : Long.MIN_VALUE;
+    long ttl;
+    if (deviceID.getTableName().startsWith("root.")) {
+      ttl = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
+    } else {
+      ttl =
+          DataNodeTTLCache.getInstance()
+              .getTTLForTable(this.storageGroupName, deviceID.getTableName());
+    }
+    return ttl != Long.MAX_VALUE ? CommonDateTimeUtils.currentTime() - ttl : Long.MIN_VALUE;
   }
 
   public long getTimeRangeId() {

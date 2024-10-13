@@ -64,9 +64,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpress
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.TableCaseWhenThenColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticColumnTransformerApi;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareEqualToColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareGreaterEqualColumnTransformer;
@@ -79,6 +81,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.IdentityCo
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.NullColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.TimeColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.CoalesceColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.InBinaryMultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.InBooleanMultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.InDoubleMultiColumnTransformer;
@@ -1283,19 +1286,106 @@ public class ColumnTransformerBuilder
 
   @Override
   protected ColumnTransformer visitCoalesceExpression(CoalesceExpression node, Context context) {
-    throw new UnsupportedOperationException(String.format(UNSUPPORTED_EXPRESSION, node));
+    if (!context.cache.containsKey(node)) {
+      if (context.hasSeen.containsKey(node)) {
+        ColumnTransformer columnTransformer = context.hasSeen.get(node);
+        IdentityColumnTransformer identity =
+            new IdentityColumnTransformer(
+                columnTransformer.getType(),
+                context.originSize + context.commonTransformerList.size());
+        columnTransformer.addReferenceCount();
+        context.commonTransformerList.add(columnTransformer);
+        context.leafList.add(identity);
+        context.inputDataTypes.add(getTSDataType(columnTransformer.getType()));
+        context.cache.put(node, identity);
+      } else {
+        List<ColumnTransformer> children =
+            node.getChildren().stream().map(c -> process(c, context)).collect(Collectors.toList());
+        context.cache.put(node, new CoalesceColumnTransformer(children.get(0).getType(), children));
+      }
+    }
+    ColumnTransformer res = context.cache.get(node);
+    res.addReferenceCount();
+    return res;
   }
 
   @Override
   protected ColumnTransformer visitSimpleCaseExpression(
       SimpleCaseExpression node, Context context) {
-    throw new UnsupportedOperationException(String.format(UNSUPPORTED_EXPRESSION, node));
+    if (!context.cache.containsKey(node)) {
+      if (context.hasSeen.containsKey(node)) {
+        ColumnTransformer columnTransformer = context.hasSeen.get(node);
+        IdentityColumnTransformer identity =
+            new IdentityColumnTransformer(
+                columnTransformer.getType(),
+                context.originSize + context.commonTransformerList.size());
+        columnTransformer.addReferenceCount();
+        context.commonTransformerList.add(columnTransformer);
+        context.leafList.add(identity);
+        context.inputDataTypes.add(InternalTypeManager.getTSDataType(columnTransformer.getType()));
+        context.cache.put(node, identity);
+      } else {
+        List<ColumnTransformer> whenList = new ArrayList<>();
+        List<ColumnTransformer> thenList = new ArrayList<>();
+        for (WhenClause whenClause : node.getWhenClauses()) {
+          whenList.add(
+              process(
+                  new ComparisonExpression(
+                      ComparisonExpression.Operator.EQUAL,
+                      node.getOperand(),
+                      whenClause.getOperand()),
+                  context));
+          thenList.add(process(whenClause.getResult(), context));
+        }
+
+        ColumnTransformer elseColumnTransformer =
+            process(node.getDefaultValue().orElse(new NullLiteral()), context);
+        context.cache.put(
+            node,
+            new TableCaseWhenThenColumnTransformer(
+                thenList.get(0).getType(), whenList, thenList, elseColumnTransformer));
+      }
+    }
+    ColumnTransformer res = context.cache.get(node);
+    res.addReferenceCount();
+    return res;
   }
 
   @Override
   protected ColumnTransformer visitSearchedCaseExpression(
       SearchedCaseExpression node, Context context) {
-    throw new UnsupportedOperationException(String.format(UNSUPPORTED_EXPRESSION, node));
+    if (!context.cache.containsKey(node)) {
+      if (context.hasSeen.containsKey(node)) {
+        ColumnTransformer columnTransformer = context.hasSeen.get(node);
+        IdentityColumnTransformer identity =
+            new IdentityColumnTransformer(
+                columnTransformer.getType(),
+                context.originSize + context.commonTransformerList.size());
+        columnTransformer.addReferenceCount();
+        context.commonTransformerList.add(columnTransformer);
+        context.leafList.add(identity);
+        context.inputDataTypes.add(InternalTypeManager.getTSDataType(columnTransformer.getType()));
+        context.cache.put(node, identity);
+      } else {
+        List<ColumnTransformer> whenList = new ArrayList<>();
+        List<ColumnTransformer> thenList = new ArrayList<>();
+        for (WhenClause whenClause : node.getWhenClauses()) {
+          whenList.add(process(whenClause.getOperand(), context));
+          thenList.add(process(whenClause.getResult(), context));
+        }
+
+        ColumnTransformer elseColumnTransformer =
+            process(node.getDefaultValue().orElse(new NullLiteral()), context);
+
+        context.cache.put(
+            node,
+            new TableCaseWhenThenColumnTransformer(
+                thenList.get(0).getType(), whenList, thenList, elseColumnTransformer));
+      }
+    }
+    ColumnTransformer res = context.cache.get(node);
+    res.addReferenceCount();
+    return res;
   }
 
   @Override

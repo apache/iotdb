@@ -1,15 +1,20 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
@@ -88,7 +93,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinN
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.extractJoinPredicate;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.joinEqualityExpression;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.processInnerJoin;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.tryNormalizeToOuterToInnerJoin;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 
 /**
@@ -519,7 +523,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           context.inheritedPredicate != null ? context.inheritedPredicate : TRUE_LITERAL;
 
       // See if we can rewrite outer joins in terms of a plain inner join
-      node = tryNormalizeToOuterToInnerJoin(node, inheritedPredicate);
+      // node = tryNormalizeToOuterToInnerJoin(node, inheritedPredicate);
 
       Expression leftEffectivePredicate = TRUE_LITERAL;
       // effectivePredicateExtractor.extract(session, node.getLeftChild(), types, typeAnalyzer);
@@ -547,6 +551,12 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           rightPredicate = innerJoinPushDownResult.getRightPredicate();
           postJoinPredicate = innerJoinPushDownResult.getPostJoinPredicate();
           newJoinPredicate = innerJoinPushDownResult.getJoinPredicate();
+          break;
+        case FULL:
+          leftPredicate = TRUE_LITERAL;
+          rightPredicate = TRUE_LITERAL;
+          postJoinPredicate = inheritedPredicate;
+          newJoinPredicate = joinPredicate;
           break;
         default:
           throw new IllegalStateException("Only support INNER JOIN in current version");

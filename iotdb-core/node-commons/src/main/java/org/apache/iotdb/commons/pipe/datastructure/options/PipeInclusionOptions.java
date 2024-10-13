@@ -56,7 +56,7 @@ public class PipeInclusionOptions {
 
       OPTIONS.add(new PartialPath("schema.timeseries.ordinary.create"));
       OPTIONS.add(new PartialPath("schema.timeseries.ordinary.alter"));
-      OPTIONS.add(new PartialPath("schema.timeseries.ordinary.delete"));
+      OPTIONS.add(new PartialPath("schema.timeseries.ordinary.drop"));
 
       OPTIONS.add(new PartialPath("schema.timeseries.template.create"));
       OPTIONS.add(new PartialPath("schema.timeseries.template.set"));
@@ -91,7 +91,7 @@ public class PipeInclusionOptions {
                 Arrays.asList(
                     "data.delete",
                     "schema.database.drop",
-                    "schema.timeseries.ordinary.drop",
+                    "schema.timeseries.ordinary.delete",
                     "schema.timeseries.view.drop",
                     "schema.timeseries.template.drop",
                     "schema.timeseries.template.unset",

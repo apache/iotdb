@@ -45,19 +45,12 @@ public class CompactionScheduleContext {
   private int fullyDirtyFileNum = 0;
 
   private int partiallyDirtyFileNum = 0;
-
-  private boolean isTreeModel = true;
   // end region
 
   private final Map<TsFileResource, Map<IDeviceID, DeviceInfo>> partitionFileDeviceInfoCache;
 
   public CompactionScheduleContext() {
     this.partitionFileDeviceInfoCache = new HashMap<>();
-  }
-
-  public CompactionScheduleContext(boolean isTreeModel) {
-    this();
-    this.isTreeModel = isTreeModel;
   }
 
   public void addResourceDeviceTimeIndex(
@@ -153,10 +146,10 @@ public class CompactionScheduleContext {
   }
 
   public ISeqCompactionPerformer getSeqCompactionPerformer() {
-    ISeqCompactionPerformer seqCompactionPerformer =
-        IoTDBDescriptor.getInstance().getConfig().getInnerSeqCompactionPerformer().createInstance();
-    seqCompactionPerformer.setIgnoreAllNullRows(isTreeModel);
-    return seqCompactionPerformer;
+    return IoTDBDescriptor.getInstance()
+        .getConfig()
+        .getInnerSeqCompactionPerformer()
+        .createInstance();
   }
 
   public IUnseqCompactionPerformer getUnseqCompactionPerformer() {
@@ -165,18 +158,10 @@ public class CompactionScheduleContext {
             .getConfig()
             .getInnerUnseqCompactionPerformer()
             .createInstance();
-    unseqCompactionPerformer.setIgnoreAllNullRows(isTreeModel);
     return unseqCompactionPerformer;
   }
 
   public ICrossCompactionPerformer getCrossCompactionPerformer() {
-    ICrossCompactionPerformer crossCompactionPerformer =
-        IoTDBDescriptor.getInstance().getConfig().getCrossCompactionPerformer().createInstance();
-    crossCompactionPerformer.setIgnoreAllNullRows(isTreeModel);
-    return crossCompactionPerformer;
-  }
-
-  public boolean isIgnoreAllNullRows() {
-    return isTreeModel;
+    return IoTDBDescriptor.getInstance().getConfig().getCrossCompactionPerformer().createInstance();
   }
 }

@@ -274,6 +274,9 @@ public class CommonConfig {
 
   private float subscriptionCacheMemoryUsagePercentage = 0.2F;
 
+  private boolean pipeEventReferenceTrackingEnabled = false; // TODO: enable later
+  private long pipeEventReferenceEliminateIntervalSeconds = 10;
+
   private int subscriptionSubtaskExecutorMaxThreadNum =
       Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
   private int subscriptionPrefetchTabletBatchMaxDelayInMs = 1000; // 1s
@@ -283,7 +286,7 @@ public class CommonConfig {
   private int subscriptionPollMaxBlockingTimeMs = 500;
   private int subscriptionSerializeMaxBlockingTimeMs = 100;
   private long subscriptionLaunchRetryIntervalMs = 1000;
-  private int subscriptionRecycleUncommittedEventIntervalMs = 60000; // 60s
+  private int subscriptionRecycleUncommittedEventIntervalMs = 600000; // 600s
   private long subscriptionReadFileBufferSize = 8 * MB;
   private long subscriptionReadTabletBufferSize = 8 * MB;
   private long subscriptionTsFileDeduplicationWindowSeconds = 120; // 120s
@@ -1180,6 +1183,23 @@ public class CommonConfig {
   public void setTwoStageAggregateSenderEndPointsCacheInMs(
       long twoStageAggregateSenderEndPointsCacheInMs) {
     this.twoStageAggregateSenderEndPointsCacheInMs = twoStageAggregateSenderEndPointsCacheInMs;
+  }
+
+  public boolean getPipeEventReferenceTrackingEnabled() {
+    return pipeEventReferenceTrackingEnabled;
+  }
+
+  public void setPipeEventReferenceTrackingEnabled(boolean pipeEventReferenceTrackingEnabled) {
+    this.pipeEventReferenceTrackingEnabled = pipeEventReferenceTrackingEnabled;
+  }
+
+  public long getPipeEventReferenceEliminateIntervalSeconds() {
+    return pipeEventReferenceEliminateIntervalSeconds;
+  }
+
+  public void setPipeEventReferenceEliminateIntervalSeconds(
+      long pipeEventReferenceEliminateIntervalSeconds) {
+    this.pipeEventReferenceEliminateIntervalSeconds = pipeEventReferenceEliminateIntervalSeconds;
   }
 
   public float getSubscriptionCacheMemoryUsagePercentage() {

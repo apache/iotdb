@@ -25,6 +25,7 @@ import org.junit.Assert;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -47,7 +48,7 @@ public class ServerCommandLineTest extends TestCase {
           }
 
           @Override
-          protected void remove(Long nodeId) {
+          protected void remove(Set<Integer> nodeIds) {
             stopCalled.set(true);
           }
         };
@@ -78,7 +79,7 @@ public class ServerCommandLineTest extends TestCase {
           }
 
           @Override
-          protected void remove(Long nodeId) {
+          protected void remove(Set<Integer> nodeIds) {
             stopCalled.set(true);
           }
         };
@@ -109,7 +110,7 @@ public class ServerCommandLineTest extends TestCase {
           }
 
           @Override
-          protected void remove(Long nodeId) {
+          protected void remove(Set<Integer> nodeIds) {
             stopCalled.set(true);
           }
         };
@@ -143,10 +144,10 @@ public class ServerCommandLineTest extends TestCase {
           }
 
           @Override
-          protected void remove(Long nodeId) {
+          protected void remove(Set<Integer> nodeIds) {
             stopCalled.set(true);
-            if (nodeId != null) {
-              stopNodeId.set(nodeId);
+            if (nodeIds != null) {
+              stopNodeId.set(nodeIds.iterator().next());
             }
           }
         };
@@ -181,10 +182,10 @@ public class ServerCommandLineTest extends TestCase {
           }
 
           @Override
-          protected void remove(Long nodeId) {
+          protected void remove(Set<Integer> nodeIds) {
             stopCalled.set(true);
-            if (nodeId != null) {
-              stopNodeId.set(nodeId);
+            if (nodeIds != null) {
+              stopNodeId.set(nodeIds.iterator().next());
             }
           }
         };
@@ -219,10 +220,10 @@ public class ServerCommandLineTest extends TestCase {
           }
 
           @Override
-          protected void remove(Long nodeId) {
+          protected void remove(Set<Integer> nodeIds) {
             stopCalled.set(true);
-            if (nodeId != null) {
-              stopNodeId.set(nodeId);
+            if (nodeIds != null) {
+              stopNodeId.set(nodeIds.iterator().next());
             }
           }
         };
@@ -255,10 +256,10 @@ public class ServerCommandLineTest extends TestCase {
           }
 
           @Override
-          protected void remove(Long nodeId) {
+          protected void remove(Set<Integer> nodeIds) {
             stopCalled.set(true);
-            if (nodeId != null) {
-              stopNodeId.set(nodeId);
+            if (nodeIds != null) {
+              stopNodeId.set(nodeIds.iterator().next());
             }
           }
         };
@@ -290,7 +291,7 @@ public class ServerCommandLineTest extends TestCase {
           }
 
           @Override
-          protected void remove(Long nodeId) {
+          protected void remove(Set<Integer> nodeIds) {
             stopCalled.set(true);
           }
         };
@@ -321,7 +322,7 @@ public class ServerCommandLineTest extends TestCase {
           }
 
           @Override
-          protected void remove(Long nodeId) throws IoTDBException {
+          protected void remove(Set<Integer> nodeIds) throws IoTDBException {
             throw new IoTDBException("Error", 23);
           }
         };

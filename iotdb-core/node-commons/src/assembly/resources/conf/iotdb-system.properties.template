@@ -1043,6 +1043,7 @@ expired_data_ratio=0.3
 timestamp_precision=ms
 
 # When the timestamp precision check is enabled, the timestamps those are over 13 digits for ms precision, or over 16 digits for us precision are not allowed to be inserted.
+# For all precisions, ms, us and ns, the timestamps cannot exceed the range of [-9223372036854775808, 9223372036854775807], regardless of whether the check is enabled or not.
 # effectiveMode: first_start
 # Datatype: Boolean
 timestamp_precision_check_enabled=true
@@ -1171,6 +1172,11 @@ enable_unseq_space_compaction=true
 # Datatype: boolean
 enable_cross_space_compaction=true
 
+# enable auto repair unsorted file by compaction
+# effectiveMode: hot_reload
+# Datatype: boolean
+enable_auto_repair_compaction=true
+
 # the selector of cross space compaction task
 # effectiveMode: restart
 # Options: rewrite
@@ -1182,7 +1188,7 @@ cross_selector=rewrite
 cross_performer=fast
 
 # the selector of inner sequence space compaction task
-# effectiveMode: hod_reload
+# effectiveMode: hot_reload
 # Options: size_tiered_single_target,size_tiered_multi_target
 inner_seq_selector=size_tiered_multi_target
 
@@ -1428,7 +1434,7 @@ delete_wal_files_period_in_ms=20000
 # If this value is set smaller than 0, it will default to 50 * 1024 * 1024 * 1024 bytes (50GB).
 # effectiveMode: hot_reload
 # Datatype: long
-iot_consensus_throttle_threshold_in_byte=53687091200
+wal_throttle_threshold_in_byte=53687091200
 
 # Maximum wait time of write cache in IoTConsensus
 # If this value is less than or equal to 0, use the default value 10 * 1000 ms (10s)
@@ -1837,7 +1843,7 @@ procedure_completed_clean_interval=30
 # Default ttl of completed procedure, time unit is second
 # effectiveMode: restart
 # Datatype: int
-procedure_completed_evict_ttl=800
+procedure_completed_evict_ttl=60
 
 ####################
 ### MQTT Broker Configuration

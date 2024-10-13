@@ -297,7 +297,6 @@ public class CreateTableProcedure
           database,
           table.getTableName(),
           failedResults);
-      // TODO: Handle commit failure
     }
   }
 

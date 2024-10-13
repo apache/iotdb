@@ -86,6 +86,33 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         "insert into table0(device,level,time,num,bigNum,floatNum,str,bool,date) values('d2','l5',51536000000,15,3147483648,235.213,'watermelon',TRUE,'2023-01-01')"
       };
 
+  private static final String[] sql3 =
+      new String[] {
+        "CREATE TABLE table1 (device string id, level string id, attr1 string attribute, attr2 string attribute, num int32 measurement, bigNum int64 measurement, "
+            + "floatNum double measurement, str TEXT measurement, bool BOOLEAN measurement, date DATE measurement, blob BLOB measurement)",
+        "insert into table1(device, level, attr1, attr2, time, num, bigNum, floatNum, str, bool, date, blob) "
+            + "values('d1', 'l1', 'c', 'd', 0, 3, 2947483648,231.2121, 'coconut', FALSE, '2023-01-01', X'100DCD62')",
+        "insert into table1(device, level, attr1, attr2, time, num, bigNum, floatNum, str, bool, blob) "
+            + "values('d1', 'l2', 'y', 'z', 20, 2, 2147483648,434.12, 'pineapple', TRUE, X'101DCD62')",
+        "insert into table1(device, level, attr1, attr2, time, num, bigNum, floatNum, str, bool, blob) "
+            + "values('d1', 'l3', 't', 'a', 40, 1, 2247483648,12.123, 'apricot', TRUE, null)",
+        "insert into table1(device, level, time, num, bigNum, floatNum, str, bool, blob) "
+            + "values('d1', 'l4', 80, 9, 2147483646, 43.12, 'apple', FALSE, X'104DCD62')",
+        "insert into table1(device, level, time, num, bigNum, floatNum, str, bool, date, blob) "
+            + "values('d1', 'l5', 100, 8, 2147483964, 4654.231, 'papaya', TRUE, '2023-05-01', null)",
+        "flush",
+        "insert into table1(device, level, time, num, bigNum, floatNum, str, bool, blob) "
+            + "values('d1', 'l1', 31536000000, 6, 2147483650, 1231.21, 'banana', TRUE, X'106DCD62')",
+        "insert into table1(device, time, num, bigNum, floatNum, str, bool, blob) "
+            + "values('d999', 31536000000, 6, 2147483650, 1231.21, 'banana', TRUE, X'107DCD62')",
+        "insert into table1(level, time, num, bigNum, floatNum, str, bool, date, blob) "
+            + "values('l999', 31536000000, 6, 2147483650, 1231.21, 'banana', TRUE, '2023-10-01', X'108DCD62')",
+      };
+
+  String[] expectedHeader;
+
+  String[] retArray;
+
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getDataNodeCommonConfig().setSortBufferSize(1024 * 1024L);
@@ -111,6 +138,9 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         statement.execute(sql);
       }
       for (String sql : sql2) {
+        statement.execute(sql);
+      }
+      for (String sql : sql3) {
         statement.execute(sql);
       }
     } catch (Exception e) {
@@ -389,6 +419,25 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         DATABASE_NAME);
   }
 
+  @Test
+  public void coalesceTest() {
+    String[] expectedHeader = new String[] {"time", "level", "coalesce_attr2", "str"};
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:00.040Z,l3,a,apricot,",
+          "1970-01-01T00:00:00.040Z,l3,CCC,apricot,",
+          "1970-01-01T00:00:00.020Z,l2,CCC,pineapple,",
+          "1970-01-01T00:00:00.020Z,l2,zz,pineapple,",
+          "1970-01-01T00:00:00.000Z,l1,d,coconut,",
+          "1970-01-01T00:00:00.000Z,l1,c,coconut,",
+        };
+    tableResultSetEqualTest(
+        "select time,level,coalesce(attr2, 'CCC', 'DDD') as coalesce_attr2,str from table0 order by num+1,attr1 limit 6",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
   // ========== SubQuery Test =========
   @Test
   public void subQueryTest1() {
@@ -412,7 +461,151 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         DATABASE_NAME);
   }
 
-  // ========== Join Test =========
+  // ============================ Aggregation Test ===========================
+  @Test
+  public void aggregationTest() {
+    String[] expectedHeader =
+        new String[] {
+          "count_num",
+          "count_star",
+          "avg_num",
+          "count_num",
+          "count_attr2",
+          "avg_num",
+          "count_device",
+          "count_attr1",
+          "count_device",
+          "avg_floatnum",
+          "count_date",
+          "count_time",
+          "count_star"
+        };
+    String[] retArray =
+        new String[] {
+          "30,30,8.0,30,12,8.0,30,15,30,529.0,2,30,30,",
+        };
+    tableResultSetEqualTest(
+        "select count(num) as count_num, count(*) as count_star, avg(num) as avg_num, count(num) as count_num,\n"
+            + "count(attr2) as count_attr2, avg(num) as avg_num, count(device) as count_device,\n"
+            + "count(attr1) as count_attr1, count(device) as count_device, \n"
+            + "round(avg(floatnum)) as avg_floatnum, count(date) as count_date, "
+            + "count(time) as count_time, count(*) as count_star "
+            + "from table0",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "8,8,5.5,8,3,5.5,8,4,8,1341.0,0,8,8,",
+        };
+    tableResultSetEqualTest(
+        "select count(num) as count_num, count(*) as count_star, avg(num) as avg_num, count(num) as count_num,\n"
+            + "count(attr2) as count_attr2, avg(num) as avg_num, count(device) as count_device,\n"
+            + "count(attr1) as count_attr1, count(device) as count_device, \n"
+            + "round(avg(floatnum)) as avg_floatnum, count(date) as count_date, "
+            + "count(time) as count_time, count(*) as count_star "
+            + "from table0 "
+            + "where time<200 and num>1 ",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // ID has null value
+    expectedHeader =
+        new String[] {
+          "count_num",
+          "avg_num",
+          "count_num",
+          "count_attr2",
+          "avg_num",
+          "count_device",
+          "count_attr1",
+          "count_device",
+          "avg_floatnum",
+          "count_date",
+          "count_level",
+          "count_time",
+          "count_star"
+        };
+    retArray =
+        new String[] {
+          "8,5.125,8,4,5.125,7,4,7,1134.0,3,7,8,8,",
+        };
+    tableResultSetEqualTest(
+        "select count(num) as count_num, avg(num) as avg_num, count(num) as count_num,\n"
+            + "count(attr2) as count_attr2, avg(num) as avg_num, count(device) as count_device,\n"
+            + "count(attr1) as count_attr1, count(device) as count_device, \n"
+            + "round(avg(floatnum)) as avg_floatnum, count(date) as count_date, count(level) as count_level,"
+            + "count(time) as count_time, count(*) as count_star "
+            + "from table1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // count star with subquery
+    // TODO(beyyes) add first/last blob type test
+  }
+
+  @Test
+  public void globalAggregationTest() {
+    String[] expectedHeader = new String[] {"_col0"};
+    String[] retArray = new String[] {"30,"};
+
+    String sql = "SELECT count(num+1) from table0";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+  }
+
+  @Test
+  public void countStarTest() {
+    expectedHeader = new String[] {"_col0", "_col1"};
+    retArray = new String[] {"1,1,"};
+    String sql = "select count(*),count(t1) from (select avg(num+1) as t1 from table0)";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = new String[] {"count_star"};
+    retArray =
+        new String[] {
+          "30,",
+        };
+    tableResultSetEqualTest(
+        "select count(*) as count_star from table0", expectedHeader, retArray, DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "1,",
+        };
+    tableResultSetEqualTest(
+        "select count(*) as count_star from (select count(*) from table0)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "1,",
+        };
+    tableResultSetEqualTest(
+        "select count(*) as count_star from (select count(*), avg(num) from table0)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"sum"};
+    retArray =
+        new String[] {
+          "38.0,",
+        };
+    tableResultSetEqualTest(
+        "select count_star + avg_num as sum from (select count(*) as count_star, avg(num) as avg_num from table0)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // TODO select count(*),count(t1) from (select avg(num+1) as t1 from table0) where time < 0
+  }
+
+  // ============================ Join Test ===========================
   // no filter
   @Test
   public void innerJoinTest1() {
@@ -527,6 +720,172 @@ public class IoTDBMultiIDsWithAttributesTableIT {
             + "WHERE t1.time=t2.time AND cast(t1.num as double)>0 AND t1.level!='l1' \n"
             + "AND t2.time<=31536001000 AND t2.device in ('d1','d2')\n"
             + "ORDER BY t1.time, t1.device, t2.device LIMIT 20";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    // join using
+    sql =
+        "SELECT time, t1.device, t1.level, t1_num_add, t2.device, t2.attr2, t2.num, t2.str\n"
+            + "FROM (SELECT *,num+1 as t1_num_add FROM table0 WHERE time>=80) t1 \n"
+            + "JOIN (SELECT * FROM table0 WHERE floatNum<1000) t2 USING(time) \n"
+            + "WHERE cast(t1.num as double)>0 AND t1.level!='l1' \n"
+            + "AND time<=31536001000 AND t2.device in ('d1','d2')\n"
+            + "ORDER BY time, t1.device, t2.device LIMIT 20";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+  }
+
+  // no filter
+  @Test
+  public void fullOuterJoinTest1() {
+    String[] expectedHeader =
+        new String[] {"time", "device", "level", "num", "device", "attr2", "num", "str"};
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,d1,l1,3,d1,d,3,coconut,",
+          "1970-01-01T00:00:00.000Z,d1,l1,3,d2,c,3,coconut,",
+          "1970-01-01T00:00:00.000Z,d2,l1,3,d1,d,3,coconut,",
+          "1970-01-01T00:00:00.000Z,d2,l1,3,d2,c,3,coconut,",
+          "1970-01-01T00:00:00.020Z,d1,l2,2,d1,zz,2,pineapple,",
+          "1970-01-01T00:00:00.020Z,d1,l2,2,d2,null,2,pineapple,",
+          "1970-01-01T00:00:00.020Z,d2,l2,2,d1,zz,2,pineapple,",
+          "1970-01-01T00:00:00.020Z,d2,l2,2,d2,null,2,pineapple,",
+          "1970-01-01T00:00:00.040Z,d1,l3,1,d1,a,1,apricot,",
+          "1970-01-01T00:00:00.040Z,d1,l3,1,d2,null,1,apricot,",
+          "1970-01-01T00:00:00.040Z,d2,l3,1,d1,a,1,apricot,",
+          "1970-01-01T00:00:00.040Z,d2,l3,1,d2,null,1,apricot,",
+          "1970-01-01T00:00:00.080Z,d1,l4,9,d1,null,9,apple,",
+          "1970-01-01T00:00:00.080Z,d1,l4,9,d2,null,9,apple,",
+          "1970-01-01T00:00:00.080Z,d2,l4,9,d1,null,9,apple,",
+          "1970-01-01T00:00:00.080Z,d2,l4,9,d2,null,9,apple,",
+          "1970-01-01T00:00:00.100Z,d1,l5,8,d1,null,8,papaya,",
+          "1970-01-01T00:00:00.100Z,d1,l5,8,d2,null,8,papaya,",
+          "1970-01-01T00:00:00.100Z,d2,l5,8,d1,null,8,papaya,",
+          "1970-01-01T00:00:00.100Z,d2,l5,8,d2,null,8,papaya,",
+          "1971-01-01T00:00:00.000Z,d1,l1,6,d1,d,6,banana,",
+          "1971-01-01T00:00:00.000Z,d1,l1,6,d2,c,6,banana,",
+          "1971-01-01T00:00:00.000Z,d2,l1,6,d1,d,6,banana,",
+          "1971-01-01T00:00:00.000Z,d2,l1,6,d2,c,6,banana,",
+          "1971-01-01T00:00:00.100Z,d1,l2,10,d1,zz,10,pumelo,",
+          "1971-01-01T00:00:00.100Z,d1,l2,10,d2,null,10,pumelo,",
+          "1971-01-01T00:00:00.100Z,d2,l2,10,d1,zz,10,pumelo,",
+          "1971-01-01T00:00:00.100Z,d2,l2,10,d2,null,10,pumelo,",
+          "1971-01-01T00:00:00.500Z,d1,l3,4,d1,a,4,peach,",
+          "1971-01-01T00:00:00.500Z,d1,l3,4,d2,null,4,peach,",
+          "1971-01-01T00:00:00.500Z,d2,l3,4,d1,a,4,peach,",
+          "1971-01-01T00:00:00.500Z,d2,l3,4,d2,null,4,peach,",
+          "1971-01-01T00:00:01.000Z,d1,l4,5,d1,null,5,orange,",
+          "1971-01-01T00:00:01.000Z,d1,l4,5,d2,null,5,orange,",
+          "1971-01-01T00:00:01.000Z,d2,l4,5,d1,null,5,orange,",
+          "1971-01-01T00:00:01.000Z,d2,l4,5,d2,null,5,orange,",
+          "1971-01-01T00:00:10.000Z,d1,l5,7,d1,null,7,lemon,",
+          "1971-01-01T00:00:10.000Z,d1,l5,7,d2,null,7,lemon,",
+          "1971-01-01T00:00:10.000Z,d2,l5,7,d1,null,7,lemon,",
+          "1971-01-01T00:00:10.000Z,d2,l5,7,d2,null,7,lemon,",
+          "1971-01-01T00:01:40.000Z,d1,l1,11,d1,d,11,pitaya,",
+          "1971-01-01T00:01:40.000Z,d1,l1,11,d2,c,11,pitaya,",
+          "1971-01-01T00:01:40.000Z,d2,l1,11,d1,d,11,pitaya,",
+          "1971-01-01T00:01:40.000Z,d2,l1,11,d2,c,11,pitaya,",
+          "1971-04-26T17:46:40.000Z,d1,l2,12,d1,zz,12,strawberry,",
+          "1971-04-26T17:46:40.000Z,d1,l2,12,d2,null,12,strawberry,",
+          "1971-04-26T17:46:40.000Z,d2,l2,12,d1,zz,12,strawberry,",
+          "1971-04-26T17:46:40.000Z,d2,l2,12,d2,null,12,strawberry,",
+          "1971-04-26T17:46:40.020Z,d1,l3,14,d1,a,14,cherry,",
+          "1971-04-26T17:46:40.020Z,d1,l3,14,d2,null,14,cherry,",
+          "1971-04-26T17:46:40.020Z,d2,l3,14,d1,a,14,cherry,",
+          "1971-04-26T17:46:40.020Z,d2,l3,14,d2,null,14,cherry,",
+          "1971-04-26T18:01:40.000Z,d1,l4,13,d1,null,13,lychee,",
+          "1971-04-26T18:01:40.000Z,d1,l4,13,d2,null,13,lychee,",
+          "1971-04-26T18:01:40.000Z,d2,l4,13,d1,null,13,lychee,",
+          "1971-04-26T18:01:40.000Z,d2,l4,13,d2,null,13,lychee,",
+          "1971-08-20T11:33:20.000Z,d1,l5,15,d1,null,15,watermelon,",
+          "1971-08-20T11:33:20.000Z,d1,l5,15,d2,null,15,watermelon,",
+          "1971-08-20T11:33:20.000Z,d2,l5,15,d1,null,15,watermelon,",
+          "1971-08-20T11:33:20.000Z,d2,l5,15,d2,null,15,watermelon,",
+        };
+
+    // join on
+    String sql =
+        "SELECT t1.time as time, t1.device, t1.level, t1.num, t2.device, t2.attr2, t2.num, t2.str\n"
+            + "FROM table0 t1 FULL JOIN table0 t2 ON t1.time = t2.time \n"
+            + "ORDER BY t1.time, t1.device, t2.device";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    sql =
+        "SELECT t1.time as time, t1.device, t1.level, t1.num, t2.device, t2.attr2, t2.num, t2.str\n"
+            + "FROM table0 t1 INNER JOIN table0 t2 ON t1.time = t2.time \n"
+            + "ORDER BY t1.time, t1.device, t2.device";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    // join using
+    sql =
+        "SELECT time, t1.device, t1.level, t1.num, t2.device, t2.attr2, t2.num, t2.str\n"
+            + "FROM table0 t1 FULL OUTER JOIN table0 t2 USING(time)\n"
+            + "ORDER BY time, t1.device, t2.device";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    sql =
+        "SELECT time, t1.device, t1.level, t1.num, t2.device, t2.attr2, t2.num, t2.str\n"
+            + "FROM table0 t1 INNER JOIN table0 t2 USING(time)\n"
+            + "ORDER BY time, t1.device, t2.device";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+  }
+
+  // has filter
+  @Test
+  public void fullOuterJoinTest2() {
+    String[] expectedHeader =
+        new String[] {"time", "device", "level", "t1_num_add", "device", "attr2", "num", "str"};
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,null,null,null,d1,d,3,coconut,",
+          "1970-01-01T00:00:00.000Z,null,null,null,d2,c,3,coconut,",
+          "1970-01-01T00:00:00.020Z,null,null,null,d1,zz,2,pineapple,",
+          "1970-01-01T00:00:00.020Z,null,null,null,d2,null,2,pineapple,",
+          "1970-01-01T00:00:00.040Z,null,null,null,d1,a,1,apricot,",
+          "1970-01-01T00:00:00.040Z,null,null,null,d2,null,1,apricot,",
+          "1970-01-01T00:00:00.080Z,d1,l4,10,d1,null,9,apple,",
+          "1970-01-01T00:00:00.080Z,d1,l4,10,d2,null,9,apple,",
+          "1970-01-01T00:00:00.080Z,d2,l4,10,d1,null,9,apple,",
+          "1970-01-01T00:00:00.080Z,d2,l4,10,d2,null,9,apple,",
+          "1971-01-01T00:00:00.100Z,d1,l2,11,d1,zz,10,pumelo,",
+          "1971-01-01T00:00:00.100Z,d1,l2,11,d2,null,10,pumelo,",
+          "1971-01-01T00:00:00.100Z,d2,l2,11,d1,zz,10,pumelo,",
+          "1971-01-01T00:00:00.100Z,d2,l2,11,d2,null,10,pumelo,",
+          "1971-01-01T00:00:00.500Z,d1,l3,5,d1,a,4,peach,",
+          "1971-01-01T00:00:00.500Z,d1,l3,5,d2,null,4,peach,",
+          "1971-01-01T00:00:00.500Z,d2,l3,5,d1,a,4,peach,",
+          "1971-01-01T00:00:00.500Z,d2,l3,5,d2,null,4,peach,",
+          "1971-01-01T00:00:01.000Z,d1,l4,6,d1,null,5,orange,",
+          "1971-01-01T00:00:01.000Z,d1,l4,6,d2,null,5,orange,",
+          "1971-01-01T00:00:01.000Z,d2,l4,6,d1,null,5,orange,",
+          "1971-01-01T00:00:01.000Z,d2,l4,6,d2,null,5,orange,",
+          "1971-01-01T00:00:10.000Z,d1,l5,8,null,null,null,null,",
+          "1971-01-01T00:00:10.000Z,d2,l5,8,null,null,null,null,",
+          "1971-04-26T17:46:40.000Z,d1,l2,13,null,null,null,null,",
+          "1971-04-26T17:46:40.000Z,d2,l2,13,null,null,null,null,",
+          "1971-04-26T17:46:40.020Z,d1,l3,15,null,null,null,null,",
+          "1971-04-26T17:46:40.020Z,d2,l3,15,null,null,null,null,",
+          "1971-04-26T18:01:40.000Z,d1,l4,14,null,null,null,null,",
+          "1971-04-26T18:01:40.000Z,d2,l4,14,null,null,null,null,",
+          "1971-08-20T11:33:20.000Z,d1,l5,16,null,null,null,null,",
+          "1971-08-20T11:33:20.000Z,d2,l5,16,null,null,null,null,",
+        };
+
+    // join using
+    String sql =
+        "SELECT time, t1.device, t1.level, t1_num_add, t2.device, t2.attr2, t2.num, t2.str\n"
+            + "FROM (SELECT *,num+1 as t1_num_add FROM table0 WHERE TIME>=80 AND level!='l1' AND cast(num as double)>0) t1 \n"
+            + "FULL JOIN (SELECT * FROM table0 WHERE TIME<=31536001000 AND floatNum<1000 AND device in ('d1','d2')) t2 \n"
+            + "USING(time) \n"
+            + "ORDER BY time, t1.device, t2.device";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    // join on
+    sql =
+        "SELECT COALESCE(t1.time, t2.time) as time, t1.device, t1.level, t1_num_add, t2.device, t2.attr2, t2.num, t2.str\n"
+            + "FROM (SELECT *,num+1 as t1_num_add FROM table0 WHERE TIME>=80 AND level!='l1' AND cast(num as double)>0) t1 \n"
+            + "FULL JOIN (SELECT * FROM table0 WHERE TIME<=31536001000 AND floatNum<1000 AND device in ('d1','d2')) t2 \n"
+            + "ON t1.time = t2.time \n"
+            + "ORDER BY time, t1.device, t2.device";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 }

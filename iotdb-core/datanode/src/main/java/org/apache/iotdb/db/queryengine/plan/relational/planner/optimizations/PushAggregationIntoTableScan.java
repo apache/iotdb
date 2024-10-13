@@ -139,7 +139,13 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
       for (AggregationNode.Aggregation aggregation : values) {
         // if the function cannot make use of Statistics, we don't push down
         if (!metadata.canUseStatistics(
-            aggregation.getResolvedFunction().getSignature().getName())) {
+            aggregation.getResolvedFunction().getSignature().getName(),
+            aggregation.getArguments().stream()
+                .anyMatch(
+                    v ->
+                        ((SymbolReference) v)
+                            .getName()
+                            .equalsIgnoreCase(TimestampOperand.TIMESTAMP_EXPRESSION_STRING)))) {
           return PushDownLevel.NOOP;
         }
 
@@ -156,7 +162,11 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
       // calculate DataSet part
       if (groupingKeys.isEmpty()) {
         // GlobalAggregation
-        return PushDownLevel.COMPLETE;
+        if (tableScanNode.getDeviceEntries().size() < 2) {
+          return PushDownLevel.COMPLETE;
+        }
+        // We need to two-stage Aggregation to combine Aggregation result of different DeviceEntry
+        return PushDownLevel.PARTIAL;
       }
 
       List<FunctionCall> dateBinFunctionsOfTime = new ArrayList<>();

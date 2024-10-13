@@ -17,6 +17,7 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
@@ -30,11 +31,14 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -213,10 +217,111 @@ public class AggregationNode extends SingleChildProcessNode {
   }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {}
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    AggregationNode that = (AggregationNode) o;
+    return Objects.equals(aggregations, that.aggregations)
+        && Objects.equals(groupingSets, that.groupingSets)
+        && Objects.equals(step, that.step)
+        && Objects.equals(hashSymbol, that.hashSymbol)
+        && Objects.equals(groupIdSymbol, that.groupIdSymbol);
+  }
 
   @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {}
+  public int hashCode() {
+    return Objects.hash(
+        super.hashCode(), aggregations, groupingSets, step, hashSymbol, groupIdSymbol);
+  }
+
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.TABLE_AGGREGATION_NODE.serialize(byteBuffer);
+    ReadWriteIOUtils.write(aggregations.size(), byteBuffer);
+    aggregations.forEach(
+        (k, v) -> {
+          Symbol.serialize(k, byteBuffer);
+          v.serialize(byteBuffer);
+        });
+    groupingSets.serialize(byteBuffer);
+    ReadWriteIOUtils.write(preGroupedSymbols.size(), byteBuffer);
+    for (Symbol preGroupedSymbol : preGroupedSymbols) {
+      Symbol.serialize(preGroupedSymbol, byteBuffer);
+    }
+    step.serialize(byteBuffer);
+    ReadWriteIOUtils.write(hashSymbol.isPresent(), byteBuffer);
+    if (hashSymbol.isPresent()) {
+      Symbol.serialize(hashSymbol.get(), byteBuffer);
+    }
+    ReadWriteIOUtils.write(groupIdSymbol.isPresent(), byteBuffer);
+    if (groupIdSymbol.isPresent()) {
+      Symbol.serialize(groupIdSymbol.get(), byteBuffer);
+    }
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.TABLE_AGGREGATION_NODE.serialize(stream);
+    ReadWriteIOUtils.write(aggregations.size(), stream);
+    for (Map.Entry<Symbol, Aggregation> aggregation : aggregations.entrySet()) {
+      Symbol.serialize(aggregation.getKey(), stream);
+      aggregation.getValue().serialize(stream);
+    }
+    groupingSets.serialize(stream);
+    ReadWriteIOUtils.write(preGroupedSymbols.size(), stream);
+    for (Symbol preGroupedSymbol : preGroupedSymbols) {
+      Symbol.serialize(preGroupedSymbol, stream);
+    }
+    step.serialize(stream);
+    ReadWriteIOUtils.write(hashSymbol.isPresent(), stream);
+    if (hashSymbol.isPresent()) {
+      Symbol.serialize(hashSymbol.get(), stream);
+    }
+    ReadWriteIOUtils.write(groupIdSymbol.isPresent(), stream);
+    if (groupIdSymbol.isPresent()) {
+      Symbol.serialize(groupIdSymbol.get(), stream);
+    }
+  }
+
+  public static AggregationNode deserialize(ByteBuffer byteBuffer) {
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    final Map<Symbol, Aggregation> aggregations = new LinkedHashMap<>(size);
+    while (size-- > 0) {
+      aggregations.put(Symbol.deserialize(byteBuffer), Aggregation.deserialize(byteBuffer));
+    }
+    GroupingSetDescriptor groupingSetDescriptor = GroupingSetDescriptor.deserialize(byteBuffer);
+    size = ReadWriteIOUtils.readInt(byteBuffer);
+    List<Symbol> preGroupedSymbols = new ArrayList<>(size);
+    while (size-- > 0) {
+      preGroupedSymbols.add(Symbol.deserialize(byteBuffer));
+    }
+    Step step = Step.deserialize(byteBuffer);
+    Optional<Symbol> hashSymbol = Optional.empty();
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      hashSymbol = Optional.of(Symbol.deserialize(byteBuffer));
+    }
+    Optional<Symbol> groupIdSymbol = Optional.empty();
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      groupIdSymbol = Optional.of(Symbol.deserialize(byteBuffer));
+    }
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new AggregationNode(
+        planNodeId,
+        null,
+        aggregations,
+        groupingSetDescriptor,
+        preGroupedSymbols,
+        step,
+        hashSymbol,
+        groupIdSymbol);
+  }
 
   @Override
   public PlanNode replaceChildren(List<PlanNode> newChildren) {
@@ -323,6 +428,45 @@ public class AggregationNode extends SingleChildProcessNode {
     public Set<Integer> getGlobalGroupingSets() {
       return globalGroupingSets;
     }
+
+    public void serialize(ByteBuffer byteBuffer) {
+      ReadWriteIOUtils.write(groupingKeys.size(), byteBuffer);
+      for (Symbol symbol : groupingKeys) {
+        Symbol.serialize(symbol, byteBuffer);
+      }
+      ReadWriteIOUtils.write(groupingSetCount, byteBuffer);
+      ReadWriteIOUtils.write(globalGroupingSets.size(), byteBuffer);
+      for (int globalGroupingSet : globalGroupingSets) {
+        ReadWriteIOUtils.write(globalGroupingSet, byteBuffer);
+      }
+    }
+
+    public void serialize(DataOutputStream stream) throws IOException {
+      ReadWriteIOUtils.write(groupingKeys.size(), stream);
+      for (Symbol symbol : groupingKeys) {
+        Symbol.serialize(symbol, stream);
+      }
+      ReadWriteIOUtils.write(groupingSetCount, stream);
+      ReadWriteIOUtils.write(globalGroupingSets.size(), stream);
+      for (int globalGroupingSet : globalGroupingSets) {
+        ReadWriteIOUtils.write(globalGroupingSet, stream);
+      }
+    }
+
+    public static GroupingSetDescriptor deserialize(ByteBuffer byteBuffer) {
+      int size = ReadWriteIOUtils.readInt(byteBuffer);
+      List<Symbol> groupingKeys = new ArrayList<>(size);
+      while (size-- > 0) {
+        groupingKeys.add(Symbol.deserialize(byteBuffer));
+      }
+      int groupingSetCount = ReadWriteIOUtils.readInt(byteBuffer);
+      size = ReadWriteIOUtils.readInt(byteBuffer);
+      Set<Integer> globalGroupingSets = new HashSet<>(size);
+      while (size-- > 0) {
+        globalGroupingSets.add(ReadWriteIOUtils.readInt(byteBuffer));
+      }
+      return new GroupingSetDescriptor(groupingKeys, groupingSetCount, globalGroupingSets);
+    }
   }
 
   public enum Step {
@@ -359,6 +503,18 @@ public class AggregationNode extends SingleChildProcessNode {
         return Step.INTERMEDIATE;
       }
       return Step.FINAL;
+    }
+
+    public void serialize(ByteBuffer byteBuffer) {
+      ReadWriteIOUtils.write(ordinal(), byteBuffer);
+    }
+
+    public void serialize(DataOutputStream stream) throws IOException {
+      ReadWriteIOUtils.write(ordinal(), stream);
+    }
+
+    public static Step deserialize(ByteBuffer byteBuffer) {
+      return Step.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     }
   }
 
@@ -458,6 +614,65 @@ public class AggregationNode extends SingleChildProcessNode {
           resolvedFunction.getSignature(),
           expectedArgumentCount,
           arguments.size());
+    }
+
+    public void serialize(ByteBuffer byteBuffer) {
+      resolvedFunction.serialize(byteBuffer);
+      ReadWriteIOUtils.write(arguments.size(), byteBuffer);
+      for (Expression argument : arguments) {
+        Expression.serialize(argument, byteBuffer);
+      }
+      ReadWriteIOUtils.write(distinct, byteBuffer);
+      ReadWriteIOUtils.write(filter.isPresent(), byteBuffer);
+      filter.ifPresent(symbol -> Symbol.serialize(symbol, byteBuffer));
+      ReadWriteIOUtils.write(orderingScheme.isPresent(), byteBuffer);
+      orderingScheme.ifPresent(scheme -> scheme.serialize(byteBuffer));
+      ReadWriteIOUtils.write(mask.isPresent(), byteBuffer);
+      mask.ifPresent(symbol -> Symbol.serialize(symbol, byteBuffer));
+    }
+
+    public void serialize(DataOutputStream stream) throws IOException {
+      resolvedFunction.serialize(stream);
+      ReadWriteIOUtils.write(arguments.size(), stream);
+      for (Expression argument : arguments) {
+        Expression.serialize(argument, stream);
+      }
+      ReadWriteIOUtils.write(distinct, stream);
+      ReadWriteIOUtils.write(filter.isPresent(), stream);
+      if (filter.isPresent()) {
+        Symbol.serialize(filter.get(), stream);
+      }
+      ReadWriteIOUtils.write(orderingScheme.isPresent(), stream);
+      if (orderingScheme.isPresent()) {
+        orderingScheme.get().serialize(stream);
+      }
+      ReadWriteIOUtils.write(mask.isPresent(), stream);
+      if (mask.isPresent()) {
+        Symbol.serialize(mask.get(), stream);
+      }
+    }
+
+    public static Aggregation deserialize(ByteBuffer byteBuffer) {
+      ResolvedFunction function = ResolvedFunction.deserialize(byteBuffer);
+      int size = ReadWriteIOUtils.readInt(byteBuffer);
+      List<Expression> arguments = new ArrayList<>(size);
+      while (size-- > 0) {
+        arguments.add(Expression.deserialize(byteBuffer));
+      }
+      boolean distinct = ReadWriteIOUtils.readBool(byteBuffer);
+      Optional<Symbol> filter = Optional.empty();
+      if (ReadWriteIOUtils.readBool(byteBuffer)) {
+        filter = Optional.of(Symbol.deserialize(byteBuffer));
+      }
+      Optional<OrderingScheme> orderingScheme = Optional.empty();
+      if (ReadWriteIOUtils.readBool(byteBuffer)) {
+        orderingScheme = Optional.of(OrderingScheme.deserialize(byteBuffer));
+      }
+      Optional<Symbol> mask = Optional.empty();
+      if (ReadWriteIOUtils.readBool(byteBuffer)) {
+        mask = Optional.of(Symbol.deserialize(byteBuffer));
+      }
+      return new Aggregation(function, arguments, distinct, filter, orderingScheme, mask);
     }
   }
 
