@@ -19,6 +19,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
