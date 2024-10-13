@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -100,6 +101,10 @@ public abstract class EnrichedEvent implements Event {
         });
   }
 
+  protected void trackResource() {
+    // do nothing by default
+  }
+
   /**
    * Increase the {@link EnrichedEvent#referenceCount} of this event. When the {@link
    * EnrichedEvent#referenceCount} is positive, the data in the resource of this {@link
@@ -127,7 +132,10 @@ public abstract class EnrichedEvent implements Event {
     }
 
     if (isSuccessful) {
-      referenceCount.incrementAndGet();
+      if (referenceCount.incrementAndGet() == 1
+          && PipeConfig.getInstance().getPipeEventReferenceTrackingEnabled()) {
+        trackResource();
+      }
     } else {
       LOGGER.warn(
           "increase reference count failed, EnrichedEvent: {}, stack trace: {}",
