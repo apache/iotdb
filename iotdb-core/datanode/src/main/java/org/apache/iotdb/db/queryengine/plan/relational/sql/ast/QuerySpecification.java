@@ -35,6 +35,7 @@ public class QuerySpecification extends QueryBody {
   private final Optional<Expression> where;
   private final Optional<GroupBy> groupBy;
   private final Optional<Expression> having;
+  private final Optional<Fill> fill;
   private final Optional<OrderBy> orderBy;
   private final Optional<Offset> offset;
   private final Optional<Node> limit;
@@ -45,10 +46,11 @@ public class QuerySpecification extends QueryBody {
       Optional<Expression> where,
       Optional<GroupBy> groupBy,
       Optional<Expression> having,
+      Optional<Fill> fill,
       Optional<OrderBy> orderBy,
       Optional<Offset> offset,
       Optional<Node> limit) {
-    this(null, select, from, where, groupBy, having, orderBy, offset, limit);
+    this(null, select, from, where, groupBy, having, fill, orderBy, offset, limit);
   }
 
   public QuerySpecification(
@@ -58,6 +60,7 @@ public class QuerySpecification extends QueryBody {
       Optional<Expression> where,
       Optional<GroupBy> groupBy,
       Optional<Expression> having,
+      Optional<Fill> fill,
       Optional<OrderBy> orderBy,
       Optional<Offset> offset,
       Optional<Node> limit) {
@@ -68,6 +71,7 @@ public class QuerySpecification extends QueryBody {
     this.where = requireNonNull(where, "where is null");
     this.groupBy = requireNonNull(groupBy, "groupBy is null");
     this.having = requireNonNull(having, "having is null");
+    this.fill = requireNonNull(fill, "fill is null");
     this.orderBy = requireNonNull(orderBy, "orderBy is null");
     this.offset = requireNonNull(offset, "offset is null");
     this.limit = requireNonNull(limit, "limit is null");
@@ -91,6 +95,10 @@ public class QuerySpecification extends QueryBody {
 
   public Optional<Expression> getHaving() {
     return having;
+  }
+
+  public Optional<Fill> getFill() {
+    return fill;
   }
 
   public Optional<OrderBy> getOrderBy() {
@@ -118,6 +126,7 @@ public class QuerySpecification extends QueryBody {
     where.ifPresent(nodes::add);
     groupBy.ifPresent(nodes::add);
     having.ifPresent(nodes::add);
+    fill.ifPresent(nodes::add);
     orderBy.ifPresent(nodes::add);
     offset.ifPresent(nodes::add);
     limit.ifPresent(nodes::add);
@@ -132,6 +141,7 @@ public class QuerySpecification extends QueryBody {
         .add("where", where.orElse(null))
         .add("groupBy", groupBy)
         .add("having", having.orElse(null))
+        .add("fill", fill.orElse(null))
         .add("orderBy", orderBy)
         .add("offset", offset.orElse(null))
         .add("limit", limit.orElse(null))
@@ -152,6 +162,7 @@ public class QuerySpecification extends QueryBody {
         && Objects.equals(where, o.where)
         && Objects.equals(groupBy, o.groupBy)
         && Objects.equals(having, o.having)
+        && Objects.equals(fill, o.fill)
         && Objects.equals(orderBy, o.orderBy)
         && Objects.equals(offset, o.offset)
         && Objects.equals(limit, o.limit);
@@ -159,7 +170,7 @@ public class QuerySpecification extends QueryBody {
 
   @Override
   public int hashCode() {
-    return Objects.hash(select, from, where, groupBy, having, orderBy, offset, limit);
+    return Objects.hash(select, from, where, groupBy, having, fill, orderBy, offset, limit);
   }
 
   @Override

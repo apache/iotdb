@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinkedQueue;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
@@ -68,12 +67,6 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
       throws Exception {
     super.customize(parameters, configuration);
 
-    if (TablePattern.parsePipePatternFromSourceParameters(parameters)
-        .hasUserSpecifiedDatabasePatternOrTablePattern()) {
-      throw new IllegalArgumentException(
-          "The table model pattern %s can not be specified for the source.");
-    }
-
     final TreePattern pattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
     if (!(pattern instanceof IoTDBTreePattern
         && (((IoTDBTreePattern) pattern).isPrefix()
@@ -91,7 +84,6 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
     if (hasBeenStarted.get() || hasBeenClosed.get()) {
       return;
     }
-    super.start();
 
     final ProgressIndex progressIndex = pipeTaskMeta.getProgressIndex();
     final long nextIndex =
@@ -103,6 +95,7 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
             ? getNextIndexAfterSnapshot()
             : ((MetaProgressIndex) progressIndex).getIndex() + 1;
     iterator = getListeningQueue().newIterator(nextIndex);
+    super.start();
   }
 
   private long getNextIndexAfterSnapshot() {
@@ -152,6 +145,11 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
     // In config region: to avoid triggering snapshot under a consensus write causing deadlock
     if (!hasBeenStarted.get()) {
       start();
+      // Failed to start, due to sudden switch of schema leader
+      // Simply return
+      if (!hasBeenStarted.get()) {
+        return null;
+      }
     }
 
     // Historical

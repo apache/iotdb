@@ -51,7 +51,8 @@ public class DiffColumnTransformer extends BinaryColumnTransformer {
     Type rightType = rightTransformer.getType();
     for (int i = 0; i < positionCount; i++) {
       if (leftColumn.isNull(i)) {
-        builder.appendNull(); // currValue is null, append null
+        // currValue is null, append null
+        builder.appendNull();
 
         // When currValue is null:
         // ignoreNull = true, keep lastValueIsNull as before
@@ -65,9 +66,21 @@ public class DiffColumnTransformer extends BinaryColumnTransformer {
           returnType.writeDouble(builder, currValue - lastValue);
         }
 
-        lastValue = currValue; // currValue is not null, update lastValue
+        // currValue is not null, update lastValue
+        lastValue = currValue;
         lastValueIsNull = false;
       }
     }
+  }
+
+  @Override
+  protected void doTransform(
+      Column leftColumn,
+      Column rightColumn,
+      ColumnBuilder builder,
+      int positionCount,
+      boolean[] selection) {
+    // Diff do not support short circuit evaluation
+    doTransform(leftColumn, rightColumn, builder, positionCount);
   }
 }

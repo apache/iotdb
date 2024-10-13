@@ -104,7 +104,7 @@ public class PipeEventCommitManager {
     if (Objects.nonNull(commitRateMarker) && event.needToCommitRate()) {
       try {
         commitRateMarker.accept(
-            event.getPipeName() + '_' + event.getCreationTime(),
+            event.getPipeNameWithCreationTime(),
             event.isDataRegionEvent(),
             event.isDataRegionRealtimeEvent());
       } catch (final Exception e) {
