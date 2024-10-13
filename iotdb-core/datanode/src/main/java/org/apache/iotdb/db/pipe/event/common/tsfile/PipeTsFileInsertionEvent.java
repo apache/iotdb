@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
+import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
+import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.aggregator.TsFileInsertionPointCounter;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
@@ -51,11 +53,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_ROOT;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
-public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFileInsertionEvent {
+public class PipeTsFileInsertionEvent extends PipeInsertionEvent
+    implements TsFileInsertionEvent, ReferenceTrackableEvent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileInsertionEvent.class);
 
@@ -557,5 +561,50 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFi
             resource, tsFile, isLoaded, isGeneratedByPipe, isClosed.get())
         + " - "
         + super.coreReportMessage();
+  }
+
+  /////////////////////////// ReferenceTrackableEvent ///////////////////////////
+
+  @Override
+  public void trackResource() {
+    PipeDataNodeResourceManager.ref().trackPipeEventResource(this, eventResourceBuilder());
+  }
+
+  @Override
+  public PipeEventResource eventResourceBuilder() {
+    return new PipeTsFileInsertionEventResource(
+        this.isReleased, this.referenceCount, this.tsFile, this.isWithMod, this.modFile);
+  }
+
+  private static class PipeTsFileInsertionEventResource extends PipeEventResource {
+
+    private final File tsFile;
+    private final boolean isWithMod;
+    private final File modFile;
+
+    private PipeTsFileInsertionEventResource(
+        final AtomicBoolean isReleased,
+        final AtomicInteger referenceCount,
+        final File tsFile,
+        final boolean isWithMod,
+        final File modFile) {
+      super(isReleased, referenceCount);
+      this.tsFile = tsFile;
+      this.isWithMod = isWithMod;
+      this.modFile = modFile;
+    }
+
+    @Override
+    protected void finalizeResource() {
+      try {
+        PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile);
+        if (isWithMod) {
+          PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile);
+        }
+      } catch (final Exception e) {
+        LOGGER.warn(
+            String.format("Decrease reference count for TsFile %s error.", tsFile.getPath()), e);
+      }
+    }
   }
 }
