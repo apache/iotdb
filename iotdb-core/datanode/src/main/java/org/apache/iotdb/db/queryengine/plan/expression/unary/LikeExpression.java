@@ -91,7 +91,7 @@ public class LikeExpression extends UnaryExpression {
             + pattern
             + "'";
     if (escape.isPresent()) {
-      res = res + " escape = '" + escape + "'";
+      res = res + " escape = '" + escape.get() + "'";
     }
     return res;
   }
@@ -107,7 +107,7 @@ public class LikeExpression extends UnaryExpression {
     ReadWriteIOUtils.write(pattern, byteBuffer);
     ReadWriteIOUtils.write(escape.isPresent(), byteBuffer);
     if (escape.isPresent()) {
-      ReadWriteIOUtils.write(String.valueOf(escape), byteBuffer);
+      ReadWriteIOUtils.write(escape.get().toString(), byteBuffer);
     }
     ReadWriteIOUtils.write(isNot, byteBuffer);
   }
@@ -118,7 +118,7 @@ public class LikeExpression extends UnaryExpression {
     ReadWriteIOUtils.write(pattern, stream);
     ReadWriteIOUtils.write(escape.isPresent(), stream);
     if (escape.isPresent()) {
-      ReadWriteIOUtils.write(String.valueOf(escape), stream);
+      ReadWriteIOUtils.write(escape.get().toString(), stream);
     }
     ReadWriteIOUtils.write(isNot, stream);
   }
@@ -133,7 +133,7 @@ public class LikeExpression extends UnaryExpression {
             + pattern
             + "'";
     if (escape.isPresent()) {
-      res = res + " escape = '" + escape + "'";
+      res = res + " escape = '" + escape.get() + "'";
     }
     return res;
   }
