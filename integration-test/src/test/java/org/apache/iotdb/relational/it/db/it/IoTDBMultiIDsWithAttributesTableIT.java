@@ -605,6 +605,41 @@ public class IoTDBMultiIDsWithAttributesTableIT {
     // TODO select count(*),count(t1) from (select avg(num+1) as t1 from table0) where time < 0
   }
 
+  @Test
+  public void groupByAggregationTest() {
+    expectedHeader =
+        new String[] {
+          "device",
+          "level",
+          "count_num",
+          "count_star",
+          "count_device",
+          "count_date",
+          "count_attr1",
+          "count_attr2",
+          "count_time"
+        };
+    retArray =
+        new String[] {
+          "d1,l1,3,3,3,0,3,3,3,",
+          "d1,l2,3,3,3,0,3,3,3,",
+          "d1,l3,3,3,3,0,3,3,3,",
+          "d1,l4,3,3,3,0,0,0,3,",
+          "d1,l5,3,3,3,1,0,0,3,",
+          "d2,l1,3,3,3,0,3,3,3,",
+          "d2,l2,3,3,3,0,3,0,3,",
+          "d2,l3,3,3,3,0,0,0,3,",
+          "d2,l4,3,3,3,0,0,0,3,",
+          "d2,l5,3,3,3,1,0,0,3,",
+        };
+    String sql =
+        "select device, level, "
+            + "count(num) as count_num, count(*) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time "
+            + "from table0 group by device,level order by device, level";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+  }
+
   // ============================ Join Test ===========================
   // no filter
   @Test

@@ -616,7 +616,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
             (groupingKeyIndex != null ? groupingKeyIndex.length : 0) + tableAggregators.size());
     if (groupingKeyIndex != null) {
       for (int i = 0; i < groupingKeyIndex.length; i++) {
-        resultDataTypes.add(TSDataType.TEXT);
+        resultDataTypes.add(TSDataType.STRING);
       }
     }
 
@@ -636,8 +636,12 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
       for (int i = 0; i < groupingKeyIndex.length; i++) {
         if (TsTableColumnCategory.ID == groupingKeySchemas.get(i).getColumnCategory()) {
           columnBuilders[i].writeBinary(
-              (Binary)
-                  deviceEntries.get(currentDeviceIndex).getNthSegment(groupingKeyIndex[i] + 1));
+              new Binary(
+                  ((String)
+                          deviceEntries
+                              .get(currentDeviceIndex)
+                              .getNthSegment(groupingKeyIndex[i] + 1))
+                      .getBytes()));
         } else {
           columnBuilders[i].writeBinary(
               new Binary(
@@ -653,7 +657,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     int groupKeyLength = groupingKeyIndex == null ? 0 : groupingKeyIndex.length;
 
     for (int i = 0; i < aggregators.size(); i++) {
-      aggregators.get(groupKeyLength + i).evaluate(columnBuilders[groupKeyLength + i]);
+      aggregators.get(i).evaluate(columnBuilders[groupKeyLength + i]);
     }
 
     tsBlockBuilder.declarePosition();
