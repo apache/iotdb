@@ -168,6 +168,7 @@ def session_test(use_session_pool=False):
         ) as dataset:
             cnt = 0
             while dataset.has_next():
+                cnt += 1
                 print(dataset.next())
             assert cnt == 1
 
