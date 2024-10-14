@@ -136,7 +136,12 @@ public class MySample_fsw2 {
     boolean directMore = false;
     boolean skip = false;
     int threshold = 2;
+    int iterNum = 0;
     while (true) {
+      iterNum += 1;
+      if (iterNum > 1000) {
+        break;
+      }
       List<Point> reducedPoints = FSW.reducePoints(ts.data, epsilon);
       if (reducedPoints.size() > nout) {
         if (directMore) {

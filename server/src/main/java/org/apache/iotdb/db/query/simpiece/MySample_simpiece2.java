@@ -136,7 +136,12 @@ public class MySample_simpiece2 {
     boolean directMore = false;
     boolean skip = false;
     int threshold = 2;
+    int iterNum = 0;
     while (true) {
+      iterNum += 1;
+      if (iterNum > 1000) {
+        break;
+      }
       SimPiece simPiece = new SimPiece(ts.data, epsilon);
       if (simPiece.segments.size() * 2 > nout) { // note *2 for disjoint
         if (directMore) {
