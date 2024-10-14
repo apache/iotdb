@@ -83,9 +83,9 @@ public class MySample_shrinkingcone_full2 {
             TimeSeriesReader.getMyTimeSeries(
                 inputStream, delimiter, false, N, start, hasHeader, true);
         for (int x = 0; x < noutList.length; x++) {
-          if (y == 1 && x > 6) {
-            continue; // because SC on Qloss special?
-          }
+//          if (y == 1 && x > 6) {
+//            continue; // because SC on Qloss special?
+//          }
 
           int nout = noutList[x];
 //
