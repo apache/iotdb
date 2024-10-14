@@ -32,7 +32,6 @@ public class RetryPolicy<RESP> {
   private final boolean exponentialBackoff;
   private final TimeDuration waitTime;
   private final TimeDuration maxWaitTime;
-  private org.apache.ratis.retry.RetryPolicy retryPolicy;
 
   public RetryPolicy(
       Function<RESP, Boolean> retryHandler,
