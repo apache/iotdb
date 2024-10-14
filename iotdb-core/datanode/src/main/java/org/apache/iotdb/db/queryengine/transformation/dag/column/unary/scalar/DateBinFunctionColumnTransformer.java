@@ -143,6 +143,44 @@ public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
     return origin + (n * nonMonthDuration);
   }
 
+  public long[] dateBinStartEnd(long source) {
+    // return source if interval is 0
+    if (monthDuration == 0 && nonMonthDuration == 0) {
+      return new long[] {source, source};
+    }
+
+    if (monthDuration != 0) {
+      // convert to LocalDateTime
+      LocalDateTime sourceDate = convertToLocalDateTime(source);
+      LocalDateTime originDate = convertToLocalDateTime(origin);
+
+      // calculate the number of months between the origin and source
+      long monthsDiff = ChronoUnit.MONTHS.between(originDate, sourceDate);
+      // calculate the number of month cycles completed
+      long completedMonthCycles = monthsDiff / monthDuration;
+
+      LocalDateTime binStart =
+          originDate
+              .plusNanos(getNanoTimeStamp(nonMonthDuration) * completedMonthCycles)
+              .plusMonths(completedMonthCycles * monthDuration);
+
+      if (binStart.isAfter(sourceDate)) {
+        binStart =
+            binStart.minusMonths(monthDuration).minusNanos(getNanoTimeStamp(nonMonthDuration));
+      }
+
+      return new long[] {
+        convertToTimestamp(binStart), convertToTimestamp(binStart.plusMonths(monthDuration))
+      };
+    }
+
+    long diff = source - origin;
+    long n = diff >= 0 ? diff / nonMonthDuration : (diff - nonMonthDuration + 1) / nonMonthDuration;
+    return new long[] {
+      origin + (n * nonMonthDuration), origin + (n * nonMonthDuration) + nonMonthDuration
+    };
+  }
+
   @Override
   protected void doTransform(Column column, ColumnBuilder columnBuilder) {
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
