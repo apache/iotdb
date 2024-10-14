@@ -155,11 +155,12 @@ def session_test(use_session_pool=False):
 
         session.insert_records(
             [device_id],
-            [11],
+            [11, 12],
             [measurements_new_type],
             [data_types_new_type],
             [
                 [date(1971, 1, 1), 11, b"\x12\x34", "test11"],
+                [None, 12, b"\x12\x34", "test12"],
             ],
         )
 
@@ -170,7 +171,7 @@ def session_test(use_session_pool=False):
             while dataset.has_next():
                 cnt += 1
                 print(dataset.next())
-            assert cnt == 1
+            assert cnt == 2
 
         # close session connection.
         session.close()
