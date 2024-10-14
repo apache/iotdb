@@ -188,6 +188,7 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
         outputStream.write(tabletBuffer.array(), 0, tabletBuffer.limit());
         ReadWriteIOUtils.write(tabletDataBases.get(i), outputStream);
       }
+
       batchReq.body =
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
@@ -222,7 +223,6 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
               Tablet.deserialize(transferReq.body), ReadWriteIOUtils.readBool(transferReq.body)));
     }
 
-    transferReq.body.position(0);
     batchReq.version = transferReq.version;
     batchReq.type = transferReq.type;
     batchReq.body = transferReq.body;
@@ -261,7 +261,6 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
               ReadWriteIOUtils.readString(transferReq.body)));
     }
 
-    transferReq.body.position(0);
     batchReq.version = transferReq.version;
     batchReq.type = transferReq.type;
     batchReq.body = transferReq.body;

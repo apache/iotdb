@@ -344,7 +344,6 @@ public class PipeDataNodeThriftRequestTest {
 
     Assert.assertEquals(req.getFileName(), deserializeReq.getFileName());
     Assert.assertEquals(req.getFileLength(), deserializeReq.getFileLength());
-    Assert.assertEquals(req.getDataBaseName(), deserializeReq.getDataBaseName());
   }
 
   @Test

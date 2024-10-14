@@ -128,9 +128,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       STATEMENT_DATA_TYPE_CONVERT_EXECUTION_VISITOR =
           new PipeStatementDataTypeConvertExecutionVisitor(IoTDBDataNodeReceiver::executeStatement);
 
-  private static final String RESOURCE = ".resource";
-  private static final String MODS = ".mods";
-
   private final PipeStatementToBatchVisitor batchVisitor = new PipeStatementToBatchVisitor();
 
   // Used for data transfer: confignode (cluster A) -> datanode (cluster B) -> confignode (cluster
@@ -457,8 +454,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   protected TSStatus loadFileV1(final PipeTransferFileSealReqV1 req, final String fileAbsolutePath)
       throws IOException {
     return isUsingAsyncLoadTsFileStrategy.get()
-        ? loadTsFileAsync(req.getDataBaseName(), Collections.singletonList(fileAbsolutePath))
-        : loadTsFileSync(req.getDataBaseName(), fileAbsolutePath);
+        ? loadTsFileAsync(null, Collections.singletonList(fileAbsolutePath))
+        : loadTsFileSync(null, fileAbsolutePath);
   }
 
   @Override

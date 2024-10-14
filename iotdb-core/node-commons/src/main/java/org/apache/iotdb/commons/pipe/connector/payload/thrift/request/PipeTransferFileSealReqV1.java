@@ -33,7 +33,6 @@ public abstract class PipeTransferFileSealReqV1 extends TPipeTransferReq {
 
   private transient String fileName;
   private transient long fileLength;
-  private transient String dataBaseName;
 
   public final String getFileName() {
     return fileName;
@@ -41,10 +40,6 @@ public abstract class PipeTransferFileSealReqV1 extends TPipeTransferReq {
 
   public final long getFileLength() {
     return fileLength;
-  }
-
-  public String getDataBaseName() {
-    return dataBaseName;
   }
 
   protected abstract PipeRequestType getPlanType();
