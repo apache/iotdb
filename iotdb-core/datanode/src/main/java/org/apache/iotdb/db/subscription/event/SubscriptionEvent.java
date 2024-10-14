@@ -44,7 +44,6 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -62,7 +61,6 @@ public class SubscriptionEvent {
   private final SubscriptionPollResponse[] responses;
   private int currentResponseIndex = 0;
 
-  private final ByteBuffer[] byteBuffers; // serialized responses
   private final SubscriptionCommitContext
       commitContext; // all responses have the same commit context
 
@@ -87,7 +85,6 @@ public class SubscriptionEvent {
     this.responses = new SubscriptionPollResponse[responseLength];
     this.responses[0] = initialResponse;
 
-    this.byteBuffers = new ByteBuffer[responseLength];
     this.commitContext = initialResponse.getCommitContext();
   }
 
@@ -110,7 +107,6 @@ public class SubscriptionEvent {
       this.responses[i] = responses.get(i);
     }
 
-    this.byteBuffers = new ByteBuffer[responseLength];
     this.commitContext = this.responses[0].getCommitContext();
   }
 
@@ -329,27 +325,20 @@ public class SubscriptionEvent {
       return false;
     }
 
-    if (Objects.nonNull(byteBuffers[index])) {
+    if (Objects.nonNull(responses[index].getByteBuffer())) {
       return false;
     }
 
-    final Optional<ByteBuffer> optionalByteBuffer =
-        SubscriptionEventBinaryCache.getInstance().trySerialize(responses[index]);
-    if (optionalByteBuffer.isPresent()) {
-      byteBuffers[index] = optionalByteBuffer.get();
-      return true;
-    }
-
-    return false;
+    return SubscriptionEventBinaryCache.getInstance().trySerialize(responses[index]).isPresent();
   }
 
   public ByteBuffer getCurrentResponseByteBuffer() throws IOException {
-    if (Objects.nonNull(byteBuffers[currentResponseIndex])) {
-      return byteBuffers[currentResponseIndex];
+    final ByteBuffer buffer = responses[currentResponseIndex].getByteBuffer();
+    if (Objects.nonNull(buffer)) {
+      return buffer;
     }
 
-    return byteBuffers[currentResponseIndex] =
-        SubscriptionEventBinaryCache.getInstance().serialize(getCurrentResponse());
+    return SubscriptionEventBinaryCache.getInstance().serialize(getCurrentResponse());
   }
 
   public void resetResponseByteBuffer(final boolean resetAll) {
@@ -357,14 +346,10 @@ public class SubscriptionEvent {
       SubscriptionEventBinaryCache.getInstance()
           .invalidateAll(
               Arrays.stream(responses).filter(Objects::nonNull).collect(Collectors.toList()));
-      // maybe friendly for gc
-      Arrays.fill(byteBuffers, null);
     } else {
       if (Objects.nonNull(responses[currentResponseIndex])) {
         SubscriptionEventBinaryCache.getInstance().invalidate(responses[currentResponseIndex]);
       }
-      // maybe friendly for gc
-      byteBuffers[currentResponseIndex] = null;
     }
   }
 
@@ -427,14 +412,6 @@ public class SubscriptionEvent {
   public String toString() {
     return "SubscriptionEvent{responses="
         + Arrays.toString(responses)
-        + ", responses' byte buffer size="
-        + Arrays.stream(byteBuffers)
-            .map(
-                byteBuffer ->
-                    Objects.isNull(byteBuffer)
-                        ? "<unknown>"
-                        : byteBuffer.limit() - byteBuffer.position())
-            .collect(Collectors.toList())
         + ", currentResponseIndex="
         + currentResponseIndex
         + ", lastPolledConsumerId="

@@ -281,7 +281,7 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   protected void enqueueEventToPrefetchingQueue(final SubscriptionEvent event) {
-    event.trySerializeCurrentResponse();
+    // event.trySerializeCurrentResponse();
     prefetchingQueue.add(event);
   }
 

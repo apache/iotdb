@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class SubscriptionPollResponse {
 
@@ -37,6 +38,8 @@ public class SubscriptionPollResponse {
   private final transient SubscriptionPollPayload payload;
 
   private final transient SubscriptionCommitContext commitContext;
+
+  private transient volatile ByteBuffer byteBuffer; // cached =serialized response
 
   public SubscriptionPollResponse(
       final short responseType,
@@ -59,12 +62,27 @@ public class SubscriptionPollResponse {
     return commitContext;
   }
 
+  public ByteBuffer getByteBuffer() {
+    return byteBuffer;
+  }
+
+  public void invalidateByteBuffer() {
+    // maybe friendly for gc
+    byteBuffer = null;
+  }
+
   /////////////////////////////// de/ser ///////////////////////////////
 
   public static ByteBuffer serialize(final SubscriptionPollResponse response) throws IOException {
+    return Objects.nonNull(response.byteBuffer)
+        ? response.byteBuffer
+        : (response.byteBuffer = response.serialize());
+  }
+
+  private ByteBuffer serialize() throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      response.serialize(outputStream);
+      this.serialize(outputStream);
       return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
   }
@@ -120,6 +138,8 @@ public class SubscriptionPollResponse {
         + payload
         + ", commitContext="
         + commitContext
+        + ", sizeof(byteBuffer)="
+        + (Objects.isNull(byteBuffer) ? "<unknown>" : byteBuffer.limit() - byteBuffer.position())
         + "}";
   }
 }

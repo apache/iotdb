@@ -70,10 +70,12 @@ class SubscriptionEventBinaryCache {
 
   void invalidate(final SubscriptionPollResponse response) {
     this.cache.invalidate(response);
+    response.invalidateByteBuffer();
   }
 
   void invalidateAll(final Iterable<SubscriptionPollResponse> responses) {
     this.cache.invalidateAll(responses);
+    responses.forEach(SubscriptionPollResponse::invalidateByteBuffer);
   }
 
   //////////////////////////// singleton ////////////////////////////

@@ -26,6 +26,8 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -36,6 +38,8 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public abstract class SubscriptionPipeEventBatch {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPipeEventBatch.class);
 
   private final int regionId;
 
@@ -95,6 +99,9 @@ public abstract class SubscriptionPipeEventBatch {
     } else if (event instanceof TsFileInsertionEvent) {
       onTsFileInsertionEvent((TsFileInsertionEvent) event);
       enrichedEvents.add(event);
+    } else {
+      LOGGER.warn(
+          "SubscriptionPipeEventBatch {} ignore EnrichedEvent {} when batching.", this, event);
     }
     return onEvent(consumer);
   }
