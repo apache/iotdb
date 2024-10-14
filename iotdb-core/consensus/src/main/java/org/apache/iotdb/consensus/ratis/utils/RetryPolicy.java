@@ -62,7 +62,7 @@ public class RetryPolicy<RESP> {
   public TimeDuration getWaitTime(int attempt) {
     if (exponentialBackoff) {
       TimeDuration sleepTime = waitTime.multiply(Math.pow(2, attempt));
-      return maxWaitTime.getDuration() == 0 && sleepTime.compareTo(maxWaitTime) > 0
+      return maxWaitTime.getDuration() != 0 && sleepTime.compareTo(maxWaitTime) > 0
           ? maxWaitTime
           : sleepTime;
     }

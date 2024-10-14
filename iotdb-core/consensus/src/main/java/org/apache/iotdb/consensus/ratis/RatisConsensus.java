@@ -177,10 +177,10 @@ class RatisConsensus implements IConsensus {
             .setWaitTime(
                 TimeDuration.valueOf(
                     this.config.getImpl().getRetryWaitMillis(), TimeUnit.MILLISECONDS))
-            .setExponentialBackoff(true)
             .setMaxWaitTime(
                 TimeDuration.valueOf(
                     this.config.getImpl().getRetryMaxWaitMillis(), TimeUnit.MILLISECONDS))
+            .setExponentialBackoff(true)
             .build();
     this.writeRetryPolicy =
         RetryPolicy.<RaftClientReply>newBuilder()
@@ -196,10 +196,10 @@ class RatisConsensus implements IConsensus {
             .setWaitTime(
                 TimeDuration.valueOf(
                     this.config.getImpl().getRetryWaitMillis(), TimeUnit.MILLISECONDS))
-            .setExponentialBackoff(true)
             .setMaxWaitTime(
                 TimeDuration.valueOf(
                     this.config.getImpl().getRetryMaxWaitMillis(), TimeUnit.MILLISECONDS))
+            .setExponentialBackoff(true)
             .build();
 
     this.diskGuardian = new DiskGuardian(() -> this, this.config);
