@@ -525,7 +525,10 @@ public class MTreeBelowSGMemoryImpl {
         final IMemMNode memMNode = store.getChild(device.getAsMNode(), alias);
         if (memMNode != null) {
           throw new MetadataException(
-              "The alias is duplicated with the name or alias of other measurement, alias: " + alias + ", fullPath: " + fullPath);
+              "The alias is duplicated with the name or alias of other measurement, alias: "
+                  + alias
+                  + ", fullPath: "
+                  + fullPath);
         }
         if (measurementMNode.getAlias() != null) {
           device.deleteAliasChild(measurementMNode.getAlias());
