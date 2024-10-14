@@ -75,7 +75,7 @@ public class ConfigNodeStartupCheck extends StartupChecks {
     verify();
     checkGlobalConfig();
     createDirsIfNecessary();
-    checkInternalRpcService();
+    checkRequestManager();
     if (SystemPropertiesUtils.isRestarted()) {
       /* Always restore ConfigNodeId first */
       CONF.setConfigNodeId(SystemPropertiesUtils.loadConfigNodeIdWhenRestarted());
@@ -227,7 +227,7 @@ public class ConfigNodeStartupCheck extends StartupChecks {
   }
 
   // The checks are in the initialization process of the RequestManager object.
-  private void checkInternalRpcService() {
+  private void checkRequestManager() {
     SyncDataNodeClientPool.getInstance();
     CnToDnInternalServiceAsyncRequestManager.getInstance();
   }
