@@ -334,7 +334,7 @@ public class PipeDataNodeThriftRequestTest {
     final String fileName = "1.tsfile";
 
     final PipeTransferTsFileSealReq req =
-        PipeTransferTsFileSealReq.toTPipeTransferReq(fileName, 100);
+        PipeTransferTsFileSealReq.toTPipeTransferReq(fileName, 100, "");
     final PipeTransferTsFileSealReq deserializeReq =
         PipeTransferTsFileSealReq.fromTPipeTransferReq(req);
 
@@ -344,6 +344,7 @@ public class PipeDataNodeThriftRequestTest {
 
     Assert.assertEquals(req.getFileName(), deserializeReq.getFileName());
     Assert.assertEquals(req.getFileLength(), deserializeReq.getFileLength());
+    Assert.assertEquals(req.getDataBaseName(), deserializeReq.getDataBaseName());
   }
 
   @Test
