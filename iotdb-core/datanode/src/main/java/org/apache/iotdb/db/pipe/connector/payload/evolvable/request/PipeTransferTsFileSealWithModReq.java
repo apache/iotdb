@@ -42,14 +42,23 @@ public class PipeTransferTsFileSealWithModReq extends PipeTransferFileSealReqV2 
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeTransferTsFileSealWithModReq toTPipeTransferReq(
+      String modFileName, long modFileLength, String tsFileName, long tsFileLength)
+      throws IOException {
+    return toTPipeTransferReq(modFileName, modFileLength, tsFileName, tsFileLength, null);
+  }
+
+  public static PipeTransferTsFileSealWithModReq toTPipeTransferReq(
       String modFileName,
       long modFileLength,
       String tsFileName,
       long tsFileLength,
       String dataBaseName)
       throws IOException {
-    Map<String, String> parameters = new HashMap<>();
-    parameters.put(PipeTransferFileSealReqV2.getDatabaseNameKey(tsFileName), dataBaseName);
+    final Map<String, String> parameters = new HashMap<>();
+    if (dataBaseName != null) {
+      parameters.put(PipeTransferFileSealReqV2.getDatabaseNameKey(tsFileName), dataBaseName);
+    }
+
     return (PipeTransferTsFileSealWithModReq)
         new PipeTransferTsFileSealWithModReq()
             .convertToTPipeTransferReq(
