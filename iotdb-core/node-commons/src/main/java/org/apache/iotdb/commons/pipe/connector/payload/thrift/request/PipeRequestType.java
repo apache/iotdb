@@ -46,7 +46,6 @@ public enum PipeRequestType {
   TRANSFER_TS_FILE_SEAL_V2((short) 13),
   TRANSFER_TABLET_BATCH_V2((short) 14),
   TRANSFER_TABLET_BINARY_V2((short) 15),
-  TRANSFER_TS_FILE_SEAL_WITH_MOD_V2((short) 17),
 
   // Schema region
   TRANSFER_SCHEMA_PLAN((short) 100),
