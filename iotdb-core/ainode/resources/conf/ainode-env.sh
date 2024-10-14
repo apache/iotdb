@@ -110,13 +110,14 @@ fi
 echo "Installing AINode..."
 cd "$SCRIPT_DIR/../lib/"
 shopt -s nullglob
+$ain_interpreter_dir -m pip cache purge
 for i in *.whl *.tar.gz; do
   if [[ $i =~ "ainode" ]]; then
     echo Installing AINode body: $i
     if [ -z "$p_pypi_mirror" ]; then
-      $ain_interpreter_dir -m pip install "$i" $p_ain_force_reinstall --no-warn-script-location $p_ain_no_dependencies
+      $ain_interpreter_dir -m pip install "$i" $p_ain_force_reinstall --no-warn-script-location $p_ain_no_dependencies --find-links https://download.pytorch.org/whl/cpu/torch_stable.html
     else
-      $ain_interpreter_dir -m pip install "$i" $p_ain_force_reinstall -i $p_pypi_mirror --no-warn-script-location $p_ain_no_dependencies
+      $ain_interpreter_dir -m pip install "$i" $p_ain_force_reinstall -i $p_pypi_mirror --no-warn-script-location $p_ain_no_dependencies --find-links https://download.pytorch.org/whl/cpu/torch_stable.html
     fi
   else
     # if ain_only_ainode is 0 then install dependencies
