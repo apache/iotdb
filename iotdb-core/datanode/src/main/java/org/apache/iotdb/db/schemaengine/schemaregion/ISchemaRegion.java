@@ -114,7 +114,8 @@ public interface ISchemaRegion {
    * @param offset
    * @throws MetadataException
    */
-  void createTimeSeries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException;
+  void createTimeSeries(final ICreateTimeSeriesPlan plan, final long offset)
+      throws MetadataException;
 
   /**
    * Create aligned timeseries.
@@ -122,7 +123,7 @@ public interface ISchemaRegion {
    * @param plan a plan describes how to create the timeseries.
    * @throws MetadataException
    */
-  void createAlignedTimeSeries(ICreateAlignedTimeSeriesPlan plan) throws MetadataException;
+  void createAlignedTimeSeries(final ICreateAlignedTimeSeriesPlan plan) throws MetadataException;
 
   /**
    * Check whether measurement exists.
@@ -135,7 +136,9 @@ public interface ISchemaRegion {
    *     example, a MeasurementAlreadyExistException means this measurement exists.
    */
   Map<Integer, MetadataException> checkMeasurementExistence(
-      PartialPath devicePath, List<String> measurementList, List<String> aliasList);
+      final PartialPath devicePath,
+      final List<String> measurementList,
+      final List<String> aliasList);
 
   /**
    * Check whether time series can be created.
