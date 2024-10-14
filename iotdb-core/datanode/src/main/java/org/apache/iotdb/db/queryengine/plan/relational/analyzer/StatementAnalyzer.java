@@ -29,6 +29,9 @@ import org.apache.iotdb.db.queryengine.execution.warnings.IoTDBWarning;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
+import org.apache.iotdb.db.queryengine.plan.analyze.load.LoadTsFileAnalyzer;
+import org.apache.iotdb.db.queryengine.plan.analyze.load.LoadTsFileToTableModelAnalyzer;
+import org.apache.iotdb.db.queryengine.plan.analyze.load.LoadTsFileToTreeModelAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.SchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
@@ -88,6 +91,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinUsing;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Limit;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NaturalJoin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
@@ -133,6 +137,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStat
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
+import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
@@ -188,6 +196,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.RIGHT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil.preOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
+import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 
 public class StatementAnalyzer {
@@ -494,6 +503,46 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitDelete(Delete node, Optional<Scope> scope) {
       throw new SemanticException("Delete statement is not supported yet.");
+    }
+
+    @Override
+    protected Scope visitLoadTsFile(LoadTsFile node, Optional<Scope> scope) {
+      queryContext.setQueryType(QueryType.WRITE);
+
+      final long startTime = System.nanoTime();
+      try (final LoadTsFileAnalyzer loadTsFileAnalyzer = getAnalyzer(node)) {
+        loadTsFileAnalyzer.analyzeFileByFile(analysis);
+      } catch (final Exception e) {
+        final String exceptionMessage =
+            String.format(
+                "Failed to execute load tsfile statement %s. Detail: %s",
+                node, e.getMessage() == null ? e.getClass().getName() : e.getMessage());
+        analysis.setFinishQueryAfterAnalyze(true);
+        analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));
+      } finally {
+        LoadTsFileCostMetricsSet.getInstance()
+            .recordPhaseTimeCost(ANALYSIS, System.nanoTime() - startTime);
+      }
+
+      return createAndAssignScope(node, scope);
+    }
+
+    private LoadTsFileAnalyzer getAnalyzer(LoadTsFile loadTsFile) {
+      if (Objects.equals(loadTsFile.getModel(), LoadTsFileConfigurator.MODEL_TABLE_VALUE)) {
+        // Load to table-model
+        if (Objects.isNull(loadTsFile.getDatabase())) {
+          // If database is not specified, use the database from current session.
+          // If still not specified, throw an exception.
+          if (!queryContext.getDatabaseName().isPresent()) {
+            throw new SemanticException("Database is not specified");
+          }
+          loadTsFile.setDatabase(queryContext.getDatabaseName().get());
+        }
+        return new LoadTsFileToTableModelAnalyzer(loadTsFile, metadata, queryContext);
+      } else {
+        // Load to tree-model
+        return new LoadTsFileToTreeModelAnalyzer(loadTsFile, queryContext);
+      }
     }
 
     @Override

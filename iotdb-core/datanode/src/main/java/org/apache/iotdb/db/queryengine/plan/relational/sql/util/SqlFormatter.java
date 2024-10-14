@@ -50,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinCriteria;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinUsing;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Limit;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NaturalJoin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
@@ -794,6 +795,30 @@ public final class SqlFormatter {
     protected Void visitDropFunction(DropFunction node, Integer indent) {
       builder.append("DROP FUNCTION ");
       builder.append(node.getUdfName());
+      return null;
+    }
+
+    @Override
+    protected Void visitLoadTsFile(final LoadTsFile node, final Integer indent) {
+      builder.append("LOAD ");
+      builder.append("\"" + node.getFilePath() + "\"");
+      builder.append(" \n");
+
+      builder
+          .append("WITH (")
+          .append("\n")
+          .append(
+              node.getLoadAttributes().entrySet().stream()
+                  .map(
+                      entry ->
+                          indentString(1)
+                              + "\""
+                              + entry.getKey()
+                              + "\" = \""
+                              + entry.getValue()
+                              + "\"")
+                  .collect(joining(", " + "\n")))
+          .append(")\n");
       return null;
     }
 
