@@ -30,8 +30,6 @@ import java.util.Map;
 
 public class PipeTransferTsFileSealWithModReq extends PipeTransferFileSealReqV2 {
 
-  private static final String DATABASE_NAME_KEY = "DATABASE_NAME";
-
   private PipeTransferTsFileSealWithModReq() {
     // Empty constructor
   }
@@ -51,7 +49,7 @@ public class PipeTransferTsFileSealWithModReq extends PipeTransferFileSealReqV2 
       String dataBaseName)
       throws IOException {
     Map<String, String> parameters = new HashMap<>();
-    parameters.put(DATABASE_NAME_KEY, dataBaseName);
+    parameters.put(PipeTransferFileSealReqV2.getDatabaseNameKey(tsFileName), dataBaseName);
     return (PipeTransferTsFileSealWithModReq)
         new PipeTransferTsFileSealWithModReq()
             .convertToTPipeTransferReq(

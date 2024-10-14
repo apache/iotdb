@@ -35,6 +35,8 @@ import java.util.Objects;
 
 public abstract class PipeTransferFileSealReqV2 extends TPipeTransferReq {
 
+  protected static final String DATABASE_NAME_KEY = "DATABASE_NAME";
+
   private transient List<String> fileNames;
   private transient List<Long> fileLengths;
   private transient Map<String, String> parameters;
@@ -49,6 +51,14 @@ public abstract class PipeTransferFileSealReqV2 extends TPipeTransferReq {
 
   public final Map<String, String> getParameters() {
     return parameters;
+  }
+
+  public final String getDatabaseName(String fileName) {
+    return parameters == null ? null : parameters.get(getDatabaseNameKey(fileName));
+  }
+
+  public static String getDatabaseNameKey(String fileName) {
+    return DATABASE_NAME_KEY + "_" + fileName;
   }
 
   protected abstract PipeRequestType getPlanType();
