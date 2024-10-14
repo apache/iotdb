@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.storageengine.load.active;
 
+import java.io.File;
+import java.io.IOException;
+
 public class ActiveLoadAgent {
 
   private final ActiveLoadTsFileLoader activeLoadTsFileLoader;
@@ -47,5 +50,10 @@ public class ActiveLoadAgent {
   public synchronized void start() {
     activeLoadDirScanner.start();
     activeLoadMetricsCollector.start();
+  }
+
+  public void pipeReceiverRemoveTSFileToAsyncLoad(File file, boolean isModFile, String dataBaseName)
+      throws IOException {
+    activeLoadDirScanner.pipeReceiverRemoveTSFileToAsyncLoad(file, isModFile, dataBaseName);
   }
 }

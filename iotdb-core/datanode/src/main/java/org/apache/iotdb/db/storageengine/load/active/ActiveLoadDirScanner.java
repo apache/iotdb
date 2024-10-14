@@ -251,4 +251,9 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
 
     return totalFileCount;
   }
+
+  public void pipeReceiverRemoveTSFileToAsyncLoad(File file, boolean isModFile, String dataBaseName)
+      throws IOException {
+    activeLoadTsFileLoader.pipeReceiverMoveTsFileForAsyncLoad(file, isModFile, dataBaseName);
+  }
 }
