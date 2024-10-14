@@ -334,7 +334,7 @@ public class PipeDataNodeThriftRequestTest {
     final String fileName = "1.tsfile";
 
     final PipeTransferTsFileSealReq req =
-        PipeTransferTsFileSealReq.toTPipeTransferReq(fileName, 100, "");
+        PipeTransferTsFileSealReq.toTPipeTransferReq(fileName, 100);
     final PipeTransferTsFileSealReq deserializeReq =
         PipeTransferTsFileSealReq.fromTPipeTransferReq(req);
 

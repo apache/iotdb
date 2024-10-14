@@ -162,7 +162,7 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
                     tsFile.length(),
                     dataBaseName)
                 : PipeTransferTsFileSealReq.toTPipeTransferReq(
-                    tsFile.getName(), tsFile.length(), dataBaseName);
+                    tsFile.getName(), tsFile.length()); // v2
         final TPipeTransferReq req =
             connector.isRpcCompressionEnabled()
                 ? PipeTransferCompressedReq.toTPipeTransferReq(

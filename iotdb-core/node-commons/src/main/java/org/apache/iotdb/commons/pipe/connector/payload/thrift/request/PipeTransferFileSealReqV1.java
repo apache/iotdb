@@ -69,45 +69,11 @@ public abstract class PipeTransferFileSealReqV1 extends TPipeTransferReq {
     return this;
   }
 
-  protected PipeTransferFileSealReqV1 convertToTPipeTransferReqV2(
-      String fileName, long fileLength, String dataBaseName) throws IOException {
-
-    this.fileName = fileName;
-    this.fileLength = fileLength;
-    this.dataBaseName = dataBaseName;
-
-    this.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
-    this.type = getPlanType().getType();
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
-        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.write(fileName, outputStream);
-      ReadWriteIOUtils.write(fileLength, outputStream);
-      ReadWriteIOUtils.write(dataBaseName, outputStream);
-      this.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-    }
-
-    return this;
-  }
-
   public PipeTransferFileSealReqV1 translateFromTPipeTransferReq(TPipeTransferReq req) {
 
     fileName = ReadWriteIOUtils.readString(req.body);
     fileLength = ReadWriteIOUtils.readLong(req.body);
 
-    version = req.version;
-    type = req.type;
-    body = req.body;
-
-    return this;
-  }
-
-  public PipeTransferFileSealReqV1 translateFromTPipeTransferReqV2(TPipeTransferReq req) {
-
-    fileName = ReadWriteIOUtils.readString(req.body);
-    fileLength = ReadWriteIOUtils.readLong(req.body);
-    dataBaseName = ReadWriteIOUtils.readString(req.body);
-
-    req.body.position(0);
     version = req.version;
     type = req.type;
     body = req.body;

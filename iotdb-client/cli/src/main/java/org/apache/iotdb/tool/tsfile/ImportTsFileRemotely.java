@@ -203,7 +203,7 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
     } else {
       transferFilePieces(tsFile, false);
 
-      req = PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length(), "");
+      req = PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length());
     }
 
     try {

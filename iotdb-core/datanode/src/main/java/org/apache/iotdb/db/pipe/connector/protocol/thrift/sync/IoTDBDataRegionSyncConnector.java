@@ -471,7 +471,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
         final TPipeTransferReq req =
             compressIfNeeded(
                 PipeTransferTsFileSealReq.toTPipeTransferReq(
-                    tsFile.getName(), tsFile.length(), dataBaseName));
+                    tsFile.getName(), tsFile.length())); // v2
 
         pipeName2WeightMap.forEach(
             (pipePair, weight) ->
