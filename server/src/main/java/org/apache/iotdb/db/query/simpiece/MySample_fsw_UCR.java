@@ -30,7 +30,7 @@ import java.util.List;
 public class MySample_fsw_UCR {
 
   public static void main(String[] args) {
-    String fileDir = "D:\\3\\UCRsets\\";
+    String fileDir = "D:\\3\\tmp\\";
     File folder = new File(fileDir);
     // 调用递归函数遍历文件夹
     listFiles(folder);
@@ -67,6 +67,8 @@ public class MySample_fsw_UCR {
 
       int nout = n / 2;
       nout = (nout / 4) * 4; // for M4 requires nout to be four integer multiples
+
+      nout = Math.min(800, nout);
 
       double epsilon = MySample_fsw2.getFSWParam(nout, ts, 1e-6);
       List<Point> reducedPoints = FSW.reducePoints(ts.data, epsilon);

@@ -69,6 +69,8 @@ public class MySample_simpiece_UCR {
       int nout = n / 2;
       nout = (nout / 4) * 4; // for M4 requires nout to be four integer multiples
 
+      nout = Math.min(800, nout);
+
       double epsilon = MySample_simpiece2.getSimPieceParam(nout, ts, 1e-6);
       SimPiece simPiece = new SimPiece(ts.data, epsilon);
       System.out.println(
