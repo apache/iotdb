@@ -88,11 +88,13 @@ public class DiskGuardianTest {
     miniCluster.waitUntilActiveLeaderElectedAndReady();
     miniCluster.writeManySerial(0, 10);
     Assert.assertFalse(miniCluster.hasSnapshot(gid, 0));
-    Retriable.attemptUntilTrue(
-        () -> miniCluster.hasSnapshot(gid, 0),
+    Retriable.attempt(
+        () -> null,
+        (resp) -> !miniCluster.hasSnapshot(gid, 0),
         12,
         TimeDuration.valueOf(5, TimeUnit.SECONDS),
-        "should take snapshot",
+        TimeDuration.valueOf(5, TimeUnit.SECONDS),
+        () -> "should take snapshot",
         logger);
     Assert.assertTrue(miniCluster.hasSnapshot(gid, 0));
   }

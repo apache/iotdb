@@ -219,7 +219,8 @@ class RatisConsensus implements IConsensus {
                                 registry.apply(
                                     Utils.fromRaftGroupIdToConsensusGroupId(raftGroupId)),
                                 raftGroupId,
-                                this::onLeaderChanged))
+                                this::onLeaderChanged,
+                                config.getRatisConfig()))
                     .build());
   }
 
@@ -250,7 +251,13 @@ class RatisConsensus implements IConsensus {
       throws IOException {
     RaftClientReply reply = null;
     try {
-      reply = Retriable.attempt(caller, writeRetryPolicy, () -> caller, logger);
+      reply =
+          Retriable.attempt(
+              caller,
+              writeRetryPolicy,
+              TimeDuration.valueOf(config.getImpl().getRetryMaxWaitMillis(), TimeUnit.MILLISECONDS),
+              () -> caller,
+              logger);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.debug("{}: interrupted when retrying for write request {}", this, caller);
@@ -447,6 +454,7 @@ class RatisConsensus implements IConsensus {
                 }
               },
               readRetryPolicy,
+              TimeDuration.valueOf(config.getImpl().getRetryMaxWaitMillis(), TimeUnit.MILLISECONDS),
               () -> readRequest,
               logger);
     }
@@ -715,10 +723,13 @@ class RatisConsensus implements IConsensus {
                 () -> System.currentTimeMillis() - startTime >= DEFAULT_WAIT_LEADER_READY_TIMEOUT);
 
     try {
-      Retriable.attemptUntilTrue(
-          noRetryAtAnyOfFollowingCondition,
+      Retriable.attempt(
+          () -> null,
+          (resp) -> !noRetryAtAnyOfFollowingCondition.getAsBoolean(),
+          -1,
           TimeDuration.valueOf(10, TimeUnit.MILLISECONDS),
-          "waitLeaderReady",
+          TimeDuration.valueOf(config.getImpl().getRetryMaxWaitMillis(), TimeUnit.MILLISECONDS),
+          () -> "waitLeaderReady",
           logger);
       if (divisionInfo.isLeader() && !divisionInfo.isLeaderReady()) {
         logger.warn(

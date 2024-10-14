@@ -26,6 +26,7 @@ import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.ratis.metrics.RatisMetricsManager;
 import org.apache.iotdb.consensus.ratis.utils.Retriable;
 import org.apache.iotdb.consensus.ratis.utils.Utils;
@@ -56,6 +57,7 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 
 public class ApplicationStateMachineProxy extends BaseStateMachine {
@@ -68,20 +70,23 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
   private final RaftGroupId groupId;
   private final TConsensusGroupType consensusGroupType;
   private final BiConsumer<RaftGroupMemberId, RaftPeerId> leaderChangeListener;
+  private final RatisConfig config;
 
   ApplicationStateMachineProxy(IStateMachine stateMachine, RaftGroupId id) {
-    this(stateMachine, id, null);
+    this(stateMachine, id, null, null);
   }
 
   ApplicationStateMachineProxy(
       IStateMachine stateMachine,
       RaftGroupId id,
-      BiConsumer<RaftGroupMemberId, RaftPeerId> onLeaderChanged) {
+      BiConsumer<RaftGroupMemberId, RaftPeerId> onLeaderChanged,
+      RatisConfig config) {
     this.applicationStateMachine = stateMachine;
     this.leaderChangeListener = onLeaderChanged;
     this.groupId = id;
     snapshotStorage = new SnapshotStorage(applicationStateMachine, groupId);
     consensusGroupType = Utils.getConsensusGroupTypeFromPrefix(groupId.toString());
+    this.config = config;
     applicationStateMachine.start();
   }
 
@@ -183,10 +188,13 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
 
   private void waitUntilSystemAllowApply() {
     try {
-      Retriable.attemptUntilTrue(
-          () -> !Utils.stallApply(consensusGroupType),
-          TimeDuration.ONE_MINUTE,
-          "waitUntilSystemAllowApply",
+      Retriable.attempt(
+          () -> null,
+          (resp) -> Utils.stallApply(consensusGroupType),
+          -1,
+          TimeDuration.valueOf(config.getImpl().getRetryWaitMillis(), TimeUnit.MILLISECONDS),
+          TimeDuration.valueOf(config.getImpl().getRetryMaxWaitMillis(), TimeUnit.MILLISECONDS),
+          () -> "waitUntilSystemAllowApply",
           logger);
     } catch (InterruptedException e) {
       logger.warn("{}: interrupted when waiting until system ready: ", this, e);

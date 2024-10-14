@@ -25,7 +25,6 @@ import org.apache.ratis.util.function.CheckedSupplier;
 import org.slf4j.Logger;
 
 import java.util.Objects;
-import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -47,6 +46,7 @@ public class Retriable {
       Predicate<RETURN> shouldRetry,
       int maxAttempts,
       TimeDuration sleepTime,
+      TimeDuration maxSleepTime,
       Supplier<?> name,
       Logger log)
       throws THROWABLE, InterruptedException {
@@ -54,7 +54,6 @@ public class Retriable {
     Objects.requireNonNull(shouldRetry, "shouldRetry == null");
     Preconditions.assertTrue(maxAttempts == -1 || maxAttempts > 0);
     Preconditions.assertTrue(!sleepTime.isNegative(), () -> "sleepTime = " + sleepTime + " < 0");
-
     for (int i = 1; /* Forever Loop */ ; i++) {
       try {
         final RETURN ret = supplier.get();
@@ -63,7 +62,11 @@ public class Retriable {
           if (log != null && log.isDebugEnabled()) {
             log.debug("Failed {}, attempt #{}, sleep {} and then retry", name.get(), i, sleepTime);
           }
-          sleepTime.sleep();
+          TimeDuration waitTime =
+              maxSleepTime != null && sleepTime.compareTo(maxSleepTime) > 0
+                  ? maxSleepTime
+                  : sleepTime.multiply(Math.pow(2, i));
+          waitTime.sleep();
           continue;
         }
         return ret;
@@ -75,23 +78,6 @@ public class Retriable {
         throw e;
       }
     }
-  }
-
-  /** Attempt indefinitely until the given {@param condition} holds */
-  public static void attemptUntilTrue(
-      BooleanSupplier condition, TimeDuration sleepTime, String name, Logger log)
-      throws InterruptedException {
-    attemptUntilTrue(condition, -1, sleepTime, name, log);
-  }
-
-  /**
-   * Attempt indefinitely until the given {@param condition} holds or reaches {@param maxAttempts}
-   */
-  public static void attemptUntilTrue(
-      BooleanSupplier condition, int maxAttempts, TimeDuration sleepTime, String name, Logger log)
-      throws InterruptedException {
-    Objects.requireNonNull(condition, "condition == null");
-    attempt(() -> null, ret -> !condition.getAsBoolean(), maxAttempts, sleepTime, () -> name, log);
   }
 
   /**
@@ -111,6 +97,29 @@ public class Retriable {
       Logger logger)
       throws THROWABLE, InterruptedException {
     return attempt(
-        supplier, policy::shouldRetry, policy.getMaxAttempts(), policy.getWaitTime(), name, logger);
+        supplier,
+        policy::shouldRetry,
+        policy.getMaxAttempts(),
+        policy.getWaitTime(),
+        null,
+        name,
+        logger);
+  }
+
+  public static <RETURN, THROWABLE extends Throwable> RETURN attempt(
+      CheckedSupplier<RETURN, THROWABLE> supplier,
+      RetryPolicy<RETURN> policy,
+      TimeDuration maxSleepTime,
+      Supplier<?> name,
+      Logger logger)
+      throws THROWABLE, InterruptedException {
+    return attempt(
+        supplier,
+        policy::shouldRetry,
+        policy.getMaxAttempts(),
+        policy.getWaitTime(),
+        maxSleepTime,
+        name,
+        logger);
   }
 }

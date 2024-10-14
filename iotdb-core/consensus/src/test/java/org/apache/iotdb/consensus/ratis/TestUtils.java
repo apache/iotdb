@@ -350,20 +350,24 @@ public class TestUtils {
     }
 
     void waitUntilActiveLeaderElected() throws InterruptedException {
-      Retriable.attemptUntilTrue(
-          () -> servers.stream().anyMatch(server -> server.isLeader(gid)),
+      Retriable.attempt(
+          () -> null,
+          (resp) -> !(servers.stream().anyMatch(server -> server.isLeader(gid))),
           600,
           TimeDuration.valueOf(100, TimeUnit.MILLISECONDS),
-          "wait leader elected",
+          TimeDuration.valueOf(3000, TimeUnit.MILLISECONDS),
+          () -> "wait leader elected",
           null);
     }
 
     void waitUntilActiveLeaderElectedAndReady() throws InterruptedException {
-      Retriable.attemptUntilTrue(
-          () -> servers.stream().anyMatch(server -> server.isLeaderReady(gid)),
+      Retriable.attempt(
+          () -> null,
+          (resp) -> !(servers.stream().anyMatch(server -> server.isLeaderReady(gid))),
           600,
           TimeDuration.valueOf(100, TimeUnit.MILLISECONDS),
-          "wait leader elected and become ready",
+          TimeDuration.valueOf(5000, TimeUnit.MILLISECONDS),
+          () -> "wait leader elected and become ready",
           null);
     }
 
