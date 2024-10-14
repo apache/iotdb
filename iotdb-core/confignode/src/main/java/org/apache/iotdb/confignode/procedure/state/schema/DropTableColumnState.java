@@ -19,6 +19,6 @@
 
 package org.apache.iotdb.confignode.procedure.state.schema;
 
-public class DropTableColumnState {
+public enum DropTableColumnState {
   // TODO
 }
