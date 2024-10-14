@@ -222,7 +222,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       final InsertNode insertNode =
           pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
       final String tableName =
-          pipeInsertNodeTabletInsertionEvent.isTableModel()
+          pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
               ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
               : EMPTY_DATA_BASE;
       final TPipeTransferReq pipeTransferReq =
@@ -252,7 +252,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
               PipeTransferTabletRawReq.toTPipeTransferReqV2(
                   pipeRawTabletInsertionEvent.convertToTablet(),
                   pipeRawTabletInsertionEvent.isAligned(),
-                  pipeRawTabletInsertionEvent.isTableModel()
+                  pipeRawTabletInsertionEvent.isTableModelEvent()
                       ? pipeRawTabletInsertionEvent.getTableModelDatabaseName()
                       : EMPTY_DATA_BASE));
       final PipeTransferTabletRawEventHandler pipeTransferTabletReqHandler =
@@ -348,7 +348,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
               pipeTsFileInsertionEvent.getModFile(),
               pipeTsFileInsertionEvent.isWithMod()
                   && clientManager.supportModsIfIsDataNodeReceiver(),
-              pipeTsFileInsertionEvent.isTableModel()
+              pipeTsFileInsertionEvent.isTableModelEvent()
                   ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
                   : EMPTY_DATA_BASE);
 

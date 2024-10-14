@@ -253,7 +253,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     final Map<Pair<String, Long>, Double> pipe2WeightMap = batchToTransfer.deepCopyPipe2WeightMap();
 
     for (final File tsFile : sealedFiles) {
-      doTransfer(pipe2WeightMap, tsFile, null);
+      doTransfer(pipe2WeightMap, tsFile, null,EMPTY_DATA_BASE);
       try {
         FileUtils.delete(tsFile);
       } catch (final NoSuchFileException e) {
@@ -361,7 +361,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
               PipeTransferTabletRawReq.toTPipeTransferReqV2(
                   pipeRawTabletInsertionEvent.convertToTablet(),
                   pipeRawTabletInsertionEvent.isAligned(),
-                  pipeRawTabletInsertionEvent.isTableModel()
+                  pipeRawTabletInsertionEvent.isTableModelEvent()
                       ? pipeRawTabletInsertionEvent.getTableModelDatabaseName()
                       : EMPTY_DATA_BASE));
       rateLimitIfNeeded(
@@ -412,7 +412,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
               1.0),
           pipeTsFileInsertionEvent.getTsFile(),
           pipeTsFileInsertionEvent.isWithMod() ? pipeTsFileInsertionEvent.getModFile() : null,
-          pipeTsFileInsertionEvent.isTableModel()
+          pipeTsFileInsertionEvent.isTableModelEvent()
               ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
               : EMPTY_DATA_BASE);
     } finally {

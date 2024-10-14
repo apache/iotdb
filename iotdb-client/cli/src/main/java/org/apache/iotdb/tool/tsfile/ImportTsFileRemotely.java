@@ -199,11 +199,11 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
 
       req =
           PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-              modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length());
+              modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length(),"");
     } else {
       transferFilePieces(tsFile, false);
 
-      req = PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length());
+      req = PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length(),"");
     }
 
     try {

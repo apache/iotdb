@@ -150,7 +150,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
       if (Objects.isNull(insertNode)) {
         buffer = pipeInsertNodeTabletInsertionEvent.getByteBuffer();
         binaryBuffers.add(buffer);
-        if (pipeInsertNodeTabletInsertionEvent.isTableModel()) {
+        if (pipeInsertNodeTabletInsertionEvent.isTableModelEvent()) {
           dataBaseSize = pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName().length();
           binaryDataBases.add(pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName());
         } else {
@@ -159,7 +159,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
       } else {
         buffer = insertNode.serializeToByteBuffer();
         insertNodeBuffers.add(buffer);
-        if (pipeInsertNodeTabletInsertionEvent.isTableModel()) {
+        if (pipeInsertNodeTabletInsertionEvent.isTableModelEvent()) {
           dataBaseSize = pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName().length();
           inertNodeDataBases.add(pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName());
         } else {
@@ -176,7 +176,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
         buffer = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
       }
       tabletBuffers.add(buffer);
-      if (pipeRawTabletInsertionEvent.isTableModel()) {
+      if (pipeRawTabletInsertionEvent.isTableModelEvent()) {
         dataBaseSize = pipeRawTabletInsertionEvent.getTableModelDatabaseName().length();
         tabletDataBases.add(pipeRawTabletInsertionEvent.getTableModelDatabaseName());
       } else {

@@ -102,8 +102,4 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
                 : treeModelDatabaseName
         : tableModelDatabaseName;
   }
-
-  public boolean isTableModel() {
-    return false;
-  }
 }
