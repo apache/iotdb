@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.plan.analyze.load;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.LoadEmptyFileException;
 import org.apache.iotdb.db.exception.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.VerifyMetadataException;
@@ -55,7 +54,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.BufferUnderflowException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -104,49 +102,9 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
       return analysis;
     }
 
-    // analyze tsfile metadata file by file
-    for (int i = 0, tsfileNum = tsFiles.size(); i < tsfileNum; i++) {
-      final File tsFile = tsFiles.get(i);
-
-      if (tsFile.length() == 0) {
-        if (LOGGER.isWarnEnabled()) {
-          LOGGER.warn("TsFile {} is empty.", tsFile.getPath());
-        }
-        if (LOGGER.isInfoEnabled()) {
-          LOGGER.info(
-              "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
-              i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
-        }
-        continue;
-      }
-
-      try {
-        analyzeSingleTsFile(tsFile);
-        if (LOGGER.isInfoEnabled()) {
-          LOGGER.info(
-              "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
-              i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
-        }
-      } catch (AuthException e) {
-        setFailAnalysisForAuthException(analysis, e);
-        return analysis;
-      } catch (BufferUnderflowException e) {
-        LOGGER.warn(
-            "The file {} is not a valid tsfile. Please check the input file.", tsFile.getPath(), e);
-        throw new SemanticException(
-            String.format(
-                "The file %s is not a valid tsfile. Please check the input file.",
-                tsFile.getPath()));
-      } catch (Exception e) {
-        final String exceptionMessage =
-            String.format(
-                "The file %s is not a valid tsfile. Please check the input file. Detail: %s",
-                tsFile.getPath(), e.getMessage() == null ? e.getClass().getName() : e.getMessage());
-        LOGGER.warn(exceptionMessage, e);
-        analysis.setFinishQueryAfterAnalyze(true);
-        analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));
-        return analysis;
-      }
+    if (!doAnalyzeFileByFile(analysis)) {
+      // return false means the analysis is failed because of exception
+      return analysis;
     }
 
     LOGGER.info("Load - Analysis Stage: all tsfiles have been analyzed.");
@@ -175,14 +133,7 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
       }
 
       // construct tsfile resource
-      final TsFileResource tsFileResource = new TsFileResource(tsFile);
-      if (!tsFileResource.resourceFileExists()) {
-        // it will be serialized in LoadSingleTsFileNode
-        tsFileResource.updatePlanIndexes(reader.getMinPlanIndex());
-        tsFileResource.updatePlanIndexes(reader.getMaxPlanIndex());
-      } else {
-        tsFileResource.deserialize();
-      }
+      final TsFileResource tsFileResource = constructTsFileResource(reader, tsFile);
 
       for (Map.Entry<String, TableSchema> name2Schema :
           reader.readFileMetadata().getTableSchemaMap().entrySet()) {
@@ -202,26 +153,22 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
 
       long writePointCount = 0;
 
-      final boolean isAutoCreateSchemaOrVerifySchemaEnabled =
-          IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled() || isVerifySchema();
       while (timeseriesMetadataIterator.hasNext()) {
         final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
             timeseriesMetadataIterator.next();
 
-        if (isAutoCreateSchemaOrVerifySchemaEnabled) {
-          for (IDeviceID deviceId : device2TimeseriesMetadata.keySet()) {
-            final ITableDeviceSchemaValidation tableSchemaValidation =
-                createTableSchemaValidation(deviceId, this);
-            metadata.validateDeviceSchema(tableSchemaValidation, context);
-          }
+        for (IDeviceID deviceId : device2TimeseriesMetadata.keySet()) {
+          final ITableDeviceSchemaValidation tableSchemaValidation =
+              createTableSchemaValidation(deviceId, this);
+          // TODO: currently, we only validate one device at a time for table model,
+          //  may need to validate in batched manner in the future.
+          metadata.validateDeviceSchema(tableSchemaValidation, context);
         }
 
         if (!tsFileResource.resourceFileExists()) {
           TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
         }
 
-        // TODO: how to get the correct write point count when
-        //  !isAutoCreateSchemaOrVerifySchemaEnabled
         writePointCount += getWritePointCount(device2TimeseriesMetadata);
       }
 

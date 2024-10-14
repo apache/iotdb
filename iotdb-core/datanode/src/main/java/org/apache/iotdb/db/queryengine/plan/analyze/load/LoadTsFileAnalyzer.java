@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
@@ -30,14 +31,17 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.tsfile.read.TsFileSequenceReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.BufferUnderflowException;
 import java.util.List;
 import java.util.Map;
 
@@ -102,7 +106,68 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
 
   public abstract IAnalysis analyzeFileByFile(IAnalysis analysis);
 
+  protected boolean doAnalyzeFileByFile(IAnalysis analysis) {
+    // analyze tsfile metadata file by file
+    for (int i = 0, tsfileNum = tsFiles.size(); i < tsfileNum; i++) {
+      final File tsFile = tsFiles.get(i);
+
+      if (tsFile.length() == 0) {
+        if (LOGGER.isWarnEnabled()) {
+          LOGGER.warn("TsFile {} is empty.", tsFile.getPath());
+        }
+        if (LOGGER.isInfoEnabled()) {
+          LOGGER.info(
+              "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
+              i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
+        }
+        continue;
+      }
+
+      try {
+        analyzeSingleTsFile(tsFile);
+        if (LOGGER.isInfoEnabled()) {
+          LOGGER.info(
+              "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
+              i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
+        }
+      } catch (AuthException e) {
+        setFailAnalysisForAuthException(analysis, e);
+        return false;
+      } catch (BufferUnderflowException e) {
+        LOGGER.warn(
+            "The file {} is not a valid tsfile. Please check the input file.", tsFile.getPath(), e);
+        throw new SemanticException(
+            String.format(
+                "The file %s is not a valid tsfile. Please check the input file.",
+                tsFile.getPath()));
+      } catch (Exception e) {
+        final String exceptionMessage =
+            String.format(
+                "The file %s is not a valid tsfile. Please check the input file. Detail: %s",
+                tsFile.getPath(), e.getMessage() == null ? e.getClass().getName() : e.getMessage());
+        LOGGER.warn(exceptionMessage, e);
+        analysis.setFinishQueryAfterAnalyze(true);
+        analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));
+        return false;
+      }
+    }
+    return true;
+  }
+
   protected abstract void analyzeSingleTsFile(final File tsFile) throws IOException, AuthException;
+
+  protected TsFileResource constructTsFileResource(
+      final TsFileSequenceReader reader, final File tsFile) throws IOException {
+    final TsFileResource tsFileResource = new TsFileResource(tsFile);
+    if (!tsFileResource.resourceFileExists()) {
+      // it will be serialized in LoadSingleTsFileNode
+      tsFileResource.updatePlanIndexes(reader.getMinPlanIndex());
+      tsFileResource.updatePlanIndexes(reader.getMaxPlanIndex());
+    } else {
+      tsFileResource.deserialize();
+    }
+    return tsFileResource;
+  }
 
   protected String getStatementString() {
     return statementString;

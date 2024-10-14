@@ -46,7 +46,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.BufferUnderflowException;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -78,49 +77,9 @@ public class LoadTsFileToTreeModelAnalyzer extends LoadTsFileAnalyzer {
       return analysis;
     }
 
-    // analyze tsfile metadata file by file
-    for (int i = 0, tsfileNum = tsFiles.size(); i < tsfileNum; i++) {
-      final File tsFile = tsFiles.get(i);
-
-      if (tsFile.length() == 0) {
-        if (LOGGER.isWarnEnabled()) {
-          LOGGER.warn("TsFile {} is empty.", tsFile.getPath());
-        }
-        if (LOGGER.isInfoEnabled()) {
-          LOGGER.info(
-              "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
-              i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
-        }
-        continue;
-      }
-
-      try {
-        analyzeSingleTsFile(tsFile);
-        if (LOGGER.isInfoEnabled()) {
-          LOGGER.info(
-              "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
-              i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
-        }
-      } catch (AuthException e) {
-        setFailAnalysisForAuthException(analysis, e);
-        return analysis;
-      } catch (BufferUnderflowException e) {
-        LOGGER.warn(
-            "The file {} is not a valid tsfile. Please check the input file.", tsFile.getPath(), e);
-        throw new SemanticException(
-            String.format(
-                "The file %s is not a valid tsfile. Please check the input file.",
-                tsFile.getPath()));
-      } catch (Exception e) {
-        final String exceptionMessage =
-            String.format(
-                "The file %s is not a valid tsfile. Please check the input file. Detail: %s",
-                tsFile.getPath(), e.getMessage() == null ? e.getClass().getName() : e.getMessage());
-        LOGGER.warn(exceptionMessage, e);
-        analysis.setFinishQueryAfterAnalyze(true);
-        analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));
-        return analysis;
-      }
+    if (!doAnalyzeFileByFile(analysis)) {
+      // return false means the analysis is failed because of exception
+      return analysis;
     }
 
     try {
@@ -166,14 +125,7 @@ public class LoadTsFileToTreeModelAnalyzer extends LoadTsFileAnalyzer {
       }
 
       // construct tsfile resource
-      final TsFileResource tsFileResource = new TsFileResource(tsFile);
-      if (!tsFileResource.resourceFileExists()) {
-        // it will be serialized in LoadSingleTsFileNode
-        tsFileResource.updatePlanIndexes(reader.getMinPlanIndex());
-        tsFileResource.updatePlanIndexes(reader.getMaxPlanIndex());
-      } else {
-        tsFileResource.deserialize();
-      }
+      final TsFileResource tsFileResource = constructTsFileResource(reader, tsFile);
 
       schemaAutoCreatorAndVerifier.setCurrentModificationsAndTimeIndex(tsFileResource, reader);
 
