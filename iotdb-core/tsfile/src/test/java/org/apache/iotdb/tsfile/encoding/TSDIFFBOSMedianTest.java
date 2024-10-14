@@ -1542,7 +1542,7 @@ public class TSDIFFBOSMedianTest {
 //        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
 //        String output_parent_dir = parent_dir + "icde0802/compression_ratio/block_size_bos_m";
-        String output_parent_dir = parent_dir + "icde0802/compression_ratio/test";
+        String output_parent_dir = parent_dir + "icde0802/compression_ratio/block_size_bos_m";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -1586,8 +1586,8 @@ public class TSDIFFBOSMedianTest {
 
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
 
-        int repeatTime2 = 1;
-        int[] file_i_list = {3};
+        int repeatTime2 = 100;
+        int[] file_i_list = {0,9,10};
 //        for (int file_i = 9; file_i < 10; file_i++) {
         for(int file_i :file_i_list){
 //        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
@@ -1638,8 +1638,8 @@ public class TSDIFFBOSMedianTest {
                 }
                 byte[] encoded_result = new byte[data2_arr.length*4];
 
-                for (int block_size_i = 5; block_size_i > 4; block_size_i--) {
-//                for (int block_size_i = 13; block_size_i > 4; block_size_i--) {
+//                for (int block_size_i = 5; block_size_i > 4; block_size_i--) {
+                for (int block_size_i = 13; block_size_i > 4; block_size_i--) {
                     int block_size = (int) Math.pow(2, block_size_i);
                     System.out.println(block_size);
                     long encodeTime = 0;

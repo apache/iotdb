@@ -316,8 +316,6 @@ public class TSDIFFBOSOnlyUpperOutlierTest {
     }
 
     private static int BOSEncodeBits(int[] ts_block_delta,
-                                     int final_k_start_value,
-                                     int final_x_l_plus,
                                      int final_k_end_value,
                                      int final_x_u_minus,
                                      int max_delta_value,
@@ -326,12 +324,9 @@ public class TSDIFFBOSOnlyUpperOutlierTest {
                                      byte[] cur_byte) {
         int block_size = ts_block_delta.length;
 
-        ArrayList<Integer> final_left_outlier_index = new ArrayList<>();
         ArrayList<Integer> final_right_outlier_index = new ArrayList<>();
-        ArrayList<Integer> final_left_outlier = new ArrayList<>();
         ArrayList<Integer> final_right_outlier = new ArrayList<>();
         ArrayList<Integer> final_normal = new ArrayList<>();
-        int k1 = 0;
         int k2 = 0;
 
         ArrayList<Integer> bitmap_outlier = new ArrayList<>();
@@ -339,24 +334,7 @@ public class TSDIFFBOSOnlyUpperOutlierTest {
         int cur_index_bitmap_outlier_bits = 0;
         for (int i = 0; i < block_size; i++) {
             int cur_value = ts_block_delta[i];
-            if ( cur_value<= final_k_start_value) {
-                final_left_outlier.add(cur_value);
-                final_left_outlier_index.add(i);
-                if (cur_index_bitmap_outlier_bits % 8 != 7) {
-                    index_bitmap_outlier <<= 2;
-                    index_bitmap_outlier += 3;
-                    cur_index_bitmap_outlier_bits += 2;
-                } else {
-                    index_bitmap_outlier <<= 1;
-                    index_bitmap_outlier += 1;
-                    bitmap_outlier.add(index_bitmap_outlier);
-                    index_bitmap_outlier = 1;
-                    cur_index_bitmap_outlier_bits = 1;
-                }
-                k1++;
-
-
-            } else if (cur_value >= final_k_end_value) {
+            if (cur_value >= final_k_end_value) {
                 final_right_outlier.add(cur_value - final_k_end_value);
                 final_right_outlier_index.add(i);
                 if (cur_index_bitmap_outlier_bits % 8 != 7) {
@@ -373,7 +351,7 @@ public class TSDIFFBOSOnlyUpperOutlierTest {
                 k2++;
 
             } else {
-                final_normal.add(cur_value - final_x_l_plus);
+                final_normal.add(cur_value);
                 index_bitmap_outlier <<= 1;
                 cur_index_bitmap_outlier_bits += 1;
             }
@@ -390,10 +368,10 @@ public class TSDIFFBOSOnlyUpperOutlierTest {
             bitmap_outlier.add(index_bitmap_outlier);
         }
 
-        int final_alpha = ((k1 + k2) * getBitWith(block_size-1)) <= (block_size + k1 + k2) ? 1 : 0;
+        int final_alpha = (( k2) * getBitWith(block_size-1)) <= (block_size + k2) ? 1 : 0;
 
 
-        int k_byte = (k1 << 1);
+        int k_byte = 0;
         k_byte += final_alpha;
         k_byte += (k2 << 16);
 
@@ -406,11 +384,10 @@ public class TSDIFFBOSOnlyUpperOutlierTest {
         int2Bytes(min_delta[1],encode_pos,cur_byte);
         encode_pos += 4;
 
-        int bit_width_final = getBitWith(final_x_u_minus - final_x_l_plus);
-        int left_bit_width = getBitWith(final_k_start_value);//final_left_max
+        int bit_width_final = getBitWith(final_x_u_minus);
         int right_bit_width = getBitWith(max_delta_value - final_k_end_value);//final_right_min
 
-        if(k1==0 && k2==0){
+        if( k2==0){
             intByte2Bytes(bit_width_final,encode_pos,cur_byte);
             encode_pos += 1;
 
@@ -418,15 +395,11 @@ public class TSDIFFBOSOnlyUpperOutlierTest {
 //            return encode_pos;
         }
         else{
-            int2Bytes(final_x_l_plus,encode_pos,cur_byte);
-            encode_pos += 4;
             int2Bytes(final_k_end_value,encode_pos,cur_byte);
             encode_pos += 4;
 
-            bit_width_final = getBitWith(final_x_u_minus - final_x_l_plus);
+            bit_width_final = getBitWith(final_x_u_minus);
             intByte2Bytes(bit_width_final,encode_pos,cur_byte);
-            encode_pos += 1;
-            intByte2Bytes(left_bit_width,encode_pos,cur_byte);
             encode_pos += 1;
             intByte2Bytes(right_bit_width,encode_pos,cur_byte);
             encode_pos += 1;
@@ -438,7 +411,7 @@ public class TSDIFFBOSOnlyUpperOutlierTest {
                     encode_pos += 1;
                 }
             } else {
-                encode_pos = encodeOutlier2Bytes(final_left_outlier_index, getBitWith(block_size-1),encode_pos,cur_byte);
+//                encode_pos = encodeOutlier2Bytes(final_left_outlier_index, getBitWith(block_size-1),encode_pos,cur_byte);
                 encode_pos = encodeOutlier2Bytes(final_right_outlier_index, getBitWith(block_size-1),encode_pos,cur_byte);
             }
         }
@@ -446,8 +419,8 @@ public class TSDIFFBOSOnlyUpperOutlierTest {
 
 //        if(k1+k2!=block_size)
         encode_pos = encodeOutlier2Bytes(final_normal, bit_width_final,encode_pos,cur_byte);
-        if (k1 != 0)
-            encode_pos = encodeOutlier2Bytes(final_left_outlier, left_bit_width,encode_pos,cur_byte);
+//        if (k1 != 0)
+//            encode_pos = encodeOutlier2Bytes(final_left_outlier, left_bit_width,encode_pos,cur_byte);
         if (k2 != 0)
             encode_pos = encodeOutlier2Bytes(final_right_outlier, right_bit_width,encode_pos,cur_byte);
         return encode_pos;
@@ -493,16 +466,13 @@ public class TSDIFFBOSOnlyUpperOutlierTest {
         }
 
 
-        int final_k_start_value = -1; // x_l_minus
-        int final_x_l_plus = 0; // x_l_plus
         int final_k_end_value = max_delta_value+1; // x_u_plus
         int final_x_u_minus = max_delta_value; // x_u_minus
 
         int min_bits = 0;
-        min_bits += (getBitWith(final_k_end_value - final_k_start_value - 2 ) * (block_size));
+        min_bits += (getBitWith(final_k_end_value - 1 ) * (block_size));
         min_bits -= 23;
 
-        int cur_k1 = 0;
 
         int x_l_plus_value = 0; // x_l_plus
         int x_u_minus_value = max_delta_value; // x_u_plus
@@ -513,8 +483,8 @@ public class TSDIFFBOSOnlyUpperOutlierTest {
             int x_u_plus_value = getUniqueValue(sorted_value_list[end_value_i], left_shift);
             int cur_bits = 0;
             int cur_k2 = block_size - getCount(sorted_value_list[end_value_i-1],mask);
-            cur_bits += Math.min((cur_k2 + cur_k1) * getBitWith(block_size-1), block_size + cur_k2 + cur_k1);
-            if (cur_k1 + cur_k2 != block_size)
+            cur_bits += Math.min((cur_k2) * getBitWith(block_size-1), block_size);
+            if ( cur_k2 != block_size)
                 cur_bits += (block_size - cur_k2) * getBitWith(x_u_minus_value - x_l_plus_value); // cur_k1 = 0
             if (cur_k2 != 0)
                 cur_bits += cur_k2 * getBitWith(max_delta_value - x_u_plus_value);
@@ -529,7 +499,7 @@ public class TSDIFFBOSOnlyUpperOutlierTest {
 
 
 //        System.out.println(min_bits/4);
-        encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_x_l_plus, final_k_end_value, final_x_u_minus,
+        encode_pos = BOSEncodeBits(ts_block_delta,  final_k_end_value, final_x_u_minus,
                 max_delta_value, min_delta, encode_pos , cur_byte);
 //        System.out.println(encode_pos);
 
@@ -837,9 +807,9 @@ public class TSDIFFBOSOnlyUpperOutlierTest {
 //        dataset_block_size.add(1024);
 
         int repeatTime2 = 100;
-        for (int file_i = 9; file_i < 10; file_i++) {
-//
-//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//        for (int file_i = 9; file_i < 10; file_i++) {
+
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
@@ -905,8 +875,8 @@ public class TSDIFFBOSOnlyUpperOutlierTest {
                 double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
                 ratio += ratioTmp;
                 s = System.nanoTime();
-                for (int repeat = 0; repeat < repeatTime2; repeat++)
-                    BOSDecoder(encoded_result);
+//                for (int repeat = 0; repeat < repeatTime2; repeat++)
+//                    BOSDecoder(encoded_result);
                 e = System.nanoTime();
                 decodeTime += ((e - s) / repeatTime2);
 
@@ -955,8 +925,8 @@ public class TSDIFFBOSOnlyUpperOutlierTest {
         output_path_list.add(output_parent_dir + "/Exp_1000.csv");// 1
 //        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/Exp_10000.csv");// 2
-        output_path_list.add(output_parent_dir + "/Exp_100000.csv");// 2
-        output_path_list.add(output_parent_dir + "/Exp_1000000.csv");// 2
+        output_path_list.add(output_parent_dir + "/Exp_100000.csv");// 3
+        output_path_list.add(output_parent_dir + "/Exp_1000000.csv");// 4
 
         int repeatTime2 = 1000;
 //        for (int file_i = 8; file_i < 9; file_i++) {
@@ -1026,8 +996,8 @@ public class TSDIFFBOSOnlyUpperOutlierTest {
                 double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
                 ratio += ratioTmp;
                 s = System.nanoTime();
-                for (int repeat = 0; repeat < repeatTime2; repeat++)
-                    BOSDecoder(encoded_result);
+//                for (int repeat = 0; repeat < repeatTime2; repeat++)
+//                    BOSDecoder(encoded_result);
                 e = System.nanoTime();
                 decodeTime += ((e - s) / repeatTime2);
 

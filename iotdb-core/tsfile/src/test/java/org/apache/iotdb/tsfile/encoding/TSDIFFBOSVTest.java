@@ -985,11 +985,11 @@ public class TSDIFFBOSVTest {
     }
 
     @Test
-    public void BOSVaryBlockSize() throws IOException {
+    public void BOSVaryBlockSize() throws IOException, InterruptedException {
 //        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
 //        String output_parent_dir = parent_dir + "icde0802/compression_ratio/block_size_bos_v";
-        String output_parent_dir = parent_dir + "icde0802/compression_ratio/test";
+        String output_parent_dir = parent_dir + "icde0802/compression_ratio/block_size_bos_v";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -1034,7 +1034,9 @@ public class TSDIFFBOSVTest {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
 
         int repeatTime2 = 1;
-        for (int file_i = 3; file_i < 4; file_i++) {
+        int[] file_i_list = {9};
+//        for (int file_i = 9; file_i < 10; file_i++) {
+        for(int file_i :file_i_list){
 //        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
@@ -1063,6 +1065,7 @@ public class TSDIFFBOSVTest {
 
             for (File f : tempList) {
                 System.out.println(f);
+                Thread.sleep(10000);
                 InputStream inputStream = Files.newInputStream(f.toPath());
 
                 CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
@@ -1083,8 +1086,8 @@ public class TSDIFFBOSVTest {
                 }
                 byte[] encoded_result = new byte[data2_arr.length*4];
 
-                for (int block_size_i = 5; block_size_i > 4; block_size_i--) {
-//                for (int block_size_i = 13; block_size_i > 4; block_size_i--) {
+//                for (int block_size_i = 5; block_size_i <14; block_size_i++) {
+                for (int block_size_i = 13; block_size_i > 4; block_size_i--) {
                     int block_size = (int) Math.pow(2, block_size_i);
                     System.out.println(block_size);
                     long encodeTime = 0;
