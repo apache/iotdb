@@ -85,7 +85,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedu
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTTLProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
-import org.apache.iotdb.confignode.procedure.impl.schema.table.AbstractAlterTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.AbstractAlterOrDropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
@@ -1615,8 +1615,9 @@ public class ProcedureManager {
         case SET_TABLE_PROPERTIES_PROCEDURE:
         case RENAME_TABLE_COLUMN_PROCEDURE:
         case DROP_TABLE_COLUMN_PROCEDURE:
-          final AbstractAlterTableProcedure<?> alterTableProcedure =
-              (AbstractAlterTableProcedure<?>) procedure;
+        case DROP_TABLE_PROCEDURE:
+          final AbstractAlterOrDropTableProcedure<?> alterTableProcedure =
+              (AbstractAlterOrDropTableProcedure<?>) procedure;
           if (type == thisType && queryId.equals(alterTableProcedure.getQueryId())) {
             return new Pair<>(procedure.getProcId(), false);
           }

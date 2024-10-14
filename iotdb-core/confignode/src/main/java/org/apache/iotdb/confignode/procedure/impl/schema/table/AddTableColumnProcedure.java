@@ -41,7 +41,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public class AddTableColumnProcedure extends AbstractAlterTableProcedure<AddTableColumnState> {
+public class AddTableColumnProcedure
+    extends AbstractAlterOrDropTableProcedure<AddTableColumnState> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AddTableColumnProcedure.class);
   private List<TsTableColumnSchema> addedColumnList;

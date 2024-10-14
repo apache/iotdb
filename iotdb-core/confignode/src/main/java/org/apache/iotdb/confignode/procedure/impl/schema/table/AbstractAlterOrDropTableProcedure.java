@@ -37,9 +37,10 @@ import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Objects;
 
-public abstract class AbstractAlterTableProcedure<T>
+public abstract class AbstractAlterOrDropTableProcedure<T>
     extends StateMachineProcedure<ConfigNodeProcedureEnv, T> {
-  private static final Logger LOGGER = LoggerFactory.getLogger(AbstractAlterTableProcedure.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(AbstractAlterOrDropTableProcedure.class);
 
   protected String database;
   protected String tableName;
@@ -47,9 +48,9 @@ public abstract class AbstractAlterTableProcedure<T>
 
   protected TsTable table;
 
-  protected AbstractAlterTableProcedure() {}
+  protected AbstractAlterOrDropTableProcedure() {}
 
-  protected AbstractAlterTableProcedure(
+  protected AbstractAlterOrDropTableProcedure(
       final String database, final String tableName, final String queryId) {
     this.database = database;
     this.tableName = tableName;
@@ -160,7 +161,7 @@ public abstract class AbstractAlterTableProcedure<T>
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    final AbstractAlterTableProcedure<?> that = (AbstractAlterTableProcedure<?>) o;
+    final AbstractAlterOrDropTableProcedure<?> that = (AbstractAlterOrDropTableProcedure<?>) o;
     return Objects.equals(database, that.database)
         && Objects.equals(tableName, that.tableName)
         && Objects.equals(queryId, that.queryId);

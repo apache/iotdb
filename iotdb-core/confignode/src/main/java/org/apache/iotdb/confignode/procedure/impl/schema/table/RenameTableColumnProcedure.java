@@ -41,7 +41,7 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class RenameTableColumnProcedure
-    extends AbstractAlterTableProcedure<RenameTableColumnState> {
+    extends AbstractAlterOrDropTableProcedure<RenameTableColumnState> {
   private static final Logger LOGGER = LoggerFactory.getLogger(RenameTableColumnProcedure.class);
 
   private String oldName;

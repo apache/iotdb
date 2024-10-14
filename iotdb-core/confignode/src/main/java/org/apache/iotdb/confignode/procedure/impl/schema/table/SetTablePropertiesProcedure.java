@@ -48,7 +48,7 @@ import static org.apache.iotdb.confignode.procedure.state.schema.SetTablePropert
 import static org.apache.iotdb.confignode.procedure.state.schema.SetTablePropertiesState.VALIDATE_TABLE;
 
 public class SetTablePropertiesProcedure
-    extends AbstractAlterTableProcedure<SetTablePropertiesState> {
+    extends AbstractAlterOrDropTableProcedure<SetTablePropertiesState> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SetTablePropertiesProcedure.class);
 
