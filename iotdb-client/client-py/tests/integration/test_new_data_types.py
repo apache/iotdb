@@ -154,10 +154,10 @@ def session_test(use_session_pool=False):
             assert columns == 5
 
         session.insert_records(
-            [device_id],
+            [device_id, device_id],
             [11, 12],
-            [measurements_new_type],
-            [data_types_new_type],
+            [measurements_new_type, measurements_new_type],
+            [data_types_new_type, measurements_new_type],
             [
                 [date(1971, 1, 1), 11, b"\x12\x34", "test11"],
                 [None, 12, b"\x12\x34", "test12"],
