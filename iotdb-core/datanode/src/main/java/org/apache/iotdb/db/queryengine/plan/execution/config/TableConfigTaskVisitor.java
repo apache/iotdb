@@ -43,6 +43,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DropDBTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DropTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowAINodesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowConfigNodesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowDBTask;
@@ -443,7 +444,11 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitDropTable(final DropTable node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName());
-    return super.visitDropTable(node, context);
+    return new DropTableTask(
+        databaseTablePair.getLeft(),
+        databaseTablePair.getRight(),
+        context.getQueryId().getId(),
+        node.isExists());
   }
 
   @Override
