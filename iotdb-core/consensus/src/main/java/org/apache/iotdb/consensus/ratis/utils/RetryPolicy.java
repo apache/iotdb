@@ -62,7 +62,9 @@ public class RetryPolicy<RESP> {
   public TimeDuration getWaitTime(int attempt) {
     if (exponentialBackoff) {
       TimeDuration sleepTime = waitTime.multiply(Math.pow(2, attempt));
-      return sleepTime.compareTo(maxWaitTime) > 0 ? maxWaitTime : sleepTime;
+      return maxWaitTime.getDuration() == 0 && sleepTime.compareTo(maxWaitTime) > 0
+          ? maxWaitTime
+          : sleepTime;
     }
     return waitTime;
   }
@@ -76,7 +78,7 @@ public class RetryPolicy<RESP> {
     private int maxAttempts = 0;
     public boolean exponentialBackoff = false;
     private TimeDuration waitTime = TimeDuration.ZERO;
-    private TimeDuration maxWaitTime = null;
+    private TimeDuration maxWaitTime = TimeDuration.ZERO;
 
     public RetryPolicyBuilder<RESP> setRetryHandler(Function<RESP, Boolean> retryHandler) {
       this.retryHandler = retryHandler;
