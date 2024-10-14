@@ -301,6 +301,11 @@ public class CreateTableProcedure
   }
 
   @Override
+  protected boolean isRollbackSupported(final CreateTableState state) {
+    return true;
+  }
+
+  @Override
   protected void rollbackState(final ConfigNodeProcedureEnv env, final CreateTableState state)
       throws IOException, InterruptedException, ProcedureException {
     final long startTime = System.currentTimeMillis();

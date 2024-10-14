@@ -24,12 +24,12 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
-import org.apache.iotdb.confignode.procedure.state.schema.CreateTableState;
+import org.apache.iotdb.confignode.procedure.state.schema.DropTableState;
 
 import java.io.IOException;
 
 public class DropTableProcedure
-    extends StateMachineProcedure<ConfigNodeProcedureEnv, CreateTableState> {
+    extends StateMachineProcedure<ConfigNodeProcedureEnv, DropTableState> {
 
   protected String database;
   protected String tableName;
@@ -45,28 +45,28 @@ public class DropTableProcedure
 
   @Override
   protected Flow executeFromState(
-      final ConfigNodeProcedureEnv configNodeProcedureEnv, final CreateTableState state)
+      final ConfigNodeProcedureEnv configNodeProcedureEnv, final DropTableState dropTableState)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
     return null;
   }
 
   @Override
   protected void rollbackState(
-      final ConfigNodeProcedureEnv configNodeProcedureEnv, final CreateTableState state)
+      final ConfigNodeProcedureEnv configNodeProcedureEnv, final DropTableState dropTableState)
       throws IOException, InterruptedException, ProcedureException {}
 
   @Override
-  protected CreateTableState getState(final int stateId) {
-    return null;
+  protected DropTableState getState(final int stateId) {
+    return DropTableState.values()[stateId];
   }
 
   @Override
-  protected int getStateId(final CreateTableState state) {
-    return 0;
+  protected int getStateId(final DropTableState dropTableState) {
+    return dropTableState.ordinal();
   }
 
   @Override
-  protected CreateTableState getInitialState() {
-    return null;
+  protected DropTableState getInitialState() {
+    return DropTableState.CHECK_TABLE_EXISTENCE;
   }
 }
