@@ -99,6 +99,11 @@ public abstract class AbstractAlterTableProcedure<T>
     }
   }
 
+  @Override
+  protected final boolean isRollbackSupported(final T state) {
+    return true;
+  }
+
   protected void rollbackPreRelease(final ConfigNodeProcedureEnv env) {
     final Map<Integer, TSStatus> failedResults =
         SchemaUtils.rollbackPreRelease(database, table.getTableName(), env.getConfigManager());
