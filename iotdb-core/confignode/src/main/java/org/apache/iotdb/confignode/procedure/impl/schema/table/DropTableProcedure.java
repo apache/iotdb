@@ -26,7 +26,12 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DropTableState;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class DropTableProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, DropTableState> {
@@ -68,5 +73,41 @@ public class DropTableProcedure
   @Override
   protected DropTableState getInitialState() {
     return DropTableState.CHECK_TABLE_EXISTENCE;
+  }
+
+  @Override
+  public void serialize(final DataOutputStream stream) throws IOException {
+    super.serialize(stream);
+
+    ReadWriteIOUtils.write(database, stream);
+    ReadWriteIOUtils.write(tableName, stream);
+    ReadWriteIOUtils.write(queryId, stream);
+  }
+
+  @Override
+  public void deserialize(final ByteBuffer byteBuffer) {
+    super.deserialize(byteBuffer);
+    this.database = ReadWriteIOUtils.readString(byteBuffer);
+    this.tableName = ReadWriteIOUtils.readString(byteBuffer);
+    this.queryId = ReadWriteIOUtils.readString(byteBuffer);
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final DropTableProcedure that = (DropTableProcedure) o;
+    return Objects.equals(database, that.database)
+        && Objects.equals(tableName, that.tableName)
+        && Objects.equals(queryId, that.queryId);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(database, tableName, queryId);
   }
 }
