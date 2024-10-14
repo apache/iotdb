@@ -144,6 +144,16 @@ public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
     return origin + (n * nonMonthDuration);
   }
 
+  public static long nextDateBin(int monthDuration, ZoneId zoneId, long currentTime) {
+    LocalDateTime currentDateTime = convertToLocalDateTime(currentTime, zoneId);
+    LocalDateTime nextDateTime = currentDateTime.plusMonths(monthDuration);
+    return convertToTimestamp(nextDateTime, zoneId);
+  }
+
+  public static long nextDateBin(long nonMonthDuration, long currentTime) {
+    return currentTime + nonMonthDuration;
+  }
+
   @Override
   protected void doTransform(Column column, ColumnBuilder columnBuilder) {
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
