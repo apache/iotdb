@@ -24,8 +24,9 @@ import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
-import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
-import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.SingleTimeWindowIterator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITableTimeRangeIterator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.TableDateBinTimeRangeIterator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.TableSingleTimeWindowIterator;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
@@ -120,7 +121,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.DateBinFunctionColumnTransformer;
@@ -176,7 +176,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.TABLE_TIME_COLUMN_NAME;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
 /** This Visitor is responsible for transferring Table PlanNode Tree to Table Operator Tree. */
@@ -1363,8 +1362,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       }
     }
 
-    DateBinFunctionColumnTransformer dateBinTransformer = null;
-    int dateBinColumnIdx = -2;
+    ITableTimeRangeIterator timeRangeIterator = null;
     List<ColumnSchema> groupingKeySchemas = null;
     int[] groupingKeyIndex = null;
     if (!node.getGroupingKeys().isEmpty()) {
@@ -1382,7 +1380,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               && node.getProjection().contains(groupingKey)) {
             FunctionCall dateBinFunc = (FunctionCall) node.getProjection().get(groupingKey);
             List<Expression> arguments = dateBinFunc.getArguments();
-            dateBinTransformer =
+            DateBinFunctionColumnTransformer dateBinTransformer =
                 new DateBinFunctionColumnTransformer(
                     TIMESTAMP,
                     ((LongLiteral) arguments.get(0)).getParsedValue(),
@@ -1390,19 +1388,16 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                     null,
                     ((LongLiteral) arguments.get(3)).getParsedValue(),
                     context.getZoneId());
-            SymbolReference dateBinColumn = (SymbolReference) arguments.get(2);
-            if (TABLE_TIME_COLUMN_NAME.equals(dateBinColumn.getName())) {
-              dateBinColumnIdx = -1;
-            } else {
-              dateBinColumnIdx =
-                  columnsIndexArray[columnLayout.get(Symbol.of(dateBinColumn.getName()))];
-            }
+            timeRangeIterator = new TableDateBinTimeRangeIterator(dateBinTransformer);
           } else {
             throw new IllegalStateException(
                 "grouping key must be ID or Attribute in AggregationTableScan");
           }
         }
       }
+    }
+    if (timeRangeIterator == null) {
+      timeRangeIterator = new TableSingleTimeWindowIterator(Long.MIN_VALUE, Long.MAX_VALUE);
     }
 
     final OperatorContext operatorContext =
@@ -1425,8 +1420,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       scanOptionsBuilder.withPushDownFilter(
           convertPredicateToFilter(pushDownPredicate, measurementColumnNames, columnSchemaMap));
     }
-    ITimeRangeIterator timeRangeIterator =
-        new SingleTimeWindowIterator(Long.MIN_VALUE, Long.MAX_VALUE);
+
     TableAggregationTableScanOperator aggTableScanOperator =
         new TableAggregationTableScanOperator(
             node.getPlanNodeId(),
@@ -1448,9 +1442,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             null,
             calculateMaxAggregationResultSize(),
             canUseStatistic,
-            layoutArray,
-            dateBinTransformer,
-            dateBinColumnIdx);
+            layoutArray);
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(aggTableScanOperator);
 

@@ -17,42 +17,32 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
+package org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator;
 
-import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.DateBinFunctionColumnTransformer;
 
-import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.TimeRange;
 
-public class DateBinTimeRangeIterator implements ITimeRangeIterator {
+public class TableDateBinTimeRangeIterator implements ITableTimeRangeIterator {
 
   DateBinFunctionColumnTransformer dateBinTransformer;
 
   boolean finished = false;
 
-  // total query [startTime, endTime)
-  private long startTime;
-  private long endTime;
-
+  // left close, right open
   private TimeRange curTimeRange;
   private boolean hasCachedTimeRange;
 
-  public DateBinTimeRangeIterator(DateBinFunctionColumnTransformer dateBinTransformer) {
+  public TableDateBinTimeRangeIterator(DateBinFunctionColumnTransformer dateBinTransformer) {
     this.dateBinTransformer = dateBinTransformer;
   }
 
-  public void updateCurTimeRange(Column timeColumn) {
-    // long startTime = timeColumn.getLong();
-    this.hasCachedTimeRange = true;
-  }
-
-  public boolean overCurrentTimeRange(long startTime) {
+  public boolean canFinishCurrentTimeRange(long startTime) {
     if (!hasCachedTimeRange) {
       return false;
     }
 
-    return dateBinTransformer.dateBin(startTime) > curTimeRange.getMin();
+    return startTime >= curTimeRange.getMax();
   }
 
   public TimeRange updateCurTimeRange(long startTime) {
@@ -76,9 +66,8 @@ public class DateBinTimeRangeIterator implements ITimeRangeIterator {
   }
 
   @Override
-  public TimeRange getFirstTimeRange() {
-    throw new IllegalStateException(
-        "Method getFirstTimeRange is not used in DateBinTimeRangeIterator");
+  public TimeIteratorType getType() {
+    return TimeIteratorType.DATE_BIN_TIME_ITERATOR;
   }
 
   @Override
@@ -90,6 +79,7 @@ public class DateBinTimeRangeIterator implements ITimeRangeIterator {
     return this.curTimeRange;
   }
 
+  @Override
   public void resetCurTimeRange() {
     this.curTimeRange = null;
     this.hasCachedTimeRange = false;
@@ -105,20 +95,8 @@ public class DateBinTimeRangeIterator implements ITimeRangeIterator {
     return null;
   }
 
-  @Override
-  public boolean isAscending() {
-    return false;
-  }
-
-  @Override
-  public long currentOutputTime() {
-    throw new IllegalStateException(
-        "Method currentOutputTime is not used in DateBinTimeRangeIterator");
-  }
-
-  @Override
-  public long getTotalIntervalNum() {
-    throw new IllegalStateException(
-        "Method getTotalIntervalNum is not used in DateBinTimeRangeIterator");
-  }
+  //  @Override
+  //  public boolean isAscending() {
+  //    return false;
+  //  }
 }
