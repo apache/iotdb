@@ -28,13 +28,13 @@ import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTabletQueu
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTabletBatchEvents;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
 
 import org.apache.tsfile.write.record.Tablet;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,9 +42,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch {
 
@@ -54,7 +51,6 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   private static final long READ_TABLET_BUFFER_SIZE =
       SubscriptionConfig.getInstance().getSubscriptionReadTabletBufferSize();
 
-  private final List<EnrichedEvent> enrichedEvents = new ArrayList<>();
   private final List<Tablet> tablets = new ArrayList<>();
 
   private long firstEventProcessingTime = Long.MIN_VALUE;
@@ -68,28 +64,13 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     super(regionId, prefetchingQueue, maxDelayInMs, maxBatchSizeInBytes);
   }
 
-  @Override
-  public synchronized boolean onEvent(final Consumer<SubscriptionEvent> consumer) {
-    if (shouldEmit() && !enrichedEvents.isEmpty()) {
-      if (Objects.isNull(events)) {
-        events = generateSubscriptionEvents();
-      }
-      if (Objects.nonNull(events)) {
-        events.forEach(consumer);
-        return true;
-      }
-      return false;
-    }
-    return false;
-  }
+  /////////////////////////////// ack & clean ///////////////////////////////
 
   @Override
-  public synchronized boolean onEvent(
-      final @NonNull EnrichedEvent event, final Consumer<SubscriptionEvent> consumer) {
-    if (event instanceof TabletInsertionEvent) {
-      onEventInternal((TabletInsertionEvent) event); // no exceptions will be thrown
+  public synchronized void ack() {
+    for (final EnrichedEvent enrichedEvent : enrichedEvents) {
+      enrichedEvent.decreaseReferenceCount(this.getClass().getName(), true);
     }
-    return onEvent(consumer);
   }
 
   @Override
@@ -102,15 +83,25 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     tablets.clear();
   }
 
-  public synchronized void ack() {
-    for (final EnrichedEvent enrichedEvent : enrichedEvents) {
-      enrichedEvent.decreaseReferenceCount(this.getClass().getName(), true);
+  /////////////////////////////// utility ///////////////////////////////
+
+  @Override
+  protected void onTabletInsertionEvent(final TabletInsertionEvent event) {
+    constructBatch(event);
+    if (firstEventProcessingTime == Long.MIN_VALUE) {
+      firstEventProcessingTime = System.currentTimeMillis();
     }
   }
 
-  /////////////////////////////// utility ///////////////////////////////
+  @Override
+  protected void onTsFileInsertionEvent(final TsFileInsertionEvent event) {
+    for (final TabletInsertionEvent tabletInsertionEvent : event.toTabletInsertionEvents()) {
+      onTabletInsertionEvent(tabletInsertionEvent);
+    }
+  }
 
-  private List<SubscriptionEvent> generateSubscriptionEvents() {
+  @Override
+  protected List<SubscriptionEvent> generateSubscriptionEvents() {
     if (tablets.isEmpty()) {
       return null;
     }
@@ -152,12 +143,10 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
         new SubscriptionEvent(new SubscriptionPipeTabletBatchEvents(this), responses));
   }
 
-  private void onEventInternal(final TabletInsertionEvent event) {
-    constructBatch(event);
-    enrichedEvents.add((EnrichedEvent) event);
-    if (firstEventProcessingTime == Long.MIN_VALUE) {
-      firstEventProcessingTime = System.currentTimeMillis();
-    }
+  @Override
+  protected boolean shouldEmit() {
+    return totalBufferSize >= maxBatchSizeInBytes
+        || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
   }
 
   private void constructBatch(final TabletInsertionEvent event) {
@@ -171,11 +160,6 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
             .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
             .reduce(Long::sum)
             .orElse(0L);
-  }
-
-  private boolean shouldEmit() {
-    return totalBufferSize >= maxBatchSizeInBytes
-        || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
   }
 
   private List<Tablet> convertToTablets(final TabletInsertionEvent tabletInsertionEvent) {
@@ -203,30 +187,9 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   @Override
   protected Map<String, String> coreReportMessage() {
     final Map<String, String> coreReportMessage = super.coreReportMessage();
-    coreReportMessage.put("enrichedEvents", formatEnrichedEvents(enrichedEvents, 4));
     coreReportMessage.put("size of tablets", String.valueOf(tablets.size()));
     coreReportMessage.put("firstEventProcessingTime", String.valueOf(firstEventProcessingTime));
     coreReportMessage.put("totalBufferSize", String.valueOf(totalBufferSize));
     return coreReportMessage;
-  }
-
-  private static String formatEnrichedEvents(
-      final List<EnrichedEvent> enrichedEvents, final int threshold) {
-    final List<String> eventMessageList =
-        enrichedEvents.stream()
-            .limit(threshold)
-            .map(EnrichedEvent::coreReportMessage)
-            .collect(Collectors.toList());
-    if (eventMessageList.size() > threshold) {
-      eventMessageList.add(
-          String.format("omit the remaining %s event(s)...", eventMessageList.size() - threshold));
-    }
-    return eventMessageList.toString();
-  }
-
-  //////////////////////////// APIs provided for metric framework ////////////////////////////
-
-  public int getPipeEventCount() {
-    return enrichedEvents.size();
   }
 }
