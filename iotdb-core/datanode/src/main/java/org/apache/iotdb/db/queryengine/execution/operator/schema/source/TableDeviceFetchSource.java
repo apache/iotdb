@@ -39,19 +39,19 @@ import java.util.Objects;
 
 public class TableDeviceFetchSource implements ISchemaSource<IDeviceSchemaInfo> {
 
-  private String database;
+  private final String database;
 
-  private String tableName;
+  private final String tableName;
 
-  private List<Object[]> deviceIdList;
+  private final List<Object[]> deviceIdList;
 
-  private List<ColumnHeader> columnHeaderList;
+  private final List<ColumnHeader> columnHeaderList;
 
   public TableDeviceFetchSource(
-      String database,
-      String tableName,
-      List<Object[]> deviceIdList,
-      List<ColumnHeader> columnHeaderList) {
+      final String database,
+      final String tableName,
+      final List<Object[]> deviceIdList,
+      final List<ColumnHeader> columnHeaderList) {
     this.database = database;
     this.tableName = tableName;
     this.deviceIdList = deviceIdList;
@@ -59,10 +59,10 @@ public class TableDeviceFetchSource implements ISchemaSource<IDeviceSchemaInfo> 
   }
 
   @Override
-  public ISchemaReader<IDeviceSchemaInfo> getSchemaReader(ISchemaRegion schemaRegion) {
+  public ISchemaReader<IDeviceSchemaInfo> getSchemaReader(final ISchemaRegion schemaRegion) {
     try {
       return schemaRegion.getTableDeviceReader(tableName, deviceIdList);
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       throw new SchemaExecutionException(e);
     }
   }
@@ -110,12 +110,12 @@ public class TableDeviceFetchSource implements ISchemaSource<IDeviceSchemaInfo> 
   }
 
   @Override
-  public boolean hasSchemaStatistic(ISchemaRegion schemaRegion) {
+  public boolean hasSchemaStatistic(final ISchemaRegion schemaRegion) {
     return false;
   }
 
   @Override
-  public long getSchemaStatistic(ISchemaRegion schemaRegion) {
+  public long getSchemaStatistic(final ISchemaRegion schemaRegion) {
     return 0;
   }
 }
