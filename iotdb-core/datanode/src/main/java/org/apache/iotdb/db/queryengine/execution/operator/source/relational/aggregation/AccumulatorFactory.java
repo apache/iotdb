@@ -33,7 +33,7 @@ import static com.google.common.base.Preconditions.checkState;
 
 public class AccumulatorFactory {
 
-  public static Accumulator createAccumulator(
+  public static TableAccumulator createAccumulator(
       String functionName,
       TAggregationType aggregationType,
       List<TSDataType> inputDataTypes,
@@ -49,7 +49,7 @@ public class AccumulatorFactory {
     }
   }
 
-  public static Accumulator createBuiltinAccumulator(
+  public static TableAccumulator createBuiltinAccumulator(
       TAggregationType aggregationType,
       List<TSDataType> inputDataTypes,
       List<Expression> inputExpressions,
@@ -75,7 +75,7 @@ public class AccumulatorFactory {
     }
   }
 
-  public static Accumulator createBuiltinMultiInputAccumulator(
+  public static TableAccumulator createBuiltinMultiInputAccumulator(
       TAggregationType aggregationType, List<TSDataType> inputDataTypes) {
     switch (aggregationType) {
       case MAX_BY:
@@ -89,7 +89,7 @@ public class AccumulatorFactory {
     }
   }
 
-  private static Accumulator createBuiltinSingleInputAccumulator(
+  private static TableAccumulator createBuiltinSingleInputAccumulator(
       TAggregationType aggregationType,
       TSDataType tsDataType,
       List<Expression> inputExpressions,
