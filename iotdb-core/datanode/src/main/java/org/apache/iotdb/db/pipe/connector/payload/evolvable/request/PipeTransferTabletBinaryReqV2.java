@@ -29,9 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
-import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -40,16 +38,19 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class PipeTransferTabletBinaryReq extends TPipeTransferReq {
+public class PipeTransferTabletBinaryReqV2 extends PipeTransferTabletBinaryReq {
+  private transient String dataBaseName;
 
-  protected transient ByteBuffer byteBuffer;
-
-  protected PipeTransferTabletBinaryReq() {
+  protected PipeTransferTabletBinaryReqV2() {
     // Do nothing
   }
 
   public ByteBuffer getByteBuffer() {
     return byteBuffer;
+  }
+
+  public String getDataBaseName() {
+    return dataBaseName;
   }
 
   public InsertBaseStatement constructStatement() {
@@ -64,8 +65,15 @@ public class PipeTransferTabletBinaryReq extends TPipeTransferReq {
               insertNode));
     }
 
-    return (InsertBaseStatement)
-        IoTDBDataNodeReceiver.PLAN_TO_STATEMENT_VISITOR.process(insertNode, null);
+    final InsertBaseStatement statement =
+        (InsertBaseStatement)
+            IoTDBDataNodeReceiver.PLAN_TO_STATEMENT_VISITOR.process(insertNode, null);
+    if (Objects.isNull(dataBaseName) || dataBaseName.isEmpty()) {
+      return statement;
+    }
+    statement.setWriteToTable(true);
+    statement.setDatabaseName(dataBaseName);
+    return statement;
   }
 
   private InsertNode parseByteBuffer() {
@@ -73,23 +81,48 @@ public class PipeTransferTabletBinaryReq extends TPipeTransferReq {
     return node instanceof InsertNode ? (InsertNode) node : null;
   }
 
-  /////////////////////////////// Thrift ///////////////////////////////
+  /////////////////////////////// Batch ///////////////////////////////
 
-  public static PipeTransferTabletBinaryReq toTPipeTransferReq(final ByteBuffer byteBuffer) {
-    final PipeTransferTabletBinaryReq req = new PipeTransferTabletBinaryReq();
+  public static PipeTransferTabletBinaryReqV2 toTPipeTransferBinaryReq(
+      final ByteBuffer byteBuffer, final String dataBaseName) {
+    final PipeTransferTabletBinaryReqV2 req = new PipeTransferTabletBinaryReqV2();
     req.byteBuffer = byteBuffer;
-
+    req.dataBaseName = dataBaseName;
     req.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
-    req.type = PipeRequestType.TRANSFER_TABLET_BINARY.getType();
-    req.body = byteBuffer;
+    req.type = PipeRequestType.TRANSFER_TABLET_BINARY_V2.getType();
 
     return req;
   }
 
-  public static PipeTransferTabletBinaryReq fromTPipeTransferReq(
-      final TPipeTransferReq transferReq) {
-    final PipeTransferTabletBinaryReq binaryReq = new PipeTransferTabletBinaryReq();
-    binaryReq.byteBuffer = transferReq.body;
+  /////////////////////////////// Thrift ///////////////////////////////
+
+  public static PipeTransferTabletBinaryReqV2 toTPipeTransferReq(
+      final ByteBuffer byteBuffer, final String dataBaseName) throws IOException {
+    final PipeTransferTabletBinaryReqV2 req = new PipeTransferTabletBinaryReqV2();
+    req.byteBuffer = byteBuffer;
+    req.dataBaseName = dataBaseName;
+    req.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
+    req.type = PipeRequestType.TRANSFER_TABLET_BINARY_V2.getType();
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(byteBuffer.limit(), outputStream);
+      outputStream.write(byteBuffer.array(), 0, byteBuffer.limit());
+      ReadWriteIOUtils.write(dataBaseName, outputStream);
+      req.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
+
+    return req;
+  }
+
+  public static PipeTransferTabletBinaryReqV2 fromTPipeTransferReq(
+      final org.apache.iotdb.service.rpc.thrift.TPipeTransferReq transferReq) {
+    final PipeTransferTabletBinaryReqV2 binaryReq = new PipeTransferTabletBinaryReqV2();
+
+    final int length = ReadWriteIOUtils.readInt(transferReq.body);
+    final byte[] body = new byte[length];
+    transferReq.body.get(body);
+    binaryReq.byteBuffer = ByteBuffer.wrap(body);
+    binaryReq.dataBaseName = ReadWriteIOUtils.readString(transferReq.body);
 
     transferReq.body.position(0);
     binaryReq.version = transferReq.version;
@@ -97,17 +130,6 @@ public class PipeTransferTabletBinaryReq extends TPipeTransferReq {
     binaryReq.body = transferReq.body;
 
     return binaryReq;
-  }
-
-  /////////////////////////////// Air Gap ///////////////////////////////
-
-  public static byte[] toTPipeTransferBytes(final ByteBuffer byteBuffer) throws IOException {
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
-        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
-      ReadWriteIOUtils.write(PipeRequestType.TRANSFER_TABLET_BINARY.getType(), outputStream);
-      return BytesUtils.concatByteArray(byteArrayOutputStream.toByteArray(), byteBuffer.array());
-    }
   }
 
   /////////////////////////////// Object ///////////////////////////////
@@ -120,8 +142,9 @@ public class PipeTransferTabletBinaryReq extends TPipeTransferReq {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    final PipeTransferTabletBinaryReq that = (PipeTransferTabletBinaryReq) obj;
+    final PipeTransferTabletBinaryReqV2 that = (PipeTransferTabletBinaryReqV2) obj;
     return byteBuffer.equals(that.byteBuffer)
+        && Objects.equals(dataBaseName, that.dataBaseName)
         && version == that.version
         && type == that.type
         && body.equals(that.body);
@@ -129,6 +152,6 @@ public class PipeTransferTabletBinaryReq extends TPipeTransferReq {
 
   @Override
   public int hashCode() {
-    return Objects.hash(byteBuffer, version, type, body);
+    return Objects.hash(byteBuffer, dataBaseName, version, type, body);
   }
 }

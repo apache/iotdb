@@ -44,9 +44,13 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReqV2;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReqV2;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReqV2;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReqV2;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
@@ -197,7 +201,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             {
               try {
                 return handleTransferTabletInsertNode(
-                    PipeTransferTabletInsertNodeReq.fromTPipeTransferReqV2(req));
+                    PipeTransferTabletInsertNodeReqV2.fromTPipeTransferReq(req));
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferTabletInsertNodeV2Timer(System.nanoTime() - startTime);
@@ -216,7 +220,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             {
               try {
                 return handleTransferTabletRaw(
-                    PipeTransferTabletRawReq.fromTPipeTransferReqV2(req));
+                    PipeTransferTabletRawReqV2.fromTPipeTransferReq(req));
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferTabletRawV2Timer(System.nanoTime() - startTime);
@@ -236,7 +240,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             {
               try {
                 return handleTransferTabletBinary(
-                    PipeTransferTabletBinaryReq.fromTPipeTransferReqV2(req));
+                    PipeTransferTabletBinaryReqV2.fromTPipeTransferReq(req));
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferTabletBinaryV2Timer(System.nanoTime() - startTime);
@@ -255,8 +259,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           case TRANSFER_TABLET_BATCH_V2:
             {
               try {
-                return handleTransferTabletBatch(
-                    PipeTransferTabletBatchReq.fromTPipeTransferReqV2(req));
+                return handleTransferTabletBatchV2(
+                    PipeTransferTabletBatchReqV2.fromTPipeTransferReq(req));
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferTabletBatchV2Timer(System.nanoTime() - startTime);
@@ -423,6 +427,21 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private TPipeTransferResp handleTransferTabletBatch(final PipeTransferTabletBatchReq req) {
+    final Pair<InsertRowsStatement, InsertMultiTabletsStatement> statementPair =
+        req.constructStatements();
+    return new TPipeTransferResp(
+        PipeReceiverStatusHandler.getPriorStatus(
+            Stream.of(
+                    statementPair.getLeft().isEmpty()
+                        ? RpcUtils.SUCCESS_STATUS
+                        : executeStatementAndAddRedirectInfo(statementPair.getLeft()),
+                    statementPair.getRight().isEmpty()
+                        ? RpcUtils.SUCCESS_STATUS
+                        : executeStatementAndAddRedirectInfo(statementPair.getRight()))
+                .collect(Collectors.toList())));
+  }
+
+  private TPipeTransferResp handleTransferTabletBatchV2(final PipeTransferTabletBatchReqV2 req) {
     final Pair<InsertRowsStatement, InsertMultiTabletsStatement> statementPair =
         req.constructStatements();
     return new TPipeTransferResp(

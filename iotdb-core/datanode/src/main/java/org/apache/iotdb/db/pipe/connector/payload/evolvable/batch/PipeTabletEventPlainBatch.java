@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.batch;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReqV2;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
@@ -113,8 +113,8 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
     pipe2BytesAccumulated.clear();
   }
 
-  public PipeTransferTabletBatchReq toTPipeTransferReq() throws IOException {
-    return PipeTransferTabletBatchReq.toTPipeTransferReqV2(
+  public PipeTransferTabletBatchReqV2 toTPipeTransferReq() throws IOException {
+    return PipeTransferTabletBatchReqV2.toTPipeTransferReq(
         binaryBuffers,
         insertNodeBuffers,
         tabletBuffers,

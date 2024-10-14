@@ -307,7 +307,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
             if (!hasNext()) {
               next =
                   new PipeRawTabletInsertionEvent(
-                      sourceEvent != null ? sourceEvent.getRawIsTableModelEvent() : null,
+                      sourceEvent != null ? sourceEvent.isTableModelEvent() : null,
                       sourceEvent != null ? sourceEvent.getTreeModelDatabaseName() : null,
                       tablet,
                       isAligned,
@@ -320,7 +320,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
             } else {
               next =
                   new PipeRawTabletInsertionEvent(
-                      sourceEvent != null ? sourceEvent.getRawIsTableModelEvent() : null,
+                      sourceEvent != null ? sourceEvent.isTableModelEvent() : null,
                       sourceEvent != null ? sourceEvent.getTreeModelDatabaseName() : null,
                       tablet,
                       isAligned,

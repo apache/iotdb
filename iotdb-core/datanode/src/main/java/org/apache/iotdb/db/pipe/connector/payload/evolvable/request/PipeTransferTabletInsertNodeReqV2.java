@@ -28,7 +28,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.PublicBAOS;
@@ -36,18 +35,19 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
+public class PipeTransferTabletInsertNodeReqV2 extends PipeTransferTabletInsertNodeReq {
 
-  protected transient InsertNode insertNode;
+  protected transient String dataBaseName;
 
-  protected PipeTransferTabletInsertNodeReq() {
+  private PipeTransferTabletInsertNodeReqV2() {
     // Do nothing
   }
 
-  public InsertNode getInsertNode() {
-    return insertNode;
+  public String getDataBaseName() {
+    return dataBaseName;
   }
 
   public InsertBaseStatement constructStatement() {
@@ -60,40 +60,60 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
               insertNode));
     }
 
-    return (InsertBaseStatement)
-        IoTDBDataNodeReceiver.PLAN_TO_STATEMENT_VISITOR.process(insertNode, null);
+    final InsertBaseStatement statement =
+        (InsertBaseStatement)
+            IoTDBDataNodeReceiver.PLAN_TO_STATEMENT_VISITOR.process(insertNode, null);
+    if (Objects.isNull(dataBaseName) || dataBaseName.isEmpty()) {
+      return statement;
+    }
+    statement.setWriteToTable(true);
+    statement.setDatabaseName(dataBaseName);
+    return statement;
   }
 
   /////////////////////////////// WriteBack & Batch ///////////////////////////////
 
-  public static PipeTransferTabletInsertNodeReq toTPipeTransferRawReq(final InsertNode insertNode) {
-    final PipeTransferTabletInsertNodeReq req = new PipeTransferTabletInsertNodeReq();
+  public static PipeTransferTabletInsertNodeReqV2 toTPipeTransferRawReq(
+      final InsertNode insertNode, final String dataBaseName) {
+    final PipeTransferTabletInsertNodeReqV2 req = new PipeTransferTabletInsertNodeReqV2();
 
     req.insertNode = insertNode;
+    req.dataBaseName = dataBaseName;
     req.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
-    req.type = PipeRequestType.TRANSFER_TABLET_INSERT_NODE.getType();
+    req.type = PipeRequestType.TRANSFER_TABLET_INSERT_NODE_V2.getType();
     return req;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferTabletInsertNodeReq toTPipeTransferReq(final InsertNode insertNode) {
-    final PipeTransferTabletInsertNodeReq req = new PipeTransferTabletInsertNodeReq();
+  public static PipeTransferTabletInsertNodeReqV2 toTPipeTransferReq(
+      final InsertNode insertNode, final String dataBaseName) {
+    final PipeTransferTabletInsertNodeReqV2 req = new PipeTransferTabletInsertNodeReqV2();
 
     req.insertNode = insertNode;
 
     req.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
-    req.type = PipeRequestType.TRANSFER_TABLET_INSERT_NODE.getType();
+    req.type = PipeRequestType.TRANSFER_TABLET_INSERT_NODE_V2.getType();
     req.body = insertNode.serializeToByteBuffer();
+
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      insertNode.serialize(outputStream);
+      ReadWriteIOUtils.write(dataBaseName, outputStream);
+      req.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
 
     return req;
   }
 
-  public static PipeTransferTabletInsertNodeReq fromTPipeTransferReq(
-      final TPipeTransferReq transferReq) {
-    final PipeTransferTabletInsertNodeReq insertNodeReq = new PipeTransferTabletInsertNodeReq();
+  public static PipeTransferTabletInsertNodeReqV2 fromTPipeTransferReq(
+      final org.apache.iotdb.service.rpc.thrift.TPipeTransferReq transferReq) {
+    final PipeTransferTabletInsertNodeReqV2 insertNodeReq = new PipeTransferTabletInsertNodeReqV2();
 
     insertNodeReq.insertNode = (InsertNode) PlanNodeType.deserialize(transferReq.body);
+    insertNodeReq.dataBaseName = ReadWriteIOUtils.readString(transferReq.body);
 
     transferReq.body.position(0);
     insertNodeReq.version = transferReq.version;
@@ -124,8 +144,9 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    final PipeTransferTabletInsertNodeReq that = (PipeTransferTabletInsertNodeReq) obj;
+    final PipeTransferTabletInsertNodeReqV2 that = (PipeTransferTabletInsertNodeReqV2) obj;
     return Objects.equals(insertNode, that.insertNode)
+        && Objects.equals(dataBaseName, that.dataBaseName)
         && version == that.version
         && type == that.type
         && Objects.equals(body, that.body);
@@ -133,6 +154,6 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
 
   @Override
   public int hashCode() {
-    return Objects.hash(insertNode, version, type, body);
+    return Objects.hash(insertNode, dataBaseName, version, type, body);
   }
 }

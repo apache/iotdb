@@ -43,13 +43,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class PipeTransferTabletBatchReq extends TPipeTransferReq {
+public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
+  private final transient List<PipeTransferTabletBinaryReqV2> binaryReqs = new ArrayList<>();
+  private final transient List<PipeTransferTabletInsertNodeReqV2> insertNodeReqs =
+      new ArrayList<>();
+  private final transient List<PipeTransferTabletRawReqV2> tabletReqs = new ArrayList<>();
 
-  private final transient List<PipeTransferTabletBinaryReq> binaryReqs = new ArrayList<>();
-  private final transient List<PipeTransferTabletInsertNodeReq> insertNodeReqs = new ArrayList<>();
-  private final transient List<PipeTransferTabletRawReq> tabletReqs = new ArrayList<>();
-
-  private PipeTransferTabletBatchReq() {
+  private PipeTransferTabletBatchReqV2() {
     // Empty constructor
   }
 
@@ -61,7 +61,7 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
     final List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
     final List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
 
-    for (final PipeTransferTabletBinaryReq binaryReq : binaryReqs) {
+    for (final PipeTransferTabletBinaryReqV2 binaryReq : binaryReqs) {
       final InsertBaseStatement statement = binaryReq.constructStatement();
       if (statement.isEmpty()) {
         continue;
@@ -81,7 +81,7 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
       }
     }
 
-    for (final PipeTransferTabletInsertNodeReq insertNodeReq : insertNodeReqs) {
+    for (final PipeTransferTabletInsertNodeReqV2 insertNodeReq : insertNodeReqs) {
       final InsertBaseStatement statement = insertNodeReq.constructStatement();
       if (statement.isEmpty()) {
         continue;
@@ -101,7 +101,7 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
       }
     }
 
-    for (final PipeTransferTabletRawReq tabletReq : tabletReqs) {
+    for (final PipeTransferTabletRawReqV2 tabletReq : tabletReqs) {
       final InsertTabletStatement statement = tabletReq.constructStatement();
       if (statement.isEmpty()) {
         continue;
@@ -115,35 +115,40 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
-
-  public static PipeTransferTabletBatchReq toTPipeTransferReq(
+  public static PipeTransferTabletBatchReqV2 toTPipeTransferReq(
       final List<ByteBuffer> binaryBuffers,
       final List<ByteBuffer> insertNodeBuffers,
-      final List<ByteBuffer> tabletBuffers)
+      final List<ByteBuffer> tabletBuffers,
+      final List<String> binaryDataBases,
+      final List<String> insertNodeDataBases,
+      final List<String> tabletDataBases)
       throws IOException {
-    final PipeTransferTabletBatchReq batchReq = new PipeTransferTabletBatchReq();
-
-    // batchReq.binaryReqs, batchReq.insertNodeReqs, batchReq.tabletReqs are empty
-    // when this method is called from PipeTransferTabletBatchReqBuilder.toTPipeTransferReq()
+    final PipeTransferTabletBatchReqV2 batchReq = new PipeTransferTabletBatchReqV2();
 
     batchReq.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
-    batchReq.type = PipeRequestType.TRANSFER_TABLET_BATCH.getType();
+    batchReq.type = PipeRequestType.TRANSFER_TABLET_BATCH_V2.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(binaryBuffers.size(), outputStream);
-      for (final ByteBuffer binaryBuffer : binaryBuffers) {
+      for (int i = 0; i < binaryBuffers.size(); i++) {
+        final ByteBuffer binaryBuffer = binaryBuffers.get(i);
         ReadWriteIOUtils.write(binaryBuffer.limit(), outputStream);
         outputStream.write(binaryBuffer.array(), 0, binaryBuffer.limit());
+        ReadWriteIOUtils.write(binaryDataBases.get(i), outputStream);
       }
 
       ReadWriteIOUtils.write(insertNodeBuffers.size(), outputStream);
-      for (final ByteBuffer insertNodeBuffer : insertNodeBuffers) {
+      for (int i = 0; i < binaryBuffers.size(); i++) {
+        final ByteBuffer insertNodeBuffer = insertNodeBuffers.get(i);
         outputStream.write(insertNodeBuffer.array(), 0, insertNodeBuffer.limit());
+        ReadWriteIOUtils.write(insertNodeDataBases.get(i), outputStream);
       }
 
       ReadWriteIOUtils.write(tabletBuffers.size(), outputStream);
-      for (final ByteBuffer tabletBuffer : tabletBuffers) {
+      for (int i = 0; i < binaryBuffers.size(); i++) {
+        final ByteBuffer tabletBuffer = tabletBuffers.get(i);
         outputStream.write(tabletBuffer.array(), 0, tabletBuffer.limit());
+        ReadWriteIOUtils.write(tabletDataBases.get(i), outputStream);
       }
 
       batchReq.body =
@@ -153,9 +158,9 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
     return batchReq;
   }
 
-  public static PipeTransferTabletBatchReq fromTPipeTransferReq(
-      final TPipeTransferReq transferReq) {
-    final PipeTransferTabletBatchReq batchReq = new PipeTransferTabletBatchReq();
+  public static PipeTransferTabletBatchReqV2 fromTPipeTransferReq(
+      final org.apache.iotdb.service.rpc.thrift.TPipeTransferReq transferReq) {
+    final PipeTransferTabletBatchReqV2 batchReq = new PipeTransferTabletBatchReqV2();
 
     int size = ReadWriteIOUtils.readInt(transferReq.body);
     for (int i = 0; i < size; ++i) {
@@ -163,21 +168,25 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
       final byte[] body = new byte[length];
       transferReq.body.get(body);
       batchReq.binaryReqs.add(
-          PipeTransferTabletBinaryReq.toTPipeTransferReq(ByteBuffer.wrap(body)));
+          PipeTransferTabletBinaryReqV2.toTPipeTransferBinaryReq(
+              ByteBuffer.wrap(body), ReadWriteIOUtils.readString(transferReq.body)));
     }
 
     size = ReadWriteIOUtils.readInt(transferReq.body);
     for (int i = 0; i < size; ++i) {
       batchReq.insertNodeReqs.add(
-          PipeTransferTabletInsertNodeReq.toTPipeTransferRawReq(
-              (InsertNode) PlanFragment.deserializeHelper(transferReq.body, null)));
+          PipeTransferTabletInsertNodeReqV2.toTPipeTransferRawReq(
+              (InsertNode) PlanFragment.deserializeHelper(transferReq.body, null),
+              ReadWriteIOUtils.readString(transferReq.body)));
     }
 
     size = ReadWriteIOUtils.readInt(transferReq.body);
     for (int i = 0; i < size; ++i) {
       batchReq.tabletReqs.add(
-          PipeTransferTabletRawReq.toTPipeTransferRawReq(
-              Tablet.deserialize(transferReq.body), ReadWriteIOUtils.readBool(transferReq.body)));
+          PipeTransferTabletRawReqV2.toTPipeTransferRawReq(
+              Tablet.deserialize(transferReq.body),
+              ReadWriteIOUtils.readBool(transferReq.body),
+              ReadWriteIOUtils.readString(transferReq.body)));
     }
 
     batchReq.version = transferReq.version;
@@ -190,17 +199,17 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
   /////////////////////////////// TestOnly ///////////////////////////////
 
   @TestOnly
-  public List<PipeTransferTabletBinaryReq> getBinaryReqs() {
+  public List<PipeTransferTabletBinaryReqV2> getBinaryReqs() {
     return binaryReqs;
   }
 
   @TestOnly
-  public List<PipeTransferTabletInsertNodeReq> getInsertNodeReqs() {
+  public List<PipeTransferTabletInsertNodeReqV2> getInsertNodeReqs() {
     return insertNodeReqs;
   }
 
   @TestOnly
-  public List<PipeTransferTabletRawReq> getTabletReqs() {
+  public List<PipeTransferTabletRawReqV2> getTabletReqs() {
     return tabletReqs;
   }
 
@@ -214,7 +223,7 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    final PipeTransferTabletBatchReq that = (PipeTransferTabletBatchReq) obj;
+    final PipeTransferTabletBatchReqV2 that = (PipeTransferTabletBatchReqV2) obj;
     return binaryReqs.equals(that.binaryReqs)
         && insertNodeReqs.equals(that.insertNodeReqs)
         && tabletReqs.equals(that.tabletReqs)

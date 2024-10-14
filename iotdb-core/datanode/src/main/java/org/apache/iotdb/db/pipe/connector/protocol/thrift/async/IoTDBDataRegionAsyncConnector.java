@@ -29,9 +29,9 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEven
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventPlainBatch;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventTsFileBatch;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTransferBatchReqBuilder;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReqV2;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReqV2;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReqV2;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletBatchEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletInsertNodeEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletRawEventHandler;
@@ -228,9 +228,9 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       final TPipeTransferReq pipeTransferReq =
           compressIfNeeded(
               Objects.isNull(insertNode)
-                  ? PipeTransferTabletBinaryReq.toTPipeTransferReqV2(
+                  ? PipeTransferTabletBinaryReqV2.toTPipeTransferReq(
                       pipeInsertNodeTabletInsertionEvent.getByteBuffer(), tableName)
-                  : PipeTransferTabletInsertNodeReq.toTPipeTransferReqV2(insertNode, tableName));
+                  : PipeTransferTabletInsertNodeReqV2.toTPipeTransferReq(insertNode, tableName));
       final PipeTransferTabletInsertNodeEventHandler pipeTransferInsertNodeReqHandler =
           new PipeTransferTabletInsertNodeEventHandler(
               pipeInsertNodeTabletInsertionEvent, pipeTransferReq, this);
@@ -249,7 +249,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
       final TPipeTransferReq pipeTransferTabletRawReq =
           compressIfNeeded(
-              PipeTransferTabletRawReq.toTPipeTransferReqV2(
+              PipeTransferTabletRawReqV2.toTPipeTransferReq(
                   pipeRawTabletInsertionEvent.convertToTablet(),
                   pipeRawTabletInsertionEvent.isAligned(),
                   pipeRawTabletInsertionEvent.isTableModelEvent()
