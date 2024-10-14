@@ -37,17 +37,17 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.AGGREGATION_FROM_RAW_DATA;
 import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.AGGREGATION_FROM_STATISTICS;
 
-public class Aggregator {
+public class TreeAggregator {
 
   protected final Accumulator accumulator;
   // In some intermediate result input, inputLocation[] should include two columns
   protected List<InputLocation[]> inputLocationList;
   protected final AggregationStep step;
-  protected static final QueryExecutionMetricSet QUERY_EXECUTION_METRICS =
+  public static final QueryExecutionMetricSet QUERY_EXECUTION_METRICS =
       QueryExecutionMetricSet.getInstance();
 
   // Used for SeriesAggregateScanOperator
-  public Aggregator(Accumulator accumulator, AggregationStep step) {
+  public TreeAggregator(Accumulator accumulator, AggregationStep step) {
     this.accumulator = accumulator;
     this.step = step;
     this.inputLocationList =
@@ -55,7 +55,7 @@ public class Aggregator {
   }
 
   // Used for AggregateOperator, AlignedSeriesAggregateScanOperator
-  public Aggregator(
+  public TreeAggregator(
       Accumulator accumulator, AggregationStep step, List<InputLocation[]> inputLocationList) {
     this.accumulator = accumulator;
     this.step = step;

@@ -628,7 +628,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(
         String.format(
             "RegionId: %s",
-            node.getRegionReplicaSet() == null
+            node.getRegionReplicaSet() == null || node.getRegionReplicaSet().getRegionId() == null
                 ? ""
                 : node.getRegionReplicaSet().getRegionId().getId()));
     return render(node, boxValue, context);
@@ -693,7 +693,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(
         String.format(
             "RegionId: %s",
-            node.getRegionReplicaSet() == null
+            node.getRegionReplicaSet() == null || node.getRegionReplicaSet().getRegionId() == null
                 ? ""
                 : node.getRegionReplicaSet().getRegionId().getId()));
     return render(node, boxValue, context);

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.relational.it.query.old.builtinfunction.scalar;
 
+import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
@@ -35,6 +36,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.fail;
@@ -93,6 +95,12 @@ public class IoTDBCastFunctionTableIT {
         "INSERT INTO special(Time, device_id ,s6) values(2, 'd1', '1.1')",
         "INSERT INTO special(Time, device_id ,s6) values(3, 'd1', '4e60')",
         "INSERT INTO special(Time, device_id ,s6) values(4, 'd1', '4e60000')",
+        "flush",
+
+        // special cases for date and timestamp
+        "create table dateType(device_id STRING ID, s1 DATE MEASUREMENT, s2 TIMESTAMP MEASUREMENT)",
+        "INSERT INTO dateType(Time,device_id, s1, s2) values(1,'d1', '9999-12-31', 253402271999999)",
+        "INSERT INTO dateType(Time,device_id, s1, s2) values(2,'d1', '1000-01-01', -30610224000000)",
       };
 
   @BeforeClass
@@ -774,6 +782,37 @@ public class IoTDBCastFunctionTableIT {
       e.printStackTrace();
       fail();
     }
+  }
+
+  @Test
+  public void testDateOutOfRange() {
+    tableAssertTestFail(
+        String.format(
+            "select CAST((s1 + %d) AS TIMESTAMP) from dateType where time = 1",
+            DateTimeUtils.correctPrecision(86400000)),
+        "752: Year must be between 1000 and 9999.",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        String.format(
+            "select CAST((s2 + %d) AS DATE) from dateType where time = 1",
+            DateTimeUtils.correctPrecision(86400000)),
+        "752: Year must be between 1000 and 9999.",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        String.format(
+            "select CAST((s1 - %d) AS TIMESTAMP) from dateType where time = 2",
+            DateTimeUtils.correctPrecision(86400000)),
+        "752: Year must be between 1000 and 9999.",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        String.format(
+            "select CAST((s2 - %d) AS DATE) from dateType where time = 2",
+            DateTimeUtils.correctPrecision(86400000)),
+        "752: Year must be between 1000 and 9999.",
+        DATABASE_NAME);
   }
 
   // endregion

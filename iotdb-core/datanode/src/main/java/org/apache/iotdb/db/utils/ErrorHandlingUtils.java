@@ -106,7 +106,8 @@ public class ErrorHandlingUtils {
             || status.getCode() == TSStatusCode.NO_PERMISSION.getStatusCode()
             || status.getCode() == TSStatusCode.ILLEGAL_PATH.getStatusCode()
             || status.getCode() == TSStatusCode.NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode()
-            || status.getCode() == TSStatusCode.DIVISION_BY_ZERO.getStatusCode()) {
+            || status.getCode() == TSStatusCode.DIVISION_BY_ZERO.getStatusCode()
+            || status.getCode() == TSStatusCode.DATE_OUT_OF_RANGE.getStatusCode()) {
           LOGGER.warn(message);
         } else {
           LOGGER.warn(message, e);
