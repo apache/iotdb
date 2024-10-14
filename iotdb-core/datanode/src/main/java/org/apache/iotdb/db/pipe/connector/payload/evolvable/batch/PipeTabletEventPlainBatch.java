@@ -52,7 +52,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   private final List<ByteBuffer> insertNodeBuffers = new ArrayList<>();
   private final List<ByteBuffer> tabletBuffers = new ArrayList<>();
 
-  private static final String EMPTY_DATA_BASE = "";
+  private static final String TREE_MODEL_DATABASE_PLACEHOLDER = null;
   private final List<String> binaryDataBases = new ArrayList<>();
   private final List<String> inertNodeDataBases = new ArrayList<>();
   private final List<String> tabletDataBases = new ArrayList<>();
@@ -138,8 +138,8 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
 
   private int buildTabletInsertionBuffer(final TabletInsertionEvent event)
       throws IOException, WALPipeException {
+    int databaseEstimateSize = 0;
     final ByteBuffer buffer;
-    int dataBaseSize = 0;
     if (event instanceof PipeInsertNodeTabletInsertionEvent) {
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
           (PipeInsertNodeTabletInsertionEvent) event;
@@ -151,19 +151,23 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
         buffer = pipeInsertNodeTabletInsertionEvent.getByteBuffer();
         binaryBuffers.add(buffer);
         if (pipeInsertNodeTabletInsertionEvent.isTableModelEvent()) {
-          dataBaseSize = pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName().length();
+          databaseEstimateSize =
+              pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName().length();
           binaryDataBases.add(pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName());
         } else {
-          binaryDataBases.add(EMPTY_DATA_BASE);
+          databaseEstimateSize = 4;
+          binaryDataBases.add(TREE_MODEL_DATABASE_PLACEHOLDER);
         }
       } else {
         buffer = insertNode.serializeToByteBuffer();
         insertNodeBuffers.add(buffer);
         if (pipeInsertNodeTabletInsertionEvent.isTableModelEvent()) {
-          dataBaseSize = pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName().length();
+          databaseEstimateSize =
+              pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName().length();
           inertNodeDataBases.add(pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName());
         } else {
-          inertNodeDataBases.add(EMPTY_DATA_BASE);
+          databaseEstimateSize = 4;
+          inertNodeDataBases.add(TREE_MODEL_DATABASE_PLACEHOLDER);
         }
       }
     } else {
@@ -177,13 +181,14 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
       }
       tabletBuffers.add(buffer);
       if (pipeRawTabletInsertionEvent.isTableModelEvent()) {
-        dataBaseSize = pipeRawTabletInsertionEvent.getTableModelDatabaseName().length();
+        databaseEstimateSize = pipeRawTabletInsertionEvent.getTableModelDatabaseName().length();
         tabletDataBases.add(pipeRawTabletInsertionEvent.getTableModelDatabaseName());
       } else {
-        tabletDataBases.add(EMPTY_DATA_BASE);
+        databaseEstimateSize = 4;
+        tabletDataBases.add(TREE_MODEL_DATABASE_PLACEHOLDER);
       }
     }
-    return buffer.limit() + dataBaseSize;
+    return buffer.limit() + databaseEstimateSize;
   }
 
   @Override
