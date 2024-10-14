@@ -61,9 +61,9 @@ import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TAlterTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
@@ -3421,7 +3421,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final ConfigNodeClient client)
       throws ClientManagerException, TException {
     TSStatus tsStatus;
-    final TAlterTableReq req = new TAlterTableReq();
+    final TAlterOrDropTableReq req = new TAlterOrDropTableReq();
     req.setDatabase(database);
     req.setTableName(tableName);
     req.setQueryId(queryId);
@@ -3430,7 +3430,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
     do {
       try {
-        tsStatus = client.alterTable(req);
+        tsStatus = client.alterOrDropTable(req);
       } catch (final TTransportException e) {
         if (e.getType() == TTransportException.TIMED_OUT
             || e.getCause() instanceof SocketTimeoutException) {

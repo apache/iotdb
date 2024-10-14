@@ -111,8 +111,8 @@ import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
-import org.apache.iotdb.confignode.rpc.thrift.TAlterTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
@@ -1496,7 +1496,7 @@ public class ProcedureManager {
         new CreateTableProcedure(database, table));
   }
 
-  public TSStatus alterTableAddColumn(final TAlterTableReq req) {
+  public TSStatus alterTableAddColumn(final TAlterOrDropTableReq req) {
     return executeWithoutDuplicate(
         req.database,
         null,
@@ -1510,7 +1510,7 @@ public class ProcedureManager {
             TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.updateInfo)));
   }
 
-  public TSStatus alterTableSetProperties(final TAlterTableReq req) {
+  public TSStatus alterTableSetProperties(final TAlterOrDropTableReq req) {
     return executeWithoutDuplicate(
         req.database,
         null,
@@ -1521,7 +1521,7 @@ public class ProcedureManager {
             req.database, req.tableName, req.queryId, ReadWriteIOUtils.readMap(req.updateInfo)));
   }
 
-  public TSStatus alterTableRenameColumn(final TAlterTableReq req) {
+  public TSStatus alterTableRenameColumn(final TAlterOrDropTableReq req) {
     return executeWithoutDuplicate(
         req.database,
         null,
@@ -1536,7 +1536,7 @@ public class ProcedureManager {
             ReadWriteIOUtils.readString(req.updateInfo)));
   }
 
-  public TSStatus alterTableDropColumn(final TAlterTableReq req) {
+  public TSStatus alterTableDropColumn(final TAlterOrDropTableReq req) {
     return executeWithoutDuplicate(
         req.database,
         null,

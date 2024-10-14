@@ -132,9 +132,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TAlterTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
@@ -2567,7 +2567,7 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus alterTable(final TAlterTableReq req) {
+  public TSStatus alterOrDropTable(final TAlterOrDropTableReq req) {
     final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       switch (AlterOrDropTableOperationType.getType(req.operationType)) {
