@@ -11,43 +11,41 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.array;
-
-import com.google.common.primitives.Shorts;
+package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array;
 
 import java.util.Arrays;
 
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.array.BigArrays.INITIAL_SEGMENTS;
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.array.BigArrays.SEGMENT_SIZE;
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.array.BigArrays.offset;
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.array.BigArrays.segment;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.BigArrays.INITIAL_SEGMENTS;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.BigArrays.SEGMENT_SIZE;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.BigArrays.offset;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.BigArrays.segment;
 import static org.apache.tsfile.utils.RamUsageEstimator.shallowSizeOf;
 import static org.apache.tsfile.utils.RamUsageEstimator.shallowSizeOfInstance;
-import static org.apache.tsfile.utils.RamUsageEstimator.sizeOfShortArray;
+import static org.apache.tsfile.utils.RamUsageEstimator.sizeOfLongArray;
 
 // Note: this code was forked from fastutil (http://fastutil.di.unimi.it/)
 // Copyright (C) 2010-2013 Sebastiano Vigna
-public final class ShortBigArray {
-  private static final long INSTANCE_SIZE = shallowSizeOfInstance(ShortBigArray.class);
-  private static final long SIZE_OF_SEGMENT = sizeOfShortArray(SEGMENT_SIZE);
+public final class LongBigArray {
+  private static final long INSTANCE_SIZE = shallowSizeOfInstance(LongBigArray.class);
+  private static final long SIZE_OF_SEGMENT = sizeOfLongArray(SEGMENT_SIZE);
 
-  private final short initialValue;
+  private final long initialValue;
 
-  private short[][] array;
+  private long[][] array;
   private long capacity;
   private int segments;
 
   /** Creates a new big array containing one initial segment */
-  public ShortBigArray() {
-    this((short) 0);
+  public LongBigArray() {
+    this(0L);
   }
 
   /**
    * Creates a new big array containing one initial segment filled with the specified default value
    */
-  public ShortBigArray(short initialValue) {
+  public LongBigArray(long initialValue) {
     this.initialValue = initialValue;
-    array = new short[INITIAL_SEGMENTS][];
+    array = new long[INITIAL_SEGMENTS][];
     allocateNewSegment();
   }
 
@@ -62,8 +60,16 @@ public final class ShortBigArray {
    * @param index a position in this big array.
    * @return the element of this big array at the specified position.
    */
-  public short get(long index) {
+  public long get(long index) {
     return array[segment(index)][offset(index)];
+  }
+
+  public long[] getSegment(long index) {
+    return array[segment(index)];
+  }
+
+  public int getOffset(long index) {
+    return offset(index);
   }
 
   /**
@@ -71,7 +77,7 @@ public final class ShortBigArray {
    *
    * @param index a position in this big array.
    */
-  public void set(long index, short value) {
+  public void set(long index, long value) {
     array[segment(index)][offset(index)] = value;
   }
 
@@ -91,7 +97,7 @@ public final class ShortBigArray {
    * @param value the value
    */
   public void add(long index, long value) {
-    array[segment(index)][offset(index)] += Shorts.checkedCast(value);
+    array[segment(index)][offset(index)] += value;
   }
 
   /**
@@ -106,14 +112,8 @@ public final class ShortBigArray {
     grow(length);
   }
 
-  /** Fills the entire big array with the specified value. */
-  public void fill(short value) {
-    for (short[] segment : array) {
-      if (segment == null) {
-        return;
-      }
-      Arrays.fill(segment, value);
-    }
+  public long getCapacity() {
+    return capacity;
   }
 
   /**
@@ -125,7 +125,7 @@ public final class ShortBigArray {
    * {@code destinationIndex+length-1}, respectively, of the destination array.
    */
   public void copyTo(
-      long sourceIndex, ShortBigArray destination, long destinationIndex, long length) {
+      long sourceIndex, LongBigArray destination, long destinationIndex, long length) {
     while (length > 0) {
       int startSegment = segment(sourceIndex);
       int startOffset = offset(sourceIndex);
@@ -149,6 +149,16 @@ public final class ShortBigArray {
     }
   }
 
+  /** Fills the entire big array with the specified value. */
+  public void fill(long value) {
+    for (long[] segment : array) {
+      if (segment == null) {
+        return;
+      }
+      Arrays.fill(segment, value);
+    }
+  }
+
   private void grow(long length) {
     // how many segments are required to get to the length?
     int requiredSegments = segment(length) + 1;
@@ -165,7 +175,7 @@ public final class ShortBigArray {
   }
 
   private void allocateNewSegment() {
-    short[] newSegment = new short[SEGMENT_SIZE];
+    long[] newSegment = new long[SEGMENT_SIZE];
     if (initialValue != 0) {
       Arrays.fill(newSegment, initialValue);
     }

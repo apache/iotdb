@@ -11,7 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.array;
+package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array;
 
 // Note: this code was forked from fastutil (http://fastutil.di.unimi.it/)
 // Copyright (C) 2010-2013 Sebastiano Vigna
