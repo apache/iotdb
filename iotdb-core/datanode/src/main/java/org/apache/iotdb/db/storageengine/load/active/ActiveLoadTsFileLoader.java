@@ -55,7 +55,6 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.time.ZoneId;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -73,23 +72,6 @@ public class ActiveLoadTsFileLoader {
   private final AtomicReference<WrappedThreadPoolExecutor> activeLoadExecutor =
       new AtomicReference<>();
   private final AtomicReference<String> failDir = new AtomicReference<>();
-
-  /** A constant representing the default value for the tree model's database name. */
-  private static final String EMPTY_DATA_BASE = "";
-
-  /**
-   * A thread-safe mapping of TS file paths to their corresponding database names. This mapping is
-   * used to keep track of which database a TS file is associated with. The database name can be in
-   * one of three states:
-   *
-   * <ul>
-   *   <li>{@code null}: Indicates that the database name has not been initialized.
-   *   <li>{@link #EMPTY_DATA_BASE ""}: Indicates that the tree model is being used.
-   *   <li>Non-empty String: Contains the name of the database when the table model is being used.
-   * </ul>
-   */
-  private final ConcurrentHashMap<String, String> tsFileDatabaseNameMapping =
-      new ConcurrentHashMap<>();
 
   public int getCurrentAllowedPendingSize() {
     return MAX_PENDING_SIZE - pendingQueue.size();
@@ -175,7 +157,6 @@ public class ActiveLoadTsFileLoader {
               "Successfully auto load tsfile {} (isGeneratedByPipe = {})",
               filePair.get().getLeft(),
               filePair.get().getRight());
-          removePipeGeneratedTsFileMapping(filePair.get());
         } else {
           handleLoadFailure(filePair.get(), result);
         }
@@ -209,7 +190,6 @@ public class ActiveLoadTsFileLoader {
   }
 
   private TSStatus loadTsFile(final Pair<String, Boolean> filePair) throws FileNotFoundException {
-    // Tree model
     final LoadTsFileStatement statement = new LoadTsFileStatement(filePair.getLeft());
     statement.setDeleteAfterLoad(true);
     statement.setVerifySchema(true);
@@ -247,7 +227,7 @@ public class ActiveLoadTsFileLoader {
           filePair.getLeft(),
           filePair.getRight(),
           status);
-      removeFileAndResourceAndModsToFailDir(filePair);
+      removeFileAndResourceAndModsToFailDir(filePair.getLeft());
     }
   }
 
@@ -256,7 +236,7 @@ public class ActiveLoadTsFileLoader {
         "Failed to auto load tsfile {} (isGeneratedByPipe = {}) due to file not found, will skip this file.",
         filePair.getLeft(),
         filePair.getRight());
-    removeFileAndResourceAndModsToFailDir(filePair);
+    removeFileAndResourceAndModsToFailDir(filePair.getLeft());
   }
 
   private void handleOtherException(final Pair<String, Boolean> filePair, final Exception e) {
@@ -276,16 +256,14 @@ public class ActiveLoadTsFileLoader {
           filePair.getLeft(),
           filePair.getRight(),
           e);
-      removeFileAndResourceAndModsToFailDir(filePair);
+      removeFileAndResourceAndModsToFailDir(filePair.getLeft());
     }
   }
 
-  private void removeFileAndResourceAndModsToFailDir(final Pair<String, Boolean> filePair) {
-    final String filePath = filePair.getLeft();
+  private void removeFileAndResourceAndModsToFailDir(final String filePath) {
     removeToFailDir(filePath);
     removeToFailDir(filePath + ".resource");
     removeToFailDir(filePath + ".mods");
-    removePipeGeneratedTsFileMapping(filePair);
   }
 
   private void removeToFailDir(final String filePath) {
@@ -336,56 +314,5 @@ public class ActiveLoadTsFileLoader {
     }
 
     return fileCount[0];
-  }
-
-  /**
-   * Moves a provided TSFile to the active load listening pipe directory for asynchronous loading.
-   * After moving the file, it updates the mapping of TSFiles to their corresponding database names.
-   * If the TSFile is already in the target directory, no action is taken, and a log is recorded.
-   *
-   * @param sourceFile The TSFile to be moved for asynchronous loading.
-   * @param dataBaseName The name of the database associated with the TSFile.
-   * @throws IOException If an I/O error occurs during the file moving process.
-   */
-  public void pipeReceiverMoveTsFileForAsyncLoad(
-      File sourceFile, boolean isModFile, String dataBaseName) throws IOException {
-    final String loadActiveListeningPipeDir = IOTDB_CONFIG.getLoadActiveListeningPipeDir();
-    if (sourceFile == null || !sourceFile.exists() || sourceFile.isDirectory()) {
-      LOGGER.warn("The provided TSFile is null, does not exist, or is a directory: {}", sourceFile);
-      return;
-    }
-    if (!Objects.equals(loadActiveListeningPipeDir, sourceFile.getParentFile().getAbsolutePath())) {
-      org.apache.iotdb.commons.utils.FileUtils.moveFileWithMD5Check(
-          sourceFile, new File(loadActiveListeningPipeDir));
-      if (!isModFile) {
-        tsFileDatabaseNameMapping.put(
-            new File(loadActiveListeningPipeDir, sourceFile.getName()).getAbsolutePath(),
-            dataBaseName == null ? EMPTY_DATA_BASE : dataBaseName);
-      }
-    }
-    LOGGER.info(
-        "The TSFile '{}' already exists in the target directory '{}'.",
-        sourceFile.getName(),
-        loadActiveListeningPipeDir);
-  }
-
-  /**
-   * Removes the mapping of a TSFile to its database name if it was generated by the pipe. This
-   * method is called to clean up mappings for files that were generated by the pipe. If a TSFile
-   * needs to be reloaded, its mapping should be preserved and not removed.
-   *
-   * @param filePair A pair containing the file path and a flag indicating whether it's generated by
-   *     a pipe.
-   */
-  private void removePipeGeneratedTsFileMapping(Pair<String, Boolean> filePair) {
-    final String filePath = filePair.getLeft();
-    final Boolean isGeneratedByPipe = filePair.getRight();
-    if (isGeneratedByPipe == null) {
-      LOGGER.warn("The isGeneratedByPipe flag for file '{}' has not been initialized.", filePath);
-      return;
-    }
-    if (isGeneratedByPipe) {
-      tsFileDatabaseNameMapping.remove(filePath);
-    }
   }
 }

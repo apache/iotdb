@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransf
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -76,7 +77,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
-import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.db.tools.schema.SRStatementGenerator;
@@ -97,6 +97,7 @@ import java.nio.file.Paths;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -456,8 +457,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   protected TSStatus loadFileV1(final PipeTransferFileSealReqV1 req, final String fileAbsolutePath)
       throws IOException {
     return isUsingAsyncLoadTsFileStrategy.get()
-        ? loadTsFileAsync(fileAbsolutePath, req.getDataBaseName())
-        : loadTsFileSync(fileAbsolutePath, req.getDataBaseName());
+        ? loadTsFileAsync(req.getDataBaseName(), Collections.singletonList(fileAbsolutePath))
+        : loadTsFileSync(req.getDataBaseName(), fileAbsolutePath);
   }
 
   @Override
@@ -467,41 +468,34 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     return req instanceof PipeTransferTsFileSealWithModReq
         // TsFile's absolute path will be the second element
         ? (isUsingAsyncLoadTsFileStrategy.get()
-            ? loadTsFileAsync(fileAbsolutePaths, req)
+            ? loadTsFileAsync(
+                req.getDatabaseName(new File(fileAbsolutePaths.get(1)).getName()),
+                fileAbsolutePaths)
             : loadTsFileSync(
-                fileAbsolutePaths.get(1),
-                req.getDatabaseName(new File(fileAbsolutePaths.get(1)).getName())))
+                req.getDatabaseName(new File(fileAbsolutePaths.get(1)).getName()),
+                fileAbsolutePaths.get(1)))
         : loadSchemaSnapShot(req.getParameters(), fileAbsolutePaths);
   }
 
-  private TSStatus loadTsFileAsync(final List<String> absolutePaths, PipeTransferFileSealReqV2 req)
+  private TSStatus loadTsFileAsync(final String dataBaseName, final List<String> absolutePaths)
       throws IOException {
-    for (String absolutePath : absolutePaths) {
+    final String loadActiveListeningPipeDir = IOTDB_CONFIG.getLoadActiveListeningPipeDir();
+
+    for (final String absolutePath : absolutePaths) {
       if (absolutePath == null) {
         continue;
       }
-      final File file = new File(absolutePath);
-      final String fileName = file.getName();
-      boolean isModFile = fileName.endsWith(RESOURCE) || fileName.endsWith(MODS);
-      StorageEngine.getInstance()
-          .pipeReceiverRemoveTSFileAndModToAsyncLoad(
-              file, isModFile, isModFile ? null : req.getDatabaseName(file.getName()));
+      final File sourceFile = new File(absolutePath);
+      if (!Objects.equals(
+          loadActiveListeningPipeDir, sourceFile.getParentFile().getAbsolutePath())) {
+        FileUtils.moveFileWithMD5Check(sourceFile, new File(loadActiveListeningPipeDir));
+      }
     }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-  }
-
-  private TSStatus loadTsFileAsync(String fileName, String dataBaseName) throws IOException {
-    if (fileName == null) {
-      LOGGER.warn("The file name provided for asynchronous loading is null.");
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
-    StorageEngine.getInstance()
-        .pipeReceiverRemoveTSFileAndModToAsyncLoad(new File(fileName), false, dataBaseName);
 
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  private TSStatus loadTsFileSync(final String fileAbsolutePath, String dataBaseName)
+  private TSStatus loadTsFileSync(final String dataBaseName, final String fileAbsolutePath)
       throws FileNotFoundException {
     final LoadTsFileStatement statement = new LoadTsFileStatement(fileAbsolutePath);
 

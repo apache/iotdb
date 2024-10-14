@@ -957,11 +957,6 @@ public class StorageEngine implements IService {
     return status;
   }
 
-  public void pipeReceiverRemoveTSFileAndModToAsyncLoad(
-      File file, boolean isModFile, String dataBaseName) throws IOException {
-    loadTsFileManager.pipeReceiverRemoveTSFileToAsyncLoad(file, isModFile, dataBaseName);
-  }
-
   /** reboot timed flush sequence/unsequence memetable thread */
   public void rebootTimedService() throws ShutdownException {
     LOGGER.info("Start rebooting all timed service.");

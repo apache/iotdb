@@ -104,11 +104,6 @@ public class LoadTsFileManager {
     activeLoadAgent.start();
   }
 
-  public void pipeReceiverRemoveTSFileToAsyncLoad(File file, boolean isModFile, String dataBaseName)
-      throws IOException {
-    activeLoadAgent.pipeReceiverRemoveTSFileToAsyncLoad(file, isModFile, dataBaseName);
-  }
-
   private void registerCleanupTaskExecutor() {
     PipeDataNodeAgent.runtime()
         .registerPeriodicalJob(

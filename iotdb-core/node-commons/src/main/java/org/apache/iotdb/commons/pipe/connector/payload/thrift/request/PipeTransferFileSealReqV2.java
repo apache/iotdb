@@ -53,12 +53,12 @@ public abstract class PipeTransferFileSealReqV2 extends TPipeTransferReq {
     return parameters;
   }
 
-  public final String getDatabaseName(String fileName) {
-    return parameters == null ? null : parameters.get(getDatabaseNameKey(fileName));
-  }
-
   public static String getDatabaseNameKey(String fileName) {
     return DATABASE_NAME_KEY + "_" + fileName;
+  }
+
+  public final String getDatabaseName(String fileName) {
+    return parameters == null ? null : parameters.get(getDatabaseNameKey(fileName));
   }
 
   protected abstract PipeRequestType getPlanType();
