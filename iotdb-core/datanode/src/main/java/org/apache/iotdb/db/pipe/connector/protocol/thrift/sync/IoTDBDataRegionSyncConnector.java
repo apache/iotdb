@@ -253,7 +253,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     final Map<Pair<String, Long>, Double> pipe2WeightMap = batchToTransfer.deepCopyPipe2WeightMap();
 
     for (final File tsFile : sealedFiles) {
-      doTransfer(pipe2WeightMap, tsFile, null,EMPTY_DATA_BASE);
+      doTransfer(pipe2WeightMap, tsFile, null, EMPTY_DATA_BASE);
       try {
         FileUtils.delete(tsFile);
       } catch (final NoSuchFileException e) {
