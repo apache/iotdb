@@ -30,6 +30,8 @@ import java.util.Map;
 
 public class PipeTransferTsFileSealWithModReq extends PipeTransferFileSealReqV2 {
 
+  protected static final String DATABASE_NAME_KEY = "DATABASE_NAME";
+
   private PipeTransferTsFileSealWithModReq() {
     // Empty constructor
   }
