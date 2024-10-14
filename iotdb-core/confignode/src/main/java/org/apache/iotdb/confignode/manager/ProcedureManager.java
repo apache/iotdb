@@ -89,6 +89,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.AbstractAlterTabl
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
@@ -1545,6 +1546,16 @@ public class ProcedureManager {
         ProcedureType.DROP_TABLE_COLUMN_PROCEDURE,
         new DropTableColumnProcedure(
             req.database, req.tableName, req.queryId, ReadWriteIOUtils.readString(req.updateInfo)));
+  }
+
+  public TSStatus dropTable(final TAlterOrDropTableReq req) {
+    return executeWithoutDuplicate(
+        req.database,
+        null,
+        req.tableName,
+        req.queryId,
+        ProcedureType.DROP_TABLE_PROCEDURE,
+        new DropTableProcedure(req.database, req.tableName, req.queryId));
   }
 
   private TSStatus executeWithoutDuplicate(
