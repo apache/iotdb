@@ -127,7 +127,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private static final PipeStatementDataTypeConvertExecutionVisitor
       STATEMENT_DATA_TYPE_CONVERT_EXECUTION_VISITOR =
           new PipeStatementDataTypeConvertExecutionVisitor(IoTDBDataNodeReceiver::executeStatement);
-
   private final PipeStatementToBatchVisitor batchVisitor = new PipeStatementToBatchVisitor();
 
   // Used for data transfer: confignode (cluster A) -> datanode (cluster B) -> confignode (cluster
@@ -199,7 +198,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               try {
                 return handleTransferTabletInsertNode(
                     PipeTransferTabletInsertNodeReq.fromTPipeTransferReqV2(req));
-
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferTabletInsertNodeV2Timer(System.nanoTime() - startTime);
