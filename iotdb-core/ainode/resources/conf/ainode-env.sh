@@ -110,7 +110,6 @@ fi
 echo "Installing AINode..."
 cd "$SCRIPT_DIR/../lib/"
 shopt -s nullglob
-$ain_interpreter_dir -m pip cache purge
 for i in *.whl *.tar.gz; do
   if [[ $i =~ "ainode" ]]; then
     echo Installing AINode body: $i
