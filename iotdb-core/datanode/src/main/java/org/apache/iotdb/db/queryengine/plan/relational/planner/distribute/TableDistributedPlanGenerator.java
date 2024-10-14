@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
@@ -49,9 +50,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
+import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 
@@ -140,6 +143,27 @@ public class TableDistributedPlanGenerator
   }
 
   @Override
+  public List<PlanNode> visitFill(FillNode node, PlanContext context) {
+    if (!(node instanceof ValueFillNode)) {
+      context.clearExpectedOrderingScheme();
+    }
+    List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+    OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
+    if (childOrdering != null) {
+      nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
+    }
+
+    if (childrenNodes.size() == 1) {
+      node.setChild(childrenNodes.get(0));
+      return Collections.singletonList(node);
+    }
+
+    node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
+    context.setHasSeenFill(true);
+    return Collections.singletonList(node);
+  }
+
+  @Override
   public List<PlanNode> visitLimit(LimitNode node, PlanContext context) {
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
     OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
@@ -187,11 +211,20 @@ public class TableDistributedPlanGenerator
       return Collections.singletonList(node);
     }
 
-    for (Expression expression : node.getAssignments().getMap().values()) {
-      if (containsDiffFunction(expression)) {
-        node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
-        return Collections.singletonList(node);
-      }
+    boolean canCopyThis = true;
+    if (childOrdering != null) {
+      // the column used for order by has been pruned, we can't copy this node to sub nodeTrees.
+      canCopyThis =
+          ImmutableSet.copyOf(node.getOutputSymbols()).containsAll(childOrdering.getOrderBy());
+    }
+    canCopyThis =
+        canCopyThis
+            && node.getAssignments().getMap().values().stream()
+                .noneMatch(PushPredicateIntoTableScan::containsDiffFunction);
+
+    if (!canCopyThis) {
+      node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
+      return Collections.singletonList(node);
     }
 
     List<PlanNode> resultNodeList = new ArrayList<>();
@@ -209,8 +242,7 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitTopK(TopKNode node, PlanContext context) {
-    context.expectedOrderingScheme = node.getOrderingScheme();
-    context.hasSortProperty = true;
+    context.setExpectedOrderingScheme(node.getOrderingScheme());
     nodeOrderingMap.put(node.getPlanNodeId(), node.getOrderingScheme());
 
     checkArgument(
@@ -241,8 +273,7 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitSort(SortNode node, PlanContext context) {
-    context.expectedOrderingScheme = node.getOrderingScheme();
-    context.hasSortProperty = true;
+    context.setExpectedOrderingScheme(node.getOrderingScheme());
     nodeOrderingMap.put(node.getPlanNodeId(), node.getOrderingScheme());
 
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
@@ -267,8 +298,7 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitStreamSort(StreamSortNode node, PlanContext context) {
-    context.expectedOrderingScheme = node.getOrderingScheme();
-    context.hasSortProperty = true;
+    context.setExpectedOrderingScheme(node.getOrderingScheme());
     nodeOrderingMap.put(node.getPlanNodeId(), node.getOrderingScheme());
 
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
@@ -358,6 +388,7 @@ public class TableDistributedPlanGenerator
                   node.getQualifiedObjectName().getDatabaseName(),
                   deviceEntry.getDeviceID(),
                   node.getTimeFilter());
+
       for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
         TableScanNode tableScanNode =
             tableScanNodeMap.computeIfAbsent(
@@ -807,6 +838,7 @@ public class TableDistributedPlanGenerator
 
   public static class PlanContext {
     final Map<PlanNodeId, NodeDistribution> nodeDistributionMap;
+    boolean hasSeenFill = false;
     boolean hasExchangeNode = false;
     boolean hasSortProperty = false;
     OrderingScheme expectedOrderingScheme;
@@ -818,6 +850,20 @@ public class TableDistributedPlanGenerator
 
     public NodeDistribution getNodeDistribution(PlanNodeId nodeId) {
       return this.nodeDistributionMap.get(nodeId);
+    }
+
+    public void clearExpectedOrderingScheme() {
+      expectedOrderingScheme = null;
+      hasSortProperty = false;
+    }
+
+    public void setExpectedOrderingScheme(OrderingScheme expectedOrderingScheme) {
+      this.expectedOrderingScheme = expectedOrderingScheme;
+      hasSortProperty = true;
+    }
+
+    public void setHasSeenFill(boolean hasSeenFill) {
+      this.hasSeenFill = hasSeenFill;
     }
   }
 }

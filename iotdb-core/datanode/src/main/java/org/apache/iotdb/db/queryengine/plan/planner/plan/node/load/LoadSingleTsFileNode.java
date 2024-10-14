@@ -228,7 +228,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
         Files.deleteIfExists(
             new File(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX).toPath());
       }
-    } catch (IOException e) {
+    } catch (final IOException e) {
       LOGGER.warn("Delete After Loading {} error.", tsFile, e);
     }
   }
