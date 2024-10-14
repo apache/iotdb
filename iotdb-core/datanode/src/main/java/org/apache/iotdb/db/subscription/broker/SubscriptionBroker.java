@@ -30,7 +30,6 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 import org.apache.iotdb.rpc.subscription.payload.poll.TerminationPayload;
 
@@ -104,15 +103,14 @@ public class SubscriptionBroker {
           events.add(
               new SubscriptionEvent(
                   new SubscriptionPipeEmptyEvent(),
-                  new SubscriptionPollResponse(
-                      SubscriptionPollResponseType.TERMINATION.getType(),
-                      new TerminationPayload(),
-                      new SubscriptionCommitContext(
-                          IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
-                          PipeDataNodeAgent.runtime().getRebootTimes(),
-                          topicName,
-                          brokerId,
-                          INVALID_COMMIT_ID))));
+                  SubscriptionPollResponseType.TERMINATION.getType(),
+                  new TerminationPayload(),
+                  new SubscriptionCommitContext(
+                      IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
+                      PipeDataNodeAgent.runtime().getRebootTimes(),
+                      topicName,
+                      brokerId,
+                      INVALID_COMMIT_ID)));
           continue;
         }
         // There are two reasons for not printing logs here:

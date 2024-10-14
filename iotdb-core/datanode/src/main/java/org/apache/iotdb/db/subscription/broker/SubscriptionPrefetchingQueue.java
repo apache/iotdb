@@ -34,7 +34,6 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 
 import com.google.common.collect.ImmutableSet;
@@ -281,7 +280,7 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   protected void enqueueEventToPrefetchingQueue(final SubscriptionEvent event) {
-    // event.trySerializeCurrentResponse();
+    event.trySerializeCurrentResponse();
     prefetchingQueue.add(event);
   }
 
@@ -509,15 +508,14 @@ public abstract class SubscriptionPrefetchingQueue {
     // consider non-critical by default, meaning the client can retry
     return new SubscriptionEvent(
         new SubscriptionPipeEmptyEvent(),
-        new SubscriptionPollResponse(
-            SubscriptionPollResponseType.ERROR.getType(),
-            new ErrorPayload(errorMessage, false),
-            new SubscriptionCommitContext(
-                IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
-                PipeDataNodeAgent.runtime().getRebootTimes(),
-                topicName,
-                brokerId,
-                INVALID_COMMIT_ID)));
+        SubscriptionPollResponseType.ERROR.getType(),
+        new ErrorPayload(errorMessage, false),
+        new SubscriptionCommitContext(
+            IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
+            PipeDataNodeAgent.runtime().getRebootTimes(),
+            topicName,
+            brokerId,
+            INVALID_COMMIT_ID));
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////

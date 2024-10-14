@@ -27,7 +27,8 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Objects;
+import java.util.HashMap;
+import java.util.Map;
 
 public class SubscriptionPollResponse {
 
@@ -38,8 +39,6 @@ public class SubscriptionPollResponse {
   private final transient SubscriptionPollPayload payload;
 
   private final transient SubscriptionCommitContext commitContext;
-
-  private transient volatile ByteBuffer byteBuffer; // cached =serialized response
 
   public SubscriptionPollResponse(
       final short responseType,
@@ -62,27 +61,12 @@ public class SubscriptionPollResponse {
     return commitContext;
   }
 
-  public ByteBuffer getByteBuffer() {
-    return byteBuffer;
-  }
-
-  public void invalidateByteBuffer() {
-    // maybe friendly for gc
-    byteBuffer = null;
-  }
-
   /////////////////////////////// de/ser ///////////////////////////////
 
   public static ByteBuffer serialize(final SubscriptionPollResponse response) throws IOException {
-    return Objects.nonNull(response.byteBuffer)
-        ? response.byteBuffer
-        : (response.byteBuffer = response.serialize());
-  }
-
-  private ByteBuffer serialize() throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      this.serialize(outputStream);
+      response.serialize(outputStream);
       return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
   }
@@ -128,18 +112,18 @@ public class SubscriptionPollResponse {
     return new SubscriptionPollResponse(responseType, payload, commitContext);
   }
 
-  /////////////////////////////// object ///////////////////////////////
+  /////////////////////////////// stringify ///////////////////////////////
 
   @Override
   public String toString() {
-    return "SubscriptionPollResponse{responseType="
-        + SubscriptionPollResponseType.valueOf(responseType).toString()
-        + ", payload="
-        + payload
-        + ", commitContext="
-        + commitContext
-        + ", sizeof(byteBuffer)="
-        + (Objects.isNull(byteBuffer) ? "<unknown>" : byteBuffer.limit() - byteBuffer.position())
-        + "}";
+    return "SubscriptionPollResponse" + coreReportMessage();
+  }
+
+  protected Map<String, String> coreReportMessage() {
+    final Map<String, String> result = new HashMap<>();
+    result.put("responseType", SubscriptionPollResponseType.valueOf(responseType).toString());
+    result.put("payload", payload.toString());
+    result.put("commitContext", commitContext.toString());
+    return result;
   }
 }

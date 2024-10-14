@@ -22,31 +22,22 @@ package org.apache.iotdb.db.subscription.event;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeEvents;
-import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
-import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
-import org.apache.iotdb.rpc.subscription.payload.poll.FilePiecePayload;
-import org.apache.iotdb.rpc.subscription.payload.poll.FileSealPayload;
+import org.apache.iotdb.db.subscription.event.response.SubscriptionEventResponse;
+import org.apache.iotdb.db.subscription.event.response.SubscriptionEventSingleResponse;
+import org.apache.iotdb.db.subscription.event.response.SubscriptionEventTsFileResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
-import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
-import org.apache.iotdb.rpc.subscription.payload.poll.TerminationPayload;
 
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
 
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext.INVALID_COMMIT_ID;
 
@@ -57,46 +48,33 @@ public class SubscriptionEvent {
   private static final long INVALID_TIMESTAMP = -1;
 
   private final SubscriptionPipeEvents pipeEvents;
-
-  private final SubscriptionPollResponse[] responses;
-  private int currentResponseIndex = 0;
-
-  private final SubscriptionCommitContext
-      commitContext; // all responses have the same commit context
+  private final SubscriptionEventResponse response;
+  private final SubscriptionCommitContext commitContext;
 
   // lastPolledConsumerId is not used as a criterion for determining pollability
   private volatile String lastPolledConsumerId = null;
   private final AtomicLong lastPolledTimestamp = new AtomicLong(INVALID_TIMESTAMP);
   private final AtomicLong committedTimestamp = new AtomicLong(INVALID_TIMESTAMP);
 
-  /**
-   * Constructs a {@link SubscriptionEvent} with an initial response.
-   *
-   * @param pipeEvents The underlying pipe events corresponding to this {@link SubscriptionEvent}.
-   * @param initialResponse The initial response which must be of type {@link FileInitPayload}. This
-   *     indicates that subsequent responses need to be fetched using {@link
-   *     SubscriptionEvent#prefetchRemainingResponses()}.
-   */
   public SubscriptionEvent(
-      final SubscriptionPipeEvents pipeEvents, final SubscriptionPollResponse initialResponse) {
+      final SubscriptionPipeEvents pipeEvents,
+      final short responseType,
+      final SubscriptionPollPayload payload,
+      final SubscriptionCommitContext commitContext) {
     this.pipeEvents = pipeEvents;
-
-    final int responseLength = getResponseLength(initialResponse.getResponseType());
-    this.responses = new SubscriptionPollResponse[responseLength];
-    this.responses[0] = initialResponse;
-
-    this.commitContext = initialResponse.getCommitContext();
+    this.response = new SubscriptionEventSingleResponse(responseType, payload, commitContext);
+    this.commitContext = commitContext;
   }
 
-  /**
-   * Constructs a {@link SubscriptionEvent} with a list of responses.
-   *
-   * @param pipeEvents The underlying pipe events corresponding to this {@link SubscriptionEvent}.
-   * @param responses A list of responses that can be of types {@link TabletsPayload}, {@link
-   *     TerminationPayload}, or {@link ErrorPayload}. All responses are already generated at the
-   *     time of construction, so {@link SubscriptionEvent#prefetchRemainingResponses()} is not
-   *     required.
-   */
+  public SubscriptionEvent(
+      final SubscriptionPipeEvents pipeEvents,
+      final File tsFile,
+      final SubscriptionCommitContext commitContext) {
+    this.pipeEvents = pipeEvents;
+    this.response = new SubscriptionEventTsFileResponse(tsFile, commitContext);
+    this.commitContext = commitContext;
+  }
+
   public SubscriptionEvent(
       final SubscriptionPipeEvents pipeEvents, final List<SubscriptionPollResponse> responses) {
     this.pipeEvents = pipeEvents;
@@ -110,25 +88,8 @@ public class SubscriptionEvent {
     this.commitContext = this.responses[0].getCommitContext();
   }
 
-  private int getResponseLength(final short responseType) {
-    if (!Objects.equals(SubscriptionPollResponseType.FILE_INIT.getType(), responseType)) {
-      LOGGER.warn("unexpected response type: {}", responseType);
-      return 1;
-    }
-    final long fileLength = pipeEvents.getTsFile().length();
-    final long readFileBufferSize =
-        SubscriptionConfig.getInstance().getSubscriptionReadFileBufferSize();
-    final int length = (int) (fileLength / readFileBufferSize);
-    // add for init, last piece and seal
-    return (fileLength % readFileBufferSize != 0) ? length + 3 : length + 2;
-  }
-
   public SubscriptionPollResponse getCurrentResponse() {
-    return getResponse(currentResponseIndex);
-  }
-
-  private SubscriptionPollResponse getResponse(final int index) {
-    return responses[index];
+    return response.getCurrentResponse();
   }
 
   public SubscriptionCommitContext getCommitContext() {
@@ -154,7 +115,7 @@ public class SubscriptionEvent {
       // event with invalid commit id is uncommittable
       return false;
     }
-    return currentResponseIndex >= responses.length - 1;
+    return response.isCommittable();
   }
 
   public void ack() {
@@ -168,10 +129,12 @@ public class SubscriptionEvent {
    */
   public void cleanUp() {
     // reset serialized responses
-    resetResponseByteBuffer(true);
+    response.cleanUp();
 
     // clean up pipe events
     pipeEvents.cleanUp();
+
+    // TODO: more field clean
   }
 
   //////////////////////////// pollable ////////////////////////////
@@ -221,7 +184,7 @@ public class SubscriptionEvent {
 
   public void nack() {
     // reset current response index
-    currentResponseIndex = 0;
+    response.reset();
 
     // reset lastPolledTimestamp makes this event pollable
     lastPolledTimestamp.set(INVALID_TIMESTAMP);
@@ -237,120 +200,30 @@ public class SubscriptionEvent {
 
   //////////////////////////// prefetch & fetch ////////////////////////////
 
-  /**
-   * @param index the index of response to be prefetched
-   */
-  private void prefetchResponse(final int index) throws IOException {
-    if (index >= responses.length || index <= 0) {
-      return;
-    }
-
-    if (Objects.nonNull(responses[index])) {
-      return;
-    }
-
-    final SubscriptionPollResponse previousResponse = this.getResponse(index - 1);
-    final short responseType = previousResponse.getResponseType();
-    final SubscriptionPollPayload payload = previousResponse.getPayload();
-    if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
-      LOGGER.warn("unexpected response type: {}", responseType);
-      return;
-    }
-
-    switch (SubscriptionPollResponseType.valueOf(responseType)) {
-      case FILE_INIT:
-        responses[index] = generateSubscriptionPollResponseWithPieceOrSealPayload(0);
-        break;
-      case FILE_PIECE:
-        responses[index] =
-            generateSubscriptionPollResponseWithPieceOrSealPayload(
-                ((FilePiecePayload) payload).getNextWritingOffset());
-        break;
-      case FILE_SEAL:
-        // not need to prefetch
-        return;
-      default:
-        LOGGER.warn("unexpected message type: {}", responseType);
-    }
-  }
-
   public void prefetchRemainingResponses() throws IOException {
-    for (int currentIndex = currentResponseIndex;
-        currentIndex < responses.length - 1;
-        currentIndex++) {
-      if (Objects.isNull(responses[currentIndex + 1])) {
-        prefetchResponse(currentIndex + 1);
-        return;
-      }
-    }
+    response.prefetchRemainingResponses();
   }
 
   public void fetchNextResponse() throws IOException {
-    if (currentResponseIndex >= responses.length - 1) {
-      LOGGER.warn("No more responses when fetching next response for {}, do nothing.", this);
-      return;
-    }
-    if (Objects.isNull(responses[currentResponseIndex + 1])) {
-      prefetchRemainingResponses();
-    }
-    currentResponseIndex++;
+    response.fetchNextResponse();
   }
 
   //////////////////////////// byte buffer ////////////////////////////
 
   public void trySerializeRemainingResponses() {
-    for (int currentIndex = currentResponseIndex;
-        currentIndex < responses.length - 1;
-        currentIndex++) {
-      if (Objects.nonNull(responses[currentIndex + 1]) && trySerializeResponse(currentIndex + 1)) {
-        break;
-      }
-    }
+    response.trySerializeRemainingResponses();
   }
 
-  public boolean trySerializeCurrentResponse() {
-    return trySerializeResponse(currentResponseIndex);
-  }
-
-  /**
-   * @param index the index of response to be serialized
-   * @return {@code true} if a serialization operation was actually performed
-   */
-  private boolean trySerializeResponse(final int index) {
-    if (index >= responses.length) {
-      return false;
-    }
-
-    if (Objects.isNull(responses[index])) {
-      return false;
-    }
-
-    if (Objects.nonNull(responses[index].getByteBuffer())) {
-      return false;
-    }
-
-    return SubscriptionEventBinaryCache.getInstance().trySerialize(responses[index]).isPresent();
+  public void trySerializeCurrentResponse() {
+    response.trySerializeCurrentResponse();
   }
 
   public ByteBuffer getCurrentResponseByteBuffer() throws IOException {
-    final ByteBuffer buffer = responses[currentResponseIndex].getByteBuffer();
-    if (Objects.nonNull(buffer)) {
-      return buffer;
-    }
-
-    return SubscriptionEventBinaryCache.getInstance().serialize(getCurrentResponse());
+    return response.getCurrentResponseByteBuffer();
   }
 
-  public void resetResponseByteBuffer(final boolean resetAll) {
-    if (resetAll) {
-      SubscriptionEventBinaryCache.getInstance()
-          .invalidateAll(
-              Arrays.stream(responses).filter(Objects::nonNull).collect(Collectors.toList()));
-    } else {
-      if (Objects.nonNull(responses[currentResponseIndex])) {
-        SubscriptionEventBinaryCache.getInstance().invalidate(responses[currentResponseIndex]);
-      }
-    }
+  public void resetResponseByteBuffer() {
+    response.resetResponseByteBuffer();
   }
 
   public int getCurrentResponseSize() throws IOException {
@@ -360,41 +233,6 @@ public class SubscriptionEvent {
   }
 
   /////////////////////////////// tsfile ///////////////////////////////
-
-  private @NonNull SubscriptionPollResponse generateSubscriptionPollResponseWithPieceOrSealPayload(
-      final long writingOffset) throws IOException {
-    final File tsFile = pipeEvents.getTsFile();
-
-    final long readFileBufferSize =
-        SubscriptionConfig.getInstance().getSubscriptionReadFileBufferSize();
-    final byte[] readBuffer = new byte[(int) readFileBufferSize];
-    try (final RandomAccessFile reader = new RandomAccessFile(tsFile, "r")) {
-      while (true) {
-        reader.seek(writingOffset);
-        final int readLength = reader.read(readBuffer);
-        if (readLength == -1) {
-          break;
-        }
-
-        final byte[] filePiece =
-            readLength == readFileBufferSize
-                ? readBuffer
-                : Arrays.copyOfRange(readBuffer, 0, readLength);
-
-        // generate subscription poll response with piece payload
-        return new SubscriptionPollResponse(
-            SubscriptionPollResponseType.FILE_PIECE.getType(),
-            new FilePiecePayload(tsFile.getName(), writingOffset + readLength, filePiece),
-            commitContext);
-      }
-
-      // generate subscription poll response with seal payload
-      return new SubscriptionPollResponse(
-          SubscriptionPollResponseType.FILE_SEAL.getType(),
-          new FileSealPayload(tsFile.getName(), tsFile.length()),
-          commitContext);
-    }
-  }
 
   public String getFileName() {
     return pipeEvents.getTsFile().getName();
@@ -410,10 +248,8 @@ public class SubscriptionEvent {
 
   @Override
   public String toString() {
-    return "SubscriptionEvent{responses="
-        + Arrays.toString(responses)
-        + ", currentResponseIndex="
-        + currentResponseIndex
+    return "SubscriptionEvent{response="
+        + response
         + ", lastPolledConsumerId="
         + lastPolledConsumerId
         + ", lastPolledTimestamp="
