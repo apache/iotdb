@@ -46,19 +46,15 @@ public class Retriable {
       Logger log)
       throws THROWABLE, InterruptedException {
     Objects.requireNonNull(supplier, "supplier == null");
-    int attempt = 0;
-    for (; policy.shoudAttempt(attempt); attempt++) {
+    for (int attempt = 0; ; attempt++) {
       try {
         final RETURN ret = supplier.get();
         // if we should retry and the total attempt doesn't reach max allowed attempts
-        if (policy.shouldRetry(ret)) {
+        if (policy.shouldRetry(ret) && policy.shoudAttempt(attempt)) {
           TimeDuration waitTime = policy.getWaitTime(attempt);
           if (log != null && log.isDebugEnabled()) {
             log.debug(
-                "Failed {}, attempt #{}, sleep {} and then retry",
-                name.get(),
-                attempt,
-                waitTime);
+                "Failed {}, attempt #{}, sleep {} and then retry", name.get(), attempt, waitTime);
           }
           waitTime.sleep();
           continue;
@@ -72,7 +68,6 @@ public class Retriable {
         throw e;
       }
     }
-    throw new InterruptedException("have retry " + attempt + "  times, no more retry");
   }
 
   /** Attempt indefinitely until the given {@param condition} holds */
