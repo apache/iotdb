@@ -92,6 +92,8 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     }
   }
 
+  private void checkAndInvalidateTable(final ConfigNodeProcedureEnv env) {}
+
   @Override
   protected boolean isRollbackSupported(final DropTableState state) {
     return false;
