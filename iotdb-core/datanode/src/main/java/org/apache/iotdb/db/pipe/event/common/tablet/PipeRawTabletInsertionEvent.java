@@ -22,9 +22,16 @@ package org.apache.iotdb.db.pipe.event.common.tablet;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
+import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventParser;
+import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTablePatternParser;
+import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTreePatternParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
@@ -33,13 +40,15 @@ import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
-import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.write.record.Tablet;
 
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 
-public class PipeRawTabletInsertionEvent extends EnrichedEvent implements TabletInsertionEvent {
+public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
+    implements TabletInsertionEvent, ReferenceTrackableEvent {
 
   private Tablet tablet;
   private String deviceId; // Only used when the tablet is released.
@@ -50,11 +59,13 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   private PipeTabletMemoryBlock allocatedMemoryBlock;
 
-  private TabletInsertionDataContainer dataContainer;
+  private TabletInsertionEventParser eventParser;
 
   private volatile ProgressIndex overridingProgressIndex;
 
   private PipeRawTabletInsertionEvent(
+      final Boolean isTableModelEvent,
+      final String databaseName,
       final Tablet tablet,
       final boolean isAligned,
       final EnrichedEvent sourceEvent,
@@ -62,10 +73,20 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pattern,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
       final long startTime,
       final long endTime) {
-    super(pipeName, creationTime, pipeTaskMeta, pattern, startTime, endTime);
+    super(
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        treePattern,
+        tablePattern,
+        startTime,
+        endTime,
+        isTableModelEvent,
+        databaseName);
     this.tablet = Objects.requireNonNull(tablet);
     this.isAligned = isAligned;
     this.sourceEvent = sourceEvent;
@@ -73,6 +94,8 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   }
 
   public PipeRawTabletInsertionEvent(
+      final Boolean isTableModelEvent,
+      final String databaseName,
       final Tablet tablet,
       final boolean isAligned,
       final String pipeName,
@@ -81,6 +104,8 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
       final EnrichedEvent sourceEvent,
       final boolean needToReport) {
     this(
+        null,
+        databaseName,
         tablet,
         isAligned,
         sourceEvent,
@@ -89,25 +114,52 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
         creationTime,
         pipeTaskMeta,
         null,
+        null,
         Long.MIN_VALUE,
         Long.MAX_VALUE);
   }
 
   @TestOnly
   public PipeRawTabletInsertionEvent(final Tablet tablet, final boolean isAligned) {
-    this(tablet, isAligned, null, false, null, 0, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
+    this(
+        null,
+        null,
+        tablet,
+        isAligned,
+        null,
+        false,
+        null,
+        0,
+        null,
+        null,
+        null,
+        Long.MIN_VALUE,
+        Long.MAX_VALUE);
   }
 
   @TestOnly
   public PipeRawTabletInsertionEvent(
-      final Tablet tablet, final boolean isAligned, final PipePattern pattern) {
-    this(tablet, isAligned, null, false, null, 0, null, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
+      final Tablet tablet, final boolean isAligned, final TreePattern treePattern) {
+    this(
+        null,
+        null,
+        tablet,
+        isAligned,
+        null,
+        false,
+        null,
+        0,
+        null,
+        treePattern,
+        null,
+        Long.MIN_VALUE,
+        Long.MAX_VALUE);
   }
 
   @TestOnly
   public PipeRawTabletInsertionEvent(
       final Tablet tablet, final long startTime, final long endTime) {
-    this(tablet, false, null, false, null, 0, null, null, startTime, endTime);
+    this(null, null, tablet, false, null, false, null, 0, null, null, null, startTime, endTime);
   }
 
   @Override
@@ -129,7 +181,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
     // Actually release the occupied memory.
     tablet = null;
-    dataContainer = null;
+    eventParser = null;
     return true;
   }
 
@@ -169,10 +221,13 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pattern,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
       final long startTime,
       final long endTime) {
     return new PipeRawTabletInsertionEvent(
+        getRawIsTableModelEvent(),
+        getTreeModelDatabaseName(),
         tablet,
         isAligned,
         sourceEvent,
@@ -180,7 +235,8 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
         pipeName,
         creationTime,
         pipeTaskMeta,
-        pattern,
+        treePattern,
+        tablePattern,
         startTime,
         endTime);
   }
@@ -202,9 +258,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   @Override
   public boolean mayEventPathsOverlappedWithPattern() {
-    final String deviceId = getDeviceId();
-    return Objects.isNull(deviceId)
-        || pipePattern.mayOverlapWithDevice(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId));
+    return sourceEvent == null || sourceEvent.mayEventPathsOverlappedWithPattern();
   }
 
   public void markAsNeedToReport() {
@@ -225,21 +279,13 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   @Override
   public Iterable<TabletInsertionEvent> processRowByRow(
       final BiConsumer<Row, RowCollector> consumer) {
-    if (dataContainer == null) {
-      dataContainer =
-          new TabletInsertionDataContainer(pipeTaskMeta, this, tablet, isAligned, pipePattern);
-    }
-    return dataContainer.processRowByRow(consumer);
+    return initEventParser().processRowByRow(consumer);
   }
 
   @Override
   public Iterable<TabletInsertionEvent> processTablet(
       final BiConsumer<Tablet, RowCollector> consumer) {
-    if (dataContainer == null) {
-      dataContainer =
-          new TabletInsertionDataContainer(pipeTaskMeta, this, tablet, isAligned, pipePattern);
-    }
-    return dataContainer.processTablet(consumer);
+    return initEventParser().processTablet(consumer);
   }
 
   /////////////////////////// convertToTablet ///////////////////////////
@@ -252,13 +298,21 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
     if (!shouldParseTimeOrPattern()) {
       return tablet;
     }
+    return initEventParser().convertToTablet();
+  }
 
-    // if notNullPattern is not "root", we need to convert the tablet
-    if (dataContainer == null) {
-      dataContainer =
-          new TabletInsertionDataContainer(pipeTaskMeta, this, tablet, isAligned, pipePattern);
+  /////////////////////////// event parser ///////////////////////////
+
+  private TabletInsertionEventParser initEventParser() {
+    if (eventParser == null) {
+      eventParser =
+          tablet.getDeviceId().startsWith("root.")
+              ? new TabletInsertionEventTreePatternParser(
+                  pipeTaskMeta, this, tablet, isAligned, treePattern)
+              : new TabletInsertionEventTablePatternParser(
+                  pipeTaskMeta, this, tablet, isAligned, tablePattern);
     }
-    return dataContainer.convertToTablet();
+    return eventParser;
   }
 
   public long count() {
@@ -270,7 +324,15 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   public PipeRawTabletInsertionEvent parseEventWithPatternOrTime() {
     return new PipeRawTabletInsertionEvent(
-        convertToTablet(), isAligned, pipeName, creationTime, pipeTaskMeta, this, needToReport);
+        getRawIsTableModelEvent(),
+        getTreeModelDatabaseName(),
+        convertToTablet(),
+        isAligned,
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        this,
+        needToReport);
   }
 
   public boolean hasNoNeedParsingAndIsEmpty() {
@@ -289,8 +351,8 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   @Override
   public String toString() {
     return String.format(
-            "PipeRawTabletInsertionEvent{tablet=%s, isAligned=%s, sourceEvent=%s, needToReport=%s, allocatedMemoryBlock=%s, dataContainer=%s}",
-            tablet, isAligned, sourceEvent, needToReport, allocatedMemoryBlock, dataContainer)
+            "PipeRawTabletInsertionEvent{tablet=%s, isAligned=%s, sourceEvent=%s, needToReport=%s, allocatedMemoryBlock=%s, eventParser=%s}",
+            tablet, isAligned, sourceEvent, needToReport, allocatedMemoryBlock, eventParser)
         + " - "
         + super.toString();
   }
@@ -306,5 +368,36 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
             allocatedMemoryBlock)
         + " - "
         + super.coreReportMessage();
+  }
+
+  /////////////////////////// ReferenceTrackableEvent ///////////////////////////
+
+  @Override
+  protected void trackResource() {
+    PipeDataNodeResourceManager.ref().trackPipeEventResource(this, eventResourceBuilder());
+  }
+
+  @Override
+  public PipeEventResource eventResourceBuilder() {
+    return new PipeRawTabletInsertionEventResource(
+        this.isReleased, this.referenceCount, this.allocatedMemoryBlock);
+  }
+
+  private static class PipeRawTabletInsertionEventResource extends PipeEventResource {
+
+    private final PipeTabletMemoryBlock allocatedMemoryBlock;
+
+    private PipeRawTabletInsertionEventResource(
+        final AtomicBoolean isReleased,
+        final AtomicInteger referenceCount,
+        final PipeTabletMemoryBlock allocatedMemoryBlock) {
+      super(isReleased, referenceCount);
+      this.allocatedMemoryBlock = allocatedMemoryBlock;
+    }
+
+    @Override
+    protected void finalizeResource() {
+      allocatedMemoryBlock.close();
+    }
   }
 }

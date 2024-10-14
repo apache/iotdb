@@ -215,7 +215,16 @@ public class DataNodeTableCache implements ITableCache {
     try {
       return preUpdateTableMap.containsKey(database)
               && preUpdateTableMap.get(database).containsKey(tableName)
+              && Objects.nonNull(preUpdateTableMap.get(database).get(tableName).getLeft())
           ? preUpdateTableMap.entrySet().stream()
+              .filter(
+                  entry -> {
+                    entry
+                        .getValue()
+                        .entrySet()
+                        .removeIf(tableEntry -> Objects.isNull(tableEntry.getValue().getLeft()));
+                    return !entry.getValue().isEmpty();
+                  })
               .collect(
                   Collectors.toMap(
                       Map.Entry::getKey,

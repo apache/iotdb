@@ -36,7 +36,7 @@ import org.apache.iotdb.db.queryengine.common.NodeRef;
 import org.apache.iotdb.db.queryengine.common.TimeseriesContext;
 import org.apache.iotdb.db.queryengine.execution.aggregation.Accumulator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.slidingwindow.SlidingWindowAggregatorFactory;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
@@ -60,11 +60,9 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.AggregationOpe
 import org.apache.iotdb.db.queryengine.execution.operator.process.ColumnInjectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.DeviceViewIntoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.DeviceViewOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.FillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.IntoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.LimitOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.LinearFillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProjectOperator;
@@ -73,6 +71,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.SingleDeviceVi
 import org.apache.iotdb.db.queryengine.execution.operator.process.SlidingWindowAggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TagAggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TransformOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TreeFillOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TreeLinearFillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeMergeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeTopKOperator;
@@ -96,11 +96,17 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.Fl
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.IntLinearFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.LongLinearFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.BinaryPreviousFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.BinaryPreviousFillWithTimeDuration;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.BooleanPreviousFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.BooleanPreviousFillWithTimeDuration;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.DoublePreviousFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.DoublePreviousFillWithTimeDuration;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.FloatPreviousFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.FloatPreviousFillWithTimeDuration;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.IntPreviousFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.IntPreviousFillWithTimeDuration;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.LongPreviousFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.LongPreviousFillWithTimeDuration;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.FullOuterTimeJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.HorizontallyConcatOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.InnerTimeJoinOperator;
@@ -331,7 +337,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   private static final TimeComparator DESC_TIME_COMPARATOR = new DescTimeComparator();
 
-  private static final IdentityFill IDENTITY_FILL = new IdentityFill();
+  public static final IdentityFill IDENTITY_FILL = new IdentityFill();
 
   private static final IdentityLinearFill IDENTITY_LINEAR_FILL = new IdentityLinearFill();
 
@@ -339,7 +345,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   private static final Comparator<Binary> DESC_BINARY_COMPARATOR = Comparator.reverseOrder();
 
-  private static final String UNKNOWN_DATATYPE = "Unknown data type: ";
+  public static final String UNKNOWN_DATATYPE = "Unknown data type: ";
 
   @Override
   public Operator visitPlan(PlanNode node, LocalExecutionPlanContext context) {
@@ -616,11 +622,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         (NonAlignedFullPath) IFullPath.convertToIFullPath(node.getSeriesPath());
     boolean ascending = node.getScanOrder() == ASC;
     List<AggregationDescriptor> aggregationDescriptors = node.getAggregationDescriptorList();
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     aggregationDescriptors.forEach(
         o ->
             aggregators.add(
-                new Aggregator(
+                new TreeAggregator(
                     AccumulatorFactory.createAccumulator(
                         o.getAggregationFuncName(),
                         o.getAggregationType(),
@@ -732,7 +738,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       LocalExecutionPlanContext context) {
     AlignedFullPath seriesPath = (AlignedFullPath) IFullPath.convertToIFullPath(alignedPath);
     boolean ascending = scanOrder == ASC;
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     boolean canUseStatistics = true;
     for (AggregationDescriptor descriptor : aggregationDescriptorList) {
       checkArgument(
@@ -751,7 +757,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           canUseStatistics = false;
         }
         aggregators.add(
-            new Aggregator(
+            new TreeAggregator(
                 AccumulatorFactory.createAccumulator(
                     descriptor.getAggregationFuncName(),
                     descriptor.getAggregationType(),
@@ -765,7 +771,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                     new InputLocation[] {new InputLocation(0, seriesIndex)})));
       } else if (expression instanceof TimestampOperand) {
         aggregators.add(
-            new Aggregator(
+            new TreeAggregator(
                 AccumulatorFactory.createAccumulator(
                     descriptor.getAggregationFuncName(),
                     descriptor.getAggregationType(),
@@ -1317,14 +1323,14 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                FillOperator.class.getSimpleName());
+                TreeFillOperator.class.getSimpleName());
     switch (fillPolicy) {
-      case VALUE:
+      case CONSTANT:
         Literal literal = descriptor.getFillValue();
-        return new FillOperator(
+        return new TreeFillOperator(
             operatorContext, getConstantFill(inputColumns, inputDataTypes, literal), child);
       case PREVIOUS:
-        return new FillOperator(
+        return new TreeFillOperator(
             operatorContext,
             getPreviousFill(
                 inputColumns,
@@ -1333,7 +1339,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 context.getZoneId()),
             child);
       case LINEAR:
-        return new LinearFillOperator(
+        return new TreeLinearFillOperator(
             operatorContext, getLinearFill(inputColumns, inputDataTypes), child);
       default:
         throw new IllegalArgumentException("Unknown fill policy: " + fillPolicy);
@@ -1380,14 +1386,14 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     return constantFill;
   }
 
-  private IFill[] getPreviousFill(
+  public static IFill[] getPreviousFill(
       int inputColumns,
       List<TSDataType> inputDataTypes,
       TimeDuration timeDurationThreshold,
       ZoneId zoneId) {
     IFillFilter filter;
     if (timeDurationThreshold == null) {
-      filter = IFillFilter.TRUE;
+      filter = null;
     } else if (!timeDurationThreshold.containsMonth()) {
       filter = new FixedIntervalFillFilter(timeDurationThreshold.nonMonthDuration);
     } else {
@@ -1424,26 +1430,42 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     for (int i = 0; i < inputColumns; i++) {
       switch (inputDataTypes.get(i)) {
         case BOOLEAN:
-          previousFill[i] = new BooleanPreviousFill(filter);
+          previousFill[i] =
+              filter == null
+                  ? new BooleanPreviousFill()
+                  : new BooleanPreviousFillWithTimeDuration(filter);
           break;
         case TEXT:
         case STRING:
         case BLOB:
-          previousFill[i] = new BinaryPreviousFill(filter);
+          previousFill[i] =
+              filter == null
+                  ? new BinaryPreviousFill()
+                  : new BinaryPreviousFillWithTimeDuration(filter);
           break;
         case INT32:
         case DATE:
-          previousFill[i] = new IntPreviousFill(filter);
+          previousFill[i] =
+              filter == null ? new IntPreviousFill() : new IntPreviousFillWithTimeDuration(filter);
           break;
         case INT64:
         case TIMESTAMP:
-          previousFill[i] = new LongPreviousFill(filter);
+          previousFill[i] =
+              filter == null
+                  ? new LongPreviousFill()
+                  : new LongPreviousFillWithTimeDuration(filter);
           break;
         case FLOAT:
-          previousFill[i] = new FloatPreviousFill(filter);
+          previousFill[i] =
+              filter == null
+                  ? new FloatPreviousFill()
+                  : new FloatPreviousFillWithTimeDuration(filter);
           break;
         case DOUBLE:
-          previousFill[i] = new DoublePreviousFill(filter);
+          previousFill[i] =
+              filter == null
+                  ? new DoublePreviousFill()
+                  : new DoublePreviousFillWithTimeDuration(filter);
           break;
         default:
           throw new IllegalArgumentException(UNKNOWN_DATATYPE + inputDataTypes.get(i));
@@ -1452,7 +1474,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     return previousFill;
   }
 
-  private ILinearFill[] getLinearFill(int inputColumns, List<TSDataType> inputDataTypes) {
+  public static ILinearFill[] getLinearFill(int inputColumns, List<TSDataType> inputDataTypes) {
     ILinearFill[] linearFill = new ILinearFill[inputColumns];
     for (int i = 0; i < inputColumns; i++) {
       switch (inputDataTypes.get(i)) {
@@ -1790,7 +1812,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         "GroupByLevel descriptorList cannot be empty");
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
     boolean ascending = node.getScanOrder() == ASC;
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     Map<String, List<InputLocation>> layout = makeLayout(node);
     List<CrossSeriesAggregationDescriptor> aggregationDescriptors =
         node.getGroupByLevelDescriptors();
@@ -1807,7 +1829,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                               descriptor.getInputExpressions().get(x).getExpressionString()))
               .collect(Collectors.toList());
       aggregators.add(
-          new Aggregator(
+          new TreeAggregator(
               AccumulatorFactory.createAccumulator(
                   descriptor.getAggregationFuncName(),
                   descriptor.getAggregationType(),
@@ -1850,12 +1872,12 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     boolean ascending = node.getScanOrder() == ASC;
     Map<String, List<InputLocation>> layout = makeLayout(node);
     List<List<String>> groups = new ArrayList<>();
-    List<List<Aggregator>> groupedAggregators = new ArrayList<>();
+    List<List<TreeAggregator>> groupedAggregators = new ArrayList<>();
     int aggregatorCount = 0;
     for (Map.Entry<List<String>, List<CrossSeriesAggregationDescriptor>> entry :
         node.getTagValuesToAggregationDescriptors().entrySet()) {
       groups.add(entry.getKey());
-      List<Aggregator> aggregators = new ArrayList<>();
+      List<TreeAggregator> aggregators = new ArrayList<>();
       for (CrossSeriesAggregationDescriptor aggregationDescriptor : entry.getValue()) {
         if (aggregationDescriptor == null) {
           aggregators.add(null);
@@ -1867,7 +1889,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 .map(x -> context.getTypeProvider().getTreeModelType(x.getExpressionString()))
                 .collect(Collectors.toList());
         aggregators.add(
-            new Aggregator(
+            new TreeAggregator(
                 AccumulatorFactory.createAccumulator(
                     aggregationDescriptor.getAggregationFuncName(),
                     aggregationDescriptor.getAggregationType(),
@@ -1921,7 +1943,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 SlidingWindowAggregationOperator.class.getSimpleName());
     Operator child = node.getChild().accept(this, context);
     boolean ascending = node.getScanOrder() == ASC;
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     Map<String, List<InputLocation>> layout = makeLayout(node);
     List<AggregationDescriptor> aggregationDescriptors = node.getAggregationDescriptorList();
     for (AggregationDescriptor descriptor : aggregationDescriptors) {
@@ -2019,12 +2041,12 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         "Aggregation descriptorList cannot be empty");
     Operator child = node.getChild().accept(this, context);
     boolean ascending = node.getScanOrder() == ASC;
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     List<AggregationDescriptor> aggregationDescriptors = node.getAggregationDescriptorList();
     for (AggregationDescriptor descriptor : node.getAggregationDescriptorList()) {
       List<InputLocation[]> inputLocationList = calcInputLocationList(descriptor, layout);
       aggregators.add(
-          new Aggregator(
+          new TreeAggregator(
               AccumulatorFactory.createAccumulator(
                   descriptor.getAggregationFuncName(),
                   descriptor.getAggregationType(),
@@ -2144,13 +2166,13 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         "Aggregation descriptorList cannot be empty");
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
     boolean ascending = node.getScanOrder() == ASC;
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     Map<String, List<InputLocation>> layout = makeLayout(node);
     List<AggregationDescriptor> aggregationDescriptors = node.getAggregationDescriptorList();
     for (AggregationDescriptor descriptor : node.getAggregationDescriptorList()) {
       List<InputLocation[]> inputLocationList = calcInputLocationList(descriptor, layout);
       aggregators.add(
-          new Aggregator(
+          new TreeAggregator(
               AccumulatorFactory.createAccumulator(
                   descriptor.getAggregationFuncName(),
                   descriptor.getAggregationType(),
@@ -2812,7 +2834,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     } else if (!LastQueryUtil.satisfyFilter(
         updateFilterUsingTTL(
             context.getGlobalTimeFilter(),
-            DataNodeTTLCache.getInstance().getTTL(seriesPath.getDevicePath().getNodes())),
+            DataNodeTTLCache.getInstance().getTTLForTree(seriesPath.getDevicePath().getNodes())),
         timeValuePair)) { // cached last value is not satisfied
 
       if (!isFilterGtOrGe(context.getGlobalTimeFilter())) {
@@ -2923,7 +2945,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 SeriesAggregationScanOperator.class.getSimpleName());
 
     // last_time, last_value
-    List<Aggregator> aggregators = LastQueryUtil.createAggregators(seriesPath.getSeriesType());
+    List<TreeAggregator> aggregators = LastQueryUtil.createAggregators(seriesPath.getSeriesType());
     ITimeRangeIterator timeRangeIterator = initTimeRangeIterator(null, false, false);
     long maxReturnSize = calculateMaxAggregationResultSizeForLastQuery(aggregators);
 
@@ -2955,7 +2977,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       AlignedFullPath unCachedPath,
       LocalExecutionPlanContext context) {
     // last_time, last_value
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     boolean canUseStatistics = true;
     for (int i = 0; i < unCachedPath.getMeasurementList().size(); i++) {
       TSDataType dataType = unCachedPath.getSchemaList().get(i).getType();
@@ -3027,7 +3049,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       } else if (!LastQueryUtil.satisfyFilter(
           updateFilterUsingTTL(
               context.getGlobalTimeFilter(),
-              DataNodeTTLCache.getInstance().getTTL(devicePath.getNodes())),
+              DataNodeTTLCache.getInstance().getTTLForTree(devicePath.getNodes())),
           timeValuePair)) { // cached last value is not satisfied
 
         if (!isFilterGtOrGe(context.getGlobalTimeFilter())) {
@@ -3723,7 +3745,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       PartialPath devicePath = entry.getKey();
       IDeviceID deviceID = devicePath.getIDeviceID();
       deviceIDToContext.put(deviceID, entry.getValue());
-      ttlCache.put(deviceID, DataNodeTTLCache.getInstance().getTTL(deviceID));
+      ttlCache.put(deviceID, DataNodeTTLCache.getInstance().getTTLForTree(deviceID));
     }
     ActiveDeviceRegionScanOperator regionScanOperator =
         new ActiveDeviceRegionScanOperator(
@@ -3764,7 +3786,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       Map<String, TimeseriesContext> timeseriesSchemaInfoMap =
           getTimeseriesSchemaInfoMap(entryMap, dataDriverContext);
       timeseriesToSchemaInfo.put(deviceID, timeseriesSchemaInfoMap);
-      ttlCache.put(deviceID, DataNodeTTLCache.getInstance().getTTL(deviceID));
+      ttlCache.put(deviceID, DataNodeTTLCache.getInstance().getTTLForTree(deviceID));
     }
     ActiveTimeSeriesRegionScanOperator regionScanOperator =
         new ActiveTimeSeriesRegionScanOperator(

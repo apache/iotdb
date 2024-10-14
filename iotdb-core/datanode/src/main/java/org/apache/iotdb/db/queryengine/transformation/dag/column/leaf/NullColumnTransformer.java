@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.leaf;
 
-import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.NullColumn;
 
 public class NullColumnTransformer extends LeafColumnTransformer {
@@ -29,12 +28,12 @@ public class NullColumnTransformer extends LeafColumnTransformer {
   }
 
   @Override
-  public void tryEvaluate() {
-    // do nothing
+  protected void evaluate() {
+    initializeColumnCache(new NullColumn(input.getPositionCount()));
   }
 
   @Override
-  public void initFromTsBlock(TsBlock input) {
+  public void evaluateWithSelection(boolean[] selection) {
     initializeColumnCache(new NullColumn(input.getPositionCount()));
   }
 }
