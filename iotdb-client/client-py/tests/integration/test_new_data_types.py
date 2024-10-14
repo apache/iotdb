@@ -153,5 +153,23 @@ def session_test(use_session_pool=False):
             assert rows == 10
             assert columns == 5
 
+        session.insert_records(
+            [device_id],
+            [11],
+            [measurements_new_type],
+            [data_types_new_type],
+            [
+                [date(1970, 1, 1), 11, b"\x12\x34", "test11"],
+            ],
+        )
+
+        with session.execute_query_statement(
+            "select s_01,s_02,s_03,s_04 from root.sg_test_01.d_04 where time > 10"
+        ) as dataset:
+            cnt = 0
+            while dataset.has_next():
+                print(dataset.next())
+            assert cnt == 1
+
         # close session connection.
         session.close()
