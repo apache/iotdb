@@ -114,6 +114,7 @@ public enum TableBuiltinAggregationFunction {
     } else if (AVG.functionName.equalsIgnoreCase(name)) {
       return ImmutableList.of(DOUBLE, INT64);
     } else {
+      // TODO(beyyes) consider other aggregations which changed the result type
       return ImmutableList.copyOf(originalArgumentTypes);
     }
   }

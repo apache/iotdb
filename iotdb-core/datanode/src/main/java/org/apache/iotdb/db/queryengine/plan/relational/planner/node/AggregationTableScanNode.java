@@ -16,27 +16,34 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
+import org.apache.tsfile.read.common.type.LongType;
+import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -47,6 +54,8 @@ import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.TABLE_TIME_COLUMN_NAME;
 
 public class AggregationTableScanNode extends TableScanNode {
   // if there is date_bin function of time, we should use this field to transform time input
@@ -92,7 +101,27 @@ public class AggregationTableScanNode extends TableScanNode {
         pushLimitToEachDevice);
     this.projection = projection;
 
-    this.aggregations = ImmutableMap.copyOf(requireNonNull(aggregations, "aggregations is null"));
+    this.aggregations = new LinkedHashMap<>(aggregations.size());
+    for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : aggregations.entrySet()) {
+      Symbol symbol = entry.getKey();
+      AggregationNode.Aggregation aggregation = entry.getValue();
+      if (aggregation.getArguments().isEmpty()
+          && COUNT.equals(aggregation.getResolvedFunction().getSignature().getName())) {
+        AggregationNode.Aggregation countStarAggregation = getCountStarAggregation(aggregation);
+        if (!assignments.containsKey(Symbol.of(TABLE_TIME_COLUMN_NAME))) {
+          assignments.put(
+              Symbol.of(TABLE_TIME_COLUMN_NAME),
+              new ColumnSchema(
+                  TABLE_TIME_COLUMN_NAME,
+                  TimestampType.TIMESTAMP,
+                  false,
+                  TsTableColumnCategory.TIME));
+        }
+        this.aggregations.put(symbol, countStarAggregation);
+      } else {
+        this.aggregations.put(symbol, aggregation);
+      }
+    }
     aggregations.values().forEach(aggregation -> aggregation.verifyArguments(step));
 
     requireNonNull(groupingSets, "groupingSets is null");
@@ -127,6 +156,26 @@ public class AggregationTableScanNode extends TableScanNode {
     outputs.addAll(aggregations.keySet());
 
     this.setOutputSymbols(outputs.build());
+  }
+
+  private AggregationNode.Aggregation getCountStarAggregation(
+      AggregationNode.Aggregation aggregation) {
+    ResolvedFunction resolvedFunction = aggregation.getResolvedFunction();
+    ResolvedFunction countStarFunction =
+        new ResolvedFunction(
+            new BoundSignature(
+                COUNT, LongType.INT64, Collections.singletonList(TimestampType.TIMESTAMP)),
+            resolvedFunction.getFunctionId(),
+            resolvedFunction.getFunctionKind(),
+            resolvedFunction.isDeterministic(),
+            resolvedFunction.getFunctionNullability());
+    return new AggregationNode.Aggregation(
+        countStarFunction,
+        Collections.singletonList(new SymbolReference(TABLE_TIME_COLUMN_NAME)),
+        aggregation.isDistinct(),
+        aggregation.getFilter(),
+        aggregation.getOrderingScheme(),
+        aggregation.getMask());
   }
 
   public Assignments getProjection() {
@@ -335,10 +384,15 @@ public class AggregationTableScanNode extends TableScanNode {
     ReadWriteIOUtils.write(pushDownOffset, byteBuffer);
     ReadWriteIOUtils.write(pushLimitToEachDevice, byteBuffer);
 
-    ReadWriteIOUtils.write(projection.getMap().size(), byteBuffer);
-    for (Map.Entry<Symbol, Expression> entry : projection.getMap().entrySet()) {
-      Symbol.serialize(entry.getKey(), byteBuffer);
-      Expression.serialize(entry.getValue(), byteBuffer);
+    if (projection != null) {
+      ReadWriteIOUtils.write(true, byteBuffer);
+      ReadWriteIOUtils.write(projection.getMap().size(), byteBuffer);
+      for (Map.Entry<Symbol, Expression> entry : projection.getMap().entrySet()) {
+        Symbol.serialize(entry.getKey(), byteBuffer);
+        Expression.serialize(entry.getValue(), byteBuffer);
+      }
+    } else {
+      ReadWriteIOUtils.write(false, byteBuffer);
     }
 
     ReadWriteIOUtils.write(aggregations.size(), byteBuffer);
@@ -410,10 +464,15 @@ public class AggregationTableScanNode extends TableScanNode {
     ReadWriteIOUtils.write(pushDownOffset, stream);
     ReadWriteIOUtils.write(pushLimitToEachDevice, stream);
 
-    ReadWriteIOUtils.write(projection.getMap().size(), stream);
-    for (Map.Entry<Symbol, Expression> entry : projection.getMap().entrySet()) {
-      Symbol.serialize(entry.getKey(), stream);
-      Expression.serialize(entry.getValue(), stream);
+    if (projection != null) {
+      ReadWriteIOUtils.write(true, stream);
+      ReadWriteIOUtils.write(projection.getMap().size(), stream);
+      for (Map.Entry<Symbol, Expression> entry : projection.getMap().entrySet()) {
+        Symbol.serialize(entry.getKey(), stream);
+        Expression.serialize(entry.getValue(), stream);
+      }
+    } else {
+      ReadWriteIOUtils.write(false, stream);
     }
 
     ReadWriteIOUtils.write(aggregations.size(), stream);
@@ -447,7 +506,7 @@ public class AggregationTableScanNode extends TableScanNode {
     QualifiedObjectName qualifiedObjectName = new QualifiedObjectName(databaseName, tableName);
 
     int size = ReadWriteIOUtils.readInt(byteBuffer);
-    Map<Symbol, ColumnSchema> assignments = new HashMap<>(size);
+    Map<Symbol, ColumnSchema> assignments = new LinkedHashMap<>(size);
     for (int i = 0; i < size; i++) {
       assignments.put(Symbol.deserialize(byteBuffer), ColumnSchema.deserialize(byteBuffer));
     }
@@ -483,10 +542,13 @@ public class AggregationTableScanNode extends TableScanNode {
     long pushDownOffset = ReadWriteIOUtils.readLong(byteBuffer);
     boolean pushLimitToEachDevice = ReadWriteIOUtils.readBool(byteBuffer);
 
-    size = ReadWriteIOUtils.readInt(byteBuffer);
     Assignments.Builder projection = Assignments.builder();
-    while (size-- > 0) {
-      projection.put(Symbol.deserialize(byteBuffer), Expression.deserialize(byteBuffer));
+    boolean hasProjection = ReadWriteIOUtils.readBool(byteBuffer);
+    if (hasProjection) {
+      size = ReadWriteIOUtils.readInt(byteBuffer);
+      while (size-- > 0) {
+        projection.put(Symbol.deserialize(byteBuffer), Expression.deserialize(byteBuffer));
+      }
     }
 
     size = ReadWriteIOUtils.readInt(byteBuffer);
