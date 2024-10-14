@@ -20,10 +20,15 @@
 package org.apache.iotdb.db.subscription.event;
 
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
+import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
+import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeEmptyEvent;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeEvents;
+import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTabletBatchEvents;
 import org.apache.iotdb.db.subscription.event.response.SubscriptionEventResponse;
 import org.apache.iotdb.db.subscription.event.response.SubscriptionEventSingleResponse;
+import org.apache.iotdb.db.subscription.event.response.SubscriptionEventTabletResponse;
 import org.apache.iotdb.db.subscription.event.response.SubscriptionEventTsFileResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollPayload;
@@ -35,7 +40,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -51,19 +55,27 @@ public class SubscriptionEvent {
   private final SubscriptionEventResponse response;
   private final SubscriptionCommitContext commitContext;
 
+  private final String fileName;
+
   // lastPolledConsumerId is not used as a criterion for determining pollability
   private volatile String lastPolledConsumerId = null;
   private final AtomicLong lastPolledTimestamp = new AtomicLong(INVALID_TIMESTAMP);
   private final AtomicLong committedTimestamp = new AtomicLong(INVALID_TIMESTAMP);
 
   public SubscriptionEvent(
-      final SubscriptionPipeEvents pipeEvents,
       final short responseType,
       final SubscriptionPollPayload payload,
       final SubscriptionCommitContext commitContext) {
-    this.pipeEvents = pipeEvents;
+    this.pipeEvents = new SubscriptionPipeEmptyEvent();
     this.response = new SubscriptionEventSingleResponse(responseType, payload, commitContext);
     this.commitContext = commitContext;
+
+    this.fileName = null;
+  }
+
+  @TestOnly
+  public SubscriptionEvent(final SubscriptionPollResponse response) {
+    this(response.getResponseType(), response.getPayload(), response.getCommitContext());
   }
 
   public SubscriptionEvent(
@@ -73,19 +85,17 @@ public class SubscriptionEvent {
     this.pipeEvents = pipeEvents;
     this.response = new SubscriptionEventTsFileResponse(tsFile, commitContext);
     this.commitContext = commitContext;
+
+    this.fileName = tsFile.getName();
   }
 
   public SubscriptionEvent(
-      final SubscriptionPipeEvents pipeEvents, final List<SubscriptionPollResponse> responses) {
-    this.pipeEvents = pipeEvents;
+      final SubscriptionPipeTabletEventBatch batch, final SubscriptionCommitContext commitContext) {
+    this.pipeEvents = new SubscriptionPipeTabletBatchEvents(batch);
+    this.response = new SubscriptionEventTabletResponse(batch, commitContext);
+    this.commitContext = commitContext;
 
-    final int responseLength = responses.size();
-    this.responses = new SubscriptionPollResponse[responseLength];
-    for (int i = 0; i < responseLength; i++) {
-      this.responses[i] = responses.get(i);
-    }
-
-    this.commitContext = this.responses[0].getCommitContext();
+    this.fileName = null;
   }
 
   public SubscriptionPollResponse getCurrentResponse() {
@@ -134,7 +144,7 @@ public class SubscriptionEvent {
     // clean up pipe events
     pipeEvents.cleanUp();
 
-    // TODO: more field clean
+    // TODO: clean more fields
   }
 
   //////////////////////////// pollable ////////////////////////////
@@ -222,8 +232,8 @@ public class SubscriptionEvent {
     return response.getCurrentResponseByteBuffer();
   }
 
-  public void resetResponseByteBuffer() {
-    response.resetResponseByteBuffer();
+  public void resetCurrentResponseByteBuffer() {
+    response.resetCurrentResponseByteBuffer();
   }
 
   public int getCurrentResponseSize() throws IOException {
@@ -235,7 +245,7 @@ public class SubscriptionEvent {
   /////////////////////////////// tsfile ///////////////////////////////
 
   public String getFileName() {
-    return pipeEvents.getTsFile().getName();
+    return fileName;
   }
 
   /////////////////////////////// APIs provided for metric framework ///////////////////////////////

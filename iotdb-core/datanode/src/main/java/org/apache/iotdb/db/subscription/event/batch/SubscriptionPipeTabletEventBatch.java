@@ -26,7 +26,6 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTabletQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
-import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTabletBatchEvents;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
@@ -40,6 +39,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -51,7 +51,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   private static final long READ_TABLET_BUFFER_SIZE =
       SubscriptionConfig.getInstance().getSubscriptionReadTabletBufferSize();
 
-  private final List<Tablet> tablets = new ArrayList<>();
+  private final LinkedList<Tablet> tablets = new LinkedList<>();
 
   private long firstEventProcessingTime = Long.MIN_VALUE;
   private long totalBufferSize = 0;
@@ -139,8 +139,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
             SubscriptionPollResponseType.TABLETS.getType(),
             new TabletsPayload(new ArrayList<>(currentTablets), -tablets.size()),
             commitContext));
-    return Collections.singletonList(
-        new SubscriptionEvent(new SubscriptionPipeTabletBatchEvents(this), responses));
+    return Collections.singletonList(new SubscriptionEvent(this, commitContext));
   }
 
   @Override

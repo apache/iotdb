@@ -421,7 +421,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                               SubscriptionPrefetchingQueue.generatePrefetchingQueueId(
                                   commitContext.getConsumerGroupId(), commitContext.getTopicName()),
                               size);
-                      event.resetResponseByteBuffer();
+                      event.resetCurrentResponseByteBuffer();
                       LOGGER.info(
                           "Subscription: consumer {} poll {} successfully with request: {}",
                           consumerConfig,

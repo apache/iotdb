@@ -42,11 +42,6 @@ public class SubscriptionPipeTsFileBatchEvents implements SubscriptionPipeEvents
   }
 
   @Override
-  public File getTsFile() {
-    return tsFile;
-  }
-
-  @Override
   public void ack() {
     if (referenceCount.decrementAndGet() == 0) {
       batch.ack();

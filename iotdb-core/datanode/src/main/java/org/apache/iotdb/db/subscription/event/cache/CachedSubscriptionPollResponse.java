@@ -39,6 +39,10 @@ public class CachedSubscriptionPollResponse extends SubscriptionPollResponse {
     super(responseType, payload, commitContext);
   }
 
+  public CachedSubscriptionPollResponse(final SubscriptionPollResponse response) {
+    super(response.getResponseType(), response.getPayload(), response.getCommitContext());
+  }
+
   public ByteBuffer getByteBuffer() {
     return byteBuffer;
   }

@@ -1,3 +1,22 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.apache.iotdb.db.subscription.event.response;
 
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
@@ -31,7 +50,9 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
   private final File tsFile;
   private final SubscriptionCommitContext commitContext;
   private final CachedSubscriptionPollResponse initialResponse;
-  private boolean isInitialResponseConsumed = false;
+
+  private volatile boolean isInitialResponseConsumed = false;
+  private volatile boolean isConsumedAll = false;
 
   public SubscriptionEventTsFileResponse(
       final File tsFile, final SubscriptionCommitContext commitContext) {
@@ -59,6 +80,10 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
     if (!isInitialResponseConsumed) {
       super.responses.add(generateResponseWithPieceOrSealPayload(0));
     } else {
+      if (super.responses.isEmpty()) {
+        LOGGER.warn("broken invariant");
+        return;
+      }
       final SubscriptionPollResponse previousResponse = super.responses.getLast();
       final short responseType = previousResponse.getResponseType();
       final SubscriptionPollPayload payload = previousResponse.getPayload();
@@ -75,7 +100,7 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
           break;
         case FILE_SEAL:
           // not need to prefetch
-          return;
+          break;
         case FILE_INIT: // fallthrough
         default:
           LOGGER.warn("unexpected message type: {}", responseType);
@@ -92,7 +117,26 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
       if (super.responses.isEmpty()) {
         LOGGER.warn("broken invariant");
       } else {
-        super.responses.removeFirst();
+        final SubscriptionPollResponse lastResponse = super.responses.removeFirst();
+        // set isConsumedAll is possible
+        if (super.responses.isEmpty()) {
+          final short responseType = lastResponse.getResponseType();
+          if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
+            LOGGER.warn("unexpected response type: {}", responseType);
+            return;
+          }
+
+          switch (SubscriptionPollResponseType.valueOf(responseType)) {
+            case FILE_INIT:
+            case FILE_PIECE:
+              break;
+            case FILE_SEAL:
+              isConsumedAll = true;
+              break;
+            default:
+              LOGGER.warn("unexpected message type: {}", responseType);
+          }
+        }
       }
     }
   }
@@ -131,23 +175,35 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
   }
 
   @Override
-  public void resetResponseByteBuffer() {
+  public void resetCurrentResponseByteBuffer() {
     SubscriptionPollResponseCache.getInstance()
         .invalidate((CachedSubscriptionPollResponse) getCurrentResponse());
   }
 
   @Override
   public void reset() {
-    super.responses.clear();
+    CachedSubscriptionPollResponse response;
+    while (Objects.nonNull(response = super.responses.removeFirst())) {
+      SubscriptionPollResponseCache.getInstance().invalidate(response);
+    }
     isInitialResponseConsumed = false;
+    isConsumedAll = false;
   }
 
   @Override
-  public void cleanUp() {}
+  public void cleanUp() {
+    CachedSubscriptionPollResponse response;
+    while (Objects.nonNull(response = super.responses.removeFirst())) {
+      SubscriptionPollResponseCache.getInstance().invalidate(response);
+    }
+    SubscriptionPollResponseCache.getInstance().invalidate(initialResponse);
+    isInitialResponseConsumed = false;
+    isConsumedAll = false;
+  }
 
   @Override
   public boolean isCommittable() {
-    return false;
+    return isConsumedAll;
   }
 
   /////////////////////////////// utility ///////////////////////////////

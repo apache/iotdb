@@ -71,11 +71,6 @@ public class SubscriptionPollResponseCache {
     response.invalidateByteBuffer();
   }
 
-  public void invalidateAll(final Iterable<CachedSubscriptionPollResponse> responses) {
-    this.cache.invalidateAll(responses);
-    responses.forEach(CachedSubscriptionPollResponse::invalidateByteBuffer);
-  }
-
   //////////////////////////// singleton ////////////////////////////
 
   private static class SubscriptionEventBinaryCacheHolder {

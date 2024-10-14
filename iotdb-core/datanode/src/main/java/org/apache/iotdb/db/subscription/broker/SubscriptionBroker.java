@@ -24,7 +24,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
-import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeEmptyEvent;
 import org.apache.iotdb.db.subscription.metric.SubscriptionPrefetchingQueueMetrics;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
@@ -102,7 +101,6 @@ public class SubscriptionBroker {
               brokerId);
           events.add(
               new SubscriptionEvent(
-                  new SubscriptionPipeEmptyEvent(),
                   SubscriptionPollResponseType.TERMINATION.getType(),
                   new TerminationPayload(),
                   new SubscriptionCommitContext(
