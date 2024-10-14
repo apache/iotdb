@@ -49,7 +49,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.schema.SchemaConstant;
-import org.apache.iotdb.commons.schema.table.AlterTableOperationType;
+import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
@@ -2570,7 +2570,7 @@ public class ConfigManager implements IManager {
   public TSStatus alterTable(final TAlterTableReq req) {
     final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      switch (AlterTableOperationType.getType(req.operationType)) {
+      switch (AlterOrDropTableOperationType.getType(req.operationType)) {
         case ADD_COLUMN:
           return procedureManager.alterTableAddColumn(req);
         case SET_PROPERTIES:

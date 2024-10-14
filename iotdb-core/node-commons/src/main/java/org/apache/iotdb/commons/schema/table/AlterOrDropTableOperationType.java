@@ -19,16 +19,17 @@
 
 package org.apache.iotdb.commons.schema.table;
 
-public enum AlterTableOperationType {
+public enum AlterOrDropTableOperationType {
   ADD_COLUMN((byte) 0),
   SET_PROPERTIES((byte) 1),
   RENAME_COLUMN((byte) 2),
   DROP_COLUMN((byte) 3),
-  RENAME_TABLE((byte) 4);
+  RENAME_TABLE((byte) 4),
+  DROP_TABLE((byte) 5);
 
   private final byte type;
 
-  AlterTableOperationType(final byte type) {
+  AlterOrDropTableOperationType(final byte type) {
     this.type = type;
   }
 
@@ -36,7 +37,7 @@ public enum AlterTableOperationType {
     return type;
   }
 
-  public static AlterTableOperationType getType(final byte value) {
+  public static AlterOrDropTableOperationType getType(final byte value) {
     switch (value) {
       case 0:
         return ADD_COLUMN;

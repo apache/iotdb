@@ -329,4 +329,7 @@ public interface IConfigTaskExecutor {
       final Map<String, String> properties,
       final String queryId,
       final boolean ifExists);
+
+  SettableFuture<ConfigTaskResult> dropTable(
+      final String database, final String tableName, final String queryId, final boolean ifExists);
 }

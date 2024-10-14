@@ -47,7 +47,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginExecutableManager;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
-import org.apache.iotdb.commons.schema.table.AlterTableOperationType;
+import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -3179,7 +3179,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               database,
               sourceName,
               queryId,
-              AlterTableOperationType.RENAME_TABLE,
+              AlterOrDropTableOperationType.RENAME_TABLE,
               stream.toByteArray(),
               client);
 
@@ -3219,7 +3219,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               database,
               tableName,
               queryId,
-              AlterTableOperationType.ADD_COLUMN,
+              AlterOrDropTableOperationType.ADD_COLUMN,
               TsTableColumnSchemaUtil.serialize(columnSchemaList),
               client);
 
@@ -3265,7 +3265,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               database,
               tableName,
               queryId,
-              AlterTableOperationType.RENAME_COLUMN,
+              AlterOrDropTableOperationType.RENAME_COLUMN,
               stream.toByteArray(),
               client);
 
@@ -3314,7 +3314,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               database,
               tableName,
               queryId,
-              AlterTableOperationType.DROP_COLUMN,
+              AlterOrDropTableOperationType.DROP_COLUMN,
               stream.toByteArray(),
               client);
 
@@ -3361,7 +3361,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               database,
               tableName,
               queryId,
-              AlterTableOperationType.SET_PROPERTIES,
+              AlterOrDropTableOperationType.SET_PROPERTIES,
               stream.toByteArray(),
               client);
 
@@ -3383,11 +3383,40 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     return future;
   }
 
+  @Override
+  public SettableFuture<ConfigTaskResult> dropTable(
+      final String database, final String tableName, final String queryId, final boolean ifExists) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient client =
+        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+
+      final TSStatus tsStatus =
+          sendAlterReq2ConfigNode(
+              database,
+              tableName,
+              queryId,
+              AlterOrDropTableOperationType.DROP_TABLE,
+              new byte[0],
+              client);
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
+          || (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == tsStatus.getCode() && ifExists)) {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } else {
+        LOGGER.warn("Failed to drop table {}.{}, status is {}.", database, tableName, tsStatus);
+        future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
+      }
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
   private TSStatus sendAlterReq2ConfigNode(
       final String database,
       final String tableName,
       final String queryId,
-      final AlterTableOperationType type,
+      final AlterOrDropTableOperationType type,
       final byte[] updateInfo,
       final ConfigNodeClient client)
       throws ClientManagerException, TException {
