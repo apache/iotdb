@@ -27,7 +27,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.List;
 
-public class MySample_shrinkingcone_full2 {
+public class MySample_shrinkingcone_full2_deprecated {
   // After running this,
   // output sample csv and copy them into lts-exp/notebook/segmentResults/.
   // output epsilonArray_*.txt and copy them into lts-exp/tools/.
@@ -35,43 +35,56 @@ public class MySample_shrinkingcone_full2 {
   public static void main(String[] args) {
     String fileDir = "D:\\desktop\\NISTPV\\";
     // do not change the order of datasets below, as the output is used in exp bash
-    String[] datasetNameList = new String[]{"WindSpeed", "Qloss", "Pyra1", "RTD"};
+    String[] datasetNameList = new String[] {"WindSpeed", "Qloss", "Pyra1", "RTD"};
     int[] noutList =
-        new int[]{
-            320, 480, 740, 1200, 2000, 3500, 6000, 10000, 15000
+        new int[] {
+          320, 400, 480, 580, 720, 960, 1200, 1600, 2000, 2400, 3000, 3600, 4000, 4400, 5000
         };
 
     double[][] epsilonArray = {
-        {
-            28.350000381469727, 24.75, 20.15000057220459, 7.495454788208008, 5.978656768798828,
-            5.123478889465332, 4.4909868240356445, 3.9743595123291016, 3.59999942779541,
-        },
-        {
-            0.001, 9.9945068359375E-4, 9.9945068359375E-4, 9.9945068359375E-4,
-            9.9945068359375E-4, 9.984970092773438E-4, 9.517669677734375E-4, 0.0, 0.0,
-        },
-        {
-            868.2230234146118, 824.095006942749, 772.8191223144531, 709.9235706329346,
-            632.2311534881592, 527.634295463562, 421.8133182525635, 322.99202156066895,
-            247.5426368713379,
-        },
-        {
-            17.567204475402832, 13.436342239379883, 10.276226997375488, 7.288450241088867,
-            4.86691951751709, 2.9565000534057617, 1.8069705963134766, 1.1284055709838867,
-            0.8002557754516602,
-        }
+      {
+        14.388325263280421, 13.34334554336965, 12.697674418624956, 12.053359143726993,
+        11.411823799891863, 10.700932090578135, 10.222302158304956, 9.64046321529895,
+        9.169320066343062, 8.824726661085151, 8.38911917101359, 8.050000000046566,
+        7.844965517288074, 7.675000000046566, 7.4411764705437236,
+      },
+      {
+        0.001,
+        0.001,
+        0.001,
+        0.001,
+        0.001,
+        0.001,
+        0.001,
+        9.999999892897904E-4,
+        9.999999892897904E-4,
+        9.999999892897904E-4,
+        9.986772784031928E-4,
+        9.954648558050394E-4,
+        9.931506938301027E-4,
+        9.859154815785587E-4,
+        9.090908570215106E-4,
+      },
+      {
+        680.4174693996902, 650.2610825433512, 621.0945158457616, 586.9638199705514,
+        547.4329924675985, 494.63679197325837, 454.7579276354518, 406.4603661468718,
+        368.9741049989243, 342.1729954186012, 305.74686436593765, 276.5570874213008,
+        258.8369336259784, 243.3460398996831, 224.25107966241194,
+      },
+      {
+        11.258956845791545, 9.40259607497137, 8.384315740317106, 7.238058144459501,
+        5.828739010321442, 4.60251481551677, 3.8172692629741505, 3.0447826087474823,
+        2.523470887565054, 2.170023310056422, 1.8160594796063378, 1.556580246950034,
+        1.4294884910923429, 1.3174383605946787, 1.1894954767194577,
+      }
     };
 
-//    double[][] epsilonArray = new double[datasetNameList.length][];
-//    for (int i = 0; i < datasetNameList.length; i++) {
-//      epsilonArray[i] = new double[noutList.length];
-//    }
+    //    double[][] epsilonArray = new double[datasetNameList.length][];
+    //    for (int i = 0; i < datasetNameList.length; i++) {
+    //      epsilonArray[i] = new double[noutList.length];
+    //    }
 
     for (int y = 0; y < datasetNameList.length; y++) {
-//      if (y != 1) {
-//        continue;
-//      }
-
       String datasetName = datasetNameList[y];
       int start = 0;
       int end = 1000_0000;
@@ -83,14 +96,10 @@ public class MySample_shrinkingcone_full2 {
             TimeSeriesReader.getMyTimeSeries(
                 inputStream, delimiter, false, N, start, hasHeader, true);
         for (int x = 0; x < noutList.length; x++) {
-          if (y == 1 && x > 6) {
-            continue; // because SC on Qloss special?
-          }
-
           int nout = noutList[x];
-//
-//          double epsilon = MySample_shrinkingcone.getSCParam(nout, ts, 1e-6);
-//          epsilonArray[y][x] = epsilon;
+
+          //          double epsilon = MySample_shrinkingcone.getSCParam(nout, ts, 1e-10);
+          //          epsilonArray[y][x] = epsilon;
 
           double epsilon = epsilonArray[y][x];
 
