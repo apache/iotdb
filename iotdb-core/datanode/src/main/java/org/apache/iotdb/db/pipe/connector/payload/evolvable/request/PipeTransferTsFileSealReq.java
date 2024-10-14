@@ -33,7 +33,7 @@ public class PipeTransferTsFileSealReq extends PipeTransferFileSealReqV1 {
 
   @Override
   protected PipeRequestType getPlanType() {
-    return PipeRequestType.TRANSFER_TS_FILE_SEAL_V2;
+    return PipeRequestType.TRANSFER_TS_FILE_SEAL;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
