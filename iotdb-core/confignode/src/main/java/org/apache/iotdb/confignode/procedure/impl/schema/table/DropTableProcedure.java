@@ -35,7 +35,9 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DropTableProcedure.class);
 
-  public DropTableProcedure() {}
+  public DropTableProcedure() {
+    super();
+  }
 
   public DropTableProcedure(final String database, final String tableName, final String queryId) {
     super(database, tableName, queryId);

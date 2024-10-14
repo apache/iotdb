@@ -48,7 +48,9 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
 
   protected TsTable table;
 
-  protected AbstractAlterOrDropTableProcedure() {}
+  protected AbstractAlterOrDropTableProcedure() {
+    super();
+  }
 
   protected AbstractAlterOrDropTableProcedure(
       final String database, final String tableName, final String queryId) {
