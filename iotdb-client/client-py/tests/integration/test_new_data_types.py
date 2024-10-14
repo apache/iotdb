@@ -159,7 +159,7 @@ def session_test(use_session_pool=False):
             [measurements_new_type],
             [data_types_new_type],
             [
-                [date(1970, 1, 1), 11, b"\x12\x34", "test11"],
+                [date(1971, 1, 1), 11, b"\x12\x34", "test11"],
             ],
         )
 
