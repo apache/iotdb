@@ -25,12 +25,10 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.Map;
 
 public class PipeTransferTsFileSealWithModReq extends PipeTransferFileSealReqV2 {
-
-  protected static final String DATABASE_NAME_KEY = "DATABASE_NAME";
 
   private PipeTransferTsFileSealWithModReq() {
     // Empty constructor
@@ -39,6 +37,18 @@ public class PipeTransferTsFileSealWithModReq extends PipeTransferFileSealReqV2 
   @Override
   protected PipeRequestType getPlanType() {
     return PipeRequestType.TRANSFER_TS_FILE_SEAL_WITH_MOD;
+  }
+
+  protected static final String DATABASE_NAME_KEY_PREFIX = "DATABASE_NAME_";
+
+  public String getDatabaseNameWithTsFileName() {
+    return parameters == null
+        ? null
+        : parameters.get(generateDatabaseNameWithFileNameKey(fileNames.get(fileNames.size() - 1)));
+  }
+
+  protected static String generateDatabaseNameWithFileNameKey(String fileName) {
+    return DATABASE_NAME_KEY_PREFIX + "_" + fileName;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
@@ -56,17 +66,13 @@ public class PipeTransferTsFileSealWithModReq extends PipeTransferFileSealReqV2 
       long tsFileLength,
       String dataBaseName)
       throws IOException {
-    final Map<String, String> parameters = new HashMap<>();
-    if (dataBaseName != null) {
-      parameters.put(PipeTransferFileSealReqV2.getDatabaseNameKey(tsFileName), dataBaseName);
-    }
-
     return (PipeTransferTsFileSealWithModReq)
         new PipeTransferTsFileSealWithModReq()
             .convertToTPipeTransferReq(
                 Arrays.asList(modFileName, tsFileName),
                 Arrays.asList(modFileLength, tsFileLength),
-                parameters);
+                Collections.singletonMap(
+                    generateDatabaseNameWithFileNameKey(tsFileName), dataBaseName));
   }
 
   public static PipeTransferTsFileSealWithModReq fromTPipeTransferReq(TPipeTransferReq req) {
