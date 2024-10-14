@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
@@ -73,6 +74,12 @@ public class TableModelTypeProviderExtractor {
 
     @Override
     public Void visitPlan(PlanNode node, Void context) {
+      addOutputSymbolsToTypeProvider(node);
+      node.getChildren().forEach(child -> child.accept(this, context));
+      return null;
+    }
+
+    private void addOutputSymbolsToTypeProvider(PlanNode node) {
       for (Symbol symbol : node.getOutputSymbols()) {
         if (!feTypeProvider.isSymbolExist(symbol)) {
           throw new IllegalStateException(
@@ -82,8 +89,6 @@ public class TableModelTypeProviderExtractor {
         }
         beTypeProvider.putTableModelType(symbol, feTypeProvider.getTableModelType(symbol));
       }
-      node.getChildren().forEach(child -> child.accept(this, context));
-      return null;
     }
 
     @Override
@@ -99,6 +104,13 @@ public class TableModelTypeProviderExtractor {
                   beTypeProvider.putTableModelType(k, feTypeProvider.getTableModelType(k));
                 }
               });
+      return null;
+    }
+
+    @Override
+    public Void visitAggregationTableScan(AggregationTableScanNode node, Void context) {
+      addOutputSymbolsToTypeProvider(node);
+      node.getAssignments().forEach((k, v) -> beTypeProvider.putTableModelType(k, v.getType()));
       return null;
     }
 

@@ -15,11 +15,12 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational.agg
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
 
-public interface Accumulator {
+public interface TableAccumulator {
   long getEstimatedSize();
 
-  Accumulator copy();
+  TableAccumulator copy();
 
   void addInput(Column[] arguments);
 
@@ -28,6 +29,18 @@ public interface Accumulator {
   void evaluateIntermediate(ColumnBuilder columnBuilder);
 
   void evaluateFinal(ColumnBuilder columnBuilder);
+
+  /**
+   * This method can only be used in AggTableScan. For first/first_by or last/last_by in decreasing
+   * order, we can get final result by the first record.
+   */
+  boolean hasFinalResult();
+
+  /**
+   * This method can only be used in AggTableScan, it will use different statistics based on the
+   * type of Accumulator.
+   */
+  void addStatistics(Statistics statistics);
 
   void reset();
 }
