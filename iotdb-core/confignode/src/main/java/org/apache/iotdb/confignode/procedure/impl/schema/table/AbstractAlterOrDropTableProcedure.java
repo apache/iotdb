@@ -101,7 +101,7 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
   }
 
   @Override
-  protected final boolean isRollbackSupported(final T state) {
+  protected boolean isRollbackSupported(final T state) {
     return true;
   }
 

@@ -25,9 +25,15 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedExcepti
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.state.schema.DropTableState;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
+import java.util.Objects;
 
 public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTableState> {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(DropTableProcedure.class);
 
   public DropTableProcedure() {}
 
@@ -43,15 +49,58 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
 
   @Override
   protected Flow executeFromState(
-      final ConfigNodeProcedureEnv configNodeProcedureEnv, final DropTableState dropTableState)
+      final ConfigNodeProcedureEnv configNodeProcedureEnv, final DropTableState state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
-    return null;
+    final long startTime = System.currentTimeMillis();
+    try {
+      switch (state) {
+        case CHECK_AND_INVALIDATE_TABLE:
+          LOGGER.info("Check and invalidate table {}.{} when dropping table", database, tableName);
+          if (!isFailed() && Objects.isNull(table)) {
+            LOGGER.info(
+                "The updated table has the same properties with the original one. Skip the procedure.");
+            return Flow.NO_MORE_STATE;
+          }
+          break;
+        case INVALIDATE_CACHE:
+          LOGGER.info(
+              "Invalidating cache for table {}.{} when invalidating cache", database, tableName);
+          break;
+        case DELETE_DATA:
+          LOGGER.info("Deleting data for table {}.{}", database, tableName);
+          break;
+        case DELETE_DEVICES:
+          LOGGER.info("Deleting devices for table {}.{} when dropping table", database, tableName);
+          return Flow.NO_MORE_STATE;
+        case DROP_TABLE:
+          LOGGER.info("Dropping table {}.{} on configNode", database, tableName);
+          break;
+        default:
+          setFailure(new ProcedureException("Unrecognized DropTableState " + state));
+          return Flow.NO_MORE_STATE;
+      }
+      return Flow.HAS_MORE_STATE;
+    } finally {
+      LOGGER.info(
+          "DropTable-{}.{}-{} costs {}ms",
+          database,
+          tableName,
+          state,
+          (System.currentTimeMillis() - startTime));
+    }
+  }
+
+  @Override
+  protected boolean isRollbackSupported(final DropTableState state) {
+    return false;
   }
 
   @Override
   protected void rollbackState(
       final ConfigNodeProcedureEnv configNodeProcedureEnv, final DropTableState dropTableState)
-      throws IOException, InterruptedException, ProcedureException {}
+      throws IOException, InterruptedException, ProcedureException {
+    // Do nothing
+  }
 
   @Override
   protected DropTableState getState(final int stateId) {
@@ -65,6 +114,6 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
 
   @Override
   protected DropTableState getInitialState() {
-    return DropTableState.CHECK_TABLE_EXISTENCE;
+    return DropTableState.CHECK_AND_INVALIDATE_TABLE;
   }
 }

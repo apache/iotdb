@@ -53,7 +53,7 @@ public class DropTableColumnProcedure
 
   @Override
   protected String getActionMessage() {
-    return null;
+    return "drop table column";
   }
 
   @Override
