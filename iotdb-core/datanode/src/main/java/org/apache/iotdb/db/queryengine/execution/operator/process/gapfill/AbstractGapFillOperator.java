@@ -83,6 +83,7 @@ abstract class AbstractGapFillOperator implements ProcessOperator {
     // no more data, we need to gap fill the remaining time interval of previous group
     if (!child.hasNextWithTimer()) {
       if (hasRemainingGapInPreviousGroup()) {
+        resultBuilder.reset();
         fillGaps(lastGroupKey.tsBlock, lastGroupKey.rowIndex, endTime);
         return resultBuilder.build(
             new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount()));
@@ -110,18 +111,21 @@ abstract class AbstractGapFillOperator implements ProcessOperator {
       if (isNewGroup(currentGroupKey, previousGroupKey)) {
         // don't belong to same group, we need to gap fill the remaining time interval of previous
         // group and then reset the gap fill time iterator
-        fillGaps(lastGroupKey.tsBlock, lastGroupKey.rowIndex, endTime);
+        if (currentTime <= endTime) {
+          fillGaps(previousGroupKey.tsBlock, previousGroupKey.rowIndex, endTime);
+        }
         resetTimeIterator();
         previousGroupKey = currentGroupKey;
       }
 
       Column timeColumn = block.getColumn(timeColumnIndex);
+      // -1 because we should not include current row
       long currentEndTime =
-          timeColumn.isNull(i) ? endTime : block.getColumn(timeColumnIndex).getLong(i);
+          timeColumn.isNull(i) ? endTime : block.getColumn(timeColumnIndex).getLong(i) - 1;
       fillGaps(block, i, currentEndTime);
       writeCurrentRow(block, i);
     }
-    lastGroupKey = previousGroupKey;
+    lastGroupKey = new SortKey(block, size - 1);
     return resultBuilder.build(
         new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount()));
   }
@@ -135,22 +139,20 @@ abstract class AbstractGapFillOperator implements ProcessOperator {
     for (int i = 0; i < outputColumnCount; i++) {
       ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(i);
       Column column = block.getColumn(i);
-      if (column.isNull(i)) {
+      if (column.isNull(rowIndex)) {
         columnBuilder.appendNull();
       } else {
         columnBuilder.write(column, rowIndex);
       }
     }
+    nextTime();
   }
 
   private void fillGaps(TsBlock block, int rowIndex, long currentEndTime) {
-    while (currentTime < currentEndTime) {
+    while (currentTime <= currentEndTime) {
       gapFillRow(currentTime, block, rowIndex);
       nextTime();
     }
-    checkArgument(
-        currentTime == currentEndTime,
-        "currentTime should always equal to currentEndTime after while-loop");
   }
 
   private void gapFillRow(long time, TsBlock block, int rowIndex) {
