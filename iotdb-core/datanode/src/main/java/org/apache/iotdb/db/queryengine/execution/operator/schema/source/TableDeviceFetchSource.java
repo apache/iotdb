@@ -35,6 +35,7 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 
 import java.util.List;
+import java.util.Objects;
 
 public class TableDeviceFetchSource implements ISchemaSource<IDeviceSchemaInfo> {
 
@@ -73,14 +74,14 @@ public class TableDeviceFetchSource implements ISchemaSource<IDeviceSchemaInfo> 
 
   @Override
   public void transformToTsBlockColumns(
-      IDeviceSchemaInfo schemaInfo, TsBlockBuilder builder, String database) {
+      final IDeviceSchemaInfo schemaInfo, final TsBlockBuilder builder, final String database) {
     builder.getTimeColumnBuilder().writeLong(0L);
     int resultIndex = 0;
     int idIndex = 0;
-    String[] pathNodes = schemaInfo.getRawNodes();
-    TsTable table = DataNodeTableCache.getInstance().getTable(this.database, tableName);
+    final String[] pathNodes = schemaInfo.getRawNodes();
+    final TsTable table = DataNodeTableCache.getInstance().getTable(this.database, tableName);
     TsTableColumnSchema columnSchema;
-    for (ColumnHeader columnHeader : columnHeaderList) {
+    for (final ColumnHeader columnHeader : columnHeaderList) {
       columnSchema = table.getColumnSchema(columnHeader.getColumnName());
       if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
         if (pathNodes.length <= idIndex + 3 || pathNodes[idIndex + 3] == null) {
@@ -92,8 +93,7 @@ public class TableDeviceFetchSource implements ISchemaSource<IDeviceSchemaInfo> 
         }
         idIndex++;
       } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
-        String attributeValue = schemaInfo.getAttributeValue(columnHeader.getColumnName());
-        if (attributeValue == null) {
+        if (Objects.isNull(schemaInfo.getAttributeValue(columnHeader.getColumnName()))) {
           builder.getColumnBuilder(resultIndex).appendNull();
         } else {
           builder
