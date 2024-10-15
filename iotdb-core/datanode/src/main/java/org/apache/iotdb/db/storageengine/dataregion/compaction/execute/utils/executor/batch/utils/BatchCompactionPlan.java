@@ -35,7 +35,7 @@ import java.util.List;
 import java.util.Map;
 
 public class BatchCompactionPlan {
-  public static final long MAX_CACHED_TIME_CHUNKS_SIZE = 2 * 1023 * 1024;
+  public static final long MAX_CACHED_TIME_CHUNKS_SIZE = 2 * 1024 * 1024;
   private final List<CompactChunkPlan> compactChunkPlans = new ArrayList<>();
   private final Map<String, Map<TimeRange, ModifiedStatus>> alignedPageModifiedStatusCache =
       new HashMap<>();
