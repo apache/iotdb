@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.connector.payload.evolvable.request;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiver;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
@@ -90,15 +90,15 @@ public class PipeTransferTabletInsertNodeReqV2 extends PipeTransferTabletInsertN
     final PipeTransferTabletInsertNodeReqV2 req = new PipeTransferTabletInsertNodeReqV2();
 
     req.insertNode = insertNode;
+    req.dataBaseName = dataBaseName;
 
     req.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
     req.type = PipeRequestType.TRANSFER_TABLET_INSERT_NODE_V2.getType();
-    req.body = insertNode.serializeToByteBuffer();
-
+    System.out.println(req.dataBaseName);
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       insertNode.serialize(outputStream);
-      ReadWriteIOUtils.write(dataBaseName, outputStream);
+      ReadWriteIOUtils.write(req.dataBaseName, outputStream);
       req.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     } catch (IOException e) {
       throw new RuntimeException(e);
@@ -111,9 +111,9 @@ public class PipeTransferTabletInsertNodeReqV2 extends PipeTransferTabletInsertN
       final org.apache.iotdb.service.rpc.thrift.TPipeTransferReq transferReq) {
     final PipeTransferTabletInsertNodeReqV2 insertNodeReq = new PipeTransferTabletInsertNodeReqV2();
 
-    insertNodeReq.insertNode = (InsertNode) PlanNodeType.deserialize(transferReq.body);
+    insertNodeReq.insertNode = (InsertNode) PlanFragment.deserializeHelper(transferReq.body, null);
     insertNodeReq.dataBaseName = ReadWriteIOUtils.readString(transferReq.body);
-
+    System.out.println(insertNodeReq.dataBaseName);
     transferReq.body.position(0);
     insertNodeReq.version = transferReq.version;
     insertNodeReq.type = transferReq.type;

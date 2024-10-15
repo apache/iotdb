@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.connector.payload.evolvable.request;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiver;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
@@ -93,7 +93,7 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
       final TPipeTransferReq transferReq) {
     final PipeTransferTabletInsertNodeReq insertNodeReq = new PipeTransferTabletInsertNodeReq();
 
-    insertNodeReq.insertNode = (InsertNode) PlanNodeType.deserialize(transferReq.body);
+    insertNodeReq.insertNode = (InsertNode) PlanFragment.deserializeHelper(transferReq.body, null);
 
     transferReq.body.position(0);
     insertNodeReq.version = transferReq.version;
