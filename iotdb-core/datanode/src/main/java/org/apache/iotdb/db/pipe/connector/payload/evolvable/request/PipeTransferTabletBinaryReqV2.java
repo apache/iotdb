@@ -124,7 +124,6 @@ public class PipeTransferTabletBinaryReqV2 extends PipeTransferTabletBinaryReq {
     binaryReq.byteBuffer = ByteBuffer.wrap(body);
     binaryReq.dataBaseName = ReadWriteIOUtils.readString(transferReq.body);
 
-    transferReq.body.position(0);
     binaryReq.version = transferReq.version;
     binaryReq.type = transferReq.type;
     binaryReq.body = transferReq.body;

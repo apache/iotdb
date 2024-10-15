@@ -94,7 +94,7 @@ public class PipeTransferTabletInsertNodeReqV2 extends PipeTransferTabletInsertN
 
     req.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
     req.type = PipeRequestType.TRANSFER_TABLET_INSERT_NODE_V2.getType();
-    System.out.println(req.dataBaseName);
+
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       insertNode.serialize(outputStream);
@@ -113,8 +113,7 @@ public class PipeTransferTabletInsertNodeReqV2 extends PipeTransferTabletInsertN
 
     insertNodeReq.insertNode = (InsertNode) PlanFragment.deserializeHelper(transferReq.body, null);
     insertNodeReq.dataBaseName = ReadWriteIOUtils.readString(transferReq.body);
-    System.out.println(insertNodeReq.dataBaseName);
-    transferReq.body.position(0);
+
     insertNodeReq.version = transferReq.version;
     insertNodeReq.type = transferReq.type;
     insertNodeReq.body = transferReq.body;

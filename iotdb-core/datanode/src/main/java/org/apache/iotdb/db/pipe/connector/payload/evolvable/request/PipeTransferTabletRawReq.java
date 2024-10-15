@@ -131,7 +131,6 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
     tabletReq.tablet = Tablet.deserialize(transferReq.body);
     tabletReq.isAligned = ReadWriteIOUtils.readBool(transferReq.body);
 
-    transferReq.body.position(0);
     tabletReq.version = transferReq.version;
     tabletReq.type = transferReq.type;
     tabletReq.body = transferReq.body;

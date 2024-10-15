@@ -95,7 +95,6 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
 
     insertNodeReq.insertNode = (InsertNode) PlanFragment.deserializeHelper(transferReq.body, null);
 
-    transferReq.body.position(0);
     insertNodeReq.version = transferReq.version;
     insertNodeReq.type = transferReq.type;
     insertNodeReq.body = transferReq.body;

@@ -138,7 +138,6 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
     tabletReq.isAligned = ReadWriteIOUtils.readBool(transferReq.body);
     tabletReq.dataBaseName = ReadWriteIOUtils.readString(transferReq.body);
 
-    transferReq.body.position(0);
     tabletReq.version = transferReq.version;
     tabletReq.type = transferReq.type;
     tabletReq.body = transferReq.body;
