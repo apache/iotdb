@@ -242,10 +242,10 @@ public interface ISchemaRegion {
    * @param fullPath timeseries
    */
   void upsertAliasAndTagsAndAttributes(
-      String alias,
-      Map<String, String> tagsMap,
-      Map<String, String> attributesMap,
-      PartialPath fullPath)
+      final String alias,
+      final Map<String, String> tagsMap,
+      final Map<String, String> attributesMap,
+      final PartialPath fullPath)
       throws MetadataException, IOException;
 
   /**

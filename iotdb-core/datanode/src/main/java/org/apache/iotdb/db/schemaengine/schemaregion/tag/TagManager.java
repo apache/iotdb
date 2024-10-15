@@ -398,12 +398,13 @@ public class TagManager {
    * @throws IOException error occurred when reading disk
    */
   public void updateTagsAndAttributes(
-      Map<String, String> tagsMap,
-      Map<String, String> attributesMap,
-      IMeasurementMNode<?> leafMNode)
+      final Map<String, String> tagsMap,
+      final Map<String, String> attributesMap,
+      final IMeasurementMNode<?> leafMNode)
       throws MetadataException, IOException {
 
-    Pair<Map<String, String>, Map<String, String>> pair = tagLogFile.read(leafMNode.getOffset());
+    final Pair<Map<String, String>, Map<String, String>> pair =
+        tagLogFile.read(leafMNode.getOffset());
 
     if (tagsMap != null) {
       for (Map.Entry<String, String> entry : tagsMap.entrySet()) {
