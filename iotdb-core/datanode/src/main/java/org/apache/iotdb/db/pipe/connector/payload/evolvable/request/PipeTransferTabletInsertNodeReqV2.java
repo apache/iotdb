@@ -29,7 +29,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 
-import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -121,17 +120,6 @@ public class PipeTransferTabletInsertNodeReqV2 extends PipeTransferTabletInsertN
     insertNodeReq.body = transferReq.body;
 
     return insertNodeReq;
-  }
-
-  /////////////////////////////// Air Gap ///////////////////////////////
-  public static byte[] toTPipeTransferBytes(final InsertNode insertNode) throws IOException {
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
-        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
-      ReadWriteIOUtils.write(PipeRequestType.TRANSFER_TABLET_INSERT_NODE.getType(), outputStream);
-      return BytesUtils.concatByteArray(
-          byteArrayOutputStream.toByteArray(), insertNode.serializeToByteBuffer().array());
-    }
   }
 
   /////////////////////////////// Object ///////////////////////////////
