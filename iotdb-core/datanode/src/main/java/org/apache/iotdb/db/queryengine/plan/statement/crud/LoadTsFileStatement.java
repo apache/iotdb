@@ -42,10 +42,12 @@ import java.util.Map;
 public class LoadTsFileStatement extends Statement {
 
   private final File file;
-  private int databaseLevel;
+  private int databaseLevel; // For loading to tree-model only
+  private String database; // For loading to table-model only
   private boolean verifySchema;
   private boolean deleteAfterLoad;
   private boolean autoCreateDatabase;
+  private String model = LoadTsFileConfigurator.MODEL_TREE_VALUE;
 
   private Map<String, String> loadAttributes;
 
@@ -59,15 +61,15 @@ public class LoadTsFileStatement extends Statement {
     this.verifySchema = true;
     this.deleteAfterLoad = false;
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
-    this.tsFiles = new ArrayList<>();
     this.resources = new ArrayList<>();
     this.writePointCountList = new ArrayList<>();
     this.statementType = StatementType.MULTI_BATCH_INSERT;
 
-    processTsFile(filePath);
+    this.tsFiles = processTsFile(file);
   }
 
-  private void processTsFile(final String filePath) throws FileNotFoundException {
+  public static List<File> processTsFile(final File file) throws FileNotFoundException {
+    final List<File> tsFiles = new ArrayList<>();
     if (file.isFile()) {
       tsFiles.add(file);
     } else {
@@ -75,11 +77,12 @@ public class LoadTsFileStatement extends Statement {
         throw new FileNotFoundException(
             String.format(
                 "Can not find %s on this machine, notice that load can only handle files on this machine.",
-                filePath));
+                file.getPath()));
       }
-      findAllTsFile(file);
+      tsFiles.addAll(findAllTsFile(file));
     }
     sortTsFiles(tsFiles);
+    return tsFiles;
   }
 
   protected LoadTsFileStatement() {
@@ -94,21 +97,24 @@ public class LoadTsFileStatement extends Statement {
     this.statementType = StatementType.MULTI_BATCH_INSERT;
   }
 
-  private void findAllTsFile(File file) {
+  private static List<File> findAllTsFile(File file) {
     final File[] files = file.listFiles();
     if (files == null) {
-      return;
+      return Collections.emptyList();
     }
+
+    final List<File> tsFiles = new ArrayList<>();
     for (File nowFile : files) {
       if (nowFile.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
         tsFiles.add(nowFile);
       } else if (nowFile.isDirectory()) {
-        findAllTsFile(nowFile);
+        tsFiles.addAll(findAllTsFile(nowFile));
       }
     }
+    return tsFiles;
   }
 
-  private void sortTsFiles(List<File> files) {
+  private static void sortTsFiles(List<File> files) {
     files.sort(
         (o1, o2) -> {
           String file1Name = o1.getName();
@@ -127,6 +133,10 @@ public class LoadTsFileStatement extends Statement {
 
   public void setDatabaseLevel(int databaseLevel) {
     this.databaseLevel = databaseLevel;
+  }
+
+  public void setDatabase(String database) {
+    this.database = database;
   }
 
   public void setVerifySchema(boolean verifySchema) {
@@ -151,6 +161,14 @@ public class LoadTsFileStatement extends Statement {
 
   public int getDatabaseLevel() {
     return databaseLevel;
+  }
+
+  public String getDatabase() {
+    return database;
+  }
+
+  public String getModel() {
+    return model;
   }
 
   public List<File> getTsFiles() {
@@ -180,7 +198,11 @@ public class LoadTsFileStatement extends Statement {
 
   private void initAttributes() {
     this.databaseLevel = LoadTsFileConfigurator.parseOrGetDefaultDatabaseLevel(loadAttributes);
+    this.database = LoadTsFileConfigurator.parseDatabaseName(loadAttributes);
     this.deleteAfterLoad = LoadTsFileConfigurator.parseOrGetDefaultOnSuccess(loadAttributes);
+    this.model =
+        LoadTsFileConfigurator.parseOrGetDefaultModel(
+            loadAttributes, LoadTsFileConfigurator.MODEL_TREE_VALUE);
   }
 
   @Override
