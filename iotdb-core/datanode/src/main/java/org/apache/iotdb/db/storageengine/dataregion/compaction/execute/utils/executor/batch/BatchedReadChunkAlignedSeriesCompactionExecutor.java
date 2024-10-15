@@ -311,7 +311,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
     @Override
     protected ChunkLoader getChunkLoader(TsFileSequenceReader reader, ChunkMetadata chunkMetadata)
         throws IOException {
-      if (chunkMetadata.getMeasurementUid().isEmpty()) {
+      if (chunkMetadata != null && chunkMetadata.getMeasurementUid().isEmpty()) {
         Chunk timeChunk = batchCompactionPlan.getTimeChunkFromCache(reader, chunkMetadata);
         return new InstantChunkLoader(reader.getFileName(), chunkMetadata, timeChunk);
       }

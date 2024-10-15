@@ -58,7 +58,14 @@ public class BatchCompactionPlan {
     if (cachedTimeChunkSize >= MAX_CACHED_TIME_CHUNKS_SIZE) {
       return;
     }
-    cachedTimeChunks.put(new Pair<>(file, offset), new Chunk(chunk.getHeader(), chunk.getData()));
+    cachedTimeChunks.put(
+        new Pair<>(file, offset),
+        new Chunk(
+            chunk.getHeader(),
+            chunk.getData(),
+            chunk.getDeleteIntervalList(),
+            chunk.getChunkStatistic(),
+            chunk.getDecryptor()));
     cachedTimeChunkSize += chunk.getHeader().getDataSize();
   }
 
