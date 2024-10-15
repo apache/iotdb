@@ -347,7 +347,7 @@ cn_metric_reporter_list=
 # Options: [OFF, CORE, IMPORTANT, NORMAL, ALL]
 # effectiveMode: restart
 # Datatype: String
-cn_metric_level=CORE
+cn_metric_level=IMPORTANT
 
 # The period of async collection of some metrics in second
 # effectiveMode: restart
@@ -370,7 +370,7 @@ dn_metric_reporter_list=
 # Options: [OFF, CORE, IMPORTANT, NORMAL, ALL]
 # effectiveMode: restart
 # Datatype: String
-dn_metric_level=CORE
+dn_metric_level=IMPORTANT
 
 # The period of async collection of some metrics in second
 # effectiveMode: restart
