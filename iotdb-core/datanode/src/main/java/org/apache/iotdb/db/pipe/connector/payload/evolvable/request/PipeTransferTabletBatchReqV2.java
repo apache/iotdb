@@ -138,14 +138,14 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
       }
 
       ReadWriteIOUtils.write(insertNodeBuffers.size(), outputStream);
-      for (int i = 0; i < binaryBuffers.size(); i++) {
+      for (int i = 0; i < insertNodeBuffers.size(); i++) {
         final ByteBuffer insertNodeBuffer = insertNodeBuffers.get(i);
         outputStream.write(insertNodeBuffer.array(), 0, insertNodeBuffer.limit());
         ReadWriteIOUtils.write(insertNodeDataBases.get(i), outputStream);
       }
 
       ReadWriteIOUtils.write(tabletBuffers.size(), outputStream);
-      for (int i = 0; i < binaryBuffers.size(); i++) {
+      for (int i = 0; i < tabletBuffers.size(); i++) {
         final ByteBuffer tabletBuffer = tabletBuffers.get(i);
         outputStream.write(tabletBuffer.array(), 0, tabletBuffer.limit());
         ReadWriteIOUtils.write(tabletDataBases.get(i), outputStream);
@@ -175,7 +175,7 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
     size = ReadWriteIOUtils.readInt(transferReq.body);
     for (int i = 0; i < size; ++i) {
       batchReq.insertNodeReqs.add(
-          PipeTransferTabletInsertNodeReqV2.toTPipeTransferRawReq(
+          PipeTransferTabletInsertNodeReqV2.toTabletInsertNodeReq(
               (InsertNode) PlanFragment.deserializeHelper(transferReq.body, null),
               ReadWriteIOUtils.readString(transferReq.body)));
     }

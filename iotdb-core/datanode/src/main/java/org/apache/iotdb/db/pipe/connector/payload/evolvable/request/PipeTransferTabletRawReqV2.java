@@ -149,24 +149,16 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
-  public boolean equals(final Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if (obj == null || getClass() != obj.getClass()) {
-      return false;
-    }
-    final PipeTransferTabletRawReqV2 that = (PipeTransferTabletRawReqV2) obj;
-    return Objects.equals(tablet, that.tablet)
-        && isAligned == that.isAligned
-        && Objects.equals(dataBaseName, that.dataBaseName)
-        && version == that.version
-        && type == that.type
-        && Objects.equals(body, that.body);
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    PipeTransferTabletRawReqV2 that = (PipeTransferTabletRawReqV2) o;
+    return Objects.equals(dataBaseName, that.dataBaseName);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(tablet, isAligned, dataBaseName, version, type, body);
+    return Objects.hash(super.hashCode(), dataBaseName);
   }
 }

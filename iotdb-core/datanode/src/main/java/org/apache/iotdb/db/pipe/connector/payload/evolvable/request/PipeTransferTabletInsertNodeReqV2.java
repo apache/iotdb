@@ -73,7 +73,7 @@ public class PipeTransferTabletInsertNodeReqV2 extends PipeTransferTabletInsertN
 
   /////////////////////////////// WriteBack & Batch ///////////////////////////////
 
-  public static PipeTransferTabletInsertNodeReqV2 toTPipeTransferRawReq(
+  public static PipeTransferTabletInsertNodeReqV2 toTabletInsertNodeReq(
       final InsertNode insertNode, final String dataBaseName) {
     final PipeTransferTabletInsertNodeReqV2 req = new PipeTransferTabletInsertNodeReqV2();
 
