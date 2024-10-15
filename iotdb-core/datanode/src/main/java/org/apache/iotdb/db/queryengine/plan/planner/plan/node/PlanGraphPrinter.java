@@ -66,6 +66,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDe
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
@@ -83,6 +84,7 @@ import java.util.Map.Entry;
 import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.db.utils.DateTimeUtils.TIMESTAMP_PRECISION;
 
 public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter.GraphContext> {
 
@@ -728,6 +730,24 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(String.format("OutputNode-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("OutputColumns-%s", node.getOutputColumnNames()));
     boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitGapFill(GapFillNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("GapFill-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("StartTime: %s", node.getStartTime()));
+    boxValue.add(String.format("EndTime: %s", node.getEndTime()));
+    if (node.getMonthDuration() != 0) {
+      boxValue.add(String.format("Interval: %smo", node.getMonthDuration()));
+    } else {
+      boxValue.add(String.format("Interval: %s" + TIMESTAMP_PRECISION, node.getNonMonthDuration()));
+    }
+    boxValue.add(String.format("GapFillColumn: %s", node.getGapFillColumn()));
+    if (!node.getGapFillGroupingKeys().isEmpty()) {
+      boxValue.add(String.format("GapFillGroupingKeys: %s", node.getGapFillGroupingKeys()));
+    }
     return render(node, boxValue, context);
   }
 

@@ -1873,6 +1873,39 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitDateBinGapFill(RelationalSqlParser.DateBinGapFillContext ctx) {
+    TimeDuration timeDuration = DateTimeUtils.constructTimeDuration(ctx.timeDuration().getText());
+
+    if (timeDuration.monthDuration != 0 && timeDuration.nonMonthDuration != 0) {
+      throw new SemanticException(
+          "Simultaneous setting of monthly and non-monthly intervals is not supported.");
+    }
+
+    LongLiteral monthDuration =
+        new LongLiteral(
+            getLocation(ctx.timeDuration()), String.valueOf(timeDuration.monthDuration));
+    LongLiteral nonMonthDuration =
+        new LongLiteral(
+            getLocation(ctx.timeDuration()), String.valueOf(timeDuration.nonMonthDuration));
+    LongLiteral origin =
+        ctx.timeValue() == null
+            ? new LongLiteral("0")
+            : new LongLiteral(
+                getLocation(ctx.timeValue()),
+                String.valueOf(parseTimeValue(ctx.timeValue(), CommonDateTimeUtils.currentTime())));
+
+    List<Expression> arguments =
+        Arrays.asList(
+            monthDuration,
+            nonMonthDuration,
+            (Expression) visit(ctx.valueExpression()),
+            origin,
+            new BooleanLiteral("true"));
+    return new FunctionCall(
+        getLocation(ctx), QualifiedName.of(DATE_BIN.getFunctionName()), arguments);
+  }
+
+  @Override
   public Node visitDateBin(RelationalSqlParser.DateBinContext ctx) {
     TimeDuration timeDuration = DateTimeUtils.constructTimeDuration(ctx.timeDuration().getText());
 
