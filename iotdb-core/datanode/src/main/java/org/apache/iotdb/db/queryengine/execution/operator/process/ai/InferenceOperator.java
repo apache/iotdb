@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.operator.process.AI;
+package org.apache.iotdb.db.queryengine.execution.operator.process.ai;
 
 import org.apache.iotdb.ainode.rpc.thrift.TInferenceResp;
 import org.apache.iotdb.ainode.rpc.thrift.TWindowParams;

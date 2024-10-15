@@ -96,6 +96,7 @@ keyWords
     | ELSE
     | END
     | ENDTIME
+    | ESCAPE
     | EVERY
     | EXPLAIN
     | EXTRACTOR

@@ -37,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -98,10 +99,11 @@ public class PipeStatementDataTypeConvertExecutionVisitor
       try (final TsFileInsertionEventScanParser container =
           new TsFileInsertionEventScanParser(
               file, new IoTDBTreePattern(null), Long.MIN_VALUE, Long.MAX_VALUE, null, null)) {
-        for (final Tablet tablet : container.toTablets()) {
+        for (final Pair<Tablet, Boolean> tabletWithIsAligned : container.toTabletWithIsAligneds()) {
           final PipeConvertedInsertTabletStatement statement =
               new PipeConvertedInsertTabletStatement(
-                  PipeTransferTabletRawReq.toTPipeTransferRawReq(tablet, false)
+                  PipeTransferTabletRawReq.toTPipeTransferRawReq(
+                          tabletWithIsAligned.getLeft(), tabletWithIsAligned.getRight())
                       .constructStatement());
           TSStatus result = statementExecutor.execute(statement);
 

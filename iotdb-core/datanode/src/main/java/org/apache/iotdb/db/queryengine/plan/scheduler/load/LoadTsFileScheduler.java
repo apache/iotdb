@@ -161,6 +161,12 @@ public class LoadTsFileScheduler implements IScheduler {
         final LoadSingleTsFileNode node = tsFileNodeList.get(i);
         final String filePath = node.getTsFileResource().getTsFilePath();
 
+        if (node.isTableModel()) {
+          partitionFetcher.setDatabase(node.getDatabase());
+        } else {
+          partitionFetcher.setDatabase(null);
+        }
+
         boolean isLoadSingleTsFileSuccess = true;
         boolean shouldRemoveFileFromLoadingSet = false;
         try {
@@ -187,8 +193,6 @@ public class LoadTsFileScheduler implements IScheduler {
               LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
                   LoadTsFileCostMetricsSet.LOAD_LOCALLY, System.nanoTime() - startTime);
             }
-
-            node.clean();
           } else { // need decode, load locally or remotely, use two phases method
             String uuid = UUID.randomUUID().toString();
             dispatcher.setUuid(uuid);
@@ -213,13 +217,13 @@ public class LoadTsFileScheduler implements IScheduler {
                   LoadTsFileCostMetricsSet.SECOND_PHASE, System.nanoTime() - startTime);
             }
 
-            node.clean();
             if (!isFirstPhaseSuccess || !isSecondPhaseSuccess) {
               isLoadSingleTsFileSuccess = false;
             }
           }
 
           if (isLoadSingleTsFileSuccess) {
+            node.clean();
             LOGGER.info(
                 "Load TsFile {} Successfully, load process [{}/{}]",
                 filePath,
@@ -583,8 +587,7 @@ public class LoadTsFileScheduler implements IScheduler {
                   .map(
                       data ->
                           new Pair<>(
-                              (IDeviceID)
-                                  IDeviceID.Factory.DEFAULT_FACTORY.create(data.getDevice()),
+                              IDeviceID.Factory.DEFAULT_FACTORY.create(data.getDevice()),
                               data.getTimePartitionSlot()))
                   .collect(Collectors.toList()),
               scheduler.queryContext.getSession().getUserName());
@@ -636,9 +639,14 @@ public class LoadTsFileScheduler implements IScheduler {
 
   private static class DataPartitionBatchFetcher {
     private final IPartitionFetcher fetcher;
+    private String database;
 
     public DataPartitionBatchFetcher(IPartitionFetcher fetcher) {
       this.fetcher = fetcher;
+    }
+
+    public void setDatabase(String database) {
+      this.database = database;
     }
 
     public List<TRegionReplicaSet> queryDataPartition(
@@ -653,7 +661,14 @@ public class LoadTsFileScheduler implements IScheduler {
             fetcher.getOrCreateDataPartition(toQueryParam(subSlotList), userName);
         replicaSets.addAll(
             subSlotList.stream()
-                .map(pair -> dataPartition.getDataRegionReplicaSetForWriting(pair.left, pair.right))
+                .map(
+                    pair ->
+                        // (database != null) means this file will be loaded into table-model
+                        database != null
+                            ? dataPartition.getDataRegionReplicaSetForWriting(
+                                pair.left, pair.right, database)
+                            : dataPartition.getDataRegionReplicaSetForWriting(
+                                pair.left, pair.right))
                 .collect(Collectors.toList()));
       }
       return replicaSets;
@@ -668,8 +683,15 @@ public class LoadTsFileScheduler implements IScheduler {
           .entrySet()
           .stream()
           .map(
-              entry ->
-                  new DataPartitionQueryParam(entry.getKey(), new ArrayList<>(entry.getValue())))
+              entry -> {
+                DataPartitionQueryParam queryParam =
+                    new DataPartitionQueryParam(entry.getKey(), new ArrayList<>(entry.getValue()));
+                // (database != null) means this file will be loaded into table-model
+                if (database != null) {
+                  queryParam.setDatabaseName(database);
+                }
+                return queryParam;
+              })
           .collect(Collectors.toList());
     }
   }
