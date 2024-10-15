@@ -240,10 +240,10 @@ showFunctionsStatement
 
 // -------------------------------------------- Load Statement ---------------------------------------------------------
 loadTsFileStatement
-    : LOAD fileName=string (loadFileWithAttributeClauses)?
+    : LOAD fileName=string (loadFileWithAttributesClause)?
     ;
 
-loadFileWithAttributeClauses
+loadFileWithAttributesClause
     : WITH
         '('
         (loadFileWithAttributeClause ',')* loadFileWithAttributeClause?
@@ -251,7 +251,7 @@ loadFileWithAttributeClauses
     ;
 
 loadFileWithAttributeClause
-    : loadFileWithKey=STRING EQ loadFileWithValue=STRING
+    : loadFileWithKey=string EQ loadFileWithValue=string
     ;
 
 

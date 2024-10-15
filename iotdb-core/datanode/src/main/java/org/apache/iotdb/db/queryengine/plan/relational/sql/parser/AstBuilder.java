@@ -561,40 +561,26 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitLoadTsFileStatement(RelationalSqlParser.LoadTsFileStatementContext ctx) {
-    final Map<String, String> loadTsFileAttributes = new HashMap<>();
-    if (ctx.loadFileWithAttributeClauses() != null) {
-      for (RelationalSqlParser.LoadFileWithAttributeClauseContext attributeContext :
-          ctx.loadFileWithAttributeClauses().loadFileWithAttributeClause()) {
-        final String key =
-            parseStringLiteral(attributeContext.loadFileWithKey.getText()).trim().toLowerCase();
-        final String value =
-            parseStringLiteral(attributeContext.loadFileWithValue.getText()).trim().toLowerCase();
+    final Map<String, String> withAttributes =
+        ctx.loadFileWithAttributesClause() != null
+            ? parseLoadFileWithAttributeClauses(
+                ctx.loadFileWithAttributesClause().loadFileWithAttributeClause())
+            : new HashMap<>();
 
-        LoadTsFileConfigurator.validateParameters(key, value);
-        loadTsFileAttributes.put(key, value);
-      }
-    }
-
+    withAttributes.forEach(LoadTsFileConfigurator::validateParameters);
     return new LoadTsFile(
-        getLocation(ctx), ((StringLiteral) visit(ctx.fileName)).getValue(), loadTsFileAttributes);
+        getLocation(ctx), ((StringLiteral) visit(ctx.fileName)).getValue(), withAttributes);
   }
 
-  public static String parseStringLiteral(String src) {
-    if (2 <= src.length()) {
-      // do not unescape string
-      String unWrappedString = src.substring(1, src.length() - 1);
-      if (src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"') {
-        // replace "" with "
-        String replaced = unWrappedString.replace("\"\"", "\"");
-        return replaced.length() == 0 ? "" : replaced;
-      }
-      if ((src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'')) {
-        // replace '' with '
-        String replaced = unWrappedString.replace("''", "'");
-        return replaced.length() == 0 ? "" : replaced;
-      }
+  private Map<String, String> parseLoadFileWithAttributeClauses(
+      List<RelationalSqlParser.LoadFileWithAttributeClauseContext> contexts) {
+    final Map<String, String> withAttributesMap = new HashMap<>();
+    for (RelationalSqlParser.LoadFileWithAttributeClauseContext context : contexts) {
+      withAttributesMap.put(
+          ((StringLiteral) visit(context.loadFileWithKey)).getValue(),
+          ((StringLiteral) visit(context.loadFileWithValue)).getValue());
     }
-    return src;
+    return withAttributesMap;
   }
 
   @Override
