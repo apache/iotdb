@@ -27,8 +27,8 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
+import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.state.schema.DropTableState;
-import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -95,15 +95,9 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
   }
 
   private void checkAndPreDeleteTable(final ConfigNodeProcedureEnv env) {
-    final PreDeleteTablePlan plan = new PreDeleteTablePlan(database, tableName);
-    TSStatus status;
-    try {
-      status = env.getConfigManager().getConsensusManager().write(plan);
-    } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
-      status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      status.setMessage(e.getMessage());
-    }
+    final TSStatus status =
+        SchemaUtils.executeInConsensusLayer(
+            new PreDeleteTablePlan(database, tableName), env, LOGGER);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(DropTableState.INVALIDATE_CACHE);
     } else {
@@ -116,15 +110,8 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
   }
 
   private void dropTable(final ConfigNodeProcedureEnv env) {
-    final DropTablePlan plan = new DropTablePlan(database, tableName);
-    TSStatus status;
-    try {
-      status = env.getConfigManager().getConsensusManager().write(plan);
-    } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
-      status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      status.setMessage(e.getMessage());
-    }
+    final TSStatus status =
+        SchemaUtils.executeInConsensusLayer(new DropTablePlan(database, tableName), env, LOGGER);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }

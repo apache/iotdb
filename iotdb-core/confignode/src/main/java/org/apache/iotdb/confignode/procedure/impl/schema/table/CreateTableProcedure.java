@@ -41,7 +41,6 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecu
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.state.schema.CreateTableState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -264,15 +263,9 @@ public class CreateTableProcedure
   }
 
   private void commitCreateTable(final ConfigNodeProcedureEnv env) {
-    final CommitCreateTablePlan plan = new CommitCreateTablePlan(database, table.getTableName());
-    TSStatus status;
-    try {
-      status = env.getConfigManager().getConsensusManager().write(plan);
-    } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
-      status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      status.setMessage(e.getMessage());
-    }
+    final TSStatus status =
+        SchemaUtils.executeInConsensusLayer(
+            new CommitCreateTablePlan(database, table.getTableName()), env, LOGGER);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(CreateTableState.COMMIT_RELEASE);
     } else {
