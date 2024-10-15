@@ -103,16 +103,6 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
     return tabletReq;
   }
 
-  public static PipeTransferTabletRawReq toTPipeTransferRawReqV2(
-      final Tablet tablet, final boolean isAligned, final String dataBaseName) {
-    final PipeTransferTabletRawReq tabletReq = new PipeTransferTabletRawReq();
-
-    tabletReq.tablet = tablet;
-    tabletReq.isAligned = isAligned;
-
-    return tabletReq;
-  }
-
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeTransferTabletRawReq toTPipeTransferReq(

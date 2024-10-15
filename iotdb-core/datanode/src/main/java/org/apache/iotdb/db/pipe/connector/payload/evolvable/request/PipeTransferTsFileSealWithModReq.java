@@ -48,7 +48,7 @@ public class PipeTransferTsFileSealWithModReq extends PipeTransferFileSealReqV2 
   }
 
   protected static String generateDatabaseNameWithFileNameKey(String fileName) {
-    return DATABASE_NAME_KEY_PREFIX + "_" + fileName;
+    return DATABASE_NAME_KEY_PREFIX + fileName;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
