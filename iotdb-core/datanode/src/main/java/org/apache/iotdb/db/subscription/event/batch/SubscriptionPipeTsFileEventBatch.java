@@ -98,9 +98,7 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
           prefetchingQueue.generateSubscriptionCommitContext();
       events.add(
           new SubscriptionEvent(
-              new SubscriptionPipeTsFileBatchEvents(this, tsFile, referenceCount),
-              tsFile,
-              commitContext));
+              new SubscriptionPipeTsFileBatchEvents(this, referenceCount), tsFile, commitContext));
     }
     return events;
   }

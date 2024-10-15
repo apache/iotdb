@@ -19,15 +19,43 @@
 
 package org.apache.iotdb.db.subscription.event.response;
 
-import org.apache.iotdb.db.subscription.event.cache.CachedSubscriptionPollResponse;
-
 import java.util.LinkedList;
+import java.util.stream.Stream;
 
-public abstract class SubscriptionEventExtendableResponse implements SubscriptionEventResponse {
+public abstract class SubscriptionEventExtendableResponse<E>
+    implements SubscriptionEventResponse<E> {
 
-  protected final LinkedList<CachedSubscriptionPollResponse> responses;
+  private final LinkedList<E> responses;
 
   protected SubscriptionEventExtendableResponse() {
     this.responses = new LinkedList<>();
+  }
+
+  protected void offer(final E response) {
+    responses.addLast(response);
+  }
+
+  protected E poll() {
+    return responses.isEmpty() ? null : responses.removeFirst();
+  }
+
+  protected E peekFirst() {
+    return responses.isEmpty() ? null : responses.getFirst();
+  }
+
+  protected E peekLast() {
+    return responses.isEmpty() ? null : responses.getLast();
+  }
+
+  protected Stream<E> stream() {
+    return responses.stream();
+  }
+
+  protected int size() {
+    return responses.size();
+  }
+
+  protected boolean isEmpty() {
+    return responses.isEmpty();
   }
 }

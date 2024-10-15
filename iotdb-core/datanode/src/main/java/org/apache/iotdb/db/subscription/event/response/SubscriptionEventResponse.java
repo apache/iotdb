@@ -19,14 +19,12 @@
 
 package org.apache.iotdb.db.subscription.event.response;
 
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public interface SubscriptionEventResponse {
+public interface SubscriptionEventResponse<E> {
 
-  SubscriptionPollResponse getCurrentResponse();
+  E getCurrentResponse();
 
   void prefetchRemainingResponses() throws IOException;
 

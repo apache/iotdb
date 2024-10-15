@@ -39,19 +39,17 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import java.util.ConcurrentModificationException;
 import java.util.Objects;
 
-public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendableResponse {
+public class SubscriptionEventTsFileResponse
+    extends SubscriptionEventExtendableResponse<CachedSubscriptionPollResponse> {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubscriptionEventTsFileResponse.class);
 
   private final File tsFile;
   private final SubscriptionCommitContext commitContext;
-  private final CachedSubscriptionPollResponse initialResponse;
 
-  private volatile boolean isInitialResponseConsumed = false;
   private volatile boolean isSealed = false;
 
   public SubscriptionEventTsFileResponse(
@@ -60,53 +58,56 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
 
     this.tsFile = tsFile;
     this.commitContext = commitContext;
-    this.initialResponse =
+
+    offerInitialResponse();
+  }
+
+  private void offerInitialResponse() {
+    if (!isEmpty()) {
+      LOGGER.warn("broken invariant");
+      return;
+    }
+    offer(
         new CachedSubscriptionPollResponse(
             SubscriptionPollResponseType.FILE_INIT.getType(),
             new FileInitPayload(tsFile.getName()),
-            commitContext);
+            commitContext));
   }
 
   @Override
-  public SubscriptionPollResponse getCurrentResponse() {
-    if (!isInitialResponseConsumed) {
-      return initialResponse;
-    }
-    return super.responses.getFirst();
+  public CachedSubscriptionPollResponse getCurrentResponse() {
+    return peekFirst();
   }
 
   @Override
   public void prefetchRemainingResponses() throws IOException {
-    if (!isInitialResponseConsumed && super.responses.isEmpty()) {
-      super.responses.add(generateResponseWithPieceOrSealPayload(0));
-    } else {
-      if (super.responses.isEmpty()) {
+    synchronized (this) {
+      final SubscriptionPollResponse previousResponse = peekLast();
+      if (Objects.isNull(previousResponse)) {
         LOGGER.warn("broken invariant");
         return;
       }
+      final short responseType = previousResponse.getResponseType();
+      final SubscriptionPollPayload payload = previousResponse.getPayload();
+      if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
+        LOGGER.warn("unexpected response type: {}", responseType);
+        return;
+      }
 
-      synchronized (this) {
-        final SubscriptionPollResponse previousResponse = super.responses.getLast();
-        final short responseType = previousResponse.getResponseType();
-        final SubscriptionPollPayload payload = previousResponse.getPayload();
-        if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
-          LOGGER.warn("unexpected response type: {}", responseType);
-          return;
-        }
-
-        switch (SubscriptionPollResponseType.valueOf(responseType)) {
-          case FILE_PIECE:
-            super.responses.add(
-                generateResponseWithPieceOrSealPayload(
-                    ((FilePiecePayload) payload).getNextWritingOffset()));
-            break;
-          case FILE_SEAL:
-            // not need to prefetch
-            break;
-          case FILE_INIT: // fallthrough
-          default:
-            LOGGER.warn("unexpected message type: {}", responseType);
-        }
+      switch (SubscriptionPollResponseType.valueOf(responseType)) {
+        case FILE_INIT:
+          offer(generateResponseWithPieceOrSealPayload(0));
+          break;
+        case FILE_PIECE:
+          offer(
+              generateResponseWithPieceOrSealPayload(
+                  ((FilePiecePayload) payload).getNextWritingOffset()));
+          break;
+        case FILE_SEAL:
+          // not need to prefetch
+          break;
+        default:
+          LOGGER.warn("unexpected message type: {}", responseType);
       }
     }
   }
@@ -114,82 +115,52 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
   @Override
   public void fetchNextResponse() throws IOException {
     prefetchRemainingResponses();
-    if (!isInitialResponseConsumed) {
-      isInitialResponseConsumed = true;
-    } else {
-      if (super.responses.isEmpty()) {
-        LOGGER.warn("broken invariant");
-      } else {
-        super.responses.removeFirst();
-      }
+    if (Objects.isNull(poll())) {
+      LOGGER.warn("broken invariant");
     }
   }
 
   @Override
   public void trySerializeCurrentResponse() {
-    SubscriptionPollResponseCache.getInstance()
-        .trySerialize((CachedSubscriptionPollResponse) getCurrentResponse());
+    SubscriptionPollResponseCache.getInstance().trySerialize(getCurrentResponse());
   }
 
   @Override
   public void trySerializeRemainingResponses() {
-    if (!isInitialResponseConsumed) {
-      if (Objects.isNull(initialResponse.getByteBuffer())) {
-        SubscriptionPollResponseCache.getInstance().trySerialize(initialResponse);
-        return;
-      }
-    }
-
-    try {
-      for (final CachedSubscriptionPollResponse response : super.responses) {
-        if (Objects.isNull(response.getByteBuffer())) {
-          SubscriptionPollResponseCache.getInstance().trySerialize(response);
-          return;
-        }
-      }
-    } catch (final ConcurrentModificationException e) {
-      e.printStackTrace();
-    }
+    stream()
+        .filter(response -> Objects.isNull(response.getByteBuffer()))
+        .findFirst()
+        .ifPresent(response -> SubscriptionPollResponseCache.getInstance().trySerialize(response));
   }
 
   @Override
   public ByteBuffer getCurrentResponseByteBuffer() throws IOException {
-    return SubscriptionPollResponseCache.getInstance()
-        .serialize((CachedSubscriptionPollResponse) getCurrentResponse());
+    return SubscriptionPollResponseCache.getInstance().serialize(getCurrentResponse());
   }
 
   @Override
   public void resetCurrentResponseByteBuffer() {
-    SubscriptionPollResponseCache.getInstance()
-        .invalidate((CachedSubscriptionPollResponse) getCurrentResponse());
+    SubscriptionPollResponseCache.getInstance().invalidate(getCurrentResponse());
   }
 
   @Override
   public void reset() {
-    CachedSubscriptionPollResponse response;
-    while (!super.responses.isEmpty()
-        && Objects.nonNull(response = super.responses.removeFirst())) {
-      SubscriptionPollResponseCache.getInstance().invalidate(response);
-    }
-    isInitialResponseConsumed = false;
-    isSealed = false;
+    cleanUp();
+    offerInitialResponse();
   }
 
   @Override
   public void cleanUp() {
     CachedSubscriptionPollResponse response;
-    while (!super.responses.isEmpty()
-        && Objects.nonNull(response = super.responses.removeFirst())) {
+    while (Objects.nonNull(response = poll())) {
       SubscriptionPollResponseCache.getInstance().invalidate(response);
     }
-    SubscriptionPollResponseCache.getInstance().invalidate(initialResponse);
-    isInitialResponseConsumed = false;
     isSealed = false;
   }
 
   @Override
   public boolean isCommittable() {
-    return isSealed && super.responses.size() == 1;
+    return isSealed && size() == 1;
   }
 
   /////////////////////////////// utility ///////////////////////////////

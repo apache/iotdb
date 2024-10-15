@@ -20,20 +20,21 @@
 package org.apache.iotdb.db.subscription.event.response;
 
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
+import org.apache.iotdb.db.subscription.event.cache.CachedSubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class SubscriptionEventTabletResponse extends SubscriptionEventExtendableResponse {
+public class SubscriptionEventTabletResponse
+    extends SubscriptionEventExtendableResponse<CachedSubscriptionPollResponse> {
 
   public SubscriptionEventTabletResponse(
       final SubscriptionPipeTabletEventBatch batch,
       final SubscriptionCommitContext commitContext) {}
 
   @Override
-  public SubscriptionPollResponse getCurrentResponse() {
+  public CachedSubscriptionPollResponse getCurrentResponse() {
     return null;
   }
 

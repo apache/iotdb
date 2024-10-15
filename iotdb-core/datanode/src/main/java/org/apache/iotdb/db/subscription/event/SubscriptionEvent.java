@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
+import org.apache.iotdb.db.subscription.event.cache.CachedSubscriptionPollResponse;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeEmptyEvent;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeEvents;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTabletBatchEvents;
@@ -52,7 +53,7 @@ public class SubscriptionEvent {
   private static final long INVALID_TIMESTAMP = -1;
 
   private final SubscriptionPipeEvents pipeEvents;
-  private final SubscriptionEventResponse response;
+  private final SubscriptionEventResponse<CachedSubscriptionPollResponse> response;
   private final SubscriptionCommitContext commitContext;
 
   private final String fileName;

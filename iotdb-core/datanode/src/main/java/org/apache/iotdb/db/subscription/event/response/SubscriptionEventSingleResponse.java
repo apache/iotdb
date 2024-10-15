@@ -28,7 +28,8 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class SubscriptionEventSingleResponse implements SubscriptionEventResponse {
+public class SubscriptionEventSingleResponse
+    implements SubscriptionEventResponse<CachedSubscriptionPollResponse> {
 
   private final CachedSubscriptionPollResponse response;
 
@@ -44,7 +45,7 @@ public class SubscriptionEventSingleResponse implements SubscriptionEventRespons
   }
 
   @Override
-  public SubscriptionPollResponse getCurrentResponse() {
+  public CachedSubscriptionPollResponse getCurrentResponse() {
     return response;
   }
 
