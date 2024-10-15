@@ -24,8 +24,9 @@ import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
-import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
-import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.SingleTimeWindowIterator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITableTimeRangeIterator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.TableDateBinTimeRangeIterator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.TableSingleTimeWindowIterator;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
@@ -122,9 +123,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNod
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.DateBinFunctionColumnTransformer;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
 
@@ -177,6 +181,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST;
+import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
 /** This Visitor is responsible for transferring Table PlanNode Tree to Table Operator Tree. */
 public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecutionPlanContext> {
@@ -1397,22 +1402,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     List<String> measurementColumnNames = new ArrayList<>();
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
 
-    List<ColumnSchema> groupingKeySchemas = null;
-    int[] groupingKeyIndex = null;
-    if (!node.getGroupingKeys().isEmpty()) {
-      groupingKeySchemas = new ArrayList<>(node.getGroupingKeys().size());
-      groupingKeyIndex = new int[node.getGroupingKeys().size()];
-      for (int i = 0; i < node.getGroupingKeys().size(); i++) {
-        Symbol groupingKey = node.getGroupingKeys().get(i);
-
-        checkArgument(
-            idAndAttributeColumnsIndexMap.containsKey(groupingKey),
-            "grouping key must be ID or Attribute in AggregationTableScan");
-        groupingKeySchemas.add(columnSchemaMap.get(groupingKey));
-        groupingKeyIndex[i] = idAndAttributeColumnsIndexMap.get(groupingKey);
-      }
-    }
-
     // TODO test aggregation function which has more than one arguements
     for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
       idx++;
@@ -1489,6 +1478,44 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       }
     }
 
+    ITableTimeRangeIterator timeRangeIterator = null;
+    List<ColumnSchema> groupingKeySchemas = null;
+    int[] groupingKeyIndex = null;
+    if (!node.getGroupingKeys().isEmpty()) {
+      groupingKeySchemas = new ArrayList<>(node.getGroupingKeys().size());
+      groupingKeyIndex = new int[node.getGroupingKeys().size()];
+      for (int i = 0; i < node.getGroupingKeys().size(); i++) {
+        Symbol groupingKey = node.getGroupingKeys().get(i);
+
+        if (idAndAttributeColumnsIndexMap.containsKey(groupingKey)) {
+          groupingKeySchemas.add(columnSchemaMap.get(groupingKey));
+          groupingKeyIndex[i] = idAndAttributeColumnsIndexMap.get(groupingKey);
+        } else {
+          if (node.getProjection() != null
+              && !node.getProjection().getMap().isEmpty()
+              && node.getProjection().contains(groupingKey)) {
+            FunctionCall dateBinFunc = (FunctionCall) node.getProjection().get(groupingKey);
+            List<Expression> arguments = dateBinFunc.getArguments();
+            DateBinFunctionColumnTransformer dateBinTransformer =
+                new DateBinFunctionColumnTransformer(
+                    TIMESTAMP,
+                    ((LongLiteral) arguments.get(0)).getParsedValue(),
+                    ((LongLiteral) arguments.get(1)).getParsedValue(),
+                    null,
+                    ((LongLiteral) arguments.get(3)).getParsedValue(),
+                    context.getZoneId());
+            timeRangeIterator = new TableDateBinTimeRangeIterator(dateBinTransformer);
+          } else {
+            throw new IllegalStateException(
+                "grouping key must be ID or Attribute in AggregationTableScan");
+          }
+        }
+      }
+    }
+    if (timeRangeIterator == null) {
+      timeRangeIterator = new TableSingleTimeWindowIterator(Long.MIN_VALUE, Long.MAX_VALUE);
+    }
+
     final OperatorContext operatorContext =
         context
             .getDriverContext()
@@ -1509,8 +1536,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       scanOptionsBuilder.withPushDownFilter(
           convertPredicateToFilter(pushDownPredicate, measurementColumnNames, columnSchemaMap));
     }
-    ITimeRangeIterator timeRangeIterator =
-        new SingleTimeWindowIterator(Long.MIN_VALUE, Long.MAX_VALUE);
+
     TableAggregationTableScanOperator aggTableScanOperator =
         new TableAggregationTableScanOperator(
             node.getPlanNodeId(),
@@ -1528,7 +1554,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             groupingKeySchemas,
             groupingKeyIndex,
             timeRangeIterator,
-            false,
+            node.getScanOrder().isAscending(),
             null,
             calculateMaxAggregationResultSize(),
             canUseStatistic,
