@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationT
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
@@ -57,6 +58,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
+
+import javax.annotation.Nonnull;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -159,7 +162,24 @@ public class TableDistributedPlanGenerator
     }
 
     node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
-    context.setHasSeenFill(true);
+    return Collections.singletonList(node);
+  }
+
+  @Override
+  public List<PlanNode> visitGapFill(GapFillNode node, PlanContext context) {
+    context.clearExpectedOrderingScheme();
+    List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+    OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
+    if (childOrdering != null) {
+      nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
+    }
+
+    if (childrenNodes.size() == 1) {
+      node.setChild(childrenNodes.get(0));
+      return Collections.singletonList(node);
+    }
+
+    node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
     return Collections.singletonList(node);
   }
 
@@ -278,8 +298,13 @@ public class TableDistributedPlanGenerator
 
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
     if (childrenNodes.size() == 1) {
-      node.setChild(childrenNodes.get(0));
-      return Collections.singletonList(node);
+      if (canSortEliminated(
+          node.getOrderingScheme(), nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId()))) {
+        return childrenNodes;
+      } else {
+        node.setChild(childrenNodes.get(0));
+        return Collections.singletonList(node);
+      }
     }
 
     // may have ProjectNode above SortNode later, so use MergeSortNode but not return SortNode list
@@ -296,6 +321,31 @@ public class TableDistributedPlanGenerator
     return Collections.singletonList(mergeSortNode);
   }
 
+  // if current SortNode is prefix of child, this SortNode doesn't need to exist, return true
+  private boolean canSortEliminated(
+      @Nonnull OrderingScheme sortOrderingSchema, OrderingScheme childOrderingSchema) {
+    if (childOrderingSchema == null) {
+      return false;
+    } else {
+      List<Symbol> symbolsOfSort = sortOrderingSchema.getOrderBy();
+      List<Symbol> symbolsOfChild = childOrderingSchema.getOrderBy();
+      if (symbolsOfSort.size() > symbolsOfChild.size()) {
+        return false;
+      } else {
+        for (int i = 0, size = symbolsOfSort.size(); i < size; i++) {
+          Symbol symbolOfSort = symbolsOfSort.get(i);
+          SortOrder sortOrderOfSortNode = sortOrderingSchema.getOrdering(symbolOfSort);
+          Symbol symbolOfChild = symbolsOfChild.get(i);
+          SortOrder sortOrderOfChild = childOrderingSchema.getOrdering(symbolOfChild);
+          if (!symbolOfSort.equals(symbolOfChild) || sortOrderOfSortNode != sortOrderOfChild) {
+            return false;
+          }
+        }
+        return true;
+      }
+    }
+  }
+
   @Override
   public List<PlanNode> visitStreamSort(StreamSortNode node, PlanContext context) {
     context.setExpectedOrderingScheme(node.getOrderingScheme());
@@ -303,8 +353,12 @@ public class TableDistributedPlanGenerator
 
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
     if (childrenNodes.size() == 1) {
-      node.setChild(childrenNodes.get(0));
-      return Collections.singletonList(node);
+      if (canSortEliminated(node.getOrderingScheme(), nodeOrderingMap.get(childrenNodes.get(0)))) {
+        return childrenNodes;
+      } else {
+        node.setChild(childrenNodes.get(0));
+        return Collections.singletonList(node);
+      }
     }
 
     // may have ProjectNode above SortNode later, so use MergeSortNode but not return SortNode list
@@ -838,7 +892,6 @@ public class TableDistributedPlanGenerator
 
   public static class PlanContext {
     final Map<PlanNodeId, NodeDistribution> nodeDistributionMap;
-    boolean hasSeenFill = false;
     boolean hasExchangeNode = false;
     boolean hasSortProperty = false;
     OrderingScheme expectedOrderingScheme;
@@ -860,10 +913,6 @@ public class TableDistributedPlanGenerator
     public void setExpectedOrderingScheme(OrderingScheme expectedOrderingScheme) {
       this.expectedOrderingScheme = expectedOrderingScheme;
       hasSortProperty = true;
-    }
-
-    public void setHasSeenFill(boolean hasSeenFill) {
-      this.hasSeenFill = hasSeenFill;
     }
   }
 }
