@@ -1648,11 +1648,6 @@ public class DataRegion implements IDataRegionForQuery {
       return CompletableFuture.completedFuture(null);
     }
     TsFileResource resource = tsFileProcessor.getTsFileResource();
-    logger.info(
-        "Async close tsfile: {}, file start time: {}, file end time: {}",
-        resource.getTsFile().getAbsolutePath(),
-        resource.getFileStartTime(),
-        resource.getFileEndTime());
     Future<?> future;
     if (sequence) {
       closingSequenceTsFileProcessor.add(tsFileProcessor);
@@ -1675,6 +1670,11 @@ public class DataRegion implements IDataRegionForQuery {
         timePartitionIdVersionControllerMap.remove(tsFileProcessor.getTimeRangeId());
       }
     }
+    logger.info(
+        "Async close tsfile: {}, file start time: {}, file end time: {}",
+        resource.getTsFile().getAbsolutePath(),
+        resource.getFileStartTime(),
+        resource.getFileEndTime());
     if (workSequenceTsFileProcessors.get(tsFileProcessor.getTimeRangeId()) == null
         && workUnsequenceTsFileProcessors.get(tsFileProcessor.getTimeRangeId()) == null) {
       WritingMetrics.getInstance().recordActiveTimePartitionCount(-1);
