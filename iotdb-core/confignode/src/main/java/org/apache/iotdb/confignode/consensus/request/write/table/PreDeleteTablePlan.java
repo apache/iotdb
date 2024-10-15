@@ -24,10 +24,10 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 public class PreDeleteTablePlan extends AbstractTablePlan {
 
   public PreDeleteTablePlan() {
-    super(ConfigPhysicalPlanType.preDeleteTable);
+    super(ConfigPhysicalPlanType.PreDeleteTable);
   }
 
   public PreDeleteTablePlan(final String database, final String tableName) {
-    super(ConfigPhysicalPlanType.preDeleteTable, database, tableName);
+    super(ConfigPhysicalPlanType.PreDeleteTable, database, tableName);
   }
 }

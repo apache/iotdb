@@ -348,7 +348,7 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case RenameTableColumn:
           plan = new RenameTableColumnPlan();
           break;
-        case preDeleteTable:
+        case PreDeleteTable:
           plan = new PreDeleteTablePlan();
           break;
         case CreatePipeSinkV1:
