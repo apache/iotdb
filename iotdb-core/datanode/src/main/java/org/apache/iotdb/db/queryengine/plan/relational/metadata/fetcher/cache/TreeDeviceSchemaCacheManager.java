@@ -350,8 +350,8 @@ public class TreeDeviceSchemaCacheManager {
   }
 
   /**
-   * Store the fetched schema in either the schemaCache or templateSchemaCache, depending on its
-   * associated device.
+   * Store the fetched schema in either the {@link TreeDeviceNormalSchema} or {@link
+   * TreeDeviceTemplateSchema}, depending on its associated device.
    */
   public void put(final ClusterSchemaTree tree) {
     tree.getAllDevices()
@@ -381,12 +381,13 @@ public class TreeDeviceSchemaCacheManager {
   }
 
   /**
-   * Update the last cache in writing for tree model. If a measurement is with all {@code null}s or
-   * is an id/attribute column, its timeValuePair shall be {@code null}. For correctness, this will
-   * put the cache lazily and only update the existing last caches of measurements.
+   * Update the {@link TableDeviceLastCache} in writing for tree model. If a measurement is with all
+   * {@code null}s or is an id/attribute column, its {@link TimeValuePair[]} shall be {@code null}.
+   * For correctness, this will put the {@link TableDeviceCacheEntry} lazily and only update the
+   * existing {@link TableDeviceLastCache}s of measurements.
    *
    * @param database the device's database, WITH "root"
-   * @param deviceID IDeviceID
+   * @param deviceID {@link IDeviceID}
    * @param measurements the fetched measurements
    * @param timeValuePairs the {@link TimeValuePair}s with indexes corresponding to the measurements
    */
@@ -402,9 +403,9 @@ public class TreeDeviceSchemaCacheManager {
   }
 
   /**
-   * Update the last cache on query in tree model.
+   * Update the {@link TableDeviceLastCache} on query in tree model.
    *
-   * <p>Note: The query shall put the cache twice:
+   * <p>Note: The query shall put the {@link TableDeviceLastCache} twice:
    *
    * <p>- First time set the "isCommit" to {@code false} before the query accesses data., which will
    * put the {@link TimeValuePair} as {@code null}. It does not indicate that the measurements are
