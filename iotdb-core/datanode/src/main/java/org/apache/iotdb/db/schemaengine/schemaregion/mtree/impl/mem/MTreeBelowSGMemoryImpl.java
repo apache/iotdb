@@ -1120,12 +1120,10 @@ public class MTreeBelowSGMemoryImpl {
 
     final EntityCollector<IDeviceSchemaInfo, IMemMNode> collector =
         new EntityCollector<IDeviceSchemaInfo, IMemMNode>(rootNode, pattern, store, false, null) {
-
           protected IDeviceSchemaInfo collectEntity(final IDeviceMNode<IMemMNode> node) {
-            final PartialPath device = getPartialPathFromRootToNode(node.getAsMNode());
             final ShowDevicesResult result =
                 new ShowDevicesResult(
-                    device.getFullPath(),
+                    null,
                     node.isAlignedNullable(),
                     node.getSchemaTemplateId(),
                     node.getPartialPath().getNodes());
