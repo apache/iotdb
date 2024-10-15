@@ -52,7 +52,7 @@ public interface IMNode<N extends IMNode<N>> extends ITreeNode {
 
   N addChild(N child);
 
-  N deleteChild(String name);
+  N deleteChild(final String name);
 
   IMNodeContainer<N> getChildren();
 
