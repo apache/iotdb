@@ -72,6 +72,7 @@ public abstract class SubscriptionEventExtendableResponse
   @Override
   public void trySerializeRemainingResponses() {
     responses.stream()
+        .skip(1)
         .filter(response -> Objects.isNull(response.getByteBuffer()))
         .findFirst()
         .ifPresent(response -> SubscriptionPollResponseCache.getInstance().trySerialize(response));
@@ -129,6 +130,11 @@ public abstract class SubscriptionEventExtendableResponse
   }
 
   /////////////////////////////// stringify ///////////////////////////////
+
+  @Override
+  public String toString() {
+    return "SubscriptionEventExtendableResponse" + coreReportMessage();
+  }
 
   protected Map<String, String> coreReportMessage() {
     final Map<String, String> result = new HashMap<>();

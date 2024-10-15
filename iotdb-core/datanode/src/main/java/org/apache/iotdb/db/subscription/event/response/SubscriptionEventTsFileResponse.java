@@ -53,8 +53,6 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
   private final File tsFile;
   private final SubscriptionCommitContext commitContext;
 
-  private volatile boolean hasNoMore = false;
-
   public SubscriptionEventTsFileResponse(
       final File tsFile, final SubscriptionCommitContext commitContext) {
     super();

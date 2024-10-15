@@ -124,7 +124,7 @@ public abstract class SubscriptionPipeEventBatch {
     result.put("prefetchingQueue", prefetchingQueue.coreReportMessage().toString());
     result.put("maxDelayInMs", String.valueOf(maxDelayInMs));
     result.put("maxBatchSizeInBytes", String.valueOf(maxBatchSizeInBytes));
-    // TODO: stringify subscription events
+    // TODO: stringify subscription events?
     result.put("enrichedEvents", formatEnrichedEvents(enrichedEvents, 4));
     return result;
   }

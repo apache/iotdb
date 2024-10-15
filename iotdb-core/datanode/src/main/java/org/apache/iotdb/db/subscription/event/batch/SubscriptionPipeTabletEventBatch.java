@@ -27,7 +27,6 @@ import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTabletQueu
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
@@ -46,8 +45,8 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
       LoggerFactory.getLogger(SubscriptionPipeTabletEventBatch.class);
 
   private volatile List<Tablet> tablets = new LinkedList<>();
-  private volatile long firstEventProcessingTime = Long.MIN_VALUE;
-  private volatile long totalBufferSize = 0;
+  private long firstEventProcessingTime = Long.MIN_VALUE;
+  private long totalBufferSize = 0;
 
   public SubscriptionPipeTabletEventBatch(
       final int regionId,
@@ -124,10 +123,8 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
       return null;
     }
 
-    final SubscriptionCommitContext commitContext =
-        prefetchingQueue.generateSubscriptionCommitContext();
-
-    return Collections.singletonList(new SubscriptionEvent(this, commitContext));
+    return Collections.singletonList(
+        new SubscriptionEvent(this, prefetchingQueue.generateSubscriptionCommitContext()));
   }
 
   @Override
