@@ -111,7 +111,7 @@ public class TableDeviceSchemaFetcher {
             SessionManager.getInstance().getCurrSession(),
             queryId,
             SessionManager.getInstance()
-                .getSessionInfo(SessionManager.getInstance().getCurrSession()),
+                .getSessionInfoOfTableModel(SessionManager.getInstance().getCurrSession()),
             "Fetch Device for insert",
             LocalExecutionPlanner.getInstance().metadata,
             config.getQueryTimeoutThreshold());

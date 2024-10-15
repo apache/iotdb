@@ -124,6 +124,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupReference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
@@ -627,6 +628,10 @@ public abstract class PlanVisitor<R, C> {
   public R visitCollect(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode node, C context) {
     return visitMultiChildProcess(node, context);
+  }
+
+  public R visitGapFill(GapFillNode node, C context) {
+    return visitSingleChildProcess(node, context);
   }
 
   public R visitFill(

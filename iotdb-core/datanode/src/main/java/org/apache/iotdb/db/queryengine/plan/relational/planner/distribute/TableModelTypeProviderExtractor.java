@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationT
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
@@ -205,6 +206,12 @@ public class TableModelTypeProviderExtractor {
 
     @Override
     public Void visitFill(FillNode node, Void context) {
+      node.getChild().accept(this, context);
+      return null;
+    }
+
+    @Override
+    public Void visitGapFill(GapFillNode node, Void context) {
       node.getChild().accept(this, context);
       return null;
     }

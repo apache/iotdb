@@ -29,23 +29,42 @@ public class RetryPolicy<RESP> {
   /** -1 means retry indefinitely */
   private final int maxAttempts;
 
+  private final boolean exponentialBackoff;
   private final TimeDuration waitTime;
+  private final TimeDuration maxWaitTime;
 
-  public RetryPolicy(Function<RESP, Boolean> retryHandler, int maxAttempts, TimeDuration waitTime) {
+  public RetryPolicy(
+      Function<RESP, Boolean> retryHandler,
+      int maxAttempts,
+      TimeDuration waitTime,
+      TimeDuration maxWaitTime,
+      boolean exponentialBackoff) {
     this.retryHandler = retryHandler;
     this.maxAttempts = maxAttempts;
     this.waitTime = waitTime;
+    this.maxWaitTime = maxWaitTime;
+    this.exponentialBackoff = exponentialBackoff;
   }
 
   boolean shouldRetry(RESP resp) {
     return retryHandler.apply(resp);
   }
 
+  boolean shoudAttempt(int attempt) {
+    return maxAttempts == -1 || attempt < maxAttempts;
+  }
+
   public int getMaxAttempts() {
     return maxAttempts;
   }
 
-  public TimeDuration getWaitTime() {
+  public TimeDuration getWaitTime(int attempt) {
+    if (exponentialBackoff) {
+      TimeDuration sleepTime = waitTime.multiply(Math.pow(2, attempt));
+      return maxWaitTime.getDuration() != 0 && sleepTime.compareTo(maxWaitTime) > 0
+          ? maxWaitTime
+          : sleepTime;
+    }
     return waitTime;
   }
 
@@ -56,7 +75,9 @@ public class RetryPolicy<RESP> {
   public static class RetryPolicyBuilder<RESP> {
     private Function<RESP, Boolean> retryHandler = (r) -> false;
     private int maxAttempts = 0;
+    public boolean exponentialBackoff = false;
     private TimeDuration waitTime = TimeDuration.ZERO;
+    private TimeDuration maxWaitTime = TimeDuration.ZERO;
 
     public RetryPolicyBuilder<RESP> setRetryHandler(Function<RESP, Boolean> retryHandler) {
       this.retryHandler = retryHandler;
@@ -73,8 +94,19 @@ public class RetryPolicy<RESP> {
       return this;
     }
 
+    public RetryPolicyBuilder<RESP> setMaxWaitTime(TimeDuration maxWaitTime) {
+      this.maxWaitTime = maxWaitTime;
+      return this;
+    }
+
+    public RetryPolicyBuilder<RESP> setExponentialBackoff(boolean exponentialBackoff) {
+      this.exponentialBackoff = exponentialBackoff;
+      return this;
+    }
+
     public RetryPolicy<RESP> build() {
-      return new RetryPolicy<>(retryHandler, maxAttempts, waitTime);
+      return new RetryPolicy<>(
+          retryHandler, maxAttempts, waitTime, maxWaitTime, exponentialBackoff);
     }
   }
 }

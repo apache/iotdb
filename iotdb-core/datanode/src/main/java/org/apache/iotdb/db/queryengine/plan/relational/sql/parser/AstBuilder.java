@@ -89,6 +89,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinUsing;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Limit;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NaturalJoin;
@@ -159,6 +160,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Ta
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlBaseVisitor;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlLexer;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser;
+import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 
@@ -559,7 +561,40 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitLoadTsFileStatement(RelationalSqlParser.LoadTsFileStatementContext ctx) {
-    return super.visitLoadTsFileStatement(ctx);
+    final Map<String, String> loadTsFileAttributes = new HashMap<>();
+    if (ctx.loadFileWithAttributeClauses() != null) {
+      for (RelationalSqlParser.LoadFileWithAttributeClauseContext attributeContext :
+          ctx.loadFileWithAttributeClauses().loadFileWithAttributeClause()) {
+        final String key =
+            parseStringLiteral(attributeContext.loadFileWithKey.getText()).trim().toLowerCase();
+        final String value =
+            parseStringLiteral(attributeContext.loadFileWithValue.getText()).trim().toLowerCase();
+
+        LoadTsFileConfigurator.validateParameters(key, value);
+        loadTsFileAttributes.put(key, value);
+      }
+    }
+
+    return new LoadTsFile(
+        getLocation(ctx), ((StringLiteral) visit(ctx.fileName)).getValue(), loadTsFileAttributes);
+  }
+
+  public static String parseStringLiteral(String src) {
+    if (2 <= src.length()) {
+      // do not unescape string
+      String unWrappedString = src.substring(1, src.length() - 1);
+      if (src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"') {
+        // replace "" with "
+        String replaced = unWrappedString.replace("\"\"", "\"");
+        return replaced.length() == 0 ? "" : replaced;
+      }
+      if ((src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'')) {
+        // replace '' with '
+        String replaced = unWrappedString.replace("''", "'");
+        return replaced.length() == 0 ? "" : replaced;
+      }
+    }
+    return src;
   }
 
   @Override
@@ -1835,6 +1870,39 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     }
 
     return new FunctionCall(getLocation(ctx), name, distinct, arguments);
+  }
+
+  @Override
+  public Node visitDateBinGapFill(RelationalSqlParser.DateBinGapFillContext ctx) {
+    TimeDuration timeDuration = DateTimeUtils.constructTimeDuration(ctx.timeDuration().getText());
+
+    if (timeDuration.monthDuration != 0 && timeDuration.nonMonthDuration != 0) {
+      throw new SemanticException(
+          "Simultaneous setting of monthly and non-monthly intervals is not supported.");
+    }
+
+    LongLiteral monthDuration =
+        new LongLiteral(
+            getLocation(ctx.timeDuration()), String.valueOf(timeDuration.monthDuration));
+    LongLiteral nonMonthDuration =
+        new LongLiteral(
+            getLocation(ctx.timeDuration()), String.valueOf(timeDuration.nonMonthDuration));
+    LongLiteral origin =
+        ctx.timeValue() == null
+            ? new LongLiteral("0")
+            : new LongLiteral(
+                getLocation(ctx.timeValue()),
+                String.valueOf(parseTimeValue(ctx.timeValue(), CommonDateTimeUtils.currentTime())));
+
+    List<Expression> arguments =
+        Arrays.asList(
+            monthDuration,
+            nonMonthDuration,
+            (Expression) visit(ctx.valueExpression()),
+            origin,
+            new BooleanLiteral("true"));
+    return new FunctionCall(
+        getLocation(ctx), QualifiedName.of(DATE_BIN.getFunctionName()), arguments);
   }
 
   @Override
