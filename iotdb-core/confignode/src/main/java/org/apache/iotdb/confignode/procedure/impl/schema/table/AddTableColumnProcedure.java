@@ -82,7 +82,6 @@ public class AddTableColumnProcedure
           LOGGER.info("Commit release info of table {}.{} when adding column", database, tableName);
           commitRelease(env);
           return Flow.NO_MORE_STATE;
-
         default:
           setFailure(new ProcedureException("Unrecognized AddTableColumnState " + state));
           return Flow.NO_MORE_STATE;

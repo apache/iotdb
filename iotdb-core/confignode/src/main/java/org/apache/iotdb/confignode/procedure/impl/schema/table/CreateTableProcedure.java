@@ -146,15 +146,8 @@ public class CreateTableProcedure
   }
 
   private void preCreateTable(final ConfigNodeProcedureEnv env) {
-    final PreCreateTablePlan plan = new PreCreateTablePlan(database, table);
-    TSStatus status;
-    try {
-      status = env.getConfigManager().getConsensusManager().write(plan);
-    } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
-      status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      status.setMessage(e.getMessage());
-    }
+    final TSStatus status =
+        SchemaUtils.executeInConsensusLayer(new PreCreateTablePlan(database, table), env, LOGGER);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(CreateTableState.PRE_RELEASE);
     } else {
@@ -327,16 +320,9 @@ public class CreateTableProcedure
   }
 
   private void rollbackCreate(final ConfigNodeProcedureEnv env) {
-    final RollbackCreateTablePlan plan =
-        new RollbackCreateTablePlan(database, table.getTableName());
-    TSStatus status;
-    try {
-      status = env.getConfigManager().getConsensusManager().write(plan);
-    } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
-      status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      status.setMessage(e.getMessage());
-    }
+    final TSStatus status =
+        SchemaUtils.executeInConsensusLayer(
+            new RollbackCreateTablePlan(database, table.getTableName()), env, LOGGER);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn("Failed to rollback table creation {}.{}", database, table.getTableName());
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
