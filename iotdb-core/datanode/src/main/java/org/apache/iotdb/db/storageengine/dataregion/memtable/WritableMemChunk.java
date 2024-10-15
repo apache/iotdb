@@ -38,7 +38,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 import static org.apache.iotdb.db.utils.MemUtils.getBinarySize;
 
@@ -333,12 +333,12 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void encode(LinkedBlockingQueue<Object> ioTaskQueue) {
+  public void encode(BlockingQueue<Object> ioTaskQueue) {
 
     TSDataType tsDataType = schema.getType();
     ChunkWriterImpl chunkWriterImpl = createIChunkWriter();
-    long binarySizePerChunk = 0;
-    int pointNumPerChunk = 0;
+    long binarySizeInCurrentChunk = 0;
+    int pointNumInCurrentChunk = 0;
     for (int sortedRowIndex = 0; sortedRowIndex < list.rowCount(); sortedRowIndex++) {
       long time = list.getTime(sortedRowIndex);
 
@@ -375,15 +375,15 @@ public class WritableMemChunk implements IWritableMemChunk {
         case STRING:
           Binary value = list.getBinary(sortedRowIndex);
           chunkWriterImpl.write(time, value);
-          binarySizePerChunk += getBinarySize(value);
+          binarySizeInCurrentChunk += getBinarySize(value);
           break;
         default:
           LOGGER.error("WritableMemChunk does not support data type: {}", tsDataType);
           break;
       }
-      pointNumPerChunk++;
-      if (pointNumPerChunk > MAX_NUMBER_OF_POINTS_IN_CHUNK
-          || binarySizePerChunk > TARGET_CHUNK_SIZE) {
+      pointNumInCurrentChunk++;
+      if (pointNumInCurrentChunk > MAX_NUMBER_OF_POINTS_IN_CHUNK
+          || binarySizeInCurrentChunk > TARGET_CHUNK_SIZE) {
         chunkWriterImpl.sealCurrentPage();
         chunkWriterImpl.clearPageWriter();
         try {
@@ -392,11 +392,11 @@ public class WritableMemChunk implements IWritableMemChunk {
           Thread.currentThread().interrupt();
         }
         chunkWriterImpl = createIChunkWriter();
-        binarySizePerChunk = 0;
-        pointNumPerChunk = 0;
+        binarySizeInCurrentChunk = 0;
+        pointNumInCurrentChunk = 0;
       }
     }
-    if (pointNumPerChunk != 0) {
+    if (pointNumInCurrentChunk != 0) {
       chunkWriterImpl.sealCurrentPage();
       chunkWriterImpl.clearPageWriter();
       try {

@@ -1201,6 +1201,9 @@ public class TsFileProcessor {
     try {
       asyncClose().get();
       logger.info("Start to wait until file {} is closed", tsFileResource);
+      // if this TsFileProcessor is closing, asyncClose().get() of this thread will return quickly,
+      // but the TsFileProcessor may be not closed. Therefore, we need to check whether the writer
+      // is null.
       while (writer != null) {
         TimeUnit.MILLISECONDS.sleep(10);
       }
@@ -1289,6 +1292,7 @@ public class TsFileProcessor {
    * TODO if the flushing thread is too fast, the tmpMemTable.wait() may never wakeup Tips: I am
    * trying to solve this issue by checking whether the table exist before wait()
    */
+  @TestOnly
   public void syncFlush() throws IOException {
     IMemTable tmpMemTable;
     flushQueryLock.writeLock().lock();

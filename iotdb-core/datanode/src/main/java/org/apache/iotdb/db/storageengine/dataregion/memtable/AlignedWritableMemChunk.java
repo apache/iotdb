@@ -48,7 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 public class AlignedWritableMemChunk implements IWritableMemChunk {
 
@@ -328,7 +328,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @SuppressWarnings({"squid:S6541", "squid:S3776"})
   @Override
-  public void encode(LinkedBlockingQueue<Object> ioTaskQueue) {
+  public void encode(BlockingQueue<Object> ioTaskQueue) {
     BitMap rowBitMap = list.getRowBitMap();
     int avgBinaryPointSize = list.getAvgBinaryPointSize();
     int maxNumberOfPointsInBinaryChunk =
@@ -392,7 +392,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   private void handleEncoding(
-      LinkedBlockingQueue<Object> ioTaskQueue,
+      BlockingQueue<Object> ioTaskQueue,
       List<List<Integer>> chunkRange,
       boolean[] timeDuplicateInfo,
       BitMap rowBitMap) {
@@ -433,7 +433,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
             // Value: 1,2,null,null
             // When rowIndex:1, pair(min,null), timeDuplicateInfo:false, write(T:1,V:1)
             // When rowIndex:2, pair(2,2), timeDuplicateInfo:true, skip writing value
-            // When rowIndex:3, pair(2,2), timeDuplicateInfo:false, T:2!=air.left:2, write(T:2,V:2)
+            // When rowIndex:3, pair(2,2), timeDuplicateInfo:false, T:2==pair.left:2, write(T:2,V:2)
             // When rowIndex:4, pair(2,2), timeDuplicateInfo:false, T:3!=pair.left:2,
             // write(T:3,V:null)
 
@@ -449,31 +449,43 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
             switch (tsDataType) {
               case BOOLEAN:
                 alignedChunkWriter.writeByColumn(
-                    time, list.getBooleanByValueIndex(originRowIndex, columnIndex), isNull);
+                    time,
+                    !isNull && list.getBooleanByValueIndex(originRowIndex, columnIndex),
+                    isNull);
                 break;
               case INT32:
               case DATE:
                 alignedChunkWriter.writeByColumn(
-                    time, list.getIntByValueIndex(originRowIndex, columnIndex), isNull);
+                    time,
+                    isNull ? 0 : list.getIntByValueIndex(originRowIndex, columnIndex),
+                    isNull);
                 break;
               case INT64:
               case TIMESTAMP:
                 alignedChunkWriter.writeByColumn(
-                    time, list.getLongByValueIndex(originRowIndex, columnIndex), isNull);
+                    time,
+                    isNull ? 0 : list.getLongByValueIndex(originRowIndex, columnIndex),
+                    isNull);
                 break;
               case FLOAT:
                 alignedChunkWriter.writeByColumn(
-                    time, list.getFloatByValueIndex(originRowIndex, columnIndex), isNull);
+                    time,
+                    isNull ? 0 : list.getFloatByValueIndex(originRowIndex, columnIndex),
+                    isNull);
                 break;
               case DOUBLE:
                 alignedChunkWriter.writeByColumn(
-                    time, list.getDoubleByValueIndex(originRowIndex, columnIndex), isNull);
+                    time,
+                    isNull ? 0 : list.getDoubleByValueIndex(originRowIndex, columnIndex),
+                    isNull);
                 break;
               case TEXT:
               case STRING:
               case BLOB:
                 alignedChunkWriter.writeByColumn(
-                    time, list.getBinaryByValueIndex(originRowIndex, columnIndex), isNull);
+                    time,
+                    isNull ? null : list.getBinaryByValueIndex(originRowIndex, columnIndex),
+                    isNull);
                 break;
               default:
                 break;
@@ -482,7 +494,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
           alignedChunkWriter.nextColumn();
         }
 
-        long[] times = new long[MAX_NUMBER_OF_POINTS_IN_PAGE];
+        long[] times = new long[Math.min(MAX_NUMBER_OF_POINTS_IN_PAGE, list.rowCount())];
         int pointsInPage = 0;
         for (int sortedRowIndex = pageRange.get(pageNum * 2);
             sortedRowIndex <= pageRange.get(pageNum * 2 + 1);

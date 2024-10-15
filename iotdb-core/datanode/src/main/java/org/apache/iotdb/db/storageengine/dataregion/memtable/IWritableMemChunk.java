@@ -29,7 +29,7 @@ import org.apache.tsfile.write.chunk.IChunkWriter;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.List;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 public interface IWritableMemChunk extends WALEntryValue {
 
@@ -141,7 +141,7 @@ public interface IWritableMemChunk extends WALEntryValue {
 
   IChunkWriter createIChunkWriter();
 
-  void encode(LinkedBlockingQueue<Object> ioTaskQueue);
+  void encode(BlockingQueue<Object> ioTaskQueue);
 
   void release();
 

@@ -1005,7 +1005,7 @@ public abstract class AlignedTVList extends TVList {
         // Value: 1,2,null,null
         // When rowIndex:1, pair(min,null), timeDuplicateInfo:false, write(T:1,V:1)
         // When rowIndex:2, pair(2,2), timeDuplicateInfo:true, skip writing value
-        // When rowIndex:3, pair(2,2), timeDuplicateInfo:false, T:2!=air.left:2, write(T:2,V:2)
+        // When rowIndex:3, pair(2,2), timeDuplicateInfo:false, T:2==pair.left:2, write(T:2,V:2)
         // When rowIndex:4, pair(2,2), timeDuplicateInfo:false, T:3!=pair.left:2, write(T:3,V:null)
         int originRowIndex;
         if (Objects.nonNull(lastValidPointIndexForTimeDupCheck)
@@ -1368,7 +1368,6 @@ public abstract class AlignedTVList extends TVList {
   public int getAvgBinaryPointSize() {
     long maxSize = 0;
     int index = 0;
-    int pointNum = 0;
     for (int i = 0; i < memoryBinaryChunkSize.length; i++) {
       if (memoryBinaryChunkSize[i] > maxSize) {
         maxSize = memoryBinaryChunkSize[i];
@@ -1378,22 +1377,28 @@ public abstract class AlignedTVList extends TVList {
     if (maxSize == 0) {
       return 0;
     }
-    if (bitMaps == null || bitMaps.get(index) == null) {
+    int pointNum = getColumnValueCnt(index);
+    return (int) (maxSize / pointNum);
+  }
+
+  public int getColumnValueCnt(int columnIndex) {
+    int pointNum = 0;
+    if (bitMaps == null || bitMaps.get(columnIndex) == null) {
       pointNum = rowCount;
     } else {
       for (int i = 0; i < rowCount; i++) {
         int arrayIndex = i / ARRAY_SIZE;
-        if (bitMaps.get(index).get(arrayIndex) == null) {
+        if (bitMaps.get(columnIndex).get(arrayIndex) == null) {
           pointNum++;
         } else {
           int elementIndex = i % ARRAY_SIZE;
-          if (!bitMaps.get(index).get(arrayIndex).isMarked(elementIndex)) {
+          if (!bitMaps.get(columnIndex).get(arrayIndex).isMarked(elementIndex)) {
             pointNum++;
           }
         }
       }
     }
-    return (int) (maxSize / pointNum);
+    return pointNum;
   }
 
   public List<List<BitMap>> getBitMaps() {
