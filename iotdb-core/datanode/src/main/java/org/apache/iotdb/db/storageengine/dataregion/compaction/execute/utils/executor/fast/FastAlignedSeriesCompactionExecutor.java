@@ -338,10 +338,9 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
     updateSummary(chunkMetadataElement, ChunkStatus.READ_IN);
     AlignedChunkMetadata alignedChunkMetadata =
         (AlignedChunkMetadata) chunkMetadataElement.chunkMetadata;
+    TsFileSequenceReader reader = readerCacheMap.get(chunkMetadataElement.fileElement.resource);
     chunkMetadataElement.chunk =
-        readerCacheMap
-            .get(chunkMetadataElement.fileElement.resource)
-            .readMemChunk((ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata());
+        readChunk(reader, (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata());
     List<Chunk> valueChunks = new ArrayList<>();
     for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
       if (valueChunkMetadata == null || valueChunkMetadata.getStatistics().getCount() == 0) {
@@ -349,13 +348,15 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
         valueChunks.add(null);
         continue;
       }
-      valueChunks.add(
-          readerCacheMap
-              .get(chunkMetadataElement.fileElement.resource)
-              .readMemChunk((ChunkMetadata) valueChunkMetadata));
+      valueChunks.add(readChunk(reader, (ChunkMetadata) valueChunkMetadata));
     }
     chunkMetadataElement.valueChunks = valueChunks;
     setForceDecoding(chunkMetadataElement);
+  }
+
+  protected Chunk readChunk(TsFileSequenceReader reader, ChunkMetadata chunkMetadata)
+      throws IOException {
+    return reader.readMemChunk(chunkMetadata);
   }
 
   @Override
