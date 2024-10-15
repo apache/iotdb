@@ -256,7 +256,7 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
       } catch (final Exception e) {
         Assert.assertTrue(
             e.getMessage()
-                .contains("The alias is duplicated with the name or alias of other measurement."));
+                .contains("The alias is duplicated with the name or alias of other measurement"));
       }
 
       final Map<String, String> newTags =
