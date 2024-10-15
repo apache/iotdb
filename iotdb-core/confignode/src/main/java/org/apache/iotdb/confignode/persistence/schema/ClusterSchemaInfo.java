@@ -49,6 +49,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaRep
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.DropTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
@@ -1086,6 +1087,18 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     try {
       mTree.preDeleteTable(
           getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName());
+      return RpcUtils.SUCCESS_STATUS;
+    } catch (final MetadataException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  public TSStatus dropTable(final DropTablePlan plan) {
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      mTree.dropTable(getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName());
       return RpcUtils.SUCCESS_STATUS;
     } catch (final MetadataException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());

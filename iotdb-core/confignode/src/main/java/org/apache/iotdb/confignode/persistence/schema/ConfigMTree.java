@@ -687,6 +687,12 @@ public class ConfigMTree {
     tableNode.setStatus(TableNodeStatus.PRE_DELETE);
   }
 
+  public void dropTable(final PartialPath database, final String tableName)
+      throws MetadataException {
+    final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    store.deleteChild(databaseNode, tableName);
+  }
+
   public List<TsTable> getAllUsingTablesUnderSpecificDatabase(final PartialPath databasePath)
       throws MetadataException {
     final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(databasePath).getAsMNode();

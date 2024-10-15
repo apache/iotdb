@@ -120,6 +120,7 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessag
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.DropTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
@@ -1240,6 +1241,15 @@ public class ConfigPhysicalPlanSerDeTest {
             ConfigPhysicalPlan.Factory.create(preDeleteTablePlan.serializeToByteBuffer());
     Assert.assertEquals(preDeleteTablePlan.getDatabase(), preDeleteTablePlan1.getDatabase());
     Assert.assertEquals(preDeleteTablePlan.getTableName(), preDeleteTablePlan1.getTableName());
+  }
+
+  @Test
+  public void DropTablePlanTest() throws IOException {
+    final DropTablePlan dropTablePlan = new DropTablePlan("root.database1", "table1");
+    final DropTablePlan dropTablePlan1 =
+        (DropTablePlan) ConfigPhysicalPlan.Factory.create(dropTablePlan.serializeToByteBuffer());
+    Assert.assertEquals(dropTablePlan.getDatabase(), dropTablePlan1.getDatabase());
+    Assert.assertEquals(dropTablePlan.getTableName(), dropTablePlan1.getTableName());
   }
 
   @Test
