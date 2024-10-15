@@ -27,12 +27,14 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
+import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
@@ -71,8 +73,409 @@ public class IoTDBGapFillTableIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  @Ignore
   @Test
-  public void abNormalFillTest() {
+  public void normalGapFillTest() {
+
+    // case 1: avg_s1 of one device without having
+    String[] expectedHeader = new String[] {"hour_time", "avg_s1"};
+    String[] retArray =
+        new String[] {
+          "2024-09-24T04:00:00.000Z,null,",
+          "2024-09-24T05:00:00.000Z,null,",
+          "2024-09-24T06:00:00.000Z,null,",
+          "2024-09-24T07:00:00.000Z,27.2,",
+          "2024-09-24T08:00:00.000Z,27.3,",
+          "2024-09-24T09:00:00.000Z,null,",
+          "2024-09-24T10:00:00.000Z,null,",
+          "2024-09-24T11:00:00.000Z,29.3,",
+        };
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) AND device_id = 'd1' GROUP BY 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // case 2: avg_s1 of one device with having
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) AND device_id = 'd1' GROUP BY 1 HAVING avg(s1) IS NOT NULL",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // case 3: avg_s1 of each device
+    expectedHeader = new String[] {"hour_time", "city", "device_id", "avg_s1"};
+    retArray =
+        new String[] {
+          "2024-09-24T04:00:00.000Z,shanghai,d1,null,",
+          "2024-09-24T05:00:00.000Z,shanghai,d1,null,",
+          "2024-09-24T06:00:00.000Z,shanghai,d1,null,",
+          "2024-09-24T07:00:00.000Z,shanghai,d1,27.2,",
+          "2024-09-24T08:00:00.000Z,shanghai,d1,27.3,",
+          "2024-09-24T09:00:00.000Z,shanghai,d1,null,",
+          "2024-09-24T10:00:00.000Z,shanghai,d1,null,",
+          "2024-09-24T11:00:00.000Z,shanghai,d1,29.3,",
+          "2024-09-24T04:00:00.000Z,beijing,d2,25.1,",
+          "2024-09-24T05:00:00.000Z,beijing,d2,null,",
+          "2024-09-24T06:00:00.000Z,beijing,d2,null,",
+          "2024-09-24T07:00:00.000Z,beijing,d2,null,",
+          "2024-09-24T08:00:00.000Z,beijing,d2,null,",
+          "2024-09-24T09:00:00.000Z,beijing,d2,null,",
+          "2024-09-24T10:00:00.000Z,beijing,d2,null,",
+          "2024-09-24T11:00:00.000Z,beijing,d2,28.2,",
+          "2024-09-24T04:00:00.000Z,shanghai,d3,null,",
+          "2024-09-24T05:00:00.000Z,shanghai,d3,null,",
+          "2024-09-24T06:00:00.000Z,shanghai,d3,null,",
+          "2024-09-24T07:00:00.000Z,shanghai,d3,null,",
+          "2024-09-24T08:00:00.000Z,shanghai,d3,25.8,",
+          "2024-09-24T09:00:00.000Z,shanghai,d3,null,",
+          "2024-09-24T10:00:00.000Z,shanghai,d3,null,",
+          "2024-09-24T11:00:00.000Z,shanghai,d3,null,",
+        };
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, city, device_id, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) GROUP BY 1,2,device_id order by city,3,1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, city, device_id, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) GROUP BY date_bin_gapfill(1h, time),city,device_id order by city,device_id,date_bin_gapfill(1h, time)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, city, device_id, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) GROUP BY 1,2,3 order by 2,3,1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // case 4: avg_s1 of all devices
+    expectedHeader = new String[] {"hour_time", "avg_s1"};
+    retArray =
+        new String[] {
+          "2024-09-24T04:00:00.000Z,25.1,",
+          "2024-09-24T05:00:00.000Z,null,",
+          "2024-09-24T06:00:00.000Z,null,",
+          "2024-09-24T07:00:00.000Z,27.2,",
+          "2024-09-24T08:00:00.000Z,26.3,",
+          "2024-09-24T09:00:00.000Z,null,",
+          "2024-09-24T10:00:00.000Z,null,",
+          "2024-09-24T11:00:00.000Z,28.75,",
+        };
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) GROUP BY 1 order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) GROUP BY date_bin_gapfill(1h, time) order by date_bin_gapfill(1h, time)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) GROUP BY 1 order by date_bin_gapfill(1h, time)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) GROUP BY date_bin_gapfill(1h, time) order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // case 5: avg_s1 of all cities
+    expectedHeader = new String[] {"hour_time", "city", "avg_s1"};
+    retArray =
+        new String[] {
+          "2024-09-24T04:00:00.000Z,beijing,25.1,",
+          "2024-09-24T05:00:00.000Z,beijing,null,",
+          "2024-09-24T06:00:00.000Z,beijing,null,",
+          "2024-09-24T07:00:00.000Z,beijing,null,",
+          "2024-09-24T08:00:00.000Z,beijing,null,",
+          "2024-09-24T09:00:00.000Z,beijing,null,",
+          "2024-09-24T10:00:00.000Z,beijing,null,",
+          "2024-09-24T11:00:00.000Z,beijing,28.2,",
+          "2024-09-24T04:00:00.000Z,shanghai,null,",
+          "2024-09-24T05:00:00.000Z,shanghai,null,",
+          "2024-09-24T06:00:00.000Z,shanghai,null,",
+          "2024-09-24T07:00:00.000Z,shanghai,27.2,",
+          "2024-09-24T08:00:00.000Z,shanghai,26.3,",
+          "2024-09-24T09:00:00.000Z,shanghai,null,",
+          "2024-09-24T10:00:00.000Z,shanghai,null,",
+          "2024-09-24T11:00:00.000Z,shanghai,29.3,",
+        };
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, city, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) GROUP BY 1,2 order by 2,1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // case 6: avg_s1 of all device_ids
+    expectedHeader = new String[] {"hour_time", "device_id", "avg_s1"};
+    retArray =
+        new String[] {
+          "2024-09-24T04:00:00.000Z,d1,null,",
+          "2024-09-24T05:00:00.000Z,d1,null,",
+          "2024-09-24T06:00:00.000Z,d1,null,",
+          "2024-09-24T07:00:00.000Z,d1,27.2,",
+          "2024-09-24T08:00:00.000Z,d1,27.3,",
+          "2024-09-24T09:00:00.000Z,d1,null,",
+          "2024-09-24T10:00:00.000Z,d1,null,",
+          "2024-09-24T11:00:00.000Z,d1,29.3,",
+          "2024-09-24T04:00:00.000Z,d2,25.1,",
+          "2024-09-24T05:00:00.000Z,d2,null,",
+          "2024-09-24T06:00:00.000Z,d2,null,",
+          "2024-09-24T07:00:00.000Z,d2,null,",
+          "2024-09-24T08:00:00.000Z,d2,null,",
+          "2024-09-24T09:00:00.000Z,d2,null,",
+          "2024-09-24T10:00:00.000Z,d2,null,",
+          "2024-09-24T11:00:00.000Z,d2,28.2,",
+          "2024-09-24T04:00:00.000Z,d3,null,",
+          "2024-09-24T05:00:00.000Z,d3,null,",
+          "2024-09-24T06:00:00.000Z,d3,null,",
+          "2024-09-24T07:00:00.000Z,d3,null,",
+          "2024-09-24T08:00:00.000Z,d3,25.8,",
+          "2024-09-24T09:00:00.000Z,d3,null,",
+          "2024-09-24T10:00:00.000Z,d3,null,",
+          "2024-09-24T11:00:00.000Z,d3,null,",
+        };
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, device_id, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) GROUP BY 1,2 order by 2,1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // case 7: no data after where
+    expectedHeader = new String[] {"hour_time", "avg_s1"};
+    retArray = new String[] {};
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T00:00:00.000+00:00 AND time < 2024-09-24T06:00:00.00+00:00) AND device_id = 'd1' GROUP BY 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Ignore
+  @Test
+  public void gapFillWithFillClauseTest() {
+
+    // case 1: avg_s1 of one device without having
+    String[] expectedHeader = new String[] {"hour_time", "avg_s1"};
+    String[] retArray =
+        new String[] {
+          "2024-09-24T04:00:00.000Z,null,",
+          "2024-09-24T05:00:00.000Z,null,",
+          "2024-09-24T06:00:00.000Z,null,",
+          "2024-09-24T07:00:00.000Z,27.2,",
+          "2024-09-24T08:00:00.000Z,27.3,",
+          "2024-09-24T09:00:00.000Z,27.3,",
+          "2024-09-24T10:00:00.000Z,27.3,",
+          "2024-09-24T11:00:00.000Z,29.3,",
+        };
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) AND device_id = 'd1' GROUP BY 1 FILL METHOD PREVIOUS",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // case 2: avg_s1 of one device with having
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) AND device_id = 'd1' GROUP BY 1 HAVING avg(s1) IS NOT NULL FILL METHOD PREVIOUS",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // case 3: avg_s1 of each device
+    expectedHeader = new String[] {"hour_time", "city", "device_id", "avg_s1"};
+    retArray =
+        new String[] {
+          "2024-09-24T04:00:00.000Z,shanghai,d1,null,",
+          "2024-09-24T05:00:00.000Z,shanghai,d1,null,",
+          "2024-09-24T06:00:00.000Z,shanghai,d1,null,",
+          "2024-09-24T07:00:00.000Z,shanghai,d1,27.2,",
+          "2024-09-24T08:00:00.000Z,shanghai,d1,27.3,",
+          "2024-09-24T09:00:00.000Z,shanghai,d1,27.3,",
+          "2024-09-24T10:00:00.000Z,shanghai,d1,27.3,",
+          "2024-09-24T11:00:00.000Z,shanghai,d1,29.3,",
+          "2024-09-24T04:00:00.000Z,beijing,d2,25.1,",
+          "2024-09-24T05:00:00.000Z,beijing,d2,25.1,",
+          "2024-09-24T06:00:00.000Z,beijing,d2,25.1,",
+          "2024-09-24T07:00:00.000Z,beijing,d2,25.1,",
+          "2024-09-24T08:00:00.000Z,beijing,d2,25.1,",
+          "2024-09-24T09:00:00.000Z,beijing,d2,25.1,",
+          "2024-09-24T10:00:00.000Z,beijing,d2,25.1,",
+          "2024-09-24T11:00:00.000Z,beijing,d2,28.2,",
+          "2024-09-24T04:00:00.000Z,shanghai,d3,null,",
+          "2024-09-24T05:00:00.000Z,shanghai,d3,null,",
+          "2024-09-24T06:00:00.000Z,shanghai,d3,null,",
+          "2024-09-24T07:00:00.000Z,shanghai,d3,null,",
+          "2024-09-24T08:00:00.000Z,shanghai,d3,25.8,",
+          "2024-09-24T09:00:00.000Z,shanghai,d3,25.8,",
+          "2024-09-24T10:00:00.000Z,shanghai,d3,25.8,",
+          "2024-09-24T11:00:00.000Z,shanghai,d3,25.8,",
+        };
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, city, device_id, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) GROUP BY 1,2,device_id FILL METHOD PREVIOUS FILL_GROUP 2,3 order by city,3,1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, city, device_id, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) GROUP BY date_bin_gapfill(1h, time),city,device_id FILL METHOD PREVIOUS FILL_GROUP 2,3 order by city,device_id,date_bin_gapfill(1h, time)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, city, device_id, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) GROUP BY 1,2,3 FILL METHOD PREVIOUS FILL_GROUP 2,3 order by 2,3,1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "2024-09-24T04:00:00.000Z,shanghai,d1,null,",
+          "2024-09-24T05:00:00.000Z,shanghai,d1,null,",
+          "2024-09-24T06:00:00.000Z,shanghai,d1,null,",
+          "2024-09-24T07:00:00.000Z,shanghai,d1,27.2,",
+          "2024-09-24T08:00:00.000Z,shanghai,d1,27.3,",
+          "2024-09-24T09:00:00.000Z,shanghai,d1,27.3,",
+          "2024-09-24T10:00:00.000Z,shanghai,d1,null,",
+          "2024-09-24T11:00:00.000Z,shanghai,d1,29.3,",
+          "2024-09-24T04:00:00.000Z,beijing,d2,25.1,",
+          "2024-09-24T05:00:00.000Z,beijing,d2,25.1,",
+          "2024-09-24T06:00:00.000Z,beijing,d2,null,",
+          "2024-09-24T07:00:00.000Z,beijing,d2,null,",
+          "2024-09-24T08:00:00.000Z,beijing,d2,null,",
+          "2024-09-24T09:00:00.000Z,beijing,d2,null,",
+          "2024-09-24T10:00:00.000Z,beijing,d2,null,",
+          "2024-09-24T11:00:00.000Z,beijing,d2,28.2,",
+          "2024-09-24T04:00:00.000Z,shanghai,d3,null,",
+          "2024-09-24T05:00:00.000Z,shanghai,d3,null,",
+          "2024-09-24T06:00:00.000Z,shanghai,d3,null,",
+          "2024-09-24T07:00:00.000Z,shanghai,d3,null,",
+          "2024-09-24T08:00:00.000Z,shanghai,d3,25.8,",
+          "2024-09-24T09:00:00.000Z,shanghai,d3,25.8,",
+          "2024-09-24T10:00:00.000Z,shanghai,d3,null,",
+          "2024-09-24T11:00:00.000Z,shanghai,d3,null",
+        };
+    // with time bound
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, city, device_id, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) GROUP BY 1,2,3 FILL METHOD PREVIOUS TIME_BOUND 1ms FILL_GROUP 2,3 order by 2,3,1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // case 4: avg_s1 of all devices
+    expectedHeader = new String[] {"hour_time", "avg_s1"};
+    retArray =
+        new String[] {
+          "2024-09-24T04:00:00.000Z,25.1,",
+          "2024-09-24T05:00:00.000Z,25.1,",
+          "2024-09-24T06:00:00.000Z,25.1,",
+          "2024-09-24T07:00:00.000Z,27.2,",
+          "2024-09-24T08:00:00.000Z,26.3,",
+          "2024-09-24T09:00:00.000Z,26.3,",
+          "2024-09-24T10:00:00.000Z,26.3,",
+          "2024-09-24T11:00:00.000Z,28.75,",
+        };
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) GROUP BY 1 FILL METHOD PREVIOUS order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) GROUP BY date_bin_gapfill(1h, time) FILL METHOD PREVIOUS order by date_bin_gapfill(1h, time)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) GROUP BY 1 FILL METHOD PREVIOUS order by date_bin_gapfill(1h, time)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) GROUP BY date_bin_gapfill(1h, time) FILL METHOD PREVIOUS order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // case 5: avg_s1 of all cities
+    expectedHeader = new String[] {"hour_time", "city", "avg_s1"};
+    retArray =
+        new String[] {
+          "2024-09-24T04:00:00.000Z,beijing,25.1,",
+          "2024-09-24T05:00:00.000Z,beijing,25.1,",
+          "2024-09-24T06:00:00.000Z,beijing,25.1,",
+          "2024-09-24T07:00:00.000Z,beijing,25.1,",
+          "2024-09-24T08:00:00.000Z,beijing,25.1,",
+          "2024-09-24T09:00:00.000Z,beijing,25.1,",
+          "2024-09-24T10:00:00.000Z,beijing,25.1,",
+          "2024-09-24T11:00:00.000Z,beijing,28.2,",
+          "2024-09-24T04:00:00.000Z,shanghai,null,",
+          "2024-09-24T05:00:00.000Z,shanghai,null,",
+          "2024-09-24T06:00:00.000Z,shanghai,null,",
+          "2024-09-24T07:00:00.000Z,shanghai,27.2,",
+          "2024-09-24T08:00:00.000Z,shanghai,26.3,",
+          "2024-09-24T09:00:00.000Z,shanghai,26.3,",
+          "2024-09-24T10:00:00.000Z,shanghai,26.3,",
+          "2024-09-24T11:00:00.000Z,shanghai,29.3,",
+        };
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, city, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) GROUP BY 1,2 FILL METHOD PREVIOUS TIME_COLUMN 1 FILL_GROUP 2 order by 2,1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, city, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) GROUP BY 1,2 FILL METHOD PREVIOUS FILL_GROUP 2 order by 2,1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // case 6: avg_s1 of all device_ids
+    expectedHeader = new String[] {"hour_time", "device_id", "avg_s1"};
+    retArray =
+        new String[] {
+          "2024-09-24T04:00:00.000Z,d1,null,",
+          "2024-09-24T05:00:00.000Z,d1,null,",
+          "2024-09-24T06:00:00.000Z,d1,null,",
+          "2024-09-24T07:00:00.000Z,d1,27.2,",
+          "2024-09-24T08:00:00.000Z,d1,27.3,",
+          "2024-09-24T09:00:00.000Z,d1,27.3,",
+          "2024-09-24T10:00:00.000Z,d1,27.3,",
+          "2024-09-24T11:00:00.000Z,d1,29.3,",
+          "2024-09-24T04:00:00.000Z,d2,25.1,",
+          "2024-09-24T05:00:00.000Z,d2,25.1,",
+          "2024-09-24T06:00:00.000Z,d2,25.1,",
+          "2024-09-24T07:00:00.000Z,d2,25.1,",
+          "2024-09-24T08:00:00.000Z,d2,25.1,",
+          "2024-09-24T09:00:00.000Z,d2,25.1,",
+          "2024-09-24T10:00:00.000Z,d2,25.1,",
+          "2024-09-24T11:00:00.000Z,d2,28.2,",
+          "2024-09-24T04:00:00.000Z,d3,null,",
+          "2024-09-24T05:00:00.000Z,d3,null,",
+          "2024-09-24T06:00:00.000Z,d3,null,",
+          "2024-09-24T07:00:00.000Z,d3,null,",
+          "2024-09-24T08:00:00.000Z,d3,25.8,",
+          "2024-09-24T09:00:00.000Z,d3,25.8,",
+          "2024-09-24T10:00:00.000Z,d3,25.8,",
+          "2024-09-24T11:00:00.000Z,d3,25.8,",
+        };
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, device_id, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) GROUP BY 1,2 FILL METHOD PREVIOUS FILL_GROUP 2 order by 2,1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // case 7: no data after where
+    expectedHeader = new String[] {"hour_time", "avg_s1"};
+    retArray = new String[] {};
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T00:00:00.000+00:00 AND time < 2024-09-24T06:00:00.00+00:00) AND device_id = 'd1' GROUP BY 1 FILL METHOD PREVIOUS",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void abNormalGapFillTest() {
 
     // case 1: multiple date_bin_gapfill in group by clause
     tableAssertTestFail(
