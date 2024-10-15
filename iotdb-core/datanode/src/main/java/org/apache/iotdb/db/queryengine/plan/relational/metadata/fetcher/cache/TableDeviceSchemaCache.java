@@ -465,6 +465,29 @@ public class TableDeviceSchemaCache {
     return dualKeyCache.stats().requestCount();
   }
 
+  void invalidateLastCache(final @Nonnull String database) {
+    final String qualifiedDatabase = PathUtils.qualifyDatabaseName(database);
+    readWriteLock.writeLock().lock();
+
+    try {
+      dualKeyCache.update(
+          tableId ->
+              tableId.belongTo(database)
+                  || Objects.isNull(tableId.getDatabase())
+                      && tableId.getTableName().startsWith(qualifiedDatabase),
+          deviceID -> true,
+          entry -> -entry.invalidateLastCache());
+      dualKeyCache.update(
+          tableId ->
+              Objects.isNull(tableId.getDatabase())
+                  && qualifiedDatabase.startsWith(tableId.getTableName()),
+          deviceID -> deviceID.matchDatabaseName(database),
+          entry -> -entry.invalidateLastCache());
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
   public void invalidate(final @Nonnull String database) {
     final String qualifiedDatabase = PathUtils.qualifyDatabaseName(database);
     readWriteLock.writeLock().lock();

@@ -377,7 +377,7 @@ public class TreeDeviceSchemaCacheManager {
     if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
       return;
     }
-    tableDeviceSchemaCache.invalidate(database);
+    tableDeviceSchemaCache.invalidateLastCache(database);
   }
 
   /**
