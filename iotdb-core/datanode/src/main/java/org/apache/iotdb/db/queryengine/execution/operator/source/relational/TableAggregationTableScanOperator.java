@@ -637,6 +637,8 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   /** Append a row of aggregation results to the result tsBlock. */
   public void appendAggregationResult(
       TsBlockBuilder tsBlockBuilder, List<? extends TableAggregator> aggregators) {
+    if ()
+
     ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
 
     int groupKeySize = groupingKeySchemas == null ? 0 : groupingKeySchemas.size();
