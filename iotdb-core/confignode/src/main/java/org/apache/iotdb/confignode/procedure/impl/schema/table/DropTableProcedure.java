@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.confignode.consensus.request.write.table.InvalidateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -61,7 +61,7 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
       switch (state) {
         case CHECK_AND_INVALIDATE_TABLE:
           LOGGER.info("Check and invalidate table {}.{} when dropping table", database, tableName);
-          checkAndInvalidateTable(env);
+          checkAndPreDeleteTable(env);
           break;
         case INVALIDATE_CACHE:
           LOGGER.info(
@@ -91,8 +91,8 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     }
   }
 
-  private void checkAndInvalidateTable(final ConfigNodeProcedureEnv env) {
-    final InvalidateTablePlan plan = new InvalidateTablePlan(database, tableName);
+  private void checkAndPreDeleteTable(final ConfigNodeProcedureEnv env) {
+    final PreDeleteTablePlan plan = new PreDeleteTablePlan(database, tableName);
     TSStatus status;
     try {
       status = env.getConfigManager().getConsensusManager().write(plan);

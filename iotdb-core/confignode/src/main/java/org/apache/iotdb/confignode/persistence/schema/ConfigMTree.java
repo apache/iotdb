@@ -673,6 +673,20 @@ public class ConfigMTree {
     tableNode.setStatus(TableNodeStatus.USING);
   }
 
+  public void preDeleteTable(final PartialPath database, final String tableName)
+      throws MetadataException {
+    final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    if (!databaseNode.hasChild(tableName)) {
+      throw new TableNotExistsException(
+          database.getFullPath().substring(ROOT.length() + 1), tableName);
+    }
+    final ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
+    if (!tableNode.getStatus().equals(TableNodeStatus.USING)) {
+      throw new IllegalStateException();
+    }
+    tableNode.setStatus(TableNodeStatus.PRE_DELETE);
+  }
+
   public List<TsTable> getAllUsingTablesUnderSpecificDatabase(final PartialPath databasePath)
       throws MetadataException {
     final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(databasePath).getAsMNode();

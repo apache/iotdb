@@ -21,13 +21,13 @@ package org.apache.iotdb.confignode.consensus.request.write.table;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
-public class InvalidateTablePlan extends AbstractTablePlan {
+public class PreDeleteTablePlan extends AbstractTablePlan {
 
-  public InvalidateTablePlan() {
-    super(ConfigPhysicalPlanType.InvalidateTable);
+  public PreDeleteTablePlan() {
+    super(ConfigPhysicalPlanType.preDeleteTable);
   }
 
-  public InvalidateTablePlan(final String database, final String tableName) {
-    super(ConfigPhysicalPlanType.InvalidateTable, database, tableName);
+  public PreDeleteTablePlan(final String database, final String tableName) {
+    super(ConfigPhysicalPlanType.preDeleteTable, database, tableName);
   }
 }

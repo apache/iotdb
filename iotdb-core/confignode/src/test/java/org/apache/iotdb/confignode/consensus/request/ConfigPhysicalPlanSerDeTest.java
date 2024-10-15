@@ -120,8 +120,8 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessag
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
-import org.apache.iotdb.confignode.consensus.request.write.table.InvalidateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
@@ -1232,14 +1232,14 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
-  public void InvalidateTablePlanTest() throws IOException {
-    final InvalidateTablePlan invalidateTablePlan =
-        new InvalidateTablePlan("root.database1", "table1");
-    final InvalidateTablePlan invalidateTablePlan1 =
-        (InvalidateTablePlan)
-            ConfigPhysicalPlan.Factory.create(invalidateTablePlan.serializeToByteBuffer());
-    Assert.assertEquals(invalidateTablePlan.getDatabase(), invalidateTablePlan1.getDatabase());
-    Assert.assertEquals(invalidateTablePlan.getTableName(), invalidateTablePlan1.getTableName());
+  public void PreDeleteTablePlanTest() throws IOException {
+    final PreDeleteTablePlan preDeleteTablePlan =
+        new PreDeleteTablePlan("root.database1", "table1");
+    final PreDeleteTablePlan preDeleteTablePlan1 =
+        (PreDeleteTablePlan)
+            ConfigPhysicalPlan.Factory.create(preDeleteTablePlan.serializeToByteBuffer());
+    Assert.assertEquals(preDeleteTablePlan.getDatabase(), preDeleteTablePlan1.getDatabase());
+    Assert.assertEquals(preDeleteTablePlan.getTableName(), preDeleteTablePlan1.getTableName());
   }
 
   @Test
