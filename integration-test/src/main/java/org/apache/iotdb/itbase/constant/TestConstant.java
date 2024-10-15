@@ -51,7 +51,7 @@ public class TestConstant {
   public static boolean testFlag = true;
   public static String[] stringValue = new String[] {"A", "B", "C", "D", "E"};
   public static String[] booleanValue = new String[] {"true", "false"};
-  public static final String TIMESEIRES_STR = ColumnHeaderConstant.TIMESERIES;
+  public static final String TIMESERIES_STR = ColumnHeaderConstant.TIMESERIES;
   public static final String VALUE_STR = ColumnHeaderConstant.VALUE;
   public static final String DATA_TYPE_STR = ColumnHeaderConstant.DATATYPE;
   public static final String FUNCTION_TYPE_NATIVE = "native";
