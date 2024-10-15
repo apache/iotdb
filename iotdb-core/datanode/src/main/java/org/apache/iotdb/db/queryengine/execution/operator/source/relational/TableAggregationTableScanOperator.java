@@ -197,8 +197,9 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
 
     // optimize for sql: select count(*) from (select count(s1), sum(s1) from table)
     if (tableAggregators.isEmpty()) {
-      retainedTsBlock = null;
+      resultTsBlockBuilder.reset();
       currentDeviceIndex = deviceCount;
+      timeIterator.setFinished();
       Column[] valueColumns = new Column[0];
       return new TsBlock(1, new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, 1), valueColumns);
     }

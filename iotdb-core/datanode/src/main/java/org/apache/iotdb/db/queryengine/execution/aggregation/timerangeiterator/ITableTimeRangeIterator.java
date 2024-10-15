@@ -32,8 +32,6 @@ public interface ITableTimeRangeIterator {
 
   boolean hasCachedTimeRange();
 
-  // TimeRange nextTimeRange();
-
   TimeRange getCurTimeRange();
 
   boolean canFinishCurrentTimeRange(long startTime);

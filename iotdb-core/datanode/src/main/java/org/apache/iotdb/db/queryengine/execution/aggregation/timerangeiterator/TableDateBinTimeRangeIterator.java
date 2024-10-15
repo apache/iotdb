@@ -25,19 +25,18 @@ import org.apache.tsfile.read.common.TimeRange;
 
 public class TableDateBinTimeRangeIterator implements ITableTimeRangeIterator {
 
-  DateBinFunctionColumnTransformer dateBinTransformer;
+  private final DateBinFunctionColumnTransformer dateBinTransformer;
 
-  boolean finished = false;
+  private boolean finished = false;
 
-  // left close, right open
+  // left close, right close
   private TimeRange curTimeRange;
-
-  // private boolean hasCachedTimeRange;
 
   public TableDateBinTimeRangeIterator(DateBinFunctionColumnTransformer dateBinTransformer) {
     this.dateBinTransformer = dateBinTransformer;
   }
 
+  @Override
   public boolean canFinishCurrentTimeRange(long startTime) {
     if (curTimeRange == null) {
       return false;
@@ -46,6 +45,7 @@ public class TableDateBinTimeRangeIterator implements ITableTimeRangeIterator {
     return startTime > curTimeRange.getMax();
   }
 
+  @Override
   public void updateCurTimeRange(long startTime) {
     long[] timeArray = dateBinTransformer.dateBinStartEnd(startTime);
 
@@ -59,6 +59,7 @@ public class TableDateBinTimeRangeIterator implements ITableTimeRangeIterator {
     }
   }
 
+  @Override
   public void setFinished() {
     this.curTimeRange = null;
     this.finished = true;
@@ -87,19 +88,4 @@ public class TableDateBinTimeRangeIterator implements ITableTimeRangeIterator {
   public void resetCurTimeRange() {
     this.curTimeRange = null;
   }
-
-  //  @Override
-  //  public TimeRange nextTimeRange() {
-  //    if (hasCachedTimeRange) {
-  //      return curTimeRange;
-  //    }
-  //    //    hasCachedTimeRange = false;
-  //    //    curTimeRange = null;
-  //    return null;
-  //  }
-
-  //  @Override
-  //  public boolean isAscending() {
-  //    return false;
-  //  }
 }

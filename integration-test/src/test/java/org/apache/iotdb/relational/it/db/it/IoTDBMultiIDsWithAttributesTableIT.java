@@ -617,25 +617,26 @@ public class IoTDBMultiIDsWithAttributesTableIT {
           "count_date",
           "count_attr1",
           "count_attr2",
-          "count_time"
+          "count_time",
+          "sum_num"
         };
     retArray =
         new String[] {
-          "d1,l1,3,3,3,0,3,3,3,",
-          "d1,l2,3,3,3,0,3,3,3,",
-          "d1,l3,3,3,3,0,3,3,3,",
-          "d1,l4,3,3,3,0,0,0,3,",
-          "d1,l5,3,3,3,1,0,0,3,",
-          "d2,l1,3,3,3,0,3,3,3,",
-          "d2,l2,3,3,3,0,3,0,3,",
-          "d2,l3,3,3,3,0,0,0,3,",
-          "d2,l4,3,3,3,0,0,0,3,",
-          "d2,l5,3,3,3,1,0,0,3,",
+          "d1,l1,3,3,3,0,3,3,3,20.0,",
+          "d1,l2,3,3,3,0,3,3,3,24.0,",
+          "d1,l3,3,3,3,0,3,3,3,19.0,",
+          "d1,l4,3,3,3,0,0,0,3,27.0,",
+          "d1,l5,3,3,3,1,0,0,3,30.0,",
+          "d2,l1,3,3,3,0,3,3,3,20.0,",
+          "d2,l2,3,3,3,0,3,0,3,24.0,",
+          "d2,l3,3,3,3,0,0,0,3,19.0,",
+          "d2,l4,3,3,3,0,0,0,3,27.0,",
+          "d2,l5,3,3,3,1,0,0,3,30.0,",
         };
     String sql =
         "select device, level, "
             + "count(num) as count_num, count(*) as count_star, count(device) as count_device, count(date) as count_date, "
-            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num "
             + "from table0 group by device,level order by device, level";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
@@ -763,6 +764,16 @@ public class IoTDBMultiIDsWithAttributesTableIT {
             + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, avg(num) as avg_num "
             + "from table0 group by 3, device, level order by device, level, bin";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    // TODO(beyyes) test below
+    //    sql = "select count(*) from (\n" +
+    //            "\tselect device, level, date_bin(1d, time) as bin, \n" +
+    //            "\tcount(num) as count_num, count(*) as count_star, count(device) as count_device,
+    // count(date) as count_date, count(attr1) as count_attr1, count(attr2) as count_attr2,
+    // count(time) as count_time, avg(num) as avg_num \n" +
+    //            "\tfrom table0 \n" +
+    //            "\tgroup by 3, device, level order by device, level, bin\n" +
+    //            ")\n";
   }
 
   // ============================ Join Test ===========================

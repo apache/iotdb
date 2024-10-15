@@ -21,22 +21,14 @@ package org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator;
 
 import org.apache.tsfile.read.common.TimeRange;
 
-/** Used for aggregation with only one time window. i.e. Aggregation without group by. */
 public class TableSingleTimeWindowIterator implements ITableTimeRangeIterator {
 
   // when all devices are consumed up, finished = true
   boolean finished = false;
 
-  // total query [startTime, endTime)
-  private final long startTime;
-  private final long endTime;
-
   private TimeRange curTimeRange;
-  private boolean hasCachedTimeRange;
 
   public TableSingleTimeWindowIterator(long startTime, long endTime) {
-    this.startTime = startTime;
-    this.endTime = endTime;
     curTimeRange = new TimeRange(startTime, endTime);
   }
 
@@ -60,22 +52,15 @@ public class TableSingleTimeWindowIterator implements ITableTimeRangeIterator {
     return curTimeRange;
   }
 
-  //  @Override
-  //  public TimeRange nextTimeRange() {
-  //    if (hasCachedTimeRange || hasNextTimeRange()) {
-  //      hasCachedTimeRange = false;
-  //      return curTimeRange;
-  //    }
-  //    return null;
-  //  }
-
   @Override
   public boolean canFinishCurrentTimeRange(long startTime) {
     return false;
   }
 
   @Override
-  public void resetCurTimeRange() {}
+  public void resetCurTimeRange() {
+    // do nothing
+  }
 
   @Override
   public void updateCurTimeRange(long startTime) {
@@ -87,9 +72,4 @@ public class TableSingleTimeWindowIterator implements ITableTimeRangeIterator {
     this.curTimeRange = null;
     this.finished = true;
   }
-
-  //  @Override
-  //  public boolean isAscending() {
-  //    return false;
-  //  }
 }
