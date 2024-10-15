@@ -88,15 +88,10 @@ public class TableDeviceSchemaFetcher {
     return TableDeviceSchemaFetcherHolder.INSTANCE;
   }
 
-  private TableDeviceSchemaCache getTableDeviceCache() {
-    return cache;
-  }
-
   public TableDeviceCacheAttributeGuard getAttributeGuard() {
     return attributeGuard;
   }
 
-  Map<TableDeviceId, ConcurrentMap<String, String>> fetchMissingDeviceSchemaForDataInsertion(
   Map<IDeviceID, Map<String, String>> fetchMissingDeviceSchemaForDataInsertion(
       final FetchDevice statement, final MPPQueryContext context) {
     final long queryId = SessionManager.getInstance().requestQueryId();
@@ -154,8 +149,7 @@ public class TableDeviceSchemaFetcher {
         }
       }
 
-      fetchedDeviceSchema.forEach(
-          (key, value) -> cache.put(database, table, key.getIdValues(), value));
+      fetchedDeviceSchema.forEach((key, value) -> cache.putAttributes(database, key, value));
 
       return fetchedDeviceSchema;
     } catch (final Throwable throwable) {
