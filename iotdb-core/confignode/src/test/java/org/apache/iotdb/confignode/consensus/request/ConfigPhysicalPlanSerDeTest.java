@@ -120,6 +120,7 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessag
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.InvalidateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
@@ -1228,6 +1229,17 @@ public class ConfigPhysicalPlanSerDeTest {
         setTablePropertiesPlan0.getTableName(), setTablePropertiesPlan1.getTableName());
     Assert.assertEquals(
         setTablePropertiesPlan0.getProperties(), setTablePropertiesPlan1.getProperties());
+  }
+
+  @Test
+  public void InvalidateTablePlanTest() throws IOException {
+    final InvalidateTablePlan invalidateTablePlan =
+        new InvalidateTablePlan("root.database1", "table1");
+    final InvalidateTablePlan invalidateTablePlan1 =
+        (InvalidateTablePlan)
+            ConfigPhysicalPlan.Factory.create(invalidateTablePlan.serializeToByteBuffer());
+    Assert.assertEquals(invalidateTablePlan.getDatabase(), invalidateTablePlan1.getDatabase());
+    Assert.assertEquals(invalidateTablePlan.getTableName(), invalidateTablePlan1.getTableName());
   }
 
   @Test
