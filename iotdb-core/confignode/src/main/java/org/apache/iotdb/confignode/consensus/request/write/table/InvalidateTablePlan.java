@@ -21,13 +21,13 @@ package org.apache.iotdb.confignode.consensus.request.write.table;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
-public class RollbackCreateTablePlan extends AbstractTablePlan {
+public class InvalidateTablePlan extends AbstractTablePlan {
 
-  public RollbackCreateTablePlan() {
-    super(ConfigPhysicalPlanType.RollbackCreateTable);
+  public InvalidateTablePlan() {
+    super(ConfigPhysicalPlanType.InvalidateTable);
   }
 
-  public RollbackCreateTablePlan(final String database, final String tableName) {
-    super(ConfigPhysicalPlanType.RollbackCreateTable, database, tableName);
+  public InvalidateTablePlan(final String database, final String tableName) {
+    super(ConfigPhysicalPlanType.InvalidateTable, database, tableName);
   }
 }

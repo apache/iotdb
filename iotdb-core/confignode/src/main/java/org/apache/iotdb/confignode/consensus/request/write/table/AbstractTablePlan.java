@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.consensus.request.write.table;
 
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -27,41 +28,42 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class RenameTableColumnPlan extends AbstractTablePlan {
+abstract class AbstractTablePlan extends ConfigPhysicalPlan {
 
-  private String oldName;
-  private String newName;
+  private String database;
 
-  public RenameTableColumnPlan() {
-    super(ConfigPhysicalPlanType.RenameTableColumn);
+  private String tableName;
+
+  protected AbstractTablePlan(final ConfigPhysicalPlanType type) {
+    super(type);
   }
 
-  public RenameTableColumnPlan(
-      final String database, final String tableName, final String oldName, final String newName) {
-    super(ConfigPhysicalPlanType.RenameTableColumn, database, tableName);
-    this.oldName = oldName;
-    this.newName = newName;
+  protected AbstractTablePlan(
+      final ConfigPhysicalPlanType type, final String database, final String tableName) {
+    super(type);
+    this.database = database;
+    this.tableName = tableName;
   }
 
-  public String getOldName() {
-    return oldName;
+  public String getDatabase() {
+    return database;
   }
 
-  public String getNewName() {
-    return newName;
+  public String getTableName() {
+    return tableName;
   }
 
   @Override
   protected void serializeImpl(final DataOutputStream stream) throws IOException {
-    super.serializeImpl(stream);
-    ReadWriteIOUtils.write(oldName, stream);
-    ReadWriteIOUtils.write(newName, stream);
+    stream.writeShort(getType().getPlanType());
+
+    ReadWriteIOUtils.write(database, stream);
+    ReadWriteIOUtils.write(tableName, stream);
   }
 
   @Override
   protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
-    super.deserializeImpl(buffer);
-    this.oldName = ReadWriteIOUtils.readString(buffer);
-    this.newName = ReadWriteIOUtils.readString(buffer);
+    this.database = ReadWriteIOUtils.readString(buffer);
+    this.tableName = ReadWriteIOUtils.readString(buffer);
   }
 }
