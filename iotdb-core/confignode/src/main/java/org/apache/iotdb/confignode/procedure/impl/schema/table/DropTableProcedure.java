@@ -19,17 +19,21 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.confignode.consensus.request.write.table.InvalidateTablePlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.state.schema.DropTableState;
+import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Objects;
 
 public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTableState> {
 
@@ -50,19 +54,14 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
   }
 
   @Override
-  protected Flow executeFromState(
-      final ConfigNodeProcedureEnv configNodeProcedureEnv, final DropTableState state)
+  protected Flow executeFromState(final ConfigNodeProcedureEnv env, final DropTableState state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
         case CHECK_AND_INVALIDATE_TABLE:
           LOGGER.info("Check and invalidate table {}.{} when dropping table", database, tableName);
-          if (!isFailed() && Objects.isNull(table)) {
-            LOGGER.info(
-                "The updated table has the same properties with the original one. Skip the procedure.");
-            return Flow.NO_MORE_STATE;
-          }
+          checkAndInvalidateTable(env);
           break;
         case INVALIDATE_CACHE:
           LOGGER.info(
@@ -92,7 +91,22 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     }
   }
 
-  private void checkAndInvalidateTable(final ConfigNodeProcedureEnv env) {}
+  private void checkAndInvalidateTable(final ConfigNodeProcedureEnv env) {
+    final InvalidateTablePlan plan = new InvalidateTablePlan(database, tableName);
+    TSStatus status;
+    try {
+      status = env.getConfigManager().getConsensusManager().write(plan);
+    } catch (final ConsensusException e) {
+      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      status.setMessage(e.getMessage());
+    }
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      setNextState(DropTableState.INVALIDATE_CACHE);
+    } else {
+      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+    }
+  }
 
   @Override
   protected boolean isRollbackSupported(final DropTableState state) {
