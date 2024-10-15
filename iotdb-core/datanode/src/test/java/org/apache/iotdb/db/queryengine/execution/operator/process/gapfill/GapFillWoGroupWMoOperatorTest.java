@@ -39,6 +39,7 @@ import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.junit.AfterClass;
 import org.junit.Test;
 
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 
@@ -48,7 +49,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
-public class GapFillWoGroupWoMoOperatorTest {
+public class GapFillWoGroupWMoOperatorTest {
 
   private static final ExecutorService instanceNotificationExecutor =
       IoTDBThreadPoolFactory.newFixedThreadPool(
@@ -56,14 +57,14 @@ public class GapFillWoGroupWoMoOperatorTest {
 
   private final long[] timeArray =
       new long[] {
-        1728849600000L,
-        1728853200000L,
-        1728856800000L,
-        1728860400000L,
-        1728864000000L,
-        1728867600000L,
-        1728871200000L,
-        1728874800000L,
+        1711900800000L,
+        1714492800000L,
+        1717171200000L,
+        1719763200000L,
+        1722441600000L,
+        1725120000000L,
+        1727712000000L,
+        1730390400000L,
       };
 
   @AfterClass
@@ -83,11 +84,11 @@ public class GapFillWoGroupWoMoOperatorTest {
         };
     // child output
     // Time,             city,       deviceId,   avg_temp
-    // 1728856800000     yangzhou       d1       null
-    // 1728860400000     yangzhou       d1       27.2
+    // 1717171200000     yangzhou       d1       null
+    // 1719763200000     yangzhou       d1       27.2
     // ------------------------------------------------ TsBlock-1
-    // 1728864000000     yangzhou       d1       27.3
-    // 1728867600000     yangzhou       d1       29.3
+    // 1722441600000     yangzhou       d1       27.3
+    // 1725120000000     yangzhou       d1       29.3
     // ------------------------------------------------ TsBlock-2
 
     // Construct operator tree
@@ -110,8 +111,8 @@ public class GapFillWoGroupWoMoOperatorTest {
 
           private final long[][] timeArray =
               new long[][] {
-                {1728856800000L, 1728860400000L},
-                {1728864000000L, 1728867600000L},
+                {1717171200000L, 1719763200000L},
+                {1722441600000L, 1725120000000L},
               };
 
           private final double[][] valueArray =
@@ -195,15 +196,16 @@ public class GapFillWoGroupWoMoOperatorTest {
 
     OperatorContext operatorContext = driverContext.getOperatorContexts().get(1);
 
-    try (GapFillWoGroupWoMoOperator gapFillOperator =
-        new GapFillWoGroupWoMoOperator(
+    try (GapFillWoGroupWMoOperator gapFillOperator =
+        new GapFillWoGroupWMoOperator(
             operatorContext,
             childOperator,
             0,
-            1728849600000L,
-            1728874800000L,
+            1711900800000L,
+            1730390400000L,
             Arrays.asList(TSDataType.TIMESTAMP, TSDataType.DOUBLE),
-            3600000L)) {
+            1,
+            ZoneId.of("Asia/Shanghai"))) {
       int count = 0;
       ListenableFuture<?> listenableFuture = gapFillOperator.isBlocked();
       listenableFuture.get();
@@ -242,11 +244,11 @@ public class GapFillWoGroupWoMoOperatorTest {
 
     // child output
     // Time,             city,       deviceId,   avg_temp
-    // 1728856800000     yangzhou       d1       null
-    // 1728860400000     yangzhou       d1       27.2
+    // 1717171200000     yangzhou       d1       null
+    // 1719763200000     yangzhou       d1       27.2
     // ------------------------------------------------ TsBlock-1
-    // 1728864000000     yangzhou       d1       27.3
-    // 1728874800000     yangzhou       d1       29.3
+    // 1722441600000     yangzhou       d1       27.3
+    // 1730390400000     yangzhou       d1       29.3
     // ------------------------------------------------ TsBlock-2
 
     // Construct operator tree
@@ -269,8 +271,8 @@ public class GapFillWoGroupWoMoOperatorTest {
 
           private final long[][] timeArray =
               new long[][] {
-                {1728856800000L, 1728860400000L},
-                {1728864000000L, 1728874800000L},
+                {1717171200000L, 1719763200000L},
+                {1722441600000L, 1730390400000L},
               };
 
           private final double[][] valueArray =
@@ -356,15 +358,16 @@ public class GapFillWoGroupWoMoOperatorTest {
 
     OperatorContext operatorContext = driverContext.getOperatorContexts().get(1);
 
-    try (GapFillWoGroupWoMoOperator gapFillOperator =
-        new GapFillWoGroupWoMoOperator(
+    try (GapFillWoGroupWMoOperator gapFillOperator =
+        new GapFillWoGroupWMoOperator(
             operatorContext,
             childOperator,
             0,
-            1728849600000L,
-            1728874800000L,
+            1711900800000L,
+            1730390400000L,
             Arrays.asList(TSDataType.TIMESTAMP, TSDataType.DOUBLE),
-            3600000L)) {
+            1,
+            ZoneId.of("Asia/Shanghai"))) {
       int count = 0;
       ListenableFuture<?> listenableFuture = gapFillOperator.isBlocked();
       listenableFuture.get();

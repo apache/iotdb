@@ -119,7 +119,8 @@ abstract class AbstractGapFillOperator implements ProcessOperator {
       }
 
       Column timeColumn = block.getColumn(timeColumnIndex);
-      // -1 because we should not include current row
+      // -1 because we should not include current row, current row will be appended in
+      // writeCurrentRow
       long currentEndTime =
           timeColumn.isNull(i) ? endTime : block.getColumn(timeColumnIndex).getLong(i) - 1;
       fillGaps(block, i, currentEndTime);

@@ -43,6 +43,7 @@ import org.apache.tsfile.utils.Binary;
 import org.junit.AfterClass;
 import org.junit.Test;
 
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -57,7 +58,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
-public class GapFillWGroupWoMoOperatorTest {
+public class GapFillWGroupWMoOperatorTest {
 
   private static final ExecutorService instanceNotificationExecutor =
       IoTDBThreadPoolFactory.newFixedThreadPool(
@@ -73,14 +74,38 @@ public class GapFillWGroupWoMoOperatorTest {
 
     final long[] timeArray =
         new long[] {
-          1728849600000L, 1728853200000L, 1728856800000L, 1728860400000L, 1728864000000L,
-              1728867600000L, 1728871200000L, 1728874800000L,
-          1728849600000L, 1728853200000L, 1728856800000L, 1728860400000L, 1728864000000L,
-              1728867600000L, 1728871200000L, 1728874800000L,
-          1728849600000L, 1728853200000L, 1728856800000L, 1728860400000L, 1728864000000L,
-              1728867600000L, 1728871200000L, 1728874800000L,
-          1728849600000L, 1728853200000L, 1728856800000L, 1728860400000L, 1728864000000L,
-              1728867600000L, 1728871200000L, 1728874800000L,
+          1711900800000L,
+          1714492800000L,
+          1717171200000L,
+          1719763200000L,
+          1722441600000L,
+          1725120000000L,
+          1727712000000L,
+          1730390400000L,
+          1711900800000L,
+          1714492800000L,
+          1717171200000L,
+          1719763200000L,
+          1722441600000L,
+          1725120000000L,
+          1727712000000L,
+          1730390400000L,
+          1711900800000L,
+          1714492800000L,
+          1717171200000L,
+          1719763200000L,
+          1722441600000L,
+          1725120000000L,
+          1727712000000L,
+          1730390400000L,
+          1711900800000L,
+          1714492800000L,
+          1717171200000L,
+          1719763200000L,
+          1722441600000L,
+          1725120000000L,
+          1727712000000L,
+          1730390400000L,
         };
 
     final String[] column1Array =
@@ -156,7 +181,7 @@ public class GapFillWGroupWoMoOperatorTest {
           true, true, true, true, false, true, true, true
         };
 
-    try (GapFillWGroupWoMoOperator gapFillOperator = genGapFillWGroupWoMoOperator()) {
+    try (GapFillWGroupWMoOperator gapFillOperator = genGapFillWGroupWMoOperator()) {
       int count = 0;
       ListenableFuture<?> listenableFuture = gapFillOperator.isBlocked();
       listenableFuture.get();
@@ -194,20 +219,20 @@ public class GapFillWGroupWoMoOperatorTest {
     }
   }
 
-  private GapFillWGroupWoMoOperator genGapFillWGroupWoMoOperator() {
+  private GapFillWGroupWMoOperator genGapFillWGroupWMoOperator() {
     // child output
     // Time,             city,       deviceId,   avg_temp
-    // 1728856800000     yangzhou       d1       null
-    // 1728860400000     yangzhou       d1       27.2
-    // 1728864000000     yangzhou       d1       27.3
-    // 1728874800000     yangzhou       d1       29.3
+    // 1717171200000     yangzhou       d1       null
+    // 1719763200000     yangzhou       d1       27.2
+    // 1722441600000     yangzhou       d1       27.3
+    // 1730390400000     yangzhou       d1       29.3
     // ------------------------------------------------ TsBlock-1
-    // 1728849600000     beijing        d2       25.1
+    // 1711900800000     beijing        d2       25.1
     // ------------------------------------------------ TsBlock-2
-    // 1728874800000     beijing        d2       28.2
+    // 1730390400000     beijing        d2       28.2
     // ------------------------------------------------ TsBlock-3
-    // 1728864000000     shanghai       d3       25.8
-    // 1728864000000     null           d4       24.8
+    // 1722441600000     shanghai       d3       25.8
+    // 1722441600000     null           d4       24.8
     // ------------------------------------------------ TsBlock-4
 
     // Construct operator tree
@@ -230,10 +255,10 @@ public class GapFillWGroupWoMoOperatorTest {
 
           private final long[][] timeArray =
               new long[][] {
-                {1728856800000L, 1728860400000L, 1728864000000L, 1728874800000L},
-                {1728849600000L},
-                {1728874800000L},
-                {1728864000000L, 1728864000000L}
+                {1717171200000L, 1719763200000L, 1722441600000L, 1730390400000L},
+                {1711900800000L},
+                {1730390400000L},
+                {1722441600000L, 1722441600000L}
               };
 
           private final String[][] cityArray =
@@ -365,16 +390,17 @@ public class GapFillWGroupWoMoOperatorTest {
     groupKeyIndexSet.add(1);
     groupKeyIndexSet.add(2);
 
-    return new GapFillWGroupWoMoOperator(
+    return new GapFillWGroupWMoOperator(
         operatorContext,
         childOperator,
         0,
-        1728849600000L,
-        1728874800000L,
+        1711900800000L,
+        1730390400000L,
         groupKeyComparator,
         Arrays.asList(
             TSDataType.TIMESTAMP, TSDataType.STRING, TSDataType.STRING, TSDataType.DOUBLE),
         groupKeyIndexSet,
-        3600000L);
+        1,
+        ZoneId.of("Asia/Shanghai"));
   }
 }
