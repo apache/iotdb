@@ -55,6 +55,10 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.FloatConstantFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.IntConstantFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.LongConstantFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.gapfill.GapFillWGroupWMoOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.gapfill.GapFillWGroupWoMoOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.gapfill.GapFillWoGroupWMoOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.gapfill.GapFillWoGroupWoMoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.CountMergeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaCountOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaQueryScanOperator;
@@ -80,6 +84,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.Tabl
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
@@ -101,8 +106,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
@@ -569,15 +574,97 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   }
 
   @Override
+  public Operator visitGapFill(GapFillNode node, LocalExecutionPlanContext context) {
+    Operator child = node.getChild().accept(this, context);
+    List<TSDataType> inputDataTypes =
+        getOutputColumnTypes(node.getChild(), context.getTypeProvider());
+    int timeColumnIndex = getColumnIndex(node.getGapFillColumn(), node.getChild());
+    if (node.getGapFillGroupingKeys().isEmpty()) { // without group keys
+      if (node.getMonthDuration() == 0) { // without month interval
+        OperatorContext operatorContext =
+            context
+                .getDriverContext()
+                .addOperatorContext(
+                    context.getNextOperatorId(),
+                    node.getPlanNodeId(),
+                    GapFillWoGroupWoMoOperator.class.getSimpleName());
+        return new GapFillWoGroupWoMoOperator(
+            operatorContext,
+            child,
+            timeColumnIndex,
+            node.getStartTime(),
+            node.getEndTime(),
+            inputDataTypes,
+            node.getNonMonthDuration());
+      } else { // with month interval
+        OperatorContext operatorContext =
+            context
+                .getDriverContext()
+                .addOperatorContext(
+                    context.getNextOperatorId(),
+                    node.getPlanNodeId(),
+                    GapFillWoGroupWMoOperator.class.getSimpleName());
+        return new GapFillWoGroupWMoOperator(
+            operatorContext,
+            child,
+            timeColumnIndex,
+            node.getStartTime(),
+            node.getEndTime(),
+            inputDataTypes,
+            node.getMonthDuration(),
+            context.getZoneId());
+      }
+
+    } else { // with group keys
+      Set<Integer> groupingKeysIndexSet = new HashSet<>();
+      Comparator<SortKey> groupKeyComparator =
+          genFillGroupKeyComparator(
+              node.getGapFillGroupingKeys(), node, inputDataTypes, groupingKeysIndexSet);
+      if (node.getMonthDuration() == 0) { // without month interval
+        OperatorContext operatorContext =
+            context
+                .getDriverContext()
+                .addOperatorContext(
+                    context.getNextOperatorId(),
+                    node.getPlanNodeId(),
+                    GapFillWGroupWoMoOperator.class.getSimpleName());
+        return new GapFillWGroupWoMoOperator(
+            operatorContext,
+            child,
+            timeColumnIndex,
+            node.getStartTime(),
+            node.getEndTime(),
+            groupKeyComparator,
+            inputDataTypes,
+            groupingKeysIndexSet,
+            node.getNonMonthDuration());
+      } else { // with month interval
+        OperatorContext operatorContext =
+            context
+                .getDriverContext()
+                .addOperatorContext(
+                    context.getNextOperatorId(),
+                    node.getPlanNodeId(),
+                    GapFillWGroupWMoOperator.class.getSimpleName());
+        return new GapFillWGroupWMoOperator(
+            operatorContext,
+            child,
+            timeColumnIndex,
+            node.getStartTime(),
+            node.getEndTime(),
+            groupKeyComparator,
+            inputDataTypes,
+            groupingKeysIndexSet,
+            node.getMonthDuration(),
+            context.getZoneId());
+      }
+    }
+  }
+
+  @Override
   public Operator visitPreviousFill(PreviousFillNode node, LocalExecutionPlanContext context) {
     Operator child = node.getChild().accept(this, context);
-    OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                TableFillOperator.class.getSimpleName());
+
     List<TSDataType> inputDataTypes =
         getOutputColumnTypes(node.getChild(), context.getTypeProvider());
     int inputColumnCount = inputDataTypes.size();
@@ -593,20 +680,39 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             context.getZoneId());
 
     if (node.getGroupingKeys().isPresent()) {
+      OperatorContext operatorContext =
+          context
+              .getDriverContext()
+              .addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  PreviousFillWithGroupOperator.class.getSimpleName());
       return new PreviousFillWithGroupOperator(
           operatorContext,
           fillArray,
           child,
           helperColumnIndex,
-          genFillGroupKeyComparator(node.getGroupingKeys().get(), node, inputDataTypes),
+          genFillGroupKeyComparator(
+              node.getGroupingKeys().get(), node, inputDataTypes, new HashSet<>()),
           inputDataTypes);
     } else {
+      OperatorContext operatorContext =
+          context
+              .getDriverContext()
+              .addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  TableFillOperator.class.getSimpleName());
       return new TableFillOperator(operatorContext, fillArray, child, helperColumnIndex);
     }
   }
 
+  // used by fill and gapfill
   private Comparator<SortKey> genFillGroupKeyComparator(
-      List<Symbol> groupingKeys, FillNode node, List<TSDataType> inputDataTypes) {
+      List<Symbol> groupingKeys,
+      SingleChildProcessNode node,
+      List<TSDataType> inputDataTypes,
+      Set<Integer> groupKeysIndex) {
     int groupKeysCount = groupingKeys.size();
     List<SortOrder> sortOrderList = new ArrayList<>(groupKeysCount);
     List<Integer> groupItemIndexList = new ArrayList<>(groupKeysCount);
@@ -621,6 +727,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       groupItemIndexList.add(index);
       groupItemDataTypeList.add(inputDataTypes.get(index));
     }
+    groupKeysIndex.addAll(groupItemIndexList);
     return getComparatorForTable(sortOrderList, groupItemIndexList, groupItemDataTypeList);
   }
 
@@ -641,13 +748,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   @Override
   public Operator visitLinearFill(LinearFillNode node, LocalExecutionPlanContext context) {
     Operator child = node.getChild().accept(this, context);
-    OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                TableFillOperator.class.getSimpleName());
+
     List<TSDataType> inputDataTypes =
         getOutputColumnTypes(node.getChild(), context.getTypeProvider());
     int inputColumnCount = inputDataTypes.size();
@@ -655,14 +756,29 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     ILinearFill[] fillArray = getLinearFill(inputColumnCount, inputDataTypes);
 
     if (node.getGroupingKeys().isPresent()) {
+      OperatorContext operatorContext =
+          context
+              .getDriverContext()
+              .addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  TableLinearFillWithGroupOperator.class.getSimpleName());
       return new TableLinearFillWithGroupOperator(
           operatorContext,
           fillArray,
           child,
           helperColumnIndex,
-          genFillGroupKeyComparator(node.getGroupingKeys().get(), node, inputDataTypes),
+          genFillGroupKeyComparator(
+              node.getGroupingKeys().get(), node, inputDataTypes, new HashSet<>()),
           inputDataTypes);
     } else {
+      OperatorContext operatorContext =
+          context
+              .getDriverContext()
+              .addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  TableLinearFillOperator.class.getSimpleName());
       return new TableLinearFillOperator(operatorContext, fillArray, child, helperColumnIndex);
     }
   }

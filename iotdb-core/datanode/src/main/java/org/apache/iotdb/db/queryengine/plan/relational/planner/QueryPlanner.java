@@ -13,6 +13,7 @@
  */
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -22,9 +23,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis.GroupingSetAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.FieldId;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GapFillStartAndEndTimeExtractVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Aggregation;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
@@ -38,6 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
@@ -53,11 +57,13 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import org.apache.tsfile.read.common.type.Type;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -79,6 +85,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingTr
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.PlanBuilder.newPlanBuilder;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware.scopeAwareKey;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GapFillStartAndEndTimeExtractVisitor.CAN_NOT_INFER_TIME_RANGE;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.groupingSets;
 
 public class QueryPlanner {
@@ -153,8 +160,31 @@ public class QueryPlanner {
     PlanBuilder builder = planFrom(node);
 
     builder = filter(builder, analysis.getWhere(node));
+    Expression wherePredicate = null;
+    if (builder.getRoot() instanceof FilterNode) {
+      wherePredicate = ((FilterNode) builder.getRoot()).getPredicate();
+    }
+
+    Symbol timeColumnForGapFill = null;
+    FunctionCall gapFillColumn = analysis.getGapFill(node);
+    if (gapFillColumn != null) {
+      timeColumnForGapFill = builder.translate((Expression) gapFillColumn.getChildren().get(2));
+    }
     builder = aggregate(builder, node);
     builder = filter(builder, analysis.getHaving(node));
+
+    if (gapFillColumn != null) {
+      if (wherePredicate == null) {
+        throw new SemanticException(CAN_NOT_INFER_TIME_RANGE);
+      }
+      builder =
+          gapFill(
+              builder,
+              timeColumnForGapFill,
+              gapFillColumn,
+              analysis.getGapFillGroupingKeys(node),
+              wherePredicate);
+    }
 
     List<Analysis.SelectExpression> selectExpressions = analysis.getSelectExpressions(node);
 
@@ -638,6 +668,56 @@ public class QueryPlanner {
     return new PlanAndMappings(subPlan, mappings);
   }
 
+  private PlanBuilder gapFill(
+      PlanBuilder subPlan,
+      @Nonnull Symbol timeColumn,
+      @Nonnull FunctionCall gapFillColumn,
+      @Nonnull List<Expression> gapFillGroupingKeys,
+      @Nonnull Expression wherePredicate) {
+    Symbol gapFillColumnSymbol = subPlan.translate(gapFillColumn);
+    List<Symbol> groupingKeys = Collections.emptyList();
+    if (!gapFillGroupingKeys.isEmpty()) {
+      groupingKeys = new ArrayList<>(gapFillGroupingKeys.size());
+      subPlan = fillGroup(subPlan, gapFillGroupingKeys, groupingKeys, gapFillColumnSymbol);
+    }
+
+    int monthDuration = (int) ((LongLiteral) gapFillColumn.getChildren().get(0)).getParsedValue();
+    long nonMonthDuration = ((LongLiteral) gapFillColumn.getChildren().get(1)).getParsedValue();
+    long origin = ((LongLiteral) gapFillColumn.getChildren().get(3)).getParsedValue();
+    long[] startAndEndTime =
+        getStartTimeAndEndTimeOfGapFill(
+            timeColumn, wherePredicate, origin, monthDuration, nonMonthDuration);
+    return subPlan.withNewRoot(
+        new GapFillNode(
+            queryIdAllocator.genPlanNodeId(),
+            subPlan.getRoot(),
+            startAndEndTime[0],
+            startAndEndTime[1],
+            monthDuration,
+            nonMonthDuration,
+            gapFillColumnSymbol,
+            groupingKeys));
+  }
+
+  // both gapFillColumnSymbol and wherePredicate have already been translated.
+  private long[] getStartTimeAndEndTimeOfGapFill(
+      Symbol timeColumn,
+      Expression wherePredicate,
+      long origin,
+      int monthDuration,
+      long nonMonthDuration) {
+    GapFillStartAndEndTimeExtractVisitor.Context context =
+        new GapFillStartAndEndTimeExtractVisitor.Context();
+    GapFillStartAndEndTimeExtractVisitor visitor =
+        new GapFillStartAndEndTimeExtractVisitor(timeColumn);
+    if (!Boolean.TRUE.equals(wherePredicate.accept(visitor, context))) {
+      throw new SemanticException(CAN_NOT_INFER_TIME_RANGE);
+    } else {
+      return context.getTimeRange(
+          origin, monthDuration, nonMonthDuration, queryContext.getZoneId());
+    }
+  }
+
   private PlanBuilder fill(PlanBuilder subPlan, Optional<Fill> fill) {
     if (!fill.isPresent()) {
       return subPlan;
@@ -692,15 +772,16 @@ public class QueryPlanner {
     }
   }
 
+  // used for gapfill and GROUP_FILL in fill clause
   private PlanBuilder fillGroup(
       PlanBuilder subPlan,
-      List<FieldReference> fieldReferenceList,
+      List<? extends Expression> groupingExpressions,
       List<Symbol> groupingKeys,
       @Nullable Symbol timeColumn) {
     ImmutableList.Builder<Symbol> orderBySymbols = ImmutableList.builder();
     Map<Symbol, SortOrder> orderings = new HashMap<>();
-    for (FieldReference field : fieldReferenceList) {
-      Symbol symbol = subPlan.translate(field);
+    for (Expression expression : groupingExpressions) {
+      Symbol symbol = subPlan.translate(expression);
       orderings.computeIfAbsent(
           symbol,
           k -> {
