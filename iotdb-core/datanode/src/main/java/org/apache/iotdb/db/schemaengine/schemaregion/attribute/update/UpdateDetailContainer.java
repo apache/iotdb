@@ -51,6 +51,11 @@ public class UpdateDetailContainer implements UpdateContainer {
   private final ConcurrentMap<String, ConcurrentMap<String[], ConcurrentMap<String, String>>>
       updateMap = new ConcurrentHashMap<>();
 
+  public ConcurrentMap<String, ConcurrentMap<String[], ConcurrentMap<String, String>>>
+      getUpdateMap() {
+    return updateMap;
+  }
+
   @Override
   public long updateAttribute(
       final String tableName,

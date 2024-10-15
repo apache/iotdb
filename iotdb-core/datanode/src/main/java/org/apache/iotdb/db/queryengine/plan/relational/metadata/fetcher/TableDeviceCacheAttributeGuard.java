@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.DeviceAttributeCacheUpdater;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateContainer;
 import org.apache.iotdb.mpp.rpc.thrift.TAttributeUpdateReq;
@@ -38,8 +39,10 @@ import java.util.stream.Collectors;
 public class TableDeviceCacheAttributeGuard {
 
   // Unbounded queue
-  final LinkedBlockingDeque<Set<?>> applyQueue = new LinkedBlockingDeque<>();
-  final Map<Integer, Long> fetchedSchemaRegionIds2LargestVersionMap = new ConcurrentHashMap<>();
+  private final LinkedBlockingDeque<Set<?>> applyQueue = new LinkedBlockingDeque<>();
+  private final Map<Integer, Long> fetchedSchemaRegionIds2LargestVersionMap =
+      new ConcurrentHashMap<>();
+  private final TableDeviceSchemaCache cache = TableDeviceSchemaCache.getInstance();
 
   public boolean isRegionFetched(final Integer schemaRegionId) {
     return fetchedSchemaRegionIds2LargestVersionMap.containsKey(schemaRegionId);
@@ -112,6 +115,6 @@ public class TableDeviceCacheAttributeGuard {
   }
 
   public void handleContainer(final UpdateContainer container) {
-    // TODO:
+    // TODO
   }
 }
