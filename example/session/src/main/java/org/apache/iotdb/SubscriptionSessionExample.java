@@ -338,8 +338,8 @@ public class SubscriptionSessionExample {
     prepareData();
     // dataQuery();
     // dataSubscription1();
-    // dataSubscription2();
+    dataSubscription2();
     // dataSubscription3();
-    dataSubscription4();
+    // dataSubscription4();
   }
 }

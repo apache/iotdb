@@ -52,7 +52,7 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
   private final CachedSubscriptionPollResponse initialResponse;
 
   private volatile boolean isInitialResponseConsumed = false;
-  private volatile boolean isConsumedAll = false;
+  private volatile boolean isSealed = false;
 
   public SubscriptionEventTsFileResponse(
       final File tsFile, final SubscriptionCommitContext commitContext) {
@@ -77,33 +77,36 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
 
   @Override
   public void prefetchRemainingResponses() throws IOException {
-    if (!isInitialResponseConsumed) {
+    if (!isInitialResponseConsumed && super.responses.isEmpty()) {
       super.responses.add(generateResponseWithPieceOrSealPayload(0));
     } else {
       if (super.responses.isEmpty()) {
         LOGGER.warn("broken invariant");
         return;
       }
-      final SubscriptionPollResponse previousResponse = super.responses.getLast();
-      final short responseType = previousResponse.getResponseType();
-      final SubscriptionPollPayload payload = previousResponse.getPayload();
-      if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
-        LOGGER.warn("unexpected response type: {}", responseType);
-        return;
-      }
 
-      switch (SubscriptionPollResponseType.valueOf(responseType)) {
-        case FILE_PIECE:
-          super.responses.add(
-              generateResponseWithPieceOrSealPayload(
-                  ((FilePiecePayload) payload).getNextWritingOffset()));
-          break;
-        case FILE_SEAL:
-          // not need to prefetch
-          break;
-        case FILE_INIT: // fallthrough
-        default:
-          LOGGER.warn("unexpected message type: {}", responseType);
+      synchronized (this) {
+        final SubscriptionPollResponse previousResponse = super.responses.getLast();
+        final short responseType = previousResponse.getResponseType();
+        final SubscriptionPollPayload payload = previousResponse.getPayload();
+        if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
+          LOGGER.warn("unexpected response type: {}", responseType);
+          return;
+        }
+
+        switch (SubscriptionPollResponseType.valueOf(responseType)) {
+          case FILE_PIECE:
+            super.responses.add(
+                generateResponseWithPieceOrSealPayload(
+                    ((FilePiecePayload) payload).getNextWritingOffset()));
+            break;
+          case FILE_SEAL:
+            // not need to prefetch
+            break;
+          case FILE_INIT: // fallthrough
+          default:
+            LOGGER.warn("unexpected message type: {}", responseType);
+        }
       }
     }
   }
@@ -117,26 +120,7 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
       if (super.responses.isEmpty()) {
         LOGGER.warn("broken invariant");
       } else {
-        final SubscriptionPollResponse lastResponse = super.responses.removeFirst();
-        // set isConsumedAll is possible
-        if (super.responses.isEmpty()) {
-          final short responseType = lastResponse.getResponseType();
-          if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
-            LOGGER.warn("unexpected response type: {}", responseType);
-            return;
-          }
-
-          switch (SubscriptionPollResponseType.valueOf(responseType)) {
-            case FILE_INIT:
-            case FILE_PIECE:
-              break;
-            case FILE_SEAL:
-              isConsumedAll = true;
-              break;
-            default:
-              LOGGER.warn("unexpected message type: {}", responseType);
-          }
-        }
+        super.responses.removeFirst();
       }
     }
   }
@@ -183,27 +167,29 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
   @Override
   public void reset() {
     CachedSubscriptionPollResponse response;
-    while (Objects.nonNull(response = super.responses.removeFirst())) {
+    while (!super.responses.isEmpty()
+        && Objects.nonNull(response = super.responses.removeFirst())) {
       SubscriptionPollResponseCache.getInstance().invalidate(response);
     }
     isInitialResponseConsumed = false;
-    isConsumedAll = false;
+    isSealed = false;
   }
 
   @Override
   public void cleanUp() {
     CachedSubscriptionPollResponse response;
-    while (Objects.nonNull(response = super.responses.removeFirst())) {
+    while (!super.responses.isEmpty()
+        && Objects.nonNull(response = super.responses.removeFirst())) {
       SubscriptionPollResponseCache.getInstance().invalidate(response);
     }
     SubscriptionPollResponseCache.getInstance().invalidate(initialResponse);
     isInitialResponseConsumed = false;
-    isConsumedAll = false;
+    isSealed = false;
   }
 
   @Override
   public boolean isCommittable() {
-    return isConsumedAll;
+    return isSealed && super.responses.size() == 1;
   }
 
   /////////////////////////////// utility ///////////////////////////////
@@ -234,6 +220,7 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
       }
 
       // generate subscription poll response with seal payload
+      isSealed = true;
       return new CachedSubscriptionPollResponse(
           SubscriptionPollResponseType.FILE_SEAL.getType(),
           new FileSealPayload(tsFile.getName(), tsFile.length()),
