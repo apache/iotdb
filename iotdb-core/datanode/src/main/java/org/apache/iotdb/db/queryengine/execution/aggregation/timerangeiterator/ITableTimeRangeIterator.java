@@ -30,13 +30,17 @@ public interface ITableTimeRangeIterator {
    */
   boolean hasNextTimeRange();
 
-  TimeRange nextTimeRange();
+  boolean hasCachedTimeRange();
+
+  // TimeRange nextTimeRange();
+
+  TimeRange getCurTimeRange();
 
   boolean canFinishCurrentTimeRange(long startTime);
 
   void resetCurTimeRange();
 
-  TimeRange updateCurTimeRange(long startTime);
+  void updateCurTimeRange(long startTime);
 
   void setFinished();
 

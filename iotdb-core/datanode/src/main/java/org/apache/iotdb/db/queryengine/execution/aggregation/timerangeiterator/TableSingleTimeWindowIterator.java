@@ -31,7 +31,7 @@ public class TableSingleTimeWindowIterator implements ITableTimeRangeIterator {
   private final long startTime;
   private final long endTime;
 
-  private final TimeRange curTimeRange;
+  private TimeRange curTimeRange;
   private boolean hasCachedTimeRange;
 
   public TableSingleTimeWindowIterator(long startTime, long endTime) {
@@ -51,13 +51,23 @@ public class TableSingleTimeWindowIterator implements ITableTimeRangeIterator {
   }
 
   @Override
-  public TimeRange nextTimeRange() {
-    if (hasCachedTimeRange || hasNextTimeRange()) {
-      hasCachedTimeRange = false;
-      return curTimeRange;
-    }
-    return null;
+  public boolean hasCachedTimeRange() {
+    return curTimeRange != null;
   }
+
+  @Override
+  public TimeRange getCurTimeRange() {
+    return curTimeRange;
+  }
+
+  //  @Override
+  //  public TimeRange nextTimeRange() {
+  //    if (hasCachedTimeRange || hasNextTimeRange()) {
+  //      hasCachedTimeRange = false;
+  //      return curTimeRange;
+  //    }
+  //    return null;
+  //  }
 
   @Override
   public boolean canFinishCurrentTimeRange(long startTime) {
@@ -68,13 +78,13 @@ public class TableSingleTimeWindowIterator implements ITableTimeRangeIterator {
   public void resetCurTimeRange() {}
 
   @Override
-  public TimeRange updateCurTimeRange(long startTime) {
+  public void updateCurTimeRange(long startTime) {
     // not used
-    return null;
   }
 
   @Override
   public void setFinished() {
+    this.curTimeRange = null;
     this.finished = true;
   }
 

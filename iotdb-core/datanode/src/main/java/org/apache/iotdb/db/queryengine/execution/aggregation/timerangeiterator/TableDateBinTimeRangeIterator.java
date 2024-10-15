@@ -31,37 +31,36 @@ public class TableDateBinTimeRangeIterator implements ITableTimeRangeIterator {
 
   // left close, right open
   private TimeRange curTimeRange;
-  private boolean hasCachedTimeRange;
+
+  // private boolean hasCachedTimeRange;
 
   public TableDateBinTimeRangeIterator(DateBinFunctionColumnTransformer dateBinTransformer) {
     this.dateBinTransformer = dateBinTransformer;
   }
 
   public boolean canFinishCurrentTimeRange(long startTime) {
-    if (!hasCachedTimeRange) {
+    if (curTimeRange == null) {
       return false;
     }
 
-    return startTime >= curTimeRange.getMax();
+    return startTime > curTimeRange.getMax();
   }
 
-  public TimeRange updateCurTimeRange(long startTime) {
+  public void updateCurTimeRange(long startTime) {
     long[] timeArray = dateBinTransformer.dateBinStartEnd(startTime);
 
-    if (hasCachedTimeRange) {
+    if (curTimeRange != null) {
       // meet new time range, remove old time range
       if (timeArray[0] != curTimeRange.getMin()) {
         this.curTimeRange = new TimeRange(timeArray[0], timeArray[1] - 1);
       }
     } else {
       this.curTimeRange = new TimeRange(timeArray[0], timeArray[1] - 1);
-      this.hasCachedTimeRange = true;
     }
-
-    return this.curTimeRange;
   }
 
   public void setFinished() {
+    this.curTimeRange = null;
     this.finished = true;
   }
 
@@ -75,6 +74,11 @@ public class TableDateBinTimeRangeIterator implements ITableTimeRangeIterator {
     return !finished;
   }
 
+  @Override
+  public boolean hasCachedTimeRange() {
+    return curTimeRange != null;
+  }
+
   public TimeRange getCurTimeRange() {
     return this.curTimeRange;
   }
@@ -82,18 +86,17 @@ public class TableDateBinTimeRangeIterator implements ITableTimeRangeIterator {
   @Override
   public void resetCurTimeRange() {
     this.curTimeRange = null;
-    this.hasCachedTimeRange = false;
   }
 
-  @Override
-  public TimeRange nextTimeRange() {
-    if (hasCachedTimeRange) {
-      return curTimeRange;
-    }
-    //    hasCachedTimeRange = false;
-    //    curTimeRange = null;
-    return null;
-  }
+  //  @Override
+  //  public TimeRange nextTimeRange() {
+  //    if (hasCachedTimeRange) {
+  //      return curTimeRange;
+  //    }
+  //    //    hasCachedTimeRange = false;
+  //    //    curTimeRange = null;
+  //    return null;
+  //  }
 
   //  @Override
   //  public boolean isAscending() {

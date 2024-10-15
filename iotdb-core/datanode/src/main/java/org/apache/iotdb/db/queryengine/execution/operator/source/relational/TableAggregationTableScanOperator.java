@@ -107,7 +107,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
 
   private int currentDeviceIndex;
 
-  ITableTimeRangeIterator tableTimeRangeIterator;
+  ITableTimeRangeIterator timeIterator;
 
   public TableAggregationTableScanOperator(
       PlanNodeId sourceId,
@@ -162,7 +162,11 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
         measurementSchemas.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
     this.currentDeviceIndex = 0;
     this.layoutArray = layoutArray;
-    this.tableTimeRangeIterator = tableTimeRangeIterator;
+    this.timeIterator = tableTimeRangeIterator;
+    if (tableTimeRangeIterator.getType()
+        == ITableTimeRangeIterator.TimeIteratorType.SINGLE_TIME_ITERATOR) {
+      curTimeRange = new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE);
+    }
 
     this.maxReturnSize = maxReturnSize;
     this.maxTsBlockLineNum = maxTsBlockLineNum;
@@ -171,9 +175,20 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   }
 
   @Override
+  public boolean isFinished() throws Exception {
+    if (!finished) {
+      finished = !hasNextWithTimer();
+    }
+    return finished;
+
+    //    return (retainedTsBlock == null)
+    //        && (currentDeviceIndex >= deviceCount || seriesScanOptions.limitConsumedUp());
+  }
+
+  @Override
   public boolean hasNext() throws Exception {
-    return curTimeRange != null
-        || tableTimeRangeIterator.hasNextTimeRange()
+    return timeIterator.hasCachedTimeRange()
+        || timeIterator.hasNextTimeRange()
         || !resultTsBlockBuilder.isEmpty();
   }
 
@@ -194,30 +209,30 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     long maxRuntime = leftRuntimeOfOneNextCall;
 
     while (System.nanoTime() - start < maxRuntime
-        && (curTimeRange != null || tableTimeRangeIterator.hasNextTimeRange())
+        && (timeIterator.hasCachedTimeRange() || timeIterator.hasNextTimeRange())
         && !resultTsBlockBuilder.isFull()) {
 
-      if (curTimeRange == null) {
-        curTimeRange = tableTimeRangeIterator.nextTimeRange();
-        resetTableAggregators();
-      }
+      //      if (curTimeRange == null) {
+      //        curTimeRange = tableTimeRangeIterator.nextTimeRange();
+      //        resetTableAggregators();
+      //      }
 
       // calculate aggregation result on current time window
+      // return true if current time window is calc finished
       if (calculateAggregationResultForCurrentTimeRange()) {
-        tableTimeRangeIterator.resetCurTimeRange();
-        curTimeRange = null;
+        timeIterator.resetCurTimeRange();
+        // curTimeRange = null;
       }
     }
 
     if (resultTsBlockBuilder.getPositionCount() > 0) {
-      buildResultTsBlock();
-      return this.resultTsBlock;
+      return buildResultTsBlock();
     } else {
       return null;
     }
   }
 
-  private void buildResultTsBlock() {
+  private TsBlock buildResultTsBlock() {
     int declaredPositions = resultTsBlockBuilder.getPositionCount();
     ColumnBuilder[] valueColumnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
     Column[] valueColumns = new Column[valueColumnBuilders.length];
@@ -231,34 +246,14 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
       }
     }
 
-    this.resultTsBlock =
+    TsBlock resultTsBlock =
         new TsBlock(
             resultTsBlockBuilder.getPositionCount(),
             new RunLengthEncodedColumn(
                 TIME_COLUMN_TEMPLATE, resultTsBlockBuilder.getPositionCount()),
             valueColumns);
     resultTsBlockBuilder.reset();
-  }
-
-  @Override
-  public boolean isFinished() throws Exception {
-    if (!finished) {
-      finished = !hasNextWithTimer();
-    }
-    return finished;
-
-    //    return (retainedTsBlock == null)
-    //        && (currentDeviceIndex >= deviceCount || seriesScanOptions.limitConsumedUp());
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    return INSTANCE_SIZE
-        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(seriesScanUtil)
-        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
-        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId)
-        + (resultTsBlockBuilder == null ? 0 : resultTsBlockBuilder.getRetainedSizeInBytes())
-        + RamUsageEstimator.sizeOfCollection(deviceEntries);
+    return resultTsBlock;
   }
 
   private AlignedSeriesScanUtil constructAlignedSeriesScanUtil(DeviceEntry deviceEntry) {
@@ -308,8 +303,9 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
           || seriesScanUtil.hasNextFile()) {
         return false;
       } else {
+        // all data of current device has been consumed
         updateResultTsBlock();
-        resetTableAggregators();
+        timeIterator.resetCurTimeRange();
         currentDeviceIndex++;
       }
 
@@ -322,7 +318,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
 
       if (currentDeviceIndex >= deviceCount) {
         // all devices have been consumed
-        tableTimeRangeIterator.setFinished();
+        timeIterator.setFinished();
         return true;
       } else {
         return false;
@@ -332,17 +328,10 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     }
   }
 
-  @Override
-  public void initQueryDataSource(IQueryDataSource dataSource) {
-    this.queryDataSource = (QueryDataSource) dataSource;
-    this.seriesScanUtil.initQueryDataSource(queryDataSource);
-    this.resultTsBlockBuilder = new TsBlockBuilder(getResultDataTypes());
-    this.resultTsBlockBuilder.setMaxTsBlockLineNumber(this.maxTsBlockLineNum);
-  }
-
-  @Override
   protected void updateResultTsBlock() {
     appendAggregationResult(resultTsBlockBuilder, tableAggregators);
+    // after appendAggregationResult invoked, aggregators must be cleared
+    resetTableAggregators();
   }
 
   protected boolean calcFromCachedData() {
@@ -370,6 +359,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
 
     updateCurTimeRange(inputTsBlock.getStartTime());
 
+    TimeRange curTimeRange = timeIterator.getCurTimeRange();
     // check if the tsBlock does not contain points in current interval
     if (satisfiedTimeRange(inputTsBlock, curTimeRange, ascending)) {
       // skip points that cannot be calculated
@@ -415,7 +405,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
           .anyMatch(columnSchema.getColumnCategory()::equals)) {
         valueColumns[i] = inputRegion.getTimeColumn();
       } else {
-        valueColumns[i] = inputRegion.getColumn(i);
+        valueColumns[i] = inputRegion.getColumn(columnsIndexArray[i]);
       }
     }
     TsBlock tsBlock =
@@ -460,15 +450,6 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
             == null;
   }
 
-  public static boolean isAllAggregatorsHasFinalResult(List<TableAggregator> aggregators) {
-    for (TableAggregator aggregator : aggregators) {
-      if (!aggregator.hasFinalResult()) {
-        return false;
-      }
-    }
-    return true;
-  }
-
   protected void calcFromStatistics(Statistics timeStatistics, Statistics[] valueStatistics) {
     for (int i = 0; i < tableAggregators.size(); i++) {
       if (isNullIdOrAttribute(i)) {
@@ -496,7 +477,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
 
         updateCurTimeRange(fileTimeStatistics.getStartTime());
 
-        if (fileTimeStatistics.getStartTime() > curTimeRange.getMax()) {
+        if (fileTimeStatistics.getStartTime() > timeIterator.getCurTimeRange().getMax()) {
           if (ascending) {
             return true;
           } else {
@@ -506,8 +487,9 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
         }
 
         // calc from fileMetaData
-        if (curTimeRange.contains(
-            fileTimeStatistics.getStartTime(), fileTimeStatistics.getEndTime())) {
+        if (timeIterator
+            .getCurTimeRange()
+            .contains(fileTimeStatistics.getStartTime(), fileTimeStatistics.getEndTime())) {
           Statistics[] statisticsList = new Statistics[subSensorSize];
           for (int i = 0; i < subSensorSize; i++) {
             statisticsList[i] = seriesScanUtil.currentFileStatistics(i);
@@ -541,7 +523,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
 
         updateCurTimeRange(chunkTimeStatistics.getStartTime());
 
-        if (chunkTimeStatistics.getStartTime() > curTimeRange.getMax()) {
+        if (chunkTimeStatistics.getStartTime() > timeIterator.getCurTimeRange().getMax()) {
           if (ascending) {
             return true;
           } else {
@@ -551,8 +533,9 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
         }
 
         // calc from chunkMetaData
-        if (curTimeRange.contains(
-            chunkTimeStatistics.getStartTime(), chunkTimeStatistics.getEndTime())) {
+        if (timeIterator
+            .getCurTimeRange()
+            .contains(chunkTimeStatistics.getStartTime(), chunkTimeStatistics.getEndTime())) {
           // calc from chunkMetaData
           Statistics[] statisticsList = new Statistics[subSensorSize];
           for (int i = 0; i < subSensorSize; i++) {
@@ -589,7 +572,8 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
           updateCurTimeRange(pageTimeStatistics.getStartTime());
 
           // There is no more eligible points in current time range
-          if (pageTimeStatistics.getStartTime() > curTimeRange.getMax()) {
+          // TODO(beyyes) will not appear in table model?
+          if (pageTimeStatistics.getStartTime() > timeIterator.getCurTimeRange().getMax()) {
             if (ascending) {
               return true;
             } else {
@@ -599,8 +583,9 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
           }
 
           // can use pageHeader
-          if (curTimeRange.contains(
-              pageTimeStatistics.getStartTime(), pageTimeStatistics.getEndTime())) {
+          if (timeIterator
+              .getCurTimeRange()
+              .contains(pageTimeStatistics.getStartTime(), pageTimeStatistics.getEndTime())) {
             Statistics[] statisticsList = new Statistics[subSensorSize];
             for (int i = 0; i < subSensorSize; i++) {
               statisticsList[i] = seriesScanUtil.currentPageStatistics(i);
@@ -634,43 +619,18 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   }
 
   private void updateCurTimeRange(long startTime) {
-    if (tableTimeRangeIterator.getType()
-        == ITableTimeRangeIterator.TimeIteratorType.SINGLE_TIME_ITERATOR) {
+    if (timeIterator.getType() == ITableTimeRangeIterator.TimeIteratorType.SINGLE_TIME_ITERATOR) {
       return;
     }
 
-    if (tableTimeRangeIterator.canFinishCurrentTimeRange(startTime)) {
+    if (!timeIterator.hasCachedTimeRange()) {
+      timeIterator.updateCurTimeRange(startTime);
+    } else if (timeIterator.canFinishCurrentTimeRange(startTime)) {
       updateResultTsBlock();
-      tableTimeRangeIterator.resetCurTimeRange();
+      timeIterator.resetCurTimeRange();
+      timeIterator.updateCurTimeRange(startTime);
       resetTableAggregators();
     }
-    curTimeRange = tableTimeRangeIterator.updateCurTimeRange(startTime);
-  }
-
-  @Override
-  protected List<TSDataType> getResultDataTypes() {
-    int groupingKeySize = groupingKeySchemas != null ? groupingKeySchemas.size() : 0;
-    int dateBinSize = tableTimeRangeIterator != null ? 1 : 0;
-    List<TSDataType> resultDataTypes =
-        new ArrayList<>(groupingKeySize + dateBinSize + tableAggregators.size());
-
-    if (groupingKeySchemas != null) {
-      for (int i = 0; i < groupingKeySchemas.size(); i++) {
-        resultDataTypes.add(TSDataType.STRING);
-      }
-    }
-    if (tableTimeRangeIterator != null) {
-      resultDataTypes.add(TSDataType.TIMESTAMP);
-    }
-    for (TableAggregator aggregator : tableAggregators) {
-      resultDataTypes.add(aggregator.getType());
-    }
-
-    return resultDataTypes;
-  }
-
-  private void resetTableAggregators() {
-    tableAggregators.forEach(TableAggregator::reset);
   }
 
   /** Append a row of aggregation results to the result tsBlock. */
@@ -679,7 +639,10 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
 
     int groupKeySize = groupingKeySchemas == null ? 0 : groupingKeySchemas.size();
-    int dateBinSize = tableTimeRangeIterator != null ? 1 : 0;
+    int dateBinSize =
+        timeIterator.getType() == ITableTimeRangeIterator.TimeIteratorType.DATE_BIN_TIME_ITERATOR
+            ? 1
+            : 0;
 
     if (groupingKeyIndex != null) {
       for (int i = 0; i < groupKeySize; i++) {
@@ -704,7 +667,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     }
 
     if (dateBinSize > 0) {
-      columnBuilders[groupKeySize].writeLong(curTimeRange.getMin());
+      columnBuilders[groupKeySize].writeLong(timeIterator.getCurTimeRange().getMin());
     }
 
     for (int i = 0; i < aggregators.size(); i++) {
@@ -712,5 +675,61 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     }
 
     tsBlockBuilder.declarePosition();
+  }
+
+  public static boolean isAllAggregatorsHasFinalResult(List<TableAggregator> aggregators) {
+    for (TableAggregator aggregator : aggregators) {
+      if (!aggregator.hasFinalResult()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private void resetTableAggregators() {
+    tableAggregators.forEach(TableAggregator::reset);
+  }
+
+  @Override
+  protected List<TSDataType> getResultDataTypes() {
+    int groupingKeySize = groupingKeySchemas != null ? groupingKeySchemas.size() : 0;
+    int dateBinSize =
+        timeIterator.getType() == ITableTimeRangeIterator.TimeIteratorType.DATE_BIN_TIME_ITERATOR
+            ? 1
+            : 0;
+    List<TSDataType> resultDataTypes =
+        new ArrayList<>(groupingKeySize + dateBinSize + tableAggregators.size());
+
+    if (groupingKeySchemas != null) {
+      for (int i = 0; i < groupingKeySchemas.size(); i++) {
+        resultDataTypes.add(TSDataType.STRING);
+      }
+    }
+    if (dateBinSize > 0) {
+      resultDataTypes.add(TSDataType.TIMESTAMP);
+    }
+    for (TableAggregator aggregator : tableAggregators) {
+      resultDataTypes.add(aggregator.getType());
+    }
+
+    return resultDataTypes;
+  }
+
+  @Override
+  public void initQueryDataSource(IQueryDataSource dataSource) {
+    this.queryDataSource = (QueryDataSource) dataSource;
+    this.seriesScanUtil.initQueryDataSource(queryDataSource);
+    this.resultTsBlockBuilder = new TsBlockBuilder(getResultDataTypes());
+    this.resultTsBlockBuilder.setMaxTsBlockLineNumber(this.maxTsBlockLineNum);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(seriesScanUtil)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId)
+        + (resultTsBlockBuilder == null ? 0 : resultTsBlockBuilder.getRetainedSizeInBytes())
+        + RamUsageEstimator.sizeOfCollection(deviceEntries);
   }
 }
