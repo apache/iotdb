@@ -60,6 +60,8 @@ public class AccumulatorFactory {
         return new CountAccumulator();
       case AVG:
         return new AvgAccumulator(inputDataTypes.get(0));
+      case SUM:
+        return new SumAccumulator(inputDataTypes.get(0));
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }

@@ -111,6 +111,8 @@ public enum TableBuiltinAggregationFunction {
   public static List<Type> getIntermediateTypes(String name, List<Type> originalArgumentTypes) {
     if (COUNT.functionName.equalsIgnoreCase(name)) {
       return ImmutableList.of(INT64);
+    } else if (SUM.functionName.equalsIgnoreCase(name)) {
+      return ImmutableList.of(DOUBLE);
     } else if (AVG.functionName.equalsIgnoreCase(name)) {
       return ImmutableList.of(DOUBLE, INT64);
     } else {
