@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
@@ -52,7 +51,6 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInser
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
@@ -64,6 +62,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
@@ -136,7 +135,6 @@ import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.FSUtils;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1053,14 +1051,13 @@ public class DataRegion implements IDataRegionForQuery {
       if (tsFileProcessor != null && tsFileProcessor.shouldFlush()) {
         fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
       }
-      if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
-        if (!insertRowNode.isGeneratedByRemoteConsensusLeader()) {
-          // disable updating last cache on follower
-          startTime = System.nanoTime();
-          tryToUpdateInsertRowLastCache(insertRowNode);
-          PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(
-              System.nanoTime() - startTime);
-        }
+      if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
+          && (!insertRowNode.isGeneratedByRemoteConsensusLeader())) {
+        // disable updating last cache on follower
+        startTime = System.nanoTime();
+        tryToUpdateInsertRowLastCache(insertRowNode);
+        PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(
+            System.nanoTime() - startTime);
       }
     } finally {
       writeUnlock();
@@ -1073,8 +1070,7 @@ public class DataRegion implements IDataRegionForQuery {
         : Long.MAX_VALUE;
   }
 
-  private boolean splitAndInsert(InsertTabletNode insertTabletNode, int loc, TSStatus[] results)
-      throws BatchProcessException, WriteProcessException {
+  private boolean splitAndInsert(InsertTabletNode insertTabletNode, int loc, TSStatus[] results) {
     boolean noFailure = true;
 
     // before is first start point
@@ -1201,14 +1197,13 @@ public class DataRegion implements IDataRegionForQuery {
       noFailure = loc == 0;
       noFailure = noFailure && splitAndInsert(insertTabletNode, loc, results);
 
-      if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
-        if (!insertTabletNode.isGeneratedByRemoteConsensusLeader()) {
-          // disable updating last cache on follower
-          startTime = System.nanoTime();
-          tryToUpdateInsertTabletLastCache(insertTabletNode);
-          PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(
-              System.nanoTime() - startTime);
-        }
+      if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
+          && !insertTabletNode.isGeneratedByRemoteConsensusLeader()) {
+        // disable updating last cache on follower
+        startTime = System.nanoTime();
+        tryToUpdateInsertTabletLastCache(insertTabletNode);
+        PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(
+            System.nanoTime() - startTime);
       }
 
       if (!noFailure) {
@@ -1353,32 +1348,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void tryToUpdateInsertTabletLastCache(InsertTabletNode node) {
-    long latestFlushedTime = lastFlushTimeMap.getGlobalFlushedTime(node.getDeviceID());
-    String[] measurements = node.getMeasurements();
-    MeasurementSchema[] measurementSchemas = node.getMeasurementSchemas();
-    String[] rawMeasurements = new String[measurements.length];
-    for (int i = 0; i < measurements.length; i++) {
-      if (measurementSchemas[i] != null) {
-        // get raw measurement rather than alias
-        rawMeasurements[i] = measurementSchemas[i].getMeasurementId();
-      } else {
-        rawMeasurements[i] = measurements[i];
-      }
-    }
-    DataNodeSchemaCache.getInstance()
-        .updateLastCache(
-            getDatabaseName(),
-            node.getTargetPath(),
-            rawMeasurements,
-            node.getMeasurementSchemas(),
-            node.isAligned(),
-            node::composeLastTimeValuePair,
-            index ->
-                node.getColumns()[index] != null
-                    && (node.getColumnCategories() == null
-                        || node.getColumnCategories()[index] == TsTableColumnCategory.MEASUREMENT),
-            true,
-            latestFlushedTime);
+    node.updateLastCache(getDatabaseName());
   }
 
   private TsFileProcessor insertToTsFileProcessor(
@@ -1400,32 +1370,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void tryToUpdateInsertRowLastCache(InsertRowNode node) {
-    long latestFlushedTime = lastFlushTimeMap.getGlobalFlushedTime(node.getDeviceID());
-    String[] measurements = node.getMeasurements();
-    MeasurementSchema[] measurementSchemas = node.getMeasurementSchemas();
-    String[] rawMeasurements = new String[measurements.length];
-    for (int i = 0; i < measurements.length; i++) {
-      if (measurementSchemas[i] != null) {
-        // get raw measurement rather than alias
-        rawMeasurements[i] = measurementSchemas[i].getMeasurementId();
-      } else {
-        rawMeasurements[i] = measurements[i];
-      }
-    }
-    DataNodeSchemaCache.getInstance()
-        .updateLastCache(
-            getDatabaseName(),
-            node.getTargetPath(),
-            rawMeasurements,
-            node.getMeasurementSchemas(),
-            node.isAligned(),
-            node::composeTimeValuePair,
-            index ->
-                node.getValues()[index] != null
-                    && (node.getColumnCategories() == null
-                        || node.getColumnCategories()[index] == TsTableColumnCategory.MEASUREMENT),
-            true,
-            latestFlushedTime);
+    node.updateLastCache(databaseName);
   }
 
   private List<InsertRowNode> insertToTsFileProcessors(
@@ -1496,35 +1441,8 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void tryToUpdateInsertRowsLastCache(List<InsertRowNode> nodeList) {
-    DataNodeSchemaCache.getInstance().takeReadLock();
-    try {
-      for (InsertRowNode node : nodeList) {
-        long latestFlushedTime = lastFlushTimeMap.getGlobalFlushedTime(node.getDeviceID());
-        String[] measurements = node.getMeasurements();
-        MeasurementSchema[] measurementSchemas = node.getMeasurementSchemas();
-        String[] rawMeasurements = new String[measurements.length];
-        for (int i = 0; i < measurements.length; i++) {
-          if (measurementSchemas[i] != null) {
-            // get raw measurement rather than alias
-            rawMeasurements[i] = measurementSchemas[i].getMeasurementId();
-          } else {
-            rawMeasurements[i] = measurements[i];
-          }
-        }
-        DataNodeSchemaCache.getInstance()
-            .updateLastCacheWithoutLock(
-                getDatabaseName(),
-                node.getTargetPath(),
-                rawMeasurements,
-                node.getMeasurementSchemas(),
-                node.isAligned(),
-                node::composeTimeValuePair,
-                index -> node.getValues()[index] != null,
-                true,
-                latestFlushedTime);
-      }
-    } finally {
-      DataNodeSchemaCache.getInstance().releaseReadLock();
+    for (InsertRowNode node : nodeList) {
+      node.updateLastCache(databaseName);
     }
   }
 
@@ -1759,11 +1677,6 @@ public class DataRegion implements IDataRegionForQuery {
       return CompletableFuture.completedFuture(null);
     }
     TsFileResource resource = tsFileProcessor.getTsFileResource();
-    logger.info(
-        "Async close tsfile: {}, file start time: {}, file end time: {}",
-        resource.getTsFile().getAbsolutePath(),
-        resource.getFileStartTime(),
-        resource.getFileEndTime());
     Future<?> future;
     if (sequence) {
       closingSequenceTsFileProcessor.add(tsFileProcessor);
@@ -1786,6 +1699,11 @@ public class DataRegion implements IDataRegionForQuery {
         timePartitionIdVersionControllerMap.remove(tsFileProcessor.getTimeRangeId());
       }
     }
+    logger.info(
+        "Async close tsfile: {}, file start time: {}, file end time: {}",
+        resource.getTsFile().getAbsolutePath(),
+        resource.getFileStartTime(),
+        resource.getFileEndTime());
     if (workSequenceTsFileProcessors.get(tsFileProcessor.getTimeRangeId()) == null
         && workUnsequenceTsFileProcessors.get(tsFileProcessor.getTimeRangeId()) == null) {
       WritingMetrics.getInstance().recordActiveTimePartitionCount(-1);
@@ -2281,11 +2199,12 @@ public class DataRegion implements IDataRegionForQuery {
         .forEach(unsealedResource::add);
   }
 
-  /**
-   * @param pattern Must be a pattern start with a precise device path
-   */
   public void deleteByDevice(
-      MeasurementPath pattern, long startTime, long endTime, long searchIndex) throws IOException {
+      final MeasurementPath pattern,
+      final long startTime,
+      final long endTime,
+      final long searchIndex)
+      throws IOException {
     if (SettleService.getINSTANCE().getFilesToBeSettledCount().get() != 0) {
       throw new IOException(
           "Delete failed. " + "Please do not delete until the old files settled.");
@@ -2298,7 +2217,7 @@ public class DataRegion implements IDataRegionForQuery {
     boolean hasReleasedLock = false;
 
     try {
-      DataNodeSchemaCache.getInstance().invalidateLastCache(pattern);
+      TreeDeviceSchemaCacheManager.getInstance().invalidateLastCache(pattern);
       Set<PartialPath> devicePaths = new HashSet<>(pattern.getDevicePathPattern());
       // write log to impacted working TsFileProcessors
       List<WALFlushListener> walListeners =
@@ -2346,7 +2265,7 @@ public class DataRegion implements IDataRegionForQuery {
     boolean releasedLock = false;
 
     try {
-      DataNodeSchemaCache.getInstance().invalidateLastCacheInDataRegion(getDatabaseName());
+      TreeDeviceSchemaCacheManager.getInstance().invalidateLastCacheInDataRegion(getDatabaseName());
       // write log to impacted working TsFileProcessors
       List<WALFlushListener> walListeners =
           logDeletionInWAL(startTime, endTime, searchIndex, pathToDelete);
@@ -3044,7 +2963,8 @@ public class DataRegion implements IDataRegionForQuery {
       throw new LoadFileException(e);
     } finally {
       writeUnlock();
-      DataNodeSchemaCache.getInstance().invalidateAll();
+      // TODO: do more precise control and call "invalidateTableLastCache"
+      TreeDeviceSchemaCacheManager.getInstance().cleanUp();
     }
   }
 
@@ -3584,14 +3504,13 @@ public class DataRegion implements IDataRegionForQuery {
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemoryBlockCost(costsForMetrics[1]);
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(costsForMetrics[2]);
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(costsForMetrics[3]);
-      if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
-        if (!insertRowsOfOneDeviceNode.isGeneratedByRemoteConsensusLeader()) {
-          // disable updating last cache on follower
-          startTime = System.nanoTime();
-          tryToUpdateInsertRowsLastCache(executedInsertRowNodeList);
-          PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(
-              System.nanoTime() - startTime);
-        }
+      if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
+          && !insertRowsOfOneDeviceNode.isGeneratedByRemoteConsensusLeader()) {
+        // disable updating last cache on follower
+        startTime = System.nanoTime();
+        tryToUpdateInsertRowsLastCache(executedInsertRowNodeList);
+        PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(
+            System.nanoTime() - startTime);
       }
     } finally {
       writeUnlock();
@@ -3654,14 +3573,13 @@ public class DataRegion implements IDataRegionForQuery {
       List<InsertRowNode> executedInsertRowNodeList =
           insertToTsFileProcessors(insertRowsNode, areSequence, timePartitionIds);
 
-      if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
-        if (!insertRowsNode.isGeneratedByRemoteConsensusLeader()) {
-          // disable updating last cache on follower
-          startTime = System.nanoTime();
-          tryToUpdateInsertRowsLastCache(executedInsertRowNodeList);
-          PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(
-              System.nanoTime() - startTime);
-        }
+      if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
+          && !insertRowsNode.isGeneratedByRemoteConsensusLeader()) {
+        // disable updating last cache on follower
+        startTime = System.nanoTime();
+        tryToUpdateInsertRowsLastCache(executedInsertRowNodeList);
+        PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(
+            System.nanoTime() - startTime);
       }
 
       if (!insertRowsNode.getResults().isEmpty()) {

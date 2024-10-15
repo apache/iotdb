@@ -240,8 +240,20 @@ showFunctionsStatement
 
 // -------------------------------------------- Load Statement ---------------------------------------------------------
 loadTsFileStatement
-    : LOAD fileName=string properties?
+    : LOAD fileName=string (loadFileWithAttributeClauses)?
     ;
+
+loadFileWithAttributeClauses
+    : WITH
+        '('
+        (loadFileWithAttributeClause ',')* loadFileWithAttributeClause?
+        ')'
+    ;
+
+loadFileWithAttributeClause
+    : loadFileWithKey=STRING EQ loadFileWithValue=STRING
+    ;
+
 
 
 // -------------------------------------------- Pipe Statement ---------------------------------------------------------
@@ -704,6 +716,7 @@ primaryExpression
     | TRIM '(' trimSource=valueExpression ',' trimChar=valueExpression ')'                #trim
     | SUBSTRING '(' valueExpression FROM valueExpression (FOR valueExpression)? ')'       #substring
     | DATE_BIN '(' timeDuration ',' valueExpression (',' timeValue)? ')'                  #dateBin
+    | DATE_BIN_GAPFILL '(' timeDuration ',' valueExpression (',' timeValue)? ')'          #dateBinGapFill
     | '(' expression ')'                                                                  #parenthesizedExpression
     ;
 
@@ -947,6 +960,7 @@ DATABASES: 'DATABASES';
 DATANODES: 'DATANODES';
 DATE: 'DATE';
 DATE_BIN: 'DATE_BIN';
+DATE_BIN_GAPFILL: 'DATE_BIN_GAPFILL';
 DAY: 'DAY' | 'D';
 DEALLOCATE: 'DEALLOCATE';
 DECLARE: 'DECLARE';

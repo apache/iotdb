@@ -24,6 +24,8 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 
 import org.apache.commons.lang3.StringUtils;
 
+import javax.annotation.Nullable;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -39,6 +41,11 @@ public class LoadTsFileConfigurator {
         break;
       case ON_SUCCESS_KEY:
         validateOnSuccessParam(value);
+        break;
+      case MODEL_KEY:
+        validateModelParam(value);
+        break;
+      case DATABASE_NAME_KEY:
         break;
       default:
         throw new SemanticException("Invalid parameter '" + key + "' for LOAD TSFILE command.");
@@ -73,6 +80,12 @@ public class LoadTsFileConfigurator {
             DATABASE_LEVEL_KEY, String.valueOf(DATABASE_LEVEL_DEFAULT_VALUE)));
   }
 
+  private static final String DATABASE_NAME_KEY = "database-name";
+
+  public static @Nullable String parseDatabaseName(final Map<String, String> loadAttributes) {
+    return loadAttributes.get(DATABASE_NAME_KEY);
+  }
+
   private static final String ON_SUCCESS_KEY = "on-success";
   private static final String ON_SUCCESS_DELETE_VALUE = "delete";
   private static final String ON_SUCCESS_NONE_VALUE = "none";
@@ -92,6 +105,27 @@ public class LoadTsFileConfigurator {
   public static boolean parseOrGetDefaultOnSuccess(final Map<String, String> loadAttributes) {
     final String value = loadAttributes.get(ON_SUCCESS_KEY);
     return StringUtils.isEmpty(value) || ON_SUCCESS_DELETE_VALUE.equals(value);
+  }
+
+  public static final String MODEL_KEY = "model";
+  public static final String MODEL_TREE_VALUE = "tree";
+  public static final String MODEL_TABLE_VALUE = "table";
+  public static final Set<String> MODEL_VALUE_SET =
+      Collections.unmodifiableSet(
+          new HashSet<>(Arrays.asList(MODEL_TREE_VALUE, MODEL_TABLE_VALUE)));
+
+  public static void validateModelParam(final String model) {
+    if (!MODEL_VALUE_SET.contains(model)) {
+      throw new SemanticException(
+          String.format(
+              "Given %s value '%s' is not supported, please input a valid value.",
+              MODEL_KEY, model));
+    }
+  }
+
+  public static @Nullable String parseOrGetDefaultModel(
+      final Map<String, String> loadAttributes, final String defaultModel) {
+    return loadAttributes.getOrDefault(MODEL_KEY, defaultModel);
   }
 
   private LoadTsFileConfigurator() {

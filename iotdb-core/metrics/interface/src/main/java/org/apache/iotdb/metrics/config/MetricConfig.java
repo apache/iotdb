@@ -41,7 +41,7 @@ public class MetricConfig {
   private List<ReporterType> metricReporterList = Collections.emptyList();
 
   /** The level of metric service. */
-  private MetricLevel metricLevel = MetricLevel.CORE;
+  private MetricLevel metricLevel = MetricLevel.IMPORTANT;
 
   /** The period of async collection of some metrics in second. */
   private Integer asyncCollectPeriodInSecond = 5;
