@@ -40,7 +40,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import static org.apache.iotdb.itbase.constant.TestConstant.DATA_TYPE_STR;
-import static org.apache.iotdb.itbase.constant.TestConstant.TIMESEIRES_STR;
+import static org.apache.iotdb.itbase.constant.TestConstant.TIMESERIES_STR;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.apache.iotdb.itbase.constant.TestConstant.VALUE_STR;
 import static org.junit.Assert.assertEquals;
@@ -90,7 +90,7 @@ public class IoTDBLastQueryWithoutLastCacheIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(TIMESEIRES_STR)
+                  + resultSet.getString(TIMESERIES_STR)
                   + ","
                   + resultSet.getString(VALUE_STR)
                   + ","
@@ -134,7 +134,7 @@ public class IoTDBLastQueryWithoutLastCacheIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(TIMESEIRES_STR)
+                  + resultSet.getString(TIMESERIES_STR)
                   + ","
                   + resultSet.getString(VALUE_STR)
                   + ","
@@ -169,7 +169,7 @@ public class IoTDBLastQueryWithoutLastCacheIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(TIMESEIRES_STR)
+                  + resultSet.getString(TIMESERIES_STR)
                   + ","
                   + resultSet.getString(VALUE_STR)
                   + ","
@@ -206,7 +206,7 @@ public class IoTDBLastQueryWithoutLastCacheIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(TIMESEIRES_STR)
+                  + resultSet.getString(TIMESERIES_STR)
                   + ","
                   + resultSet.getString(VALUE_STR)
                   + ","
@@ -239,7 +239,7 @@ public class IoTDBLastQueryWithoutLastCacheIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(TIMESEIRES_STR)
+                  + resultSet.getString(TIMESERIES_STR)
                   + ","
                   + resultSet.getString(VALUE_STR)
                   + ","
@@ -273,7 +273,7 @@ public class IoTDBLastQueryWithoutLastCacheIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(TIMESEIRES_STR)
+                  + resultSet.getString(TIMESERIES_STR)
                   + ","
                   + resultSet.getString(VALUE_STR)
                   + ","
@@ -310,7 +310,7 @@ public class IoTDBLastQueryWithoutLastCacheIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(TIMESEIRES_STR)
+                  + resultSet.getString(TIMESERIES_STR)
                   + ","
                   + resultSet.getString(VALUE_STR)
                   + ","
