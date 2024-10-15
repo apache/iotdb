@@ -2265,7 +2265,7 @@ public class DataRegion implements IDataRegionForQuery {
     boolean releasedLock = false;
 
     try {
-      TreeDeviceSchemaCacheManager.getInstance().invalidateLastCacheInDataRegion(getDatabaseName());
+      TreeDeviceSchemaCacheManager.getInstance().invalidateDatabaseLastCache(getDatabaseName());
       // write log to impacted working TsFileProcessors
       List<WALFlushListener> walListeners =
           logDeletionInWAL(startTime, endTime, searchIndex, pathToDelete);
