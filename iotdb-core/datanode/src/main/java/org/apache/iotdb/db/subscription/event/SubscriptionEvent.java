@@ -56,13 +56,18 @@ public class SubscriptionEvent {
   private final SubscriptionEventResponse<CachedSubscriptionPollResponse> response;
   private final SubscriptionCommitContext commitContext;
 
-  private final String fileName;
-
   // lastPolledConsumerId is not used as a criterion for determining pollability
   private volatile String lastPolledConsumerId = null;
   private final AtomicLong lastPolledTimestamp = new AtomicLong(INVALID_TIMESTAMP);
   private final AtomicLong committedTimestamp = new AtomicLong(INVALID_TIMESTAMP);
 
+  // record file name for file payload
+  private String fileName;
+
+  /**
+   * Constructs a {@link SubscriptionEvent} with the response type of {@link
+   * SubscriptionEventSingleResponse}.
+   */
   public SubscriptionEvent(
       final short responseType,
       final SubscriptionPollPayload payload,
@@ -70,8 +75,6 @@ public class SubscriptionEvent {
     this.pipeEvents = new SubscriptionPipeEmptyEvent();
     this.response = new SubscriptionEventSingleResponse(responseType, payload, commitContext);
     this.commitContext = commitContext;
-
-    this.fileName = null;
   }
 
   @TestOnly
@@ -79,6 +82,21 @@ public class SubscriptionEvent {
     this(response.getResponseType(), response.getPayload(), response.getCommitContext());
   }
 
+  /**
+   * Constructs a {@link SubscriptionEvent} with the response type of {@link
+   * SubscriptionEventTabletResponse}.
+   */
+  public SubscriptionEvent(
+      final SubscriptionPipeTabletEventBatch batch, final SubscriptionCommitContext commitContext) {
+    this.pipeEvents = new SubscriptionPipeTabletBatchEvents(batch);
+    this.response = new SubscriptionEventTabletResponse(batch, commitContext);
+    this.commitContext = commitContext;
+  }
+
+  /**
+   * Constructs a {@link SubscriptionEvent} with the response type of {@link
+   * SubscriptionEventTsFileResponse}.
+   */
   public SubscriptionEvent(
       final SubscriptionPipeEvents pipeEvents,
       final File tsFile,
@@ -88,15 +106,6 @@ public class SubscriptionEvent {
     this.commitContext = commitContext;
 
     this.fileName = tsFile.getName();
-  }
-
-  public SubscriptionEvent(
-      final SubscriptionPipeTabletEventBatch batch, final SubscriptionCommitContext commitContext) {
-    this.pipeEvents = new SubscriptionPipeTabletBatchEvents(batch);
-    this.response = new SubscriptionEventTabletResponse(batch, commitContext);
-    this.commitContext = commitContext;
-
-    this.fileName = null;
   }
 
   public SubscriptionPollResponse getCurrentResponse() {

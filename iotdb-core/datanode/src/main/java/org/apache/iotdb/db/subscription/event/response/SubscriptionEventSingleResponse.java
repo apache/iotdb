@@ -21,13 +21,20 @@ package org.apache.iotdb.db.subscription.event.response;
 
 import org.apache.iotdb.db.subscription.event.cache.CachedSubscriptionPollResponse;
 import org.apache.iotdb.db.subscription.event.cache.SubscriptionPollResponseCache;
+import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
+import org.apache.iotdb.rpc.subscription.payload.poll.TerminationPayload;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+/**
+ * The {@link SubscriptionEventSingleResponse} class represents a single subscription event response
+ * that wraps a cached {@link SubscriptionPollResponse}. The actual payload of the response can be
+ * either a {@link TerminationPayload} or an {@link ErrorPayload}.
+ */
 public class SubscriptionEventSingleResponse
     implements SubscriptionEventResponse<CachedSubscriptionPollResponse> {
 

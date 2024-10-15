@@ -39,6 +39,12 @@ import java.io.RandomAccessFile;
 import java.util.Arrays;
 import java.util.Objects;
 
+/**
+ * The {@code SubscriptionEventTsFileResponse} class extends {@link
+ * SubscriptionEventExtendableResponse} to manage subscription responses related to time series
+ * files. The actual payload can include {@link FileInitPayload}, {@link FilePiecePayload}, and
+ * {@link FileSealPayload}, allowing for detailed control over file data streaming.
+ */
 public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendableResponse {
 
   private static final Logger LOGGER =

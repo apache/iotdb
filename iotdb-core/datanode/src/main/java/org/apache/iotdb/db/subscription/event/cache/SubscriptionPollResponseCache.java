@@ -22,6 +22,7 @@ package org.apache.iotdb.db.subscription.event.cache;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
@@ -34,6 +35,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Optional;
 
+/**
+ * This class is used to control memory usage of cache {@link SubscriptionPollResponse} in {@link
+ * CachedSubscriptionPollResponse}.
+ */
 public class SubscriptionPollResponseCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPollResponseCache.class);

@@ -30,6 +30,12 @@ import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.Objects;
 
+/**
+ * The {@code SubscriptionEventExtendableResponse} class represents a subscription event response
+ * that can dynamically change as new responses are fetched. It maintains a list of {@link
+ * CachedSubscriptionPollResponse} objects and provides methods for managing and serializing these
+ * responses.
+ */
 public abstract class SubscriptionEventExtendableResponse
     implements SubscriptionEventResponse<CachedSubscriptionPollResponse> {
 

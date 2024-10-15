@@ -39,6 +39,12 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * The {@code SubscriptionEventTabletResponse} class extends {@link
+ * SubscriptionEventExtendableResponse} to handle subscription responses specifically for tablet
+ * data. The actual payload of the response includes a {@link TabletsPayload}, which contains the
+ * tablet information being processed.
+ */
 public class SubscriptionEventTabletResponse extends SubscriptionEventExtendableResponse {
 
   private static final Logger LOGGER =

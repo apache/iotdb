@@ -24,11 +24,15 @@ import java.nio.ByteBuffer;
 
 public interface SubscriptionEventResponse<E> {
 
+  /////////////////////////////// response ///////////////////////////////
+
   E getCurrentResponse();
 
   void prefetchRemainingResponses() throws IOException;
 
   void fetchNextResponse() throws IOException;
+
+  /////////////////////////////// byte buffer ///////////////////////////////
 
   void trySerializeCurrentResponse();
 
@@ -37,6 +41,8 @@ public interface SubscriptionEventResponse<E> {
   ByteBuffer getCurrentResponseByteBuffer() throws IOException;
 
   void invalidateCurrentResponseByteBuffer();
+
+  /////////////////////////////// lifecycle ///////////////////////////////
 
   void nack();
 
