@@ -152,10 +152,7 @@ public class TransformToExpressionVisitor extends ViewExpressionVisitor<Expressi
   public Expression visitLikeExpression(LikeViewExpression likeExpression, Void context) {
     Expression child = this.process(likeExpression.getExpression(), context);
     return new org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression(
-        child,
-        likeExpression.getPatternString(),
-        likeExpression.getPattern(),
-        likeExpression.isNot());
+        child, likeExpression.getPattern(), likeExpression.getEscape(), likeExpression.isNot());
   }
 
   @Override

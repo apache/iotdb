@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.slidingwindow.SlidingWindowAggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
@@ -55,7 +55,7 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
 
   public SlidingWindowAggregationOperator(
       OperatorContext operatorContext,
-      List<Aggregator> aggregators,
+      List<TreeAggregator> aggregators,
       ITimeRangeIterator timeRangeIterator,
       Operator child,
       boolean ascending,
@@ -71,7 +71,7 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
     if (outputEndTime) {
       dataTypes.add(TSDataType.INT64);
     }
-    for (Aggregator aggregator : aggregators) {
+    for (TreeAggregator aggregator : aggregators) {
       dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
     }
     this.resultTsBlockBuilder = new TsBlockBuilder(dataTypes);
@@ -94,7 +94,7 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
       curTimeRange = timeRangeIterator.nextTimeRange();
 
       // Clear previous aggregation result
-      for (Aggregator aggregator : aggregators) {
+      for (TreeAggregator aggregator : aggregators) {
         ((SlidingWindowAggregator) aggregator).updateTimeRange(curTimeRange);
       }
     }
@@ -142,7 +142,7 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
       return;
     }
 
-    for (Aggregator aggregator : aggregators) {
+    for (TreeAggregator aggregator : aggregators) {
       ((SlidingWindowAggregator) aggregator).processTsBlock(inputTsBlock);
     }
 

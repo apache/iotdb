@@ -561,6 +561,7 @@ public class TableMetadataImpl implements Metadata {
               String.format(
                   "Second argument of Aggregate functions [%s] should be orderable", functionName));
         }
+        break;
       case SqlConstant.FIRST_BY:
       case SqlConstant.LAST_BY:
       case SqlConstant.MAX_BY:

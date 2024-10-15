@@ -46,6 +46,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
@@ -190,6 +191,9 @@ public class TableLogicalPlanner {
     if (statement instanceof WrappedStatement) {
       return createRelationPlan(analysis, ((WrappedStatement) statement));
     }
+    if (statement instanceof LoadTsFile) {
+      return createRelationPlan(analysis, (LoadTsFile) statement);
+    }
     throw new IllegalStateException(
         "Unsupported statement type: " + statement.getClass().getSimpleName());
   }
@@ -233,6 +237,10 @@ public class TableLogicalPlanner {
 
   private RelationPlan createRelationPlan(Analysis analysis, WrappedStatement statement) {
     return getRelationPlanner(analysis).process(statement, null);
+  }
+
+  private RelationPlan createRelationPlan(Analysis analysis, LoadTsFile loadTsFile) {
+    return getRelationPlanner(analysis).process(loadTsFile, null);
   }
 
   private RelationPlan createRelationPlan(Analysis analysis, Query query) {
