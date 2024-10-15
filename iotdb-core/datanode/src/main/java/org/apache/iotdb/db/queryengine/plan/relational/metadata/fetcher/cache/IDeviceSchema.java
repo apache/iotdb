@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,23 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.value;
+package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
-import org.apache.tsfile.read.TimeValuePair;
-import org.apache.tsfile.utils.TsPrimitiveType;
-
-// this interface declares the simplest storage operation of lastCacheValue
-public interface ILastCacheValue {
-
-  long getTimestamp();
-
-  TsPrimitiveType getValue();
-
-  void setTimestamp(long timestamp);
-
-  void setValue(TsPrimitiveType value);
-
-  TimeValuePair getTimeValuePair();
-
+public interface IDeviceSchema {
   int estimateSize();
 }
