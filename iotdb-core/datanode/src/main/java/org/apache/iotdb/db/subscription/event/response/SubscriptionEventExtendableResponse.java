@@ -19,36 +19,97 @@
 
 package org.apache.iotdb.db.subscription.event.response;
 
+import org.apache.iotdb.db.subscription.event.cache.CachedSubscriptionPollResponse;
+import org.apache.iotdb.db.subscription.event.cache.SubscriptionPollResponseCache;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.LinkedList;
-import java.util.stream.Stream;
+import java.util.Objects;
 
-public abstract class SubscriptionEventExtendableResponse<E>
-    implements SubscriptionEventResponse<E> {
+public abstract class SubscriptionEventExtendableResponse
+    implements SubscriptionEventResponse<CachedSubscriptionPollResponse> {
 
-  private final LinkedList<E> responses;
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(SubscriptionEventTabletResponse.class);
+
+  private final LinkedList<CachedSubscriptionPollResponse> responses;
+  protected volatile boolean hasNoMore = false;
 
   protected SubscriptionEventExtendableResponse() {
     this.responses = new LinkedList<>();
   }
 
-  protected void offer(final E response) {
+  @Override
+  public CachedSubscriptionPollResponse getCurrentResponse() {
+    return peekFirst();
+  }
+
+  @Override
+  public void fetchNextResponse() throws IOException {
+    prefetchRemainingResponses();
+    if (Objects.isNull(poll())) {
+      LOGGER.warn("broken invariant");
+    }
+  }
+
+  @Override
+  public void trySerializeCurrentResponse() {
+    SubscriptionPollResponseCache.getInstance().trySerialize(getCurrentResponse());
+  }
+
+  @Override
+  public void trySerializeRemainingResponses() {
+    responses.stream()
+        .filter(response -> Objects.isNull(response.getByteBuffer()))
+        .findFirst()
+        .ifPresent(response -> SubscriptionPollResponseCache.getInstance().trySerialize(response));
+  }
+
+  @Override
+  public ByteBuffer getCurrentResponseByteBuffer() throws IOException {
+    return SubscriptionPollResponseCache.getInstance().serialize(getCurrentResponse());
+  }
+
+  @Override
+  public void invalidateCurrentResponseByteBuffer() {
+    SubscriptionPollResponseCache.getInstance().invalidate(getCurrentResponse());
+  }
+
+  @Override
+  public void cleanUp() {
+    CachedSubscriptionPollResponse response;
+    while (Objects.nonNull(response = poll())) {
+      SubscriptionPollResponseCache.getInstance().invalidate(response);
+    }
+
+    hasNoMore = false;
+  }
+
+  @Override
+  public boolean isCommittable() {
+    return hasNoMore && size() == 1;
+  }
+
+  /////////////////////////////// utility ///////////////////////////////
+
+  protected void offer(final CachedSubscriptionPollResponse response) {
     responses.addLast(response);
   }
 
-  protected E poll() {
+  protected CachedSubscriptionPollResponse poll() {
     return responses.isEmpty() ? null : responses.removeFirst();
   }
 
-  protected E peekFirst() {
+  protected CachedSubscriptionPollResponse peekFirst() {
     return responses.isEmpty() ? null : responses.getFirst();
   }
 
-  protected E peekLast() {
+  protected CachedSubscriptionPollResponse peekLast() {
     return responses.isEmpty() ? null : responses.getLast();
-  }
-
-  protected Stream<E> stream() {
-    return responses.stream();
   }
 
   protected int size() {

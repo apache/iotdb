@@ -194,8 +194,8 @@ public class SubscriptionEvent {
   }
 
   public void nack() {
-    // reset current response index
-    response.reset();
+    // nack response
+    response.nack();
 
     // reset lastPolledTimestamp makes this event pollable
     lastPolledTimestamp.set(INVALID_TIMESTAMP);
@@ -234,8 +234,8 @@ public class SubscriptionEvent {
     return response.getCurrentResponseByteBuffer();
   }
 
-  public void resetCurrentResponseByteBuffer() {
-    response.resetCurrentResponseByteBuffer();
+  public void invalidateCurrentResponseByteBuffer() {
+    response.invalidateCurrentResponseByteBuffer();
   }
 
   public int getCurrentResponseSize() throws IOException {

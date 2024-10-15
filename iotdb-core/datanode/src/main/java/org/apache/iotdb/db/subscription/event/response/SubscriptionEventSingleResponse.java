@@ -75,18 +75,18 @@ public class SubscriptionEventSingleResponse
   }
 
   @Override
-  public void resetCurrentResponseByteBuffer() {
+  public void invalidateCurrentResponseByteBuffer() {
     SubscriptionPollResponseCache.getInstance().invalidate(response);
   }
 
   @Override
-  public void reset() {
-    resetCurrentResponseByteBuffer();
+  public void nack() {
+    invalidateCurrentResponseByteBuffer();
   }
 
   @Override
   public void cleanUp() {
-    resetCurrentResponseByteBuffer();
+    invalidateCurrentResponseByteBuffer();
   }
 
   @Override

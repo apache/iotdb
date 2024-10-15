@@ -36,9 +36,9 @@ public interface SubscriptionEventResponse<E> {
 
   ByteBuffer getCurrentResponseByteBuffer() throws IOException;
 
-  void resetCurrentResponseByteBuffer();
+  void invalidateCurrentResponseByteBuffer();
 
-  void reset();
+  void nack();
 
   void cleanUp();
 

@@ -21,7 +21,6 @@ package org.apache.iotdb.db.subscription.event.response;
 
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.subscription.event.cache.CachedSubscriptionPollResponse;
-import org.apache.iotdb.db.subscription.event.cache.SubscriptionPollResponseCache;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FilePiecePayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileSealPayload;
@@ -37,12 +36,10 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Objects;
 
-public class SubscriptionEventTsFileResponse
-    extends SubscriptionEventExtendableResponse<CachedSubscriptionPollResponse> {
+public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendableResponse {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubscriptionEventTsFileResponse.class);
@@ -59,24 +56,7 @@ public class SubscriptionEventTsFileResponse
     this.tsFile = tsFile;
     this.commitContext = commitContext;
 
-    offerInitialResponse();
-  }
-
-  private void offerInitialResponse() {
-    if (!isEmpty()) {
-      LOGGER.warn("broken invariant");
-      return;
-    }
-    offer(
-        new CachedSubscriptionPollResponse(
-            SubscriptionPollResponseType.FILE_INIT.getType(),
-            new FileInitPayload(tsFile.getName()),
-            commitContext));
-  }
-
-  @Override
-  public CachedSubscriptionPollResponse getCurrentResponse() {
-    return peekFirst();
+    init();
   }
 
   @Override
@@ -117,57 +97,30 @@ public class SubscriptionEventTsFileResponse
   }
 
   @Override
-  public void fetchNextResponse() throws IOException {
-    prefetchRemainingResponses();
-    if (Objects.isNull(poll())) {
-      LOGGER.warn("broken invariant");
-    }
-  }
-
-  @Override
-  public void trySerializeCurrentResponse() {
-    SubscriptionPollResponseCache.getInstance().trySerialize(getCurrentResponse());
-  }
-
-  @Override
-  public void trySerializeRemainingResponses() {
-    stream()
-        .filter(response -> Objects.isNull(response.getByteBuffer()))
-        .findFirst()
-        .ifPresent(response -> SubscriptionPollResponseCache.getInstance().trySerialize(response));
-  }
-
-  @Override
-  public ByteBuffer getCurrentResponseByteBuffer() throws IOException {
-    return SubscriptionPollResponseCache.getInstance().serialize(getCurrentResponse());
-  }
-
-  @Override
-  public void resetCurrentResponseByteBuffer() {
-    SubscriptionPollResponseCache.getInstance().invalidate(getCurrentResponse());
-  }
-
-  @Override
-  public void reset() {
+  public void nack() {
     cleanUp();
-    offerInitialResponse();
+    init();
   }
 
   @Override
   public void cleanUp() {
-    CachedSubscriptionPollResponse response;
-    while (Objects.nonNull(response = poll())) {
-      SubscriptionPollResponseCache.getInstance().invalidate(response);
-    }
-    hasNoMore = false;
-  }
-
-  @Override
-  public boolean isCommittable() {
-    return hasNoMore && size() == 1;
+    super.cleanUp();
   }
 
   /////////////////////////////// utility ///////////////////////////////
+
+  private void init() {
+    if (!isEmpty()) {
+      LOGGER.warn("broken invariant");
+      return;
+    }
+
+    offer(
+        new CachedSubscriptionPollResponse(
+            SubscriptionPollResponseType.FILE_INIT.getType(),
+            new FileInitPayload(tsFile.getName()),
+            commitContext));
+  }
 
   private @NonNull CachedSubscriptionPollResponse generateResponseWithPieceOrSealPayload(
       final long writingOffset) throws IOException {
