@@ -503,8 +503,7 @@ public class TableDistributedPlanGenerator
   @Override
   public List<PlanNode> visitAggregation(AggregationNode node, PlanContext context) {
     if (node.isStreamable()) {
-      context.expectedOrderingScheme = constructOrderingSchema(node.getPreGroupedSymbols());
-      context.hasSortProperty = true;
+      context.setExpectedOrderingScheme(constructOrderingSchema(node.getPreGroupedSymbols()));
     }
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
     OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
@@ -653,15 +652,18 @@ public class TableDistributedPlanGenerator
     }
     context.mostUsedRegion = mostUsedDataRegion;
 
-    processSortProperty(node, resultTableScanNodeList, context);
+    if (context.hasSortProperty) {
+      processSortProperty(node, resultTableScanNodeList, context);
+    }
 
     if (needSplit) {
       if (resultTableScanNodeList.size() == 1) {
         finalAggregation.setChild(resultTableScanNodeList.get(0));
       } else if (resultTableScanNodeList.size() > 1) {
+        OrderingScheme childOrdering =
+            nodeOrderingMap.get(resultTableScanNodeList.get(0).getPlanNodeId());
         finalAggregation.setChild(
-            mergeChildrenViaCollectOrMergeSort(
-                context.expectedOrderingScheme, resultTableScanNodeList));
+            mergeChildrenViaCollectOrMergeSort(childOrdering, resultTableScanNodeList));
       } else {
         throw new IllegalStateException("List<PlanNode>.size should >= 1, but now is 0");
       }
