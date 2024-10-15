@@ -134,22 +134,31 @@ public class AINodeBasicIT {
     String dropSql = "DROP MODEL operationTest";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(registerSql);
-      try (ResultSet resultSet = statement.executeQuery(showSql)) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        checkHeader(resultSetMetaData, "ModelId,ModelType,State,Configs,Notes");
-        int count = 0;
-        while (resultSet.next()) {
-          String modelName = resultSet.getString(1);
-          String modelType = resultSet.getString(2);
-          String status = resultSet.getString(3);
+      boolean loading = true;
+      while(loading){
+        statement.execute(registerSql);
+        try (ResultSet resultSet = statement.executeQuery(showSql)) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          checkHeader(resultSetMetaData, "ModelId,ModelType,State,Configs,Notes");
+          int count = 0;
+          while (resultSet.next()) {
+            String modelName = resultSet.getString(1);
+            String modelType = resultSet.getString(2);
+            String status = resultSet.getString(3);
 
-          assertEquals("operationTest", modelName);
-          assertEquals("USER_DEFINED", modelType);
-          assertEquals("ACTIVE", status);
-          count++;
+            assertEquals("operationTest", modelName);
+            assertEquals("USER_DEFINED", modelType);
+            if(status.equals("ACTIVE")){
+              loading = false;
+            } else if(status.equals("LOADING")){
+              continue;
+            }else {
+              fail("Unexpected status of model: " + status);
+            }
+            count++;
+          }
+          assertEquals(1, count);
         }
-        assertEquals(1, count);
       }
       statement.execute(dropSql);
       try (ResultSet resultSet = statement.executeQuery(showSql)) {
