@@ -135,12 +135,12 @@ public class AINodeBasicIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       boolean loading = true;
+      int count = 0;
       while (loading) {
         statement.execute(registerSql);
         try (ResultSet resultSet = statement.executeQuery(showSql)) {
           ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
           checkHeader(resultSetMetaData, "ModelId,ModelType,State,Configs,Notes");
-          int count = 0;
           while (resultSet.next()) {
             String modelName = resultSet.getString(1);
             String modelType = resultSet.getString(2);
@@ -150,21 +150,21 @@ public class AINodeBasicIT {
             assertEquals("USER_DEFINED", modelType);
             if (status.equals("ACTIVE")) {
               loading = false;
+              count++;
             } else if (status.equals("LOADING")) {
-              continue;
+              break;
             } else {
               fail("Unexpected status of model: " + status);
             }
-            count++;
           }
-          assertEquals(1, count);
         }
       }
+      assertEquals(1, count);
       statement.execute(dropSql);
       try (ResultSet resultSet = statement.executeQuery(showSql)) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         checkHeader(resultSetMetaData, "ModelId,ModelType,State,Configs,Notes");
-        int count = 0;
+        count = 0;
         while (resultSet.next()) {
           count++;
         }
