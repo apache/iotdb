@@ -2287,7 +2287,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                org.apache.iotdb.db.queryengine.execution.operator.process.AI.InferenceOperator
+                org.apache.iotdb.db.queryengine.execution.operator.process.ai.InferenceOperator
                     .class
                     .getSimpleName());
 
@@ -2302,7 +2302,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         calculateSize(inputShape[0], inputTypes) + TimeColumn.SIZE_IN_BYTES_PER_POSITION;
     long maxReturnSize = calculateSize(outputShape[0], outputTypes);
 
-    return new org.apache.iotdb.db.queryengine.execution.operator.process.AI.InferenceOperator(
+    return new org.apache.iotdb.db.queryengine.execution.operator.process.ai.InferenceOperator(
         operatorContext,
         child,
         modelInferenceDescriptor,
