@@ -135,7 +135,7 @@ public class AINodeBasicIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       boolean loading = true;
-      while(loading){
+      while (loading) {
         statement.execute(registerSql);
         try (ResultSet resultSet = statement.executeQuery(showSql)) {
           ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -148,11 +148,11 @@ public class AINodeBasicIT {
 
             assertEquals("operationTest", modelName);
             assertEquals("USER_DEFINED", modelType);
-            if(status.equals("ACTIVE")){
+            if (status.equals("ACTIVE")) {
               loading = false;
-            } else if(status.equals("LOADING")){
+            } else if (status.equals("LOADING")) {
               continue;
-            }else {
+            } else {
               fail("Unexpected status of model: " + status);
             }
             count++;
