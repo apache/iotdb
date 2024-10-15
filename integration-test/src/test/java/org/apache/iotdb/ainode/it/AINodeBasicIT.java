@@ -134,10 +134,10 @@ public class AINodeBasicIT {
     String dropSql = "DROP MODEL operationTest";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
+      statement.execute(registerSql);
       boolean loading = true;
       int count = 0;
       while (loading) {
-        statement.execute(registerSql);
         try (ResultSet resultSet = statement.executeQuery(showSql)) {
           ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
           checkHeader(resultSetMetaData, "ModelId,ModelType,State,Configs,Notes");
