@@ -273,8 +273,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
               // set req
               final TConsensusGroupId consensusGroupId = entry.getKey();
               final String database = getPartitionManager().getRegionStorageGroup(consensusGroupId);
-              invalidateSchemaCacheRequestHandler.putRequest(
-                  requestIndex.get(), database.substring(5));
+              invalidateSchemaCacheRequestHandler.putRequest(requestIndex.get(), database);
               requestIndex.incrementAndGet();
             });
     CnToDnInternalServiceAsyncRequestManager.getInstance()
