@@ -222,6 +222,7 @@ public class SubscriptionEvent {
   //////////////////////////// byte buffer ////////////////////////////
 
   public void trySerializeRemainingResponses() {
+    // TODO: consider memory usage
     response.trySerializeRemainingResponses();
   }
 
@@ -243,19 +244,19 @@ public class SubscriptionEvent {
     return byteBuffer.limit() - byteBuffer.position();
   }
 
-  /////////////////////////////// tsfile ///////////////////////////////
+  //////////////////////////// tsfile ////////////////////////////
 
   public String getFileName() {
     return fileName;
   }
 
-  /////////////////////////////// APIs provided for metric framework ///////////////////////////////
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
 
   public int getPipeEventCount() {
     return pipeEvents.getPipeEventCount();
   }
 
-  /////////////////////////////// object ///////////////////////////////
+  //////////////////////////// object ////////////////////////////
 
   @Override
   public String toString() {

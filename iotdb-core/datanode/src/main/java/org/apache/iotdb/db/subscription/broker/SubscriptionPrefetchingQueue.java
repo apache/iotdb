@@ -279,6 +279,7 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   protected void enqueueEventToPrefetchingQueue(final SubscriptionEvent event) {
+    // TODO: consider memory usage
     event.trySerializeCurrentResponse();
     prefetchingQueue.add(event);
   }

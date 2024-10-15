@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.subscription.event.batch;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
@@ -29,9 +28,6 @@ import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
-import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
 
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
@@ -42,19 +38,16 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubscriptionPipeTabletEventBatch.class);
 
-  private static final long READ_TABLET_BUFFER_SIZE =
-      SubscriptionConfig.getInstance().getSubscriptionReadTabletBufferSize();
-
-  private final LinkedList<Tablet> tablets = new LinkedList<>();
-
-  private long firstEventProcessingTime = Long.MIN_VALUE;
-  private long totalBufferSize = 0;
+  private volatile List<Tablet> tablets = new LinkedList<>();
+  private volatile long firstEventProcessingTime = Long.MIN_VALUE;
+  private volatile long totalBufferSize = 0;
 
   public SubscriptionPipeTabletEventBatch(
       final int regionId,
@@ -62,6 +55,29 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
       final int maxDelayInMs,
       final long maxBatchSizeInBytes) {
     super(regionId, prefetchingQueue, maxDelayInMs, maxBatchSizeInBytes);
+  }
+
+  public LinkedList<Tablet> moveTablets() {
+    if (Objects.isNull(tablets)) {
+      tablets = new ArrayList<>();
+      for (final EnrichedEvent enrichedEvent : enrichedEvents) {
+        if (enrichedEvent instanceof TsFileInsertionEvent) {
+          onTsFileInsertionEvent((TsFileInsertionEvent) enrichedEvent);
+        } else if (enrichedEvent instanceof TabletInsertionEvent) {
+          onTabletInsertionEvent((TabletInsertionEvent) enrichedEvent);
+        } else {
+          LOGGER.warn(
+              "SubscriptionPipeTabletEventBatch {} ignore EnrichedEvent {} when moving.",
+              this,
+              enrichedEvent);
+        }
+      }
+    }
+    final LinkedList<Tablet> result = new LinkedList<>(tablets);
+    firstEventProcessingTime = Long.MIN_VALUE;
+    totalBufferSize = 0;
+    tablets = null; // reset to null for gc & subsequent move
+    return result;
   }
 
   /////////////////////////////// ack & clean ///////////////////////////////
@@ -80,7 +96,9 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
       enrichedEvent.clearReferenceCount(this.getClass().getName());
     }
     enrichedEvents.clear();
-    tablets.clear();
+    if (Objects.nonNull(tablets)) {
+      tablets.clear();
+    }
   }
 
   /////////////////////////////// utility ///////////////////////////////
@@ -108,37 +126,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
 
     final SubscriptionCommitContext commitContext =
         prefetchingQueue.generateSubscriptionCommitContext();
-    final List<SubscriptionPollResponse> responses = new ArrayList<>();
-    final List<Tablet> currentTablets = new ArrayList<>();
-    long currentTotalBufferSize = 0;
-    for (final Tablet tablet : tablets) {
-      final long bufferSize = PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet);
-      if (bufferSize > READ_TABLET_BUFFER_SIZE) {
-        LOGGER.warn("Detect large tablet with {} byte(s).", bufferSize);
-        responses.add(
-            new SubscriptionPollResponse(
-                SubscriptionPollResponseType.TABLETS.getType(),
-                new TabletsPayload(Collections.singletonList(tablet), responses.size() + 1),
-                commitContext));
-        continue;
-      }
-      if (currentTotalBufferSize + bufferSize > READ_TABLET_BUFFER_SIZE) {
-        responses.add(
-            new SubscriptionPollResponse(
-                SubscriptionPollResponseType.TABLETS.getType(),
-                new TabletsPayload(new ArrayList<>(currentTablets), responses.size() + 1),
-                commitContext));
-        currentTablets.clear();
-        currentTotalBufferSize = 0;
-      }
-      currentTablets.add(tablet);
-      currentTotalBufferSize += bufferSize;
-    }
-    responses.add(
-        new SubscriptionPollResponse(
-            SubscriptionPollResponseType.TABLETS.getType(),
-            new TabletsPayload(new ArrayList<>(currentTablets), -tablets.size()),
-            commitContext));
+
     return Collections.singletonList(new SubscriptionEvent(this, commitContext));
   }
 

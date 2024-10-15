@@ -50,7 +50,7 @@ public class SubscriptionEventTsFileResponse
   private final File tsFile;
   private final SubscriptionCommitContext commitContext;
 
-  private volatile boolean isSealed = false;
+  private volatile boolean hasNoMore = false;
 
   public SubscriptionEventTsFileResponse(
       final File tsFile, final SubscriptionCommitContext commitContext) {
@@ -81,6 +81,10 @@ public class SubscriptionEventTsFileResponse
 
   @Override
   public void prefetchRemainingResponses() throws IOException {
+    if (hasNoMore) {
+      return;
+    }
+
     synchronized (this) {
       final SubscriptionPollResponse previousResponse = peekLast();
       if (Objects.isNull(previousResponse)) {
@@ -155,12 +159,12 @@ public class SubscriptionEventTsFileResponse
     while (Objects.nonNull(response = poll())) {
       SubscriptionPollResponseCache.getInstance().invalidate(response);
     }
-    isSealed = false;
+    hasNoMore = false;
   }
 
   @Override
   public boolean isCommittable() {
-    return isSealed && size() == 1;
+    return hasNoMore && size() == 1;
   }
 
   /////////////////////////////// utility ///////////////////////////////
@@ -191,7 +195,7 @@ public class SubscriptionEventTsFileResponse
       }
 
       // generate subscription poll response with seal payload
-      isSealed = true;
+      hasNoMore = true;
       return new CachedSubscriptionPollResponse(
           SubscriptionPollResponseType.FILE_SEAL.getType(),
           new FileSealPayload(tsFile.getName(), tsFile.length()),
