@@ -622,6 +622,35 @@ public class AggregationTest {
                     "testdb.table1",
                     ImmutableList.of("tag1", "tag2", "tag3", "attr1", "time", "count"),
                     ImmutableSet.of("tag1", "tag2", "tag3", "attr1", "time", "s2")))));
+
+    // Global Aggregation or partialPushDown Aggregation with only one deviceEntry
+
+    // Output - AggTableScan
+    assertPlan(
+        planTester.createPlan("SELECT count(s2) FROM table1 where tag1='beijing' and tag2='A1'"),
+        output(
+            aggregationTableScan(
+                singleGroupingSet(),
+                ImmutableList.of(), // UnStreamable
+                Optional.empty(),
+                SINGLE,
+                "testdb.table1",
+                ImmutableList.of("count"),
+                ImmutableSet.of("s2"))));
+
+    assertPlan(
+        planTester.createPlan(
+            "SELECT count(s2) FROM table1 where tag1='beijing' and tag2='A1' group by tag3"),
+        output(
+            project(
+                aggregationTableScan(
+                    singleGroupingSet("tag3"),
+                    ImmutableList.of("tag3"),
+                    Optional.empty(),
+                    SINGLE,
+                    "testdb.table1",
+                    ImmutableList.of("tag3", "count"),
+                    ImmutableSet.of("s2", "tag3")))));
   }
 
   @Test
