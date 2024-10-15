@@ -29,6 +29,9 @@ import org.apache.iotdb.rpc.subscription.payload.poll.TerminationPayload;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
 
 /**
  * The {@link SubscriptionEventSingleResponse} class represents a single subscription event response
@@ -99,5 +102,21 @@ public class SubscriptionEventSingleResponse
   @Override
   public boolean isCommittable() {
     return true;
+  }
+
+  /////////////////////////////// stringify ///////////////////////////////
+
+  @Override
+  public String toString() {
+    return "SubscriptionEventSingleResponse" + coreReportMessage();
+  }
+
+  protected Map<String, String> coreReportMessage() {
+    final Map<String, String> result = new HashMap<>();
+    final CachedSubscriptionPollResponse currentResponse = getCurrentResponse();
+    result.put(
+        "currentResponse",
+        Objects.nonNull(currentResponse) ? currentResponse.toString() : "<unknown>");
+    return result;
   }
 }

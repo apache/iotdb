@@ -27,7 +27,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -124,5 +126,17 @@ public abstract class SubscriptionEventExtendableResponse
 
   protected boolean isEmpty() {
     return responses.isEmpty();
+  }
+
+  /////////////////////////////// stringify ///////////////////////////////
+
+  protected Map<String, String> coreReportMessage() {
+    final Map<String, String> result = new HashMap<>();
+    final CachedSubscriptionPollResponse currentResponse = getCurrentResponse();
+    result.put(
+        "currentResponse",
+        Objects.nonNull(currentResponse) ? currentResponse.toString() : "<unknown>");
+    result.put("hasNoMore", String.valueOf(hasNoMore));
+    return result;
   }
 }
