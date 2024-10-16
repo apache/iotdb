@@ -72,9 +72,10 @@ public abstract class AbstractCaseWhenThenColumnTransformer extends ColumnTransf
 
     boolean[] selectionForThen = selection.clone();
 
-    // 根据第一个 whenColumn更新 branchIndexForEachRow
+    // Update branchIndexForEachRow based on first whenColumn
     for (int i = 0; i < positionCount; i++) {
-      // 当前行没有匹配的 whenTransformer 时，才更新 selectionForThen 和 branchIndexForEachRow
+      // Update selectionForThen and branchIndexForEachRow when there is no matching whenTransformer
+      // for the current row.
       if (branchIndexForEachRow[i] == -1) {
         if (!firstWhenColumn.isNull(i) && firstWhenColumn.getBoolean(i)) {
           branchIndexForEachRow[i] = 0;
@@ -132,7 +133,8 @@ public abstract class AbstractCaseWhenThenColumnTransformer extends ColumnTransf
     int positionCount = selection.length;
     boolean[] selectionForWhen = selection.clone();
 
-    // 赋值为-1表示需要进行求值，否则表示不需要进行求值
+    // An assignment of -1 means that evaluation is required, otherwise it means that evaluation is
+    // not required.
     for (int i = 0; i < selection.length; i++) {
       if (selection[i]) {
         branchIndexForEachRow[i] = -1;
