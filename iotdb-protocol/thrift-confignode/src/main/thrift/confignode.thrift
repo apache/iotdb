@@ -1483,7 +1483,7 @@ service IConfigNodeRPCService {
   /** Persist all the data points in the memory table of the database to the disk, and seal the data file on all DataNodes */
   common.TSStatus flush(common.TFlushReq req)
 
-  /** Clear the cache of chunk, chunk metadata and timeseries metadata to release the memory footprint on all DataNodes */
+  /** Clear the specific caches of all DataNodes */
   common.TSStatus clearCache(set<i32> cacheClearOptions)
 
   /** Set configuration on specified node */

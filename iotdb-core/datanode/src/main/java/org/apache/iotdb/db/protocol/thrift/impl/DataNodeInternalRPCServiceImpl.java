@@ -57,6 +57,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCType;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
@@ -283,6 +284,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -313,6 +315,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   private final SchemaEngine schemaEngine = SchemaEngine.getInstance();
   private final StorageEngine storageEngine = StorageEngine.getInstance();
+
+  private final TableDeviceSchemaCache tableDeviceSchemaCache =
+      TableDeviceSchemaCache.getInstance();
 
   private final DataNodeRegionManager regionManager = DataNodeRegionManager.getInstance();
 
@@ -546,7 +551,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       // clear table related cache
       final String database = req.getFullPath().substring(5);
       DataNodeTableCache.getInstance().invalid(database);
-      TableDeviceSchemaCache.getInstance().invalidate(database);
+      tableDeviceSchemaCache.invalidate(database);
       LOGGER.info("Schema cache of {} has been invalidated", req.getFullPath());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
@@ -1911,9 +1916,34 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus clearCache() throws TException {
+  public TSStatus clearCache(final Set<Integer> clearCacheOptions) throws TException {
+    return clearCacheImpl(
+        clearCacheOptions.stream()
+            .map(i -> CacheClearOptions.values()[i])
+            .collect(Collectors.toSet()));
+  }
+
+  public TSStatus clearCacheImpl(final Set<CacheClearOptions> options) {
     try {
-      storageEngine.clearCache();
+      if (options.contains(CacheClearOptions.DEFAULT)
+          || options.contains(CacheClearOptions.QUERY)) {
+        storageEngine.clearCache();
+      }
+      if (options.contains(CacheClearOptions.QUERY)
+          && options.contains(CacheClearOptions.TABLE_ATTRIBUTE)
+          && options.contains(CacheClearOptions.TREE_SCHEMA)) {
+        tableDeviceSchemaCache.invalidateAll();
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
+      if (options.contains(CacheClearOptions.QUERY)) {
+        tableDeviceSchemaCache.invalidateLastCache();
+      }
+      if (options.contains(CacheClearOptions.TABLE_ATTRIBUTE)) {
+        tableDeviceSchemaCache.invalidateAttributeCache();
+      }
+      if (options.contains(CacheClearOptions.TREE_SCHEMA)) {
+        tableDeviceSchemaCache.invalidateTreeSchema();
+      }
     } catch (final Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
