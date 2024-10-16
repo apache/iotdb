@@ -85,6 +85,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingTr
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.PlanBuilder.newPlanBuilder;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware.scopeAwareKey;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator.GROUP_KEY_SUFFIX;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GapFillStartAndEndTimeExtractVisitor.CAN_NOT_INFER_TIME_RANGE;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.groupingSets;
 
@@ -395,7 +396,7 @@ public class QueryPlanner {
     Symbol[] fields = new Symbol[subPlan.getTranslations().getFieldSymbolsList().size()];
     for (FieldId field : groupingSetAnalysis.getAllFields()) {
       Symbol input = subPlan.getTranslations().getFieldSymbolsList().get(field.getFieldIndex());
-      Symbol output = symbolAllocator.newSymbol(input, "gid");
+      Symbol output = symbolAllocator.newSymbol(input, GROUP_KEY_SUFFIX);
       fields[field.getFieldIndex()] = output;
       groupingSetMappings.put(output, input);
     }
@@ -405,7 +406,8 @@ public class QueryPlanner {
       if (!complexExpressions.containsKey(
           scopeAwareKey(expression, analysis, subPlan.getScope()))) {
         Symbol input = subPlan.translate(expression);
-        Symbol output = symbolAllocator.newSymbol(expression, analysis.getType(expression), "gid");
+        Symbol output =
+            symbolAllocator.newSymbol(expression, analysis.getType(expression), GROUP_KEY_SUFFIX);
         complexExpressions.put(scopeAwareKey(expression, analysis, subPlan.getScope()), output);
         groupingSetMappings.put(output, input);
         typeProvider.putTableModelType(output, typeProvider.getTableModelType(input));
