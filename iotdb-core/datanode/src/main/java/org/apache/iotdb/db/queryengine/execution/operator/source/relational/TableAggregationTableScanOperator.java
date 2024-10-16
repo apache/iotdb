@@ -430,6 +430,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
 
       aggregator.processBlock(tsBlock);
     }
+
     int lastReadRowIndex = lastIndexToProcess + 1;
     if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
       return null;
@@ -463,6 +464,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
       if (aggregator.hasFinalResult()) {
         continue;
       }
+
       aggregator.processStatistics(
           columnSchemas.get(layoutArray[i]).getColumnCategory() == TsTableColumnCategory.MEASUREMENT
               ? valueStatistics[columnsIndexArray[i]]

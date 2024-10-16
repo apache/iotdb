@@ -1402,8 +1402,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     int[] columnsIndexArray = new int[aggregationsCount];
     List<String> measurementColumnNames = new ArrayList<>();
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+    // List<Integer>
 
-    // TODO test aggregation function which has more than one arguements
     for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
       idx++;
       Symbol symbol = Symbol.from(entry.getValue().getArguments().get(0));
@@ -1441,7 +1441,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           break;
         case TIME:
           if (columnLayout.containsKey(symbol)) {
-            columnsIndexArray[idx] = columnsIndexArray[columnLayout.get(symbol)];
+            columnsIndexArray[idx] = -1;
           } else {
             columnsIndexArray[idx] = -1;
             columnSchemas.add(schema);
