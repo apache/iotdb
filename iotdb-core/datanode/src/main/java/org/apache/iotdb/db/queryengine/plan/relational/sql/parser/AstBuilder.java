@@ -893,7 +893,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitClearCacheStatement(RelationalSqlParser.ClearCacheStatementContext ctx) {
+  public Node visitClearCacheStatement(final RelationalSqlParser.ClearCacheStatementContext ctx) {
     return super.visitClearCacheStatement(ctx);
   }
 

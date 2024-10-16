@@ -433,7 +433,7 @@ flushStatement
     ;
 
 clearCacheStatement
-    : CLEAR CACHE (localOrClusterMode)?
+    : CLEAR (ATTRIBUTE)? CACHE (localOrClusterMode)?
     ;
 
 repairDataStatement
