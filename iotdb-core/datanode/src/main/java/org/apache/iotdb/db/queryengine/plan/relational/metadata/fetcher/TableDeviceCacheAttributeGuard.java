@@ -117,7 +117,13 @@ public class TableDeviceCacheAttributeGuard {
   // with region migration's "handleContainer" and stale "handleUpdate" logic
   public synchronized void setVersion(final int schemaRegionId, final long newVersion) {
     fetchedSchemaRegionIds2LargestVersionAndDatabaseMap.computeIfPresent(
-        schemaRegionId, (id, version) -> Math.max(version, newVersion));
+        schemaRegionId,
+        (id, pair) -> {
+          if (newVersion > pair.getLeft()) {
+            pair.setLeft(newVersion);
+          }
+          return pair;
+        });
   }
 
   public void handleContainer(final UpdateContainer container) {
