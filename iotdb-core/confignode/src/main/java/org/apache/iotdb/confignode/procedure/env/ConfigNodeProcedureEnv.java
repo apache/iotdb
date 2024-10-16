@@ -836,7 +836,7 @@ public class ConfigNodeProcedureEnv {
     return regionMaintainHandler;
   }
 
-  public RemoveDataNodeHandler getRemoveDataNodeManager() {
+  public RemoveDataNodeHandler getRemoveDataNodeHandler() {
     return removeDataNodeHandler;
   }
 
