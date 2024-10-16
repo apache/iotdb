@@ -3643,19 +3643,18 @@ public class DataRegion implements IDataRegionForQuery {
         InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
         TSStatus[] results = new TSStatus[insertTabletNode.getRowCount()];
         Arrays.fill(results, RpcUtils.SUCCESS_STATUS);
+        boolean noFailure = false;
         try {
-          boolean noFailure = executeInsertTablet(insertTabletNode, results, costsForMetrics);
-          if (!noFailure) {
-            throw new BatchProcessException(results);
-          }
+          noFailure = executeInsertTablet(insertTabletNode, results, costsForMetrics);
         } catch (WriteProcessException e) {
           insertMultiTabletsNode
               .getResults()
               .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
-        } catch (BatchProcessException e) {
+        }
+        if (!noFailure) {
           // for each error
           TSStatus firstStatus = null;
-          for (TSStatus status : e.getFailingStatus()) {
+          for (TSStatus status : results) {
             if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               firstStatus = status;
             }
