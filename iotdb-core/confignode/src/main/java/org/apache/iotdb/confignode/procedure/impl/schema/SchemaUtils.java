@@ -78,7 +78,7 @@ public class SchemaUtils {
                 configManager,
                 relatedSchemaRegionGroup,
                 false,
-                CnToDnRequestType.COUNT_PATHS_USING_TEMPLATE,
+                CnToDnAsyncRequestType.COUNT_PATHS_USING_TEMPLATE,
                 ((dataNodeLocation, consensusGroupIdList) ->
                     new TCountPathsUsingTemplateReq(
                         template.getId(), patternTreeBytes, consensusGroupIdList))) {
@@ -156,7 +156,7 @@ public class SchemaUtils {
                 configManager,
                 relatedSchemaRegionGroup,
                 false,
-                CnToDnRequestType.CHECK_SCHEMA_REGION_USING_TEMPLATE,
+                CnToDnAsyncRequestType.CHECK_SCHEMA_REGION_USING_TEMPLATE,
                 ((dataNodeLocation, consensusGroupIdList) ->
                     new TCheckSchemaRegionUsingTemplateReq(consensusGroupIdList))) {
 
