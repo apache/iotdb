@@ -1111,7 +1111,7 @@ unseq_memtable_flush_check_interval_in_ms=30000
 # effectiveMode: restart
 tvlist_sort_algorithm=TIM
 
-# When the average point number of timeseries in memtable exceeds this, the memtable is flushed to disk. The default threshold is 100000.
+# The maximum number of data points in a chunk. If the point number of a timeseries in memtable exceeds this, the data will be flushed to multiple chunks. The default value is 100000.
 # effectiveMode: restart
 # Datatype: int
 avg_series_point_number_threshold=100000
@@ -1245,7 +1245,7 @@ inner_compaction_total_file_num_threshold=100
 # Datatype: int
 max_level_gap_in_inner_compaction=2
 
-# The target chunk size in compaction and when memtable reaches this threshold, flush the memtable to disk.
+# The target chunk size in compaction and flushing. If the size of a binary type of timeseries in memtable exceeds this, the data will be flushed to multiple chunks.
 # default is 1MB
 # effectiveMode: restart
 # Datatype: long, Unit: byte
