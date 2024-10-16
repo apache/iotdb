@@ -202,11 +202,13 @@ public class DeviceAttributeCacheUpdater {
   }
 
   private void removeLocation(final TDataNodeLocation location) {
-    releaseMemory(
-        updateContainerStatistics.containsKey(location)
-            ? updateContainerStatistics.get(location).getContainerSize()
-            : ((UpdateClearContainer) attributeUpdateMap.get(location)).ramBytesUsed());
-    attributeUpdateMap.remove(location);
+    if (attributeUpdateMap.containsKey(location)) {
+      releaseMemory(
+          updateContainerStatistics.containsKey(location)
+              ? updateContainerStatistics.get(location).getContainerSize()
+              : ((UpdateClearContainer) attributeUpdateMap.get(location)).ramBytesUsed());
+      attributeUpdateMap.remove(location);
+    }
   }
 
   public static UpdateContainer getContainer(final byte[] bytes) {
