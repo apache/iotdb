@@ -73,10 +73,9 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
       final TreePattern pattern,
       final long startTime,
       final long endTime,
-      PipeInsertionEvent tsFileInsertionEvent)
+      final PipeInsertionEvent sourceEvent)
       throws IOException {
-
-    this(tsFile, pattern, startTime, endTime, null, tsFileInsertionEvent);
+    this(tsFile, pattern, startTime, endTime, null, sourceEvent);
   }
 
   public TsFileInsertionEventQueryParser(
