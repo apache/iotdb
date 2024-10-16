@@ -25,14 +25,18 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
@@ -43,6 +47,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 
 import java.util.AbstractMap.SimpleEntry;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -165,6 +170,90 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               node.getPushDownOffset(),
               node.isPushLimitToEachDevice()),
           mapping);
+    }
+
+    @Override
+    public PlanAndMappings visitGapFill(GapFillNode node, UnaliasContext context) {
+      PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
+      Map<Symbol, Symbol> mapping = new HashMap<>(rewrittenSource.getMappings());
+      SymbolMapper mapper = symbolMapper(mapping);
+
+      List<Symbol> groupingKeys = Collections.emptyList();
+      if (!node.getGapFillGroupingKeys().isEmpty()) {
+        groupingKeys = mapper.mapAndDistinct(node.getGapFillGroupingKeys());
+      }
+
+      return new PlanAndMappings(
+          new GapFillNode(
+              node.getPlanNodeId(),
+              rewrittenSource.getRoot(),
+              node.getStartTime(),
+              node.getEndTime(),
+              node.getMonthDuration(),
+              node.getNonMonthDuration(),
+              mapper.map(node.getGapFillColumn()),
+              groupingKeys),
+          mapping);
+    }
+
+    @Override
+    public PlanAndMappings visitPreviousFill(PreviousFillNode node, UnaliasContext context) {
+      PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
+
+      if (node.getHelperColumn().isPresent() || node.getGroupingKeys().isPresent()) {
+        Map<Symbol, Symbol> mapping = new HashMap<>(rewrittenSource.getMappings());
+        SymbolMapper mapper = symbolMapper(mapping);
+
+        Symbol helperColumn = null;
+        if (node.getHelperColumn().isPresent()) {
+          helperColumn = mapper.map(node.getHelperColumn().get());
+        }
+        List<Symbol> groupingKeys = null;
+        if (node.getGroupingKeys().isPresent()) {
+          groupingKeys = mapper.mapAndDistinct(node.getGroupingKeys().get());
+        }
+        return new PlanAndMappings(
+            new PreviousFillNode(
+                node.getPlanNodeId(),
+                rewrittenSource.getRoot(),
+                node.getTimeBound().orElse(null),
+                helperColumn,
+                groupingKeys),
+            mapping);
+      } else {
+        return new PlanAndMappings(
+            node.replaceChildren(ImmutableList.of(rewrittenSource.getRoot())),
+            rewrittenSource.getMappings());
+      }
+    }
+
+    @Override
+    public PlanAndMappings visitLinearFill(LinearFillNode node, UnaliasContext context) {
+      PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
+      Map<Symbol, Symbol> mapping = new HashMap<>(rewrittenSource.getMappings());
+      SymbolMapper mapper = symbolMapper(mapping);
+
+      List<Symbol> groupingKeys = null;
+      if (node.getGroupingKeys().isPresent()) {
+        groupingKeys = mapper.mapAndDistinct(node.getGroupingKeys().get());
+      }
+
+      return new PlanAndMappings(
+          new LinearFillNode(
+              node.getPlanNodeId(),
+              rewrittenSource.getRoot(),
+              mapper.map(node.getHelperColumn()),
+              groupingKeys),
+          mapping);
+    }
+
+    @Override
+    public PlanAndMappings visitValueFill(ValueFillNode node, UnaliasContext context) {
+      PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
+
+      return new PlanAndMappings(
+          node.replaceChildren(ImmutableList.of(rewrittenSource.getRoot())),
+          rewrittenSource.getMappings());
     }
 
     @Override

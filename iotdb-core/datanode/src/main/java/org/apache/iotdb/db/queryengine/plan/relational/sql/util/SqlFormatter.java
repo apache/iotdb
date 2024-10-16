@@ -41,6 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Intersect;
@@ -49,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinCriteria;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinUsing;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Limit;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NaturalJoin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
@@ -79,6 +81,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Values;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
+import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
@@ -227,6 +230,44 @@ public final class SqlFormatter {
       node.getOrderBy().ifPresent(orderBy -> process(orderBy, indent));
       node.getOffset().ifPresent(offset -> process(offset, indent));
       node.getLimit().ifPresent(limit -> process(limit, indent));
+      return null;
+    }
+
+    @Override
+    protected Void visitFill(Fill node, Integer indent) {
+      append(indent, "FILL METHOD ").append(node.getFillMethod().name());
+
+      if (node.getFillMethod() == FillPolicy.CONSTANT) {
+        builder.append(formatExpression(node.getFillValue().get()));
+      } else if (node.getFillMethod() == FillPolicy.LINEAR) {
+        node.getTimeColumnIndex()
+            .ifPresent(index -> builder.append(" TIME_COLUMN ").append(String.valueOf(index)));
+        node.getFillGroupingElements()
+            .ifPresent(
+                elements ->
+                    builder
+                        .append(" FILL_GROUP ")
+                        .append(
+                            elements.stream()
+                                .map(SqlFormatter::formatExpression)
+                                .collect(joining(", "))));
+      } else if (node.getFillMethod() == FillPolicy.PREVIOUS) {
+        node.getTimeBound()
+            .ifPresent(timeBound -> builder.append(" TIME_BOUND ").append(timeBound.toString()));
+        node.getTimeColumnIndex()
+            .ifPresent(index -> builder.append(" TIME_COLUMN ").append(String.valueOf(index)));
+        node.getFillGroupingElements()
+            .ifPresent(
+                elements ->
+                    builder
+                        .append(" FILL_GROUP ")
+                        .append(
+                            elements.stream()
+                                .map(SqlFormatter::formatExpression)
+                                .collect(joining(", "))));
+      } else {
+        throw new IllegalArgumentException("Unknown fill method: " + node.getFillMethod());
+      }
       return null;
     }
 
@@ -754,6 +795,32 @@ public final class SqlFormatter {
     protected Void visitDropFunction(DropFunction node, Integer indent) {
       builder.append("DROP FUNCTION ");
       builder.append(node.getUdfName());
+      return null;
+    }
+
+    @Override
+    protected Void visitLoadTsFile(final LoadTsFile node, final Integer indent) {
+      builder.append("LOAD ");
+      builder.append("\"" + node.getFilePath() + "\"");
+      builder.append(" \n");
+
+      if (!node.getLoadAttributes().isEmpty()) {
+        builder
+            .append("WITH (")
+            .append("\n")
+            .append(
+                node.getLoadAttributes().entrySet().stream()
+                    .map(
+                        entry ->
+                            indentString(1)
+                                + "\""
+                                + entry.getKey()
+                                + "\" = \""
+                                + entry.getValue()
+                                + "\"")
+                    .collect(joining(", " + "\n")))
+            .append(")\n");
+      }
       return null;
     }
 

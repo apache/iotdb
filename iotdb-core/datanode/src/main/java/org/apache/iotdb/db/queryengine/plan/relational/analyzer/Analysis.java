@@ -41,9 +41,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
@@ -56,6 +59,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
@@ -66,6 +70,7 @@ import com.google.common.collect.Streams;
 import com.google.errorprone.annotations.Immutable;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.utils.TimeDuration;
 
 import javax.annotation.Nullable;
 
@@ -124,6 +129,7 @@ public class Analysis implements IAnalysis {
   private final Map<AccessControlInfo, Map<QualifiedObjectName, Set<String>>>
       tableColumnReferences = new LinkedHashMap<>();
 
+  private final Map<NodeRef<Fill>, FillAnalysis> fill = new LinkedHashMap<>();
   private final Map<NodeRef<Offset>, Long> offset = new LinkedHashMap<>();
   private final Map<NodeRef<Node>, OptionalLong> limit = new LinkedHashMap<>();
   private final Map<NodeRef<AllColumns>, List<Field>> selectAllResultFields = new LinkedHashMap<>();
@@ -150,6 +156,11 @@ public class Analysis implements IAnalysis {
 
   private final Map<NodeRef<Node>, Expression> where = new LinkedHashMap<>();
   private final Map<NodeRef<QuerySpecification>, Expression> having = new LinkedHashMap<>();
+
+  private final Map<NodeRef<QuerySpecification>, FunctionCall> gapFill = new LinkedHashMap<>();
+  private final Map<NodeRef<QuerySpecification>, List<Expression>> gapFillGroupingKeys =
+      new LinkedHashMap<>();
+
   private final Map<NodeRef<Node>, List<Expression>> orderByExpressions = new LinkedHashMap<>();
   private final Set<NodeRef<OrderBy>> redundantOrderBy = new HashSet<>();
   private final Map<NodeRef<Node>, List<SelectExpression>> selectExpressions =
@@ -428,6 +439,15 @@ public class Analysis implements IAnalysis {
     return redundantOrderBy.contains(NodeRef.of(orderBy));
   }
 
+  public void setFill(Fill node, FillAnalysis fillAnalysis) {
+    fill.put(NodeRef.of(node), fillAnalysis);
+  }
+
+  public FillAnalysis getFill(Fill node) {
+    checkState(fill.containsKey(NodeRef.of(node)), "missing FillAnalysis for node %s", node);
+    return fill.get(NodeRef.of(node));
+  }
+
   public void setOffset(Offset node, long rowCount) {
     offset.put(NodeRef.of(node), rowCount);
   }
@@ -472,6 +492,23 @@ public class Analysis implements IAnalysis {
 
   public Expression getHaving(QuerySpecification query) {
     return having.get(NodeRef.of(query));
+  }
+
+  public void setGapFill(QuerySpecification node, FunctionCall dateBinGapFill) {
+    gapFill.put(NodeRef.of(node), dateBinGapFill);
+  }
+
+  public FunctionCall getGapFill(QuerySpecification query) {
+    return gapFill.get(NodeRef.of(query));
+  }
+
+  public void setGapFillGroupingKeys(
+      QuerySpecification node, List<Expression> gaoFillGroupingKeys) {
+    gapFillGroupingKeys.put(NodeRef.of(node), gaoFillGroupingKeys);
+  }
+
+  public List<Expression> getGapFillGroupingKeys(QuerySpecification query) {
+    return gapFillGroupingKeys.get(NodeRef.of(query));
   }
 
   public void setJoinUsing(Join node, JoinUsingAnalysis analysis) {
@@ -1043,6 +1080,78 @@ public class Analysis implements IAnalysis {
 
     public List<QuantifiedComparisonExpression> getQuantifiedComparisonSubqueries() {
       return unmodifiableList(quantifiedComparisonSubqueries);
+    }
+  }
+
+  public static class FillAnalysis {
+    protected final FillPolicy fillMethod;
+
+    protected FillAnalysis(FillPolicy fillMethod) {
+      this.fillMethod = fillMethod;
+    }
+
+    public FillPolicy getFillMethod() {
+      return fillMethod;
+    }
+  }
+
+  public static class ValueFillAnalysis extends FillAnalysis {
+    private final Literal filledValue;
+
+    public ValueFillAnalysis(Literal filledValue) {
+      super(FillPolicy.CONSTANT);
+      requireNonNull(filledValue, "filledValue is null");
+      this.filledValue = filledValue;
+    }
+
+    public Literal getFilledValue() {
+      return filledValue;
+    }
+  }
+
+  public static class PreviousFillAnalysis extends FillAnalysis {
+    @Nullable private final TimeDuration timeBound;
+    @Nullable private final FieldReference fieldReference;
+    @Nullable private final List<FieldReference> groupingKeys;
+
+    public PreviousFillAnalysis(
+        TimeDuration timeBound, FieldReference fieldReference, List<FieldReference> groupingKeys) {
+      super(FillPolicy.PREVIOUS);
+      this.timeBound = timeBound;
+      this.fieldReference = fieldReference;
+      this.groupingKeys = groupingKeys;
+    }
+
+    public Optional<TimeDuration> getTimeBound() {
+      return Optional.ofNullable(timeBound);
+    }
+
+    public Optional<FieldReference> getFieldReference() {
+      return Optional.ofNullable(fieldReference);
+    }
+
+    public Optional<List<FieldReference>> getGroupingKeys() {
+      return Optional.ofNullable(groupingKeys);
+    }
+  }
+
+  public static class LinearFillAnalysis extends FillAnalysis {
+    private final FieldReference fieldReference;
+    @Nullable private final List<FieldReference> groupingKeys;
+
+    public LinearFillAnalysis(FieldReference fieldReference, List<FieldReference> groupingKeys) {
+      super(FillPolicy.LINEAR);
+      requireNonNull(fieldReference, "fieldReference is null");
+      this.fieldReference = fieldReference;
+      this.groupingKeys = groupingKeys;
+    }
+
+    public FieldReference getFieldReference() {
+      return fieldReference;
+    }
+
+    public Optional<List<FieldReference>> getGroupingKeys() {
+      return Optional.ofNullable(groupingKeys);
     }
   }
 

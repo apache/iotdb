@@ -503,4 +503,6 @@ public abstract class AbstractCompactionTask {
   public void setRecoverMemoryStatus(boolean recoverMemoryStatus) {
     this.recoverMemoryStatus = recoverMemoryStatus;
   }
+
+  public abstract long getSelectedFileSize();
 }

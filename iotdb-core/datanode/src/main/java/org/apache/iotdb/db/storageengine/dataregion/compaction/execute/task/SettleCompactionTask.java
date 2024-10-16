@@ -414,6 +414,11 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
   }
 
   @Override
+  public long getSelectedFileSize() {
+    return (long) (partiallyDirtyFileSize + fullyDirtyFileSize);
+  }
+
+  @Override
   public int hashCode() {
     return Objects.hash(fullyDirtyFiles, filesView.sourceFilesInCompactionPerformer, performer);
   }

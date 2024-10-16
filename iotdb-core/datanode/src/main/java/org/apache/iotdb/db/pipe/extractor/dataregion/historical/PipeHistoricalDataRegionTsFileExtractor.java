@@ -48,6 +48,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,6 +86,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_START_TIME_KEY;
+import static org.apache.tsfile.common.constant.TsFileConstant.PATH_ROOT;
+import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDataRegionExtractor {
 
@@ -93,6 +96,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   private static final Map<Integer, Long> DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP = new HashMap<>();
   private static final long PIPE_MIN_FLUSH_INTERVAL_IN_MS = 2000;
+
+  private static final String TREE_MODEL_EVENT_TABLE_NAME_PREFIX = PATH_ROOT + PATH_SEPARATOR;
 
   private String pipeName;
   private long creationTime;
@@ -103,7 +108,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private int dataRegionId;
 
   private TreePattern treePattern;
-  private TablePattern tablePattern; // TODO: use like treePattern
+  private TablePattern tablePattern;
   private boolean isDbNameCoveredByPattern = false;
 
   private boolean isHistoricalExtractorEnabled = false;
@@ -122,6 +127,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private boolean isTerminateSignalSent = false;
 
   private volatile boolean hasBeenStarted = false;
+
+  private final Map<TsFileResource, Boolean> tsfile2IsTableModelMap = new HashMap<>(0);
 
   private Queue<TsFileResource> pendingQueue;
 
@@ -280,9 +287,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       final String databaseName = dataRegion.getDatabaseName();
       if (Objects.nonNull(databaseName)) {
         isDbNameCoveredByPattern =
-            treePattern.coversDb(databaseName)
-                && tablePattern.matchesDatabase(
-                    databaseName.startsWith("root.") ? databaseName.substring(5) : databaseName);
+            treePattern.coversDb(databaseName) && tablePattern.coversDb(databaseName);
       }
     }
 
@@ -547,8 +552,49 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       return true;
     }
 
-    // TODO: consider tablePattern
-    return deviceSet.stream().anyMatch(deviceID -> treePattern.mayOverlapWithDevice(deviceID));
+    return deviceSet.stream()
+        .anyMatch(
+            deviceID -> {
+              if (deviceID instanceof PlainDeviceID
+                  || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
+                  || deviceID.getTableName().equals(PATH_ROOT)) {
+                // In case of tree model deviceID
+                if (treePattern.isTreeModelDataAllowedToBeCaptured()
+                    && treePattern.mayOverlapWithDevice(deviceID)) {
+                  tsfile2IsTableModelMap.compute(
+                      resource,
+                      (tsFileResource, isTableModel) -> {
+                        if (Objects.isNull(isTableModel) || !isTableModel) {
+                          return Boolean.FALSE;
+                        }
+                        throw new IllegalStateException(
+                            String.format(
+                                "Pipe %s@%s: TsFile %s contains both table model and tree model data",
+                                pipeName, dataRegionId, resource.getTsFilePath()));
+                      });
+                  return true;
+                }
+              } else {
+                // In case of table model deviceID
+                if (tablePattern.isTableModelDataAllowedToBeCaptured()
+                    && tablePattern.matchesDatabase(resource.getDatabaseName())
+                    && tablePattern.matchesTable(deviceID.getTableName())) {
+                  tsfile2IsTableModelMap.compute(
+                      resource,
+                      (tsFileResource, isTableModel) -> {
+                        if (Objects.isNull(isTableModel) || isTableModel) {
+                          return Boolean.TRUE;
+                        }
+                        throw new IllegalStateException(
+                            String.format(
+                                "Pipe %s@%s: TsFile %s contains both table model and tree model data",
+                                pipeName, dataRegionId, resource.getTsFilePath()));
+                      });
+                  return true;
+                }
+              }
+              return false;
+            });
   }
 
   private boolean isTsFileResourceOverlappedWithTimeRange(final TsFileResource resource) {
@@ -608,6 +654,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
     final PipeTsFileInsertionEvent event =
         new PipeTsFileInsertionEvent(
+            tsfile2IsTableModelMap.remove(resource),
+            resource.getDatabaseName(),
             resource,
             shouldTransferModFile,
             false,
@@ -620,10 +668,10 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             tablePattern,
             historicalDataExtractionStartTime,
             historicalDataExtractionEndTime);
+
     if (sloppyPattern || isDbNameCoveredByPattern) {
       event.skipParsingPattern();
     }
-
     if (sloppyTimeRange || isTsFileResourceCoveredByTimeRange(resource)) {
       event.skipParsingTime();
     }
@@ -669,6 +717,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   @Override
   public synchronized void close() {
+    tsfile2IsTableModelMap.clear();
+
     if (Objects.nonNull(pendingQueue)) {
       pendingQueue.forEach(
           resource -> {

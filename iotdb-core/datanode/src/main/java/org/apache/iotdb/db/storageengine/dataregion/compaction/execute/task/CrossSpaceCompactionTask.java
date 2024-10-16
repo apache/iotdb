@@ -452,4 +452,9 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   public long getCompactionRewriteFileSize() {
     return (long) (selectedSeqFileSize + selectedUnseqFileSize);
   }
+
+  @Override
+  public long getSelectedFileSize() {
+    return (long) (selectedSeqFileSize + selectedUnseqFileSize);
+  }
 }

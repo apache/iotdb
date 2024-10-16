@@ -167,7 +167,7 @@ dropTableStatement
 
 showTableStatement
     : SHOW TABLES ((FROM | IN) database=identifier)?
-          // ((LIKE pattern=string) | (WHERE expression))?
+          // ((LIKE pattern=string (ESCAPE escape=string)) | (WHERE expression))?
     ;
 
 descTableStatement
@@ -240,8 +240,20 @@ showFunctionsStatement
 
 // -------------------------------------------- Load Statement ---------------------------------------------------------
 loadTsFileStatement
-    : LOAD fileName=string properties?
+    : LOAD fileName=string (loadFileWithAttributesClause)?
     ;
+
+loadFileWithAttributesClause
+    : WITH
+        '('
+        (loadFileWithAttributeClause ',')* loadFileWithAttributeClause?
+        ')'
+    ;
+
+loadFileWithAttributeClause
+    : loadFileWithKey=string EQ loadFileWithValue=string
+    ;
+
 
 
 // -------------------------------------------- Pipe Statement ---------------------------------------------------------
@@ -370,7 +382,7 @@ showClusterStatement
 
 showRegionsStatement
     : SHOW (SCHEMA | DATA)? REGIONS ((FROM | IN) identifier)?
-          // ((LIKE pattern=string) | (WHERE expression))?
+          // ((LIKE pattern=string (ESCAPE escape=string)) | (WHERE expression))?
     ;
 
 showDataNodesStatement
@@ -498,9 +510,31 @@ propertyValue
 
 queryNoWith
     : queryTerm
+      fillClause?
       (ORDER BY sortItem (',' sortItem)*)?
-      (FILL '(' (LINEAR | PREVIOUS | literalExpression) (',' duration=timeDuration)? ')')?
       limitOffsetClause
+    ;
+
+fillClause
+    : FILL METHOD fillMethod
+    ;
+
+fillMethod
+    : LINEAR timeColumnClause? fillGroupClause?                                    #linearFill
+    | PREVIOUS timeBoundClause? timeColumnClause? fillGroupClause?                 #previousFill
+    | CONSTANT literalExpression                                                   #valueFill
+    ;
+
+timeColumnClause
+    : TIME_COLUMN INTEGER_VALUE
+    ;
+
+fillGroupClause
+    : FILL_GROUP INTEGER_VALUE (',' INTEGER_VALUE)*
+    ;
+
+timeBoundClause
+    : TIME_BOUND duration=timeDuration
     ;
 
 limitOffsetClause
@@ -628,7 +662,6 @@ relationPrimary
     | '(' relation ')'                                                #parenthesizedRelation
     ;
 
-
 expression
     : booleanExpression
     ;
@@ -683,6 +716,7 @@ primaryExpression
     | TRIM '(' trimSource=valueExpression ',' trimChar=valueExpression ')'                #trim
     | SUBSTRING '(' valueExpression FROM valueExpression (FOR valueExpression)? ')'       #substring
     | DATE_BIN '(' timeDuration ',' valueExpression (',' timeValue)? ')'                  #dateBin
+    | DATE_BIN_GAPFILL '(' timeDuration ',' valueExpression (',' timeValue)? ')'          #dateBinGapFill
     | '(' expression ')'                                                                  #parenthesizedExpression
     ;
 
@@ -832,17 +866,17 @@ nonReserved
     // IMPORTANT: this rule must only contain tokens. Nested rules are not supported. See SqlParser.exitNonReserved
     : ABSENT | ADD | ADMIN | AFTER | ALL | ANALYZE | ANY | ARRAY | ASC | AT | ATTRIBUTE | AUTHORIZATION
     | BEGIN | BERNOULLI | BOTH
-    | CACHE | CALL | CALLED | CASCADE | CATALOG | CATALOGS | CHAR | CHARACTER | CHARSET | CLEAR | CLUSTER | CLUSTERID | COLUMN | COLUMNS | COMMENT | COMMIT | COMMITTED | CONDITION | CONDITIONAL | CONFIGNODES | CONFIGURATION | CONNECTOR | COPARTITION | COUNT | CURRENT
+    | CACHE | CALL | CALLED | CASCADE | CATALOG | CATALOGS | CHAR | CHARACTER | CHARSET | CLEAR | CLUSTER | CLUSTERID | COLUMN | COLUMNS | COMMENT | COMMIT | COMMITTED | CONDITION | CONDITIONAL | CONFIGNODES | CONFIGURATION | CONNECTOR | CONSTANT | COPARTITION | COUNT | CURRENT
     | DATA | DATABASE | DATABASES | DATANODES | DATE | DAY | DECLARE | DEFAULT | DEFINE | DEFINER | DENY | DESC | DESCRIPTOR | DETAILS| DETERMINISTIC | DEVICES | DISTRIBUTED | DO | DOUBLE
     | ELSEIF | EMPTY | ENCODING | ERROR | EXCLUDING | EXPLAIN | EXTRACTOR
-    | FETCH | FILL | FILTER | FINAL | FIRST | FLUSH | FOLLOWING | FORMAT | FUNCTION | FUNCTIONS
+    | FETCH | FILTER | FINAL | FIRST | FLUSH | FOLLOWING | FORMAT | FUNCTION | FUNCTIONS
     | GRACE | GRANT | GRANTED | GRANTS | GRAPHVIZ | GROUPS
     | HOUR
     | ID | INDEX | INDEXES | IF | IGNORE | IMMEDIATE | INCLUDING | INITIAL | INPUT | INTERVAL | INVOKER | IO | ITERATE | ISOLATION
     | JSON
     | KEEP | KEY | KEYS | KILL
     | LANGUAGE | LAST | LATERAL | LEADING | LEAVE | LEVEL | LIMIT | LINEAR | LOAD | LOCAL | LOGICAL | LOOP
-    | MAP | MATCH | MATCHED | MATCHES | MATCH_RECOGNIZE | MATERIALIZED | MEASUREMENT | MEASURES | MERGE | MICROSECOND | MIGRATE | MILLISECOND | MINUTE | MODIFY | MONTH
+    | MAP | MATCH | MATCHED | MATCHES | MATCH_RECOGNIZE | MATERIALIZED | MEASUREMENT | MEASURES | METHOD | MERGE | MICROSECOND | MIGRATE | MILLISECOND | MINUTE | MODIFY | MONTH
     | NANOSECOND | NESTED | NEXT | NFC | NFD | NFKC | NFKD | NO | NODEID | NONE | NULLIF | NULLS
     | OBJECT | OF | OFFSET | OMIT | ONE | ONLY | OPTION | ORDINALITY | OUTPUT | OVER | OVERFLOW
     | PARTITION | PARTITIONS | PASSING | PAST | PATH | PATTERN | PER | PERIOD | PERMUTE | PIPE | PIPEPLUGIN | PIPEPLUGINS | PIPES | PLAN | POSITION | PRECEDING | PRECISION | PRIVILEGES | PREVIOUS | PROCESSLIST | PROCESSOR | PROPERTIES | PRUNE
@@ -903,6 +937,7 @@ CONDITIONAL: 'CONDITIONAL';
 CONFIGNODES: 'CONFIGNODES';
 CONFIGURATION: 'CONFIGURATION';
 CONNECTOR: 'CONNECTOR';
+CONSTANT: 'CONSTANT';
 CONSTRAINT: 'CONSTRAINT';
 COUNT: 'COUNT';
 COPARTITION: 'COPARTITION';
@@ -925,6 +960,7 @@ DATABASES: 'DATABASES';
 DATANODES: 'DATANODES';
 DATE: 'DATE';
 DATE_BIN: 'DATE_BIN';
+DATE_BIN_GAPFILL: 'DATE_BIN_GAPFILL';
 DAY: 'DAY' | 'D';
 DEALLOCATE: 'DEALLOCATE';
 DECLARE: 'DECLARE';
@@ -961,6 +997,7 @@ EXTRACTOR: 'EXTRACTOR';
 FALSE: 'FALSE';
 FETCH: 'FETCH';
 FILL: 'FILL';
+FILL_GROUP: 'FILL_GROUP';
 FILTER: 'FILTER';
 FINAL: 'FINAL';
 FIRST: 'FIRST';
@@ -1039,6 +1076,7 @@ MATCH_RECOGNIZE: 'MATCH_RECOGNIZE';
 MATERIALIZED: 'MATERIALIZED';
 MEASUREMENT: 'MEASUREMENT';
 MEASURES: 'MEASURES';
+METHOD: 'METHOD';
 MERGE: 'MERGE';
 MICROSECOND: 'US';
 MIGRATE: 'MIGRATE';
@@ -1164,6 +1202,8 @@ TEXT_STRING: 'STRING';
 THEN: 'THEN';
 TIES: 'TIES';
 TIME: 'TIME';
+TIME_BOUND: 'TIME_BOUND';
+TIME_COLUMN: 'TIME_COLUMN';
 TIMEPARTITION: 'TIMEPARTITION';
 TIMESERIES: 'TIMESERIES';
 TIMESLOTID: 'TIMESLOTID';

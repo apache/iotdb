@@ -327,6 +327,7 @@ public class TsFileProcessor {
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
+            dataRegionInfo.getDataRegion().getDatabaseName(),
             walFlushListener.getWalEntryHandler(),
             insertRowNode,
             tsFileResource);
@@ -414,6 +415,7 @@ public class TsFileProcessor {
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
+            dataRegionInfo.getDataRegion().getDatabaseName(),
             walFlushListener.getWalEntryHandler(),
             insertRowsNode,
             tsFileResource);
@@ -562,6 +564,7 @@ public class TsFileProcessor {
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
+            dataRegionInfo.getDataRegion().getDatabaseName(),
             walFlushListener.getWalEntryHandler(),
             insertTabletNode,
             tsFileResource);
@@ -1274,6 +1277,7 @@ public class TsFileProcessor {
         PipeInsertionDataNodeListener.getInstance()
             .listenToTsFile(
                 dataRegionInfo.getDataRegion().getDataRegionId(),
+                dataRegionInfo.getDataRegion().getDatabaseName(),
                 tsFileResource,
                 false,
                 tmpMemTable.isTotallyGeneratedByPipe());
@@ -2314,9 +2318,6 @@ public class TsFileProcessor {
 
   public void registerToTsFile(
       String tableName, Function<String, TableSchema> tableSchemaFunction) {
-    getWriter()
-        .getKnownSchema()
-        .getTableSchemaMap()
-        .computeIfAbsent(tableName, tableSchemaFunction);
+    getWriter().getSchema().getTableSchemaMap().computeIfAbsent(tableName, tableSchemaFunction);
   }
 }

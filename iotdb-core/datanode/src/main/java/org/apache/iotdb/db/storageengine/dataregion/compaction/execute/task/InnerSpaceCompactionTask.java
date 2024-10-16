@@ -732,4 +732,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   public void setCompactionConfigVersion(long compactionConfigVersion) {
     this.compactionConfigVersion = Math.min(this.compactionConfigVersion, compactionConfigVersion);
   }
+
+  @Override
+  public long getSelectedFileSize() {
+    return filesView.selectedFileSize;
+  }
 }
