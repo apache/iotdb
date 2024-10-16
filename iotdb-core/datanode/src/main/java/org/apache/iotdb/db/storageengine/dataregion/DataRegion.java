@@ -1070,7 +1070,8 @@ public class DataRegion implements IDataRegionForQuery {
         : Long.MAX_VALUE;
   }
 
-  private boolean splitAndInsert(InsertTabletNode insertTabletNode, int loc, TSStatus[] results) {
+  private boolean splitAndInsert(
+      InsertTabletNode insertTabletNode, int loc, int endOffset, TSStatus[] results) {
     boolean noFailure = true;
 
     // before is first start point
@@ -1084,7 +1085,7 @@ public class DataRegion implements IDataRegionForQuery {
     int insertCnt = 0;
     // if is sequence
     boolean isSequence = false;
-    while (loc < insertTabletNode.getRowCount()) {
+    while (loc < endOffset) {
       long time = insertTabletNode.getTimes()[loc];
       final long timePartitionId = TimePartitionUtils.getTimePartitionId(time);
 
@@ -1195,7 +1196,14 @@ public class DataRegion implements IDataRegionForQuery {
       boolean noFailure;
       int loc = insertTabletNode.checkTTL(results, i -> getTTL(insertTabletNode));
       noFailure = loc == 0;
-      noFailure = noFailure && splitAndInsert(insertTabletNode, loc, results);
+      List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs =
+          insertTabletNode.splitByDevice(loc, insertTabletNode.getRowCount());
+      int start = loc;
+      for (Pair<IDeviceID, Integer> deviceEndOffsetPair : deviceEndOffsetPairs) {
+        int end = deviceEndOffsetPair.getRight();
+        noFailure = noFailure && splitAndInsert(insertTabletNode, start, end, results);
+        start = end;
+      }
 
       if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
           && !insertTabletNode.isGeneratedByRemoteConsensusLeader()) {
