@@ -115,7 +115,8 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
   }
 
   @Override
-  protected void analyzeSingleTsFile(final File tsFile) throws IOException, AuthException {
+  protected void analyzeSingleTsFile(final File tsFile)
+      throws IOException, AuthException, VerifyMetadataException {
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
       // can be reused when constructing tsfile resource
       final TsFileSequenceReaderTimeseriesMetadataIterator timeseriesMetadataIterator =
@@ -127,6 +128,8 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
       }
 
       // check whether the tsfile is table-model or not
+      // TODO: currently, loading a file with both tree-model and table-model data is not supported.
+      //  May need to support this and remove this check in the future.
       if (Objects.isNull(reader.readFileMetadata().getTableSchemaMap())
           || reader.readFileMetadata().getTableSchemaMap().size() == 0) {
         throw new SemanticException("Attempted to load a tree-model TsFile into table-model.");
@@ -147,7 +150,10 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
                     true)
                 .orElse(null);
         if (Objects.isNull(realSchema)) {
-          LOGGER.warn("Failed to validata schema for table {}", name2Schema.getValue());
+          throw new VerifyMetadataException(
+              String.format(
+                  "Failed to validate schema for table {%s, %s}",
+                  name2Schema.getKey(), name2Schema.getValue()));
         }
       }
 

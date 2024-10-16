@@ -17,14 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.client;
+package org.apache.iotdb.confignode.client.async;
 
-public enum CnToDnRequestType {
-
+public enum CnToDnAsyncRequestType {
   // Node Maintenance
-  CLEAN_DATA_NODE_CACHE,
   STOP_DATA_NODE,
-
+  CLEAN_DATA_NODE_CACHE,
   FLUSH,
   MERGE,
   FULL_MERGE,
@@ -33,8 +31,6 @@ public enum CnToDnRequestType {
   LOAD_CONFIGURATION,
   SET_SYSTEM_STATUS,
   SET_CONFIGURATION,
-  SHOW_CONFIGURATION,
-
   SUBMIT_TEST_CONNECTION_TASK,
   TEST_CONNECTION,
 
@@ -42,19 +38,11 @@ public enum CnToDnRequestType {
   CREATE_DATA_REGION,
   CREATE_SCHEMA_REGION,
   DELETE_REGION,
-
-  CREATE_NEW_REGION_PEER,
-  ADD_REGION_PEER,
-  REMOVE_REGION_PEER,
-  DELETE_OLD_REGION_PEER,
   RESET_PEER_LIST,
-
   UPDATE_REGION_ROUTE_MAP,
   CHANGE_REGION_LEADER,
 
   // PartitionCache
-  INVALIDATE_PARTITION_CACHE,
-  INVALIDATE_PERMISSION_CACHE,
   INVALIDATE_SCHEMA_CACHE,
   CLEAR_CACHE,
 
@@ -86,15 +74,11 @@ public enum CnToDnRequestType {
   CONSUMER_GROUP_PUSH_ALL_META,
   CONSUMER_GROUP_PUSH_SINGLE_META,
 
-  // CQ
-  EXECUTE_CQ,
-
   // TEMPLATE
   UPDATE_TEMPLATE,
 
   // Schema
   SET_TTL,
-  UPDATE_TTL_CACHE,
 
   CONSTRUCT_SCHEMA_BLACK_LIST,
   ROLLBACK_SCHEMA_BLACK_LIST,
@@ -112,8 +96,8 @@ public enum CnToDnRequestType {
 
   CONSTRUCT_VIEW_SCHEMA_BLACK_LIST,
   ROLLBACK_VIEW_SCHEMA_BLACK_LIST,
-  DELETE_VIEW,
 
+  DELETE_VIEW,
   ALTER_VIEW,
 
   // TODO Need to migrate to Node Maintenance

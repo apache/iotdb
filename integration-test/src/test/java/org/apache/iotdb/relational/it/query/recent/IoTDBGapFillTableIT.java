@@ -96,9 +96,20 @@ public class IoTDBGapFillTableIT {
         retArray,
         DATABASE_NAME);
 
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) AND device_id = 'd1' GROUP BY 1,city,device_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
     // case 2: avg_s1 of one device with having
     tableResultSetEqualTest(
         "select date_bin_gapfill(1h, time) as hour_time, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) AND device_id = 'd1' GROUP BY 1 HAVING avg(s1) IS NOT NULL",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) AND device_id = 'd1' GROUP BY 1,city,device_id HAVING avg(s1) IS NOT NULL",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -276,10 +287,20 @@ public class IoTDBGapFillTableIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) AND device_id = 'd1' GROUP BY 1,city,device_id FILL METHOD PREVIOUS",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
 
     // case 2: avg_s1 of one device with having
     tableResultSetEqualTest(
         "select date_bin_gapfill(1h, time) as hour_time, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) AND device_id = 'd1' GROUP BY 1 HAVING avg(s1) IS NOT NULL FILL METHOD PREVIOUS",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) AND device_id = 'd1' GROUP BY 1,device_id,city HAVING avg(s1) IS NOT NULL FILL METHOD PREVIOUS",
         expectedHeader,
         retArray,
         DATABASE_NAME);

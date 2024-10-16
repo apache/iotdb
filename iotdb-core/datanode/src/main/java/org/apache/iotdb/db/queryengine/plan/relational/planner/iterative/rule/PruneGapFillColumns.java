@@ -23,9 +23,13 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 
+import com.google.common.collect.Streams;
+
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Stream;
 
+import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Util.restrictChildOutputs;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.gapFill;
 
@@ -38,6 +42,13 @@ public class PruneGapFillColumns extends ProjectOffPushDownRule<GapFillNode> {
   @Override
   protected Optional<PlanNode> pushDownProjectOff(
       Context context, GapFillNode gapFillNode, Set<Symbol> referencedOutputs) {
-    return restrictChildOutputs(context.getIdAllocator(), gapFillNode, referencedOutputs);
+    Set<Symbol> referencedInputs =
+        Streams.concat(
+                referencedOutputs.stream(),
+                gapFillNode.getGapFillGroupingKeys().stream(),
+                Stream.of(gapFillNode.getGapFillColumn()))
+            .collect(toImmutableSet());
+
+    return restrictChildOutputs(context.getIdAllocator(), gapFillNode, referencedInputs);
   }
 }

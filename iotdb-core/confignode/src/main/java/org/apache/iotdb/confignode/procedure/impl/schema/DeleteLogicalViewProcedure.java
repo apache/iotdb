@@ -26,7 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
@@ -137,34 +137,28 @@ public class DeleteLogicalViewProcedure
     if (targetSchemaRegionGroup.isEmpty()) {
       return 0;
     }
-    final List<TSStatus> successResult = new ArrayList<>();
-    final DeleteLogicalViewRegionTaskExecutor<TConstructViewSchemaBlackListReq>
-        constructBlackListTask =
-            new DeleteLogicalViewRegionTaskExecutor<TConstructViewSchemaBlackListReq>(
-                "construct view schema engine black list",
-                env,
-                targetSchemaRegionGroup,
-                CnToDnRequestType.CONSTRUCT_VIEW_SCHEMA_BLACK_LIST,
-                ((dataNodeLocation, consensusGroupIdList) ->
-                    new TConstructViewSchemaBlackListReq(consensusGroupIdList, patternTreeBytes))) {
-              @Override
-              protected List<TConsensusGroupId> processResponseOfOneDataNode(
-                  TDataNodeLocation dataNodeLocation,
-                  List<TConsensusGroupId> consensusGroupIdList,
-                  TSStatus response) {
-                final List<TConsensusGroupId> failedRegionList = new ArrayList<>();
-                if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                  successResult.add(response);
-                } else if (response.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-                  List<TSStatus> subStatusList = response.getSubStatus();
-                  for (int i = 0; i < subStatusList.size(); i++) {
-                    if (subStatusList.get(i).getCode()
-                        == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                      successResult.add(subStatusList.get(i));
-                    } else {
-                      failedRegionList.add(consensusGroupIdList.get(i));
-                    }
-                  }
+    List<TSStatus> successResult = new ArrayList<>();
+    DeleteLogicalViewRegionTaskExecutor<TConstructViewSchemaBlackListReq> constructBlackListTask =
+        new DeleteLogicalViewRegionTaskExecutor<TConstructViewSchemaBlackListReq>(
+            "construct view schema engine black list",
+            env,
+            targetSchemaRegionGroup,
+            CnToDnAsyncRequestType.CONSTRUCT_VIEW_SCHEMA_BLACK_LIST,
+            ((dataNodeLocation, consensusGroupIdList) ->
+                new TConstructViewSchemaBlackListReq(consensusGroupIdList, patternTreeBytes))) {
+          @Override
+          protected List<TConsensusGroupId> processResponseOfOneDataNode(
+              TDataNodeLocation dataNodeLocation,
+              List<TConsensusGroupId> consensusGroupIdList,
+              TSStatus response) {
+            List<TConsensusGroupId> failedRegionList = new ArrayList<>();
+            if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              successResult.add(response);
+            } else if (response.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+              List<TSStatus> subStatusList = response.getSubStatus();
+              for (int i = 0; i < subStatusList.size(); i++) {
+                if (subStatusList.get(i).getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                  successResult.add(subStatusList.get(i));
                 } else {
                   failedRegionList.addAll(consensusGroupIdList);
                 }
@@ -187,7 +181,7 @@ public class DeleteLogicalViewProcedure
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
     final DataNodeAsyncRequestContext<TInvalidateMatchedSchemaCacheReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            CnToDnRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
+            CnToDnAsyncRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
             new TInvalidateMatchedSchemaCacheReq(patternTreeBytes),
             dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
@@ -212,7 +206,7 @@ public class DeleteLogicalViewProcedure
             "delete view in schema engine",
             env,
             env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
-            CnToDnRequestType.DELETE_VIEW,
+            CnToDnAsyncRequestType.DELETE_VIEW,
             ((dataNodeLocation, consensusGroupIdList) ->
                 new TDeleteViewSchemaReq(consensusGroupIdList, patternTreeBytes)
                     .setIsGeneratedByPipe(isGeneratedByPipe)));
@@ -248,7 +242,7 @@ public class DeleteLogicalViewProcedure
             "roll back view schema engine black list",
             env,
             env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
-            CnToDnRequestType.ROLLBACK_VIEW_SCHEMA_BLACK_LIST,
+            CnToDnAsyncRequestType.ROLLBACK_VIEW_SCHEMA_BLACK_LIST,
             (dataNodeLocation, consensusGroupIdList) ->
                 new TRollbackViewSchemaBlackListReq(consensusGroupIdList, patternTreeBytes));
     rollbackStateTask.execute();
@@ -348,7 +342,7 @@ public class DeleteLogicalViewProcedure
         final String taskName,
         final ConfigNodeProcedureEnv env,
         final Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup,
-        final CnToDnRequestType dataNodeRequestType,
+        final CnToDnAsyncRequestType dataNodeRequestType,
         final BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
       super(env, targetSchemaRegionGroup, false, dataNodeRequestType, dataNodeRequestGenerator);
       this.taskName = taskName;

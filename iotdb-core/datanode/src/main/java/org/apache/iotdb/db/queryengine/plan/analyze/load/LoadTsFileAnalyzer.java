@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.db.exception.VerifyMetadataException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
@@ -143,7 +144,7 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
       } catch (Exception e) {
         final String exceptionMessage =
             String.format(
-                "The file %s is not a valid tsfile. Please check the input file. Detail: %s",
+                "Loading file %s failed. Detail: %s",
                 tsFile.getPath(), e.getMessage() == null ? e.getClass().getName() : e.getMessage());
         LOGGER.warn(exceptionMessage, e);
         analysis.setFinishQueryAfterAnalyze(true);
@@ -154,7 +155,8 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
     return true;
   }
 
-  protected abstract void analyzeSingleTsFile(final File tsFile) throws IOException, AuthException;
+  protected abstract void analyzeSingleTsFile(final File tsFile)
+      throws IOException, AuthException, VerifyMetadataException;
 
   protected TsFileResource constructTsFileResource(
       final TsFileSequenceReader reader, final File tsFile) throws IOException {
