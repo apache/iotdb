@@ -37,6 +37,6 @@ public class ClearCacheTask implements IConfigTask {
   @Override
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.clearCache(clearCache.isOnCluster());
+    return configTaskExecutor.clearCache(clearCache.isOnCluster(), clearCache.getOptions());
   }
 }
