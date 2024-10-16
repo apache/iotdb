@@ -81,10 +81,12 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
+import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.db.tools.schema.SRStatementGenerator;
 import org.apache.iotdb.db.tools.schema.SchemaRegionSnapshotParser;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -128,9 +130,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       new PipeStatementExceptionVisitor();
   private static final PipeStatementPatternParseVisitor STATEMENT_PATTERN_PARSE_VISITOR =
       new PipeStatementPatternParseVisitor();
-  private static final PipeStatementDataTypeConvertExecutionVisitor
-      STATEMENT_DATA_TYPE_CONVERT_EXECUTION_VISITOR =
-          new PipeStatementDataTypeConvertExecutionVisitor(IoTDBDataNodeReceiver::executeStatement);
+  private final PipeStatementDataTypeConvertExecutionVisitor
+      statementDataTypeConvertExecutionVisitor =
+          new PipeStatementDataTypeConvertExecutionVisitor(this::executeStatement);
   private final PipeStatementToBatchVisitor batchVisitor = new PipeStatementToBatchVisitor();
 
   // Used for data transfer: confignode (cluster A) -> datanode (cluster B) -> confignode (cluster
@@ -142,6 +144,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   protected final AtomicReference<String> configReceiverId = new AtomicReference<>();
 
   private final PipeTransferSliceReqHandler sliceReqHandler = new PipeTransferSliceReqHandler();
+
+  private final SqlParser relationalSqlParser = new SqlParser();
 
   static {
     try {
@@ -488,6 +492,12 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private TSStatus loadTsFileAsync(final String dataBaseName, final List<String> absolutePaths)
       throws IOException {
+    if (Objects.nonNull(dataBaseName)) {
+      throw new PipeException(
+          "Async load tsfile does not support table model tsfile. Given database name: "
+              + dataBaseName);
+    }
+
     final String loadActiveListeningPipeDir = IOTDB_CONFIG.getLoadActiveListeningPipeDir();
 
     for (final String absolutePath : absolutePaths) {
@@ -500,17 +510,21 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         FileUtils.moveFileWithMD5Check(sourceFile, new File(loadActiveListeningPipeDir));
       }
     }
-
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   private TSStatus loadTsFileSync(final String dataBaseName, final String fileAbsolutePath)
       throws FileNotFoundException {
     final LoadTsFileStatement statement = new LoadTsFileStatement(fileAbsolutePath);
-
     statement.setDeleteAfterLoad(true);
     statement.setVerifySchema(true);
     statement.setAutoCreateDatabase(false);
+
+    statement.setModel(
+        dataBaseName != null
+            ? LoadTsFileConfigurator.MODEL_TABLE_VALUE
+            : LoadTsFileConfigurator.MODEL_TREE_VALUE);
+    statement.setDatabase(dataBaseName);
 
     return executeStatementAndClassifyExceptions(statement);
   }
@@ -680,20 +694,45 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             && ((statement instanceof InsertBaseStatement
                     && ((InsertBaseStatement) statement).hasFailedMeasurements())
                 || status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        ? statement.accept(STATEMENT_DATA_TYPE_CONVERT_EXECUTION_VISITOR, status).orElse(status)
+        ? statement.accept(statementDataTypeConvertExecutionVisitor, status).orElse(status)
         : status;
   }
 
-  private static TSStatus executeStatement(Statement statement) {
+  private TSStatus executeStatement(Statement statement) {
     if (statement instanceof InsertBaseStatement
         && ((InsertBaseStatement) statement).isWriteToTable()) {
-      return executeStatementForTableModel(statement);
+      return executeStatementForTableModel(
+          statement, ((InsertBaseStatement) statement).getDatabaseName().get());
+    }
+
+    if (statement instanceof LoadTsFileStatement
+        && ((LoadTsFileStatement) statement)
+            .getModel()
+            .equals(LoadTsFileConfigurator.MODEL_TABLE_VALUE)) {
+      return executeStatementForTableModel(
+          statement, ((LoadTsFileStatement) statement).getDatabase());
     }
 
     return executeStatementForTreeModel(statement);
   }
 
-  private static TSStatus executeStatementForTreeModel(final Statement statement) {
+  private TSStatus executeStatementForTableModel(Statement statement, String dataBaseName) {
+    return Coordinator.getInstance()
+        .executeForTableModel(
+            new PipeEnrichedStatement(statement),
+            relationalSqlParser,
+            SessionManager.getInstance().getCurrSession(),
+            SessionManager.getInstance().requestQueryId(),
+            SessionManager.getInstance()
+                .getSessionInfoOfPipeReceiver(
+                    SessionManager.getInstance().getCurrSession(), dataBaseName),
+            "",
+            LocalExecutionPlanner.getInstance().metadata,
+            IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
+        .status;
+  }
+
+  private TSStatus executeStatementForTreeModel(final Statement statement) {
     return Coordinator.getInstance()
         .executeForTreeModel(
             new PipeEnrichedStatement(statement),
@@ -702,20 +741,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             "",
             ClusterPartitionFetcher.getInstance(),
             ClusterSchemaFetcher.getInstance(),
-            IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
-        .status;
-  }
-
-  private static TSStatus executeStatementForTableModel(Statement statement) {
-    return Coordinator.getInstance()
-        .executeForTableModel(
-            new PipeEnrichedStatement(statement),
-            new SqlParser(),
-            SessionManager.getInstance().getCurrSession(),
-            SessionManager.getInstance().requestQueryId(),
-            new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault()),
-            "",
-            LocalExecutionPlanner.getInstance().metadata,
             IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
         .status;
   }
