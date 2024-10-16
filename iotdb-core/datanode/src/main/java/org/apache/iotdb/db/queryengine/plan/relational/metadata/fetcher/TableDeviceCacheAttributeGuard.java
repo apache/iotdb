@@ -146,7 +146,9 @@ public class TableDeviceCacheAttributeGuard {
                   deviceNodesMap.forEach(
                       (nodes, attributes) ->
                           cache.updateAttributes(
-                              database, convertIdValuesToDeviceID(table, nodes), attributes)));
+                              database,
+                              convertIdValuesToDeviceID(table, nodes.toArray(new String[0])),
+                              attributes)));
     } else {
       ((UpdateClearContainer) container)
           .getTableNames()
