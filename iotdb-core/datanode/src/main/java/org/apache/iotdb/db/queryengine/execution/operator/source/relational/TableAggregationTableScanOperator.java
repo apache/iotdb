@@ -639,7 +639,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   public void appendAggregationResult(
       TsBlockBuilder tsBlockBuilder, List<? extends TableAggregator> aggregators) {
 
-    // no date in current time range, just output empty
+    // no data in current time range, just output empty
     if (!timeIterator.hasCachedTimeRange()) {
       return;
     }
