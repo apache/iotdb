@@ -240,9 +240,10 @@ public class GeneralRegionAttributeSecurityService implements IService {
                 .forEach(
                     (location, bytes) -> {
                       clientHandler.putNodeLocation(location.getDataNodeId(), location);
+                      clientHandler.putRequestIfAbsent(
+                          location.getDataNodeId(), new TAttributeUpdateReq(new HashMap<>()));
                       clientHandler
-                          .putRequestIfAbsent(
-                              location.getDataNodeId(), new TAttributeUpdateReq(new HashMap<>()))
+                          .getRequest(location.getDataNodeId())
                           .getAttributeUpdateMap()
                           .put(
                               id.getId(),
