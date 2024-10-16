@@ -88,6 +88,14 @@ struct TCheckConsensusPipeCompletedResp {
   2: required bool isCompleted
 }
 
+struct TWaitReleaseAllRegionRelatedResourceReq {
+  1: required common.TConsensusGroupId consensusGroupId
+}
+
+struct TWaitReleaseAllRegionRelatedResourceResp {
+  1: required bool releaseAllResource
+}
+
 service PipeConsensusIService {
   /**
   * Transfer stream data in a given ConsensusGroup, used by PipeConsensus
@@ -106,4 +114,6 @@ service PipeConsensusIService {
   TNotifyPeerToDropConsensusPipeResp notifyPeerToDropConsensusPipe(TNotifyPeerToDropConsensusPipeReq req)
 
   TCheckConsensusPipeCompletedResp checkConsensusPipeCompleted(TCheckConsensusPipeCompletedReq req)
+
+  TWaitReleaseAllRegionRelatedResourceResp waitReleaseAllRegionRelatedResource(TWaitReleaseAllRegionRelatedResourceReq req)
 }
