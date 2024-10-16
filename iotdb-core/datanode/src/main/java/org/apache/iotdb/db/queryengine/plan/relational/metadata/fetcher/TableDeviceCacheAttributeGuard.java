@@ -25,7 +25,6 @@ import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateClea
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateDetailContainer;
 import org.apache.iotdb.mpp.rpc.thrift.TAttributeUpdateReq;
-import org.apache.iotdb.mpp.rpc.thrift.TSchemaRegionAttributeInfo;
 
 import org.apache.tsfile.utils.Pair;
 
@@ -95,18 +94,26 @@ public class TableDeviceCacheAttributeGuard {
               return false;
             });
     applyQueue.add(
-        updateReq.getAttributeUpdateMap().values().stream()
-            .map(TSchemaRegionAttributeInfo::getBody)
+        updateReq.getAttributeUpdateMap().entrySet().stream()
+            .map(entry -> new Pair<>(entry.getKey(), entry.getValue().getBody()))
             .collect(Collectors.toSet()));
     tryUpdateCache();
   }
 
+  @SuppressWarnings("unchecked")
   public synchronized void tryUpdateCache() {
     while (!applyQueue.isEmpty()) {
       final Set<?> firstElement = applyQueue.peek();
       if (firstElement instanceof HashSet) {
         for (final Object element : firstElement) {
-          handleContainer(DeviceAttributeCacheUpdater.getContainer((byte[]) element));
+          final Pair<Integer, byte[]> schemaRegionIdContainerBytesPair =
+              (Pair<Integer, byte[]>) element;
+          handleContainer(
+              fetchedSchemaRegionIds2LargestVersionAndDatabaseMap
+                  .get(schemaRegionIdContainerBytesPair.getLeft())
+                  .getRight(),
+              DeviceAttributeCacheUpdater.getContainer(
+                  schemaRegionIdContainerBytesPair.getRight()));
         }
         applyQueue.removeFirst();
       } else if (firstElement.isEmpty()) {
@@ -130,7 +137,7 @@ public class TableDeviceCacheAttributeGuard {
         });
   }
 
-  public void handleContainer(final UpdateContainer container) {
+  public void handleContainer(final String database, final UpdateContainer container) {
     if (container instanceof UpdateDetailContainer) {
       ((UpdateDetailContainer) container)
           .getUpdateMap()
@@ -139,11 +146,11 @@ public class TableDeviceCacheAttributeGuard {
                   deviceNodesMap.forEach(
                       (nodes, attributes) ->
                           cache.updateAttributes(
-                              null, convertIdValuesToDeviceID(table, nodes), attributes)));
+                              database, convertIdValuesToDeviceID(table, nodes), attributes)));
     } else {
       ((UpdateClearContainer) container)
           .getTableNames()
-          .forEach(table -> cache.invalidateAttributes(null, table));
+          .forEach(table -> cache.invalidateAttributes(database, table));
     }
   }
 }

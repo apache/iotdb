@@ -75,13 +75,16 @@ public class DeviceAttributeCacheUpdater {
 
   // Volatiles
   private final MemSchemaRegionStatistics regionStatistics;
+  private final String databaseName;
 
   // Only exist for update detail container
   private final Map<TDataNodeLocation, UpdateDetailContainerStatistics> updateContainerStatistics =
       new HashMap<>();
 
-  public DeviceAttributeCacheUpdater(final MemSchemaRegionStatistics regionStatistics) {
+  public DeviceAttributeCacheUpdater(
+      final MemSchemaRegionStatistics regionStatistics, final String databaseName) {
     this.regionStatistics = regionStatistics;
+    this.databaseName = databaseName;
   }
 
   /////////////////////////////// Service ///////////////////////////////
@@ -363,7 +366,7 @@ public class DeviceAttributeCacheUpdater {
         final TableDeviceCacheAttributeGuard guard =
             TableDeviceSchemaFetcher.getInstance().getAttributeGuard();
         guard.setVersion(regionStatistics.getSchemaRegionId(), version.get());
-        guard.handleContainer(container);
+        guard.handleContainer(databaseName, container);
       } else {
         attributeUpdateMap.put(location, container);
       }

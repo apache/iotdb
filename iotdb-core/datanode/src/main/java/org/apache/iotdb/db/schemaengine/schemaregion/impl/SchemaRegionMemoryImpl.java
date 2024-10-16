@@ -248,7 +248,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       isRecovering = true;
 
       deviceAttributeStore = new DeviceAttributeStore(regionStatistics);
-      deviceAttributeCacheUpdater = new DeviceAttributeCacheUpdater(regionStatistics);
+      deviceAttributeCacheUpdater =
+          new DeviceAttributeCacheUpdater(regionStatistics, storageGroupFullPath.substring(5));
       tagManager = new TagManager(schemaRegionDirPath, regionStatistics);
       mtree =
           new MTreeBelowSGMemoryImpl(
@@ -550,7 +551,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           System.currentTimeMillis() - snapshotStartTime);
 
       snapshotStartTime = System.currentTimeMillis();
-      deviceAttributeCacheUpdater = new DeviceAttributeCacheUpdater(regionStatistics);
+      deviceAttributeCacheUpdater =
+          new DeviceAttributeCacheUpdater(regionStatistics, storageGroupFullPath.substring(5));
       deviceAttributeCacheUpdater.loadFromSnapshot(latestSnapshotRootDir);
       logger.info(
           "Device attribute remote updater snapshot loading of schemaRegion {} costs {}ms.",
