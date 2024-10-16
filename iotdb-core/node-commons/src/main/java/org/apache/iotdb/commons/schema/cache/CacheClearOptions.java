@@ -17,19 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.schema;
+package org.apache.iotdb.commons.schema.cache;
 
-public enum ClusterSchemaQuotaLevel {
-  TIMESERIES(0),
-  DEVICE(1);
-
-  private final int code;
-
-  ClusterSchemaQuotaLevel(int code) {
-    this.code = code;
-  }
-
-  public int getCode() {
-    return code;
-  }
+public enum CacheClearOptions {
+  STORAGE,
+  TABLE_ATTRIBUTE,
+  LAST_VALUE,
+  TREE_SCHEMA,
 }
