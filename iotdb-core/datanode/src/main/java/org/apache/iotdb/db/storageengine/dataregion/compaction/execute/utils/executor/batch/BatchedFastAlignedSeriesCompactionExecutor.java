@@ -273,7 +273,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
     protected Chunk readChunk(TsFileSequenceReader reader, ChunkMetadata chunkMetadata)
         throws IOException {
       Chunk chunk = super.readChunk(reader, chunkMetadata);
-      if (chunkMetadata.getMeasurementUid().isEmpty()) {
+      if (AlignedSeriesBatchCompactionUtils.isTimeChunk(chunkMetadata)) {
         batchCompactionPlan.addTimeChunkToCache(
             reader.getFileName(), chunkMetadata.getOffsetOfChunkHeader(), chunk);
       }
@@ -391,7 +391,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
     @Override
     protected Chunk readChunk(TsFileSequenceReader reader, ChunkMetadata chunkMetadata)
         throws IOException {
-      if (chunkMetadata.getMeasurementUid().isEmpty()) {
+      if (AlignedSeriesBatchCompactionUtils.isTimeChunk(chunkMetadata)) {
         return batchCompactionPlan.getTimeChunkFromCache(reader, chunkMetadata);
       }
       return super.readChunk(reader, chunkMetadata);
