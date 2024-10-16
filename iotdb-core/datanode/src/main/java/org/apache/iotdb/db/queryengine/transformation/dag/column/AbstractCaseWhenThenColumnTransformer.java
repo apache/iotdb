@@ -79,6 +79,7 @@ public abstract class AbstractCaseWhenThenColumnTransformer extends ColumnTransf
         if (!firstWhenColumn.isNull(i) && firstWhenColumn.getBoolean(i)) {
           branchIndexForEachRow[i] = 0;
           selectionForThen[i] = true;
+          selection[i] = false;
         } else {
           selectionForThen[i] = false;
         }
@@ -100,24 +101,14 @@ public abstract class AbstractCaseWhenThenColumnTransformer extends ColumnTransf
 
       selectionForThen = selection.clone();
 
-      // 初始化 selectionForThen
       for (int j = 0; j < positionCount; j++) {
-        if (branchIndexForEachRow[j] == -1
-            || branchIndexForEachRow[j] == whenThenTransformers.size()) {
+        if (selection[j] && !whenColumn.isNull(j) && whenColumn.getBoolean(j)) {
+          branchIndexForEachRow[j] = i;
+          selectionForThen[j] = true;
+          // also update selection array
+          selection[j] = false;
+        } else {
           selectionForThen[j] = false;
-        }
-      }
-
-      // 根据第一个 whenColumn更新 branchIndexForEachRow
-      for (int j = 0; j < positionCount; j++) {
-        // 当前行没有匹配的 whenTransformer 时，才更新 selectionForThen 和 branchIndexForEachRow
-        if (branchIndexForEachRow[j] == -1) {
-          if (!whenColumn.isNull(j) && whenColumn.getBoolean(j)) {
-            branchIndexForEachRow[j] = i;
-            selectionForThen[j] = true;
-          } else {
-            selectionForThen[j] = false;
-          }
         }
       }
 
@@ -139,6 +130,7 @@ public abstract class AbstractCaseWhenThenColumnTransformer extends ColumnTransf
     int[] branchIndexForEachRow = new int[selection.length];
     // positionCount indicates the length of column
     int positionCount = selection.length;
+    boolean[] selectionForWhen = selection.clone();
 
     // 赋值为-1表示需要进行求值，否则表示不需要进行求值
     for (int i = 0; i < selection.length; i++) {
@@ -155,30 +147,19 @@ public abstract class AbstractCaseWhenThenColumnTransformer extends ColumnTransf
     // when and then columns
     for (int i = 0; i < whenThenTransformers.size(); i++) {
       ColumnTransformer whenColumnTransformer = whenThenTransformers.get(i).left;
-      whenColumnTransformer.evaluateWithSelection(selection);
+      whenColumnTransformer.evaluateWithSelection(selectionForWhen);
       Column whenColumn = whenColumnTransformer.getColumn();
 
-      boolean[] selectionForThen = selection.clone();
+      boolean[] selectionForThen = selectionForWhen.clone();
 
-      // 初始化 selectionForThen
       for (int j = 0; j < positionCount; j++) {
-        if (branchIndexForEachRow[j] == -1
-            || branchIndexForEachRow[j] == whenThenTransformers.size()) {
+        if (selectionForWhen[j] && !whenColumn.isNull(j) && whenColumn.getBoolean(j)) {
+          branchIndexForEachRow[j] = i;
+          selectionForThen[j] = true;
+          // also update selection array
+          selectionForWhen[j] = false;
+        } else {
           selectionForThen[j] = false;
-        }
-      }
-
-      // 根据第一个 whenColumn更新 branchIndexForEachRow
-      for (int j = 0; j < positionCount; j++) {
-        // 当前行没有匹配的 whenTransformer 时，才更新 selectionForThen 和 branchIndexForEachRow
-        if (branchIndexForEachRow[j] == -1) {
-          // 满足第 i 个 when 条件
-          if (!whenColumn.isNull(j) && whenColumn.getBoolean(j)) {
-            branchIndexForEachRow[j] = i;
-            selectionForThen[j] = true;
-          } else {
-            selectionForThen[j] = false;
-          }
         }
       }
 
@@ -208,22 +189,19 @@ public abstract class AbstractCaseWhenThenColumnTransformer extends ColumnTransf
 
     for (int i = 0; i < positionCount; i++) {
       Column resultColumn = null;
+      Type thenColumnType = null;
       if (branchIndexForEachRow[i] == -1) {
         resultColumn = elseColumn;
+        thenColumnType = elseTransformer.getType();
       } else if (branchIndexForEachRow[i] < whenThenTransformers.size()) {
         resultColumn = thenColumnList.get(branchIndexForEachRow[i]);
+        thenColumnType = whenThenTransformers.get(branchIndexForEachRow[i]).right.getType();
       }
 
       if (resultColumn == null || resultColumn.isNull(i)) {
         builder.appendNull();
       } else {
-        writeToColumnBuilder(
-            branchIndexForEachRow[i] == -1
-                ? elseTransformer.getType()
-                : whenThenTransformers.get(branchIndexForEachRow[i]).right.getType(),
-            resultColumn,
-            i,
-            builder);
+        writeToColumnBuilder(thenColumnType, resultColumn, i, builder);
       }
     }
 
