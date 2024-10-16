@@ -213,7 +213,6 @@ public class TreeDeviceSchemaCacheManager {
         schemaComputation.getLogicalViewSchemaList();
     final List<Integer> indexListOfLogicalViewPaths =
         schemaComputation.getIndexListOfLogicalViewPaths();
-    final String[] measurements = schemaComputation.getMeasurements();
 
     for (int i = beginToEnd.left; i < beginToEnd.right; i++) {
       final LogicalViewSchema logicalViewSchema = logicalViewSchemaList.get(i);
@@ -227,41 +226,33 @@ public class TreeDeviceSchemaCacheManager {
                     .getFullPath()));
       }
 
+      final PartialPath fullPath = logicalViewSchema.getSourcePathIfWritable();
       final IDeviceSchema schema =
-          tableDeviceSchemaCache.getDeviceSchema(schemaComputation.getDevicePath().getNodes());
+          tableDeviceSchemaCache.getDeviceSchema(fullPath.getDevicePath().getNodes());
       if (!(schema instanceof TreeDeviceNormalSchema)) {
-        return new Pair<>(
-            IntStream.range(0, schemaComputation.getMeasurements().length)
-                .boxed()
-                .collect(Collectors.toList()),
-            logicalViewSchemaList.stream()
-                .map(LogicalViewSchema::getSourcePathStringIfWritable)
-                .collect(Collectors.toList()));
+        indexOfMissingMeasurements.add(i);
+        continue;
       }
 
       final TreeDeviceNormalSchema treeSchema = (TreeDeviceNormalSchema) schema;
-
-      for (int index = 0; index < schemaComputation.getMeasurements().length; index++) {
-        final SchemaCacheEntry value = treeSchema.getSchemaCacheEntry(measurements[index]);
-        if (value == null) {
-          indexOfMissingMeasurements.add(i);
-        } else {
-          // Can not call function computeDevice here, because the value is source of one
-          // view, but schemaComputation is the device in this insert statement. The
-          // computation between them is miss matched.
-          if (value.isLogicalView()) {
-            // does not support views in views
-            throw new RuntimeException(
-                new UnsupportedOperationException(
-                    String.format(
-                        "The source of view [%s] is also a view! Nested view is unsupported! "
-                            + "Please check it.",
-                        logicalViewSchema.getSourcePathIfWritable())));
-          }
-          schemaComputation.computeMeasurementOfView(realIndex, value, treeSchema.isAligned());
-        }
+      final SchemaCacheEntry value = treeSchema.getSchemaCacheEntry(fullPath.getMeasurement());
+      if (Objects.isNull(value)) {
+        indexOfMissingMeasurements.add(i);
+        continue;
       }
+
+      if (value.isLogicalView()) {
+        throw new RuntimeException(
+            new UnsupportedOperationException(
+                String.format(
+                    "The source of view [%s] is also a view! Nested view is unsupported! "
+                        + "Please check it.",
+                    logicalViewSchema.getSourcePathIfWritable())));
+      }
+
+      schemaComputation.computeMeasurementOfView(realIndex, value, treeSchema.isAligned());
     }
+
     return new Pair<>(
         indexOfMissingMeasurements,
         indexOfMissingMeasurements.stream()
