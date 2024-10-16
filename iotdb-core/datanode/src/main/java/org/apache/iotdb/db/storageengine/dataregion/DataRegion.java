@@ -2209,7 +2209,8 @@ public class DataRegion implements IDataRegionForQuery {
         .forEach(unsealedResource::add);
   }
 
-  public void deleteByDevice(final MeasurementPath pattern, final DeleteDataNode node) throws IOException {
+  public void deleteByDevice(final MeasurementPath pattern, final DeleteDataNode node)
+      throws IOException {
     if (SettleService.getINSTANCE().getFilesToBeSettledCount().get() != 0) {
       throw new IOException(
           "Delete failed. " + "Please do not delete until the old files settled.");

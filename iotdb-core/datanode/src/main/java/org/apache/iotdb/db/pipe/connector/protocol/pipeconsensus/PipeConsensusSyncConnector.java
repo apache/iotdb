@@ -242,7 +242,9 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
     final TPipeConsensusTransferResp resp;
     TCommitId tCommitId =
         new TCommitId(
-            pipeDeleteDataNodeEvent.getCommitId(), pipeDeleteDataNodeEvent.getRebootTimes());
+            pipeDeleteDataNodeEvent.getCommitId(),
+            pipeDeleteDataNodeEvent.getCommitterKey().getRestartTimes(),
+            pipeDeleteDataNodeEvent.getRebootTimes());
     TConsensusGroupId tConsensusGroupId =
         new TConsensusGroupId(TConsensusGroupType.DataRegion, consensusGroupId);
 
