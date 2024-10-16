@@ -68,11 +68,11 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.Tabl
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableInnerJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.GroupByAggregationOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.GroupedAccumulator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.GroupedAggregator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAggregator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAggregator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.HashAggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -157,9 +157,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
-import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
@@ -1246,13 +1246,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       }
     }
 
-    // process case of count(*)
-    if (argumentChannels.isEmpty()) {
-      argumentChannels.add(0);
-      // process of count is type-unaware, any type is OK here
-      argumentTypes.add(TSDataType.INT64);
-    }
-
     String functionName = aggregation.getResolvedFunction().getSignature().getName();
     TableAccumulator accumulator =
         createAccumulator(
@@ -1285,7 +1278,37 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             (k, v) ->
                 aggregatorBuilder.add(
                     buildGroupByAggregator(childLayout, k, v, node.getStep(), typeProvider)));
-    return new GroupByAggregationOperator(operatorContext, child, aggregatorBuilder.build());
+
+    List<Integer> groupByChannels = getChannelsForSymbols(node.getGroupingKeys(), childLayout);
+    List<Type> groupByTypes =
+        node.getGroupingKeys().stream()
+            .map(typeProvider::getTableModelType)
+            .collect(toImmutableList());
+
+    if (node.isStreamable()) {
+      /*return new StreamingAggregationOperator;*/
+    }
+
+    return new HashAggregationOperator(
+        operatorContext,
+        child,
+        groupByTypes,
+        groupByChannels,
+        aggregatorBuilder.build(),
+        node.getStep(),
+        10_000,
+        Long.MAX_VALUE,
+        false,
+        Long.MAX_VALUE);
+  }
+
+  private static List<Integer> getChannelsForSymbols(
+      List<Symbol> symbols, Map<Symbol, Integer> layout) {
+    ImmutableList.Builder<Integer> builder = ImmutableList.builder();
+    for (Symbol symbol : symbols) {
+      builder.add(layout.get(symbol));
+    }
+    return builder.build();
   }
 
   private GroupedAggregator buildGroupByAggregator(

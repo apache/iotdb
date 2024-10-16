@@ -17,38 +17,57 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation;
+package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped;
 
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.builder.HashAggregationBuilder;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.builder.InMemoryHashAggregationBuilder;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
+import static com.google.common.base.Preconditions.checkState;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory.NOOP;
 
-// TODO
-public class GroupByAggregationOperator implements ProcessOperator {
+public class HashAggregationOperator implements ProcessOperator {
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(GroupByAggregationOperator.class);
+      RamUsageEstimator.shallowSizeOfInstance(HashAggregationOperator.class);
 
   private final OperatorContext operatorContext;
 
   private final Operator child;
 
+  private final List<Type> groupByTypes;
+  private final List<Integer> groupByChannels;
+
   private final List<GroupedAggregator> aggregators;
+  private final AggregationNode.Step step;
+
+  private final int expectedGroups;
+
+  private final long maxPartialMemory;
+
+  private final boolean spillEnabled;
+  private final long unspillMemoryLimit;
+
+  private HashAggregationBuilder aggregationBuilder;
 
   private final TsBlockBuilder resultBuilder;
 
@@ -61,14 +80,33 @@ public class GroupByAggregationOperator implements ProcessOperator {
 
   private boolean finished = false;
 
-  public GroupByAggregationOperator(
-      OperatorContext operatorContext, Operator child, List<GroupedAggregator> aggregators) {
+  public HashAggregationOperator(
+      OperatorContext operatorContext,
+      Operator child,
+      List<Type> groupByTypes,
+      List<Integer> groupByChannels,
+      List<GroupedAggregator> aggregators,
+      AggregationNode.Step step,
+      int expectedGroups,
+      long maxPartialMemory,
+      boolean spillEnabled,
+      long unspillMemoryLimit) {
     this.operatorContext = operatorContext;
     this.child = child;
+    this.groupByTypes = ImmutableList.copyOf(groupByTypes);
+    this.groupByChannels = ImmutableList.copyOf(groupByChannels);
     this.aggregators = aggregators;
+    this.step = step;
+    this.expectedGroups = expectedGroups;
+    this.maxPartialMemory = maxPartialMemory;
+    this.spillEnabled = spillEnabled;
+    this.unspillMemoryLimit = unspillMemoryLimit;
     this.resultBuilder =
         new TsBlockBuilder(
-            aggregators.stream().map(GroupedAggregator::getType).collect(toImmutableList()));
+            Stream.concat(
+                    groupByTypes.stream().map(InternalTypeManager::getTSDataType),
+                    aggregators.stream().map(GroupedAggregator::getType))
+                .collect(Collectors.toList()));
     this.resultColumnsBuilder = resultBuilder.getValueColumnBuilders();
     this.memoryReservationManager =
         operatorContext
@@ -89,6 +127,26 @@ public class GroupByAggregationOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() throws Exception {
+    if (aggregationBuilder == null) {
+      if (spillEnabled) {
+        throw new UnsupportedOperationException();
+      } else {
+        aggregationBuilder =
+            new InMemoryHashAggregationBuilder(
+                aggregators,
+                step,
+                expectedGroups,
+                groupByTypes,
+                groupByChannels,
+                Optional.empty(),
+                operatorContext,
+                maxPartialMemory,
+                NOOP);
+      }
+    } else {
+      checkState(!aggregationBuilder.isFull(), "Aggregation buffer is full");
+    }
+
     // Each call only calculate at most once, no need to check time slice.
     TsBlock block;
     if (child.hasNextWithTimer()) {
@@ -97,23 +155,37 @@ public class GroupByAggregationOperator implements ProcessOperator {
         return null;
       }
 
-      for (GroupedAggregator aggregator : aggregators) {
-        aggregator.processBlock(0, null, block);
-      }
-
+      aggregationBuilder.processBlock(block);
+      aggregationBuilder.updateMemory();
       return null;
     } else {
       // evaluate output
-      Column[] valueColumns = new Column[resultColumnsBuilder.length];
-      for (int i = 0; i < aggregators.size(); i++) {
-        aggregators.get(i).evaluate(0, resultColumnsBuilder[i]);
-        valueColumns[i] = resultColumnsBuilder[i].build();
-      }
-
-      finished = true;
-      return TsBlock.wrapBlocksWithoutCopy(
-          1, new RunLengthEncodedColumn(TableScanOperator.TIME_COLUMN_TEMPLATE, 1), valueColumns);
+      return getOutput();
     }
+  }
+
+  private TsBlock getOutput() {
+    // only flush if we are finishing or the aggregation builder is full
+    if ((aggregationBuilder == null || !aggregationBuilder.isFull())) {
+      return null;
+    }
+
+    TsBlock result = aggregationBuilder.buildResult();
+
+    closeAggregationBuilder();
+    finished = true;
+    return result;
+  }
+
+  private void closeAggregationBuilder() {
+    // outputPages = null;
+    if (aggregationBuilder != null) {
+      aggregationBuilder.close();
+      // aggregationBuilder.close() will release all memory reserved in memory accounting.
+      // The reference must be set to null afterwards to avoid unaccounted memory.
+      aggregationBuilder = null;
+    }
+    // memoryContext.setBytes(0);
   }
 
   @Override
