@@ -160,11 +160,15 @@ public class DeleteLogicalViewProcedure
                 if (subStatusList.get(i).getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
                   successResult.add(subStatusList.get(i));
                 } else {
-                  failedRegionList.addAll(consensusGroupIdList);
+                  failedRegionList.add(consensusGroupIdList.get(i));
                 }
-                return failedRegionList;
               }
-            };
+            } else {
+              failedRegionList.addAll(consensusGroupIdList);
+            }
+            return failedRegionList;
+          }
+        };
     constructBlackListTask.execute();
 
     if (isFailed()) {
