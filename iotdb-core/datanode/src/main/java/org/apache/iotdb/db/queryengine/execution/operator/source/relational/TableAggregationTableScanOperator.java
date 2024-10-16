@@ -196,7 +196,9 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   public TsBlock next() throws Exception {
 
     // optimize for sql: select count(*) from (select count(s1), sum(s1) from table)
-    if (tableAggregators.isEmpty()) {
+    if (tableAggregators.isEmpty()
+        && timeIterator.getType()
+            == ITableTimeRangeIterator.TimeIteratorType.SINGLE_TIME_ITERATOR) {
       resultTsBlockBuilder.reset();
       currentDeviceIndex = deviceCount;
       timeIterator.setFinished();
