@@ -146,7 +146,6 @@ public class GeneralRegionAttributeSecurityService implements IService {
         final Map<SchemaRegionId, Set<TDataNodeLocation>> shrinkMap =
             sendUpdateRequestAndMayShrink(attributeUpdateCommitMap);
 
-        System.out.println(attributeUpdateCommitMap);
         // Commit
         attributeUpdateCommitMap.forEach(
             (schemaRegionId, pair) -> {
