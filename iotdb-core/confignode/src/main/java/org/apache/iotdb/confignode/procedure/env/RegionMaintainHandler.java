@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
@@ -145,7 +146,7 @@ public class RegionMaintainHandler {
                   .sendSyncRequestToDataNodeWithRetry(
                       node.getLocation().getInternalEndPoint(),
                       disableReq,
-                      CnToDnRequestType.DISABLE_DATA_NODE);
+                      CnToDnSyncRequestType.DISABLE_DATANODE);
       if (!isSucceed(status)) {
         LOGGER.error(
             "{}, BroadcastDisableDataNode meets error, disabledDataNode: {}, error: {}",
@@ -508,7 +509,10 @@ public class RegionMaintainHandler {
         (TSStatus)
             SyncDataNodeClientPool.getInstance()
                 .sendSyncRequestToDataNodeWithGivenRetry(
-                    dataNode.getInternalEndPoint(), dataNode, CnToDnRequestType.STOP_DATA_NODE, 2);
+                    dataNode.getInternalEndPoint(),
+                    dataNode,
+                    CnToDnSyncRequestType.STOP_DATA_NODE,
+                    2);
     configManager.getLoadManager().removeNodeCache(dataNode.getDataNodeId());
     LOGGER.info(
         "{}, Stop Data Node result: {}, stoppedDataNode: {}",

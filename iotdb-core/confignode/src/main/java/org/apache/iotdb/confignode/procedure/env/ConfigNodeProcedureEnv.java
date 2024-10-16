@@ -390,14 +390,14 @@ public class ConfigNodeProcedureEnv {
           .sendSyncRequestToDataNodeWithGivenRetry(
               dataNodeLocation.getInternalEndPoint(),
               NodeStatus.Removing.getStatus(),
-              CnToDnRequestType.SET_SYSTEM_STATUS,
+              CnToDnSyncRequestType.SET_SYSTEM_STATUS,
               1);
     } else {
       SyncDataNodeClientPool.getInstance()
           .sendSyncRequestToDataNodeWithRetry(
               dataNodeLocation.getInternalEndPoint(),
               NodeStatus.Removing.getStatus(),
-              CnToDnRequestType.SET_SYSTEM_STATUS);
+              CnToDnSyncRequestType.SET_SYSTEM_STATUS);
     }
 
     long currentTime = System.nanoTime();
