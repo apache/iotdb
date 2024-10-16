@@ -49,7 +49,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -134,6 +134,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.planner.TableOperatorGenerator.makeLayout;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher.convertIdValuesToDeviceID;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
@@ -1366,10 +1367,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       final Object[] attributeValueList) {
     final Map<String, String> resultMap =
         deviceAttributeStore.alterAttribute(pointer, attributeNameList, attributeValueList);
-    if (!isRecovering && IoTDBDescriptor.getInstance().getConfig().getDataNodeId() != -1) {
-      TableDeviceSchemaFetcher.getInstance()
-          .getTableDeviceCache()
-          .update(databaseName, tableName, deviceId, resultMap);
+    if (!isRecovering) {
+      TableDeviceSchemaCache.getInstance()
+          .updateAttributes(
+              databaseName, convertIdValuesToDeviceID(tableName, deviceId), resultMap);
     }
   }
 

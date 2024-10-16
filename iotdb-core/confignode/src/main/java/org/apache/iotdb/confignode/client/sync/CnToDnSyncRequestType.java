@@ -17,23 +17,36 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.value;
+package org.apache.iotdb.confignode.client.sync;
 
-import org.apache.tsfile.read.TimeValuePair;
-import org.apache.tsfile.utils.TsPrimitiveType;
+public enum CnToDnSyncRequestType {
+  // Node Maintenance
+  CLEAN_DATA_NODE_CACHE,
+  STOP_DATA_NODE,
+  SET_SYSTEM_STATUS,
+  SHOW_CONFIGURATION,
 
-// this interface declares the simplest storage operation of lastCacheValue
-public interface ILastCacheValue {
+  // Region Maintenance
+  CREATE_DATA_REGION,
+  CREATE_SCHEMA_REGION,
+  DELETE_REGION,
+  CREATE_NEW_REGION_PEER,
+  ADD_REGION_PEER,
+  REMOVE_REGION_PEER,
+  DELETE_OLD_REGION_PEER,
+  RESET_PEER_LIST,
 
-  long getTimestamp();
+  // PartitionCache
+  INVALIDATE_PARTITION_CACHE,
+  INVALIDATE_PERMISSION_CACHE,
+  INVALIDATE_SCHEMA_CACHE,
 
-  TsPrimitiveType getValue();
+  // Template
+  UPDATE_TEMPLATE,
 
-  void setTimestamp(long timestamp);
+  // Schema
+  KILL_QUERY_INSTANCE,
 
-  void setValue(TsPrimitiveType value);
-
-  TimeValuePair getTimeValuePair();
-
-  int estimateSize();
+  // Table
+  UPDATE_TABLE,
 }
