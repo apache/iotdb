@@ -373,7 +373,7 @@ public class TreeDeviceSchemaCacheManager {
     tableDeviceSchemaCache.invalidateLastCache(path.getDevicePath(), path.getMeasurement());
   }
 
-  public void invalidateLastCacheInDataRegion(final String database) {
+  public void invalidateDatabaseLastCache(final String database) {
     if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
       return;
     }
