@@ -569,7 +569,7 @@ public abstract class SubscriptionPrefetchingQueue {
             .map(SubscriptionEvent::getPipeEventCount)
             .reduce(Integer::sum)
             .orElse(0)
-        + +inFlightEvents.values().stream()
+        + inFlightEvents.values().stream()
             .map(SubscriptionEvent::getPipeEventCount)
             .reduce(Integer::sum)
             .orElse(0);
