@@ -442,17 +442,12 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private TPipeTransferResp handleTransferTabletBatchV2(final PipeTransferTabletBatchReqV2 req) {
-    final Pair<InsertRowsStatement, InsertMultiTabletsStatement> statementPair =
-        req.constructStatements();
+    final List<InsertBaseStatement> statementSet = req.constructStatements();
     return new TPipeTransferResp(
         PipeReceiverStatusHandler.getPriorStatus(
-            Stream.of(
-                    statementPair.getLeft().isEmpty()
-                        ? RpcUtils.SUCCESS_STATUS
-                        : executeStatementAndAddRedirectInfo(statementPair.getLeft()),
-                    statementPair.getRight().isEmpty()
-                        ? RpcUtils.SUCCESS_STATUS
-                        : executeStatementAndAddRedirectInfo(statementPair.getRight()))
+            (statementSet.isEmpty()
+                    ? Stream.of(RpcUtils.SUCCESS_STATUS)
+                    : statementSet.stream().map(this::executeStatementAndAddRedirectInfo))
                 .collect(Collectors.toList())));
   }
 
@@ -694,7 +689,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         && ((InsertBaseStatement) statement).isWriteToTable()) {
       return executeStatementForTableModel(statement);
     }
-
     return executeStatementForTreeModel(statement);
   }
 

@@ -31,7 +31,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
-import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.record.Tablet;
@@ -53,7 +52,9 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
     // Empty constructor
   }
 
-  public Pair<InsertRowsStatement, InsertMultiTabletsStatement> constructStatements() {
+  public List<InsertBaseStatement> constructStatements() {
+    final List<InsertBaseStatement> statements = new ArrayList<>();
+
     final InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
     final InsertMultiTabletsStatement insertMultiTabletsStatement =
         new InsertMultiTabletsStatement();
@@ -66,6 +67,10 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
       if (statement.isEmpty()) {
         continue;
       }
+      if (statement.isWriteToTable()) {
+        statements.add(statement);
+        continue;
+      }
       if (statement instanceof InsertRowStatement) {
         insertRowStatementList.add((InsertRowStatement) statement);
       } else if (statement instanceof InsertTabletStatement) {
@@ -76,7 +81,7 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
       } else {
         throw new UnsupportedOperationException(
             String.format(
-                "unknown InsertBaseStatement %s constructed from PipeTransferTabletBinaryReq.",
+                "unknown InsertBaseStatement %s constructed from PipeTransferTabletBinaryReqV2.",
                 binaryReq));
       }
     }
@@ -86,6 +91,10 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
       if (statement.isEmpty()) {
         continue;
       }
+      if (statement.isWriteToTable()) {
+        statements.add(statement);
+        continue;
+      }
       if (statement instanceof InsertRowStatement) {
         insertRowStatementList.add((InsertRowStatement) statement);
       } else if (statement instanceof InsertTabletStatement) {
@@ -96,7 +105,7 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
       } else {
         throw new UnsupportedOperationException(
             String.format(
-                "Unknown InsertBaseStatement %s constructed from PipeTransferTabletInsertNodeReq.",
+                "Unknown InsertBaseStatement %s constructed from PipeTransferTabletInsertNodeReqV2.",
                 statement));
       }
     }
@@ -106,12 +115,22 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
       if (statement.isEmpty()) {
         continue;
       }
+      if (statement.isWriteToTable()) {
+        statements.add(statement);
+        continue;
+      }
       insertTabletStatementList.add(statement);
     }
 
     insertRowsStatement.setInsertRowStatementList(insertRowStatementList);
     insertMultiTabletsStatement.setInsertTabletStatementList(insertTabletStatementList);
-    return new Pair<>(insertRowsStatement, insertMultiTabletsStatement);
+    if (!insertRowsStatement.isEmpty()) {
+      statements.add(insertRowsStatement);
+    }
+    if (!insertMultiTabletsStatement.isEmpty()) {
+      statements.add(insertMultiTabletsStatement);
+    }
+    return statements;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
