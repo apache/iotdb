@@ -270,6 +270,10 @@ public class CnToDnInternalServiceAsyncRequestManager
         (req, client, handler) ->
             client.invalidateMatchedSchemaCache(
                 (TInvalidateMatchedSchemaCacheReq) req, (DataNodeTSStatusRPCHandler) handler));
+      actionMapBuilder.put(
+        CnToDnRequestType.INVALIDATE_LAST_CACHE,
+        (req, client, handler) ->
+            client.invalidateLastCache((String) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnRequestType.DELETE_DATA_FOR_DELETE_SCHEMA,
         (req, client, handler) ->
