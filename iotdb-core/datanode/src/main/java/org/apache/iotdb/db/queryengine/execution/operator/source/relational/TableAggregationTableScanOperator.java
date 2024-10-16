@@ -621,6 +621,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
 
   private void updateCurTimeRange(long startTime) {
     if (timeIterator.getType() == ITableTimeRangeIterator.TimeIteratorType.SINGLE_TIME_ITERATOR) {
+      timeIterator.updateCurTimeRange(startTime);
       return;
     }
 
@@ -637,6 +638,12 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   /** Append a row of aggregation results to the result tsBlock. */
   public void appendAggregationResult(
       TsBlockBuilder tsBlockBuilder, List<? extends TableAggregator> aggregators) {
+
+    // no date in current time range, just output empty
+    if (!timeIterator.hasCachedTimeRange()) {
+      return;
+    }
+
     ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
 
     int groupKeySize = groupingKeySchemas == null ? 0 : groupingKeySchemas.size();
