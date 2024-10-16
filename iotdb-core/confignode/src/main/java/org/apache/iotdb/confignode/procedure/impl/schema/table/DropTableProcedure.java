@@ -37,6 +37,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecutor;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.state.schema.DropTableState;
+import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDropTableReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -143,6 +144,16 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     if (relatedDataRegionGroup.isEmpty()) {
       return;
     }
+
+    new DropTableRegionTaskExecutor<>(
+        "delete data",
+        env,
+        relatedDataRegionGroup,
+        true,
+        CnToDnAsyncRequestType.DELETE_DATA_FOR_DROP_TABLE,
+        ((dataNodeLocation, consensusGroupIdList) ->
+            new TDeleteDataForDropTableReq(
+                new ArrayList<>(consensusGroupIdList), database, tableName)));
   }
 
   private void dropTable(final ConfigNodeProcedureEnv env) {

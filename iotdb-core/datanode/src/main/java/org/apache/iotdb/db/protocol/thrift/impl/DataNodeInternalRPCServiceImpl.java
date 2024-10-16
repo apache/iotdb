@@ -68,6 +68,7 @@ import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -191,6 +192,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TDeactivateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDropTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteViewSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
@@ -663,8 +665,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) throws TException {
-    PathPatternTree patternTree =
+  public TSStatus deleteTimeSeries(final TDeleteTimeSeriesReq req) throws TException {
+    final PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
     return executeInternalSchemaTask(
         req.getSchemaRegionIdList(),
@@ -1479,7 +1481,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus updateTable(TUpdateTableReq req) {
+  public TSStatus updateTable(final TUpdateTableReq req) {
     switch (TsTableInternalRPCType.getType(req.type)) {
       case PRE_CREATE_OR_ADD_COLUMN:
         DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.TIMESERIES_VS_TABLE);
@@ -1511,8 +1513,17 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
-  public TTestConnectionResp submitTestConnectionTask(TNodeLocations nodeLocations)
-      throws TException {
+  @Override
+  public TSStatus deleteDataForDropTable(final TDeleteDataForDropTableReq req) {
+    return executeInternalSchemaTask(
+        req.getDataRegionIdList(),
+        consensusGroupId -> {
+          // TODO
+          return StatusUtils.OK;
+        });
+  }
+
+  public TTestConnectionResp submitTestConnectionTask(TNodeLocations nodeLocations) {
     return new TTestConnectionResp(
         new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
         Stream.of(
