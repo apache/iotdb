@@ -83,19 +83,18 @@ public class GeneralRegionAttributeSecurityService implements IService {
 
   private final Map<Integer, Pair<Long, Integer>> dataNodeId2FailureDurationAndTimesMap =
       new HashMap<>();
-  private final Set<ISchemaRegion> regionLeaders =
-      Collections.newSetFromMap(new ConcurrentHashMap<>());
+  private final Map<ISchemaRegion, String> regionLeaders2DatabaseMap = new ConcurrentHashMap<>();
   private final ReentrantLock lock = new ReentrantLock();
   private final Condition condition = lock.newCondition();
   private volatile boolean skipNextSleep = false;
   private volatile boolean allowSubmitListen = false;
 
   public void startBroadcast(final ISchemaRegion schemaRegion) {
-    regionLeaders.add(schemaRegion);
+    regionLeaders2DatabaseMap.put(schemaRegion, schemaRegion.getDatabaseFullPath().substring(5));
   }
 
   public void stopBroadcast(final ISchemaRegion schemaRegion) {
-    regionLeaders.remove(schemaRegion);
+    regionLeaders2DatabaseMap.remove(schemaRegion);
   }
 
   public void notifyBroadCast() {
@@ -124,7 +123,7 @@ public class GeneralRegionAttributeSecurityService implements IService {
       final AtomicBoolean hasRemaining = new AtomicBoolean(false);
       final Map<SchemaRegionId, Pair<Long, Map<TDataNodeLocation, byte[]>>>
           attributeUpdateCommitMap = new HashMap<>();
-      for (final ISchemaRegion regionLeader : regionLeaders) {
+      for (final ISchemaRegion regionLeader : regionLeaders2DatabaseMap.keySet()) {
         final Pair<Long, Map<TDataNodeLocation, byte[]>> currentResult =
             regionLeader.getAttributeUpdateInfo(limit, hasRemaining);
         if (currentResult.getRight().isEmpty()) {

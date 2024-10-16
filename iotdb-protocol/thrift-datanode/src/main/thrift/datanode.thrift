@@ -344,12 +344,13 @@ struct TLoadCommandReq {
 }
 
 struct TAttributeUpdateReq {
-  1:required map<i32, TSchemaRegionAttributeInfo> attributeUpdateMap
+  1: required map<i32, TSchemaRegionAttributeInfo> attributeUpdateMap
 }
 
 struct TSchemaRegionAttributeInfo {
-  1:required i64 version
-  2:required binary body
+  1: required i64 version
+  2: required string database
+  3: required binary body
 }
 
 struct TLoadResp {
