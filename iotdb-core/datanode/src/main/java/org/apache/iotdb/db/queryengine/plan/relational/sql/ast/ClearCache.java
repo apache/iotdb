@@ -19,20 +19,33 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
+
 import com.google.common.collect.ImmutableList;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
 public class ClearCache extends Statement {
 
   private final boolean onCluster;
+  private final Set<CacheClearOptions> options;
 
-  public ClearCache(final boolean onCluster) {
+  public ClearCache(final boolean onCluster, final Set<CacheClearOptions> options) {
     super(null);
     this.onCluster = onCluster;
+    this.options = options;
+  }
+
+  public boolean isOnCluster() {
+    return onCluster;
+  }
+
+  public Set<CacheClearOptions> getOptions() {
+    return options;
   }
 
   @Override
