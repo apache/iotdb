@@ -427,9 +427,6 @@ public class IoTDBConfig {
   /** The sort algorithm used in TVList */
   private TVListSortAlgorithm tvListSortAlgorithm = TVListSortAlgorithm.TIM;
 
-  /** When average series point number reaches this, flush the memtable to disk */
-  private int avgSeriesPointNumberThreshold = 100000;
-
   /** Enable inner space compaction for sequence files */
   private volatile boolean enableSeqSpaceCompaction = true;
 
@@ -488,10 +485,10 @@ public class IoTDBConfig {
   /** The target tsfile size in compaction, 2 GB by default */
   private long targetCompactionFileSize = 2147483648L;
 
-  /** The target chunk size in compaction. */
-  private long targetChunkSize = 1048576L;
+  /** The target chunk size in compaction and flushing. */
+  private long targetChunkSize = 1600000L;
 
-  /** The target chunk point num in compaction. */
+  /** The target chunk point num in compaction and flushing. */
   private long targetChunkPointNum = 100000L;
 
   /**
@@ -2277,14 +2274,6 @@ public class IoTDBConfig {
 
   public void setTvListSortAlgorithm(TVListSortAlgorithm tvListSortAlgorithm) {
     this.tvListSortAlgorithm = tvListSortAlgorithm;
-  }
-
-  public int getAvgSeriesPointNumberThreshold() {
-    return avgSeriesPointNumberThreshold;
-  }
-
-  public void setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
-    this.avgSeriesPointNumberThreshold = avgSeriesPointNumberThreshold;
   }
 
   public boolean isRpcThriftCompressionEnable() {

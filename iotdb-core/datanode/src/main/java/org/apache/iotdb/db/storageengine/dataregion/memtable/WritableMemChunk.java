@@ -52,7 +52,7 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private final long TARGET_CHUNK_SIZE = CONFIG.getTargetChunkSize();
-  private final long MAX_NUMBER_OF_POINTS_IN_CHUNK = CONFIG.getAvgSeriesPointNumberThreshold();
+  private final long MAX_NUMBER_OF_POINTS_IN_CHUNK = CONFIG.getTargetChunkPointNum();
 
   public WritableMemChunk(IMeasurementSchema schema) {
     this.schema = schema;
@@ -337,7 +337,7 @@ public class WritableMemChunk implements IWritableMemChunk {
 
     TSDataType tsDataType = schema.getType();
     ChunkWriterImpl chunkWriterImpl = createIChunkWriter();
-    long binarySizeInCurrentChunk = 0;
+    long dataSizeInCurrentChunk = 0;
     int pointNumInCurrentChunk = 0;
     for (int sortedRowIndex = 0; sortedRowIndex < list.rowCount(); sortedRowIndex++) {
       long time = list.getTime(sortedRowIndex);
@@ -355,27 +355,32 @@ public class WritableMemChunk implements IWritableMemChunk {
       switch (tsDataType) {
         case BOOLEAN:
           chunkWriterImpl.write(time, list.getBoolean(sortedRowIndex));
+          dataSizeInCurrentChunk += 8L + 1L;
           break;
         case INT32:
         case DATE:
           chunkWriterImpl.write(time, list.getInt(sortedRowIndex));
+          dataSizeInCurrentChunk += 8L + 4L;
           break;
         case INT64:
         case TIMESTAMP:
           chunkWriterImpl.write(time, list.getLong(sortedRowIndex));
+          dataSizeInCurrentChunk += 8L + 8L;
           break;
         case FLOAT:
           chunkWriterImpl.write(time, list.getFloat(sortedRowIndex));
+          dataSizeInCurrentChunk += 8L + 4L;
           break;
         case DOUBLE:
           chunkWriterImpl.write(time, list.getDouble(sortedRowIndex));
+          dataSizeInCurrentChunk += 8L + 8L;
           break;
         case TEXT:
         case BLOB:
         case STRING:
           Binary value = list.getBinary(sortedRowIndex);
           chunkWriterImpl.write(time, value);
-          binarySizeInCurrentChunk += getBinarySize(value);
+          dataSizeInCurrentChunk += 8L + getBinarySize(value);
           break;
         default:
           LOGGER.error("WritableMemChunk does not support data type: {}", tsDataType);
@@ -383,7 +388,7 @@ public class WritableMemChunk implements IWritableMemChunk {
       }
       pointNumInCurrentChunk++;
       if (pointNumInCurrentChunk > MAX_NUMBER_OF_POINTS_IN_CHUNK
-          || binarySizeInCurrentChunk > TARGET_CHUNK_SIZE) {
+          || dataSizeInCurrentChunk > TARGET_CHUNK_SIZE) {
         chunkWriterImpl.sealCurrentPage();
         chunkWriterImpl.clearPageWriter();
         try {
@@ -392,7 +397,7 @@ public class WritableMemChunk implements IWritableMemChunk {
           Thread.currentThread().interrupt();
         }
         chunkWriterImpl = createIChunkWriter();
-        binarySizeInCurrentChunk = 0;
+        dataSizeInCurrentChunk = 0;
         pointNumInCurrentChunk = 0;
       }
     }

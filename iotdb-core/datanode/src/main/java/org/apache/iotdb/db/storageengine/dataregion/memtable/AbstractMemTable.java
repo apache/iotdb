@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
@@ -96,8 +95,6 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private boolean shouldFlush = false;
   private volatile FlushStatus flushStatus = FlushStatus.WORKING;
-  private final int avgSeriesPointNumThreshold =
-      IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
 
   /** Memory size of data points, including TEXT values. */
   private long memSize = 0;
@@ -176,7 +173,6 @@ public abstract class AbstractMemTable implements IMemTable {
     for (IMeasurementSchema schema : schemaList) {
       if (schema != null && !memChunkGroup.contains(schema.getMeasurementId())) {
         seriesNumber++;
-        totalPointsNumThreshold += avgSeriesPointNumThreshold;
       }
     }
     return memChunkGroup;
@@ -189,14 +185,12 @@ public abstract class AbstractMemTable implements IMemTable {
             deviceId,
             k -> {
               seriesNumber += schemaList.size();
-              totalPointsNumThreshold += ((long) avgSeriesPointNumThreshold) * schemaList.size();
               return new AlignedWritableMemChunkGroup(
                   schemaList.stream().filter(Objects::nonNull).collect(Collectors.toList()));
             });
     for (IMeasurementSchema schema : schemaList) {
       if (schema != null && !memChunkGroup.contains(schema.getMeasurementId())) {
         seriesNumber++;
-        totalPointsNumThreshold += avgSeriesPointNumThreshold;
       }
     }
     return memChunkGroup;

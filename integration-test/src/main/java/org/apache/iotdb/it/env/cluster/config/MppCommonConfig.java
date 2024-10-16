@@ -149,8 +149,8 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
-    setProperty("avg_series_point_number_threshold", String.valueOf(avgSeriesPointNumberThreshold));
+  public CommonConfig setTargetChunkPointNum(int targetChunkPointNum) {
+    setProperty("target_chunk_point_num", String.valueOf(targetChunkPointNum));
     return this;
   }
 

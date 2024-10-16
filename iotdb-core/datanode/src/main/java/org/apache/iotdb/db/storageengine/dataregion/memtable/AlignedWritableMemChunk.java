@@ -58,7 +58,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private final long TARGET_CHUNK_SIZE = CONFIG.getTargetChunkSize();
-  private final long MAX_NUMBER_OF_POINTS_IN_CHUNK = CONFIG.getAvgSeriesPointNumberThreshold();
+  private long MAX_NUMBER_OF_POINTS_IN_CHUNK = CONFIG.getTargetChunkPointNum();
   private final int MAX_NUMBER_OF_POINTS_IN_PAGE =
       TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
 
@@ -330,9 +330,9 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   @Override
   public void encode(BlockingQueue<Object> ioTaskQueue) {
     BitMap rowBitMap = list.getRowBitMap();
-    int avgBinaryPointSize = list.getAvgBinaryPointSize();
-    int maxNumberOfPointsInBinaryChunk =
-        avgBinaryPointSize > 0 ? (int) (TARGET_CHUNK_SIZE / avgBinaryPointSize) : Integer.MAX_VALUE;
+    int avgPointSizeOfLargestColumn = list.getAvgPointSizeOfLargestColumn();
+    MAX_NUMBER_OF_POINTS_IN_CHUNK =
+        Math.min(MAX_NUMBER_OF_POINTS_IN_CHUNK, (TARGET_CHUNK_SIZE / avgPointSizeOfLargestColumn));
 
     boolean[] timeDuplicateInfo = null;
 
@@ -355,8 +355,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
         pageRange.add(sortedRowIndex);
         pointNumInPage = 0;
       }
-      if (pointNumInChunk == MAX_NUMBER_OF_POINTS_IN_CHUNK
-          || pointNumInChunk >= maxNumberOfPointsInBinaryChunk) {
+      if (pointNumInChunk >= MAX_NUMBER_OF_POINTS_IN_CHUNK) {
         if (pointNumInPage != 0) {
           pageRange.add(sortedRowIndex);
           pointNumInPage = 0;

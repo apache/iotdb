@@ -398,12 +398,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "tvlist_sort_algorithm", conf.getTvListSortAlgorithm().toString())));
 
-    conf.setAvgSeriesPointNumberThreshold(
-        Integer.parseInt(
-            properties.getProperty(
-                "avg_series_point_number_threshold",
-                Integer.toString(conf.getAvgSeriesPointNumberThreshold()))));
-
     conf.setCheckPeriodWhenInsertBlocked(
         Integer.parseInt(
             properties.getProperty(

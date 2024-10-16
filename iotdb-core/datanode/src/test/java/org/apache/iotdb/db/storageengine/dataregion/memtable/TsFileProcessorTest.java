@@ -96,7 +96,7 @@ public class TsFileProcessorTest {
   private final Map<String, String> props = Collections.emptyMap();
   private QueryContext context;
   private final String systemDir = TestConstant.OUTPUT_DATA_DIR.concat("info");
-  private int defaultAvgSeriesPointNumberThreshold;
+  private long defaultTargetChunkPointNum;
   private long defaultTargetChunkSize;
   private static final Logger logger = LoggerFactory.getLogger(TsFileProcessorTest.class);
 
@@ -108,7 +108,7 @@ public class TsFileProcessorTest {
     if (!file.getParentFile().exists()) {
       Assert.assertTrue(file.getParentFile().mkdirs());
     }
-    defaultAvgSeriesPointNumberThreshold = config.getAvgSeriesPointNumberThreshold();
+    defaultTargetChunkPointNum = config.getTargetChunkPointNum();
     defaultTargetChunkSize = config.getTargetChunkSize();
     EnvironmentUtils.envSetUp();
     sgInfo = new DataRegionInfo(new DataRegionTest.DummyDataRegion(systemDir, storageGroup));
@@ -128,7 +128,7 @@ public class TsFileProcessorTest {
       }
     } catch (IOException ignored) {
     }
-    config.setAvgSeriesPointNumberThreshold(defaultAvgSeriesPointNumberThreshold);
+    config.setTargetChunkPointNum(defaultTargetChunkPointNum);
     config.setTargetChunkSize(defaultTargetChunkSize);
   }
 
@@ -210,7 +210,7 @@ public class TsFileProcessorTest {
   @Test
   public void testFlushMultiChunks()
       throws IOException, WriteProcessException, MetadataException, ExecutionException {
-    config.setAvgSeriesPointNumberThreshold(40);
+    config.setTargetChunkPointNum(40);
     processor =
         new TsFileProcessor(
             storageGroup,
@@ -364,7 +364,7 @@ public class TsFileProcessorTest {
   @Test
   public void testFlushMultiAlignedChunks()
       throws IOException, WriteProcessException, MetadataException, ExecutionException {
-    config.setAvgSeriesPointNumberThreshold(40);
+    config.setTargetChunkPointNum(40);
     processor =
         new TsFileProcessor(
             storageGroup,

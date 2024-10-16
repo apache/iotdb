@@ -1365,20 +1365,22 @@ public abstract class AlignedTVList extends TVList {
     return new BitMap(rowCount, rowBitsArr);
   }
 
-  public int getAvgBinaryPointSize() {
-    long maxSize = 0;
-    int index = 0;
+  public int getAvgPointSizeOfLargestColumn() {
+    int largestPrimitivePointSize = 8; // TimeColumn or int64,double ValueColumn
+    long largestBinaryChunkSize = 0;
+    int largestBinaryColumnIndex = 0;
     for (int i = 0; i < memoryBinaryChunkSize.length; i++) {
-      if (memoryBinaryChunkSize[i] > maxSize) {
-        maxSize = memoryBinaryChunkSize[i];
-        index = i;
+      if (memoryBinaryChunkSize[i] > largestBinaryChunkSize) {
+        largestBinaryChunkSize = memoryBinaryChunkSize[i];
+        largestBinaryColumnIndex = i;
       }
     }
-    if (maxSize == 0) {
-      return 0;
+    if (largestBinaryChunkSize == 0) {
+      return largestPrimitivePointSize;
     }
-    int pointNum = getColumnValueCnt(index);
-    return (int) (maxSize / pointNum);
+    int avgPointSizeOfLargestBinaryColumn =
+        (int) largestBinaryChunkSize / getColumnValueCnt(largestBinaryColumnIndex);
+    return Math.max(avgPointSizeOfLargestBinaryColumn, largestPrimitivePointSize);
   }
 
   public int getColumnValueCnt(int columnIndex) {
