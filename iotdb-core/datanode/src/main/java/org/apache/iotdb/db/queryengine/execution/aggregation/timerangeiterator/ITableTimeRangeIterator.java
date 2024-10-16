@@ -17,23 +17,33 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.value;
+package org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator;
 
-import org.apache.tsfile.read.TimeValuePair;
-import org.apache.tsfile.utils.TsPrimitiveType;
+import org.apache.tsfile.read.common.TimeRange;
 
-// this interface declares the simplest storage operation of lastCacheValue
-public interface ILastCacheValue {
+public interface ITableTimeRangeIterator {
 
-  long getTimestamp();
+  TimeIteratorType getType();
 
-  TsPrimitiveType getValue();
+  /**
+   * @return whether current iterator has next time range.
+   */
+  boolean hasNextTimeRange();
 
-  void setTimestamp(long timestamp);
+  boolean hasCachedTimeRange();
 
-  void setValue(TsPrimitiveType value);
+  TimeRange getCurTimeRange();
 
-  TimeValuePair getTimeValuePair();
+  boolean canFinishCurrentTimeRange(long startTime);
 
-  int estimateSize();
+  void resetCurTimeRange();
+
+  void updateCurTimeRange(long startTime);
+
+  void setFinished();
+
+  enum TimeIteratorType {
+    DATE_BIN_TIME_ITERATOR,
+    SINGLE_TIME_ITERATOR
+  }
 }

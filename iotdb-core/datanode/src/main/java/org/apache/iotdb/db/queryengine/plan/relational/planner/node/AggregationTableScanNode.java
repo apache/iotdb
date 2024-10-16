@@ -199,9 +199,7 @@ public class AggregationTableScanNode extends TableScanNode {
   }
 
   public boolean isStreamable() {
-    return !preGroupedSymbols.isEmpty()
-        && groupingSets.getGroupingSetCount() == 1
-        && groupingSets.getGlobalGroupingSets().isEmpty();
+    return true;
   }
 
   public AggregationNode.Step getStep() {

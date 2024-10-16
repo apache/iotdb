@@ -211,7 +211,7 @@ public class AvgAccumulator implements TableAccumulator {
 
   @Override
   public void reset() {
-    initResult = false;
+    this.initResult = false;
     this.countValue = 0;
     this.sumValue = 0.0;
   }

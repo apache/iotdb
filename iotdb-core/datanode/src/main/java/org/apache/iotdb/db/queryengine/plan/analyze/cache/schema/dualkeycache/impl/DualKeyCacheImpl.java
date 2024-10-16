@@ -19,26 +19,25 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.SchemaCacheEntry;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheComputation;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheStats;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheUpdating;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.DataNodeLastCacheManager;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableId;
+
+import javax.annotation.Nonnull;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
-import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.ToIntFunction;
 
 class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
     implements IDualKeyCache<FK, SK, V> {
@@ -53,22 +52,22 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   private final CacheStats cacheStats;
 
   DualKeyCacheImpl(
-      ICacheEntryManager<FK, SK, V, T> cacheEntryManager,
-      ICacheSizeComputer<FK, SK, V> sizeComputer,
-      long memoryCapacity) {
+      final ICacheEntryManager<FK, SK, V, T> cacheEntryManager,
+      final ICacheSizeComputer<FK, SK, V> sizeComputer,
+      final long memoryCapacity) {
     this.cacheEntryManager = cacheEntryManager;
     this.sizeComputer = sizeComputer;
     this.cacheStats = new CacheStats(memoryCapacity);
   }
 
   @Override
-  public V get(FK firstKey, SK secondKey) {
-    ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
+  public V get(final FK firstKey, final SK secondKey) {
+    final ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
     if (cacheEntryGroup == null) {
       cacheStats.recordMiss(1);
       return null;
     } else {
-      T cacheEntry = cacheEntryGroup.getCacheEntry(secondKey);
+      final T cacheEntry = cacheEntryGroup.getCacheEntry(secondKey);
       if (cacheEntry == null) {
         cacheStats.recordMiss(1);
         return null;
@@ -81,10 +80,10 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   }
 
   @Override
-  public void compute(IDualKeyCacheComputation<FK, SK, V> computation) {
-    FK firstKey = computation.getFirstKey();
-    ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
-    SK[] secondKeyList = computation.getSecondKeyList();
+  public void compute(final IDualKeyCacheComputation<FK, SK, V> computation) {
+    final FK firstKey = computation.getFirstKey();
+    final ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
+    final SK[] secondKeyList = computation.getSecondKeyList();
     if (cacheEntryGroup == null) {
       for (int i = 0; i < secondKeyList.length; i++) {
         computation.computeValue(i, null);
@@ -109,10 +108,10 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   }
 
   @Override
-  public void update(IDualKeyCacheUpdating<FK, SK, V> updating) {
-    FK firstKey = updating.getFirstKey();
-    ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
-    SK[] secondKeyList = updating.getSecondKeyList();
+  public void updateWithLock(final IDualKeyCacheUpdating<FK, SK, V> updating) {
+    final FK firstKey = updating.getFirstKey();
+    final ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
+    final SK[] secondKeyList = updating.getSecondKeyList();
     if (cacheEntryGroup == null) {
       for (int i = 0; i < secondKeyList.length; i++) {
         updating.updateValue(i, null);
@@ -120,7 +119,6 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
       cacheStats.recordMiss(secondKeyList.length);
     } else {
       T cacheEntry;
-      int hitCount = 0;
       for (int i = 0; i < secondKeyList.length; i++) {
         cacheEntry = cacheEntryGroup.getCacheEntry(secondKeyList[i]);
         if (cacheEntry == null) {
@@ -134,33 +132,19 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
               // Synchronized is to guarantee the cache entry is not evicted during the update.
               changeSize = updating.updateValue(i, cacheEntry.getValue());
               cacheEntryManager.access(cacheEntry);
-              if (changeSize != 0) {
-                cacheStats.increaseMemoryUsage(changeSize);
-              }
             }
           }
-          if (changeSize != 0 && cacheStats.isExceedMemoryCapacity()) {
-            executeCacheEviction(changeSize);
+          if (changeSize > 0) {
+            increaseMemoryUsageAndMayEvict(changeSize);
           }
-          hitCount++;
         }
       }
-      cacheStats.recordHit(hitCount);
-      cacheStats.recordMiss(secondKeyList.length - hitCount);
     }
   }
 
   @Override
-  public void put(FK firstKey, SK secondKey, V value) {
-    int usedMemorySize = putToCache(firstKey, secondKey, value);
-    cacheStats.increaseMemoryUsage(usedMemorySize);
-    if (cacheStats.isExceedMemoryCapacity()) {
-      executeCacheEviction(usedMemorySize);
-    }
-  }
-
-  private int putToCache(FK firstKey, SK secondKey, V value) {
-    AtomicInteger usedMemorySize = new AtomicInteger(0);
+  public void put(final FK firstKey, final SK secondKey, final V value) {
+    final AtomicInteger usedMemorySize = new AtomicInteger(0);
     firstKeyMap.compute(
         firstKey,
         (k, cacheEntryGroup) -> {
@@ -168,7 +152,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
             cacheEntryGroup = new CacheEntryGroupImpl<>(firstKey);
             usedMemorySize.getAndAdd(sizeComputer.computeFirstKeySize(firstKey));
           }
-          ICacheEntryGroup<FK, SK, V, T> finalCacheEntryGroup = cacheEntryGroup;
+          final ICacheEntryGroup<FK, SK, V, T> finalCacheEntryGroup = cacheEntryGroup;
           cacheEntryGroup.computeCacheEntry(
               secondKey,
               (sk, cacheEntry) -> {
@@ -178,7 +162,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
                   cacheEntryManager.put(cacheEntry);
                   usedMemorySize.getAndAdd(sizeComputer.computeSecondKeySize(sk));
                 } else {
-                  V existingValue = cacheEntry.getValue();
+                  final V existingValue = cacheEntry.getValue();
                   if (existingValue != value && !existingValue.equals(value)) {
                     cacheEntry.replaceValue(value);
                     usedMemorySize.getAndAdd(-sizeComputer.computeValueSize(existingValue));
@@ -191,177 +175,160 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
               });
           return cacheEntryGroup;
         });
-    return usedMemorySize.get();
+    increaseMemoryUsageAndMayEvict(usedMemorySize.get());
   }
 
-  /**
-   * Each thread putting new cache value only needs to evict cache values, total memory equals that
-   * the new cache value occupied.
-   */
-  private void executeCacheEviction(int targetSize) {
-    int evictedSize;
-    while (targetSize > 0 && cacheStats.memoryUsage() > 0) {
-      evictedSize = evictOneCacheEntry();
-      cacheStats.decreaseMemoryUsage(evictedSize);
-      targetSize -= evictedSize;
+  @Override
+  public void update(
+      final FK firstKey,
+      final @Nonnull SK secondKey,
+      final V value,
+      final ToIntFunction<V> updater,
+      final boolean createIfNotExists) {
+    final AtomicInteger usedMemorySize = new AtomicInteger(0);
+
+    firstKeyMap.compute(
+        firstKey,
+        (k, cacheEntryGroup) -> {
+          if (cacheEntryGroup == null) {
+            if (!createIfNotExists) {
+              return null;
+            }
+            cacheEntryGroup = new CacheEntryGroupImpl<>(firstKey);
+            usedMemorySize.getAndAdd(sizeComputer.computeFirstKeySize(firstKey));
+          }
+          final ICacheEntryGroup<FK, SK, V, T> finalCacheEntryGroup = cacheEntryGroup;
+
+          final T cacheEntry =
+              createIfNotExists
+                  ? cacheEntryGroup.computeCacheEntryIfAbsent(
+                      secondKey,
+                      sk -> {
+                        final T entry =
+                            cacheEntryManager.createCacheEntry(
+                                secondKey, value, finalCacheEntryGroup);
+                        cacheEntryManager.put(entry);
+                        usedMemorySize.getAndAdd(
+                            sizeComputer.computeSecondKeySize(sk)
+                                + sizeComputer.computeValueSize(entry.getValue()));
+                        return entry;
+                      })
+                  : cacheEntryGroup.getCacheEntry(secondKey);
+
+          if (Objects.nonNull(cacheEntry)) {
+            final int result = updater.applyAsInt(cacheEntry.getValue());
+            if (Objects.nonNull(cacheEntryGroup.getCacheEntry(secondKey))) {
+              usedMemorySize.getAndAdd(result);
+            }
+          }
+          return cacheEntryGroup;
+        });
+    increaseMemoryUsageAndMayEvict(usedMemorySize.get());
+  }
+
+  @Override
+  public void update(
+      final FK firstKey, final Predicate<SK> secondKeyChecker, final ToIntFunction<V> updater) {
+    final AtomicInteger usedMemorySize = new AtomicInteger(0);
+
+    firstKeyMap.compute(
+        firstKey,
+        (k, cacheEntryGroup) -> {
+          if (cacheEntryGroup == null) {
+            return null;
+          }
+          final ICacheEntryGroup<FK, SK, V, T> finalCacheEntryGroup = cacheEntryGroup;
+
+          cacheEntryGroup
+              .getAllCacheEntries()
+              .forEachRemaining(
+                  entry -> {
+                    if (!secondKeyChecker.test(entry.getKey())) {
+                      return;
+                    }
+                    final int result = updater.applyAsInt(entry.getValue().getValue());
+                    if (Objects.nonNull(finalCacheEntryGroup.getCacheEntry(entry.getKey()))) {
+                      usedMemorySize.getAndAdd(result);
+                    }
+                  });
+          return cacheEntryGroup;
+        });
+    increaseMemoryUsageAndMayEvict(usedMemorySize.get());
+  }
+
+  @Override
+  public void update(
+      final Predicate<FK> firstKeyChecker,
+      final Predicate<SK> secondKeyChecker,
+      final ToIntFunction<V> updater) {
+    final AtomicInteger usedMemorySize = new AtomicInteger(0);
+    for (final FK firstKey : firstKeyMap.getAllKeys()) {
+      if (!firstKeyChecker.test(firstKey)) {
+        continue;
+      }
+      final ICacheEntryGroup<FK, SK, V, T> entryGroup = firstKeyMap.get(firstKey);
+      if (Objects.nonNull(entryGroup)) {
+        entryGroup
+            .getAllCacheEntries()
+            .forEachRemaining(
+                entry -> {
+                  if (!secondKeyChecker.test(entry.getKey())) {
+                    return;
+                  }
+                  final int result = updater.applyAsInt(entry.getValue().getValue());
+                  if (Objects.nonNull(entryGroup.getCacheEntry(entry.getKey()))) {
+                    usedMemorySize.getAndAdd(result);
+                  }
+                });
+      }
+    }
+    increaseMemoryUsageAndMayEvict(usedMemorySize.get());
+  }
+
+  private void increaseMemoryUsageAndMayEvict(final int memorySize) {
+    cacheStats.increaseMemoryUsage(memorySize);
+    while (cacheStats.isExceedMemoryCapacity()) {
+      cacheStats.decreaseMemoryUsage(evictOneCacheEntry());
     }
   }
 
   private int evictOneCacheEntry() {
-
-    ICacheEntry<SK, V> evictCacheEntry = cacheEntryManager.evict();
+    final ICacheEntry<SK, V> evictCacheEntry = cacheEntryManager.evict();
     if (evictCacheEntry == null) {
       return 0;
     }
-    synchronized (evictCacheEntry) {
-      AtomicInteger evictedSize = new AtomicInteger(0);
-      evictedSize.getAndAdd(sizeComputer.computeValueSize(evictCacheEntry.getValue()));
 
-      ICacheEntryGroup<FK, SK, V, T> belongedGroup = evictCacheEntry.getBelongedGroup();
-      evictCacheEntry.setBelongedGroup(null);
-      belongedGroup.removeCacheEntry(evictCacheEntry.getSecondKey());
-      evictedSize.getAndAdd(sizeComputer.computeSecondKeySize(evictCacheEntry.getSecondKey()));
+    final AtomicInteger evictedSize = new AtomicInteger(0);
+    evictedSize.getAndAdd(sizeComputer.computeValueSize(evictCacheEntry.getValue()));
 
-      if (belongedGroup.isEmpty()) {
-        firstKeyMap.compute(
-            belongedGroup.getFirstKey(),
-            (firstKey, cacheEntryGroup) -> {
-              if (cacheEntryGroup == null) {
-                // has been removed by other threads
-                return null;
-              }
-              if (cacheEntryGroup.isEmpty()) {
-                evictedSize.getAndAdd(sizeComputer.computeFirstKeySize(firstKey));
-                return null;
-              }
+    final ICacheEntryGroup<FK, SK, V, T> belongedGroup = evictCacheEntry.getBelongedGroup();
+    evictCacheEntry.setBelongedGroup(null);
+    belongedGroup.removeCacheEntry(evictCacheEntry.getSecondKey());
+    evictedSize.getAndAdd(sizeComputer.computeSecondKeySize(evictCacheEntry.getSecondKey()));
 
-              // some other thread has put value to it
-              return cacheEntryGroup;
-            });
-      }
-      return evictedSize.get();
-    }
-  }
-
-  @Override
-  public void invalidateLastCache(PartialPath path) {
-    String measurement = path.getMeasurement();
-    PartialPath devicePath = path.getDevicePath();
-    Function<FK, Boolean> deviceFilter = null;
-    Function<SK, Boolean> measurementFilter = null;
-
-    if (PathPatternUtil.hasWildcard(devicePath.getFullPath())) {
-      deviceFilter = d -> devicePath.matchFullPath((PartialPath) d);
-    }
-    if (PathPatternUtil.isMultiLevelMatchWildcard(measurement)) {
-      measurementFilter = m -> true;
-    }
-    if (deviceFilter == null) {
-      deviceFilter = d -> d.equals(devicePath);
-    }
-
-    if (measurementFilter == null) {
-      measurementFilter = m -> PathPatternUtil.isNodeMatch(measurement, m.toString());
-    }
-
-    for (FK device : firstKeyMap.getAllKeys()) {
-      if (Boolean.TRUE.equals(deviceFilter.apply(device))) {
-        ICacheEntryGroup<FK, SK, V, T> entryGroup = firstKeyMap.get(device);
-        for (Iterator<Map.Entry<SK, T>> it = entryGroup.getAllCacheEntries(); it.hasNext(); ) {
-          Map.Entry<SK, T> entry = it.next();
-          if (Boolean.TRUE.equals(measurementFilter.apply(entry.getKey()))) {
-            T cacheEntry = entry.getValue();
-            synchronized (cacheEntry) {
-              SchemaCacheEntry schemaCacheEntry = (SchemaCacheEntry) cacheEntry.getValue();
-              cacheStats.decreaseMemoryUsage(
-                  DataNodeLastCacheManager.invalidateLastCache(schemaCacheEntry));
+    if (belongedGroup.isEmpty()) {
+      firstKeyMap.compute(
+          belongedGroup.getFirstKey(),
+          (firstKey, cacheEntryGroup) -> {
+            if (cacheEntryGroup == null) {
+              // has been removed by other threads
+              return null;
             }
-          }
-        }
-      }
-    }
-  }
+            if (cacheEntryGroup.isEmpty()) {
+              evictedSize.getAndAdd(sizeComputer.computeFirstKeySize(firstKey));
+              return null;
+            }
 
-  @Override
-  public void invalidateDataRegionLastCache(String database) {
-    for (FK device : firstKeyMap.getAllKeys()) {
-      if (device.toString().startsWith(database)) {
-        ICacheEntryGroup<FK, SK, V, T> entryGroup = firstKeyMap.get(device);
-        for (Iterator<Map.Entry<SK, T>> it = entryGroup.getAllCacheEntries(); it.hasNext(); ) {
-          Map.Entry<SK, T> entry = it.next();
-          T cacheEntry = entry.getValue();
-          synchronized (cacheEntry) {
-            SchemaCacheEntry schemaCacheEntry = (SchemaCacheEntry) cacheEntry.getValue();
-            cacheStats.decreaseMemoryUsage(
-                DataNodeLastCacheManager.invalidateLastCache(schemaCacheEntry));
-          }
-        }
-      }
+            // some other thread has put value to it
+            return cacheEntryGroup;
+          });
     }
+    return evictedSize.get();
   }
 
   @Override
   public void invalidateAll() {
     executeInvalidateAll();
-  }
-
-  @Override
-  public void invalidate(String database) {
-    int estimateSize = 0;
-    for (FK device : firstKeyMap.getAllKeys()) {
-      if (device.toString().startsWith(database)) {
-        estimateSize += sizeComputer.computeFirstKeySize(device);
-        ICacheEntryGroup<FK, SK, V, T> entryGroup = firstKeyMap.get(device);
-        for (Iterator<Map.Entry<SK, T>> it = entryGroup.getAllCacheEntries(); it.hasNext(); ) {
-          Map.Entry<SK, T> entry = it.next();
-          estimateSize += sizeComputer.computeSecondKeySize(entry.getKey());
-          estimateSize += sizeComputer.computeValueSize(entry.getValue().getValue());
-          cacheEntryManager.invalid(entry.getValue());
-        }
-        firstKeyMap.remove(device);
-      }
-    }
-    cacheStats.decreaseMemoryUsage(estimateSize);
-  }
-
-  @Override
-  public void invalidate(List<? extends PartialPath> partialPathList) {
-    int estimateSize = 0;
-    for (PartialPath path : partialPathList) {
-      String measurement = path.getMeasurement();
-      Function<FK, Boolean> deviceFilter;
-      Function<SK, Boolean> measurementFilter;
-      if (PathPatternUtil.isMultiLevelMatchWildcard(measurement)) {
-        deviceFilter = d -> d.toString().startsWith(path.getDevicePath().getFullPath());
-        measurementFilter = m -> true;
-      } else {
-        deviceFilter = d -> d.toString().equals(path.getDevicePath().getFullPath());
-        measurementFilter = m -> PathPatternUtil.isNodeMatch(measurement, m.toString());
-      }
-      for (FK device : firstKeyMap.getAllKeys()) {
-        if (Boolean.TRUE.equals(deviceFilter.apply(device))) {
-          boolean allSKInvalid = true;
-          ICacheEntryGroup<FK, SK, V, T> entryGroup = firstKeyMap.get(device);
-          for (Iterator<Map.Entry<SK, T>> it = entryGroup.getAllCacheEntries(); it.hasNext(); ) {
-            Map.Entry<SK, T> entry = it.next();
-            if (Boolean.TRUE.equals(measurementFilter.apply(entry.getKey()))) {
-              estimateSize += sizeComputer.computeSecondKeySize(entry.getKey());
-              estimateSize += sizeComputer.computeValueSize(entry.getValue().getValue());
-              cacheEntryManager.invalid(entry.getValue());
-              it.remove();
-            } else {
-              allSKInvalid = false;
-            }
-          }
-          if (allSKInvalid) {
-            firstKeyMap.remove(device);
-            estimateSize += sizeComputer.computeFirstKeySize(device);
-          }
-        }
-      }
-    }
-
-    cacheStats.decreaseMemoryUsage(estimateSize);
   }
 
   private void executeInvalidateAll() {
@@ -388,36 +355,74 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   }
 
   @Override
-  public void invalidate(FK firstKey) {
+  public void invalidate(final FK firstKey) {
     int estimateSize = 0;
-    ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.remove(firstKey);
+    final ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.remove(firstKey);
     if (cacheEntryGroup != null) {
       estimateSize += sizeComputer.computeFirstKeySize(firstKey);
-      for (Iterator<Map.Entry<SK, T>> it = cacheEntryGroup.getAllCacheEntries(); it.hasNext(); ) {
-        Map.Entry<SK, T> entry = it.next();
-        estimateSize += sizeComputer.computeSecondKeySize(entry.getKey());
-        estimateSize += sizeComputer.computeValueSize(entry.getValue().getValue());
-        cacheEntryManager.invalid(entry.getValue());
+      for (final Iterator<Map.Entry<SK, T>> it = cacheEntryGroup.getAllCacheEntries();
+          it.hasNext(); ) {
+        final Map.Entry<SK, T> entry = it.next();
+        if (cacheEntryManager.invalid(entry.getValue())) {
+          estimateSize +=
+              sizeComputer.computeSecondKeySize(entry.getKey())
+                  + sizeComputer.computeValueSize(entry.getValue().getValue());
+        }
       }
       cacheStats.decreaseMemoryUsage(estimateSize);
     }
   }
 
   @Override
-  public void invalidateForTable(String database) {
+  public void invalidate(final FK firstKey, final SK secondKey) {
+    final AtomicInteger usedMemorySize = new AtomicInteger(0);
+
+    firstKeyMap.compute(
+        firstKey,
+        (key, cacheEntryGroup) -> {
+          if (cacheEntryGroup == null) {
+            // has been removed by other threads
+            return null;
+          }
+
+          final T entry = cacheEntryGroup.getCacheEntry(secondKey);
+          if (Objects.nonNull(entry) && cacheEntryManager.invalid(entry)) {
+            usedMemorySize.getAndAdd(
+                sizeComputer.computeSecondKeySize(entry.getSecondKey())
+                    + sizeComputer.computeValueSize(entry.getValue()));
+            cacheEntryGroup.removeCacheEntry(entry.getSecondKey());
+          }
+
+          if (cacheEntryGroup.isEmpty()) {
+            usedMemorySize.getAndAdd(sizeComputer.computeFirstKeySize(firstKey));
+            return null;
+          }
+
+          return cacheEntryGroup;
+        });
+  }
+
+  @Override
+  public void invalidate(
+      final Predicate<FK> firstKeyChecker, final Predicate<SK> secondKeyChecker) {
     int estimateSize = 0;
-    for (FK firstKey : firstKeyMap.getAllKeys()) {
-      TableId tableId = (TableId) firstKey;
-      if (tableId.belongTo(database)) {
-        estimateSize += sizeComputer.computeFirstKeySize(firstKey);
-        ICacheEntryGroup<FK, SK, V, T> entryGroup = firstKeyMap.get(firstKey);
-        for (Iterator<Map.Entry<SK, T>> it = entryGroup.getAllCacheEntries(); it.hasNext(); ) {
-          Map.Entry<SK, T> entry = it.next();
-          estimateSize += sizeComputer.computeSecondKeySize(entry.getKey());
-          estimateSize += sizeComputer.computeValueSize(entry.getValue().getValue());
-          cacheEntryManager.invalid(entry.getValue());
+    for (final FK firstKey : firstKeyMap.getAllKeys()) {
+      if (!firstKeyChecker.test(firstKey)) {
+        continue;
+      }
+      final ICacheEntryGroup<FK, SK, V, T> entryGroup = firstKeyMap.get(firstKey);
+      for (final Iterator<Map.Entry<SK, T>> it = entryGroup.getAllCacheEntries(); it.hasNext(); ) {
+        final Map.Entry<SK, T> entry = it.next();
+        if (!secondKeyChecker.test(entry.getKey())) {
+          continue;
         }
-        firstKeyMap.remove(firstKey);
+
+        if (cacheEntryManager.invalid(entry.getValue())) {
+          entryGroup.removeCacheEntry(entry.getKey());
+          estimateSize +=
+              sizeComputer.computeSecondKeySize(entry.getKey())
+                  + sizeComputer.computeValueSize(entry.getValue().getValue());
+        }
       }
     }
     cacheStats.decreaseMemoryUsage(estimateSize);
