@@ -139,6 +139,10 @@ public class LoadTsFileStatement extends Statement {
     this.database = database;
   }
 
+  public void setModel(String model) {
+    this.model = model;
+  }
+
   public void setVerifySchema(boolean verifySchema) {
     this.verifySchema = verifySchema;
   }
