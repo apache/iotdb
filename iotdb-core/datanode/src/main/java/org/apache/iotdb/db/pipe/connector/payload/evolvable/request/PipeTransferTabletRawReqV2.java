@@ -104,6 +104,8 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
     tabletReq.tablet = tablet;
     tabletReq.isAligned = isAligned;
     tabletReq.dataBaseName = dataBaseName;
+    tabletReq.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
+    tabletReq.type = PipeRequestType.TRANSFER_TABLET_RAW_V2.getType();
 
     return tabletReq;
   }
@@ -154,7 +156,7 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
-      ReadWriteIOUtils.write(PipeRequestType.TRANSFER_TABLET_RAW.getType(), outputStream);
+      ReadWriteIOUtils.write(PipeRequestType.TRANSFER_TABLET_RAW_V2.getType(), outputStream);
       tablet.serialize(outputStream);
       ReadWriteIOUtils.write(isAligned, outputStream);
       ReadWriteIOUtils.write(dataBaseName, outputStream);

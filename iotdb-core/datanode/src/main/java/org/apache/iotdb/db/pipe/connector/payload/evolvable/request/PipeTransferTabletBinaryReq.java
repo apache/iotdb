@@ -68,7 +68,7 @@ public class PipeTransferTabletBinaryReq extends TPipeTransferReq {
         IoTDBDataNodeReceiver.PLAN_TO_STATEMENT_VISITOR.process(insertNode, null);
   }
 
-  private InsertNode parseByteBuffer() {
+  protected InsertNode parseByteBuffer() {
     final PlanNode node = WALEntry.deserializeForConsensus(byteBuffer);
     return node instanceof InsertNode ? (InsertNode) node : null;
   }

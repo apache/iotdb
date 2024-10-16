@@ -80,6 +80,7 @@ public class PipeTransferTabletInsertNodeReqV2 extends PipeTransferTabletInsertN
     req.dataBaseName = dataBaseName;
     req.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
     req.type = PipeRequestType.TRANSFER_TABLET_INSERT_NODE_V2.getType();
+
     return req;
   }
 
