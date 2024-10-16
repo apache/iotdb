@@ -699,18 +699,18 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private TSStatus executeStatement(Statement statement) {
-    if (statement instanceof InsertBaseStatement
-        && ((InsertBaseStatement) statement).isWriteToTable()) {
-      return executeStatementForTableModel(
-          statement, ((InsertBaseStatement) statement).getDatabaseName().get());
-    }
-
     if (statement instanceof LoadTsFileStatement
         && ((LoadTsFileStatement) statement)
             .getModel()
             .equals(LoadTsFileConfigurator.MODEL_TABLE_VALUE)) {
       return executeStatementForTableModel(
           statement, ((LoadTsFileStatement) statement).getDatabase());
+    }
+
+    if (statement instanceof InsertBaseStatement
+        && ((InsertBaseStatement) statement).isWriteToTable()) {
+      return executeStatementForTableModel(
+          statement, ((InsertBaseStatement) statement).getDatabaseName().get());
     }
 
     return executeStatementForTreeModel(statement);
