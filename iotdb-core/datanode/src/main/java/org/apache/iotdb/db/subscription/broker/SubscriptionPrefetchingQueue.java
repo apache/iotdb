@@ -83,6 +83,12 @@ public abstract class SubscriptionPrefetchingQueue {
    * SubscriptionPrefetchingQueue#ack}, etc. However, it does not enforce mutual exclusion among the
    * other operations themselves.
    *
+   * <p>Under the premise of obtaining this lock, to avoid inconsistencies, updates to the {@link
+   * SubscriptionEvent} in both {@link SubscriptionPrefetchingQueue#prefetchingQueue} and {@link
+   * SubscriptionPrefetchingQueue#inFlightEvents} MUST be performed within the {@link
+   * ConcurrentHashMap#compute} method of inFlightEvents in the {@link
+   * SubscriptionPrefetchingQueue}.
+   *
    * <p>This lock is created with fairness set to true, which means threads acquire the lock in the
    * order they requested it, to avoid thread starvation.
    */
