@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 
 import javax.annotation.Nonnull;
 
@@ -39,6 +40,12 @@ public abstract class AbstractTableSchemaQueryAttributeSecurityVisitor<R>
   @Override
   public R visitPlan(final PlanNode node, final ConsensusGroupId context) {
     return null;
+  }
+
+  @Override
+  public R visitIdentitySink(final IdentitySinkNode node, final ConsensusGroupId context) {
+    // TODO: apply multi regions?
+    return node.getChildren().get(0).accept(this, context);
   }
 
   @Override
