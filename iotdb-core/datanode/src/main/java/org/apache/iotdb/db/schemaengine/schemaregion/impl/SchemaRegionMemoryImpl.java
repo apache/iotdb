@@ -1403,8 +1403,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       TableDeviceSchemaCache.getInstance()
           .updateAttributes(
               databaseName, convertIdValuesToDeviceID(tableName, deviceId), resultMap);
-      deviceAttributeCacheUpdater.update(tableName, deviceId, resultMap);
     }
+    deviceAttributeCacheUpdater.update(tableName, deviceId, resultMap);
   }
 
   @Override
