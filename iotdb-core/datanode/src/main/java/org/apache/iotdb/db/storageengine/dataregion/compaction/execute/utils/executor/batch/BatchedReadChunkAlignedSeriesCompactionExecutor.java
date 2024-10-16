@@ -241,7 +241,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
     protected ChunkLoader getChunkLoader(TsFileSequenceReader reader, ChunkMetadata chunkMetadata)
         throws IOException {
       ChunkLoader chunkLoader = super.getChunkLoader(reader, chunkMetadata);
-      if (!chunkLoader.isEmpty() && chunkLoader.getChunkMetadata().getMeasurementUid().isEmpty()) {
+      if (!chunkLoader.isEmpty() && AlignedSeriesBatchCompactionUtils.isTimeChunk(chunkMetadata)) {
         batchCompactionPlan.addTimeChunkToCache(
             reader.getFileName(), chunkMetadata.getOffsetOfChunkHeader(), chunkLoader.getChunk());
       }
@@ -311,7 +311,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
     @Override
     protected ChunkLoader getChunkLoader(TsFileSequenceReader reader, ChunkMetadata chunkMetadata)
         throws IOException {
-      if (chunkMetadata != null && chunkMetadata.getMeasurementUid().isEmpty()) {
+      if (chunkMetadata != null && AlignedSeriesBatchCompactionUtils.isTimeChunk(chunkMetadata)) {
         Chunk timeChunk = batchCompactionPlan.getTimeChunkFromCache(reader, chunkMetadata);
         return new InstantChunkLoader(reader.getFileName(), chunkMetadata, timeChunk);
       }
