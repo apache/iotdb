@@ -87,6 +87,7 @@ public class CompactionTaskQueue extends FixedPriorityBlockingQueue<AbstractComp
     if (!task.tryOccupyResourcesForRunning()) {
       put(task);
       Thread.sleep(TimeUnit.SECONDS.toMillis(1));
+      System.out.println("sleep");
       return false;
     }
     if (!transitTaskFileStatus(task)) {

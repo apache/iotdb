@@ -68,7 +68,7 @@ public class CompactionWorker implements Runnable {
       try {
         task = compactionTaskQueue.tryTakeCompactionTask(compactionWorkerType);
         if (task == null) {
-          Thread.sleep(TimeUnit.SECONDS.toMillis(1));
+          Thread.sleep(TimeUnit.MILLISECONDS.toMillis(100));
           continue;
         }
       } catch (InterruptedException e) {

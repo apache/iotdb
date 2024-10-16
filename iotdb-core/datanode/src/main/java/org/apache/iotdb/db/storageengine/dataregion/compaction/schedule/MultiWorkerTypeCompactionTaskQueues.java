@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.DefaultCompactionTaskComparatorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.worker.CompactionWorkerType;
@@ -111,11 +112,22 @@ public class MultiWorkerTypeCompactionTaskQueues {
   }
 
   public void put(AbstractCompactionTask compactionTask) throws InterruptedException {
-    if (compactionTask.getCompactionRewriteFileSize()
-        > config.getSmallCompactionTaskFileSizeInBytes()) {
-      candidateNormalCompactionTaskQueue.put(compactionTask);
+    long avgZeroLevelFileSize = FileMetrics.getInstance().getAverageTsFileSize(0);
+    boolean isSmallTask;
+    if (avgZeroLevelFileSize > 0) {
+      isSmallTask =
+          compactionTask.getCompactionRewriteFileSize()
+                  / compactionTask.getAllSourceTsFiles().size()
+              < avgZeroLevelFileSize / 2;
     } else {
+      isSmallTask =
+          compactionTask.getCompactionRewriteFileSize()
+              < config.getSmallCompactionTaskFileSizeInBytes();
+    }
+    if (isSmallTask) {
       candidateLightweightCompactionTaskQueue.put(compactionTask);
+    } else {
+      candidateNormalCompactionTaskQueue.put(compactionTask);
     }
   }
 
