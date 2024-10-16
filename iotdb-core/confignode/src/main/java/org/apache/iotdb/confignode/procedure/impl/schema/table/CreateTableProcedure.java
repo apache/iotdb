@@ -190,6 +190,10 @@ public class CreateTableProcedure
     final Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
         env.getConfigManager().getRelatedSchemaRegionGroup(patternTree);
 
+    if (relatedSchemaRegionGroup.isEmpty()) {
+      return;
+    }
+
     final List<TCheckTimeSeriesExistenceResp> respList = new ArrayList<>();
     DataNodeRegionTaskExecutor<TCheckTimeSeriesExistenceReq, TCheckTimeSeriesExistenceResp>
         regionTask =

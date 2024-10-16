@@ -19,14 +19,22 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.consensus.request.write.table.DropTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
+import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecutor;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.state.schema.DropTableState;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -34,7 +42,17 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.BiFunction;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 
 public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTableState> {
 
@@ -106,7 +124,25 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
   }
 
   private void deleteData(final ConfigNodeProcedureEnv env) {
-    // TODO
+    final PathPatternTree patternTree = new PathPatternTree();
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    final PartialPath path;
+    try {
+      path = new PartialPath(new String[] {ROOT, database, table.getTableName()});
+      patternTree.appendPathPattern(path);
+      patternTree.appendPathPattern(path.concatAsMeasurementPath(MULTI_LEVEL_PATH_WILDCARD));
+      patternTree.serialize(dataOutputStream);
+    } catch (final IOException e) {
+      LOGGER.warn("failed to serialize request for table {}.{}", database, table.getTableName(), e);
+    }
+
+    final Map<TConsensusGroupId, TRegionReplicaSet> relatedDataRegionGroup =
+        env.getConfigManager().getRelatedDataRegionGroup(patternTree);
+
+    if (relatedDataRegionGroup.isEmpty()) {
+      return;
+    }
   }
 
   private void dropTable(final ConfigNodeProcedureEnv env) {
@@ -142,5 +178,77 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
   @Override
   protected DropTableState getInitialState() {
     return DropTableState.CHECK_AND_INVALIDATE_TABLE;
+  }
+
+  private class DropTableRegionTaskExecutor<Q> extends DataNodeRegionTaskExecutor<Q, TSStatus> {
+
+    private final String taskName;
+
+    DropTableRegionTaskExecutor(
+        final String taskName,
+        final ConfigNodeProcedureEnv env,
+        final Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup,
+        final CnToDnAsyncRequestType dataNodeRequestType,
+        final BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
+      super(env, targetSchemaRegionGroup, false, dataNodeRequestType, dataNodeRequestGenerator);
+      this.taskName = taskName;
+    }
+
+    DropTableRegionTaskExecutor(
+        final String taskName,
+        final ConfigNodeProcedureEnv env,
+        final Map<TConsensusGroupId, TRegionReplicaSet> targetDataRegionGroup,
+        final boolean executeOnAllReplicaset,
+        final CnToDnAsyncRequestType dataNodeRequestType,
+        final BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
+      super(
+          env,
+          targetDataRegionGroup,
+          executeOnAllReplicaset,
+          dataNodeRequestType,
+          dataNodeRequestGenerator);
+      this.taskName = taskName;
+    }
+
+    @Override
+    protected List<TConsensusGroupId> processResponseOfOneDataNode(
+        final TDataNodeLocation dataNodeLocation,
+        final List<TConsensusGroupId> consensusGroupIdList,
+        final TSStatus response) {
+      final List<TConsensusGroupId> failedRegionList = new ArrayList<>();
+      if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return failedRegionList;
+      }
+
+      if (response.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+        final List<TSStatus> subStatus = response.getSubStatus();
+        for (int i = 0; i < subStatus.size(); i++) {
+          if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            failedRegionList.add(consensusGroupIdList.get(i));
+          }
+        }
+      } else {
+        failedRegionList.addAll(consensusGroupIdList);
+      }
+      return failedRegionList;
+    }
+
+    @Override
+    protected void onAllReplicasetFailure(
+        final TConsensusGroupId consensusGroupId,
+        final Set<TDataNodeLocation> dataNodeLocationSet) {
+      setFailure(
+          new ProcedureException(
+              new MetadataException(
+                  String.format(
+                      "Drop table %s.%s failed when [%s] because failed to execute in all replicaset of %s %s. Failure nodes: %s",
+                      database,
+                      tableName,
+                      taskName,
+                      consensusGroupId.type,
+                      consensusGroupId.id,
+                      dataNodeLocationSet))));
+      interruptTask();
+    }
   }
 }

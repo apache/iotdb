@@ -109,4 +109,6 @@ public enum CnToDnAsyncRequestType {
 
   // Table
   UPDATE_TABLE,
+  DELETE_DATA_FOR_DROP_TABLE,
+  DELETE_DEVICES_FOR_DROP_TABLE,
 }
