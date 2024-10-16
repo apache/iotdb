@@ -501,13 +501,13 @@ public class AggregationTest {
                     ImmutableList.of("tag1", "tag2", "tag3", "count"),
                     ImmutableSet.of("tag1", "tag2", "tag3", "s2")))));
 
-    // Output - MergeSort - Project - AggTableScan
+    // Output - Collect - Project - AggTableScan
     assertPlan(
         planTester.getFragmentPlan(0),
         output(
-            project(
-                mergeSort(
-                    exchange(),
+            collect(
+                exchange(),
+                project(
                     aggregationTableScan(
                         singleGroupingSet("tag1", "tag2", "tag3"),
                         ImmutableList.of("tag1", "tag2", "tag3"), // Streamable
@@ -515,32 +515,34 @@ public class AggregationTest {
                         SINGLE,
                         "testdb.table1",
                         ImmutableList.of("tag1", "tag2", "tag3", "count"),
-                        ImmutableSet.of("tag1", "tag2", "tag3", "s2")),
-                    exchange()))));
+                        ImmutableSet.of("tag1", "tag2", "tag3", "s2"))),
+                exchange())));
 
     // Project - AggTableScan
     assertPlan(
         planTester.getFragmentPlan(1),
-        aggregationTableScan(
-            singleGroupingSet("tag1", "tag2", "tag3"),
-            ImmutableList.of("tag1", "tag2", "tag3"), // Streamable
-            Optional.empty(),
-            SINGLE,
-            "testdb.table1",
-            ImmutableList.of("tag1", "tag2", "tag3", "count"),
-            ImmutableSet.of("tag1", "tag2", "tag3", "s2")));
+        project(
+            aggregationTableScan(
+                singleGroupingSet("tag1", "tag2", "tag3"),
+                ImmutableList.of("tag1", "tag2", "tag3"), // Streamable
+                Optional.empty(),
+                SINGLE,
+                "testdb.table1",
+                ImmutableList.of("tag1", "tag2", "tag3", "count"),
+                ImmutableSet.of("tag1", "tag2", "tag3", "s2"))));
 
     // Project - AggTableScan
     assertPlan(
         planTester.getFragmentPlan(2),
-        aggregationTableScan(
-            singleGroupingSet("tag1", "tag2", "tag3"),
-            ImmutableList.of("tag1", "tag2", "tag3"), // Streamable
-            Optional.empty(),
-            SINGLE,
-            "testdb.table1",
-            ImmutableList.of("tag1", "tag2", "tag3", "count"),
-            ImmutableSet.of("tag1", "tag2", "tag3", "s2")));
+        project(
+            aggregationTableScan(
+                singleGroupingSet("tag1", "tag2", "tag3"),
+                ImmutableList.of("tag1", "tag2", "tag3"), // Streamable
+                Optional.empty(),
+                SINGLE,
+                "testdb.table1",
+                ImmutableList.of("tag1", "tag2", "tag3", "count"),
+                ImmutableSet.of("tag1", "tag2", "tag3", "s2"))));
 
     // All ID columns appear in GroupingKeys, and Attribute columns , time or date_bin(time) also
     // appear
@@ -559,7 +561,7 @@ public class AggregationTest {
                     "testdb.table1",
                     ImmutableList.of("tag1", "tag2", "tag3", "attr1", "date_bin$gid", "count"),
                     ImmutableSet.of("tag1", "tag2", "tag3", "attr1", "time", "s2")))));
-    // Output - Project - Agg(FINAL) - MergeSort - AggTableScan
+    // Output - Project - Agg(FINAL) - Collect - AggTableScan
     assertPlan(
         planTester.getFragmentPlan(0),
         output(
@@ -572,7 +574,7 @@ public class AggregationTest {
                     ImmutableList.of("tag1", "tag2", "tag3", "attr1"), // Streamable
                     Optional.empty(),
                     FINAL,
-                    mergeSort(
+                    collect(
                         exchange(),
                         aggregationTableScan(
                             singleGroupingSet("tag1", "tag2", "tag3", "attr1", "date_bin$gid"),
@@ -667,9 +669,9 @@ public class AggregationTest {
                 singleGroupingSet(),
                 ImmutableMap.of(
                     Optional.of("first"),
-                        aggregationFunction("first", ImmutableList.of("expr", "time")),
+                    aggregationFunction("first", ImmutableList.of("expr", "time")),
                     Optional.of("last"),
-                        aggregationFunction("last", ImmutableList.of("s2", "time"))),
+                    aggregationFunction("last", ImmutableList.of("s2", "time"))),
                 ImmutableList.of(),
                 Optional.empty(),
                 SINGLE,
