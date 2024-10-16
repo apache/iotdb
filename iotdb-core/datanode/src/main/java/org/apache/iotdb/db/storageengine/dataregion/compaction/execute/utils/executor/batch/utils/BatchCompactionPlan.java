@@ -39,6 +39,7 @@ public class BatchCompactionPlan {
   private final List<CompactChunkPlan> compactChunkPlans = new ArrayList<>();
   private final Map<String, Map<TimeRange, ModifiedStatus>> alignedPageModifiedStatusCache =
       new HashMap<>();
+  // key is <filename, chunk offset in file>
   private final Map<Pair<String, Long>, Chunk> cachedTimeChunks = new HashMap<>();
   private long cachedTimeChunkSize = 0;
 

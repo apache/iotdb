@@ -379,7 +379,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
     @Override
     protected Chunk readChunk(TsFileSequenceReader reader, ChunkMetadata chunkMetadata)
         throws IOException {
-      if (chunkMetadata != null && chunkMetadata.getMeasurementUid().isEmpty()) {
+      if (chunkMetadata.getMeasurementUid().isEmpty()) {
         return batchCompactionPlan.getTimeChunkFromCache(reader, chunkMetadata);
       }
       return super.readChunk(reader, chunkMetadata);
