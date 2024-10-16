@@ -186,6 +186,10 @@ public class PathUtils {
     return deviceID.segmentNum() > 0 && deviceID.matchDatabaseName(storageGroup);
   }
 
+  public static boolean isTreeModelDevice(IDeviceID deviceID) {
+    return deviceID.startWith("root.");
+  }
+
   /** Remove the back quotes of a measurement if necessary */
   public static String removeBackQuotesIfNecessary(String measurement) {
     String unWrapped = measurement.substring(1, measurement.length() - 1);

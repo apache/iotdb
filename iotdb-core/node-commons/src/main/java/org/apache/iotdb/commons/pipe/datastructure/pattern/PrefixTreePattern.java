@@ -79,11 +79,19 @@ public class PrefixTreePattern extends TreePattern {
 
   @Override
   public boolean coversDb(final String db) {
+    if (isTreeModelDataAllowedToBeCaptured) {
+      return false;
+    }
+
     return pattern.length() <= db.length() && db.startsWith(pattern);
   }
 
   @Override
   public boolean coversDevice(final IDeviceID device) {
+    if (isTreeModelDataAllowedToBeCaptured) {
+      return false;
+    }
+
     final String deviceStr = device.toString();
     // for example, pattern is root.a.b and device is root.a.b.c
     // in this case, the extractor can be matched without checking the measurements
@@ -92,6 +100,10 @@ public class PrefixTreePattern extends TreePattern {
 
   @Override
   public boolean mayOverlapWithDevice(final IDeviceID device) {
+    if (isTreeModelDataAllowedToBeCaptured) {
+      return false;
+    }
+
     final String deviceStr = device.toString();
     return
     // for example, pattern is root.a.b and device is root.a.b.c
@@ -105,6 +117,10 @@ public class PrefixTreePattern extends TreePattern {
 
   @Override
   public boolean matchesMeasurement(final IDeviceID device, String measurement) {
+    if (isTreeModelDataAllowedToBeCaptured) {
+      return false;
+    }
+
     final String deviceStr = device.toString();
     // We assume that the device is already matched.
     if (pattern.length() <= deviceStr.length()) {

@@ -39,7 +39,7 @@ public class TablePattern {
   private final Pattern databasePattern;
   private final Pattern tablePattern;
 
-  protected TablePattern(
+  public TablePattern(
       final boolean isTableModelDataAllowedToBeCaptured,
       final String databasePatternString,
       final String tablePatternString) {
@@ -57,6 +57,10 @@ public class TablePattern {
   }
 
   public boolean coversDb(final String database) {
+    if (isTableModelDataAllowedToBeCaptured) {
+      return false;
+    }
+
     return !hasUserSpecifiedDatabasePatternOrTablePattern()
         || (databasePattern != null
             && databasePattern.matcher(database).matches()
@@ -64,10 +68,18 @@ public class TablePattern {
   }
 
   public boolean matchesDatabase(final String database) {
+    if (isTableModelDataAllowedToBeCaptured) {
+      return false;
+    }
+
     return databasePattern == null || databasePattern.matcher(database).matches();
   }
 
   public boolean matchesTable(final String table) {
+    if (isTableModelDataAllowedToBeCaptured) {
+      return false;
+    }
+
     return tablePattern == null || tablePattern.matcher(table).matches();
   }
 

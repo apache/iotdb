@@ -60,11 +60,15 @@ public abstract class TreePattern {
   }
 
   public boolean isRoot() {
+    if (isTreeModelDataAllowedToBeCaptured) {
+      return false;
+    }
+
     return Objects.isNull(pattern) || this.pattern.equals(this.getDefaultPattern());
   }
 
   /**
-   * Interpret from source parameters and get a {@link PipePattern}.
+   * Interpret from source parameters and get a {@link TreePattern}.
    *
    * @return The interpreted {@link TreePattern} which is not {@code null}.
    */

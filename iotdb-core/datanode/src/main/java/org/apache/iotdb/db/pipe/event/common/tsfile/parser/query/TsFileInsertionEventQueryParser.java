@@ -21,8 +21,11 @@ package org.apache.iotdb.db.pipe.event.common.tsfile.parser.query;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePatternUtils;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
@@ -69,32 +72,38 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
 
   @TestOnly
   public TsFileInsertionEventQueryParser(
-      final File tsFile, final TreePattern pattern, final long startTime, final long endTime)
+      final File tsFile,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
+      final long startTime,
+      final long endTime)
       throws IOException {
-    this(tsFile, pattern, startTime, endTime, null, null);
+    this(tsFile, treePattern, tablePattern, startTime, endTime, null, null);
   }
 
   public TsFileInsertionEventQueryParser(
       final File tsFile,
-      final TreePattern pattern,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipeInsertionEvent sourceEvent)
       throws IOException {
-    this(tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent, null);
+    this(tsFile, treePattern, tablePattern, startTime, endTime, pipeTaskMeta, sourceEvent, null);
   }
 
   public TsFileInsertionEventQueryParser(
       final File tsFile,
-      final TreePattern pattern,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipeInsertionEvent sourceEvent,
       final Map<IDeviceID, Boolean> deviceIsAlignedMap)
       throws IOException {
-    super(pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+    super(treePattern, tablePattern, startTime, endTime, pipeTaskMeta, sourceEvent);
 
     try {
       final PipeTsFileResourceManager tsFileResourceManager = PipeDataNodeResourceManager.tsfile();
@@ -155,31 +164,53 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
 
   private Map<IDeviceID, List<String>> filterDeviceMeasurementsMapByPattern(
       final Map<IDeviceID, List<String>> originalDeviceMeasurementsMap) {
+    if (PipePatternUtils.isExtractAllDevices(treePattern, tablePattern)) {
+      return originalDeviceMeasurementsMap;
+    }
+
     final Map<IDeviceID, List<String>> filteredDeviceMeasurementsMap = new HashMap<>();
     for (Map.Entry<IDeviceID, List<String>> entry : originalDeviceMeasurementsMap.entrySet()) {
       final IDeviceID deviceId = entry.getKey();
-
-      // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
-      // in this case, all data can be matched without checking the measurements
-      if (Objects.isNull(pattern) || pattern.isRoot() || pattern.coversDevice(deviceId)) {
-        if (!entry.getValue().isEmpty()) {
-          filteredDeviceMeasurementsMap.put(deviceId, entry.getValue());
+      if (PathUtils.isTreeModelDevice(deviceId)) {
+        // pruning
+        if (Objects.nonNull(treePattern) && !treePattern.isTreeModelDataAllowedToBeCaptured()) {
+          continue;
         }
-      }
 
-      // case 2: for example, pattern is root.a.b.c and device is root.a.b
-      // in this case, we need to check the full path
-      else if (pattern.mayOverlapWithDevice(deviceId)) {
-        final List<String> filteredMeasurements = new ArrayList<>();
-
-        for (final String measurement : entry.getValue()) {
-          if (pattern.matchesMeasurement(deviceId, measurement)) {
-            filteredMeasurements.add(measurement);
+        // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
+        // in this case, all data can be matched without checking the measurements
+        if (Objects.isNull(treePattern)
+            || treePattern.isRoot()
+            || treePattern.coversDevice(deviceId)) {
+          if (!entry.getValue().isEmpty()) {
+            filteredDeviceMeasurementsMap.put(deviceId, entry.getValue());
           }
         }
 
-        if (!filteredMeasurements.isEmpty()) {
-          filteredDeviceMeasurementsMap.put(deviceId, filteredMeasurements);
+        // case 2: for example, pattern is root.a.b.c and device is root.a.b
+        // in this case, we need to check the full path
+        else if (treePattern.mayOverlapWithDevice(deviceId)) {
+          final List<String> filteredMeasurements = new ArrayList<>();
+
+          for (final String measurement : entry.getValue()) {
+            if (treePattern.matchesMeasurement(deviceId, measurement)) {
+              filteredMeasurements.add(measurement);
+            }
+          }
+
+          if (!filteredMeasurements.isEmpty()) {
+            filteredDeviceMeasurementsMap.put(deviceId, filteredMeasurements);
+          }
+        }
+      } else {
+        // table-model device
+        if (Objects.nonNull(tablePattern) && !tablePattern.isTableModelDataAllowedToBeCaptured()) {
+          continue;
+        }
+
+        if ((Objects.isNull(tablePattern) || tablePattern.matchesTable(deviceId.getTableName()))
+            && !entry.getValue().isEmpty()) {
+          filteredDeviceMeasurementsMap.put(deviceId, entry.getValue());
         }
       }
     }
@@ -199,14 +230,27 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
   }
 
   private Set<IDeviceID> filterDevicesByPattern(final Set<IDeviceID> devices) {
-    if (Objects.isNull(pattern) || pattern.isRoot()) {
+    final boolean extractAllTreeDevices = Objects.isNull(treePattern) || (treePattern.isRoot());
+    final boolean extractAllTableDevices =
+        Objects.isNull(tablePattern)
+            || (tablePattern.isTableModelDataAllowedToBeCaptured()
+                && !tablePattern.hasUserSpecifiedDatabasePatternOrTablePattern());
+    if (extractAllTreeDevices && extractAllTableDevices) {
       return devices;
     }
 
     final Set<IDeviceID> filteredDevices = new HashSet<>();
     for (final IDeviceID device : devices) {
-      if (pattern.coversDevice(device) || pattern.mayOverlapWithDevice(device)) {
-        filteredDevices.add(device);
+      if (PathUtils.isTreeModelDevice(device)) {
+        if (Objects.isNull(treePattern)
+            || treePattern.coversDevice(device)
+            || treePattern.mayOverlapWithDevice(device)) {
+          filteredDevices.add(device);
+        }
+      } else {
+        if (Objects.isNull(tablePattern) || tablePattern.matchesTable(device.getTableName())) {
+          filteredDevices.add(device);
+        }
       }
     }
     return filteredDevices;

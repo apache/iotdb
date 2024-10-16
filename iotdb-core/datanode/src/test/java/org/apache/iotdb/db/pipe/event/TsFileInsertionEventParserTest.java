@@ -560,8 +560,9 @@ public class TsFileInsertionEventParserTest {
       final int expectedCount) {
     try (final TsFileInsertionEventParser tsFileContainer =
         isQuery
-            ? new TsFileInsertionEventQueryParser(tsFile, pattern, startTime, endTime)
-            : new TsFileInsertionEventScanParser(tsFile, pattern, startTime, endTime, null, null)) {
+            ? new TsFileInsertionEventQueryParser(tsFile, pattern, null, startTime, endTime)
+            : new TsFileInsertionEventScanParser(
+                tsFile, pattern, null, startTime, endTime, null, null)) {
       final AtomicInteger count1 = new AtomicInteger(0);
       final AtomicInteger count2 = new AtomicInteger(0);
       final AtomicInteger count3 = new AtomicInteger(0);
