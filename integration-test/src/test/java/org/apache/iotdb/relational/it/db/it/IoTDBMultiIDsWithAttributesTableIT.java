@@ -461,7 +461,9 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         DATABASE_NAME);
   }
 
+  // =========================================================================
   // ============================ Aggregation Test ===========================
+  // =========================================================================
   @Test
   public void aggregationTest() {
     String[] expectedHeader =
@@ -633,11 +635,34 @@ public class IoTDBMultiIDsWithAttributesTableIT {
           "d2,l4,3,3,3,0,0,0,3,27.0,",
           "d2,l5,3,3,3,1,0,0,3,30.0,",
         };
-    String sql =
+    sql =
         "select device, level, "
             + "count(num) as count_num, count(*) as count_star, count(device) as count_device, count(date) as count_date, "
             + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num "
             + "from table0 group by device,level order by device, level";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {
+          "device",
+          "count_num",
+          "count_star",
+          "count_device",
+          "count_date",
+          "count_attr1",
+          "count_attr2",
+          "count_time",
+          "sum_num"
+        };
+    retArray =
+        new String[] {
+          "d1,3,3,3,0,3,3,3,20.0,",
+        };
+    sql =
+        "select device, "
+            + "count(num) as count_num, count(*) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num "
+            + "from table0 where device='d1' and level='l1' group by device order by device";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
@@ -765,6 +790,41 @@ public class IoTDBMultiIDsWithAttributesTableIT {
             + "from table0 group by 3, device, level order by device, level, bin";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
+    // only group by date_bin
+    expectedHeader = new String[] {"bin"};
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,", "1971-01-01T00:00:00.000Z,", "1971-04-26T00:00:00.000Z,"
+        };
+    sql =
+        "select date_bin(1d, time) as bin from table0 where device='d1' and level='l2' group by 1";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {
+          "bin",
+          "count_num",
+          "count_star",
+          "count_device",
+          "count_date",
+          "count_attr1",
+          "count_attr2",
+          "count_time",
+          "avg_num"
+        };
+    sql =
+        "select date_bin(1s, time) as bin,"
+            + "count(num) as count_num, count(*) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, avg(num) as avg_num "
+            + "from table0 where device='d1' and level='l2' group by 1";
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,1,1,1,0,1,1,1,2.0,",
+          "1971-01-01T00:00:00.000Z,1,1,1,0,1,1,1,10.0,",
+          "1971-04-26T17:46:40.000Z,1,1,1,0,1,1,1,12.0,"
+        };
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
     // TODO(beyyes) test below
     //    sql = "select count(*) from (\n" +
     //            "\tselect device, level, date_bin(1d, time) as bin, \n" +
@@ -776,7 +836,106 @@ public class IoTDBMultiIDsWithAttributesTableIT {
     //            ")\n";
   }
 
+  @Test
+  public void aggregationNoDataTest() {
+    expectedHeader =
+        new String[] {
+          "count_num",
+          "count_star",
+          "count_device",
+          "count_date",
+          "count_attr1",
+          "count_attr2",
+          "count_time",
+          "sum_num",
+          "avg_num"
+        };
+
+    retArray =
+        new String[] {
+          "0,0,0,0,0,0,0,null,null,",
+        };
+    sql =
+        "select count(num) as count_num, count(*) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
+            + "avg(num) as avg_num from table0 where time=32";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "2,2,2,0,2,1,2,24.0,12.0,",
+        };
+    sql =
+        "select count(num) as count_num, count(*) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
+            + "avg(num) as avg_num from table0 where time=32 or time=1971-04-27T01:46:40.000+08:00";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {
+          "device",
+          "level",
+          "count_num",
+          "count_star",
+          "count_device",
+          "count_date",
+          "count_attr1",
+          "count_attr2",
+          "count_time",
+          "sum_num",
+          "avg_num"
+        };
+    retArray = new String[] {};
+    sql =
+        "select device, level, count(num) as count_num, count(*) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
+            + "avg(num) as avg_num from table0 where time=32 group by device, level";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    retArray = new String[] {"d1,l2,1,1,1,0,1,1,1,12.0,12.0,", "d2,l2,1,1,1,0,1,0,1,12.0,12.0,"};
+    sql =
+        "select device, level, count(num) as count_num, count(*) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
+            + "avg(num) as avg_num from table0 where time=32 or time=1971-04-27T01:46:40.000+08:00 group by device, level";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {
+          "device",
+          "level",
+          "bin",
+          "count_num",
+          "count_star",
+          "count_device",
+          "count_date",
+          "count_attr1",
+          "count_attr2",
+          "count_time",
+          "sum_num",
+          "avg_num"
+        };
+    retArray = new String[] {};
+    sql =
+        "select device, level, date_bin(1d, time) as bin, count(num) as count_num, count(*) as count_star, "
+            + "count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
+            + "avg(num) as avg_num from table0 where time=32 group by 3, device, level";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    retArray =
+        new String[] {
+          "d1,l2,1971-04-26T00:00:00.000Z,1,1,1,0,1,1,1,12.0,12.0,",
+          "d2,l2,1971-04-26T00:00:00.000Z,1,1,1,0,1,0,1,12.0,12.0,"
+        };
+    sql =
+        "select device, level, date_bin(1d, time) as bin, count(num) as count_num, count(*) as count_star, "
+            + "count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
+            + "avg(num) as avg_num from table0 where time=32 or time=1971-04-27T01:46:40.000+08:00 group by 3, device, level";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+  }
+
+  // ==================================================================
   // ============================ Join Test ===========================
+  // ==================================================================
   // no filter
   @Test
   public void innerJoinTest1() {

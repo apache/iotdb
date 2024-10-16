@@ -196,7 +196,9 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   public TsBlock next() throws Exception {
 
     // optimize for sql: select count(*) from (select count(s1), sum(s1) from table)
-    if (tableAggregators.isEmpty()) {
+    if (tableAggregators.isEmpty()
+        && timeIterator.getType()
+            == ITableTimeRangeIterator.TimeIteratorType.SINGLE_TIME_ITERATOR) {
       resultTsBlockBuilder.reset();
       currentDeviceIndex = deviceCount;
       timeIterator.setFinished();
@@ -621,6 +623,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
 
   private void updateCurTimeRange(long startTime) {
     if (timeIterator.getType() == ITableTimeRangeIterator.TimeIteratorType.SINGLE_TIME_ITERATOR) {
+      timeIterator.updateCurTimeRange(startTime);
       return;
     }
 
@@ -637,6 +640,12 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   /** Append a row of aggregation results to the result tsBlock. */
   public void appendAggregationResult(
       TsBlockBuilder tsBlockBuilder, List<? extends TableAggregator> aggregators) {
+
+    // no data in current time range, just output empty
+    if (!timeIterator.hasCachedTimeRange()) {
+      return;
+    }
+
     ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
 
     int groupKeySize = groupingKeySchemas == null ? 0 : groupingKeySchemas.size();
