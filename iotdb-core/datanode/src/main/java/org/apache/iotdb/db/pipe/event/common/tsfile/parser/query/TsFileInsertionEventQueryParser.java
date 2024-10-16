@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePatternUtils;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -76,9 +77,10 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
       final TreePattern treePattern,
       final TablePattern tablePattern,
       final long startTime,
-      final long endTime)
+      final long endTime,
+      final PipeInsertionEvent sourceEvent)
       throws IOException {
-    this(tsFile, treePattern, tablePattern, startTime, endTime, null, null);
+    this(tsFile, treePattern, tablePattern, startTime, endTime, null, sourceEvent);
   }
 
   public TsFileInsertionEventQueryParser(
@@ -351,7 +353,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
             if (!hasNext()) {
               next =
                   new PipeRawTabletInsertionEvent(
-                      sourceEvent != null ? sourceEvent.getRawIsTableModelEvent() : null,
+                      sourceEvent != null ? sourceEvent.isTableModelEvent() : null,
                       sourceEvent != null ? sourceEvent.getTreeModelDatabaseName() : null,
                       tablet,
                       isAligned,
@@ -364,7 +366,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
             } else {
               next =
                   new PipeRawTabletInsertionEvent(
-                      sourceEvent != null ? sourceEvent.getRawIsTableModelEvent() : null,
+                      sourceEvent != null ? sourceEvent.isTableModelEvent() : null,
                       sourceEvent != null ? sourceEvent.getTreeModelDatabaseName() : null,
                       tablet,
                       isAligned,
