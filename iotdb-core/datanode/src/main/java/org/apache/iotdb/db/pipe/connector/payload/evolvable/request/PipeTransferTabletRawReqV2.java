@@ -44,21 +44,17 @@ import java.util.Objects;
 
 import static org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent.isTabletEmpty;
 
-public class PipeTransferTabletRawReq extends TPipeTransferReq {
+public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferTabletRawReq.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferTabletRawReqV2.class);
 
-  protected transient Tablet tablet;
-  protected transient boolean isAligned;
+  protected transient String dataBaseName;
 
-  public Tablet getTablet() {
-    return tablet;
+  public String getDataBaseName() {
+    return dataBaseName;
   }
 
-  public boolean getIsAligned() {
-    return isAligned;
-  }
-
+  @Override
   public InsertTabletStatement constructStatement() {
     new PipeTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
 
@@ -80,10 +76,19 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
       request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
       request.setValues(SessionUtils.getValueBuffer(tablet));
       request.setSize(tablet.rowSize);
-      request.setMeasurements(
-          PathUtils.checkIsLegalSingleMeasurementsAndUpdate(request.getMeasurements()));
 
-      return StatementGenerator.createStatement(request);
+      // Tree model
+      if (Objects.isNull(dataBaseName)) {
+        request.setMeasurements(
+            PathUtils.checkIsLegalSingleMeasurementsAndUpdate(request.getMeasurements()));
+        return StatementGenerator.createStatement(request);
+      }
+
+      // Table model
+      final InsertTabletStatement statement = StatementGenerator.createStatement(request);
+      statement.setWriteToTable(true);
+      statement.setDatabaseName(dataBaseName);
+      return statement;
     } catch (final MetadataException e) {
       LOGGER.warn("Generate Statement from tablet {} error.", tablet, e);
       return null;
@@ -92,31 +97,36 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
 
   /////////////////////////////// WriteBack & Batch ///////////////////////////////
 
-  public static PipeTransferTabletRawReq toTPipeTransferRawReq(
-      final Tablet tablet, final boolean isAligned) {
-    final PipeTransferTabletRawReq tabletReq = new PipeTransferTabletRawReq();
+  public static PipeTransferTabletRawReqV2 toTPipeTransferRawReq(
+      final Tablet tablet, final boolean isAligned, final String dataBaseName) {
+    final PipeTransferTabletRawReqV2 tabletReq = new PipeTransferTabletRawReqV2();
 
     tabletReq.tablet = tablet;
     tabletReq.isAligned = isAligned;
+    tabletReq.dataBaseName = dataBaseName;
+    tabletReq.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
+    tabletReq.type = PipeRequestType.TRANSFER_TABLET_RAW_V2.getType();
 
     return tabletReq;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferTabletRawReq toTPipeTransferReq(
-      final Tablet tablet, final boolean isAligned) throws IOException {
-    final PipeTransferTabletRawReq tabletReq = new PipeTransferTabletRawReq();
+  public static PipeTransferTabletRawReqV2 toTPipeTransferReq(
+      final Tablet tablet, final boolean isAligned, final String dataBaseName) throws IOException {
+    final PipeTransferTabletRawReqV2 tabletReq = new PipeTransferTabletRawReqV2();
 
     tabletReq.tablet = tablet;
     tabletReq.isAligned = isAligned;
+    tabletReq.dataBaseName = dataBaseName;
 
     tabletReq.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
-    tabletReq.type = PipeRequestType.TRANSFER_TABLET_RAW.getType();
+    tabletReq.type = PipeRequestType.TRANSFER_TABLET_RAW_V2.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       tablet.serialize(outputStream);
       ReadWriteIOUtils.write(isAligned, outputStream);
+      ReadWriteIOUtils.write(dataBaseName, outputStream);
       tabletReq.body =
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
@@ -124,11 +134,13 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
     return tabletReq;
   }
 
-  public static PipeTransferTabletRawReq fromTPipeTransferReq(final TPipeTransferReq transferReq) {
-    final PipeTransferTabletRawReq tabletReq = new PipeTransferTabletRawReq();
+  public static PipeTransferTabletRawReqV2 fromTPipeTransferReq(
+      final TPipeTransferReq transferReq) {
+    final PipeTransferTabletRawReqV2 tabletReq = new PipeTransferTabletRawReqV2();
 
     tabletReq.tablet = Tablet.deserialize(transferReq.body);
     tabletReq.isAligned = ReadWriteIOUtils.readBool(transferReq.body);
+    tabletReq.dataBaseName = ReadWriteIOUtils.readString(transferReq.body);
 
     tabletReq.version = transferReq.version;
     tabletReq.type = transferReq.type;
@@ -139,14 +151,15 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
 
   /////////////////////////////// Air Gap ///////////////////////////////
 
-  public static byte[] toTPipeTransferBytes(final Tablet tablet, final boolean isAligned)
-      throws IOException {
+  public static byte[] toTPipeTransferBytes(
+      final Tablet tablet, final boolean isAligned, final String dataBaseName) throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
-      ReadWriteIOUtils.write(PipeRequestType.TRANSFER_TABLET_RAW.getType(), outputStream);
+      ReadWriteIOUtils.write(PipeRequestType.TRANSFER_TABLET_RAW_V2.getType(), outputStream);
       tablet.serialize(outputStream);
       ReadWriteIOUtils.write(isAligned, outputStream);
+      ReadWriteIOUtils.write(dataBaseName, outputStream);
       return byteArrayOutputStream.toByteArray();
     }
   }
@@ -154,23 +167,22 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
-  public boolean equals(final Object obj) {
-    if (this == obj) {
+  public boolean equals(Object o) {
+    if (this == o) {
       return true;
     }
-    if (obj == null || getClass() != obj.getClass()) {
+    if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    final PipeTransferTabletRawReq that = (PipeTransferTabletRawReq) obj;
-    return Objects.equals(tablet, that.tablet)
-        && isAligned == that.isAligned
-        && version == that.version
-        && type == that.type
-        && Objects.equals(body, that.body);
+    if (!super.equals(o)) {
+      return false;
+    }
+    final PipeTransferTabletRawReqV2 that = (PipeTransferTabletRawReqV2) o;
+    return Objects.equals(dataBaseName, that.dataBaseName);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(tablet, isAligned, version, type, body);
+    return Objects.hash(super.hashCode(), dataBaseName);
   }
 }
