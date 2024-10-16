@@ -136,7 +136,7 @@ public class UpdateClearContainer implements UpdateContainer {
     }
   }
 
-  Set<String> getTableNames() {
+  public Set<String> getTableNames() {
     return tableNames;
   }
 

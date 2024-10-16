@@ -21,7 +21,9 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.DeviceAttributeCacheUpdater;
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateClearContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateContainer;
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateDetailContainer;
 import org.apache.iotdb.mpp.rpc.thrift.TAttributeUpdateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaRegionAttributeInfo;
 
@@ -37,6 +39,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher.convertIdValuesToDeviceID;
 
 public class TableDeviceCacheAttributeGuard {
 
@@ -127,6 +131,19 @@ public class TableDeviceCacheAttributeGuard {
   }
 
   public void handleContainer(final UpdateContainer container) {
-    // TODO
+    if (container instanceof UpdateDetailContainer) {
+      ((UpdateDetailContainer) container)
+          .getUpdateMap()
+          .forEach(
+              (table, deviceNodesMap) ->
+                  deviceNodesMap.forEach(
+                      (nodes, attributes) ->
+                          cache.updateAttributes(
+                              null, convertIdValuesToDeviceID(table, nodes), attributes)));
+    } else {
+      ((UpdateClearContainer) container)
+          .getTableNames()
+          .forEach(table -> cache.invalidateAttributes(null, table));
+    }
   }
 }
