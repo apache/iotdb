@@ -138,12 +138,21 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
       currentTotalBufferSize.addAndGet(bufferSize);
     }
 
-    final CachedSubscriptionPollResponse response =
-        new CachedSubscriptionPollResponse(
-            SubscriptionPollResponseType.TABLETS.getType(),
-            new TabletsPayload(new ArrayList<>(currentTablets), -tabletsSize),
-            commitContext);
-    hasNoMore = true;
+    final CachedSubscriptionPollResponse response;
+    if (currentTablets.isEmpty()) {
+      response =
+          new CachedSubscriptionPollResponse(
+              SubscriptionPollResponseType.TABLETS.getType(),
+              new TabletsPayload(Collections.emptyList(), -tabletsSize),
+              commitContext);
+      hasNoMore = true;
+    } else {
+      response =
+          new CachedSubscriptionPollResponse(
+              SubscriptionPollResponseType.TABLETS.getType(),
+              new TabletsPayload(new ArrayList<>(currentTablets), nextOffset.incrementAndGet()),
+              commitContext);
+    }
     currentTablets.clear();
     currentTotalBufferSize.set(0);
     return response;

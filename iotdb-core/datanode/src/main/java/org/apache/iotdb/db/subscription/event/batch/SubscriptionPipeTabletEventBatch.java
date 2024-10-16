@@ -171,7 +171,9 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   @Override
   protected Map<String, String> coreReportMessage() {
     final Map<String, String> coreReportMessage = super.coreReportMessage();
-    coreReportMessage.put("size of tablets", String.valueOf(tablets.size()));
+    coreReportMessage.put(
+        "size of tablets",
+        (Objects.nonNull(tablets) ? String.valueOf(tablets.size()) : "<unknown>"));
     coreReportMessage.put("firstEventProcessingTime", String.valueOf(firstEventProcessingTime));
     coreReportMessage.put("totalBufferSize", String.valueOf(totalBufferSize));
     return coreReportMessage;
