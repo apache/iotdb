@@ -33,7 +33,6 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReqV2;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.pipe.connector.util.LeaderCacheUtils;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -296,9 +295,16 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
       final TPipeTransferReq req =
           compressIfNeeded(
               insertNode != null
-                  ? PipeTransferTabletInsertNodeReqV2.toTPipeTransferReq(insertNode)
+                  ? PipeTransferTabletInsertNodeReqV2.toTPipeTransferReq(
+                      insertNode,
+                      pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
+                          ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
+                          : null)
                   : PipeTransferTabletBinaryReqV2.toTPipeTransferReq(
-                      pipeInsertNodeTabletInsertionEvent.getByteBuffer()));
+                      pipeInsertNodeTabletInsertionEvent.getByteBuffer(),
+                      pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
+                          ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
+                          : null));
       rateLimitIfNeeded(
           pipeInsertNodeTabletInsertionEvent.getPipeName(),
           pipeInsertNodeTabletInsertionEvent.getCreationTime(),
@@ -470,8 +476,8 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
       try {
         final TPipeTransferReq req =
             compressIfNeeded(
-                PipeTransferTsFileSealReq.toTPipeTransferReq(
-                    tsFile.getName(), tsFile.length())); // v2
+                PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+                    tsFile.getName(), tsFile.length(), dataBaseName));
 
         pipeName2WeightMap.forEach(
             (pipePair, weight) ->

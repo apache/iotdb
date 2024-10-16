@@ -75,6 +75,17 @@ public class PipeTransferTsFileSealWithModReq extends PipeTransferFileSealReqV2 
                     generateDatabaseNameWithFileNameKey(tsFileName), dataBaseName));
   }
 
+  public static PipeTransferTsFileSealWithModReq toTPipeTransferReq(
+      String tsFileName, long tsFileLength, String dataBaseName) throws IOException {
+    return (PipeTransferTsFileSealWithModReq)
+        new PipeTransferTsFileSealWithModReq()
+            .convertToTPipeTransferReq(
+                Collections.singletonList(tsFileName),
+                Collections.singletonList(tsFileLength),
+                Collections.singletonMap(
+                    generateDatabaseNameWithFileNameKey(tsFileName), dataBaseName));
+  }
+
   public static PipeTransferTsFileSealWithModReq fromTPipeTransferReq(TPipeTransferReq req) {
     return (PipeTransferTsFileSealWithModReq)
         new PipeTransferTsFileSealWithModReq().translateFromTPipeTransferReq(req);
