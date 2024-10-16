@@ -41,7 +41,7 @@ public class PipeTransferTsFileSealWithModReq extends PipeTransferFileSealReqV2 
 
   protected static final String DATABASE_NAME_KEY_PREFIX = "DATABASE_NAME_";
 
-  public String getDatabaseNameWithTsFileName() {
+  public String getDatabaseNameByTsFileName() {
     return parameters == null
         ? null
         : parameters.get(generateDatabaseNameWithFileNameKey(fileNames.get(fileNames.size() - 1)));
