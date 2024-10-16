@@ -137,6 +137,7 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.type.BlobType;
 import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.Type;
@@ -1513,7 +1514,14 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       }
     }
     if (timeRangeIterator == null) {
-      timeRangeIterator = new TableSingleTimeWindowIterator(Long.MIN_VALUE, Long.MAX_VALUE);
+      if (node.getGroupingKeys().isEmpty()) {
+        // global aggregation, has no group by, output init value if no data
+        timeRangeIterator =
+            new TableSingleTimeWindowIterator(new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE));
+      } else {
+        // aggregation with group by, only has data the result will not be empty
+        timeRangeIterator = new TableSingleTimeWindowIterator();
+      }
     }
 
     final OperatorContext operatorContext =

@@ -25,6 +25,7 @@ import org.apache.tsfile.file.metadata.statistics.IntegerStatistics;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
+import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -89,7 +90,7 @@ public class AvgAccumulator implements TableAccumulator {
   @Override
   public void addIntermediate(Column argument) {
     checkArgument(
-        argument instanceof BinaryColumn,
+        argument instanceof BinaryColumn || argument instanceof RunLengthEncodedColumn,
         "intermediate input and output of Avg should be BinaryColumn");
 
     for (int i = 0; i < argument.getPositionCount(); i++) {

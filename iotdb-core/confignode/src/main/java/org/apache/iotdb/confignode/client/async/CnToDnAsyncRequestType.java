@@ -42,8 +42,9 @@ public enum CnToDnAsyncRequestType {
   UPDATE_REGION_ROUTE_MAP,
   CHANGE_REGION_LEADER,
 
-  // PartitionCache
+  // Cache
   INVALIDATE_SCHEMA_CACHE,
+  INVALIDATE_LAST_CACHE,
   CLEAR_CACHE,
 
   // Function
