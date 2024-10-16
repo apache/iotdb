@@ -237,7 +237,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     }
   }
 
-  private ChunkLoader getChunkLoader(TsFileSequenceReader reader, ChunkMetadata chunkMetadata)
+  protected ChunkLoader getChunkLoader(TsFileSequenceReader reader, ChunkMetadata chunkMetadata)
       throws IOException {
     if (chunkMetadata == null || chunkMetadata.getStatistics().getCount() == 0) {
       return new InstantChunkLoader();
