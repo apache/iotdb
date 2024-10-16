@@ -317,9 +317,13 @@ public class TableDistributedPlanGenerator
         new MergeSortNode(
             queryId.genPlanNodeId(), node.getOrderingScheme(), node.getOutputSymbols());
     for (PlanNode child : childrenNodes) {
-      SortNode subSortNode =
-          new SortNode(queryId.genPlanNodeId(), child, node.getOrderingScheme(), false, false);
-      mergeSortNode.addChild(subSortNode);
+      if (canSortEliminated(node.getOrderingScheme(), nodeOrderingMap.get(child.getPlanNodeId()))) {
+        mergeSortNode.addChild(child);
+      } else {
+        SortNode subSortNode =
+            new SortNode(queryId.genPlanNodeId(), child, node.getOrderingScheme(), false, false);
+        mergeSortNode.addChild(subSortNode);
+      }
     }
     nodeOrderingMap.put(mergeSortNode.getPlanNodeId(), mergeSortNode.getOrderingScheme());
 
@@ -358,7 +362,8 @@ public class TableDistributedPlanGenerator
 
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
     if (childrenNodes.size() == 1) {
-      if (canSortEliminated(node.getOrderingScheme(), nodeOrderingMap.get(childrenNodes.get(0)))) {
+      if (canSortEliminated(
+          node.getOrderingScheme(), nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId()))) {
         return childrenNodes;
       } else {
         node.setChild(childrenNodes.get(0));
@@ -371,15 +376,19 @@ public class TableDistributedPlanGenerator
         new MergeSortNode(
             queryId.genPlanNodeId(), node.getOrderingScheme(), node.getOutputSymbols());
     for (PlanNode child : childrenNodes) {
-      StreamSortNode subSortNode =
-          new StreamSortNode(
-              queryId.genPlanNodeId(),
-              child,
-              node.getOrderingScheme(),
-              false,
-              node.isOrderByAllIdsAndTime(),
-              node.getStreamCompareKeyEndIndex());
-      mergeSortNode.addChild(subSortNode);
+      if (canSortEliminated(node.getOrderingScheme(), nodeOrderingMap.get(child.getPlanNodeId()))) {
+        mergeSortNode.addChild(child);
+      } else {
+        StreamSortNode subSortNode =
+            new StreamSortNode(
+                queryId.genPlanNodeId(),
+                child,
+                node.getOrderingScheme(),
+                false,
+                node.isOrderByAllIdsAndTime(),
+                node.getStreamCompareKeyEndIndex());
+        mergeSortNode.addChild(subSortNode);
+      }
     }
     nodeOrderingMap.put(mergeSortNode.getPlanNodeId(), mergeSortNode.getOrderingScheme());
 
