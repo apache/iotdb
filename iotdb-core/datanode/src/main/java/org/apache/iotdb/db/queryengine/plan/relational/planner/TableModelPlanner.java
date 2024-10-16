@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
@@ -134,7 +135,11 @@ public class TableModelPlanner implements IPlanner {
       MPPQueryContext context,
       QueryStateMachine stateMachine) {
     IScheduler scheduler;
-    if (statement instanceof LoadTsFile) {
+
+    boolean isPipeEnrichedTsFileLoad =
+        statement instanceof PipeEnriched
+            && ((PipeEnriched) statement).getInnerStatement() instanceof LoadTsFile;
+    if (statement instanceof LoadTsFile || isPipeEnrichedTsFileLoad) {
       scheduler =
           new LoadTsFileScheduler(
               distributedPlan,
@@ -142,7 +147,7 @@ public class TableModelPlanner implements IPlanner {
               stateMachine,
               syncInternalServiceClientManager,
               ClusterPartitionFetcher.getInstance(),
-              false);
+              isPipeEnrichedTsFileLoad);
     } else {
       scheduler =
           new ClusterScheduler(
