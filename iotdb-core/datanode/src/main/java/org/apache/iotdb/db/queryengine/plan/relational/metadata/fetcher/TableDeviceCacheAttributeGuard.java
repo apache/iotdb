@@ -25,6 +25,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateCont
 import org.apache.iotdb.mpp.rpc.thrift.TAttributeUpdateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaRegionAttributeInfo;
 
+import org.apache.tsfile.utils.Pair;
+
 import javax.annotation.Nonnull;
 
 import java.util.Collections;
@@ -40,16 +42,17 @@ public class TableDeviceCacheAttributeGuard {
 
   // Unbounded queue
   private final LinkedBlockingDeque<Set<?>> applyQueue = new LinkedBlockingDeque<>();
-  private final Map<Integer, Long> fetchedSchemaRegionIds2LargestVersionMap =
-      new ConcurrentHashMap<>();
+  private final Map<Integer, Pair<Long, String>>
+      fetchedSchemaRegionIds2LargestVersionAndDatabaseMap = new ConcurrentHashMap<>();
   private final TableDeviceSchemaCache cache = TableDeviceSchemaCache.getInstance();
 
   public boolean isRegionFetched(final Integer schemaRegionId) {
-    return fetchedSchemaRegionIds2LargestVersionMap.containsKey(schemaRegionId);
+    return fetchedSchemaRegionIds2LargestVersionAndDatabaseMap.containsKey(schemaRegionId);
   }
 
   public void addFetchedRegion(final Integer schemaRegionId) {
-    fetchedSchemaRegionIds2LargestVersionMap.put(schemaRegionId, Long.MIN_VALUE);
+    fetchedSchemaRegionIds2LargestVersionAndDatabaseMap.put(
+        schemaRegionId, new Pair<>(Long.MIN_VALUE, null));
   }
 
   @SuppressWarnings("unchecked")
@@ -75,13 +78,16 @@ public class TableDeviceCacheAttributeGuard {
         .entrySet()
         .removeIf(
             entry -> {
-              if (!fetchedSchemaRegionIds2LargestVersionMap.containsKey(entry.getKey())
+              if (!fetchedSchemaRegionIds2LargestVersionAndDatabaseMap.containsKey(entry.getKey())
                   || entry.getValue().getVersion()
-                      <= fetchedSchemaRegionIds2LargestVersionMap.get(entry.getKey())) {
+                      <= fetchedSchemaRegionIds2LargestVersionAndDatabaseMap
+                          .get(entry.getKey())
+                          .getLeft()) {
                 return true;
               }
-              fetchedSchemaRegionIds2LargestVersionMap.put(
-                  entry.getKey(), entry.getValue().getVersion());
+              fetchedSchemaRegionIds2LargestVersionAndDatabaseMap.put(
+                  entry.getKey(),
+                  new Pair<>(entry.getValue().getVersion(), entry.getValue().getDatabase()));
               return false;
             });
     applyQueue.add(
@@ -110,7 +116,7 @@ public class TableDeviceCacheAttributeGuard {
   // This must be synchronized with "handleUpdate" to avoid unordered execution
   // with region migration's "handleContainer" and stale "handleUpdate" logic
   public synchronized void setVersion(final int schemaRegionId, final long newVersion) {
-    fetchedSchemaRegionIds2LargestVersionMap.computeIfPresent(
+    fetchedSchemaRegionIds2LargestVersionAndDatabaseMap.computeIfPresent(
         schemaRegionId, (id, version) -> Math.max(version, newVersion));
   }
 

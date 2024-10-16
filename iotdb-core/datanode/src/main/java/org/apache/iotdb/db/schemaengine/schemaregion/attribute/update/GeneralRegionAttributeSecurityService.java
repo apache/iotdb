@@ -83,18 +83,23 @@ public class GeneralRegionAttributeSecurityService implements IService {
 
   private final Map<Integer, Pair<Long, Integer>> dataNodeId2FailureDurationAndTimesMap =
       new HashMap<>();
-  private final Map<ISchemaRegion, String> regionLeaders2DatabaseMap = new ConcurrentHashMap<>();
+  private final Set<ISchemaRegion> regionLeaders =
+      Collections.newSetFromMap(new ConcurrentHashMap<>());
+  private final Map<SchemaRegionId, String> regionId2DatabaseMap = new ConcurrentHashMap<>();
   private final ReentrantLock lock = new ReentrantLock();
   private final Condition condition = lock.newCondition();
   private volatile boolean skipNextSleep = false;
   private volatile boolean allowSubmitListen = false;
 
   public void startBroadcast(final ISchemaRegion schemaRegion) {
-    regionLeaders2DatabaseMap.put(schemaRegion, schemaRegion.getDatabaseFullPath().substring(5));
+    regionLeaders.add(schemaRegion);
+    regionId2DatabaseMap.put(
+        schemaRegion.getSchemaRegionId(), schemaRegion.getDatabaseFullPath().substring(5));
   }
 
   public void stopBroadcast(final ISchemaRegion schemaRegion) {
-    regionLeaders2DatabaseMap.remove(schemaRegion);
+    regionLeaders.remove(schemaRegion);
+    regionId2DatabaseMap.remove(schemaRegion.getSchemaRegionId());
   }
 
   public void notifyBroadCast() {
@@ -123,7 +128,7 @@ public class GeneralRegionAttributeSecurityService implements IService {
       final AtomicBoolean hasRemaining = new AtomicBoolean(false);
       final Map<SchemaRegionId, Pair<Long, Map<TDataNodeLocation, byte[]>>>
           attributeUpdateCommitMap = new HashMap<>();
-      for (final ISchemaRegion regionLeader : regionLeaders2DatabaseMap.keySet()) {
+      for (final ISchemaRegion regionLeader : regionLeaders) {
         final Pair<Long, Map<TDataNodeLocation, byte[]>> currentResult =
             regionLeader.getAttributeUpdateInfo(limit, hasRemaining);
         if (currentResult.getRight().isEmpty()) {
@@ -242,7 +247,9 @@ public class GeneralRegionAttributeSecurityService implements IService {
                           .put(
                               id.getId(),
                               new TSchemaRegionAttributeInfo(
-                                  pair.getLeft(), ByteBuffer.wrap(bytes)));
+                                  pair.getLeft(),
+                                  regionId2DatabaseMap.get(id),
+                                  ByteBuffer.wrap(bytes)));
                     }));
 
     DnToDnInternalServiceAsyncRequestManager.getInstance()
