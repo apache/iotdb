@@ -253,7 +253,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
       final Map<TConsensusGroupId, Integer> oldLeaderMap,
       final Set<TConsensusGroupId> successTransferSet) {
     final DataNodeAsyncRequestContext<String, TSStatus> invalidateSchemaCacheRequestHandler =
-        new DataNodeAsyncRequestContext<>(CnToDnRequestType.INVALIDATE_LAST_CACHE);
+        new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.INVALIDATE_LAST_CACHE);
     final AtomicInteger requestIndex = new AtomicInteger(0);
     oldLeaderMap.entrySet().stream()
         .filter(entry -> TConsensusGroupType.DataRegion == entry.getKey().getType())
