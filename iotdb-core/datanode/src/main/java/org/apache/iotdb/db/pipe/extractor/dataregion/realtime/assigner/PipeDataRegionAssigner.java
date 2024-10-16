@@ -24,6 +24,9 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
+import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
+import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
@@ -38,6 +41,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeDataRegionAssigner implements Closeable {
@@ -135,12 +139,28 @@ public class PipeDataRegionAssigner implements Closeable {
                       extractor.getRealtimeDataExtractionStartTime(),
                       extractor.getRealtimeDataExtractionEndTime());
               final EnrichedEvent innerEvent = copiedEvent.getEvent();
+
               if (innerEvent instanceof PipeTsFileInsertionEvent) {
                 final PipeTsFileInsertionEvent tsFileInsertionEvent =
                     (PipeTsFileInsertionEvent) innerEvent;
                 tsFileInsertionEvent.disableMod4NonTransferPipes(
                     extractor.isShouldTransferModFile());
                 bindOrUpdateProgressIndexForTsFileInsertionEvent(tsFileInsertionEvent);
+              }
+
+              if (innerEvent instanceof PipeDeleteDataNodeEvent) {
+                final PipeDeleteDataNodeEvent deleteDataNodeEvent =
+                    (PipeDeleteDataNodeEvent) innerEvent;
+                final DeletionResourceManager manager =
+                    DeletionResourceManager.getInstance(extractor.getDataRegionId());
+                // increase deletion resource's reference and bind real deleteEvent
+                if (Objects.nonNull(manager)
+                    && DeletionResource.isDeleteNodeGeneratedInLocalByIoTV2(
+                        deleteDataNodeEvent.getDeleteDataNode())) {
+                  deleteDataNodeEvent.setDeletionResource(
+                      manager.getDeletionResource(
+                          ((PipeDeleteDataNodeEvent) event.getEvent()).getDeleteDataNode()));
+                }
               }
 
               if (!copiedEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {
