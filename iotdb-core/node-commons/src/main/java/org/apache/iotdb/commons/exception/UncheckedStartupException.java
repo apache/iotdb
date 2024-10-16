@@ -17,29 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache;
+package org.apache.iotdb.commons.exception;
 
-import org.apache.tsfile.read.TimeValuePair;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-/** this interface declares the operations of LastCache data */
-public interface ILastCacheContainer {
+public class UncheckedStartupException extends IoTDBRuntimeException {
 
-  // get lastCache of monad timeseries
-  TimeValuePair getCachedLast();
+  private static final long serialVersionUID = -8591716406230730147L;
 
-  /**
-   * update last point cache and enable last cache.
-   *
-   * @param timeValuePair last point
-   * @param highPriorityUpdate whether it's a high priority update
-   * @param latestFlushedTime latest flushed time
-   * @return increasing of memory usage
-   */
-  int updateCachedLast(
-      TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime);
+  public UncheckedStartupException(String name, String message) {
+    super(
+        String.format("Failed to start [%s], because [%s]", name, message),
+        TSStatusCode.START_UP_ERROR.getStatusCode());
+  }
 
-  /** Invalidate Last cache. */
-  int invalidateLastCache();
+  public UncheckedStartupException(Throwable cause) {
+    super(cause.getMessage(), TSStatusCode.START_UP_ERROR.getStatusCode());
+  }
 
-  int estimateSize();
+  public UncheckedStartupException(String message) {
+    super(message, TSStatusCode.START_UP_ERROR.getStatusCode());
+  }
 }

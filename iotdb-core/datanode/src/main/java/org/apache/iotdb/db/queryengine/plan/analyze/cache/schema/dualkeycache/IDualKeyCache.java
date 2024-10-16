@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache;
 
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 
 import javax.annotation.concurrent.GuardedBy;
 
-import java.util.List;
+import java.util.function.Predicate;
+import java.util.function.ToIntFunction;
 
 /**
  * This interfaces defines the behaviour of a dual key cache. A dual key cache supports manage cache
@@ -49,19 +49,51 @@ public interface IDualKeyCache<FK, SK, V> {
    * Traverse target cache values via given first key and second keys provided in computation and
    * execute the defined computation logic. Value can be updated in this computation.
    */
-  void update(IDualKeyCacheUpdating<FK, SK, V> updating);
+  void updateWithLock(final IDualKeyCacheUpdating<FK, SK, V> updating);
 
   /** put the cache value into cache */
-  void put(FK firstKey, SK secondKey, V value);
+  void put(final FK firstKey, final SK secondKey, final V value);
 
   /**
-   * Invalidate last cache in datanode schema cache. Do not invalidate time series cache.
+   * Update the existing value. The updater shall return the difference caused by the update,
+   * because we do not want to call "valueSizeComputer" twice, which may include abundant useless
+   * calculations.
    *
-   * @param partialPathList
+   * <p>Warning: This method is without any locks for performance concerns. The caller shall ensure
+   * the concurrency safety for the value update.
+   *
+   * @param createIfNotExists put the value to cache iff it does not exist,
    */
-  void invalidateLastCache(PartialPath partialPath);
+  void update(
+      final FK firstKey,
+      final SK secondKey,
+      final V value,
+      final ToIntFunction<V> updater,
+      final boolean createIfNotExists);
 
-  void invalidateDataRegionLastCache(String database);
+  /**
+   * Update all the existing value with {@link SK} and a the {@link SK}s matching the given
+   * predicate. The updater shall return the difference caused by the update, because we do not want
+   * to call "valueSizeComputer" twice, which may include abundant useless calculations.
+   *
+   * <p>Warning: This method is without any locks for performance concerns. The caller shall ensure
+   * the concurrency safety for the value update.
+   */
+  void update(
+      final FK firstKey, final Predicate<SK> secondKeyChecker, final ToIntFunction<V> updater);
+
+  /**
+   * Update all the existing value with {@link SK} and a the {@link SK}s matching the given
+   * predicate. The updater shall return the difference caused by the update, because we do not want
+   * to call "valueSizeComputer" twice, which may include abundant useless calculations.
+   *
+   * <p>Warning: This method is without any locks for performance concerns. The caller shall ensure
+   * the concurrency safety for the value update.
+   */
+  void update(
+      final Predicate<FK> firstKeyChecker,
+      final Predicate<SK> secondKeyChecker,
+      final ToIntFunction<V> updater);
 
   /**
    * Invalidate all cache values in the cache and clear related cache keys. The cache status and
@@ -69,20 +101,6 @@ public interface IDualKeyCache<FK, SK, V> {
    */
   @GuardedBy("DataNodeSchemaCache#writeLock")
   void invalidateAll();
-
-  /**
-   * Invalidate cache values in the cache and clear related cache keys. The cache status and
-   * statistics won't be clear and they can still be accessed via cache.stats().
-   */
-  @GuardedBy("DataNodeSchemaCache#writeLock")
-  void invalidate(String database);
-
-  /**
-   * Invalidate cache values in the cache and clear related cache keys. The cache status and
-   * statistics won't be clear and they can still be accessed via cache.stats().
-   */
-  @GuardedBy("DataNodeSchemaCache#writeLock")
-  void invalidate(List<? extends PartialPath> partialPathList);
 
   /**
    * Clean up all data and info of this cache, including cache keys, cache values and cache stats.
@@ -98,14 +116,13 @@ public interface IDualKeyCache<FK, SK, V> {
 
   /** remove all entries for firstKey */
   @GuardedBy("DataNodeSchemaCache#writeLock")
-  void invalidate(FK firstKey);
+  void invalidate(final FK firstKey);
 
-  /**
-   * remove all entries of specified database, and for the reason that table model's first key is
-   * different from tree model, we add this new method which only be used for table model.
-   *
-   * <p>FK must be TableId in such case
-   */
+  /** remove matched entry */
   @GuardedBy("DataNodeSchemaCache#writeLock")
-  void invalidateForTable(String database);
+  void invalidate(final FK firstKey, final SK secondKey);
+
+  /** remove all entries matching the firstKey and the secondKey */
+  @GuardedBy("DataNodeSchemaCache#writeLock")
+  void invalidate(final Predicate<FK> firstKeyChecker, final Predicate<SK> secondKeyChecker);
 }

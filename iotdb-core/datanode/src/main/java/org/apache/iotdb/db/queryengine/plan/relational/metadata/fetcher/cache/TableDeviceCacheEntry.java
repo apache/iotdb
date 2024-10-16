@@ -19,49 +19,196 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
+import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
+
+import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
+import org.apache.tsfile.utils.TsPrimitiveType;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import javax.annotation.concurrent.ThreadSafe;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.OptionalLong;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
+
+@ThreadSafe
 public class TableDeviceCacheEntry {
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(TableDeviceCacheEntry.class);
+      RamUsageEstimator.shallowSizeOfInstance(TableDeviceCacheEntry.class)
+          + 2 * RamUsageEstimator.shallowSizeOfInstance(AtomicReference.class);
 
   // the cached attributeMap may not be the latest, but there won't be any correctness problems
   // because when missing getting the key-value from this attributeMap, caller will try to get or
   // create from remote
   // there may exist key is not null, but value is null in this map, which means that the key's
   // corresponding value is null, doesn't mean that the key doesn't exist
-  private final Map<String, String> attributeMap;
+  private final AtomicReference<IDeviceSchema> deviceSchema = new AtomicReference<>();
+  private final AtomicReference<TableDeviceLastCache> lastCache = new AtomicReference<>();
 
-  public TableDeviceCacheEntry(final @Nonnull Map<String, String> attributeMap) {
-    this.attributeMap = attributeMap;
+  /////////////////////////////// Attribute ///////////////////////////////
+
+  int setAttribute(
+      final String database,
+      final String tableName,
+      final @Nonnull Map<String, String> attributeSetMap) {
+    return (deviceSchema.compareAndSet(null, new TableAttributeSchema())
+            ? TableAttributeSchema.INSTANCE_SIZE
+            : 0)
+        + updateAttribute(database, tableName, attributeSetMap);
   }
 
-  public void update(final @Nonnull Map<String, String> updateMap) {
-    updateMap.forEach(
-        (k, v) -> {
-          if (Objects.nonNull(v)) {
-            attributeMap.put(k, v);
-          } else {
-            attributeMap.remove(k);
+  int updateAttribute(
+      final String database, final String tableName, final @Nonnull Map<String, String> updateMap) {
+    // Shall only call this for original table device
+    final TableAttributeSchema schema = (TableAttributeSchema) deviceSchema.get();
+    final int result =
+        Objects.nonNull(schema) ? schema.updateAttribute(database, tableName, updateMap) : 0;
+    return Objects.nonNull(deviceSchema.get()) ? result : 0;
+  }
+
+  int invalidateAttribute() {
+    final AtomicInteger size = new AtomicInteger(0);
+    deviceSchema.updateAndGet(
+        map -> {
+          if (Objects.nonNull(map)) {
+            size.set(map.estimateSize());
           }
+          return null;
         });
+    return size.get();
   }
 
-  public String getAttribute(final String key) {
-    return attributeMap.get(key);
+  Map<String, String> getAttributeMap() {
+    final IDeviceSchema map = deviceSchema.get();
+    // Cache miss
+    if (Objects.isNull(map)) {
+      return null;
+    }
+    return map instanceof TableAttributeSchema
+        ? ((TableAttributeSchema) map).getAttributeMap()
+        : Collections.emptyMap();
   }
 
-  public Map<String, String> getAttributeMap() {
-    return attributeMap;
+  /////////////////////////////// Tree model ///////////////////////////////
+
+  int setDeviceSchema(final String database, final DeviceSchemaInfo deviceSchemaInfo) {
+    // Safe here because tree schema is invalidated by the whole entry
+    if (deviceSchemaInfo.getTemplateId() == NON_TEMPLATE) {
+      final int result =
+          (deviceSchema.compareAndSet(
+                  null, new TreeDeviceNormalSchema(database, deviceSchemaInfo.isAligned()))
+              ? TreeDeviceNormalSchema.INSTANCE_SIZE
+              : 0);
+      return deviceSchema.get() instanceof TreeDeviceNormalSchema
+          ? result
+              + ((TreeDeviceNormalSchema) deviceSchema.get())
+                  .update(deviceSchemaInfo.getMeasurementSchemaInfoList())
+          : 0;
+    } else {
+      return deviceSchema.compareAndSet(
+              null, new TreeDeviceTemplateSchema(database, deviceSchemaInfo.getTemplateId()))
+          ? TreeDeviceTemplateSchema.INSTANCE_SIZE
+          : 0;
+    }
   }
 
-  public int estimateSize() {
-    return (int) (INSTANCE_SIZE + RamUsageEstimator.sizeOfMap(attributeMap));
+  int setMeasurementSchema(
+      final String database,
+      final boolean isAligned,
+      final String[] measurements,
+      final IMeasurementSchema[] schemas) {
+    // Safe here because tree schema is invalidated by the whole entry
+    final int result =
+        (deviceSchema.compareAndSet(null, new TreeDeviceNormalSchema(database, isAligned))
+            ? TreeDeviceNormalSchema.INSTANCE_SIZE
+            : 0);
+    return deviceSchema.get() instanceof TreeDeviceNormalSchema
+        ? result + ((TreeDeviceNormalSchema) deviceSchema.get()).update(measurements, schemas)
+        : 0;
+  }
+
+  IDeviceSchema getDeviceSchema() {
+    return deviceSchema.get();
+  }
+
+  /////////////////////////////// Last Cache ///////////////////////////////
+
+  int updateLastCache(
+      final String database,
+      final String tableName,
+      final String[] measurements,
+      final @Nullable TimeValuePair[] timeValuePairs,
+      final boolean isTableModel) {
+    int result =
+        lastCache.compareAndSet(null, new TableDeviceLastCache())
+            ? TableDeviceLastCache.INSTANCE_SIZE
+            : 0;
+    final TableDeviceLastCache cache = lastCache.get();
+    result +=
+        Objects.nonNull(cache)
+            ? cache.update(database, tableName, measurements, timeValuePairs, isTableModel)
+            : 0;
+    return Objects.nonNull(lastCache.get()) ? result : 0;
+  }
+
+  int tryUpdateLastCache(final String[] measurements, final TimeValuePair[] timeValuePairs) {
+    final TableDeviceLastCache cache = lastCache.get();
+    final int result = Objects.nonNull(cache) ? cache.tryUpdate(measurements, timeValuePairs) : 0;
+    return Objects.nonNull(lastCache.get()) ? result : 0;
+  }
+
+  int invalidateLastCache(final String measurement) {
+    final TableDeviceLastCache cache = lastCache.get();
+    final int result = Objects.nonNull(cache) ? cache.invalidate(measurement) : 0;
+    return Objects.nonNull(lastCache.get()) ? result : 0;
+  }
+
+  TimeValuePair getTimeValuePair(final String measurement) {
+    final TableDeviceLastCache cache = lastCache.get();
+    return Objects.nonNull(cache) ? cache.getTimeValuePair(measurement) : null;
+  }
+
+  // Shall pass in "" if last by time
+  Optional<Pair<OptionalLong, TsPrimitiveType[]>> getLastRow(
+      final String sourceMeasurement, final List<String> targetMeasurements) {
+    final TableDeviceLastCache cache = lastCache.get();
+    return Objects.nonNull(cache)
+        ? cache.getLastRow(sourceMeasurement, targetMeasurements)
+        : Optional.empty();
+  }
+
+  int invalidateLastCache() {
+    final AtomicInteger size = new AtomicInteger(0);
+    lastCache.updateAndGet(
+        cacheEntry -> {
+          if (Objects.nonNull(cacheEntry)) {
+            size.set(cacheEntry.estimateSize());
+          }
+          return null;
+        });
+    return size.get();
+  }
+
+  /////////////////////////////// Management ///////////////////////////////
+
+  int estimateSize() {
+    final IDeviceSchema schema = deviceSchema.get();
+    final TableDeviceLastCache cache = lastCache.get();
+    return (int)
+        (INSTANCE_SIZE
+            + (Objects.nonNull(schema) ? schema.estimateSize() : 0)
+            + (Objects.nonNull(cache) ? cache.estimateSize() : 0));
   }
 }

@@ -29,11 +29,13 @@ import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
+import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -99,6 +101,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     super(id);
   }
 
+  @Override
   public IDeviceID getDeviceID(int rowIdx) {
     if (deviceIDs == null) {
       deviceIDs = new IDeviceID[rowCount];
@@ -126,6 +129,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     return visitor.visitRelationalInsertTablet(this, context);
   }
 
+  @Override
   protected InsertTabletNode getEmptySplit(int count) {
     long[] subTimes = new long[count];
     Object[] values = initTabletValues(dataTypes.length, count, dataTypes);
@@ -209,6 +213,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     }
   }
 
+  @Override
   public void subDeserialize(ByteBuffer buffer) {
     super.subDeserialize(buffer);
     TsTableColumnCategory[] columnCategories = new TsTableColumnCategory[measurements.length];
@@ -218,6 +223,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     setColumnCategories(columnCategories);
   }
 
+  @Override
   void subSerialize(IWALByteBufferView buffer, int start, int end) {
     super.subSerialize(buffer, start, end);
     for (int i = 0; i < measurements.length; i++) {
@@ -273,6 +279,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     return PlanNodeType.RELATIONAL_INSERT_TABLET;
   }
 
+  @Override
   public List<Pair<IDeviceID, Integer>> splitByDevice(int start, int end) {
     List<Pair<IDeviceID, Integer>> result = new ArrayList<>();
     IDeviceID prevDeviceId = getDeviceID(start);
@@ -295,15 +302,39 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     return checkTTLInternal(results, rowTTLGetter, false);
   }
 
+  @Override
   public String getTableName() {
     return targetPath.getFullPath();
   }
 
+  @Override
   protected PartialPath readTargetPath(ByteBuffer buffer) {
     return new PartialPath(ReadWriteIOUtils.readString(buffer), false);
   }
 
+  @Override
   protected PartialPath readTargetPath(DataInputStream stream) throws IOException {
     return new PartialPath(ReadWriteIOUtils.readString(stream), false);
+  }
+
+  @Override
+  public void updateLastCache(String databaseName) {
+    String[] rawMeasurements = getRawMeasurements();
+
+    List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs = splitByDevice(0, rowCount);
+    int startOffset = 0;
+    for (Pair<IDeviceID, Integer> deviceEndOffsetPair : deviceEndOffsetPairs) {
+      IDeviceID deviceID = deviceEndOffsetPair.getLeft();
+      int endOffset = deviceEndOffsetPair.getRight();
+
+      TimeValuePair[] timeValuePairs = new TimeValuePair[rawMeasurements.length];
+      for (int i = 0; i < rawMeasurements.length; i++) {
+        timeValuePairs[i] = composeLastTimeValuePair(i, startOffset, endOffset);
+      }
+      TableDeviceSchemaCache.getInstance()
+          .updateLastCacheIfExists(databaseName, deviceID, rawMeasurements, timeValuePairs);
+
+      startOffset = endOffset;
+    }
   }
 }
