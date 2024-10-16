@@ -137,16 +137,16 @@ public class AvgAccumulator implements TableAccumulator {
   }
 
   @Override
-  public void addStatistics(Statistics statistics) {
+  public void addStatistics(Statistics[] statistics) {
     if (statistics == null) {
       return;
     }
     initResult = true;
-    countValue += statistics.getCount();
-    if (statistics instanceof IntegerStatistics) {
-      sumValue += statistics.getSumLongValue();
+    countValue += statistics[0].getCount();
+    if (statistics[0] instanceof IntegerStatistics) {
+      sumValue += statistics[0].getSumLongValue();
     } else {
-      sumValue += statistics.getSumDoubleValue();
+      sumValue += statistics[0].getSumDoubleValue();
     }
     if (countValue == 0) {
       initResult = false;

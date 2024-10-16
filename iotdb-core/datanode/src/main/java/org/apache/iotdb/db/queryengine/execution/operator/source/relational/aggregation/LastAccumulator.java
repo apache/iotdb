@@ -197,32 +197,34 @@ public class LastAccumulator implements TableAccumulator {
   }
 
   @Override
-  public void addStatistics(Statistics statistics) {
-    if (statistics == null) {
+  public void addStatistics(Statistics[] statistics) {
+    if (statistics[0] == null) {
       return;
     }
     switch (seriesDataType) {
       case INT32:
       case DATE:
-        updateIntLastValue((int) statistics.getLastValue(), statistics.getEndTime());
+        updateIntLastValue((int) statistics[0].getLastValue(), statistics[0].getEndTime());
         break;
       case INT64:
+        updateLongLastValue((long) statistics[0].getLastValue(), statistics[0].getEndTime());
+        break;
       case TIMESTAMP:
-        updateLongLastValue((long) statistics.getLastValue(), statistics.getEndTime());
+        updateLongLastValue(statistics[0].getEndTime(), statistics[0].getEndTime());
         break;
       case FLOAT:
-        updateFloatLastValue((float) statistics.getLastValue(), statistics.getEndTime());
+        updateFloatLastValue((float) statistics[0].getLastValue(), statistics[0].getEndTime());
         break;
       case DOUBLE:
-        updateDoubleLastValue((double) statistics.getLastValue(), statistics.getEndTime());
+        updateDoubleLastValue((double) statistics[0].getLastValue(), statistics[0].getEndTime());
         break;
       case TEXT:
       case BLOB:
       case STRING:
-        updateBinaryLastValue((Binary) statistics.getLastValue(), statistics.getEndTime());
+        updateBinaryLastValue((Binary) statistics[0].getLastValue(), statistics[0].getEndTime());
         break;
       case BOOLEAN:
-        updateBooleanLastValue((boolean) statistics.getLastValue(), statistics.getEndTime());
+        updateBooleanLastValue((boolean) statistics[0].getLastValue(), statistics[0].getEndTime());
         break;
       default:
         throw new UnSupportedDataTypeException(

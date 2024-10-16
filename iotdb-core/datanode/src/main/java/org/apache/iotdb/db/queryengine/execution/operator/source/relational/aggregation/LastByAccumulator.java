@@ -53,7 +53,7 @@ public class LastByAccumulator implements TableAccumulator {
   }
 
   @Override
-  public void addStatistics(Statistics statistics) {}
+  public void addStatistics(Statistics[] statistics) {}
 
   @Override
   public void reset() {}
