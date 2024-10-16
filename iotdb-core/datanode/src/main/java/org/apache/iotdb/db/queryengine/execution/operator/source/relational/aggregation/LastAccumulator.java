@@ -23,9 +23,20 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.read.common.block.column.BinaryColumn;
+import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
+import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
+
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 public class LastAccumulator implements TableAccumulator {
 
@@ -53,28 +64,29 @@ public class LastAccumulator implements TableAccumulator {
 
   @Override
   public void addInput(Column[] arguments) {
+    // arguments[0] is value column, arguments[1] is time column
     switch (seriesDataType) {
       case INT32:
       case DATE:
-        addIntInput(arguments);
+        addIntInput(arguments[0], arguments[1]);
         return;
       case INT64:
       case TIMESTAMP:
-        addLongInput(arguments);
+        addLongInput(arguments[0], arguments[1]);
         return;
       case FLOAT:
-        addFloatInput(arguments);
+        addFloatInput(arguments[0], arguments[1]);
         return;
       case DOUBLE:
-        addDoubleInput(arguments);
+        addDoubleInput(arguments[0], arguments[1]);
         return;
       case TEXT:
       case STRING:
       case BLOB:
-        addBinaryInput(arguments);
+        addBinaryInput(arguments[0], arguments[1]);
         return;
       case BOOLEAN:
-        addBooleanInput(arguments);
+        addBooleanInput(arguments[0], arguments[1]);
         return;
       default:
         throw new UnSupportedDataTypeException(
@@ -83,13 +95,101 @@ public class LastAccumulator implements TableAccumulator {
   }
 
   @Override
-  public void addIntermediate(Column argument) {}
+  public void addIntermediate(Column argument) {
+    checkArgument(
+        argument instanceof BinaryColumn || argument instanceof RunLengthEncodedColumn,
+        "intermediate input and output of Last should be BinaryColumn");
+
+    for (int i = 0; i < argument.getPositionCount(); i++) {
+      if (argument.isNull(i)) {
+        continue;
+      }
+
+      initResult = true;
+
+      long time = BytesUtils.bytesToLong(argument.getBinary(i).getValues(), Long.BYTES);
+
+      switch (seriesDataType) {
+        case INT32:
+        case DATE:
+          updateIntLastValue(
+              BytesUtils.bytesToInt(argument.getBinary(i).getValues(), Long.BYTES), time);
+          break;
+        case INT64:
+        case TIMESTAMP:
+          updateLongLastValue(
+              BytesUtils.bytesToLong(argument.getBinary(i).getValues(), Long.BYTES), time);
+          break;
+        case FLOAT:
+          updateFloatLastValue(
+              BytesUtils.bytesToFloat(argument.getBinary(i).getValues(), Long.BYTES), time);
+          break;
+        case DOUBLE:
+          updateDoubleLastValue(
+              BytesUtils.bytesToDouble(argument.getBinary(i).getValues(), Long.BYTES), time);
+          break;
+        case TEXT:
+        case BLOB:
+        case STRING:
+          updateBinaryLastValue(new Binary(argument.getBinary(i).getValues()), time);
+          break;
+        case BOOLEAN:
+          updateBooleanLastValue(
+              BytesUtils.bytesToBool(argument.getBinary(i).getValues(), Long.BYTES), time);
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format("Unsupported data type in Last Aggregation: %s", seriesDataType));
+      }
+    }
+  }
 
   @Override
-  public void evaluateIntermediate(ColumnBuilder columnBuilder) {}
+  public void evaluateIntermediate(ColumnBuilder columnBuilder) {
+    checkArgument(
+        columnBuilder instanceof BinaryColumnBuilder,
+        "intermediate input and output of Avg should be BinaryColumn");
+    if (!initResult) {
+      columnBuilder.appendNull();
+    } else {
+      columnBuilder.writeBinary(new Binary(serializeTimeWithValue()));
+    }
+  }
 
   @Override
-  public void evaluateFinal(ColumnBuilder columnBuilder) {}
+  public void evaluateFinal(ColumnBuilder columnBuilder) {
+    if (!initResult) {
+      columnBuilder.appendNull();
+    } else {
+      switch (seriesDataType) {
+        case INT32:
+        case DATE:
+          columnBuilder.writeInt(lastValue.getInt());
+          break;
+        case INT64:
+        case TIMESTAMP:
+          columnBuilder.writeLong(lastValue.getLong());
+          break;
+        case FLOAT:
+          columnBuilder.writeFloat(lastValue.getFloat());
+          break;
+        case DOUBLE:
+          columnBuilder.writeDouble(lastValue.getDouble());
+          break;
+        case TEXT:
+        case BLOB:
+        case STRING:
+          columnBuilder.writeBinary(lastValue.getBinary());
+          break;
+        case BOOLEAN:
+          columnBuilder.writeBoolean(lastValue.getBoolean());
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format("Unsupported data type in Extreme: %s", seriesDataType));
+      }
+    }
+  }
 
   @Override
   public boolean hasFinalResult() {
@@ -97,12 +197,180 @@ public class LastAccumulator implements TableAccumulator {
   }
 
   @Override
-  public void addStatistics(Statistics statistics) {}
+  public void addStatistics(Statistics statistics) {
+    if (statistics == null) {
+      return;
+    }
+    switch (seriesDataType) {
+      case INT32:
+      case DATE:
+        updateIntLastValue((int) statistics.getLastValue(), statistics.getEndTime());
+        break;
+      case INT64:
+      case TIMESTAMP:
+        updateLongLastValue((long) statistics.getLastValue(), statistics.getEndTime());
+        break;
+      case FLOAT:
+        updateFloatLastValue((float) statistics.getLastValue(), statistics.getEndTime());
+        break;
+      case DOUBLE:
+        updateDoubleLastValue((double) statistics.getLastValue(), statistics.getEndTime());
+        break;
+      case TEXT:
+      case BLOB:
+      case STRING:
+        updateBinaryLastValue((Binary) statistics.getLastValue(), statistics.getEndTime());
+        break;
+      case BOOLEAN:
+        updateBooleanLastValue((boolean) statistics.getLastValue(), statistics.getEndTime());
+        break;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type in Last Aggregation: %s", seriesDataType));
+    }
+  }
 
   @Override
   public void reset() {
     initResult = false;
     this.maxTime = Long.MIN_VALUE;
     this.lastValue.reset();
+  }
+
+  private byte[] serializeTimeWithValue() {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    try {
+      dataOutputStream.writeLong(maxTime);
+      switch (seriesDataType) {
+        case INT32:
+        case DATE:
+          dataOutputStream.writeInt(lastValue.getInt());
+          break;
+        case INT64:
+        case TIMESTAMP:
+          dataOutputStream.writeLong(lastValue.getLong());
+          break;
+        case FLOAT:
+          dataOutputStream.writeFloat(lastValue.getFloat());
+          break;
+        case DOUBLE:
+          dataOutputStream.writeDouble(lastValue.getDouble());
+          break;
+        case TEXT:
+        case BLOB:
+        case STRING:
+          // TODO how to serialize effienciently?
+          dataOutputStream.write(lastValue.getBinary().getValues());
+          break;
+        case BOOLEAN:
+          dataOutputStream.writeBoolean(lastValue.getBoolean());
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format("Unsupported data type in Extreme: %s", seriesDataType));
+      }
+    } catch (IOException e) {
+      throw new UnsupportedOperationException(
+          "Failed to serialize intermediate result for AvgAccumulator.", e);
+    }
+    return byteArrayOutputStream.toByteArray();
+  }
+
+  private void addIntInput(Column valueColumn, Column timeColumn) {
+    // TODO can add last position optimization if last position is null ?
+    for (int i = 0; i < valueColumn.getPositionCount(); i++) {
+      if (!valueColumn.isNull(i)) {
+        updateIntLastValue(valueColumn.getInt(i), timeColumn.getLong(i));
+      }
+    }
+  }
+
+  protected void updateIntLastValue(int value, long curTime) {
+    initResult = true;
+    if (curTime > maxTime) {
+      maxTime = curTime;
+      lastValue.setInt(value);
+    }
+  }
+
+  private void addLongInput(Column valueColumn, Column timeColumn) {
+    for (int i = 0; i < valueColumn.getPositionCount(); i++) {
+      if (!valueColumn.isNull(i)) {
+        updateLongLastValue(valueColumn.getLong(i), timeColumn.getLong(i));
+      }
+    }
+  }
+
+  protected void updateLongLastValue(long value, long curTime) {
+    initResult = true;
+    if (curTime > maxTime) {
+      maxTime = curTime;
+      lastValue.setLong(value);
+    }
+  }
+
+  private void addFloatInput(Column valueColumn, Column timeColumn) {
+    for (int i = 0; i < valueColumn.getPositionCount(); i++) {
+      if (!valueColumn.isNull(i)) {
+        updateFloatLastValue(valueColumn.getFloat(i), timeColumn.getLong(i));
+      }
+    }
+  }
+
+  protected void updateFloatLastValue(float value, long curTime) {
+    initResult = true;
+    if (curTime > maxTime) {
+      maxTime = curTime;
+      lastValue.setFloat(value);
+    }
+  }
+
+  private void addDoubleInput(Column valueColumn, Column timeColumn) {
+    for (int i = 0; i < valueColumn.getPositionCount(); i++) {
+      if (!valueColumn.isNull(i)) {
+        updateDoubleLastValue(valueColumn.getDouble(i), timeColumn.getLong(i));
+      }
+    }
+  }
+
+  protected void updateDoubleLastValue(double value, long curTime) {
+    initResult = true;
+    if (curTime > maxTime) {
+      maxTime = curTime;
+      lastValue.setDouble(value);
+    }
+  }
+
+  private void addBinaryInput(Column valueColumn, Column timeColumn) {
+    for (int i = 0; i < valueColumn.getPositionCount(); i++) {
+      if (!valueColumn.isNull(i)) {
+        updateBinaryLastValue(valueColumn.getBinary(i), timeColumn.getLong(i));
+      }
+    }
+  }
+
+  protected void updateBinaryLastValue(Binary value, long curTime) {
+    initResult = true;
+    if (curTime > maxTime) {
+      maxTime = curTime;
+      lastValue.setBinary(value);
+    }
+  }
+
+  private void addBooleanInput(Column valueColumn, Column timeColumn) {
+    for (int i = 0; i < valueColumn.getPositionCount(); i++) {
+      if (!valueColumn.isNull(i)) {
+        updateBooleanLastValue(valueColumn.getBoolean(i), timeColumn.getLong(i));
+      }
+    }
+  }
+
+  protected void updateBooleanLastValue(boolean value, long curTime) {
+    initResult = true;
+    if (curTime > maxTime) {
+      maxTime = curTime;
+      lastValue.setBoolean(value);
+    }
   }
 }
