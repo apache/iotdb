@@ -47,7 +47,7 @@ public class AggregationOperator implements ProcessOperator {
 
   private final Operator child;
 
-  private final List<Aggregator> aggregators;
+  private final List<TableAggregator> aggregators;
 
   private final TsBlockBuilder resultBuilder;
 
@@ -61,13 +61,13 @@ public class AggregationOperator implements ProcessOperator {
   private boolean finished = false;
 
   public AggregationOperator(
-      OperatorContext operatorContext, Operator child, List<Aggregator> aggregators) {
+      OperatorContext operatorContext, Operator child, List<TableAggregator> aggregators) {
     this.operatorContext = operatorContext;
     this.child = child;
     this.aggregators = aggregators;
     this.resultBuilder =
         new TsBlockBuilder(
-            aggregators.stream().map(Aggregator::getType).collect(toImmutableList()));
+            aggregators.stream().map(TableAggregator::getType).collect(toImmutableList()));
     this.resultColumnsBuilder = resultBuilder.getValueColumnBuilders();
     this.memoryReservationManager =
         operatorContext
@@ -96,7 +96,7 @@ public class AggregationOperator implements ProcessOperator {
         return null;
       }
 
-      for (Aggregator aggregator : aggregators) {
+      for (TableAggregator aggregator : aggregators) {
         aggregator.processBlock(block);
       }
 
@@ -151,7 +151,7 @@ public class AggregationOperator implements ProcessOperator {
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
-        + aggregators.stream().mapToLong(Aggregator::getEstimatedSize).count()
+        + aggregators.stream().mapToLong(TableAggregator::getEstimatedSize).count()
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + resultBuilder.getRetainedSizeInBytes();
   }

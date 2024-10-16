@@ -542,4 +542,8 @@ public abstract class AstVisitor<R, C> {
   protected R visitShowPipePlugins(ShowPipePlugins node, C context) {
     return visitStatement(node, context);
   }
+
+  protected R visitLoadTsFile(LoadTsFile node, C context) {
+    return visitStatement(node, context);
+  }
 }

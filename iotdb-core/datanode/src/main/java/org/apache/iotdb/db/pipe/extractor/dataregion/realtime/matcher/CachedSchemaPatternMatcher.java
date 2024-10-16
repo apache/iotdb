@@ -51,6 +51,8 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
 
   protected static final Logger LOGGER = LoggerFactory.getLogger(CachedSchemaPatternMatcher.class);
 
+  protected static final String TREE_MODEL_EVENT_TABLE_NAME_PREFIX = PATH_ROOT + PATH_SEPARATOR;
+
   protected final ReentrantReadWriteLock lock;
 
   protected final Set<PipeRealtimeDataRegionExtractor> extractors;
@@ -137,10 +139,12 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
 
         // TODO: Check the role to determine whether to match with tree model or table model
         if (deviceID instanceof PlainDeviceID
-            || deviceID.getTableName().startsWith(PATH_ROOT + PATH_SEPARATOR)
+            || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
             || deviceID.getTableName().equals(PATH_ROOT)) {
+          event.markAsTreeModelEvent();
           matchTreeModelEvent(deviceID, entry.getValue(), matchedExtractors);
         } else {
+          event.markAsTableModelEvent();
           matchTableModelEvent(
               event.getEvent() instanceof PipeInsertionEvent
                   ? ((PipeInsertionEvent) event.getEvent()).getTableModelDatabaseName()

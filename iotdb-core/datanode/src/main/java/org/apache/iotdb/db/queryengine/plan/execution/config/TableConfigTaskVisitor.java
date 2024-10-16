@@ -149,18 +149,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     final TDatabaseSchema schema = new TDatabaseSchema();
 
     final String dbName = node.getDbName();
-    // Check database length here
-    // We need to calculate the database name without "root."
-    if (dbName.contains(PATH_SEPARATOR)
-        || !IoTDBConfig.STORAGE_GROUP_PATTERN.matcher(dbName).matches()
-        || dbName.length() > MAX_DATABASE_NAME_LENGTH) {
-      throw new SemanticException(
-          new IllegalPathException(
-              dbName,
-              dbName.length() > MAX_DATABASE_NAME_LENGTH
-                  ? "the length of database name shall not exceed " + MAX_DATABASE_NAME_LENGTH
-                  : "the database name can only contain english or chinese characters, numbers, backticks and underscores."));
-    }
+    validateDatabaseName(dbName);
+
     schema.setName(ROOT + PATH_SEPARATOR_CHAR + dbName);
 
     for (final Property property : node.getProperties()) {
@@ -328,6 +318,21 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
         convertPropertiesToMap(node.getProperties(), true),
         context.getQueryId().getId(),
         node.ifExists());
+  }
+
+  public static void validateDatabaseName(String dbName) throws SemanticException {
+    // Check database length here
+    // We need to calculate the database name without "root."
+    if (dbName.contains(PATH_SEPARATOR)
+        || !IoTDBConfig.STORAGE_GROUP_PATTERN.matcher(dbName).matches()
+        || dbName.length() > MAX_DATABASE_NAME_LENGTH) {
+      throw new SemanticException(
+          new IllegalPathException(
+              dbName,
+              dbName.length() > MAX_DATABASE_NAME_LENGTH
+                  ? "the length of database name shall not exceed " + MAX_DATABASE_NAME_LENGTH
+                  : "the database name can only contain english or chinese characters, numbers, backticks and underscores."));
+    }
   }
 
   public Pair<String, String> splitQualifiedName(final QualifiedName name) {

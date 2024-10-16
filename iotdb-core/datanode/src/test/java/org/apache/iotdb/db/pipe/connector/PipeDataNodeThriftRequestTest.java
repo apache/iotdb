@@ -26,9 +26,13 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReqV2;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReqV2;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReqV2;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReqV2;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
@@ -36,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.rpc.RpcUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -106,6 +111,40 @@ public class PipeDataNodeThriftRequestTest {
   }
 
   @Test
+  public void testPipeTransferInsertNodeReqV2() {
+    final PipeTransferTabletInsertNodeReqV2 req =
+        PipeTransferTabletInsertNodeReqV2.toTPipeTransferReq(
+            new InsertRowNode(
+                new PlanNodeId(""),
+                new PartialPath(new String[] {"root", "sg", "d"}),
+                false,
+                new String[] {"s"},
+                new TSDataType[] {TSDataType.INT32},
+                1,
+                new Object[] {1},
+                false),
+            "test");
+    final PipeTransferTabletInsertNodeReqV2 deserializeReq =
+        PipeTransferTabletInsertNodeReqV2.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
+    Assert.assertEquals(req.getType(), deserializeReq.getType());
+    Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
+
+    Assert.assertEquals(req.getInsertNode(), deserializeReq.getInsertNode());
+    Assert.assertEquals(req.getDataBaseName(), deserializeReq.getDataBaseName());
+
+    final InsertBaseStatement statement = req.constructStatement();
+    final List<PartialPath> paths = new ArrayList<>();
+    paths.add(new PartialPath(new String[] {"root", "sg", "d", "s"}));
+
+    Assert.assertEquals(statement.getPaths(), paths);
+    Assert.assertTrue(statement.isWriteToTable());
+    Assert.assertTrue(statement.getDatabaseName().isPresent());
+    Assert.assertEquals(statement.getDatabaseName().get(), "test");
+  }
+
+  @Test
   public void testPipeTransferTabletBinaryReq() {
     // Not do real test here since "serializeToWal" needs private inner class of walBuffer
     final PipeTransferTabletBinaryReq req =
@@ -116,6 +155,21 @@ public class PipeDataNodeThriftRequestTest {
     Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
     Assert.assertEquals(req.getType(), deserializeReq.getType());
     Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
+  }
+
+  @Test
+  public void testPipeTransferTabletBinaryReqV2() throws IOException {
+    // Not do real test here since "serializeToWal" needs private inner class of walBuffer
+    final PipeTransferTabletBinaryReqV2 req =
+        PipeTransferTabletBinaryReqV2.toTPipeTransferReq(
+            ByteBuffer.wrap(new byte[] {'a', 'b'}), "test");
+    final PipeTransferTabletBinaryReqV2 deserializeReq =
+        PipeTransferTabletBinaryReqV2.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
+    Assert.assertEquals(req.getType(), deserializeReq.getType());
+    Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
+    Assert.assertEquals(req.getDataBaseName(), deserializeReq.getDataBaseName());
   }
 
   @Test
@@ -199,6 +253,66 @@ public class PipeDataNodeThriftRequestTest {
   }
 
   @Test
+  public void testPipeTransferTabletReqV2() {
+    try {
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("s1", TSDataType.INT32));
+      schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
+      schemaList.add(new MeasurementSchema("s3", TSDataType.FLOAT));
+      schemaList.add(new MeasurementSchema("s4", TSDataType.DOUBLE));
+      schemaList.add(new MeasurementSchema("s5", TSDataType.BOOLEAN));
+      schemaList.add(new MeasurementSchema("s6", TSDataType.TEXT));
+      schemaList.add(new MeasurementSchema("s7", TSDataType.TIMESTAMP));
+      schemaList.add(new MeasurementSchema("s8", TSDataType.DATE));
+      schemaList.add(new MeasurementSchema("s9", TSDataType.BLOB));
+      schemaList.add(new MeasurementSchema("s10", TSDataType.STRING));
+      final Tablet t = new Tablet("root.sg.d", schemaList, 1024);
+      t.rowSize = 2;
+      t.addTimestamp(0, 2000);
+      t.addTimestamp(1, 1000);
+      t.addValue("s1", 0, 2);
+      t.addValue("s6", 0, "2");
+      t.addValue("s8", 0, LocalDate.of(2024, 2, 2));
+      t.addValue("s9", 0, new Binary("2", TSFileConfig.STRING_CHARSET));
+      t.addValue("s10", 0, "2");
+      t.addValue("s1", 1, 1);
+      t.addValue("s6", 1, "1");
+      t.addValue("s8", 1, LocalDate.of(2024, 1, 1));
+      t.addValue("s9", 1, new Binary("1", TSFileConfig.STRING_CHARSET));
+      t.addValue("s10", 1, "1");
+      final PipeTransferTabletRawReqV2 req =
+          PipeTransferTabletRawReqV2.toTPipeTransferReq(t, false, "test");
+      final PipeTransferTabletRawReqV2 deserializeReq =
+          PipeTransferTabletRawReqV2.fromTPipeTransferReq(req);
+
+      Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
+      Assert.assertEquals(req.getType(), deserializeReq.getType());
+      Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
+
+      final InsertBaseStatement statement =
+          req.constructStatement(); // will call PipeTransferTabletRawReq.sortTablet() here
+      List<PartialPath> paths = new ArrayList<>();
+      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s1"}));
+      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s2"}));
+      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s3"}));
+      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s4"}));
+      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s5"}));
+      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s6"}));
+      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s7"}));
+      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s8"}));
+      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s9"}));
+      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s10"}));
+      Assert.assertEquals(statement.getPaths(), paths);
+
+      Assert.assertTrue(statement.isWriteToTable());
+      Assert.assertTrue(statement.getDatabaseName().isPresent());
+      Assert.assertEquals(statement.getDatabaseName().get(), "test");
+    } catch (final IOException e) {
+      Assert.fail();
+    }
+  }
+
+  @Test
   public void testPipeTransferTabletBatchReq() throws IOException {
     final List<ByteBuffer> binaryBuffers = new ArrayList<>();
     final List<ByteBuffer> insertNodeBuffers = new ArrayList<>();
@@ -270,6 +384,95 @@ public class PipeDataNodeThriftRequestTest {
     Assert.assertEquals(node, deserializedReq.getInsertNodeReqs().get(0).getInsertNode());
     Assert.assertEquals(t, deserializedReq.getTabletReqs().get(0).getTablet());
     Assert.assertFalse(deserializedReq.getTabletReqs().get(0).getIsAligned());
+  }
+
+  @Test
+  public void testPipeTransferTabletBatchReqV2() throws IOException {
+    final List<ByteBuffer> binaryBuffers = new ArrayList<>();
+    final List<ByteBuffer> insertNodeBuffers = new ArrayList<>();
+    final List<ByteBuffer> tabletBuffers = new ArrayList<>();
+    final List<String> binaryDataBase = new ArrayList<>();
+    final List<String> insertDataBase = new ArrayList<>();
+    final List<String> tabletDataBase = new ArrayList<>();
+
+    final InsertRowNode node =
+        new InsertRowNode(
+            new PlanNodeId(""),
+            new PartialPath(new String[] {"root", "sg", "d"}),
+            false,
+            new String[] {"s"},
+            new TSDataType[] {TSDataType.INT32},
+            1,
+            new Object[] {1},
+            false);
+
+    // InsertNode buffer
+    insertNodeBuffers.add(node.serializeToByteBuffer());
+    insertDataBase.add("test");
+
+    // Binary buffer
+    // Not do real test here since "serializeToWal" needs private inner class of walBuffer
+    binaryBuffers.add(ByteBuffer.wrap(new byte[] {'a', 'b'}));
+    binaryDataBase.add("test");
+
+    // Raw buffer
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT32));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.FLOAT));
+    schemaList.add(new MeasurementSchema("s4", TSDataType.DOUBLE));
+    schemaList.add(new MeasurementSchema("s5", TSDataType.BOOLEAN));
+    schemaList.add(new MeasurementSchema("s6", TSDataType.TEXT));
+    schemaList.add(new MeasurementSchema("s7", TSDataType.TIMESTAMP));
+    schemaList.add(new MeasurementSchema("s8", TSDataType.DATE));
+    schemaList.add(new MeasurementSchema("s9", TSDataType.BLOB));
+    schemaList.add(new MeasurementSchema("s10", TSDataType.STRING));
+
+    final Tablet t = new Tablet("root.sg.d", schemaList, 1024);
+    t.rowSize = 2;
+    t.addTimestamp(0, 2000);
+    t.addTimestamp(1, 1000);
+    t.addValue("s1", 0, 2);
+    t.addValue("s6", 0, "2");
+    t.addValue("s8", 0, LocalDate.of(2024, 2, 2));
+    t.addValue("s9", 0, new Binary("2", TSFileConfig.STRING_CHARSET));
+    t.addValue("s10", 0, "2");
+    t.addValue("s1", 1, 1);
+    t.addValue("s6", 1, "1");
+    t.addValue("s8", 1, LocalDate.of(2024, 1, 1));
+    t.addValue("s9", 1, new Binary("1", TSFileConfig.STRING_CHARSET));
+    t.addValue("s10", 1, "1");
+
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      t.serialize(outputStream);
+      ReadWriteIOUtils.write(false, outputStream);
+      tabletBuffers.add(
+          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
+      tabletDataBase.add("test");
+    }
+
+    final PipeTransferTabletBatchReqV2 req =
+        PipeTransferTabletBatchReqV2.toTPipeTransferReq(
+            binaryBuffers,
+            insertNodeBuffers,
+            tabletBuffers,
+            binaryDataBase,
+            insertDataBase,
+            tabletDataBase);
+
+    final PipeTransferTabletBatchReqV2 deserializedReq =
+        PipeTransferTabletBatchReqV2.fromTPipeTransferReq(req);
+
+    Assert.assertArrayEquals(
+        new byte[] {'a', 'b'}, deserializedReq.getBinaryReqs().get(0).getByteBuffer().array());
+    Assert.assertEquals(node, deserializedReq.getInsertNodeReqs().get(0).getInsertNode());
+    Assert.assertEquals(t, deserializedReq.getTabletReqs().get(0).getTablet());
+    Assert.assertFalse(deserializedReq.getTabletReqs().get(0).getIsAligned());
+
+    Assert.assertEquals("test", deserializedReq.getBinaryReqs().get(0).getDataBaseName());
+    Assert.assertEquals("test", deserializedReq.getTabletReqs().get(0).getDataBaseName());
+    Assert.assertEquals("test", deserializedReq.getInsertNodeReqs().get(0).getDataBaseName());
   }
 
   @Test

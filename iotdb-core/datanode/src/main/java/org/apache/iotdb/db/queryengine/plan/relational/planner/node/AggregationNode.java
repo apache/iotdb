@@ -37,8 +37,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -292,7 +292,7 @@ public class AggregationNode extends SingleChildProcessNode {
 
   public static AggregationNode deserialize(ByteBuffer byteBuffer) {
     int size = ReadWriteIOUtils.readInt(byteBuffer);
-    final Map<Symbol, Aggregation> aggregations = new HashMap<>(size);
+    final Map<Symbol, Aggregation> aggregations = new LinkedHashMap<>(size);
     while (size-- > 0) {
       aggregations.put(Symbol.deserialize(byteBuffer), Aggregation.deserialize(byteBuffer));
     }

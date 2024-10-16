@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.last;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.LastValueDescAccumulator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.MaxTimeDescAccumulator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 
@@ -130,33 +130,33 @@ public class LastQueryUtil {
     return filter == null || filter.satisfy(tvPair.getTimestamp(), tvPair.getValue().getValue());
   }
 
-  public static List<Aggregator> createAggregators(TSDataType dataType) {
+  public static List<TreeAggregator> createAggregators(TSDataType dataType) {
     // max_time, last_value
-    List<Aggregator> aggregators = new ArrayList<>(2);
+    List<TreeAggregator> aggregators = new ArrayList<>(2);
     aggregators.add(
-        new Aggregator(
+        new TreeAggregator(
             new MaxTimeDescAccumulator(),
             AggregationStep.SINGLE,
             Collections.singletonList(new InputLocation[] {new InputLocation(0, 0)})));
     aggregators.add(
-        new Aggregator(
+        new TreeAggregator(
             new LastValueDescAccumulator(dataType),
             AggregationStep.SINGLE,
             Collections.singletonList(new InputLocation[] {new InputLocation(0, 0)})));
     return aggregators;
   }
 
-  public static List<Aggregator> createAggregators(TSDataType dataType, int valueColumnIndex) {
+  public static List<TreeAggregator> createAggregators(TSDataType dataType, int valueColumnIndex) {
     // max_time, last_value
-    List<Aggregator> aggregators = new ArrayList<>(2);
+    List<TreeAggregator> aggregators = new ArrayList<>(2);
     aggregators.add(
-        new Aggregator(
+        new TreeAggregator(
             new MaxTimeDescAccumulator(),
             AggregationStep.SINGLE,
             Collections.singletonList(
                 new InputLocation[] {new InputLocation(0, valueColumnIndex)})));
     aggregators.add(
-        new Aggregator(
+        new TreeAggregator(
             new LastValueDescAccumulator(dataType),
             AggregationStep.SINGLE,
             Collections.singletonList(
@@ -164,50 +164,13 @@ public class LastQueryUtil {
     return aggregators;
   }
 
-  public static boolean needUpdateCache(Filter timeFilter) {
+  public static boolean needUpdateCache(final Filter timeFilter) {
     // Update the cache only when, the filter is gt (greater than) or ge (greater than or equal to)
-    return CACHE_ENABLED && (timeFilter == null || timeFilter instanceof TimeGtEq)
-        || (timeFilter instanceof TimeGt);
+    return CACHE_ENABLED
+        && (timeFilter == null || timeFilter instanceof TimeGtEq || timeFilter instanceof TimeGt);
   }
 
-  public static boolean needUpdateNullEntry(Filter timeFilter) {
+  public static boolean needUpdateNullEntry(final Filter timeFilter) {
     return CACHE_ENABLED && timeFilter == null;
-  }
-
-  public static class LastEntry {
-    private final long time;
-    private final Binary timeSeries;
-    private final Binary value;
-    private final Binary dataType;
-
-    public LastEntry(long time, Binary timeSeries, Binary value, Binary dataType) {
-      this.time = time;
-      this.timeSeries = timeSeries;
-      this.value = value;
-      this.dataType = dataType;
-    }
-
-    public LastEntry(TsBlock tsBlock, int index) {
-      this.time = tsBlock.getTimeByIndex(index);
-      this.timeSeries = tsBlock.getColumn(0).getBinary(index);
-      this.value = tsBlock.getColumn(1).getBinary(index);
-      this.dataType = tsBlock.getColumn(2).getBinary(index);
-    }
-
-    public long getTime() {
-      return time;
-    }
-
-    public Binary getTimeSeries() {
-      return timeSeries;
-    }
-
-    public Binary getValue() {
-      return value;
-    }
-
-    public Binary getDataType() {
-      return dataType;
-    }
   }
 }

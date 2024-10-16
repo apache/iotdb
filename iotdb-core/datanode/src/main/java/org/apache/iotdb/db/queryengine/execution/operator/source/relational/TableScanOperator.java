@@ -66,8 +66,6 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
 
   private final int[] columnsIndexArray;
 
-  private final int measurementColumnCount;
-
   private final List<DeviceEntry> deviceEntries;
 
   private final int deviceCount;
@@ -96,7 +94,6 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
       PlanNodeId sourceId,
       List<ColumnSchema> columnSchemas,
       int[] columnsIndexArray,
-      int measurementColumnCount,
       List<DeviceEntry> deviceEntries,
       Ordering scanOrder,
       SeriesScanOptions seriesScanOptions,
@@ -107,7 +104,6 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
     this.operatorContext = context;
     this.columnSchemas = columnSchemas;
     this.columnsIndexArray = columnsIndexArray;
-    this.measurementColumnCount = measurementColumnCount;
     this.deviceEntries = deviceEntries;
     this.deviceCount = deviceEntries.size();
     this.scanOrder = scanOrder;
