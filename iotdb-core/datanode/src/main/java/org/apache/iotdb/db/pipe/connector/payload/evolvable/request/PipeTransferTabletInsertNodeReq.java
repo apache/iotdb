@@ -103,6 +103,7 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
   }
 
   /////////////////////////////// Air Gap ///////////////////////////////
+
   public static byte[] toTPipeTransferBytes(final InsertNode insertNode) throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
