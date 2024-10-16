@@ -901,7 +901,7 @@ service IDataNodeRPCService {
 
   common.TSStatus stopRepairData()
 
-  common.TSStatus clearCache()
+  common.TSStatus clearCache(set<i32> cacheClearOptions)
 
   common.TShowConfigurationResp showConfiguration()
 

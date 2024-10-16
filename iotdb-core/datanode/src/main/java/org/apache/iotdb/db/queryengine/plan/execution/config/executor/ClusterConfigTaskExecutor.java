@@ -47,6 +47,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginExecutableManager;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
+import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.table.AlterTableOperationType;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
@@ -1061,22 +1062,23 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> clearCache(boolean onCluster) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+  public SettableFuture<ConfigTaskResult> clearCache(
+      final boolean onCluster, final Set<CacheClearOptions> options) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TSStatus tsStatus = new TSStatus();
     if (onCluster) {
-      try (ConfigNodeClient client =
+      try (final ConfigNodeClient client =
           CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         // Send request to some API server
         tsStatus = client.clearCache();
-      } catch (ClientManagerException | TException e) {
+      } catch (final ClientManagerException | TException e) {
         future.setException(e);
       }
     } else {
       try {
         StorageEngine.getInstance().clearCache();
         tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-      } catch (Exception e) {
+      } catch (final Exception e) {
         tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
       }
     }

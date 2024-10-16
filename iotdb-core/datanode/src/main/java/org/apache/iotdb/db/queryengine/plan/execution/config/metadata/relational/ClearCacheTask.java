@@ -17,28 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.execution.config.sys;
+package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational;
 
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.ClearCacheStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
 public class ClearCacheTask implements IConfigTask {
 
-  private final ClearCacheStatement clearCacheStatement;
+  private final ClearCache clearCache;
 
-  public ClearCacheTask(final ClearCacheStatement clearCacheStatement) {
-    this.clearCacheStatement = clearCacheStatement;
+  public ClearCacheTask(final ClearCache clearCache) {
+    this.clearCache = clearCache;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    // If the action is executed successfully, return the Future.
-    // If your operation is async, you can return the corresponding future directly.
-    return configTaskExecutor.clearCache(clearCacheStatement.isOnCluster());
+    return configTaskExecutor.clearCache(clearCache.isOnCluster());
   }
 }
