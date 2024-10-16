@@ -465,8 +465,9 @@ public class TableDeviceSchemaCache {
     return dualKeyCache.stats().requestCount();
   }
 
-  void invalidateLastCache(final @Nonnull String database) {
-    final String qualifiedDatabase = PathUtils.qualifyDatabaseName(database);
+  // This database is with "root"
+  void invalidateLastCache(final @Nonnull String qualifiedDatabase) {
+    final String database = PathUtils.unQualifyDatabaseName(qualifiedDatabase);
     readWriteLock.writeLock().lock();
 
     try {
@@ -488,6 +489,7 @@ public class TableDeviceSchemaCache {
     }
   }
 
+  // This database is without "root"
   public void invalidate(final @Nonnull String database) {
     final String qualifiedDatabase = PathUtils.qualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
