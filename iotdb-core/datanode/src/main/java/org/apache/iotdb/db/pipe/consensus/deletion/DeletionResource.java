@@ -65,7 +65,7 @@ public class DeletionResource implements PersistentResource {
             TConsensusGroupType.DataRegion.getValue(), Integer.parseInt(regionId));
     this.pipeTaskReferenceCount =
         new AtomicInteger(
-            DataRegionConsensusImpl.getInstance().getReplicationNum(consensusGroupId));
+            DataRegionConsensusImpl.getInstance().getReplicationNum(consensusGroupId) - 1);
   }
 
   public synchronized void decreaseReference() {

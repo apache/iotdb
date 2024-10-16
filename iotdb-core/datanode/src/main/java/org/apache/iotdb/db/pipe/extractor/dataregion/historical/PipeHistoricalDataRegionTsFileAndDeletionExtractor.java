@@ -623,6 +623,12 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     long startTime = System.currentTimeMillis();
     List<DeletionResource> allDeletionResources = deletionResourceManager.getAllDeletionResources();
     final int originalDeletionCount = allDeletionResources.size();
+    // For deletions that are filtered and will not be sent, we should manually decrease its
+    // reference count. Because the initial value of referenceCount is `ReplicaNum - 1`
+    allDeletionResources.stream()
+        .filter(resource -> startIndex.isAfter(resource.getProgressIndex()))
+        .forEach(DeletionResource::decreaseReference);
+    // Get deletions that should be sent.
     allDeletionResources =
         allDeletionResources.stream()
             .filter(resource -> !startIndex.isAfter(resource.getProgressIndex()))
