@@ -39,6 +39,7 @@ public class ClearCacheTask implements IConfigTask {
       throws InterruptedException {
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
-    return configTaskExecutor.clearCache(clearCacheStatement.isOnCluster());
+    return configTaskExecutor.clearCache(
+        clearCacheStatement.isOnCluster(), clearCacheStatement.getOptions());
   }
 }
