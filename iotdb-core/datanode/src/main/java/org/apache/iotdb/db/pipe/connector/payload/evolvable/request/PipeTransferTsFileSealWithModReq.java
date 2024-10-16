@@ -41,7 +41,7 @@ public class PipeTransferTsFileSealWithModReq extends PipeTransferFileSealReqV2 
 
   protected static final String DATABASE_NAME_KEY_PREFIX = "DATABASE_NAME_";
 
-  public String getDatabaseNameByTsFileName() {
+  public String getDatabaseNameWithTsFileName() {
     return parameters == null
         ? null
         : parameters.get(generateDatabaseNameWithFileNameKey(fileNames.get(fileNames.size() - 1)));
@@ -71,17 +71,6 @@ public class PipeTransferTsFileSealWithModReq extends PipeTransferFileSealReqV2 
             .convertToTPipeTransferReq(
                 Arrays.asList(modFileName, tsFileName),
                 Arrays.asList(modFileLength, tsFileLength),
-                Collections.singletonMap(
-                    generateDatabaseNameWithFileNameKey(tsFileName), dataBaseName));
-  }
-
-  public static PipeTransferTsFileSealWithModReq toTPipeTransferReq(
-      String tsFileName, long tsFileLength, String dataBaseName) throws IOException {
-    return (PipeTransferTsFileSealWithModReq)
-        new PipeTransferTsFileSealWithModReq()
-            .convertToTPipeTransferReq(
-                Collections.singletonList(tsFileName),
-                Collections.singletonList(tsFileLength),
                 Collections.singletonMap(
                     generateDatabaseNameWithFileNameKey(tsFileName), dataBaseName));
   }

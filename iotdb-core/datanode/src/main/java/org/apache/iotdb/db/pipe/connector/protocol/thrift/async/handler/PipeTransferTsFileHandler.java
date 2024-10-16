@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.client.IoTDBDataNodeAsyncClientManager;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -76,8 +77,6 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
 
   private final boolean transferMod;
 
-  private final String dataBaseName;
-
   private final int readFileBufferSize;
   private final byte[] readBuffer;
   private long position;
@@ -88,6 +87,8 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
 
   private IoTDBDataNodeAsyncClientManager clientManager;
   private AsyncPipeDataTransferServiceClient client;
+
+  private final String dataBaseName;
 
   public PipeTransferTsFileHandler(
       final IoTDBDataRegionAsyncConnector connector,
@@ -160,8 +161,8 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
                     tsFile.getName(),
                     tsFile.length(),
                     dataBaseName)
-                : PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                    tsFile.getName(), tsFile.length(), dataBaseName);
+                : PipeTransferTsFileSealReq.toTPipeTransferReq(
+                    tsFile.getName(), tsFile.length()); // v2
         final TPipeTransferReq req =
             connector.isRpcCompressionEnabled()
                 ? PipeTransferCompressedReq.toTPipeTransferReq(

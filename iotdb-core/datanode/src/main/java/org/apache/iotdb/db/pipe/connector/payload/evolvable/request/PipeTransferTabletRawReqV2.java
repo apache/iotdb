@@ -76,16 +76,14 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
       request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
       request.setValues(SessionUtils.getValueBuffer(tablet));
       request.setSize(tablet.rowSize);
+      // TODO: remove the check for table model
+      request.setMeasurements(
+          PathUtils.checkIsLegalSingleMeasurementsAndUpdate(request.getMeasurements()));
 
-      // Tree model
-      if (Objects.isNull(dataBaseName)) {
-        request.setMeasurements(
-            PathUtils.checkIsLegalSingleMeasurementsAndUpdate(request.getMeasurements()));
-        return StatementGenerator.createStatement(request);
-      }
-
-      // Table model
       final InsertTabletStatement statement = StatementGenerator.createStatement(request);
+      if (Objects.isNull(dataBaseName) || dataBaseName.isEmpty()) {
+        return statement;
+      }
       statement.setWriteToTable(true);
       statement.setDatabaseName(dataBaseName);
       return statement;
@@ -104,8 +102,6 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
     tabletReq.tablet = tablet;
     tabletReq.isAligned = isAligned;
     tabletReq.dataBaseName = dataBaseName;
-    tabletReq.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
-    tabletReq.type = PipeRequestType.TRANSFER_TABLET_RAW_V2.getType();
 
     return tabletReq;
   }
@@ -149,35 +145,14 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
     return tabletReq;
   }
 
-  /////////////////////////////// Air Gap ///////////////////////////////
-
-  public static byte[] toTPipeTransferBytes(
-      final Tablet tablet, final boolean isAligned, final String dataBaseName) throws IOException {
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
-        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
-      ReadWriteIOUtils.write(PipeRequestType.TRANSFER_TABLET_RAW_V2.getType(), outputStream);
-      tablet.serialize(outputStream);
-      ReadWriteIOUtils.write(isAligned, outputStream);
-      ReadWriteIOUtils.write(dataBaseName, outputStream);
-      return byteArrayOutputStream.toByteArray();
-    }
-  }
-
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    if (!super.equals(o)) {
-      return false;
-    }
-    final PipeTransferTabletRawReqV2 that = (PipeTransferTabletRawReqV2) o;
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    PipeTransferTabletRawReqV2 that = (PipeTransferTabletRawReqV2) o;
     return Objects.equals(dataBaseName, that.dataBaseName);
   }
 
