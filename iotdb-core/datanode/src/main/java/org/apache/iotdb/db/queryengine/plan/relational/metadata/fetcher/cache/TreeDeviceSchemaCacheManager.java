@@ -404,11 +404,11 @@ public class TreeDeviceSchemaCacheManager {
    * a stale value to cache and break the consistency. WARNING: The writing may temporarily put a
    * stale value in cache if a stale value is written, but it won't affect the eventual consistency.
    *
-   * <p>- Second time put the calculated {@link TimeValuePair}, and use {@link *
-   * #updateLastCacheIfExists(String, IDeviceID, String[], TimeValuePair[])}. The input {@link
-   * TimeValuePair} shall never be or contain {@code null}, if the measurement is with all {@code
-   * null}s, its {@link TimeValuePair} shall be {@link TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR}.
-   * This method is not supposed to update time column.
+   * <p>- Second time put the calculated {@link TimeValuePair}, and use {@link
+   * #updateLastCacheIfExists(String, IDeviceID, String[], TimeValuePair[], boolean,
+   * MeasurementSchema[])}. The input {@link TimeValuePair} shall never be or contain {@code null},
+   * if the measurement is with all {@code null}s, its {@link TimeValuePair} shall be {@link
+   * TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR}. This method is not supposed to update time column.
    *
    * <p>If the query has ended abnormally, it shall call this to invalidate the entry it has pushed
    * in the first time, to avoid the stale writing damaging the eventual consistency. The input
