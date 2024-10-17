@@ -86,7 +86,7 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
   }
 
   /** Only for internal use. */
-  public Boolean getRawIsTableModelEvent() {
+  protected Boolean getRawIsTableModelEvent() {
     return isTableModelEvent;
   }
 
