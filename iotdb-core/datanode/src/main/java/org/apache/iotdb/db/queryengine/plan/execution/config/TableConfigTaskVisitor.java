@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePl
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableAddColumnTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableSetPropertiesTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ClearCacheTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableTask;
@@ -59,6 +60,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHea
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
@@ -261,6 +263,13 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       final ShowAINodes showAINodesStatement, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new ShowAINodesTask();
+  }
+
+  @Override
+  protected IConfigTask visitClearCache(
+      final ClearCache clearCacheStatement, final MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    return new ClearCacheTask(clearCacheStatement);
   }
 
   @Override

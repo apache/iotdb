@@ -204,16 +204,16 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   }
 
   @Override
-  public boolean createSnapshot(File snapshotDir) {
+  public boolean createSnapshot(final File snapshotDir) {
     return MemMTreeSnapshotUtil.createSnapshot(snapshotDir, this);
   }
 
   public static MemMTreeStore loadFromSnapshot(
-      File snapshotDir,
-      Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
-      Consumer<IDeviceMNode<IMemMNode>> deviceProcess,
-      MemSchemaRegionStatistics regionStatistics,
-      SchemaRegionMemMetric metric)
+      final File snapshotDir,
+      final Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
+      final Consumer<IDeviceMNode<IMemMNode>> deviceProcess,
+      final MemSchemaRegionStatistics regionStatistics,
+      final SchemaRegionMemMetric metric)
       throws IOException {
     return new MemMTreeStore(
         MemMTreeSnapshotUtil.loadSnapshot(

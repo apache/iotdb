@@ -1071,7 +1071,11 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private boolean splitAndInsert(
-      InsertTabletNode insertTabletNode, int loc, int endOffset, TSStatus[] results) {
+      InsertTabletNode insertTabletNode,
+      int loc,
+      int endOffset,
+      TSStatus[] results,
+      long[] costsForMetrics) {
     boolean noFailure = true;
 
     // before is first start point
@@ -1103,7 +1107,8 @@ public class DataRegion implements IDataRegionForQuery {
                     isSequence,
                     results,
                     beforeTimePartition,
-                    noFailure)
+                    noFailure,
+                    costsForMetrics)
                 && noFailure;
         if (before < loc) {
           insertCnt += 1;
@@ -1130,7 +1135,8 @@ public class DataRegion implements IDataRegionForQuery {
                       isSequence,
                       results,
                       beforeTimePartition,
-                      noFailure)
+                      noFailure,
+                      costsForMetrics)
                   && noFailure;
           before = loc;
           if (before < loc) {
@@ -1159,7 +1165,8 @@ public class DataRegion implements IDataRegionForQuery {
                   isSequence,
                   results,
                   beforeTimePartition,
-                  noFailure)
+                  noFailure,
+                  costsForMetrics)
               && noFailure;
       insertCnt += 1;
       logger.debug(
@@ -1193,26 +1200,13 @@ public class DataRegion implements IDataRegionForQuery {
       }
       TSStatus[] results = new TSStatus[insertTabletNode.getRowCount()];
       Arrays.fill(results, RpcUtils.SUCCESS_STATUS);
-      boolean noFailure;
-      int loc = insertTabletNode.checkTTL(results, i -> getTTL(insertTabletNode));
-      noFailure = loc == 0;
-      List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs =
-          insertTabletNode.splitByDevice(loc, insertTabletNode.getRowCount());
-      int start = loc;
-      for (Pair<IDeviceID, Integer> deviceEndOffsetPair : deviceEndOffsetPairs) {
-        int end = deviceEndOffsetPair.getRight();
-        noFailure = noFailure && splitAndInsert(insertTabletNode, start, end, results);
-        start = end;
-      }
+      long[] costsForMetrics = new long[4];
+      boolean noFailure = executeInsertTablet(insertTabletNode, results, costsForMetrics);
 
-      if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
-          && !insertTabletNode.isGeneratedByRemoteConsensusLeader()) {
-        // disable updating last cache on follower
-        startTime = System.nanoTime();
-        tryToUpdateInsertTabletLastCache(insertTabletNode);
-        PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(
-            System.nanoTime() - startTime);
-      }
+      PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(costsForMetrics[0]);
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemoryBlockCost(costsForMetrics[1]);
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(costsForMetrics[2]);
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(costsForMetrics[3]);
 
       if (!noFailure) {
         throw new BatchProcessException(results);
@@ -1220,6 +1214,31 @@ public class DataRegion implements IDataRegionForQuery {
     } finally {
       writeUnlock();
     }
+  }
+
+  private boolean executeInsertTablet(
+      InsertTabletNode insertTabletNode, TSStatus[] results, long[] costsForMetrics)
+      throws OutOfTTLException {
+    boolean noFailure;
+    int loc = insertTabletNode.checkTTL(results, i -> getTTL(insertTabletNode));
+    noFailure = loc == 0;
+    List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs =
+        insertTabletNode.splitByDevice(loc, insertTabletNode.getRowCount());
+    int start = loc;
+    for (Pair<IDeviceID, Integer> deviceEndOffsetPair : deviceEndOffsetPairs) {
+      int end = deviceEndOffsetPair.getRight();
+      noFailure =
+          noFailure && splitAndInsert(insertTabletNode, start, end, results, costsForMetrics);
+      start = end;
+    }
+    if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
+        && !insertTabletNode.isGeneratedByRemoteConsensusLeader()) {
+      // disable updating last cache on follower
+      long startTime = System.nanoTime();
+      tryToUpdateInsertTabletLastCache(insertTabletNode);
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(System.nanoTime() - startTime);
+    }
+    return noFailure;
   }
 
   private void initFlushTimeMap(long timePartitionId) {
@@ -1301,7 +1320,8 @@ public class DataRegion implements IDataRegionForQuery {
       boolean sequence,
       TSStatus[] results,
       long timePartitionId,
-      boolean noFailure) {
+      boolean noFailure,
+      long[] costsForMetrics) {
     // return when start >= end or all measurement failed
     if (start >= end || insertTabletNode.allMeasurementFailed()) {
       if (logger.isDebugEnabled()) {
@@ -1328,7 +1348,8 @@ public class DataRegion implements IDataRegionForQuery {
     registerToTsFile(insertTabletNode, tsFileProcessor);
 
     try {
-      tsFileProcessor.insertTablet(insertTabletNode, start, end, results, noFailure);
+      tsFileProcessor.insertTablet(
+          insertTabletNode, start, end, results, noFailure, costsForMetrics);
     } catch (WriteProcessRejectException e) {
       logger.warn("insert to TsFileProcessor rejected, {}", e.getMessage());
       return false;
@@ -1424,7 +1445,7 @@ public class DataRegion implements IDataRegionForQuery {
       TsFileProcessor tsFileProcessor = entry.getKey();
       InsertRowsNode subInsertRowsNode = entry.getValue();
       try {
-        tsFileProcessor.insert(subInsertRowsNode, costsForMetrics);
+        tsFileProcessor.insertRows(subInsertRowsNode, costsForMetrics);
       } catch (WriteProcessException e) {
         insertRowsNode
             .getResults()
@@ -3492,7 +3513,7 @@ public class DataRegion implements IDataRegionForQuery {
         TsFileProcessor tsFileProcessor = entry.getKey();
         InsertRowsNode subInsertRowsNode = entry.getValue();
         try {
-          tsFileProcessor.insert(subInsertRowsNode, costsForMetrics);
+          tsFileProcessor.insertRows(subInsertRowsNode, costsForMetrics);
         } catch (WriteProcessException e) {
           insertRowsOfOneDeviceNode
               .getResults()
@@ -3604,30 +3625,56 @@ public class DataRegion implements IDataRegionForQuery {
    * @param insertMultiTabletsNode batch of tablets belongs to multiple devices
    */
   public void insertTablets(InsertMultiTabletsNode insertMultiTabletsNode)
-      throws BatchProcessException {
-    for (int i = 0; i < insertMultiTabletsNode.getInsertTabletNodeList().size(); i++) {
-      InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
-      try {
-        insertTablet(insertTabletNode);
-      } catch (WriteProcessException e) {
-        insertMultiTabletsNode
-            .getResults()
-            .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
-      } catch (BatchProcessException e) {
-        // for each error
-        TSStatus firstStatus = null;
-        for (TSStatus status : e.getFailingStatus()) {
-          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            firstStatus = status;
-          }
-          // return WRITE_PROCESS_REJECT directly for the consensus retry logic
-          if (status.getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
-            insertMultiTabletsNode.getResults().put(i, status);
-            throw new BatchProcessException("Rejected inserting multi tablets");
-          }
-        }
-        insertMultiTabletsNode.getResults().put(i, firstStatus);
+      throws BatchProcessException, WriteProcessRejectException {
+
+    StorageEngine.blockInsertionIfReject();
+    long startTime = System.nanoTime();
+    writeLock("insertTablets");
+    PERFORMANCE_OVERVIEW_METRICS.recordScheduleLockCost(System.nanoTime() - startTime);
+    try {
+      if (deleted) {
+        logger.info(
+            "Won't insert tablets {}, because region is deleted",
+            insertMultiTabletsNode.getSearchIndex());
+        return;
       }
+      long[] costsForMetrics = new long[4];
+      for (int i = 0; i < insertMultiTabletsNode.getInsertTabletNodeList().size(); i++) {
+        InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
+        TSStatus[] results = new TSStatus[insertTabletNode.getRowCount()];
+        Arrays.fill(results, RpcUtils.SUCCESS_STATUS);
+        boolean noFailure = false;
+        try {
+          noFailure = executeInsertTablet(insertTabletNode, results, costsForMetrics);
+        } catch (WriteProcessException e) {
+          insertMultiTabletsNode
+              .getResults()
+              .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        }
+        if (!noFailure) {
+          // for each error
+          TSStatus firstStatus = null;
+          for (TSStatus status : results) {
+            if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              firstStatus = status;
+            }
+            // return WRITE_PROCESS_REJECT directly for the consensus retry logic
+            if (status.getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
+              insertMultiTabletsNode.getResults().put(i, status);
+              throw new BatchProcessException("Rejected inserting multi tablets");
+            }
+          }
+          insertMultiTabletsNode.getResults().put(i, firstStatus);
+        }
+      }
+
+      PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(costsForMetrics[0]);
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemoryBlockCost(costsForMetrics[1]);
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(costsForMetrics[2]);
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(costsForMetrics[3]);
+
+    } finally {
+      writeUnlock();
     }
 
     if (!insertMultiTabletsNode.getResults().isEmpty()) {

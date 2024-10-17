@@ -889,13 +889,13 @@ public class IoTDBMultiIDsWithAttributesTableIT {
     sql =
         "select device, level, count(num) as count_num, count(*) as count_star, count(device) as count_device, count(date) as count_date, "
             + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
-            + "avg(num) as avg_num from table0 where time=32 group by device, level";
+            + "avg(num) as avg_num from table0 where time=32 group by device, level order by device, level";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
     retArray = new String[] {"d1,l2,1,1,1,0,1,1,1,12.0,12.0,", "d2,l2,1,1,1,0,1,0,1,12.0,12.0,"};
     sql =
         "select device, level, count(num) as count_num, count(*) as count_star, count(device) as count_device, count(date) as count_date, "
             + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
-            + "avg(num) as avg_num from table0 where time=32 or time=1971-04-27T01:46:40.000+08:00 group by device, level";
+            + "avg(num) as avg_num from table0 where time=32 or time=1971-04-27T01:46:40.000+08:00 group by device, level order by device, level";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
     expectedHeader =
@@ -918,7 +918,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         "select device, level, date_bin(1d, time) as bin, count(num) as count_num, count(*) as count_star, "
             + "count(device) as count_device, count(date) as count_date, "
             + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
-            + "avg(num) as avg_num from table0 where time=32 group by 3, device, level";
+            + "avg(num) as avg_num from table0 where time=32 group by 3, device, level order by device, level";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
     retArray =
         new String[] {
@@ -929,7 +929,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         "select device, level, date_bin(1d, time) as bin, count(num) as count_num, count(*) as count_star, "
             + "count(device) as count_device, count(date) as count_date, "
             + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
-            + "avg(num) as avg_num from table0 where time=32 or time=1971-04-27T01:46:40.000+08:00 group by 3, device, level";
+            + "avg(num) as avg_num from table0 where time=32 or time=1971-04-27T01:46:40.000+08:00 group by 3, device, level order by device, level";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 

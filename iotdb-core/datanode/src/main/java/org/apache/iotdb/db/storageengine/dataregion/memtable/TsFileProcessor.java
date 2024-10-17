@@ -351,7 +351,7 @@ public class TsFileProcessor {
     costsForMetrics[3] += System.nanoTime() - startTime;
   }
 
-  public void insert(InsertRowsNode insertRowsNode, long[] costsForMetrics)
+  public void insertRows(InsertRowsNode insertRowsNode, long[] costsForMetrics)
       throws WriteProcessException {
 
     ensureMemTable(costsForMetrics);
@@ -449,14 +449,20 @@ public class TsFileProcessor {
     walNode.onMemTableCreated(workMemTable, tsFileResource.getTsFilePath());
   }
 
-  private long[] checkMemCost(
-      InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results, boolean noFailure)
+  private long[] scheduleMemoryBlock(
+      InsertTabletNode insertTabletNode,
+      int start,
+      int end,
+      TSStatus[] results,
+      boolean noFailure,
+      long[] costsForMetrics)
       throws WriteProcessException {
     long[] memIncrements;
     try {
-      long startTime = System.nanoTime();
+      long memControlStartTime = System.nanoTime();
       memIncrements = checkMemCost(insertTabletNode, start, end, noFailure, results);
-      PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemoryBlockCost(System.nanoTime() - startTime);
+      // recordScheduleMemoryBlockCost
+      costsForMetrics[1] += System.nanoTime() - memControlStartTime;
     } catch (WriteProcessException e) {
       for (int i = start; i < end; i++) {
         results[i] = RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT, e.getMessage());
@@ -525,18 +531,18 @@ public class TsFileProcessor {
    * @param results result array
    */
   public void insertTablet(
-      InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results, boolean noFailure)
+      InsertTabletNode insertTabletNode,
+      int start,
+      int end,
+      TSStatus[] results,
+      boolean noFailure,
+      long[] costsForMetrics)
       throws WriteProcessException {
 
-    if (workMemTable == null) {
-      long startTime = System.nanoTime();
-      createNewWorkingMemTable();
-      PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(System.nanoTime() - startTime);
-      WritingMetrics.getInstance()
-          .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), 1);
-    }
+    ensureMemTable(costsForMetrics);
 
-    long[] memIncrements = checkMemCost(insertTabletNode, start, end, results, noFailure);
+    long[] memIncrements =
+        scheduleMemoryBlock(insertTabletNode, start, end, results, noFailure, costsForMetrics);
 
     long startTime = System.nanoTime();
     WALFlushListener walFlushListener;
@@ -552,7 +558,8 @@ public class TsFileProcessor {
       rollbackMemoryInfo(memIncrements);
       throw new WriteProcessException(e);
     } finally {
-      PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(System.nanoTime() - startTime);
+      // recordScheduleWalCost
+      costsForMetrics[2] += System.nanoTime() - startTime;
     }
 
     startTime = System.nanoTime();
@@ -610,7 +617,8 @@ public class TsFileProcessor {
 
     tsFileResource.updateProgressIndex(insertTabletNode.getProgressIndex());
 
-    PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(System.nanoTime() - startTime);
+    // recordScheduleMemTableCost
+    costsForMetrics[3] += System.nanoTime() - startTime;
   }
 
   @SuppressWarnings("squid:S3776") // High Cognitive Complexity

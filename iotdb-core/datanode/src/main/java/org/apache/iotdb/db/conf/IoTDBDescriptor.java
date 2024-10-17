@@ -1087,6 +1087,39 @@ public class IoTDBDescriptor {
                 "datanode_table_cache_semaphore_permit_num",
                 String.valueOf(conf.getDataNodeTableCacheSemaphorePermitNum()))));
 
+    conf.setGeneralRegionAttributeSecurityServiceIntervalSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "general_region_attribute_security_service_interval_seconds",
+                String.valueOf(conf.getGeneralRegionAttributeSecurityServiceIntervalSeconds()))));
+
+    conf.setGeneralRegionAttributeSecurityServiceTimeoutSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "general_region_attribute_security_service_timeout_seconds",
+                String.valueOf(conf.getGeneralRegionAttributeSecurityServiceTimeoutSeconds()))));
+
+    conf.setGeneralRegionAttributeSecurityServiceFailureDurationSecondsToFetch(
+        Long.parseLong(
+            properties.getProperty(
+                "general_region_attribute_security_service_failure_duration_seconds_to_fetch",
+                String.valueOf(
+                    conf
+                        .getGeneralRegionAttributeSecurityServiceFailureDurationSecondsToFetch()))));
+
+    conf.setGeneralRegionAttributeSecurityServiceFailureTimesToFetch(
+        Integer.parseInt(
+            properties.getProperty(
+                "general_region_attribute_security_service_failure_times_to_fetch",
+                String.valueOf(
+                    conf.getGeneralRegionAttributeSecurityServiceFailureTimesToFetch()))));
+
+    conf.setDetailContainerMinDegradeMemoryInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "detail_container_min_degrade_memory_in_bytes",
+                String.valueOf(conf.getDetailContainerMinDegradeMemoryInBytes()))));
+
     loadIoTConsensusProps(properties);
     loadIoTConsensusV2Props(properties);
   }

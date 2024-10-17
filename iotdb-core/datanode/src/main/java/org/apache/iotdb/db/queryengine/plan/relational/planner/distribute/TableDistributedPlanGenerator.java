@@ -25,10 +25,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.AbstractTableDeviceQueryNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceFetchNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryCountNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
@@ -52,6 +48,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNo
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.AbstractTableDeviceQueryNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryCountNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
@@ -877,14 +877,12 @@ public class TableDistributedPlanGenerator
         tableDeviceFetchMap
             .computeIfAbsent(
                 regionReplicaSet,
-                k ->
-                    new TableDeviceFetchNode(
-                        queryId.genPlanNodeId(),
-                        node.getDatabase(),
-                        node.getTableName(),
-                        new ArrayList<>(),
-                        node.getColumnHeaderList(),
-                        regionReplicaSet))
+                k -> {
+                  final TableDeviceFetchNode clonedNode = (TableDeviceFetchNode) node.clone();
+                  clonedNode.setPlanNodeId(queryId.genPlanNodeId());
+                  clonedNode.setRegionReplicaSet(regionReplicaSet);
+                  return clonedNode;
+                })
             .addDeviceId(deviceIdArray);
       }
 

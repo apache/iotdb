@@ -17,14 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read;
+package org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceSourceNode;
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.DeviceAttributeCacheUpdater;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -45,8 +47,8 @@ public class TableDeviceFetchNode extends TableDeviceSourceNode {
       final String tableName,
       final List<Object[]> deviceIdList,
       final List<ColumnHeader> columnHeaderList,
-      final TRegionReplicaSet regionReplicaSet) {
-    super(id, database, tableName, columnHeaderList, regionReplicaSet);
+      final TDataNodeLocation senderLocation) {
+    super(id, database, tableName, columnHeaderList, senderLocation);
     this.deviceIdList = deviceIdList;
   }
 
@@ -66,12 +68,7 @@ public class TableDeviceFetchNode extends TableDeviceSourceNode {
   @Override
   public PlanNode clone() {
     return new TableDeviceFetchNode(
-        getPlanNodeId(),
-        database,
-        tableName,
-        deviceIdList,
-        columnHeaderList,
-        schemaRegionReplicaSet);
+        getPlanNodeId(), database, tableName, deviceIdList, columnHeaderList, senderLocation);
   }
 
   @Override
@@ -92,6 +89,13 @@ public class TableDeviceFetchNode extends TableDeviceSourceNode {
     for (final ColumnHeader columnHeader : columnHeaderList) {
       columnHeader.serialize(byteBuffer);
     }
+
+    if (Objects.nonNull(senderLocation)) {
+      ReadWriteIOUtils.write(true, byteBuffer);
+      DeviceAttributeCacheUpdater.serializeNodeLocation4AttributeUpdate(senderLocation, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(false, byteBuffer);
+    }
   }
 
   @Override
@@ -111,6 +115,13 @@ public class TableDeviceFetchNode extends TableDeviceSourceNode {
     ReadWriteIOUtils.write(columnHeaderList.size(), stream);
     for (final ColumnHeader columnHeader : columnHeaderList) {
       columnHeader.serialize(stream);
+    }
+
+    if (Objects.nonNull(senderLocation)) {
+      ReadWriteIOUtils.write(true, stream);
+      DeviceAttributeCacheUpdater.serializeNodeLocation4AttributeUpdate(senderLocation, stream);
+    } else {
+      ReadWriteIOUtils.write(false, stream);
     }
   }
 
@@ -135,9 +146,15 @@ public class TableDeviceFetchNode extends TableDeviceSourceNode {
       columnHeaderList.add(ColumnHeader.deserialize(buffer));
     }
 
+    TDataNodeLocation senderLocation = null;
+    if (ReadWriteIOUtils.readBool(buffer)) {
+      senderLocation =
+          DeviceAttributeCacheUpdater.deserializeNodeLocationForAttributeUpdate(buffer);
+    }
+
     final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
     return new TableDeviceFetchNode(
-        planNodeId, database, tableName, deviceIdList, columnHeaderList, null);
+        planNodeId, database, tableName, deviceIdList, columnHeaderList, senderLocation);
   }
 
   @Override
