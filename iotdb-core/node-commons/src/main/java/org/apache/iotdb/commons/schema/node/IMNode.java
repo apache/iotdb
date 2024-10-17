@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.schema.node;
 
 import org.apache.iotdb.commons.path.PartialPath;
@@ -79,6 +80,10 @@ public interface IMNode<N extends IMNode<N>> extends ITreeNode {
   <R, C> R accept(MNodeVisitor<R, C> visitor, C context);
 
   int estimateSize();
+
+  default int estimateTreeSize() {
+    return estimateSize();
+  }
 
   N getAsMNode();
 }

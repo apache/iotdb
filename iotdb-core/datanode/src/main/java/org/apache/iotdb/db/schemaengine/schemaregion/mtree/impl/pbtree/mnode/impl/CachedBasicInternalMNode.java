@@ -177,6 +177,11 @@ public class CachedBasicInternalMNode extends CachedBasicMNode
   }
 
   @Override
+  public int estimateTreeSize() {
+    return estimateSize() + IInternalMNode.getChildrenTreeSize(children);
+  }
+
+  @Override
   public boolean isDevice() {
     return getDeviceInfo() != null;
   }

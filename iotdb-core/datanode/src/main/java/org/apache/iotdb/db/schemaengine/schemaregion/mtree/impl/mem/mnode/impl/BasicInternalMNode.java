@@ -160,6 +160,11 @@ public class BasicInternalMNode extends BasicMNode implements IInternalMNode<IMe
   }
 
   @Override
+  public int estimateTreeSize() {
+    return estimateSize() + IInternalMNode.getChildrenTreeSize(children);
+  }
+
+  @Override
   public MNodeType getMNodeType() {
     return deviceInfo == null ? MNodeType.INTERNAL : MNodeType.DEVICE;
   }
