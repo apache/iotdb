@@ -191,6 +191,7 @@ public class CreateTableProcedure
         env.getConfigManager().getRelatedSchemaRegionGroup(patternTree);
 
     if (relatedSchemaRegionGroup.isEmpty()) {
+      setNextState(CreateTableState.COMMIT_CREATE);
       return;
     }
 
