@@ -205,7 +205,7 @@ public class HashAggregationOperator extends AbstractOperator {
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
-        + aggregationBuilder.getEstimatedSize()
+        + (aggregationBuilder == null ? 0 : aggregationBuilder.getEstimatedSize())
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext);
   }
 }
