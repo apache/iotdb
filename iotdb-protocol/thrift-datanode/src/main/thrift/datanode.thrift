@@ -330,10 +330,9 @@ struct TUpdateTableReq {
   2: required binary tableInfo
 }
 
-struct TDeleteDataForDropTableReq {
-  1: required list<common.TConsensusGroupId> dataRegionIdList
-  2: required string database
-  3: required string tableName
+struct TDeleteDataOrDevicesForDropTableReq {
+  1: required list<common.TConsensusGroupId> regionIdList
+  2: required string tableName
 }
 
 struct TTsFilePieceReq {
@@ -1064,9 +1063,14 @@ service IDataNodeRPCService {
   common.TSStatus updateTable(TUpdateTableReq req)
 
   /**
-  * Delete data for delete table
+  * Delete data for drop table
   */
-  common.TSStatus deleteDataForDropTable(TDeleteDataForDropTableReq req)
+  common.TSStatus deleteDataForDropTable(TDeleteDataOrDevicesForDropTableReq req)
+
+  /**
+  * Delete devices for drop table
+  */
+  common.TSStatus deleteDevicesForDropTable(TDeleteDataOrDevicesForDropTableReq req)
 
   common.TTestConnectionResp submitTestConnectionTask(common.TNodeLocations nodeLocations)
 

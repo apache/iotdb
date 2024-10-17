@@ -196,7 +196,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TDeactivateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
-import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDropTableReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataOrDevicesForDropTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteViewSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
@@ -1545,9 +1545,19 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus deleteDataForDropTable(final TDeleteDataForDropTableReq req) {
+  public TSStatus deleteDataForDropTable(final TDeleteDataOrDevicesForDropTableReq req) {
     return executeInternalSchemaTask(
-        req.getDataRegionIdList(),
+        req.getRegionIdList(),
+        consensusGroupId -> {
+          // TODO
+          return StatusUtils.OK;
+        });
+  }
+
+  @Override
+  public TSStatus deleteDevicesForDropTable(final TDeleteDataOrDevicesForDropTableReq req) {
+    return executeInternalSchemaTask(
+        req.getRegionIdList(),
         consensusGroupId -> {
           // TODO
           return StatusUtils.OK;
