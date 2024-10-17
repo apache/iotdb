@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -69,7 +70,9 @@ import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
+import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
@@ -92,6 +95,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -105,14 +109,21 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static org.apache.iotdb.db.exception.metadata.DatabaseNotSetException.DATABASE_NOT_SET;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT;
+import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR_CHAR;
 
 public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
@@ -146,6 +157,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private final PipeTransferSliceReqHandler sliceReqHandler = new PipeTransferSliceReqHandler();
 
   private final SqlParser relationalSqlParser = new SqlParser();
+
+  private static final Set<String> ALREADY_CREATED_DATABASES = ConcurrentHashMap.newKeySet();
 
   static {
     try {
@@ -717,19 +730,71 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private TSStatus executeStatementForTableModel(Statement statement, String dataBaseName) {
-    return Coordinator.getInstance()
-        .executeForTableModel(
-            new PipeEnrichedStatement(statement),
-            relationalSqlParser,
-            SessionManager.getInstance().getCurrSession(),
-            SessionManager.getInstance().requestQueryId(),
-            SessionManager.getInstance()
-                .getSessionInfoOfPipeReceiver(
-                    SessionManager.getInstance().getCurrSession(), dataBaseName),
-            "",
-            LocalExecutionPlanner.getInstance().metadata,
-            IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
-        .status;
+    try {
+      autoCreateDatabaseIfNecessary(dataBaseName);
+
+      return Coordinator.getInstance()
+          .executeForTableModel(
+              new PipeEnrichedStatement(statement),
+              relationalSqlParser,
+              SessionManager.getInstance().getCurrSession(),
+              SessionManager.getInstance().requestQueryId(),
+              SessionManager.getInstance()
+                  .getSessionInfoOfPipeReceiver(
+                      SessionManager.getInstance().getCurrSession(), dataBaseName),
+              "",
+              LocalExecutionPlanner.getInstance().metadata,
+              IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
+          .status;
+    } catch (final Exception e) {
+      if (e.getMessage() != null
+          && e.getMessage().contains(DATABASE_NOT_SET.toLowerCase(Locale.ROOT))) {
+        ALREADY_CREATED_DATABASES.remove(dataBaseName);
+        autoCreateDatabaseIfNecessary(dataBaseName);
+
+        // Retry after creating the database
+        return Coordinator.getInstance()
+            .executeForTableModel(
+                new PipeEnrichedStatement(statement),
+                relationalSqlParser,
+                SessionManager.getInstance().getCurrSession(),
+                SessionManager.getInstance().requestQueryId(),
+                SessionManager.getInstance()
+                    .getSessionInfoOfPipeReceiver(
+                        SessionManager.getInstance().getCurrSession(), dataBaseName),
+                "",
+                LocalExecutionPlanner.getInstance().metadata,
+                IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
+            .status;
+      }
+
+      // If the exception is not caused by database not set, throw it directly
+      throw e;
+    }
+  }
+
+  private void autoCreateDatabaseIfNecessary(final String database) {
+    if (ALREADY_CREATED_DATABASES.contains(database)) {
+      return;
+    }
+
+    final CreateDBTask task =
+        new CreateDBTask(new TDatabaseSchema(ROOT + PATH_SEPARATOR_CHAR + database), true);
+    try {
+      final ListenableFuture<ConfigTaskResult> future =
+          task.execute(ClusterConfigTaskExecutor.getInstance());
+      final ConfigTaskResult result = future.get();
+      if (result.getStatusCode().getStatusCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new PipeException(
+            String.format(
+                "Auto create database failed: %s, status code: %s",
+                database, result.getStatusCode()));
+      }
+    } catch (final ExecutionException | InterruptedException e) {
+      throw new PipeException("Auto create database failed because: " + e.getMessage());
+    }
+
+    ALREADY_CREATED_DATABASES.add(database);
   }
 
   private TSStatus executeStatementForTreeModel(final Statement statement) {
