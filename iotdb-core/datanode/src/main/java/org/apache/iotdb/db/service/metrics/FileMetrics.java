@@ -67,6 +67,10 @@ public class FileMetrics implements IMetricSet {
     TS_FILE_METRICS.deleteFile(seq, tsFileResourceList);
   }
 
+  public long getAverageTsFileSize(int level) {
+    return TS_FILE_METRICS.getAverageTsFileSize(level);
+  }
+
   public void deleteRegion(String database, String regionId) {
     TS_FILE_METRICS.deleteRegion(database, regionId);
   }
