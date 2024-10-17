@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.MemUsageUtil;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateDetailContainer;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.Binary;
@@ -190,7 +191,7 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
 
   @Override
   public Map<String, String> removeAttribute(final int pointer) {
-
+    releaseMemory(UpdateDetailContainer.sizeOfMapEntries(deviceAttributeList.get(pointer)));
     deviceAttributeList.set(pointer, null);
     return null;
   }
