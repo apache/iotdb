@@ -65,6 +65,8 @@ public class AccumulatorFactory {
         return new SumAccumulator(inputDataTypes.get(0));
       case LAST:
         return new LastAccumulator(inputDataTypes.get(0));
+      case FIRST:
+        return new FirstAccumulator(inputDataTypes.get(0));
       case MAX:
         return new MaxAccumulator(inputDataTypes.get(0));
       case MIN:
