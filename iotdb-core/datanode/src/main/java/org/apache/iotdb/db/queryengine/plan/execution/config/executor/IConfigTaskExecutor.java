@@ -288,7 +288,7 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> describeTable(final String database, final String tableName);
 
-  SettableFuture<ConfigTaskResult> showTables(final String database);
+  SettableFuture<ConfigTaskResult> showTables(final String database, final boolean isDetails);
 
   TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap);
 
