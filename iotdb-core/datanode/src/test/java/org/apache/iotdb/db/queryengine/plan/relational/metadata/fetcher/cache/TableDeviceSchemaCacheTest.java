@@ -452,11 +452,6 @@ public class TableDeviceSchemaCacheTest {
 
   @Test
   public void testUpdateNonExistWhenWriting() {
-    final String database = "db1";
-    final String database2 = "db2";
-
-    final String table1 = "t1";
-    final String table2 = "t2";
     final String[] device0 = new String[] {"hebei", "p_1", "d_0"};
 
     final TimeValuePair tv3 = new TimeValuePair(1L, new TsPrimitiveType.TsInt(3));
@@ -468,7 +463,7 @@ public class TableDeviceSchemaCacheTest {
     final TableDeviceSchemaCache cache = TableDeviceSchemaCache.getInstance();
 
     cache.updateLastCacheIfExists(
-        database, convertIdValuesToDeviceID(table2, device0), testMeasurements, testTimeValuePairs);
+        database1, convertIdValuesToDeviceID(table2, device0), testMeasurements, testTimeValuePairs);
     cache.updateLastCacheIfExists(
         database2,
         convertIdValuesToDeviceID(table1, device0),
@@ -476,23 +471,23 @@ public class TableDeviceSchemaCacheTest {
         testTimeValuePairs);
 
     Assert.assertNull(
-        cache.getLastEntry(database, convertIdValuesToDeviceID(table2, device0), "s2"));
+        cache.getLastEntry(database1, convertIdValuesToDeviceID(table2, device0), "s2"));
     Assert.assertNull(
         cache.getLastEntry(database2, convertIdValuesToDeviceID(table1, device0), "s2"));
 
     updateLastCache4Query(
         cache,
-        database,
+        database1,
         convertIdValuesToDeviceID(table1, device0),
         new String[] {"s0"},
         new TimeValuePair[] {new TimeValuePair(0L, new TsPrimitiveType.TsInt(2))});
     cache.updateLastCacheIfExists(
-        database, convertIdValuesToDeviceID(table1, device0), testMeasurements, testTimeValuePairs);
+        database1, convertIdValuesToDeviceID(table1, device0), testMeasurements, testTimeValuePairs);
 
     Assert.assertEquals(
-        tv3, cache.getLastEntry(database, convertIdValuesToDeviceID(table1, device0), "s0"));
+        tv3, cache.getLastEntry(database1, convertIdValuesToDeviceID(table1, device0), "s0"));
     Assert.assertNull(
-        cache.getLastEntry(database, convertIdValuesToDeviceID(table1, device0), "s2"));
+        cache.getLastEntry(database1, convertIdValuesToDeviceID(table1, device0), "s2"));
   }
 
   private void updateLastCache4Query(
