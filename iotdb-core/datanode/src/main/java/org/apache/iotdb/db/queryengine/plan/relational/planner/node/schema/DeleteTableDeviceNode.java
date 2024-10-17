@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
@@ -94,6 +95,11 @@ public class DeleteTableDeviceNode extends PlanNode implements ISchemaRegionPlan
     final String tableName = ReadWriteIOUtils.readString(buffer);
     final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
     return new DeleteTableDeviceNode(planNodeId, tableName);
+  }
+
+  @Override
+  public <R, C> R accept(final PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitDeleteTableDevice(this, context);
   }
 
   @Override
