@@ -104,38 +104,42 @@ public class LastAccumulator implements TableAccumulator {
       if (argument.isNull(i)) {
         continue;
       }
-
       initResult = true;
 
-      long time = BytesUtils.bytesToLong(argument.getBinary(i).getValues(), Long.BYTES);
+      byte[] bytes = argument.getBinary(i).getValues();
+      long time = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, 0);
+      int offset = Long.BYTES;
 
       switch (seriesDataType) {
         case INT32:
         case DATE:
-          updateIntLastValue(
-              BytesUtils.bytesToInt(argument.getBinary(i).getValues(), Long.BYTES), time);
+          int intVal = BytesUtils.bytesToInt(bytes, offset);
+          updateIntLastValue(intVal, time);
           break;
         case INT64:
         case TIMESTAMP:
-          updateLongLastValue(
-              BytesUtils.bytesToLong(argument.getBinary(i).getValues(), Long.BYTES), time);
+          long longVal = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, offset);
+          updateLongLastValue(longVal, time);
           break;
         case FLOAT:
-          updateFloatLastValue(
-              BytesUtils.bytesToFloat(argument.getBinary(i).getValues(), Long.BYTES), time);
+          float floatVal = BytesUtils.bytesToFloat(bytes, offset);
+          updateFloatLastValue(floatVal, time);
           break;
         case DOUBLE:
-          updateDoubleLastValue(
-              BytesUtils.bytesToDouble(argument.getBinary(i).getValues(), Long.BYTES), time);
+          double doubleVal = BytesUtils.bytesToDouble(bytes, offset);
+          updateDoubleLastValue(doubleVal, time);
           break;
         case TEXT:
         case BLOB:
         case STRING:
-          updateBinaryLastValue(new Binary(argument.getBinary(i).getValues()), time);
+          int length = BytesUtils.bytesToInt(bytes, offset);
+          offset += Integer.BYTES;
+          Binary binaryVal = new Binary(BytesUtils.subBytes(bytes, offset, length));
+          updateBinaryLastValue(binaryVal, time);
           break;
         case BOOLEAN:
-          updateBooleanLastValue(
-              BytesUtils.bytesToBool(argument.getBinary(i).getValues(), Long.BYTES), time);
+          boolean boolVal = BytesUtils.bytesToBool(bytes, offset);
+          updateBooleanLastValue(boolVal, time);
           break;
         default:
           throw new UnSupportedDataTypeException(
@@ -262,7 +266,7 @@ public class LastAccumulator implements TableAccumulator {
         case TEXT:
         case BLOB:
         case STRING:
-          // TODO how to serialize effienciently?
+          dataOutputStream.writeInt(lastValue.getBinary().getValues().length);
           dataOutputStream.write(lastValue.getBinary().getValues());
           break;
         case BOOLEAN:

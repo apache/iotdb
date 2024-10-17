@@ -38,7 +38,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 
-import org.apache.commons.lang3.stream.Streams;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -402,24 +401,73 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     TsBlock inputRegion = inputTsBlock.getRegion(0, lastIndexToProcess + 1);
 
     // TODO(beyyes) add optimization: if only agg measurement columns, no need to transfer
+
     Column[] valueColumns = new Column[aggArguments.size()];
     for (int i = 0; i < aggArguments.size(); i++) {
-      ColumnSchema columnSchema = columnSchemas.get(aggArguments.get(i));
-      if (Streams.of(
-              TsTableColumnCategory.ID, TsTableColumnCategory.ATTRIBUTE, TsTableColumnCategory.TIME)
-          .anyMatch(columnSchema.getColumnCategory()::equals)) {
-        if (isNullIdOrAttribute(i)) {
-          valueColumns[i] =
+      int idx = aggArguments.get(i);
+      if (valueColumns[aggArguments.get(i)] != null) {
+        continue;
+      }
+      TsTableColumnCategory columnSchemaCategory =
+          columnSchemas.get(aggArguments.get(i)).getColumnCategory();
+      if (columnSchemaCategory == TsTableColumnCategory.TIME) {
+        valueColumns[idx] = inputRegion.getTimeColumn();
+      } else if (columnSchemaCategory == TsTableColumnCategory.ATTRIBUTE) {
+        String attr =
+            deviceEntries
+                .get(currentDeviceIndex)
+                .getAttributeColumnValues()
+                .get(columnsIndexArray[aggArguments.get(i)]);
+        if (attr == null) {
+          valueColumns[idx] =
               new RunLengthEncodedColumn(
                   new BinaryColumn(1, Optional.of(new boolean[] {true}), new Binary[] {null}),
                   inputRegion.getTimeColumn().getPositionCount());
         } else {
-          valueColumns[i] = inputRegion.getTimeColumn();
+          valueColumns[idx] =
+              new RunLengthEncodedColumn(
+                  new BinaryColumn(1, Optional.empty(), new Binary[] {new Binary(attr.getBytes())}),
+                  inputRegion.getTimeColumn().getPositionCount());
+        }
+      } else if (columnSchemaCategory == TsTableColumnCategory.ID) {
+        // TODO avoid create deviceStatics multi times; count, sum can use time statistics
+        String id =
+            (String)
+                deviceEntries
+                    .get(currentDeviceIndex)
+                    .getNthSegment(columnsIndexArray[aggArguments.get(i)] + 1);
+        if (id == null) {
+          valueColumns[idx] =
+              new RunLengthEncodedColumn(
+                  new BinaryColumn(1, Optional.of(new boolean[] {true}), new Binary[] {null}),
+                  inputRegion.getTimeColumn().getPositionCount());
+        } else {
+          valueColumns[idx] =
+              new RunLengthEncodedColumn(
+                  new BinaryColumn(1, Optional.empty(), new Binary[] {new Binary(id.getBytes())}),
+                  inputRegion.getTimeColumn().getPositionCount());
         }
       } else {
-        valueColumns[i] = inputRegion.getColumn(columnsIndexArray[aggArguments.get(i)]);
+        valueColumns[idx] = inputRegion.getColumn(columnsIndexArray[aggArguments.get(i)]);
       }
     }
+
+    //      if (Streams.of(
+    //              TsTableColumnCategory.ID, TsTableColumnCategory.ATTRIBUTE,
+    // TsTableColumnCategory.TIME)
+    //          .anyMatch(columnSchema.getColumnCategory()::equals)) {
+    //        if (isNullIdOrAttribute(i)) {
+    //          valueColumns[i] =
+    //              new RunLengthEncodedColumn(
+    //                  new BinaryColumn(1, Optional.of(new boolean[] {true}), new Binary[] {null}),
+    //                  inputRegion.getTimeColumn().getPositionCount());
+    //        } else {
+    //          valueColumns[i] = inputRegion.getTimeColumn();
+    //        }
+    //      } else {
+    //        valueColumns[i] = inputRegion.getColumn(columnsIndexArray[aggArguments.get(i)]);
+    //      }
+    //    }
 
     TsBlock tsBlock =
         new TsBlock(
@@ -486,18 +534,20 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
               deviceEntries
                   .get(currentDeviceIndex)
                   .getAttributeColumnValues()
-                  .get(columnsIndexArray[aggArguments.get(i)]);
+                  .get(columnsIndexArray[aggArguments.get(idx)]);
           if (attr == null) {
             statisticsArray[i] = null;
           } else {
             StringStatistics stringStatics = new StringStatistics();
             stringStatics.setCount((int) timeStatistics.getCount());
+            stringStatics.setStartTime(timeStatistics.getStartTime());
+            stringStatics.setEndTime(timeStatistics.getEndTime());
             Binary v = new Binary(attr.getBytes());
             stringStatics.initializeStats(v, v, v, v);
             statisticsArray[i] = stringStatics;
           }
         } else if (columnSchemaCategory == TsTableColumnCategory.ID) {
-          // TODO avoid create deviceStatics multi times
+          // TODO avoid create deviceStatics multi times; count, sum can use time statistics
           String id =
               (String)
                   deviceEntries
