@@ -112,6 +112,7 @@ public class TableDeviceLastCache {
             if (Objects.isNull(newPair)) {
               diff.addAndGet(
                   -((isTableModel ? 0 : (int) RamUsageEstimator.sizeOf(finalMeasurement))
+                      + (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
                       + ((Objects.isNull(tvPair)
                               || tvPair == PLACEHOLDER_TIME_VALUE_PAIR
                               || tvPair == EMPTY_TIME_VALUE_PAIR)
