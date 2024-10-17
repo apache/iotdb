@@ -239,7 +239,7 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
     }
   }
 
-  private void releaseMemory(int size) {
+  public void releaseMemory(int size) {
     if (regionStatistics != null) {
       regionStatistics.releaseMemory(size);
     }

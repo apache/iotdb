@@ -98,6 +98,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -1585,12 +1586,37 @@ public class MTreeBelowSGMemoryImpl {
 
   public void renameTableAttribute() {}
 
-  public boolean deleteTableDevice(final String tableName) {
-    if (store.hasChild(storageGroupMNode, tableName)) {
-      store.deleteChild(storageGroupMNode, tableName);
-      return true;
+  public boolean deleteTableDevice(final String tableName) throws MetadataException {
+    if (!store.hasChild(storageGroupMNode, tableName)) {
+      return false;
     }
-    return false;
+    final AtomicInteger memoryReleased = new AtomicInteger(0);
+    try (final MNodeCollector<Void, IMemMNode> collector =
+        new MNodeCollector<Void, IMemMNode>(
+            this.rootNode,
+            new PartialPath(storageGroupMNode.getFullPath()),
+            this.store,
+            true,
+            SchemaConstant.ALL_MATCH_SCOPE) {
+          @Override
+          protected boolean acceptInternalMatchedNode(final IMemMNode node) {
+            return true;
+          }
+
+          @Override
+          protected Void collectMNode(final IMemMNode node) {
+            if (node.isDevice()) {
+              deviceProcess.accept(node.getAsDeviceMNode());
+            }
+            memoryReleased.addAndGet(node.estimateSize());
+            return null;
+          }
+        }) {
+      collector.traverse();
+    }
+    storageGroupMNode.deleteChild(tableName);
+    store.releaseMemory(memoryReleased.get());
+    return true;
   }
 
   // endregion

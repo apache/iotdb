@@ -27,6 +27,7 @@ import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,8 +49,11 @@ import java.util.Objects;
 public class DeviceAttributeStore implements IDeviceAttributeStore {
 
   private static final Logger logger = LoggerFactory.getLogger(DeviceAttributeStore.class);
+  private static final long MAP_SIZE_WITH_REF =
+      RamUsageEstimator.shallowSizeOfInstance(HashMap.class)
+          + RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 
-  public List<Map<String, String>> deviceAttributeList = new ArrayList<>();
+  private final List<Map<String, String>> deviceAttributeList = new ArrayList<>();
 
   private final MemSchemaRegionStatistics regionStatistics;
 
@@ -59,7 +63,7 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
 
   @Override
   public void clear() {
-    deviceAttributeList = new ArrayList<>();
+    deviceAttributeList.clear();
   }
 
   @Override
@@ -127,7 +131,7 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   @Override
   public synchronized int createAttribute(final List<String> nameList, final Object[] valueList) {
     // todo implement storage for device of diverse data types
-    long memUsage = 0L;
+    long memUsage = MAP_SIZE_WITH_REF;
     final Map<String, String> attributeMap = new HashMap<>();
     String value;
     for (int i = 0; i < nameList.size(); i++) {
@@ -182,6 +186,13 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
       releaseMemory(-memUsageDelta);
     }
     return updateMap;
+  }
+
+  @Override
+  public Map<String, String> removeAttribute(final int pointer) {
+
+    deviceAttributeList.set(pointer, null);
+    return null;
   }
 
   @Override
