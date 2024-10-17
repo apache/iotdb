@@ -510,6 +510,7 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitPipeEnriched(PipeEnriched node, Optional<Scope> scope) {
       Scope ret = node.getInnerStatement().accept(this, scope);
+      createAndAssignScope(node, scope);
       analysis.setScope(node, ret);
       return ret;
     }
