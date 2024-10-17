@@ -934,19 +934,58 @@ public class IoTDBMultiIDsWithAttributesTableIT {
   }
 
   @Test
-  public void lastTest() {
+  public void lastFirstMaxMinTest() {
     expectedHeader =
         new String[] {
           "_col0", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9",
           "_col10", "_col11", "_col12", "_col13",
         };
-
     retArray =
         new String[] {
           "1971-04-26T18:01:40.000Z,d1,l4,null,null,13,2107483648,54.12,lychee,true,null,0x108dcd62,2024-09-15T06:15:35.000Z,test-string1,",
         };
     sql =
         "select last(time),last(device),last(level),last(attr1),last(attr2),last(num),last(bignum),last(floatnum),last(str),last(bool),last(date),last(blob),last(ts),last(stringv) from table0 where device='d1' and level='l4'";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.080Z,d1,l4,null,null,9,2147483646,43.12,apple,false,null,0x108dcd62,2024-09-15T06:15:35.000Z,test-string1,",
+        };
+    sql =
+        "select first(time),first(device),first(level),first(attr1),first(attr2),first(num),first(bignum),first(floatnum),first(str),first(bool),first(date),first(blob),first(ts),first(stringv) from table0 where device='d1' and level='l4'";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {
+          "_col0", "_col1", "_col2", "_col3", "_col4", "_col5",
+        };
+    retArray =
+        new String[] {
+          "15,3147483648,4654.231,1,2107483648,12.123,",
+        };
+    sql =
+        "select max(num),max(bignum),max(floatnum),min(num),min(bignum),min(floatnum) from table0";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {
+          "device", "level", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7",
+        };
+    retArray =
+        new String[] {
+          "d1,l1,11,2947483648,1231.21,3,2147468648,54.121,",
+          "d1,l2,12,3147483648,434.12,2,2146483648,45.231,",
+          "d1,l3,14,2907483648,231.34,1,2147493648,12.123,",
+          "d1,l4,13,2149783648,56.32,5,2107483648,43.12,",
+          "d1,l5,15,3147483648,4654.231,7,2147483964,213.112,",
+          "d2,l1,11,2947483648,1231.21,3,2147468648,54.121,",
+          "d2,l2,12,3147483648,434.12,2,2146483648,45.231,",
+          "d2,l3,14,2907483648,231.34,1,2147493648,12.123,",
+          "d2,l4,13,2149783648,56.32,5,2107483648,43.12,",
+          "d2,l5,15,3147483648,4654.231,7,2147483964,213.112,",
+        };
+    sql =
+        "select device,level,max(num),max(bignum),max(floatnum),min(num),min(bignum),min(floatnum) from table0 group by device,level order by device,level";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
