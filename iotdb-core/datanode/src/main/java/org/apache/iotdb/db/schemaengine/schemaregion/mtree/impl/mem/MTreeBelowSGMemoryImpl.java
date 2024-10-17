@@ -525,7 +525,12 @@ public class MTreeBelowSGMemoryImpl {
         final IMemMNode memMNode = store.getChild(device.getAsMNode(), alias);
         if (memMNode != null) {
           throw new MetadataException(
-              "The alias is duplicated with the name or alias of other measurement.");
+              "The alias is duplicated with the name or alias of other measurement, alias: "
+                  + alias
+                  + ", fullPath: "
+                  + fullPath
+                  + ", otherMeasurement: "
+                  + memMNode.getFullPath());
         }
         if (measurementMNode.getAlias() != null) {
           device.deleteAliasChild(measurementMNode.getAlias());
@@ -1115,12 +1120,10 @@ public class MTreeBelowSGMemoryImpl {
 
     final EntityCollector<IDeviceSchemaInfo, IMemMNode> collector =
         new EntityCollector<IDeviceSchemaInfo, IMemMNode>(rootNode, pattern, store, false, null) {
-
           protected IDeviceSchemaInfo collectEntity(final IDeviceMNode<IMemMNode> node) {
-            final PartialPath device = getPartialPathFromRootToNode(node.getAsMNode());
             final ShowDevicesResult result =
                 new ShowDevicesResult(
-                    device.getFullPath(),
+                    null,
                     node.isAlignedNullable(),
                     node.getSchemaTemplateId(),
                     node.getPartialPath().getNodes());
