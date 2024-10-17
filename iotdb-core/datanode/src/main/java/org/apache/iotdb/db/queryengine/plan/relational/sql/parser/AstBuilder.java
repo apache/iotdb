@@ -315,8 +315,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitShowTableStatement(final RelationalSqlParser.ShowTableStatementContext ctx) {
     return Objects.nonNull(ctx.database)
-        ? new ShowTables(getLocation(ctx), lowerIdentifier((Identifier) visit(ctx.database)))
-        : new ShowTables(getLocation(ctx));
+        ? new ShowTables(
+            getLocation(ctx),
+            lowerIdentifier((Identifier) visit(ctx.database)),
+            Objects.nonNull(ctx.DETAILS()))
+        : new ShowTables(getLocation(ctx), Objects.nonNull(ctx.DETAILS()));
   }
 
   @Override

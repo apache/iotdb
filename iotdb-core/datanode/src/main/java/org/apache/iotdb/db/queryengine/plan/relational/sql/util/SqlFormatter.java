@@ -510,8 +510,12 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitShowTables(ShowTables node, Integer indent) {
+    protected Void visitShowTables(final ShowTables node, final Integer indent) {
       builder.append("SHOW TABLES");
+
+      if (node.isDetails()) {
+        builder.append(" DETAILS");
+      }
 
       node.getDbName().ifPresent(db -> builder.append(" FROM ").append(formatName(db)));
 

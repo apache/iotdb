@@ -34,28 +34,26 @@ public class ShowTables extends Statement {
 
   @Nullable private final Identifier dbName;
 
-  public ShowTables() {
-    super(null);
-    this.dbName = null;
-  }
+  private final boolean isDetails;
 
-  public ShowTables(final NodeLocation location) {
+  public ShowTables(final NodeLocation location, final boolean isDetails) {
     super(requireNonNull(location, "location is null"));
     this.dbName = null;
+    this.isDetails = isDetails;
   }
 
-  public ShowTables(final Identifier dbName) {
-    super(null);
-    this.dbName = requireNonNull(dbName, "dbName is null");
-  }
-
-  public ShowTables(final NodeLocation location, final Identifier dbName) {
+  public ShowTables(final NodeLocation location, final Identifier dbName, final boolean isDetails) {
     super(requireNonNull(location, "location is null"));
     this.dbName = requireNonNull(dbName, "dbName is null");
+    this.isDetails = isDetails;
   }
 
   public Optional<Identifier> getDbName() {
     return Optional.ofNullable(dbName);
+  }
+
+  public boolean isDetails() {
+    return isDetails;
   }
 
   @Override
