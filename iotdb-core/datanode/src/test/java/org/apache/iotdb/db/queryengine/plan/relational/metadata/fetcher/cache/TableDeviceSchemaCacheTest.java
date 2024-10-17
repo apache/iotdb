@@ -463,7 +463,10 @@ public class TableDeviceSchemaCacheTest {
     final TableDeviceSchemaCache cache = TableDeviceSchemaCache.getInstance();
 
     cache.updateLastCacheIfExists(
-        database1, convertIdValuesToDeviceID(table2, device0), testMeasurements, testTimeValuePairs);
+        database1,
+        convertIdValuesToDeviceID(table2, device0),
+        testMeasurements,
+        testTimeValuePairs);
     cache.updateLastCacheIfExists(
         database2,
         convertIdValuesToDeviceID(table1, device0),
@@ -482,7 +485,10 @@ public class TableDeviceSchemaCacheTest {
         new String[] {"s0"},
         new TimeValuePair[] {new TimeValuePair(0L, new TsPrimitiveType.TsInt(2))});
     cache.updateLastCacheIfExists(
-        database1, convertIdValuesToDeviceID(table1, device0), testMeasurements, testTimeValuePairs);
+        database1,
+        convertIdValuesToDeviceID(table1, device0),
+        testMeasurements,
+        testTimeValuePairs);
 
     Assert.assertEquals(
         tv3, cache.getLastEntry(database1, convertIdValuesToDeviceID(table1, device0), "s0"));
