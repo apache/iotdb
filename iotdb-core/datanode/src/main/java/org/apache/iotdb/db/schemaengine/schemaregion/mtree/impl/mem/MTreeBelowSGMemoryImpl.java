@@ -1594,8 +1594,8 @@ public class MTreeBelowSGMemoryImpl {
     final AtomicInteger memoryReleased = new AtomicInteger(0);
     try (final MNodeCollector<Void, IMemMNode> collector =
         new MNodeCollector<Void, IMemMNode>(
-            this.rootNode,
-            storageGroupMNode.getPartialPath().concatNode(tableName),
+            storageGroupMNode,
+            new PartialPath(new String[] {storageGroupMNode.getName(), tableName}),
             this.store,
             true,
             SchemaConstant.ALL_MATCH_SCOPE) {
@@ -1606,7 +1606,6 @@ public class MTreeBelowSGMemoryImpl {
 
           @Override
           protected Void collectMNode(final IMemMNode node) {
-            System.out.println(node.getName());
             if (node.isDevice()) {
               attributeDeleter.accept(
                   ((TableDeviceInfo<IMemMNode>) node.getAsDeviceMNode().getDeviceInfo())

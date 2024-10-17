@@ -103,7 +103,7 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
     this.store = store.getWithReentrantReadLock();
     initStack();
     String[] nodes = path.getNodes();
-    if (nodes.length == 0 || !nodes[0].equals(PATH_ROOT)) {
+    if (nodes.length == 0 || !nodes[0].equals(startNode.getName())) {
       throw new IllegalPathException(
           path.getFullPath(), path.getFullPath() + " doesn't start with " + startNode.getName());
     }
