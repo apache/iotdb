@@ -122,9 +122,11 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_END_TIME_KEY = "extractor.end-time";
   public static final String SOURCE_END_TIME_KEY = "source.end-time";
 
-  public static final String EXTRACTOR_WATERMARK_INTERVAL_KEY = "extractor.watermark-interval-ms";
-  public static final String SOURCE_WATERMARK_INTERVAL_KEY = "source.watermark-interval-ms";
+  public static final String _EXTRACTOR_WATERMARK_INTERVAL_KEY = "extractor.watermark-interval-ms";
+  public static final String _SOURCE_WATERMARK_INTERVAL_KEY = "source.watermark-interval-ms";
   public static final long EXTRACTOR_WATERMARK_INTERVAL_DEFAULT_VALUE = -1; // -1 means no watermark
+  public static final String EXTRACTOR_WATERMARK_INTERVAL_KEY = "extractor.watermark.interval-ms";
+  public static final String SOURCE_WATERMARK_INTERVAL_KEY = "source.watermark.interval-ms";
 
   ///////////////////// pipe consensus /////////////////////
 

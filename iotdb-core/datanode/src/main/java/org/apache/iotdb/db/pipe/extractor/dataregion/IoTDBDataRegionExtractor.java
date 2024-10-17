@@ -111,6 +111,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_REALTIME_MODE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_WATERMARK_INTERVAL_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant._EXTRACTOR_WATERMARK_INTERVAL_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant._SOURCE_WATERMARK_INTERVAL_KEY;
 
 public class IoTDBDataRegionExtractor extends IoTDBExtractor {
 
@@ -389,6 +391,18 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
           SOURCE_PATH_KEY);
     }
 
+    // Check coexistence of watermark-interval-ms and watermark.interval-ms
+    if (parameters.hasAnyAttributes(EXTRACTOR_WATERMARK_INTERVAL_KEY, SOURCE_WATERMARK_INTERVAL_KEY)
+        && parameters.hasAnyAttributes(
+            _EXTRACTOR_WATERMARK_INTERVAL_KEY, _SOURCE_WATERMARK_INTERVAL_KEY)) {
+      LOGGER.warn(
+          "When {} or {} is specified, specifying {} and {} is invalid.",
+          EXTRACTOR_WATERMARK_INTERVAL_KEY,
+          SOURCE_WATERMARK_INTERVAL_KEY,
+          _EXTRACTOR_WATERMARK_INTERVAL_KEY,
+          _SOURCE_WATERMARK_INTERVAL_KEY);
+    }
+
     // Check if specifying mode.snapshot or mode.streaming when disable realtime extractor
     if (!parameters.getBooleanOrDefault(
         Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
@@ -531,20 +545,27 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
     realtimeExtractor.customize(parameters, configuration);
 
     // Set watermark injector
+    long watermarkIntervalInMs = EXTRACTOR_WATERMARK_INTERVAL_DEFAULT_VALUE;
     if (parameters.hasAnyAttributes(
         EXTRACTOR_WATERMARK_INTERVAL_KEY, SOURCE_WATERMARK_INTERVAL_KEY)) {
-      final long watermarkIntervalInMs =
+      watermarkIntervalInMs =
           parameters.getLongOrDefault(
-              Arrays.asList(EXTRACTOR_WATERMARK_INTERVAL_KEY, SOURCE_WATERMARK_INTERVAL_KEY),
+              Arrays.asList(_EXTRACTOR_WATERMARK_INTERVAL_KEY, _SOURCE_WATERMARK_INTERVAL_KEY),
               EXTRACTOR_WATERMARK_INTERVAL_DEFAULT_VALUE);
-      if (watermarkIntervalInMs > 0) {
-        watermarkInjector = new DataRegionWatermarkInjector(regionId, watermarkIntervalInMs);
-        LOGGER.info(
-            "Pipe {}@{}: Set watermark injector with interval {} ms.",
-            pipeName,
-            regionId,
-            watermarkInjector.getInjectionIntervalInMs());
-      }
+    } else if (parameters.hasAnyAttributes(
+        _EXTRACTOR_WATERMARK_INTERVAL_KEY, _SOURCE_WATERMARK_INTERVAL_KEY)) {
+      watermarkIntervalInMs =
+          parameters.getLongOrDefault(
+              Arrays.asList(_EXTRACTOR_WATERMARK_INTERVAL_KEY, _SOURCE_WATERMARK_INTERVAL_KEY),
+              EXTRACTOR_WATERMARK_INTERVAL_DEFAULT_VALUE);
+    }
+    if (watermarkIntervalInMs > 0) {
+      watermarkInjector = new DataRegionWatermarkInjector(regionId, watermarkIntervalInMs);
+      LOGGER.info(
+          "Pipe {}@{}: Set watermark injector with interval {} ms.",
+          pipeName,
+          regionId,
+          watermarkInjector.getInjectionIntervalInMs());
     }
 
     // register metric after generating taskID
