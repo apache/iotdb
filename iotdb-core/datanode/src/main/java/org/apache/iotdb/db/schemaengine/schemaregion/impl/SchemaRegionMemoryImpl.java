@@ -1856,5 +1856,16 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         return new RecoverOperationResult(e);
       }
     }
+
+    @Override
+    public RecoverOperationResult visitDeleteTableDevice(
+        final DeleteTableDeviceNode deleteTableDevicePlan, final SchemaRegionMemoryImpl context) {
+      try {
+        deleteTableDevice(deleteTableDevicePlan);
+        return RecoverOperationResult.SUCCESS;
+      } catch (final MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
   }
 }
