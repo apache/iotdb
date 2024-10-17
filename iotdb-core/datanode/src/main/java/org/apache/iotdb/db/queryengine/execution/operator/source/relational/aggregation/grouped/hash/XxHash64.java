@@ -22,8 +22,8 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import static java.lang.Long.rotateLeft;
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.FlatHash.bytesToInt;
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.FlatHash.bytesToLong;
+import static org.apache.tsfile.utils.BytesUtils.bytesToInt;
+import static org.apache.tsfile.utils.BytesUtils.bytesToLongFromOffset;
 
 public class XxHash64 {
   private static final long PRIME64_1 = 0x9E3779B185EBCA87L;
@@ -123,10 +123,10 @@ public class XxHash64 {
   private int updateBody(byte[] base, int address, int length) {
     int remaining;
     for (remaining = length; remaining >= 32; remaining -= 32) {
-      this.v1 = mix(this.v1, bytesToLong(base, address));
-      this.v2 = mix(this.v2, bytesToLong(base, address + 8));
-      this.v3 = mix(this.v3, bytesToLong(base, address + 16));
-      this.v4 = mix(this.v4, bytesToLong(base, address + 24));
+      this.v1 = mix(this.v1, bytesToLongFromOffset(base, Long.BYTES, address));
+      this.v2 = mix(this.v2, bytesToLongFromOffset(base, Long.BYTES, address + 8));
+      this.v3 = mix(this.v3, bytesToLongFromOffset(base, Long.BYTES, address + 16));
+      this.v4 = mix(this.v4, bytesToLongFromOffset(base, Long.BYTES, address + 24));
       address += 32;
     }
 
@@ -195,7 +195,7 @@ public class XxHash64 {
 
   private static long updateTail(long hash, byte[] base, int address, int index, int length) {
     while (index <= length - 8) {
-      hash = updateTail(hash, bytesToLong(base, address + index));
+      hash = updateTail(hash, bytesToLongFromOffset(base, Long.BYTES, address + index));
       index += 8;
     }
 
@@ -220,10 +220,10 @@ public class XxHash64 {
     long v4 = seed - PRIME64_1;
 
     for (int remaining = length; remaining >= 32; remaining -= 32) {
-      v1 = mix(v1, bytesToLong(base, address));
-      v2 = mix(v2, bytesToLong(base, address + 8));
-      v3 = mix(v3, bytesToLong(base, address + 16));
-      v4 = mix(v4, bytesToLong(base, address + 24));
+      v1 = mix(v1, bytesToLongFromOffset(base, Long.BYTES, address));
+      v2 = mix(v2, bytesToLongFromOffset(base, Long.BYTES, address + 8));
+      v3 = mix(v3, bytesToLongFromOffset(base, Long.BYTES, address + 16));
+      v4 = mix(v4, bytesToLongFromOffset(base, Long.BYTES, address + 24));
       address += 32;
     }
 
