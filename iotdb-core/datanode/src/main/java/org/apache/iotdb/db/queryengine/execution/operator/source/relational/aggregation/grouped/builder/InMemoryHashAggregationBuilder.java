@@ -125,7 +125,7 @@ public class InMemoryHashAggregationBuilder implements HashAggregationBuilder {
     return full;
   }
 
-  public long getSizeInMemory() {
+  public long getEstimatedSize() {
     long sizeInMemory = groupByHash.getEstimatedSize();
     for (GroupedAggregator groupedAggregator : groupedAggregators) {
       sizeInMemory += groupedAggregator.getEstimatedSize();

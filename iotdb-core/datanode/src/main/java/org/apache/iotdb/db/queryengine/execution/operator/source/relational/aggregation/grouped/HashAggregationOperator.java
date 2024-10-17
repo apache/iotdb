@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped;
 
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.db.queryengine.execution.operator.AbstractOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.builder.HashAggregationBuilder;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.builder.InMemoryHashAggregationBuilder;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
@@ -30,7 +30,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationN
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -41,7 +40,7 @@ import java.util.Optional;
 import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory.NOOP;
 
-public class HashAggregationOperator implements ProcessOperator {
+public class HashAggregationOperator extends AbstractOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(HashAggregationOperator.class);
 
@@ -63,9 +62,6 @@ public class HashAggregationOperator implements ProcessOperator {
   private final long unspillMemoryLimit;
 
   private HashAggregationBuilder aggregationBuilder;
-
-  private final long maxReturnSize =
-      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
   protected MemoryReservationManager memoryReservationManager;
 
@@ -144,7 +140,8 @@ public class HashAggregationOperator implements ProcessOperator {
       return null;
     } else {
       // evaluate output
-      return getOutput();
+      resultTsBlock = getOutput();
+      return checkTsBlockSizeAndGetResult();
     }
   }
 
@@ -208,7 +205,7 @@ public class HashAggregationOperator implements ProcessOperator {
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
-        + aggregators.stream().mapToLong(GroupedAggregator::getEstimatedSize).count()
+        + aggregationBuilder.getEstimatedSize()
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext);
   }
 }
