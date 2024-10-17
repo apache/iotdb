@@ -598,6 +598,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     return filesView.sortedAllSourceFilesInTask;
   }
 
+  @Override
   public List<TsFileResource> getSelectedTsFileResourceList() {
     return filesView.sourceFilesInCompactionPerformer;
   }

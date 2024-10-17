@@ -117,7 +117,7 @@ public class MultiWorkerTypeCompactionTaskQueues {
     if (avgZeroLevelFileSize > 0) {
       isSmallTask =
           compactionTask.getCompactionRewriteFileSize()
-                  / compactionTask.getAllSourceTsFiles().size()
+                  / compactionTask.getSelectedTsFileResourceList().size()
               < avgZeroLevelFileSize / 2;
     } else {
       isSmallTask =
