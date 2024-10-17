@@ -24,9 +24,11 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet.ColumnType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -79,20 +81,40 @@ public class TableSchema {
         tableName, measurementSchemas, columnTypes);
   }
 
+  private static final Logger LOGGER = org.slf4j.LoggerFactory.getLogger(TableSchema.class);
+
   public static TableSchema fromTsFileTableSchema(
       String tableName, org.apache.tsfile.file.metadata.TableSchema tsFileTableSchema) {
-    List<ColumnSchema> columns = new ArrayList<>();
-    for (int i = 0; i < tsFileTableSchema.getColumnSchemas().size(); i++) {
-      columns.add(
-          new ColumnSchema(
-              tsFileTableSchema.getColumnSchemas().get(i).getMeasurementId(),
-              InternalTypeManager.fromTSDataType(
-                  tsFileTableSchema.getColumnSchemas().get(i).getType()),
-              false,
-              TsTableColumnCategory.fromTsFileColumnType(
-                  tsFileTableSchema.getColumnTypes().get(i))));
+    try {
+      List<ColumnSchema> columns = new ArrayList<>();
+      for (int i = 0; i < tsFileTableSchema.getColumnSchemas().size(); i++) {
+        final String columnName = tsFileTableSchema.getColumnSchemas().get(i).getMeasurementId();
+        if (columnName == null || columnName.isEmpty()) {
+          continue;
+        }
+
+        final TSDataType dataType = tsFileTableSchema.getColumnSchemas().get(i).getType();
+        if (dataType == TSDataType.VECTOR) {
+          continue;
+        }
+
+        columns.add(
+            new ColumnSchema(
+                columnName,
+                InternalTypeManager.fromTSDataType(dataType),
+                false,
+                TsTableColumnCategory.fromTsFileColumnType(
+                    tsFileTableSchema.getColumnTypes().get(i))));
+      }
+      return new TableSchema(tableName, columns);
+    } catch (Exception e) {
+      LOGGER.warn(
+          "Cannot convert tsfile table schema to iotdb table schema, table name: {}, tsfile table schema: {}",
+          tableName,
+          tsFileTableSchema,
+          e);
+      throw e;
     }
-    return new TableSchema(tableName, columns);
   }
 
   @Override
