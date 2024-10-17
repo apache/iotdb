@@ -170,6 +170,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowVariab
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.ShowModelsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowDBTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesDetailsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowNodesInSchemaTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowPathSetTemplateTask;
@@ -3136,7 +3137,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         return future;
       }
       if (isDetails) {
-
+        ShowTablesDetailsTask.buildTsBlock(resp.getTableInfoList(), future);
       } else {
         ShowTablesTask.buildTsBlock(resp.getTableInfoList(), future);
       }
