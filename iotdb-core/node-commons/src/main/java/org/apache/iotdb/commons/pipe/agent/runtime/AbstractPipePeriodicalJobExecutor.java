@@ -45,11 +45,11 @@ public abstract class AbstractPipePeriodicalJobExecutor {
   private final ScheduledExecutorService executorService;
   private final long minIntervalSeconds;
 
-  protected long rounds;
-  protected Future<?> executorFuture;
+  private long rounds;
+  private Future<?> executorFuture;
 
   // <Periodical job, Interval in rounds>
-  protected final List<Pair<WrappedRunnable, Long>> periodicalJobs = new CopyOnWriteArrayList<>();
+  private final List<Pair<WrappedRunnable, Long>> periodicalJobs = new CopyOnWriteArrayList<>();
 
   public AbstractPipePeriodicalJobExecutor(
       final ScheduledExecutorService executorService, final long minIntervalSeconds) {
