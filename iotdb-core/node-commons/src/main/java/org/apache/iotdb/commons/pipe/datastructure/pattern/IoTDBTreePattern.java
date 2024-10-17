@@ -83,7 +83,7 @@ public class IoTDBTreePattern extends TreePattern {
 
   @Override
   public boolean coversDb(final String db) {
-    if (isTreeModelDataAllowedToBeCaptured) {
+    if (!isTreeModelDataAllowedToBeCaptured) {
       return false;
     }
 
@@ -97,7 +97,7 @@ public class IoTDBTreePattern extends TreePattern {
 
   @Override
   public boolean coversDevice(final IDeviceID device) {
-    if (isTreeModelDataAllowedToBeCaptured) {
+    if (!isTreeModelDataAllowedToBeCaptured) {
       return false;
     }
 
@@ -111,7 +111,7 @@ public class IoTDBTreePattern extends TreePattern {
 
   @Override
   public boolean mayOverlapWithDevice(final IDeviceID device) {
-    if (isTreeModelDataAllowedToBeCaptured) {
+    if (!isTreeModelDataAllowedToBeCaptured) {
       return false;
     }
 
@@ -126,7 +126,7 @@ public class IoTDBTreePattern extends TreePattern {
 
   @Override
   public boolean matchesMeasurement(final IDeviceID device, final String measurement) {
-    if (isTreeModelDataAllowedToBeCaptured) {
+    if (!isTreeModelDataAllowedToBeCaptured) {
       return false;
     }
 
@@ -149,7 +149,7 @@ public class IoTDBTreePattern extends TreePattern {
    * setting.
    */
   public boolean matchPrefixPath(final String path) {
-    if (isTreeModelDataAllowedToBeCaptured) {
+    if (!isTreeModelDataAllowedToBeCaptured) {
       return false;
     }
 
@@ -164,7 +164,7 @@ public class IoTDBTreePattern extends TreePattern {
    * This is the precise form of the device overlap and is used only be device template transfer.
    */
   public boolean matchDevice(final String devicePath) {
-    if (isTreeModelDataAllowedToBeCaptured) {
+    if (!isTreeModelDataAllowedToBeCaptured) {
       return false;
     }
 
@@ -180,7 +180,7 @@ public class IoTDBTreePattern extends TreePattern {
    * prefix or full path pattern.
    */
   public boolean matchTailNode(final String tailNode) {
-    if (isTreeModelDataAllowedToBeCaptured) {
+    if (!isTreeModelDataAllowedToBeCaptured) {
       return false;
     }
 
@@ -192,6 +192,10 @@ public class IoTDBTreePattern extends TreePattern {
    * schema transmission. Caller shall ensure that it is a prefix or full path pattern.
    */
   public List<PartialPath> getIntersection(final PartialPath partialPath) {
+    if (!isTreeModelDataAllowedToBeCaptured) {
+      return Collections.emptyList();
+    }
+
     if (isFullPath()) {
       return partialPath.matchFullPath(patternPartialPath)
           ? Collections.singletonList(partialPath)
@@ -205,6 +209,10 @@ public class IoTDBTreePattern extends TreePattern {
    * used by schema transmission. Caller shall ensure that it is a prefix or full path pattern.
    */
   public PathPatternTree getIntersection(final PathPatternTree patternTree) {
+    if (!isTreeModelDataAllowedToBeCaptured) {
+      return new PathPatternTree();
+    }
+
     final PathPatternTree thisPatternTree = new PathPatternTree();
     thisPatternTree.appendPathPattern(patternPartialPath);
     thisPatternTree.constructTree();
@@ -224,7 +232,7 @@ public class IoTDBTreePattern extends TreePattern {
   }
 
   public boolean mayMatchMultipleTimeSeriesInOneDevice() {
-    if (isTreeModelDataAllowedToBeCaptured) {
+    if (!isTreeModelDataAllowedToBeCaptured) {
       return false;
     }
 

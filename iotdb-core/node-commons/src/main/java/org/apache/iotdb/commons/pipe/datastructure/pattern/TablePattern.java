@@ -57,7 +57,7 @@ public class TablePattern {
   }
 
   public boolean coversDb(final String database) {
-    if (isTableModelDataAllowedToBeCaptured) {
+    if (!isTableModelDataAllowedToBeCaptured) {
       return false;
     }
 
@@ -68,7 +68,7 @@ public class TablePattern {
   }
 
   public boolean matchesDatabase(final String database) {
-    if (isTableModelDataAllowedToBeCaptured) {
+    if (!isTableModelDataAllowedToBeCaptured) {
       return false;
     }
 
@@ -76,7 +76,7 @@ public class TablePattern {
   }
 
   public boolean matchesTable(final String table) {
-    if (isTableModelDataAllowedToBeCaptured) {
+    if (!isTableModelDataAllowedToBeCaptured) {
       return false;
     }
 

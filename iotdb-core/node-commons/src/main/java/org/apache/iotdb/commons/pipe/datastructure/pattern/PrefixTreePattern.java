@@ -79,7 +79,7 @@ public class PrefixTreePattern extends TreePattern {
 
   @Override
   public boolean coversDb(final String db) {
-    if (isTreeModelDataAllowedToBeCaptured) {
+    if (!isTreeModelDataAllowedToBeCaptured) {
       return false;
     }
 
@@ -88,7 +88,7 @@ public class PrefixTreePattern extends TreePattern {
 
   @Override
   public boolean coversDevice(final IDeviceID device) {
-    if (isTreeModelDataAllowedToBeCaptured) {
+    if (!isTreeModelDataAllowedToBeCaptured) {
       return false;
     }
 
@@ -100,7 +100,7 @@ public class PrefixTreePattern extends TreePattern {
 
   @Override
   public boolean mayOverlapWithDevice(final IDeviceID device) {
-    if (isTreeModelDataAllowedToBeCaptured) {
+    if (!isTreeModelDataAllowedToBeCaptured) {
       return false;
     }
 
@@ -117,7 +117,7 @@ public class PrefixTreePattern extends TreePattern {
 
   @Override
   public boolean matchesMeasurement(final IDeviceID device, String measurement) {
-    if (isTreeModelDataAllowedToBeCaptured) {
+    if (!isTreeModelDataAllowedToBeCaptured) {
       return false;
     }
 

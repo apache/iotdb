@@ -60,7 +60,7 @@ public abstract class TreePattern {
   }
 
   public boolean isRoot() {
-    if (isTreeModelDataAllowedToBeCaptured) {
+    if (!isTreeModelDataAllowedToBeCaptured) {
       return false;
     }
 
