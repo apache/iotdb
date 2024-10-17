@@ -189,10 +189,11 @@ public class TableDeviceSchemaCache {
    * consistency. WARNING: The writing may temporarily put a stale value in cache if a stale value
    * is written, but it won't affect the eventual consistency.
    *
-   * <p>- Second time put the calculated {@link TimeValuePair}s. The input {@link TimeValuePair}s
-   * shall never be or contain {@code null}, if a measurement is with all {@code null}s, its {@link
-   * TimeValuePair} shall be {@link TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR}. For time column,
-   * the input measurement shall be "", and the value shall be {@link
+   * <p>- Second time put the calculated {@link TimeValuePair}s, and use {@link
+   * #updateLastCacheIfExists(String, IDeviceID, String[], TimeValuePair[])}. The input {@link
+   * TimeValuePair}s shall never be or contain {@code null}, if a measurement is with all {@code
+   * null}s, its {@link TimeValuePair} shall be {@link TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR}.
+   * For time column, the input measurement shall be "", and the value shall be {@link
    * TableDeviceLastCache#EMPTY_PRIMITIVE_TYPE}. If the time column is not explicitly specified, the
    * device's last time won't be updated because we cannot guarantee the completeness of the
    * existing measurements in cache.
@@ -229,9 +230,10 @@ public class TableDeviceSchemaCache {
   }
 
   /**
-   * Update the last cache in writing. If a measurement is with all {@code null}s or is an
-   * id/attribute column, its timeValuePair shall be {@code null}. For correctness, this will put
-   * the cache lazily and only update the existing last caches of measurements.
+   * Update the last cache in writing or the second push of last cache query. If a measurement is
+   * with all {@code null}s or is an id/attribute column, its {@link TimeValuePair}[] shall be
+   * {@code null}. For correctness, this will put the cache lazily and only update the existing last
+   * caches of measurements.
    *
    * @param database the device's database, without "root"
    * @param deviceId {@link IDeviceID}
