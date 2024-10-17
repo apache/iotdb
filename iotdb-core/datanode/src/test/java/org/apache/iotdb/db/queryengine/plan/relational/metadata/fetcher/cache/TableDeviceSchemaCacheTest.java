@@ -110,6 +110,7 @@ public class TableDeviceSchemaCacheTest {
   @AfterClass
   public static void clearEnvironment() {
     DataNodeTableCache.getInstance().invalid(database1);
+    DataNodeTableCache.getInstance().invalid(database2);
     config.setAllocateMemoryForSchemaCache(originMemConfig);
   }
 
