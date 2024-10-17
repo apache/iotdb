@@ -143,7 +143,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       new PipeStatementPatternParseVisitor();
   private final PipeStatementDataTypeConvertExecutionVisitor
       statementDataTypeConvertExecutionVisitor =
-          new PipeStatementDataTypeConvertExecutionVisitor(this::executeStatement);
+          new PipeStatementDataTypeConvertExecutionVisitor(this::executeStatementForTreeModel);
   private final PipeStatementToBatchVisitor batchVisitor = new PipeStatementToBatchVisitor();
 
   // Used for data transfer: confignode (cluster A) -> datanode (cluster B) -> confignode (cluster
@@ -702,7 +702,27 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           TSStatusCode.PIPE_TRANSFER_EXECUTE_STATEMENT_ERROR, "Execute null statement.");
     }
 
-    final TSStatus status = executeStatement(statement);
+    String dataBaseName = null;
+    boolean isWriteToTable = false;
+    if (statement instanceof LoadTsFileStatement
+        && ((LoadTsFileStatement) statement)
+            .getModel()
+            .equals(LoadTsFileConfigurator.MODEL_TABLE_VALUE)) {
+      isWriteToTable = true;
+      dataBaseName = ((LoadTsFileStatement) statement).getDatabase();
+    }
+    if (statement instanceof InsertBaseStatement
+        && ((InsertBaseStatement) statement).isWriteToTable()) {
+      isWriteToTable = true;
+      dataBaseName = ((InsertBaseStatement) statement).getDatabaseName().get();
+    }
+
+    final TSStatus status = executeStatement(statement, isWriteToTable, dataBaseName);
+
+    if (isWriteToTable) {
+      return status;
+    }
+
     return shouldConvertDataTypeOnTypeMismatch
             && ((statement instanceof InsertBaseStatement
                     && ((InsertBaseStatement) statement).hasFailedMeasurements())
@@ -711,19 +731,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         : status;
   }
 
-  private TSStatus executeStatement(Statement statement) {
-    if (statement instanceof LoadTsFileStatement
-        && ((LoadTsFileStatement) statement)
-            .getModel()
-            .equals(LoadTsFileConfigurator.MODEL_TABLE_VALUE)) {
-      return executeStatementForTableModel(
-          statement, ((LoadTsFileStatement) statement).getDatabase());
-    }
-
-    if (statement instanceof InsertBaseStatement
-        && ((InsertBaseStatement) statement).isWriteToTable()) {
-      return executeStatementForTableModel(
-          statement, ((InsertBaseStatement) statement).getDatabaseName().get());
+  private TSStatus executeStatement(
+      final Statement statement, final boolean isWriteToTable, final String dataBaseName) {
+    if (isWriteToTable) {
+      return executeStatementForTableModel(statement, dataBaseName);
     }
 
     return executeStatementForTreeModel(statement);
