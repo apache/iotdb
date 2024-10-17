@@ -41,6 +41,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent.isTabletEmpty;
 
@@ -85,8 +86,12 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
       }
 
       // Table model
+      request.setWriteToTable(true);
+      request.columnCategories =
+          tablet.getColumnTypes().stream()
+              .map(t -> (byte) t.ordinal())
+              .collect(Collectors.toList());
       final InsertTabletStatement statement = StatementGenerator.createStatement(request);
-      statement.setWriteToTable(true);
       statement.setDatabaseName(dataBaseName);
       return statement;
     } catch (final MetadataException e) {
