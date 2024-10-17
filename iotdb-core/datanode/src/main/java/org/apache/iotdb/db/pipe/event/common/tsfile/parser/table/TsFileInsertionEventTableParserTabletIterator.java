@@ -21,20 +21,15 @@ package org.apache.iotdb.db.pipe.event.common.tsfile.parser.table;
 
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.read.ReadProcessException;
 import org.apache.tsfile.file.metadata.TableSchema;
-import org.apache.tsfile.read.common.Field;
-import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.query.executor.TableQueryExecutor;
 import org.apache.tsfile.read.reader.block.TsBlockReader;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -113,62 +108,12 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
         continue;
       }
 
-      final List<Field> fields = new ArrayList<>();
-      for (int i = 0; i < row.length - 1; ++i) {
-        final TSDataType dataType = columnSchemas.get(i).getType();
-        if (dataType == null) {
-          fields.add(null);
-          continue;
-        }
-        if (row[i] == null) {
-          fields.add(null);
-          continue;
-        }
-        final Field field = new Field(dataType);
-        fields.add(field);
-        switch (dataType) {
-          case BOOLEAN:
-            field.setBoolV((Boolean) row[i]);
-            break;
-          case INT32:
-          case DATE:
-            field.setIntV((Integer) row[i]);
-            break;
-          case INT64:
-          case TIMESTAMP:
-            field.setLongV((Long) row[i]);
-            break;
-          case FLOAT:
-            field.setFloatV((Float) row[i]);
-            break;
-          case DOUBLE:
-            field.setDoubleV((Double) row[i]);
-            break;
-          case STRING:
-          case BLOB:
-          case TEXT:
-            field.setBinaryV((Binary) row[i]);
-            break;
-          default:
-            throw new UnsupportedOperationException("Unsupported data type: " + dataType);
-        }
-      }
-      final RowRecord rowRecord = new RowRecord(timestamp, fields);
-
       final int rowIndex = tablet.rowSize;
-      tablet.addTimestamp(rowIndex, rowRecord.getTimestamp());
-      final int fieldSize = fields.size();
-      for (int i = 0; i < fieldSize; i++) {
-        final Field field = fields.get(i);
-        tablet.addValue(
-            columnNames.get(i),
-            rowIndex,
-            field == null ? null : field.getObjectValue(columnSchemas.get(i).getType()));
+      tablet.addTimestamp(rowIndex, timestamp);
+      for (int i = 0, fieldSize = row.length - 1; i < fieldSize; i++) {
+        tablet.addValue(columnNames.get(i), rowIndex, row[i]);
       }
       tablet.rowSize++;
-      if (tablet.rowSize == tablet.getMaxRowNumber()) {
-        break;
-      }
     }
 
     return tablet;
