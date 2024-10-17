@@ -267,140 +267,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
           EXTRACTOR_REALTIME_MODE_BATCH_MODE_VALUE);
     }
 
-    // Validate source.start-time and source.end-time
-    if (validator
-            .getParameters()
-            .hasAnyAttributes(
-                SOURCE_START_TIME_KEY,
-                EXTRACTOR_START_TIME_KEY,
-                SOURCE_END_TIME_KEY,
-                EXTRACTOR_END_TIME_KEY)
-        && validator
-            .getParameters()
-            .hasAnyAttributes(
-                EXTRACTOR_HISTORY_ENABLE_KEY,
-                EXTRACTOR_REALTIME_ENABLE_KEY,
-                SOURCE_HISTORY_ENABLE_KEY,
-                SOURCE_REALTIME_ENABLE_KEY)) {
-      LOGGER.warn(
-          "When {}, {}, {} or {} is specified, specifying {}, {}, {} and {} is invalid.",
-          SOURCE_START_TIME_KEY,
-          EXTRACTOR_START_TIME_KEY,
-          SOURCE_END_TIME_KEY,
-          EXTRACTOR_END_TIME_KEY,
-          SOURCE_HISTORY_START_TIME_KEY,
-          EXTRACTOR_HISTORY_START_TIME_KEY,
-          SOURCE_HISTORY_END_TIME_KEY,
-          EXTRACTOR_HISTORY_END_TIME_KEY);
-    }
-
-    // Check if specifying mode.snapshot or mode.streaming when disable realtime extractor
-    if (!validator
-        .getParameters()
-        .getBooleanOrDefault(
-            Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
-            EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE)) {
-      if (validator
-          .getParameters()
-          .hasAnyAttributes(EXTRACTOR_MODE_SNAPSHOT_KEY, SOURCE_MODE_SNAPSHOT_KEY)) {
-        LOGGER.info(
-            "When '{}' ('{}') is set to false, specifying {} and {} is invalid.",
-            EXTRACTOR_REALTIME_ENABLE_KEY,
-            SOURCE_REALTIME_ENABLE_KEY,
-            EXTRACTOR_MODE_SNAPSHOT_KEY,
-            SOURCE_MODE_SNAPSHOT_KEY);
-      }
-      if (validator
-          .getParameters()
-          .hasAnyAttributes(EXTRACTOR_MODE_STREAMING_KEY, SOURCE_MODE_STREAMING_KEY)) {
-        LOGGER.info(
-            "When '{}' ('{}') is set to false, specifying {} and {} is invalid.",
-            EXTRACTOR_REALTIME_ENABLE_KEY,
-            SOURCE_REALTIME_ENABLE_KEY,
-            EXTRACTOR_MODE_STREAMING_KEY,
-            SOURCE_MODE_STREAMING_KEY);
-      }
-    }
-
-    // Check coexistence of mode.snapshot and mode
-    if (validator
-            .getParameters()
-            .hasAnyAttributes(EXTRACTOR_MODE_SNAPSHOT_KEY, SOURCE_MODE_SNAPSHOT_KEY)
-        && validator.getParameters().hasAnyAttributes(EXTRACTOR_MODE_KEY, SOURCE_MODE_KEY)) {
-      LOGGER.warn(
-          "When {} or {} is specified, specifying {} and {} is invalid.",
-          EXTRACTOR_MODE_SNAPSHOT_KEY,
-          SOURCE_MODE_SNAPSHOT_KEY,
-          EXTRACTOR_MODE_KEY,
-          SOURCE_MODE_KEY);
-    }
-
-    // Check coexistence of mode.streaming and realtime.mode
-    if (validator
-            .getParameters()
-            .hasAnyAttributes(EXTRACTOR_MODE_STREAMING_KEY, SOURCE_MODE_STREAMING_KEY)
-        && validator
-            .getParameters()
-            .hasAnyAttributes(EXTRACTOR_REALTIME_MODE_KEY, SOURCE_REALTIME_MODE_KEY)) {
-      LOGGER.warn(
-          "When {} or {} is specified, specifying {} and {} is invalid.",
-          EXTRACTOR_MODE_STREAMING_KEY,
-          SOURCE_MODE_STREAMING_KEY,
-          EXTRACTOR_REALTIME_MODE_KEY,
-          SOURCE_REALTIME_MODE_KEY);
-    }
-
-    // Check coexistence of mode.strict, history.loose-range and realtime.loose-range
-    if (validator
-        .getParameters()
-        .hasAnyAttributes(EXTRACTOR_MODE_STRICT_KEY, SOURCE_MODE_STRICT_KEY)) {
-      if (validator
-          .getParameters()
-          .hasAnyAttributes(EXTRACTOR_HISTORY_LOOSE_RANGE_KEY, SOURCE_HISTORY_LOOSE_RANGE_KEY)) {
-        LOGGER.warn(
-            "When {} or {} is specified, specifying {} and {} is invalid.",
-            EXTRACTOR_MODE_STRICT_KEY,
-            SOURCE_MODE_STRICT_KEY,
-            EXTRACTOR_HISTORY_LOOSE_RANGE_KEY,
-            SOURCE_HISTORY_LOOSE_RANGE_KEY);
-      }
-      if (validator
-          .getParameters()
-          .hasAnyAttributes(EXTRACTOR_REALTIME_LOOSE_RANGE_KEY, SOURCE_REALTIME_LOOSE_RANGE_KEY)) {
-        LOGGER.warn(
-            "When {} or {} is specified, specifying {} and {} is invalid.",
-            EXTRACTOR_MODE_STRICT_KEY,
-            SOURCE_MODE_STRICT_KEY,
-            EXTRACTOR_REALTIME_LOOSE_RANGE_KEY,
-            SOURCE_REALTIME_LOOSE_RANGE_KEY);
-      }
-    }
-
-    // Check coexistence of mods and mods.enable
-    if (validator
-            .getParameters()
-            .hasAnyAttributes(EXTRACTOR_MODS_ENABLE_KEY, SOURCE_MODS_ENABLE_KEY)
-        && validator.getParameters().hasAnyAttributes(EXTRACTOR_MODS_KEY, SOURCE_MODS_KEY)) {
-      LOGGER.warn(
-          "When {} or {} is specified, specifying {} and {} is invalid.",
-          EXTRACTOR_MODS_KEY,
-          SOURCE_MODS_KEY,
-          EXTRACTOR_MODS_ENABLE_KEY,
-          SOURCE_MODS_ENABLE_KEY);
-    }
-
-    // Check coexistence of capture.tree.path and path
-    if (validator
-            .getParameters()
-            .hasAnyAttributes(EXTRACTOR_CAPTURE_TREE_PATH_KEY, SOURCE_CAPTURE_TREE_PATH_KEY)
-        && validator.getParameters().hasAnyAttributes(EXTRACTOR_PATH_KEY, SOURCE_PATH_KEY)) {
-      LOGGER.warn(
-          "When {} or {} is specified, specifying {} and {} is invalid.",
-          EXTRACTOR_CAPTURE_TREE_PATH_KEY,
-          SOURCE_CAPTURE_TREE_PATH_KEY,
-          EXTRACTOR_PATH_KEY,
-          SOURCE_PATH_KEY);
-    }
+    checkInvalidParameters(validator.getParameters());
 
     constructHistoricalExtractor();
     constructRealtimeExtractor(validator.getParameters());
@@ -429,6 +296,119 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
           String.format(
               "The table model pattern %s can not be specified when deletion capture is enabled.",
               tablePattern));
+    }
+  }
+
+  private void checkInvalidParameters(final PipeParameters parameters) {
+    // Enable history and realtime if specifying start-time or end-time
+    if (parameters.hasAnyAttributes(
+            SOURCE_START_TIME_KEY,
+            EXTRACTOR_START_TIME_KEY,
+            SOURCE_END_TIME_KEY,
+            EXTRACTOR_END_TIME_KEY)
+        && parameters.hasAnyAttributes(
+            EXTRACTOR_HISTORY_ENABLE_KEY,
+            EXTRACTOR_REALTIME_ENABLE_KEY,
+            SOURCE_HISTORY_ENABLE_KEY,
+            SOURCE_REALTIME_ENABLE_KEY)) {
+      LOGGER.warn(
+          "When {}, {}, {} or {} is specified, specifying {}, {}, {} and {} is invalid.",
+          SOURCE_START_TIME_KEY,
+          EXTRACTOR_START_TIME_KEY,
+          SOURCE_END_TIME_KEY,
+          EXTRACTOR_END_TIME_KEY,
+          SOURCE_HISTORY_START_TIME_KEY,
+          EXTRACTOR_HISTORY_START_TIME_KEY,
+          SOURCE_HISTORY_END_TIME_KEY,
+          EXTRACTOR_HISTORY_END_TIME_KEY);
+    }
+
+    // Check coexistence of mode.snapshot and mode
+    if (parameters.hasAnyAttributes(EXTRACTOR_MODE_SNAPSHOT_KEY, SOURCE_MODE_SNAPSHOT_KEY)
+        && parameters.hasAnyAttributes(EXTRACTOR_MODE_KEY, SOURCE_MODE_KEY)) {
+      LOGGER.warn(
+          "When {} or {} is specified, specifying {} and {} is invalid.",
+          EXTRACTOR_MODE_SNAPSHOT_KEY,
+          SOURCE_MODE_SNAPSHOT_KEY,
+          EXTRACTOR_MODE_KEY,
+          SOURCE_MODE_KEY);
+    }
+
+    // Check coexistence of mode.streaming and realtime.mode
+    if (parameters.hasAnyAttributes(EXTRACTOR_MODE_STREAMING_KEY, SOURCE_MODE_STREAMING_KEY)
+        && parameters.hasAnyAttributes(EXTRACTOR_REALTIME_MODE_KEY, SOURCE_REALTIME_MODE_KEY)) {
+      LOGGER.warn(
+          "When {} or {} is specified, specifying {} and {} is invalid.",
+          EXTRACTOR_MODE_STREAMING_KEY,
+          SOURCE_MODE_STREAMING_KEY,
+          EXTRACTOR_REALTIME_MODE_KEY,
+          SOURCE_REALTIME_MODE_KEY);
+    }
+
+    // Check coexistence of mode.strict, history.loose-range and realtime.loose-range
+    if (parameters.hasAnyAttributes(EXTRACTOR_MODE_STRICT_KEY, SOURCE_MODE_STRICT_KEY)) {
+      if (parameters.hasAnyAttributes(
+          EXTRACTOR_HISTORY_LOOSE_RANGE_KEY, SOURCE_HISTORY_LOOSE_RANGE_KEY)) {
+        LOGGER.warn(
+            "When {} or {} is specified, specifying {} and {} is invalid.",
+            EXTRACTOR_MODE_STRICT_KEY,
+            SOURCE_MODE_STRICT_KEY,
+            EXTRACTOR_HISTORY_LOOSE_RANGE_KEY,
+            SOURCE_HISTORY_LOOSE_RANGE_KEY);
+      }
+      if (parameters.hasAnyAttributes(
+          EXTRACTOR_REALTIME_LOOSE_RANGE_KEY, SOURCE_REALTIME_LOOSE_RANGE_KEY)) {
+        LOGGER.warn(
+            "When {} or {} is specified, specifying {} and {} is invalid.",
+            EXTRACTOR_MODE_STRICT_KEY,
+            SOURCE_MODE_STRICT_KEY,
+            EXTRACTOR_REALTIME_LOOSE_RANGE_KEY,
+            SOURCE_REALTIME_LOOSE_RANGE_KEY);
+      }
+    }
+
+    // Check coexistence of mods and mods.enable
+    if (parameters.hasAnyAttributes(EXTRACTOR_MODS_ENABLE_KEY, SOURCE_MODS_ENABLE_KEY)
+        && parameters.hasAnyAttributes(EXTRACTOR_MODS_KEY, SOURCE_MODS_KEY)) {
+      LOGGER.warn(
+          "When {} or {} is specified, specifying {} and {} is invalid.",
+          EXTRACTOR_MODS_KEY,
+          SOURCE_MODS_KEY,
+          EXTRACTOR_MODS_ENABLE_KEY,
+          SOURCE_MODS_ENABLE_KEY);
+    }
+
+    // Check coexistence of capture.tree.path and path
+    if (parameters.hasAnyAttributes(EXTRACTOR_CAPTURE_TREE_PATH_KEY, SOURCE_CAPTURE_TREE_PATH_KEY)
+        && parameters.hasAnyAttributes(EXTRACTOR_PATH_KEY, SOURCE_PATH_KEY)) {
+      LOGGER.warn(
+          "When {} or {} is specified, specifying {} and {} is invalid.",
+          EXTRACTOR_CAPTURE_TREE_PATH_KEY,
+          SOURCE_CAPTURE_TREE_PATH_KEY,
+          EXTRACTOR_PATH_KEY,
+          SOURCE_PATH_KEY);
+    }
+
+    // Check if specifying mode.snapshot or mode.streaming when disable realtime extractor
+    if (!parameters.getBooleanOrDefault(
+        Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
+        EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE)) {
+      if (parameters.hasAnyAttributes(EXTRACTOR_MODE_SNAPSHOT_KEY, SOURCE_MODE_SNAPSHOT_KEY)) {
+        LOGGER.info(
+            "When '{}' ('{}') is set to false, specifying {} and {} is invalid.",
+            EXTRACTOR_REALTIME_ENABLE_KEY,
+            SOURCE_REALTIME_ENABLE_KEY,
+            EXTRACTOR_MODE_SNAPSHOT_KEY,
+            SOURCE_MODE_SNAPSHOT_KEY);
+      }
+      if (parameters.hasAnyAttributes(EXTRACTOR_MODE_STREAMING_KEY, SOURCE_MODE_STREAMING_KEY)) {
+        LOGGER.info(
+            "When '{}' ('{}') is set to false, specifying {} and {} is invalid.",
+            EXTRACTOR_REALTIME_ENABLE_KEY,
+            SOURCE_REALTIME_ENABLE_KEY,
+            EXTRACTOR_MODE_STREAMING_KEY,
+            SOURCE_MODE_STREAMING_KEY);
+      }
     }
   }
 
