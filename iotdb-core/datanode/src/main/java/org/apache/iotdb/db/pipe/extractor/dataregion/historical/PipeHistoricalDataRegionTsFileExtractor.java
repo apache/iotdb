@@ -561,17 +561,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                 // In case of tree model deviceID
                 if (treePattern.isTreeModelDataAllowedToBeCaptured()
                     && treePattern.mayOverlapWithDevice(deviceID)) {
-                  tsfile2IsTableModelMap.compute(
-                      resource,
-                      (tsFileResource, isTableModel) -> {
-                        if (Objects.isNull(isTableModel) || !isTableModel) {
-                          return Boolean.FALSE;
-                        }
-                        throw new IllegalStateException(
-                            String.format(
-                                "Pipe %s@%s: TsFile %s contains both table model and tree model data",
-                                pipeName, dataRegionId, resource.getTsFilePath()));
-                      });
+                  tsfile2IsTableModelMap.computeIfAbsent(
+                      resource, (tsFileResource) -> Boolean.FALSE);
                   return true;
                 }
               } else {
@@ -580,17 +571,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                     // The database name in resource is prefixed with "root."
                     && tablePattern.matchesDatabase(resource.getDatabaseName().substring(5))
                     && tablePattern.matchesTable(deviceID.getTableName())) {
-                  tsfile2IsTableModelMap.compute(
-                      resource,
-                      (tsFileResource, isTableModel) -> {
-                        if (Objects.isNull(isTableModel) || isTableModel) {
-                          return Boolean.TRUE;
-                        }
-                        throw new IllegalStateException(
-                            String.format(
-                                "Pipe %s@%s: TsFile %s contains both table model and tree model data",
-                                pipeName, dataRegionId, resource.getTsFilePath()));
-                      });
+                  tsfile2IsTableModelMap.computeIfAbsent(
+                      resource, (tsFileResource) -> Boolean.TRUE);
                   return true;
                 }
               }
