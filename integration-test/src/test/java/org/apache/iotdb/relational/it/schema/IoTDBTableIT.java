@@ -372,7 +372,7 @@ public class IoTDBTableIT {
 
       statement.execute(
           "insert into table2(region_id, plant_id, color, temperature, speed) values(1, 1, 1, 1, 1)");
-      statement.execute("drop table2");
+      statement.execute("drop table table2");
       try {
         statement.executeQuery("describe table2");
         fail();
