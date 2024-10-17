@@ -28,6 +28,8 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.table.DropTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -38,6 +40,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecu
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.state.schema.DropTableState;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataOrDevicesForDropTableReq;
+import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -90,6 +93,7 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
         case INVALIDATE_CACHE:
           LOGGER.info(
               "Invalidating cache for table {}.{} when invalidating cache", database, tableName);
+          invalidateCache(env);
           break;
         case DELETE_DATA:
           LOGGER.info("Deleting data for table {}.{}", database, tableName);
@@ -127,6 +131,29 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     } else {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }
+  }
+
+  private void invalidateCache(final ConfigNodeProcedureEnv env) {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
+    final DataNodeAsyncRequestContext<TInvalidateMatchedSchemaCacheReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
+            CnToDnAsyncRequestType.INVALIDATE_TABLE_CACHE,
+            new TInvalidateMatchedSchemaCacheReq(patternTreeBytes),
+            dataNodeLocationMap);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
+    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
+    for (final TSStatus status : statusMap.values()) {
+      // All dataNodes must clear the related schemaEngine cache
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.error("Failed to invalidate schemaEngine cache of table {}.{}", database, tableName);
+        setFailure(
+            new ProcedureException(new MetadataException("Invalidate schemaEngine cache failed")));
+        return;
+      }
+    }
+
+    setNextState(DropTableState.DELETE_DATA);
   }
 
   private void deleteData(final ConfigNodeProcedureEnv env) {
