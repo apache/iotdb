@@ -764,7 +764,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
       final Throwable rootCause = getRootCause(e);
       if (rootCause.getMessage() != null
-          && rootCause.getMessage().contains(DATABASE_NOT_SET.toLowerCase(Locale.ROOT))) {
+          && rootCause
+              .getMessage()
+              .toLowerCase(Locale.ENGLISH)
+              .contains(DATABASE_NOT_SET.toLowerCase(Locale.ENGLISH))) {
         autoCreateDatabaseIfNecessary(dataBaseName);
 
         // Retry after creating the database
