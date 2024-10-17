@@ -106,7 +106,7 @@ public class PipeRowCollector implements RowCollector {
           sourceEvent instanceof PipeInsertionEvent ? ((PipeInsertionEvent) sourceEvent) : null;
       tabletInsertionEventList.add(
           new PipeRawTabletInsertionEvent(
-              pipeInsertionEvent == null ? null : pipeInsertionEvent.getRawIsTableModelEvent(),
+              pipeInsertionEvent == null ? null : pipeInsertionEvent.isTableModelEvent(),
               pipeInsertionEvent == null ? null : pipeInsertionEvent.getTreeModelDatabaseName(),
               tablet,
               isAligned,

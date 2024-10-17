@@ -95,6 +95,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /** Asynchronously send RPC requests to DataNodes. See queryengine.thrift for more details. */
@@ -104,6 +105,7 @@ public class CnToDnInternalServiceAsyncRequestManager
   private static final Logger LOGGER =
       LoggerFactory.getLogger(CnToDnInternalServiceAsyncRequestManager.class);
 
+  @SuppressWarnings("unchecked")
   @Override
   protected void initActionMapBuilder() {
     actionMapBuilder.put(
@@ -223,7 +225,8 @@ public class CnToDnInternalServiceAsyncRequestManager
             client.flush((TFlushReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.CLEAR_CACHE,
-        (req, client, handler) -> client.clearCache((DataNodeTSStatusRPCHandler) handler));
+        (req, client, handler) ->
+            client.clearCache((Set<Integer>) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.START_REPAIR_DATA,
         (req, client, handler) -> client.startRepairData((DataNodeTSStatusRPCHandler) handler));

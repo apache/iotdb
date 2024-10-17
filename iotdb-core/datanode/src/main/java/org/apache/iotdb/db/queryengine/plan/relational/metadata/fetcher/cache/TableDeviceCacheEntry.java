@@ -81,11 +81,12 @@ public class TableDeviceCacheEntry {
   int invalidateAttribute() {
     final AtomicInteger size = new AtomicInteger(0);
     deviceSchema.updateAndGet(
-        map -> {
-          if (Objects.nonNull(map)) {
-            size.set(map.estimateSize());
+        schema -> {
+          if (schema instanceof TableAttributeSchema) {
+            size.set(schema.estimateSize());
+            return null;
           }
-          return null;
+          return schema;
         });
     return size.get();
   }
@@ -141,6 +142,20 @@ public class TableDeviceCacheEntry {
 
   IDeviceSchema getDeviceSchema() {
     return deviceSchema.get();
+  }
+
+  int invalidateTreeSchema() {
+    final AtomicInteger size = new AtomicInteger(0);
+    deviceSchema.updateAndGet(
+        schema -> {
+          if (schema instanceof TreeDeviceNormalSchema
+              || schema instanceof TreeDeviceTemplateSchema) {
+            size.set(schema.estimateSize());
+            return null;
+          }
+          return schema;
+        });
+    return size.get();
   }
 
   /////////////////////////////// Last Cache ///////////////////////////////
