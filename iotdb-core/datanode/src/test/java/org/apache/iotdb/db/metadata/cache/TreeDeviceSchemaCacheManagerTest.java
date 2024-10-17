@@ -214,15 +214,26 @@ public class TreeDeviceSchemaCacheManagerTest {
         false,
         new MeasurementSchema[] {s1});
     treeDeviceSchemaCacheManager.updateLastCache(
-        database, new MeasurementPath(device.concatNode("s1"), s1), null, true);
+        database, new MeasurementPath(device.concatNode("s1"), s1), true);
 
     // "s2" shall be null since the "null" timeValuePair has not been put
-    treeDeviceSchemaCacheManager.updateLastCache(
-        database, new MeasurementPath(device.concatNode("s2"), s1), tv1, true);
+    treeDeviceSchemaCacheManager.updateLastCacheIfExists(
+        database,
+        IDeviceID.Factory.DEFAULT_FACTORY.create(
+            StringArrayDeviceID.splitDeviceIdString(device.getNodes())),
+        new String[] {"s2"},
+        new TimeValuePair[] {tv1},
+        false,
+        new MeasurementSchema[] {s2});
 
-    // Normal update
-    treeDeviceSchemaCacheManager.updateLastCache(
-        database, new MeasurementPath(device.concatNode("s3"), s3), tv1, true);
+    treeDeviceSchemaCacheManager.updateLastCacheIfExists(
+        database,
+        IDeviceID.Factory.DEFAULT_FACTORY.create(
+            StringArrayDeviceID.splitDeviceIdString(device.getNodes())),
+        new String[] {"s3"},
+        new TimeValuePair[] {tv1},
+        false,
+        new MeasurementSchema[] {s3});
 
     Assert.assertNull(
         treeDeviceSchemaCacheManager.getLastCache(new MeasurementPath("root.db.d.s1")));
