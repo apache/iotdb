@@ -17,15 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.event.common.tsfile.parser.query;
+package org.apache.iotdb.db.pipe.event.common.tsfile.parser.table;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.query.TsFileInsertionEventQueryParserTabletIterator;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
@@ -55,10 +55,10 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 
-public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser {
+public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(TsFileInsertionEventQueryParser.class);
+      LoggerFactory.getLogger(TsFileInsertionEventTableParser.class);
 
   private final PipeMemoryBlock allocatedMemoryBlock;
   private final TsFileReader tsFileReader;
@@ -67,20 +67,9 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
   private final Map<IDeviceID, Boolean> deviceIsAlignedMap;
   private final Map<String, TSDataType> measurementDataTypeMap;
 
-  @TestOnly
-  public TsFileInsertionEventQueryParser(
+  public TsFileInsertionEventTableParser(
       final File tsFile,
-      final TreePattern pattern,
-      final long startTime,
-      final long endTime,
-      final PipeInsertionEvent sourceEvent)
-      throws IOException {
-    this(tsFile, pattern, startTime, endTime, null, sourceEvent);
-  }
-
-  public TsFileInsertionEventQueryParser(
-      final File tsFile,
-      final TreePattern pattern,
+      final TablePattern pattern,
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
@@ -89,16 +78,16 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
     this(tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent, null);
   }
 
-  public TsFileInsertionEventQueryParser(
+  public TsFileInsertionEventTableParser(
       final File tsFile,
-      final TreePattern pattern,
+      final TablePattern pattern,
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipeInsertionEvent sourceEvent,
       final Map<IDeviceID, Boolean> deviceIsAlignedMap)
       throws IOException {
-    super(pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+    super(null, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
 
     try {
       final PipeTsFileResourceManager tsFileResourceManager = PipeDataNodeResourceManager.tsfile();
@@ -280,14 +269,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
               final Map.Entry<IDeviceID, List<String>> entry = deviceMeasurementsMapIterator.next();
 
               try {
-                tabletIterator =
-                    new TsFileInsertionEventQueryParserTabletIterator(
-                        tsFileReader,
-                        measurementDataTypeMap,
-                        entry.getKey(),
-                        entry.getValue(),
-                        timeFilterExpression,
-                        allocatedMemoryBlockForTablet);
+                tabletIterator = null;
               } catch (final Exception e) {
                 close();
                 throw new PipeException("failed to create TsFileInsertionDataTabletIterator", e);

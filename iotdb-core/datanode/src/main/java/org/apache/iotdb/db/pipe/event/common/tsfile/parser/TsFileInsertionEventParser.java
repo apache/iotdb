@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
@@ -38,7 +39,8 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileInsertionEventParser.class);
 
-  protected final TreePattern pattern; // used to filter data
+  protected final TreePattern treePattern; // used to filter data
+  protected final TablePattern tablePattern; // used to filter data
   protected final GlobalTimeExpression timeFilterExpression; // used to filter data
 
   protected final PipeTaskMeta pipeTaskMeta; // used to report progress
@@ -49,12 +51,14 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
   protected TsFileSequenceReader tsFileSequenceReader;
 
   protected TsFileInsertionEventParser(
-      final TreePattern pattern,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipeInsertionEvent sourceEvent) {
-    this.pattern = pattern;
+    this.treePattern = treePattern;
+    this.tablePattern = tablePattern;
     timeFilterExpression =
         (startTime == Long.MIN_VALUE && endTime == Long.MAX_VALUE)
             ? null
