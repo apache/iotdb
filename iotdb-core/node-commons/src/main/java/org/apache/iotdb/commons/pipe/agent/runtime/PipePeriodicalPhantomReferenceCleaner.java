@@ -77,7 +77,7 @@ public class PipePeriodicalPhantomReferenceCleaner extends PipePeriodicalJobExec
       executorFuture =
           ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
               PERIODICAL_JOB_EXECUTOR,
-              this::execute,
+              super::execute,
               MIN_INTERVAL_SECONDS,
               MIN_INTERVAL_SECONDS,
               TimeUnit.SECONDS);
