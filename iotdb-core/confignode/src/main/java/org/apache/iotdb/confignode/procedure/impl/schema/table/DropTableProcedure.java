@@ -97,11 +97,12 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
           break;
         case DELETE_DEVICES:
           LOGGER.info("Deleting devices for table {}.{} when dropping table", database, tableName);
-          return Flow.NO_MORE_STATE;
+          deleteSchema(env);
+          break;
         case DROP_TABLE:
           LOGGER.info("Dropping table {}.{} on configNode", database, tableName);
           dropTable(env);
-          break;
+          return Flow.NO_MORE_STATE;
         default:
           setFailure(new ProcedureException("Unrecognized DropTableState " + state));
           return Flow.NO_MORE_STATE;
