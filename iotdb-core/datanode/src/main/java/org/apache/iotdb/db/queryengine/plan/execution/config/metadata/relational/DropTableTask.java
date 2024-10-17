@@ -37,6 +37,6 @@ public class DropTableTask extends AbstractAlterOrDropTableTask {
   @Override
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return null;
+    return configTaskExecutor.dropTable(database, tableName, queryId, tableIfExists);
   }
 }
