@@ -22,11 +22,6 @@ package org.apache.iotdb.commons.schema.node.role;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.common.DeviceMNodeWrapper;
 import org.apache.iotdb.commons.schema.node.info.IDeviceInfo;
-import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
-
-import org.apache.tsfile.utils.RamUsageEstimator;
-
-import java.util.Objects;
 
 public interface IInternalMNode<N extends IMNode<N>> extends IMNode<N> {
 
@@ -56,16 +51,5 @@ public interface IInternalMNode<N extends IMNode<N>> extends IMNode<N> {
     } else {
       throw new UnsupportedOperationException("Wrong node type");
     }
-  }
-
-  static int getChildrenTreeSize(final IMNodeContainer<? extends IMNode<?>> children) {
-    return Objects.nonNull(children)
-        ? children.entrySet().stream()
-            .map(
-                entry ->
-                    (int) RamUsageEstimator.sizeOf(entry.getKey())
-                        + entry.getValue().estimateTreeSize())
-            .reduce(0, Integer::sum)
-        : 0;
   }
 }

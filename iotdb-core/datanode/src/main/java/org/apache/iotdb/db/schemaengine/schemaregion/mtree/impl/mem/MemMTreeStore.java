@@ -133,7 +133,7 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
 
   @Override
   public void deleteChild(final IMemMNode parent, final String childName) {
-    releaseMemory(parent.deleteChild(childName).estimateTreeSize());
+    releaseMemory(parent.deleteChild(childName).estimateSize());
   }
 
   @Override

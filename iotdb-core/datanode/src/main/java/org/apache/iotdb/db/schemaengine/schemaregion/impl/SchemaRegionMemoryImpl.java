@@ -1521,7 +1521,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public void deleteTableDevice(final DeleteTableDeviceNode deleteTableDeviceNode)
       throws MetadataException {
-    if (mtree.deleteTableDevice(deleteTableDeviceNode.getTableName())) {
+    if (mtree.deleteTableDevice(
+        deleteTableDeviceNode.getTableName(), deviceAttributeStore::removeAttribute)) {
       writeToMLog(deleteTableDeviceNode);
     }
   }

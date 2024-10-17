@@ -81,9 +81,5 @@ public interface IMNode<N extends IMNode<N>> extends ITreeNode {
 
   int estimateSize();
 
-  default int estimateTreeSize() {
-    return estimateSize();
-  }
-
   N getAsMNode();
 }

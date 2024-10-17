@@ -1586,7 +1586,8 @@ public class MTreeBelowSGMemoryImpl {
 
   public void renameTableAttribute() {}
 
-  public boolean deleteTableDevice(final String tableName) throws MetadataException {
+  public boolean deleteTableDevice(final String tableName, final IntConsumer attributeDeleter)
+      throws MetadataException {
     if (!store.hasChild(storageGroupMNode, tableName)) {
       return false;
     }
@@ -1606,7 +1607,9 @@ public class MTreeBelowSGMemoryImpl {
           @Override
           protected Void collectMNode(final IMemMNode node) {
             if (node.isDevice()) {
-              deviceProcess.accept(node.getAsDeviceMNode());
+              attributeDeleter.accept(
+                  ((TableDeviceInfo<IMemMNode>) node.getAsDeviceMNode().getDeviceInfo())
+                      .getAttributePointer());
             }
             memoryReleased.addAndGet(node.estimateSize());
             return null;
