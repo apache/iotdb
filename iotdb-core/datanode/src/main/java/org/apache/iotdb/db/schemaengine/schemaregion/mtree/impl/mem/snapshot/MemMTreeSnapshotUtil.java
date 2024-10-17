@@ -74,14 +74,15 @@ public class MemMTreeSnapshotUtil {
   private static final IMNodeFactory<IMemMNode> nodeFactory =
       MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory();
 
-  public static boolean createSnapshot(File snapshotDir, MemMTreeStore store) {
-    File snapshotTmp =
+  public static boolean createSnapshot(final File snapshotDir, final MemMTreeStore store) {
+    final File snapshotTmp =
         SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.MTREE_SNAPSHOT_TMP);
-    File snapshot = SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.MTREE_SNAPSHOT);
+    final File snapshot =
+        SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.MTREE_SNAPSHOT);
 
     try {
-      FileOutputStream fileOutputStream = new FileOutputStream(snapshotTmp);
-      BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream);
+      final FileOutputStream fileOutputStream = new FileOutputStream(snapshotTmp);
+      final BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream);
       try {
         serializeTo(store, outputStream);
       } finally {
@@ -91,12 +92,12 @@ public class MemMTreeSnapshotUtil {
       }
       if (snapshot.exists() && !FileUtils.deleteFileIfExist(snapshot)) {
         logger.error(
-            "Failed to delete old snapshot {} while creating mtree snapshot.", snapshot.getName());
+            "Failed to delete old snapshot {} while creating mTree snapshot.", snapshot.getName());
         return false;
       }
       if (!snapshotTmp.renameTo(snapshot)) {
         logger.error(
-            "Failed to rename {} to {} while creating mtree snapshot.",
+            "Failed to rename {} to {} while creating mTree snapshot.",
             snapshotTmp.getName(),
             snapshot.getName());
         FileUtils.deleteFileIfExist(snapshot);
@@ -104,8 +105,8 @@ public class MemMTreeSnapshotUtil {
       }
 
       return true;
-    } catch (IOException e) {
-      logger.error("Failed to create mtree snapshot due to {}", e.getMessage(), e);
+    } catch (final IOException e) {
+      logger.error("Failed to create mTree snapshot due to {}", e.getMessage(), e);
       FileUtils.deleteFileIfExist(snapshot);
       return false;
     } finally {

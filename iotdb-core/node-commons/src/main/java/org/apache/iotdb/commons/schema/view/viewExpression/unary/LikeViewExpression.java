@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpressionType;
 import org.apache.iotdb.commons.schema.view.viewExpression.visitor.ViewExpressionVisitor;
 
-import org.apache.tsfile.common.regexp.LikePattern;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -32,44 +31,49 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Optional;
 
-import static org.apache.tsfile.common.regexp.LikePattern.getEscapeCharacter;
-
 public class LikeViewExpression extends UnaryViewExpression {
 
   // region member variables and init functions
-  private final String patternString;
-  private final LikePattern pattern;
-
+  private final String pattern;
+  private final Optional<Character> escape;
   private final boolean isNot;
 
-  public LikeViewExpression(ViewExpression expression, String patternString, boolean isNot) {
+  public LikeViewExpression(
+      ViewExpression expression, String pattern, Optional<Character> escape, boolean isNot) {
     super(expression);
-    this.patternString = patternString;
+    this.pattern = pattern;
+    this.escape = escape;
     this.isNot = isNot;
-    pattern = LikePattern.compile(patternString, getEscapeCharacter(Optional.of("\\")));
   }
 
-  public LikeViewExpression(
-      ViewExpression expression, String patternString, LikePattern pattern, boolean isNot) {
+  public LikeViewExpression(ViewExpression expression, String pattern, boolean isNot) {
     super(expression);
-    this.patternString = patternString;
     this.pattern = pattern;
+    this.escape = Optional.empty();
     this.isNot = isNot;
   }
 
   public LikeViewExpression(ByteBuffer byteBuffer) {
     super(ViewExpression.deserialize(byteBuffer));
-    patternString = ReadWriteIOUtils.readString(byteBuffer);
+    pattern = ReadWriteIOUtils.readString(byteBuffer);
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      escape = Optional.of(ReadWriteIOUtils.readString(byteBuffer).charAt(0));
+    } else {
+      escape = Optional.empty();
+    }
     isNot = ReadWriteIOUtils.readBool(byteBuffer);
-    pattern = LikePattern.compile(patternString, getEscapeCharacter(Optional.of("\\")));
   }
 
   public LikeViewExpression(InputStream inputStream) {
     super(ViewExpression.deserialize(inputStream));
     try {
-      patternString = ReadWriteIOUtils.readString(inputStream);
+      pattern = ReadWriteIOUtils.readString(inputStream);
+      if (ReadWriteIOUtils.readBool(inputStream)) {
+        escape = Optional.of(ReadWriteIOUtils.readString(inputStream).charAt(0));
+      } else {
+        escape = Optional.empty();
+      }
       isNot = ReadWriteIOUtils.readBool(inputStream);
-      pattern = LikePattern.compile(patternString, getEscapeCharacter(Optional.of("\\")));
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -91,7 +95,14 @@ public class LikeViewExpression extends UnaryViewExpression {
   @Override
   public String toString(boolean isRoot) {
     String basicString =
-        this.expression.toString(false) + (isNot ? "NOT LIKE " : "LIKE ") + this.patternString;
+        this.expression.toString(false)
+            + (isNot ? "NOT LIKE " : "LIKE ")
+            + "pattern = '"
+            + this.pattern
+            + "'";
+    if (escape.isPresent()) {
+      basicString += " escape = '" + escape.get() + "'";
+    }
     if (isRoot) {
       return basicString;
     }
@@ -101,25 +112,33 @@ public class LikeViewExpression extends UnaryViewExpression {
   @Override
   protected void serialize(ByteBuffer byteBuffer) {
     super.serialize(byteBuffer);
-    ReadWriteIOUtils.write(patternString, byteBuffer);
+    ReadWriteIOUtils.write(pattern, byteBuffer);
+    ReadWriteIOUtils.write(escape.isPresent(), byteBuffer);
+    if (escape.isPresent()) {
+      ReadWriteIOUtils.write(escape.get().toString(), byteBuffer);
+    }
     ReadWriteIOUtils.write(isNot, byteBuffer);
   }
 
   @Override
   protected void serialize(OutputStream stream) throws IOException {
     super.serialize(stream);
-    ReadWriteIOUtils.write(patternString, stream);
+    ReadWriteIOUtils.write(pattern, stream);
+    ReadWriteIOUtils.write(escape.isPresent(), stream);
+    if (escape.isPresent()) {
+      ReadWriteIOUtils.write(escape.get().toString(), stream);
+    }
     ReadWriteIOUtils.write(isNot, stream);
   }
 
   // endregion
 
-  public String getPatternString() {
-    return patternString;
+  public String getPattern() {
+    return pattern;
   }
 
-  public LikePattern getPattern() {
-    return pattern;
+  public Optional<Character> getEscape() {
+    return escape;
   }
 
   public boolean isNot() {

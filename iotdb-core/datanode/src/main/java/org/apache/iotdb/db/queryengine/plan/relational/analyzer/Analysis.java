@@ -156,6 +156,11 @@ public class Analysis implements IAnalysis {
 
   private final Map<NodeRef<Node>, Expression> where = new LinkedHashMap<>();
   private final Map<NodeRef<QuerySpecification>, Expression> having = new LinkedHashMap<>();
+
+  private final Map<NodeRef<QuerySpecification>, FunctionCall> gapFill = new LinkedHashMap<>();
+  private final Map<NodeRef<QuerySpecification>, List<Expression>> gapFillGroupingKeys =
+      new LinkedHashMap<>();
+
   private final Map<NodeRef<Node>, List<Expression>> orderByExpressions = new LinkedHashMap<>();
   private final Set<NodeRef<OrderBy>> redundantOrderBy = new HashSet<>();
   private final Map<NodeRef<Node>, List<SelectExpression>> selectExpressions =
@@ -487,6 +492,23 @@ public class Analysis implements IAnalysis {
 
   public Expression getHaving(QuerySpecification query) {
     return having.get(NodeRef.of(query));
+  }
+
+  public void setGapFill(QuerySpecification node, FunctionCall dateBinGapFill) {
+    gapFill.put(NodeRef.of(node), dateBinGapFill);
+  }
+
+  public FunctionCall getGapFill(QuerySpecification query) {
+    return gapFill.get(NodeRef.of(query));
+  }
+
+  public void setGapFillGroupingKeys(
+      QuerySpecification node, List<Expression> gaoFillGroupingKeys) {
+    gapFillGroupingKeys.put(NodeRef.of(node), gaoFillGroupingKeys);
+  }
+
+  public List<Expression> getGapFillGroupingKeys(QuerySpecification query) {
+    return gapFillGroupingKeys.get(NodeRef.of(query));
   }
 
   public void setJoinUsing(Join node, JoinUsingAnalysis analysis) {

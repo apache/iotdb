@@ -62,8 +62,8 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression.getEscapeCharacter;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isSymbolReference;
-import static org.apache.tsfile.common.regexp.LikePattern.getEscapeCharacter;
 
 /**
  * The {@link ConvertSchemaPredicateToFilterVisitor} will convert a predicate to {@link
@@ -120,8 +120,7 @@ public class ConvertSchemaPredicateToFilterVisitor
         new LikeFilter(
             (((StringLiteral) node.getPattern()).getValue()),
             node.getEscape().isPresent()
-                ? getEscapeCharacter(
-                    Optional.ofNullable(((StringLiteral) node.getEscape().get()).getValue()))
+                ? getEscapeCharacter(((StringLiteral) node.getEscape().get()).getValue())
                 : Optional.empty()),
         ((SymbolReference) node.getValue()).getName(),
         context);

@@ -323,11 +323,12 @@ public class CompactionTaskManager implements IService {
     finishedTaskNum.incrementAndGet();
   }
 
-  public synchronized Future<Void> submitSubTask(Callable<Void> subCompactionTask) {
+  public synchronized Future<Void> submitSubTask(Callable<Void> subCompactionTask)
+      throws InterruptedException {
     if (subCompactionTaskExecutionPool != null && !subCompactionTaskExecutionPool.isShutdown()) {
       return subCompactionTaskExecutionPool.submit(subCompactionTask);
     }
-    return null;
+    throw new InterruptedException();
   }
 
   /**

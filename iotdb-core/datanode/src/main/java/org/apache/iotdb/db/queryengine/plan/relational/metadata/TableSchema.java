@@ -79,6 +79,22 @@ public class TableSchema {
         tableName, measurementSchemas, columnTypes);
   }
 
+  public static TableSchema fromTsFileTableSchema(
+      String tableName, org.apache.tsfile.file.metadata.TableSchema tsFileTableSchema) {
+    List<ColumnSchema> columns = new ArrayList<>();
+    for (int i = 0; i < tsFileTableSchema.getColumnSchemas().size(); i++) {
+      columns.add(
+          new ColumnSchema(
+              tsFileTableSchema.getColumnSchemas().get(i).getMeasurementId(),
+              InternalTypeManager.fromTSDataType(
+                  tsFileTableSchema.getColumnSchemas().get(i).getType()),
+              false,
+              TsTableColumnCategory.fromTsFileColumnType(
+                  tsFileTableSchema.getColumnTypes().get(i))));
+    }
+    return new TableSchema(tableName, columns);
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
