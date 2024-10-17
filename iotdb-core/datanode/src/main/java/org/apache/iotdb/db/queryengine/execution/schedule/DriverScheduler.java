@@ -87,6 +87,9 @@ public class DriverScheduler implements IDriverScheduler, IService {
   private final IndexedBlockingQueue<DriverTask> timeoutQueue;
   private final Set<DriverTask> blockedTasks;
   private final Map<QueryId, Map<FragmentInstanceId, Set<DriverTask>>> queryMap;
+  /** All FIs of one query dispatched to this Node shares one DriverTaskHandle. */
+  private final Map<QueryId, DriverTaskHandle> queryIdToDriverTaskHandleMap;
+
   private final ITaskScheduler scheduler;
 
   private final AtomicInteger nextDriverTaskHandleId = new AtomicInteger(0);
@@ -106,6 +109,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
         new L1PriorityQueue<>(
             QUERY_MAX_CAPACITY, new DriverTask.TimeoutComparator(), new DriverTask());
     this.queryMap = new ConcurrentHashMap<>();
+    this.queryIdToDriverTaskHandleMap = new ConcurrentHashMap<>();
     this.blockedTasks = Collections.synchronizedSet(new HashSet<>());
     this.scheduler = new Scheduler();
     this.workerGroups = new ThreadGroup("ScheduleThreads");
@@ -184,10 +188,13 @@ public class DriverScheduler implements IDriverScheduler, IService {
       QueryId queryId, List<IDriver> drivers, long timeOut, SessionInfo sessionInfo)
       throws CpuNotEnoughException, MemoryNotEnoughException {
     DriverTaskHandle driverTaskHandle =
-        new DriverTaskHandle(
-            getNextDriverTaskHandleId(),
-            (MultilevelPriorityQueue) readyQueue,
-            OptionalInt.of(Integer.MAX_VALUE));
+        queryIdToDriverTaskHandleMap.computeIfAbsent(
+            queryId,
+            k ->
+                new DriverTaskHandle(
+                    getNextDriverTaskHandleId(),
+                    (MultilevelPriorityQueue) readyQueue,
+                    OptionalInt.of(Integer.MAX_VALUE)));
     List<DriverTask> tasks = new ArrayList<>();
     drivers.forEach(
         driver ->
@@ -295,21 +302,6 @@ public class DriverScheduler implements IDriverScheduler, IService {
   }
 
   @Override
-  public void abortQuery(QueryId queryId) {
-    Map<FragmentInstanceId, Set<DriverTask>> queryRelatedTasks = queryMap.remove(queryId);
-    if (queryRelatedTasks != null) {
-      for (Set<DriverTask> fragmentRelatedTasks : queryRelatedTasks.values()) {
-        if (fragmentRelatedTasks != null) {
-          for (DriverTask task : fragmentRelatedTasks) {
-            task.setAbortCause(DriverTaskAbortedException.BY_QUERY_CASCADING_ABORTED);
-            clearDriverTask(task);
-          }
-        }
-      }
-    }
-  }
-
-  @Override
   public void abortFragmentInstance(FragmentInstanceId instanceId) {
     Map<FragmentInstanceId, Set<DriverTask>> queryRelatedTasks =
         queryMap.get(instanceId.getQueryId());
@@ -363,8 +355,8 @@ public class DriverScheduler implements IDriverScheduler, IService {
       }
 
       timeoutQueue.remove(task.getDriverTaskId());
-      Map<FragmentInstanceId, Set<DriverTask>> queryRelatedTasks =
-          queryMap.get(task.getDriverTaskId().getQueryId());
+      QueryId queryId = task.getDriverTaskId().getQueryId();
+      Map<FragmentInstanceId, Set<DriverTask>> queryRelatedTasks = queryMap.get(queryId);
       if (queryRelatedTasks != null) {
         Set<DriverTask> instanceRelatedTasks =
             queryRelatedTasks.get(task.getDriverTaskId().getFragmentInstanceId());
@@ -375,7 +367,8 @@ public class DriverScheduler implements IDriverScheduler, IService {
           }
         }
         if (queryRelatedTasks.isEmpty()) {
-          queryMap.remove(task.getDriverTaskId().getQueryId());
+          queryMap.remove(queryId);
+          queryIdToDriverTaskHandleMap.remove(queryId);
         }
       }
       try {
@@ -454,6 +447,23 @@ public class DriverScheduler implements IDriverScheduler, IService {
   @TestOnly
   void setBlockManager(IMPPDataExchangeManager blockManager) {
     this.blockManager = blockManager;
+  }
+
+  @TestOnly
+  @Override
+  public void abortQuery(QueryId queryId) {
+    Map<FragmentInstanceId, Set<DriverTask>> queryRelatedTasks = queryMap.remove(queryId);
+    queryIdToDriverTaskHandleMap.remove(queryId);
+    if (queryRelatedTasks != null) {
+      for (Set<DriverTask> fragmentRelatedTasks : queryRelatedTasks.values()) {
+        if (fragmentRelatedTasks != null) {
+          for (DriverTask task : fragmentRelatedTasks) {
+            task.setAbortCause(DriverTaskAbortedException.BY_QUERY_CASCADING_ABORTED);
+            clearDriverTask(task);
+          }
+        }
+      }
+    }
   }
 
   private static class InstanceHolder {
