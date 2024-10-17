@@ -39,17 +39,17 @@ public class ShowTables extends Statement {
     this.dbName = null;
   }
 
-  public ShowTables(NodeLocation location) {
+  public ShowTables(final NodeLocation location) {
     super(requireNonNull(location, "location is null"));
     this.dbName = null;
   }
 
-  public ShowTables(Identifier dbName) {
+  public ShowTables(final Identifier dbName) {
     super(null);
     this.dbName = requireNonNull(dbName, "dbName is null");
   }
 
-  public ShowTables(NodeLocation location, Identifier dbName) {
+  public ShowTables(final NodeLocation location, final Identifier dbName) {
     super(requireNonNull(location, "location is null"));
     this.dbName = requireNonNull(dbName, "dbName is null");
   }
@@ -59,7 +59,7 @@ public class ShowTables extends Statement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitShowTables(this, context);
   }
 
@@ -74,14 +74,14 @@ public class ShowTables extends Statement {
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if ((obj == null) || (getClass() != obj.getClass())) {
       return false;
     }
-    ShowTables o = (ShowTables) obj;
+    final ShowTables o = (ShowTables) obj;
     return Objects.equals(dbName, o.dbName);
   }
 
