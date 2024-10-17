@@ -19,6 +19,9 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Throwables.throwIfUnchecked;
 import static com.google.common.base.Verify.verify;
@@ -26,18 +29,19 @@ import static java.lang.Math.addExact;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
 import static java.lang.Math.toIntExact;
+import static java.nio.ByteOrder.LITTLE_ENDIAN;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.VariableWidthData.EMPTY_CHUNK;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.VariableWidthData.POINTER_SIZE;
-import static org.apache.tsfile.utils.BytesUtils.bytesToInt;
-import static org.apache.tsfile.utils.BytesUtils.bytesToLongFromOffset;
-import static org.apache.tsfile.utils.BytesUtils.intToBytes;
-import static org.apache.tsfile.utils.BytesUtils.longToBytes;
 import static org.apache.tsfile.utils.RamUsageEstimator.sizeOf;
 import static org.apache.tsfile.utils.RamUsageEstimator.sizeOfByteArray;
 import static org.apache.tsfile.utils.RamUsageEstimator.sizeOfIntArray;
 import static org.apache.tsfile.utils.RamUsageEstimator.sizeOfObjectArray;
 
 public final class FlatHash {
+  private static final VarHandle LONG_HANDLE =
+      MethodHandles.byteArrayViewVarHandle(long[].class, LITTLE_ENDIAN);
+  private static final VarHandle INT_HANDLE =
+      MethodHandles.byteArrayViewVarHandle(int[].class, LITTLE_ENDIAN);
   private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(FlatHash.class);
 
   private static final double DEFAULT_LOAD_FACTOR = 15.0 / 16;
@@ -132,7 +136,7 @@ public final class FlatHash {
     int index = groupRecordIndex[groupId];
     byte[] records = getRecords(index);
     if (hasPrecomputedHash) {
-      return bytesToLongFromOffset(records, Long.BYTES, getRecordOffset(index) + recordHashOffset);
+      return (long) LONG_HANDLE.get(records, getRecordOffset(index) + recordHashOffset);
     } else {
       return valueHashCode(records, index);
     }
@@ -153,7 +157,7 @@ public final class FlatHash {
         records, recordOffset + recordValueOffset, variableWidthChunk, columnBuilders);
     if (hasPrecomputedHash) {
       columnBuilders[columnBuilders.length - 1].writeLong(
-          bytesToLongFromOffset(records, Long.BYTES, recordOffset + recordHashOffset));
+          (long) LONG_HANDLE.get(records, recordOffset + recordHashOffset));
     }
   }
 
@@ -179,7 +183,7 @@ public final class FlatHash {
   public int putIfAbsent(Column[] columns, int position, long hash) {
     int index = getIndex(columns, position, hash);
     if (index >= 0) {
-      return bytesToInt(getRecords(index), getRecordOffset(index) + recordGroupIdOffset);
+      return (int) INT_HANDLE.get(getRecords(index), getRecordOffset(index) + recordGroupIdOffset);
     }
 
     index = -index - 1;
@@ -209,7 +213,7 @@ public final class FlatHash {
     long repeated = repeat(hashPrefix);
 
     while (true) {
-      final long controlVector = bytesToLongFromOffset(control, Long.BYTES, bucket);
+      final long controlVector = (long) LONG_HANDLE.get(control, bucket);
 
       int matchIndex = matchInVector(columns, position, hash, bucket, repeated, controlVector);
       if (matchIndex >= 0) {
@@ -261,11 +265,11 @@ public final class FlatHash {
     int recordOffset = getRecordOffset(index);
 
     int groupId = nextGroupId++;
-    intToBytes(groupId, records, recordOffset + recordGroupIdOffset);
+    INT_HANDLE.set(records, recordOffset + recordGroupIdOffset, groupId);
     groupRecordIndex[groupId] = index;
 
     if (hasPrecomputedHash) {
-      longToBytes(hash, records, recordOffset + recordHashOffset);
+      LONG_HANDLE.set(records, recordOffset + recordHashOffset, hash);
     }
 
     byte[] variableWidthChunk = EMPTY_CHUNK;
@@ -357,9 +361,7 @@ public final class FlatHash {
 
         long hash;
         if (hasPrecomputedHash) {
-          hash =
-              bytesToLongFromOffset(
-                  oldRecords, Long.BYTES, getRecordOffset(oldIndex) + recordHashOffset);
+          hash = (long) LONG_HANDLE.get(oldRecords, getRecordOffset(oldIndex) + recordHashOffset);
         } else {
           hash = valueHashCode(oldRecords, oldIndex);
         }
@@ -370,7 +372,7 @@ public final class FlatHash {
         // getIndex is not used here because values in a rehash are always distinct
         int step = 1;
         while (true) {
-          final long controlVector = bytesToLongFromOffset(control, Long.BYTES, bucket);
+          final long controlVector = (long) LONG_HANDLE.get(control, bucket);
           // values are already distinct, so just find the first empty slot
           int emptyIndex = findEmptyInVector(controlVector, bucket);
           if (emptyIndex >= 0) {
@@ -386,7 +388,7 @@ public final class FlatHash {
             int oldRecordOffset = getRecordOffset(oldIndex);
             System.arraycopy(oldRecords, oldRecordOffset, records, recordOffset, recordSize);
 
-            int groupId = bytesToInt(records, recordOffset + recordGroupIdOffset);
+            int groupId = (int) INT_HANDLE.get(records, recordOffset + recordGroupIdOffset);
             groupRecordIndex[groupId] = emptyIndex;
 
             break;
@@ -483,8 +485,7 @@ public final class FlatHash {
     int leftRecordOffset = getRecordOffset(leftIndex);
 
     if (hasPrecomputedHash) {
-      long leftHash =
-          bytesToLongFromOffset(leftRecords, Long.BYTES, leftRecordOffset + recordHashOffset);
+      long leftHash = (long) LONG_HANDLE.get(leftRecords, leftRecordOffset + recordHashOffset);
       if (leftHash != rightHash) {
         return false;
       }
