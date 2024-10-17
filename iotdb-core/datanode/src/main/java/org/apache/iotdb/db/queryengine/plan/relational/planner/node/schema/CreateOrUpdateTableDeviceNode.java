@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
+package org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
@@ -286,7 +286,7 @@ public class CreateOrUpdateTableDeviceNode extends WritePlanNode implements ISch
 
   @Override
   public <R, C> R accept(final PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitCreateTableDevice(this, context);
+    return visitor.visitCreateOrUpdateTableDevice(this, context);
   }
 
   @Override

@@ -74,7 +74,7 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
     return memoryUsage.get();
   }
 
-  public void requestMemory(long size) {
+  public void requestMemory(final long size) {
     memoryUsage.addAndGet(size);
     if (memoryUsage.get() >= memoryCapacity) {
       synchronized (allowToCreateNewSeriesLock) {
@@ -90,7 +90,7 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
     }
   }
 
-  public void releaseMemory(long size) {
+  public void releaseMemory(final long size) {
     memoryUsage.addAndGet(-size);
     if (memoryUsage.get() < memoryCapacity) {
       synchronized (allowToCreateNewSeriesLock) {

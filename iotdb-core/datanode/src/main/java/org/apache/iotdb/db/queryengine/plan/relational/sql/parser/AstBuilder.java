@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.parser;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -38,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
@@ -182,12 +184,14 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
@@ -893,8 +897,28 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitClearCacheStatement(RelationalSqlParser.ClearCacheStatementContext ctx) {
-    return super.visitClearCacheStatement(ctx);
+  public Node visitClearCacheStatement(final RelationalSqlParser.ClearCacheStatementContext ctx) {
+    final Set<CacheClearOptions> options;
+    final RelationalSqlParser.ClearCacheOptionsContext context = ctx.clearCacheOptions();
+
+    if (Objects.isNull(context)) {
+      options = Collections.singleton(CacheClearOptions.DEFAULT);
+    } else if (context.ATTRIBUTE() != null) {
+      options = Collections.singleton(CacheClearOptions.TABLE_ATTRIBUTE);
+    } else if (context.QUERY() != null) {
+      options = Collections.singleton(CacheClearOptions.QUERY);
+    } else {
+      options =
+          new HashSet<>(
+              Arrays.asList(
+                  CacheClearOptions.TABLE_ATTRIBUTE,
+                  CacheClearOptions.TREE_SCHEMA,
+                  CacheClearOptions.QUERY));
+    }
+    return new ClearCache(
+        Objects.isNull(ctx.localOrClusterMode())
+            || Objects.nonNull(ctx.localOrClusterMode().CLUSTER()),
+        options);
   }
 
   @Override

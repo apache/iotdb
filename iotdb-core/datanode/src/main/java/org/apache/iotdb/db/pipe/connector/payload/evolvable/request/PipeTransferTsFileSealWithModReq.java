@@ -103,6 +103,31 @@ public class PipeTransferTsFileSealWithModReq extends PipeTransferFileSealReqV2 
             new HashMap<>());
   }
 
+  public static byte[] toTPipeTransferBytes(
+      String modFileName,
+      long modFileLength,
+      String tsFileName,
+      long tsFileLength,
+      String dataBaseName)
+      throws IOException {
+    return new PipeTransferTsFileSealWithModReq()
+        .convertToTPipeTransferSnapshotSealBytes(
+            Arrays.asList(modFileName, tsFileName),
+            Arrays.asList(modFileLength, tsFileLength),
+            Collections.singletonMap(
+                generateDatabaseNameWithFileNameKey(tsFileName), dataBaseName));
+  }
+
+  public static byte[] toTPipeTransferBytes(
+      String tsFileName, long tsFileLength, String dataBaseName) throws IOException {
+    return new PipeTransferTsFileSealWithModReq()
+        .convertToTPipeTransferSnapshotSealBytes(
+            Collections.singletonList(tsFileName),
+            Collections.singletonList(tsFileLength),
+            Collections.singletonMap(
+                generateDatabaseNameWithFileNameKey(tsFileName), dataBaseName));
+  }
+
   /////////////////////////////// Object ///////////////////////////////
 
   @Override

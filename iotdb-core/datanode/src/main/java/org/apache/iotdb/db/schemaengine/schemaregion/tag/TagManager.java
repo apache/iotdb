@@ -86,10 +86,10 @@ public class TagManager {
     this.regionStatistics = regionStatistics;
   }
 
-  public synchronized boolean createSnapshot(File targetDir) {
-    File tagLogSnapshot =
+  public synchronized boolean createSnapshot(final File targetDir) {
+    final File tagLogSnapshot =
         SystemFileFactory.INSTANCE.getFile(targetDir, SchemaConstant.TAG_LOG_SNAPSHOT);
-    File tagLogSnapshotTmp =
+    final File tagLogSnapshotTmp =
         SystemFileFactory.INSTANCE.getFile(targetDir, SchemaConstant.TAG_LOG_SNAPSHOT_TMP);
     try {
       tagLogFile.copyTo(tagLogSnapshotTmp);
@@ -111,7 +111,7 @@ public class TagManager {
       }
 
       return true;
-    } catch (IOException e) {
+    } catch (final IOException e) {
       logger.error("Failed to create tagManager snapshot due to {}", e.getMessage(), e);
       if (!FileUtils.deleteFileIfExist(tagLogSnapshot)) {
         logger.warn(

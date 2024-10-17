@@ -21,8 +21,10 @@ package org.apache.iotdb.db.schemaengine.schemaregion.logfile.visitor;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.ISerializer;
@@ -494,6 +496,29 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
         final DataOutputStream outputStream) {
       try {
         updateTableDeviceAttributePlan.serialize(outputStream);
+        return SchemaRegionPlanSerializationResult.SUCCESS;
+      } catch (final IOException e) {
+        return new SchemaRegionPlanSerializationResult(e);
+      }
+    }
+
+    @Override
+    public SchemaRegionPlanSerializationResult visitCommitUpdateTableDeviceAttribute(
+        final TableDeviceAttributeCommitUpdateNode commitUpdateTableDeviceAttributePlan,
+        final DataOutputStream outputStream) {
+      try {
+        commitUpdateTableDeviceAttributePlan.serialize(outputStream);
+        return SchemaRegionPlanSerializationResult.SUCCESS;
+      } catch (final IOException e) {
+        return new SchemaRegionPlanSerializationResult(e);
+      }
+    }
+
+    @Override
+    public SchemaRegionPlanSerializationResult visitAddNodeLocation(
+        final TableNodeLocationAddNode addNodeLocationPlan, final DataOutputStream outputStream) {
+      try {
+        addNodeLocationPlan.serialize(outputStream);
         return SchemaRegionPlanSerializationResult.SUCCESS;
       } catch (final IOException e) {
         return new SchemaRegionPlanSerializationResult(e);

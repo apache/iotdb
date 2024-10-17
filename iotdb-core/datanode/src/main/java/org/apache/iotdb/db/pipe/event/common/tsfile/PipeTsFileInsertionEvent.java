@@ -424,6 +424,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   /////////////////////////// PipeInsertionEvent ///////////////////////////
 
+  /**
+   * Judge whether the TsFile is table model or tree model. If the TsFile is table model, the method
+   * will return true. If the TsFile is tree model, the method will return false. If the TsFile is
+   * mixed model, the method will return true and mark the event as table model event.
+   */
   @Override
   public boolean isTableModelEvent() {
     if (getRawIsTableModelEvent() == null) {
@@ -445,8 +450,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
             markAsTreeModelEvent();
           } else {
             markAsTableModelEvent();
+            break;
           }
-          break;
         }
       } catch (final Exception e) {
         throw new PipeException(
