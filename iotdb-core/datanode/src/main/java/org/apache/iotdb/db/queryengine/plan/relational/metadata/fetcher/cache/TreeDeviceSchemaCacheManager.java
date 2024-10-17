@@ -37,7 +37,7 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
-import javax.annotation.Nullable;
+import javax.annotation.Nonnull;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -386,9 +386,9 @@ public class TreeDeviceSchemaCacheManager {
       final String database,
       final IDeviceID deviceID,
       final String[] measurements,
-      final TimeValuePair[] timeValuePairs,
+      final @Nonnull TimeValuePair[] timeValuePairs,
       final boolean isAligned,
-      final MeasurementSchema[] measurementSchemas) {
+      final IMeasurementSchema[] measurementSchemas) {
     tableDeviceSchemaCache.updateLastCache(
         database, deviceID, measurements, timeValuePairs, isAligned, measurementSchemas, false);
   }
@@ -406,7 +406,7 @@ public class TreeDeviceSchemaCacheManager {
    *
    * <p>- Second time put the calculated {@link TimeValuePair}, and use {@link
    * #updateLastCacheIfExists(String, IDeviceID, String[], TimeValuePair[], boolean,
-   * MeasurementSchema[])}. The input {@link TimeValuePair} shall never be or contain {@code null},
+   * IMeasurementSchema[])}. The input {@link TimeValuePair} shall never be or contain {@code null},
    * if the measurement is with all {@code null}s, its {@link TimeValuePair} shall be {@link
    * TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR}. This method is not supposed to update time column.
    *
@@ -417,21 +417,16 @@ public class TreeDeviceSchemaCacheManager {
    *
    * @param database the device's database, WITH "root"
    * @param measurementPath the fetched {@link MeasurementPath}
-   * @param timeValuePair {@code null} to invalidate the first pushed cache, or the {@link
-   *     TimeValuePair} corresponding to the measurement for the second fetch.
-   * @param isCommit {@code false} for the first fetch, {@code true} for the second fetch or
-   *     invalidation.
+   * @param isInvalidate {@code true} if invalidate the first pushed cache, or {@code null} for the
+   *     first fetch.
    */
   public void updateLastCache(
-      final String database,
-      final MeasurementPath measurementPath,
-      final @Nullable TimeValuePair timeValuePair,
-      final boolean isCommit) {
+      final String database, final MeasurementPath measurementPath, final boolean isInvalidate) {
     tableDeviceSchemaCache.updateLastCache(
         database,
         measurementPath.getIDeviceID(),
         new String[] {measurementPath.getMeasurement()},
-        isCommit ? new TimeValuePair[] {timeValuePair} : null,
+        isInvalidate ? new TimeValuePair[] {null} : null,
         measurementPath.isUnderAlignedEntity(),
         new IMeasurementSchema[] {measurementPath.getMeasurementSchema()},
         true);

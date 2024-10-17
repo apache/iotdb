@@ -221,7 +221,7 @@ public class TableDeviceSchemaCache {
           deviceId,
           new TableDeviceCacheEntry(),
           entry ->
-              entry.updateLastCache(
+              entry.initOrInvalidateLastCache(
                   database, deviceId.getTableName(), measurements, timeValuePairs, true),
           Objects.isNull(timeValuePairs));
     } finally {
@@ -357,7 +357,7 @@ public class TableDeviceSchemaCache {
       final @Nullable TimeValuePair[] timeValuePairs,
       final boolean isAligned,
       final IMeasurementSchema[] measurementSchemas,
-      final boolean isQuery) {
+      final boolean forceUpdate) {
     final String previousDatabase = treeModelDatabasePool.putIfAbsent(database, database);
     final String database2Use = Objects.nonNull(previousDatabase) ? previousDatabase : database;
 
@@ -365,17 +365,21 @@ public class TableDeviceSchemaCache {
         new TableId(null, deviceID.getTableName()),
         deviceID,
         new TableDeviceCacheEntry(),
-        isQuery
+        forceUpdate
             ? entry ->
                 entry.setMeasurementSchema(
                         database2Use, isAligned, measurements, measurementSchemas)
-                    + entry.updateLastCache(
-                        database, deviceID.getTableName(), measurements, timeValuePairs, false)
+                    + entry.initOrInvalidateLastCache(
+                        database,
+                        deviceID.getTableName(),
+                        measurements,
+                        Objects.nonNull(timeValuePairs),
+                        false)
             : entry ->
                 entry.setMeasurementSchema(
                         database2Use, isAligned, measurements, measurementSchemas)
                     + entry.tryUpdateLastCache(measurements, timeValuePairs),
-        isQuery);
+        forceUpdate);
   }
 
   // WARNING: This is not guaranteed to affect table model's cache
