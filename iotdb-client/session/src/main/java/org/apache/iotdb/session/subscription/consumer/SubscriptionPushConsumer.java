@@ -173,7 +173,10 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
 
       try {
         final List<SubscriptionMessage> messages =
-            multiplePoll(subscribedTopics.keySet(), autoPollTimeoutMs);
+            multiplePoll(
+                subscribedTopics.keySet(),
+                autoPollTimeoutMs,
+                DEFAULT_INVISIBLE_DURATION.toMillis());
         if (messages.isEmpty()) {
           LOGGER.info(
               "SubscriptionPushConsumer {} poll empty message from topics {} after {} millisecond(s)",
