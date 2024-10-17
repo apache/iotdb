@@ -22,6 +22,9 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
+import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
+import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -31,7 +34,7 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 
-public class DeleteTableDeviceNode extends PlanNode {
+public class DeleteTableDeviceNode extends PlanNode implements ISchemaRegionPlan {
   private final String tableName;
 
   public DeleteTableDeviceNode(final PlanNodeId id, final String tableName) {
@@ -70,7 +73,7 @@ public class DeleteTableDeviceNode extends PlanNode {
 
   @Override
   public PlanNodeType getType() {
-    return null;
+    return PlanNodeType.DELETE_TABLE_DEVICE;
   }
 
   @Override
@@ -89,5 +92,15 @@ public class DeleteTableDeviceNode extends PlanNode {
     final String tableName = ReadWriteIOUtils.readString(buffer);
     final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
     return new DeleteTableDeviceNode(planNodeId, tableName);
+  }
+
+  @Override
+  public SchemaRegionPlanType getPlanType() {
+    return SchemaRegionPlanType.DELETE_TABLE_DEVICE;
+  }
+
+  @Override
+  public <R, C> R accept(final SchemaRegionPlanVisitor<R, C> visitor, final C context) {
+    return visitor.visitDeleteTableDevice(this, context);
   }
 }
