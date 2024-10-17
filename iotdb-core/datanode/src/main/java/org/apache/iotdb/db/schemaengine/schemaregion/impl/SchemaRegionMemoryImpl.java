@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.impl;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -32,6 +33,7 @@ import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -46,12 +48,14 @@ import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDev
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
@@ -68,6 +72,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionUtils;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.DeviceAttributeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.IDeviceAttributeStore;
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.DeviceAttributeCacheUpdater;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.FakeCRC32Deserializer;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.FakeCRC32Serializer;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.SchemaLogReader;
@@ -131,6 +136,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.planner.TableOperatorGenerator.makeLayout;
@@ -192,6 +198,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private MTreeBelowSGMemoryImpl mtree;
   private TagManager tagManager;
   private IDeviceAttributeStore deviceAttributeStore;
+  private DeviceAttributeCacheUpdater deviceAttributeCacheUpdater;
 
   // region Interfaces and Implementation of initialization、snapshot、recover and clear
   public SchemaRegionMemoryImpl(ISchemaRegionParams schemaRegionParams) throws MetadataException {
@@ -242,6 +249,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       isRecovering = true;
 
       deviceAttributeStore = new DeviceAttributeStore(regionStatistics);
+      deviceAttributeCacheUpdater =
+          new DeviceAttributeCacheUpdater(
+              regionStatistics, PathUtils.unQualifyDatabaseName(storageGroupFullPath));
       tagManager = new TagManager(schemaRegionDirPath, regionStatistics);
       mtree =
           new MTreeBelowSGMemoryImpl(
@@ -462,7 +472,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   // currently, this method is only used for cluster-ratis mode
   @Override
-  public synchronized boolean createSnapshot(File snapshotDir) {
+  public synchronized boolean createSnapshot(final File snapshotDir) {
     if (!initialized) {
       logger.warn(
           "Failed to create snapshot of schemaRegion {}, because the schemaRegion has not been initialized.",
@@ -471,34 +481,52 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
     logger.info("Start create snapshot of schemaRegion {}", schemaRegionId);
     boolean isSuccess;
-    long startTime = System.currentTimeMillis();
+    boolean currentResult;
+    final long startTime = System.currentTimeMillis();
 
-    long mtreeSnapshotStartTime = System.currentTimeMillis();
+    long snapshotStartTime = System.currentTimeMillis();
     isSuccess = mtree.createSnapshot(snapshotDir);
     logger.info(
-        "MTree snapshot creation of schemaRegion {} costs {}ms.",
+        "MTree snapshot creation of schemaRegion {} costs {}ms. Status: {}",
         schemaRegionId,
-        System.currentTimeMillis() - mtreeSnapshotStartTime);
+        System.currentTimeMillis() - snapshotStartTime,
+        isSuccess);
 
-    long tagSnapshotStartTime = System.currentTimeMillis();
-    isSuccess = isSuccess && tagManager.createSnapshot(snapshotDir);
+    snapshotStartTime = System.currentTimeMillis();
+    currentResult = tagManager.createSnapshot(snapshotDir);
+    isSuccess = isSuccess && currentResult;
     logger.info(
-        "Tag snapshot creation of schemaRegion {} costs {}ms.",
+        "Tag snapshot creation of schemaRegion {} costs {}ms. Status: {}",
         schemaRegionId,
-        System.currentTimeMillis() - tagSnapshotStartTime);
+        System.currentTimeMillis() - snapshotStartTime,
+        currentResult);
 
-    long deviceAttributeSnapshotStartTime = System.currentTimeMillis();
-    isSuccess = isSuccess && deviceAttributeStore.createSnapshot(snapshotDir);
+    snapshotStartTime = System.currentTimeMillis();
+    currentResult = deviceAttributeStore.createSnapshot(snapshotDir);
+    isSuccess = isSuccess && currentResult;
     logger.info(
-        "Device attribute snapshot creation of schemaRegion {} costs {}ms",
+        "Device attribute snapshot creation of schemaRegion {} costs {}ms. Status: {}",
         schemaRegionId,
-        System.currentTimeMillis() - deviceAttributeSnapshotStartTime);
+        System.currentTimeMillis() - snapshotStartTime,
+        currentResult);
+
+    snapshotStartTime = System.currentTimeMillis();
+    currentResult = deviceAttributeCacheUpdater.createSnapshot(snapshotDir);
+    isSuccess = isSuccess && currentResult;
+    logger.info(
+        "Device attribute remote updater snapshot creation of schemaRegion {} costs {}ms. Status: {}",
+        schemaRegionId,
+        System.currentTimeMillis() - snapshotStartTime,
+        currentResult);
 
     logger.info(
         "Snapshot creation of schemaRegion {} costs {}ms.",
         schemaRegionId,
         System.currentTimeMillis() - startTime);
-    logger.info("Successfully create snapshot of schemaRegion {}", schemaRegionId);
+
+    if (isSuccess) {
+      logger.info("Successfully create snapshot of schemaRegion {}", schemaRegionId);
+    }
 
     return isSuccess;
   }
@@ -516,23 +544,32 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
       isRecovering = true;
 
-      final long deviceAttributeSnapshotStartTime = System.currentTimeMillis();
+      long snapshotStartTime = System.currentTimeMillis();
       deviceAttributeStore = new DeviceAttributeStore(regionStatistics);
       deviceAttributeStore.loadFromSnapshot(latestSnapshotRootDir, schemaRegionDirPath);
       logger.info(
           "Device attribute snapshot loading of schemaRegion {} costs {}ms.",
           schemaRegionId,
-          System.currentTimeMillis() - deviceAttributeSnapshotStartTime);
+          System.currentTimeMillis() - snapshotStartTime);
 
-      final long tagSnapshotStartTime = System.currentTimeMillis();
+      snapshotStartTime = System.currentTimeMillis();
+      deviceAttributeCacheUpdater =
+          new DeviceAttributeCacheUpdater(regionStatistics, storageGroupFullPath.substring(5));
+      deviceAttributeCacheUpdater.loadFromSnapshot(latestSnapshotRootDir);
+      logger.info(
+          "Device attribute remote updater snapshot loading of schemaRegion {} costs {}ms.",
+          schemaRegionId,
+          System.currentTimeMillis() - snapshotStartTime);
+
+      snapshotStartTime = System.currentTimeMillis();
       tagManager =
           TagManager.loadFromSnapshot(latestSnapshotRootDir, schemaRegionDirPath, regionStatistics);
       logger.info(
           "Tag snapshot loading of schemaRegion {} costs {}ms.",
           schemaRegionId,
-          System.currentTimeMillis() - tagSnapshotStartTime);
+          System.currentTimeMillis() - snapshotStartTime);
 
-      final long mTreeSnapshotStartTime = System.currentTimeMillis();
+      snapshotStartTime = System.currentTimeMillis();
       mtree =
           MTreeBelowSGMemoryImpl.loadFromSnapshot(
               latestSnapshotRootDir,
@@ -568,7 +605,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       logger.info(
           "MTree snapshot loading of schemaRegion {} costs {}ms.",
           schemaRegionId,
-          System.currentTimeMillis() - mTreeSnapshotStartTime);
+          System.currentTimeMillis() - snapshotStartTime);
 
       isRecovering = false;
       initialized = true;
@@ -1346,14 +1383,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           tableName,
           deviceId,
           () -> deviceAttributeStore.createAttribute(attributeNameList, attributeValueList),
-          pointer ->
-              updateAttribute(
-                  databaseName,
-                  tableName,
-                  deviceId,
-                  pointer,
-                  attributeNameList,
-                  attributeValueList));
+          pointer -> {
+            updateAttribute(
+                databaseName, tableName, deviceId, pointer, attributeNameList, attributeValueList);
+            deviceAttributeCacheUpdater.afterUpdate();
+          });
     }
     writeToMLog(node);
   }
@@ -1372,6 +1406,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           .updateAttributes(
               databaseName, convertIdValuesToDeviceID(tableName, deviceId), resultMap);
     }
+    deviceAttributeCacheUpdater.update(tableName, deviceId, resultMap);
   }
 
   @Override
@@ -1386,6 +1421,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         mtree.updateTableDevice(pattern, batchUpdater);
       }
     }
+    deviceAttributeCacheUpdater.afterUpdate();
     writeToMLog(updateNode);
   }
 
@@ -1532,6 +1568,26 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       final String table, final List<Object[]> devicePathList) {
     return mtree.getTableDeviceReader(
         table, devicePathList, (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name));
+  }
+
+  @Override
+  public Pair<Long, Map<TDataNodeLocation, byte[]>> getAttributeUpdateInfo(
+      final AtomicInteger limit, final AtomicBoolean hasRemaining) {
+    return deviceAttributeCacheUpdater.getAttributeUpdateInfo(limit, hasRemaining);
+  }
+
+  @Override
+  public void commitUpdateAttribute(final TableDeviceAttributeCommitUpdateNode node)
+      throws MetadataException {
+    deviceAttributeCacheUpdater.commit(node);
+    writeToMLog(node);
+  }
+
+  @Override
+  public void addNodeLocation(final TableNodeLocationAddNode node) throws MetadataException {
+    if (deviceAttributeCacheUpdater.addLocation(node.getLocation())) {
+      writeToMLog(node);
+    }
   }
 
   // endregion
@@ -1768,6 +1824,29 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         final SchemaRegionMemoryImpl context) {
       try {
         updateTableDeviceAttribute(updateTableDeviceAttributePlan);
+        return RecoverOperationResult.SUCCESS;
+      } catch (final MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
+    public RecoverOperationResult visitCommitUpdateTableDeviceAttribute(
+        final TableDeviceAttributeCommitUpdateNode commitUpdateTableDeviceAttributePlan,
+        final SchemaRegionMemoryImpl context) {
+      try {
+        commitUpdateAttribute(commitUpdateTableDeviceAttributePlan);
+        return RecoverOperationResult.SUCCESS;
+      } catch (final MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
+    public RecoverOperationResult visitAddNodeLocation(
+        final TableNodeLocationAddNode addNodeLocationPlan, final SchemaRegionMemoryImpl context) {
+      try {
+        addNodeLocation(addNodeLocationPlan);
         return RecoverOperationResult.SUCCESS;
       } catch (final MetadataException e) {
         return new RecoverOperationResult(e);
