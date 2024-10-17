@@ -287,7 +287,9 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       final String databaseName = dataRegion.getDatabaseName();
       if (Objects.nonNull(databaseName)) {
         isDbNameCoveredByPattern =
-            treePattern.coversDb(databaseName) && tablePattern.coversDb(databaseName);
+            treePattern.coversDb(databaseName)
+                // The database name is prefixed with "root."
+                && tablePattern.coversDb(databaseName.substring(5));
       }
     }
 
