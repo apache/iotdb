@@ -122,6 +122,44 @@ public class AvgAccumulator implements TableAccumulator {
     }
   }
 
+  @Override
+  public void evaluateFinal(ColumnBuilder columnBuilder) {
+    if (!initResult) {
+      columnBuilder.appendNull();
+    } else {
+      columnBuilder.writeDouble(sumValue / countValue);
+    }
+  }
+
+  @Override
+  public boolean hasFinalResult() {
+    return false;
+  }
+
+  @Override
+  public void addStatistics(Statistics[] statistics) {
+    if (statistics == null) {
+      return;
+    }
+    initResult = true;
+    countValue += statistics[0].getCount();
+    if (statistics[0] instanceof IntegerStatistics) {
+      sumValue += statistics[0].getSumLongValue();
+    } else {
+      sumValue += statistics[0].getSumDoubleValue();
+    }
+    if (countValue == 0) {
+      initResult = false;
+    }
+  }
+
+  @Override
+  public void reset() {
+    this.initResult = false;
+    this.countValue = 0;
+    this.sumValue = 0.0;
+  }
+
   private byte[] serializeState() {
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -177,43 +215,5 @@ public class AvgAccumulator implements TableAccumulator {
         sumValue += column.getDouble(i);
       }
     }
-  }
-
-  @Override
-  public void evaluateFinal(ColumnBuilder columnBuilder) {
-    if (!initResult) {
-      columnBuilder.appendNull();
-    } else {
-      columnBuilder.writeDouble(sumValue / countValue);
-    }
-  }
-
-  @Override
-  public boolean hasFinalResult() {
-    return false;
-  }
-
-  @Override
-  public void addStatistics(Statistics statistics) {
-    if (statistics == null) {
-      return;
-    }
-    initResult = true;
-    countValue += statistics.getCount();
-    if (statistics instanceof IntegerStatistics) {
-      sumValue += statistics.getSumLongValue();
-    } else {
-      sumValue += statistics.getSumDoubleValue();
-    }
-    if (countValue == 0) {
-      initResult = false;
-    }
-  }
-
-  @Override
-  public void reset() {
-    this.initResult = false;
-    this.countValue = 0;
-    this.sumValue = 0.0;
   }
 }

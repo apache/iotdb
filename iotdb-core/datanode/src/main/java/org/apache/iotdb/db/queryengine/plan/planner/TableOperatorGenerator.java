@@ -1391,7 +1391,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     Map<Symbol, Integer> columnLayout = new HashMap<>(node.getAggregations().size());
 
     int aggregationsCount = node.getAggregations().size();
-    int[] layoutArray = new int[aggregationsCount];
+    List<Integer> aggColumnIndexes = new ArrayList<>();
     int channel = 0;
     int idx = -1;
     int measurementColumnCount = 0;
@@ -1399,64 +1399,59 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     Map<Symbol, Integer> idAndAttributeColumnsIndexMap = node.getIdAndAttributeIndexMap();
     Map<Symbol, ColumnSchema> columnSchemaMap = node.getAssignments();
     List<ColumnSchema> columnSchemas = new ArrayList<>(aggregationsCount);
-    int[] columnsIndexArray = new int[aggregationsCount];
+    int[] columnsIndexArray = new int[aggregationsCount * 2];
     List<String> measurementColumnNames = new ArrayList<>();
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
 
-    // TODO test aggregation function which has more than one arguements
     for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
-      idx++;
-      Symbol symbol = Symbol.from(entry.getValue().getArguments().get(0));
-      ColumnSchema schema = requireNonNull(columnSchemaMap.get(symbol), symbol + " is null");
-
       String funcName = entry.getValue().getResolvedFunction().getSignature().getName();
-      if (schema.getType().equals(BlobType.BLOB)
-          && (FIRST.equals(funcName) || LAST.equals(funcName))) {
-        // first/last aggregation with BLOB type can not use statistics
-        canUseStatistic = false;
-      }
 
-      switch (schema.getColumnCategory()) {
-        case ID:
-        case ATTRIBUTE:
-          if (columnLayout.containsKey(symbol)) {
-            columnsIndexArray[idx] = columnsIndexArray[columnLayout.get(symbol)];
-          } else {
-            columnsIndexArray[idx] =
-                requireNonNull(idAndAttributeColumnsIndexMap.get(symbol), symbol + " is null");
-            columnSchemas.add(schema);
-          }
-          break;
-        case MEASUREMENT:
-          if (columnLayout.containsKey(symbol)) {
-            columnsIndexArray[idx] = columnsIndexArray[columnLayout.get(symbol)];
-          } else {
-            columnsIndexArray[idx] = measurementColumnCount;
-            measurementColumnCount++;
-            measurementColumnNames.add(symbol.getName());
-            measurementSchemas.add(
-                new MeasurementSchema(schema.getName(), getTSDataType(schema.getType())));
-            columnSchemas.add(schema);
-          }
-          break;
-        case TIME:
-          if (columnLayout.containsKey(symbol)) {
-            columnsIndexArray[idx] = columnsIndexArray[columnLayout.get(symbol)];
-          } else {
-            columnsIndexArray[idx] = -1;
-            columnSchemas.add(schema);
-          }
-          break;
-        default:
-          throw new IllegalArgumentException(
-              "Unexpected column category: " + schema.getColumnCategory());
-      }
+      for (Expression argument : entry.getValue().getArguments()) {
+        idx++;
+        Symbol symbol = Symbol.from(argument);
+        ColumnSchema schema = requireNonNull(columnSchemaMap.get(symbol), symbol + " is null");
+        if (schema.getType().equals(BlobType.BLOB)
+            && (FIRST.equals(funcName) || LAST.equals(funcName))) {
+          // first/last aggregation with BLOB type can not use statistics
+          canUseStatistic = false;
+        }
 
-      if (!columnLayout.containsKey(symbol)) {
-        layoutArray[idx] = channel;
-        columnLayout.put(symbol, channel++);
-      } else {
-        layoutArray[idx] = columnLayout.get(symbol);
+        switch (schema.getColumnCategory()) {
+          case ID:
+          case ATTRIBUTE:
+            if (!columnLayout.containsKey(symbol)) {
+              columnsIndexArray[channel] =
+                  requireNonNull(idAndAttributeColumnsIndexMap.get(symbol), symbol + " is null");
+              columnSchemas.add(schema);
+            }
+            break;
+          case MEASUREMENT:
+            if (!columnLayout.containsKey(symbol)) {
+              columnsIndexArray[channel] = measurementColumnCount;
+              measurementColumnCount++;
+              measurementColumnNames.add(symbol.getName());
+              measurementSchemas.add(
+                  new MeasurementSchema(schema.getName(), getTSDataType(schema.getType())));
+              columnSchemas.add(schema);
+            }
+            break;
+          case TIME:
+            if (!columnLayout.containsKey(symbol)) {
+              columnsIndexArray[channel] = -1;
+              columnSchemas.add(schema);
+            }
+            break;
+          default:
+            throw new IllegalArgumentException(
+                "Unexpected column category: " + schema.getColumnCategory());
+        }
+
+        if (!columnLayout.containsKey(symbol)) {
+          aggColumnIndexes.add(channel);
+          columnLayout.put(symbol, channel++);
+        } else {
+          aggColumnIndexes.add(columnLayout.get(symbol));
+        }
       }
 
       aggregators.add(
@@ -1468,6 +1463,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               context.getTypeProvider()));
     }
 
+    // TODO if this needed?
     for (Map.Entry<Symbol, ColumnSchema> entry : node.getAssignments().entrySet()) {
       if (!columnLayout.containsKey(entry.getKey())
           && entry.getValue().getColumnCategory() == MEASUREMENT) {
@@ -1566,7 +1562,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             null,
             calculateMaxAggregationResultSize(),
             canUseStatistic,
-            layoutArray);
+            aggColumnIndexes);
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(aggTableScanOperator);
 
