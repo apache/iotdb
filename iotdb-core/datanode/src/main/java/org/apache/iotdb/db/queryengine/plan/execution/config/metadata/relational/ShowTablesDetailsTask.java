@@ -82,7 +82,7 @@ public class ShowTablesDetailsTask implements IConfigTask {
           builder.declarePosition();
         });
 
-    final DatasetHeader datasetHeader = DatasetHeaderFactory.getShowTablesHeader();
+    final DatasetHeader datasetHeader = DatasetHeaderFactory.getShowTablesDetailsHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }
