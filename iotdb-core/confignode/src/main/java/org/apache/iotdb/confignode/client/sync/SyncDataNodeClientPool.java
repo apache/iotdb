@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
-import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.commons.exception.UncheckedStartupException;
 import org.apache.iotdb.mpp.rpc.thrift.TCleanDataNodeCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
@@ -40,14 +40,19 @@ import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
-import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.google.common.collect.ImmutableMap;
+import org.apache.ratis.util.function.CheckedBiFunction;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /** Synchronously send RPC requests to DataNodes. See queryengine.thrift for more details. */
 public class SyncDataNodeClientPool {
@@ -58,20 +63,98 @@ public class SyncDataNodeClientPool {
 
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager;
 
+  protected ImmutableMap<
+          CnToDnSyncRequestType,
+          CheckedBiFunction<Object, SyncDataNodeInternalServiceClient, Object, Exception>>
+      actionMap;
+
   private SyncDataNodeClientPool() {
     clientManager =
         new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
             .createClientManager(
                 new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
+    buildActionMap();
+    checkActionMapCompleteness();
+  }
+
+  private void buildActionMap() {
+    ImmutableMap.Builder<
+            CnToDnSyncRequestType,
+            CheckedBiFunction<Object, SyncDataNodeInternalServiceClient, Object, Exception>>
+        actionMapBuilder = ImmutableMap.builder();
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.INVALIDATE_PARTITION_CACHE,
+        (req, client) -> client.invalidatePartitionCache((TInvalidateCacheReq) req));
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.INVALIDATE_SCHEMA_CACHE,
+        (req, client) -> client.invalidateSchemaCache((TInvalidateCacheReq) req));
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.CREATE_SCHEMA_REGION,
+        (req, client) -> client.createSchemaRegion((TCreateSchemaRegionReq) req));
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.CREATE_DATA_REGION,
+        (req, client) -> client.createDataRegion((TCreateDataRegionReq) req));
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.DELETE_REGION,
+        (req, client) -> client.deleteRegion((TConsensusGroupId) req));
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.INVALIDATE_PERMISSION_CACHE,
+        (req, client) -> client.invalidatePermissionCache((TInvalidatePermissionCacheReq) req));
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.CLEAN_DATA_NODE_CACHE,
+        (req, client) -> client.cleanDataNodeCache((TCleanDataNodeCacheReq) req));
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.STOP_DATA_NODE, (req, client) -> client.stopDataNode());
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.SET_SYSTEM_STATUS,
+        (req, client) -> client.setSystemStatus((String) req));
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.KILL_QUERY_INSTANCE,
+        (req, client) -> client.killQueryInstance((String) req));
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.UPDATE_TEMPLATE,
+        (req, client) -> client.updateTemplate((TUpdateTemplateReq) req));
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.UPDATE_TABLE,
+        (req, client) -> client.updateTable((TUpdateTableReq) req));
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.CREATE_NEW_REGION_PEER,
+        (req, client) -> client.createNewRegionPeer((TCreatePeerReq) req));
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.ADD_REGION_PEER,
+        (req, client) -> client.addRegionPeer((TMaintainPeerReq) req));
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.REMOVE_REGION_PEER,
+        (req, client) -> client.removeRegionPeer((TMaintainPeerReq) req));
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.DELETE_OLD_REGION_PEER,
+        (req, client) -> client.deleteOldRegionPeer((TMaintainPeerReq) req));
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.RESET_PEER_LIST,
+        (req, client) -> client.resetPeerList((TResetPeerListReq) req));
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.SHOW_CONFIGURATION, (req, client) -> client.showConfiguration());
+    actionMap = actionMapBuilder.build();
+  }
+
+  private void checkActionMapCompleteness() {
+    List<CnToDnSyncRequestType> lackList =
+        Arrays.stream(CnToDnSyncRequestType.values())
+            .filter(type -> !actionMap.containsKey(type))
+            .collect(Collectors.toList());
+    if (!lackList.isEmpty()) {
+      throw new UncheckedStartupException(
+          String.format("These request types should be added to actionMap: %s", lackList));
+    }
   }
 
   public Object sendSyncRequestToDataNodeWithRetry(
-      TEndPoint endPoint, Object req, CnToDnRequestType requestType) {
+      TEndPoint endPoint, Object req, CnToDnSyncRequestType requestType) {
     Throwable lastException = new TException();
     for (int retry = 0; retry < DEFAULT_RETRY_NUM; retry++) {
       try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
         return executeSyncRequest(requestType, client, req);
-      } catch (ClientManagerException | TException e) {
+      } catch (Exception e) {
         lastException = e;
         if (retry != DEFAULT_RETRY_NUM - 1) {
           LOGGER.warn("{} failed on DataNode {}, retrying {}...", requestType, endPoint, retry + 1);
@@ -85,12 +168,12 @@ public class SyncDataNodeClientPool {
   }
 
   public Object sendSyncRequestToDataNodeWithGivenRetry(
-      TEndPoint endPoint, Object req, CnToDnRequestType requestType, int retryNum) {
+      TEndPoint endPoint, Object req, CnToDnSyncRequestType requestType, int retryNum) {
     Throwable lastException = new TException();
     for (int retry = 0; retry < retryNum; retry++) {
       try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
         return executeSyncRequest(requestType, client, req);
-      } catch (ClientManagerException | TException e) {
+      } catch (Exception e) {
         lastException = e;
         if (retry != retryNum - 1) {
           LOGGER.warn("{} failed on DataNode {}, retrying {}...", requestType, endPoint, retry + 1);
@@ -104,49 +187,9 @@ public class SyncDataNodeClientPool {
   }
 
   private Object executeSyncRequest(
-      CnToDnRequestType requestType, SyncDataNodeInternalServiceClient client, Object req)
-      throws TException {
-    switch (requestType) {
-      case INVALIDATE_PARTITION_CACHE:
-        return client.invalidatePartitionCache((TInvalidateCacheReq) req);
-      case INVALIDATE_SCHEMA_CACHE:
-        return client.invalidateSchemaCache((TInvalidateCacheReq) req);
-      case CREATE_SCHEMA_REGION:
-        return client.createSchemaRegion((TCreateSchemaRegionReq) req);
-      case CREATE_DATA_REGION:
-        return client.createDataRegion((TCreateDataRegionReq) req);
-      case DELETE_REGION:
-        return client.deleteRegion((TConsensusGroupId) req);
-      case INVALIDATE_PERMISSION_CACHE:
-        return client.invalidatePermissionCache((TInvalidatePermissionCacheReq) req);
-      case CLEAN_DATA_NODE_CACHE:
-        return client.cleanDataNodeCache((TCleanDataNodeCacheReq) req);
-      case STOP_DATA_NODE:
-        return client.stopDataNode();
-      case SET_SYSTEM_STATUS:
-        return client.setSystemStatus((String) req);
-      case KILL_QUERY_INSTANCE:
-        return client.killQueryInstance((String) req);
-      case UPDATE_TEMPLATE:
-        return client.updateTemplate((TUpdateTemplateReq) req);
-      case UPDATE_TABLE:
-        return client.updateTable((TUpdateTableReq) req);
-      case CREATE_NEW_REGION_PEER:
-        return client.createNewRegionPeer((TCreatePeerReq) req);
-      case ADD_REGION_PEER:
-        return client.addRegionPeer((TMaintainPeerReq) req);
-      case REMOVE_REGION_PEER:
-        return client.removeRegionPeer((TMaintainPeerReq) req);
-      case DELETE_OLD_REGION_PEER:
-        return client.deleteOldRegionPeer((TMaintainPeerReq) req);
-      case RESET_PEER_LIST:
-        return client.resetPeerList((TResetPeerListReq) req);
-      case SHOW_CONFIGURATION:
-        return client.showConfiguration();
-      default:
-        return RpcUtils.getStatus(
-            TSStatusCode.EXECUTE_STATEMENT_ERROR, "Unknown request type: " + requestType);
-    }
+      CnToDnSyncRequestType requestType, SyncDataNodeInternalServiceClient client, Object req)
+      throws Exception {
+    return Objects.requireNonNull(actionMap.get(requestType)).apply(req, client);
   }
 
   private void doRetryWait(int retryNum) {

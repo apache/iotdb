@@ -41,7 +41,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import static org.apache.iotdb.itbase.constant.TestConstant.DATA_TYPE_STR;
-import static org.apache.iotdb.itbase.constant.TestConstant.TIMESEIRES_STR;
+import static org.apache.iotdb.itbase.constant.TestConstant.TIMESERIES_STR;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.apache.iotdb.itbase.constant.TestConstant.VALUE_STR;
 import static org.junit.Assert.assertEquals;
@@ -136,7 +136,7 @@ public class IoTDBAlignedLastQueryIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(TIMESEIRES_STR)
+                  + resultSet.getString(TIMESERIES_STR)
                   + ","
                   + resultSet.getString(VALUE_STR)
                   + ","
@@ -171,7 +171,7 @@ public class IoTDBAlignedLastQueryIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(TIMESEIRES_STR)
+                  + resultSet.getString(TIMESERIES_STR)
                   + ","
                   + resultSet.getString(VALUE_STR)
                   + ","
@@ -208,7 +208,7 @@ public class IoTDBAlignedLastQueryIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(TIMESEIRES_STR)
+                  + resultSet.getString(TIMESERIES_STR)
                   + ","
                   + resultSet.getString(VALUE_STR)
                   + ","
@@ -241,7 +241,7 @@ public class IoTDBAlignedLastQueryIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(TIMESEIRES_STR)
+                  + resultSet.getString(TIMESERIES_STR)
                   + ","
                   + resultSet.getString(VALUE_STR)
                   + ","
@@ -275,7 +275,7 @@ public class IoTDBAlignedLastQueryIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(TIMESEIRES_STR)
+                  + resultSet.getString(TIMESERIES_STR)
                   + ","
                   + resultSet.getString(VALUE_STR)
                   + ","
@@ -313,7 +313,7 @@ public class IoTDBAlignedLastQueryIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(TIMESEIRES_STR)
+                  + resultSet.getString(TIMESERIES_STR)
                   + ","
                   + resultSet.getString(VALUE_STR)
                   + ","
@@ -397,13 +397,14 @@ public class IoTDBAlignedLastQueryIT {
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
-          statement.executeQuery("select last gongnengma,wenben from root.ln_1.tb_6141;")) {
+          statement.executeQuery(
+              "select last gongnengma,wenben from root.ln_1.tb_6141 order by timeseries asc;")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(TIMESEIRES_STR)
+                  + resultSet.getString(TIMESERIES_STR)
                   + ","
                   + resultSet.getString(VALUE_STR)
                   + ","
@@ -431,13 +432,13 @@ public class IoTDBAlignedLastQueryIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select last gongnengma,mochanshuizhuangtai,wenben from root.ln_1.tb_6141;")) {
+              "select last gongnengma,mochanshuizhuangtai,wenben from root.ln_1.tb_6141 order by timeseries asc;")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(TIMESEIRES_STR)
+                  + resultSet.getString(TIMESERIES_STR)
                   + ","
                   + resultSet.getString(VALUE_STR)
                   + ","

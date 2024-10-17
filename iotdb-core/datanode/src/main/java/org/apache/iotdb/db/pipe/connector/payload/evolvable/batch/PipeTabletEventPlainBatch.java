@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.batch;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReqV2;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
@@ -51,6 +51,11 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   private final List<ByteBuffer> binaryBuffers = new ArrayList<>();
   private final List<ByteBuffer> insertNodeBuffers = new ArrayList<>();
   private final List<ByteBuffer> tabletBuffers = new ArrayList<>();
+
+  private static final String TREE_MODEL_DATABASE_PLACEHOLDER = null;
+  private final List<String> binaryDataBases = new ArrayList<>();
+  private final List<String> inertNodeDataBases = new ArrayList<>();
+  private final List<String> tabletDataBases = new ArrayList<>();
 
   // limit in buffer size
   private final PipeMemoryBlock allocatedMemoryBlock;
@@ -108,9 +113,14 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
     pipe2BytesAccumulated.clear();
   }
 
-  public PipeTransferTabletBatchReq toTPipeTransferReq() throws IOException {
-    return PipeTransferTabletBatchReq.toTPipeTransferReq(
-        binaryBuffers, insertNodeBuffers, tabletBuffers);
+  public PipeTransferTabletBatchReqV2 toTPipeTransferReq() throws IOException {
+    return PipeTransferTabletBatchReqV2.toTPipeTransferReq(
+        binaryBuffers,
+        insertNodeBuffers,
+        tabletBuffers,
+        binaryDataBases,
+        inertNodeDataBases,
+        tabletDataBases);
   }
 
   @Override
@@ -128,6 +138,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
 
   private int buildTabletInsertionBuffer(final TabletInsertionEvent event)
       throws IOException, WALPipeException {
+    int databaseEstimateSize = 0;
     final ByteBuffer buffer;
     if (event instanceof PipeInsertNodeTabletInsertionEvent) {
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
@@ -139,9 +150,25 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
       if (Objects.isNull(insertNode)) {
         buffer = pipeInsertNodeTabletInsertionEvent.getByteBuffer();
         binaryBuffers.add(buffer);
+        if (pipeInsertNodeTabletInsertionEvent.isTableModelEvent()) {
+          databaseEstimateSize =
+              pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName().length();
+          binaryDataBases.add(pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName());
+        } else {
+          databaseEstimateSize = 4;
+          binaryDataBases.add(TREE_MODEL_DATABASE_PLACEHOLDER);
+        }
       } else {
         buffer = insertNode.serializeToByteBuffer();
         insertNodeBuffers.add(buffer);
+        if (pipeInsertNodeTabletInsertionEvent.isTableModelEvent()) {
+          databaseEstimateSize =
+              pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName().length();
+          inertNodeDataBases.add(pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName());
+        } else {
+          databaseEstimateSize = 4;
+          inertNodeDataBases.add(TREE_MODEL_DATABASE_PLACEHOLDER);
+        }
       }
     } else {
       final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
@@ -153,8 +180,15 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
         buffer = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
       }
       tabletBuffers.add(buffer);
+      if (pipeRawTabletInsertionEvent.isTableModelEvent()) {
+        databaseEstimateSize = pipeRawTabletInsertionEvent.getTableModelDatabaseName().length();
+        tabletDataBases.add(pipeRawTabletInsertionEvent.getTableModelDatabaseName());
+      } else {
+        databaseEstimateSize = 4;
+        tabletDataBases.add(TREE_MODEL_DATABASE_PLACEHOLDER);
+      }
     }
-    return buffer.limit();
+    return buffer.limit() + databaseEstimateSize;
   }
 
   @Override

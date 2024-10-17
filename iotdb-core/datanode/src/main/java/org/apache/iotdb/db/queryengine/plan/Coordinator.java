@@ -48,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.TreeModelPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableModelPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
@@ -333,6 +334,7 @@ public class Coordinator {
         || statement instanceof ShowConfigNodes
         || statement instanceof ShowAINodes
         || statement instanceof Flush
+        || statement instanceof ClearCache
         || statement instanceof SetConfiguration
         || statement instanceof PipeStatement) {
       return new ConfigExecution(

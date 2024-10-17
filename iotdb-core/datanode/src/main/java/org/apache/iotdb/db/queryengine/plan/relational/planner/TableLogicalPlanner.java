@@ -26,18 +26,18 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.CountSchemaMergeNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceFetchNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryCountNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryCountNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.LogicalOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractQueryDeviceWithCache;
@@ -164,7 +164,7 @@ public class TableLogicalPlanner {
 
   private PlanNode planStatement(final Analysis analysis, final Statement statement) {
     if (statement instanceof CreateOrUpdateDevice) {
-      return planCreateDevice((CreateOrUpdateDevice) statement, analysis);
+      return planCreateOrUpdateDevice((CreateOrUpdateDevice) statement, analysis);
     }
     if (statement instanceof FetchDevice) {
       return planFetchDevice((FetchDevice) statement, analysis);
@@ -256,7 +256,8 @@ public class TableLogicalPlanner {
         analysis, symbolAllocator, queryContext, Optional.empty(), sessionInfo, ImmutableMap.of());
   }
 
-  private PlanNode planCreateDevice(final CreateOrUpdateDevice statement, final Analysis analysis) {
+  private PlanNode planCreateOrUpdateDevice(
+      final CreateOrUpdateDevice statement, final Analysis analysis) {
     final CreateOrUpdateTableDeviceNode node =
         new CreateOrUpdateTableDeviceNode(
             queryContext.getQueryId().genPlanNodeId(),
@@ -335,8 +336,7 @@ public class TableLogicalPlanner {
             statement.getTableName(),
             statement.getIdDeterminedFilterList(),
             statement.getIdFuzzyPredicate(),
-            statement.getColumnHeaderList(),
-            null);
+            statement.getColumnHeaderList());
 
     final CountSchemaMergeNode countMergeNode =
         new CountSchemaMergeNode(queryContext.getQueryId().genPlanNodeId());
