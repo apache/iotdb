@@ -49,9 +49,8 @@ public class ModificationUtils {
 
   /**
    * modifyChunkMetaData iterates the chunkMetaData and applies all available modifications on it to
-   * generate a ModifiedChunkMetadata. <br>
-   * the caller should guarantee that chunkMetaData and modifications refer to the same time series
-   * paths.
+   * generate a ModifiedChunkMetadata. <br> the caller should guarantee that chunkMetaData and
+   * modifications refer to the same time series paths.
    *
    * @param chunkMetaData the original chunkMetaData.
    * @param modifications all possible modifications.
@@ -243,13 +242,10 @@ public class ModificationUtils {
    * There are some slight differences from that in {@link SettleSelectorImpl}.
    */
   public static boolean isAllDeletedByMods(
-      Collection<Modification> modifications, IDeviceID device, long startTime, long endTime)
-      throws IllegalPathException {
-    final MeasurementPath deviceWithWildcard = new MeasurementPath(device, ONE_LEVEL_PATH_WILDCARD);
-    for (Modification modification : modifications) {
-      MeasurementPath path = modification.getPath();
-      if (path.matchFullPath(deviceWithWildcard)
-          && ((Deletion) modification).getTimeRange().contains(startTime, endTime)) {
+      Collection<ModEntry> modifications, IDeviceID device, long startTime, long endTime) {
+    for (ModEntry modification : modifications) {
+      if (modification.affectsAll(device) && modification.getTimeRange()
+          .contains(startTime, endTime)) {
         return true;
       }
     }
@@ -257,12 +253,12 @@ public class ModificationUtils {
   }
 
   public static boolean isAllDeletedByMods(
-      Collection<Modification> modifications, long startTime, long endTime) {
+      Collection<ModEntry> modifications, long startTime, long endTime) {
     if (modifications == null || modifications.isEmpty()) {
       return false;
     }
-    for (Modification modification : modifications) {
-      if (((Deletion) modification).getTimeRange().contains(startTime, endTime)) {
+    for (ModEntry modification : modifications) {
+      if ((modification.getTimeRange().contains(startTime, endTime))) {
         return true;
       }
     }
@@ -270,17 +266,14 @@ public class ModificationUtils {
   }
 
   public static boolean isTimeseriesDeletedByMods(
-      Collection<Modification> modifications,
+      Collection<ModEntry> modifications,
       IDeviceID device,
       String timeseriesId,
       long startTime,
-      long endTime)
-      throws IllegalPathException {
-    final MeasurementPath measurementPath = new MeasurementPath(device, timeseriesId);
-    for (Modification modification : modifications) {
-      MeasurementPath path = modification.getPath();
-      if (path.matchFullPath(measurementPath)
-          && ((Deletion) modification).getTimeRange().contains(startTime, endTime)) {
+      long endTime) {
+    for (ModEntry modification : modifications) {
+      if (modification.affects(device) && modification.affects(timeseriesId)
+          && modification.getTimeRange().contains(startTime, endTime)) {
         return true;
       }
     }
@@ -291,7 +284,9 @@ public class ModificationUtils {
     metaData.insertIntoSortedDeletions(modification.getTimeRange());
   }
 
-  /** Methods for modification in memory table */
+  /**
+   * Methods for modification in memory table
+   */
   public static List<List<TimeRange>> constructDeletionList(
       IDeviceID deviceID,
       List<String> measurementList,
@@ -308,7 +303,9 @@ public class ModificationUtils {
       List<TimeRange> columnDeletionList = new ArrayList<>();
       columnDeletionList.add(new TimeRange(Long.MIN_VALUE, timeLowerBound));
       for (ModEntry modification : modifications) {
-        if (modification.affects(deviceID) && modification.affects(measurement) && modification.getEndTime() > timeLowerBound) {
+        if (modification.affects(deviceID)
+            && modification.affects(measurement)
+            && modification.getEndTime() > timeLowerBound) {
           long lowerBound = Math.max(modification.getStartTime(), timeLowerBound);
           columnDeletionList.add(new TimeRange(lowerBound, modification.getEndTime()));
         }
@@ -321,7 +318,7 @@ public class ModificationUtils {
   /**
    * construct a deletion list from a memtable.
    *
-   * @param memTable memtable
+   * @param memTable       memtable
    * @param timeLowerBound time watermark
    */
   public static List<TimeRange> constructDeletionList(
@@ -333,7 +330,9 @@ public class ModificationUtils {
     List<TimeRange> deletionList = new ArrayList<>();
     deletionList.add(new TimeRange(Long.MIN_VALUE, timeLowerBound));
     for (ModEntry modification : getModificationsForMemtable(memTable, modsToMemtable)) {
-      if (modification.affects(deviceID) && modification.affects(measurement) && modification.getEndTime() > timeLowerBound) {
+      if (modification.affects(deviceID)
+          && modification.affects(measurement)
+          && modification.getEndTime() > timeLowerBound) {
         long lowerBound = Math.max(modification.getStartTime(), timeLowerBound);
         deletionList.add(new TimeRange(lowerBound, modification.getEndTime()));
       }

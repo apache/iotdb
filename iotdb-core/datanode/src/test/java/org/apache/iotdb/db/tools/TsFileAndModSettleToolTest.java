@@ -160,8 +160,7 @@ public class TsFileAndModSettleToolTest {
     createOneTsFile(deviceSensorsMap);
     createlModificationFile(timeseriesPath);
     TsFileResource tsFileResource = new TsFileResource(new File(path));
-    tsFileResource.setNewModFile(
-        ModificationFile.getNormalMods(tsFileResource));
+    tsFileResource.setNewModFile(ModificationFile.getNormalMods(tsFileResource));
     tsFileResource.serialize();
     tsFileResource.close();
     resourcesToBeSettled.add(tsFileResource);

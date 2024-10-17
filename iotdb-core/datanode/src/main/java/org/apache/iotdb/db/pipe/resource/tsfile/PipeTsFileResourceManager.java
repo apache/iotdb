@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.pipe.resource.tsfile;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalJobExecutor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
-import org.apache.iotdb.db.pipe.agent.runtime.PipePeriodicalJobExecutor;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -307,8 +307,8 @@ public class PipeTsFileResourceManager {
     lock.lock();
     try {
       increaseFileReference(resource.getTsFile(), true, resource);
-      if (withMods && resource.getOldModFile().exists()) {
-        increaseFileReference(new File(resource.getOldModFile().getFilePath()), false, null);
+      if (withMods && resource.newModFileExists()) {
+        increaseFileReference(resource.getNewModFile().getFile(), false, null);
       }
     } finally {
       lock.unlock();

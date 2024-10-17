@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
@@ -80,12 +81,10 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
   @Override
   public boolean isDeviceTimeDeleted(IDeviceID deviceID, long timestamp)
       throws IllegalPathException {
-    List<Modification> modifications = queryContext.getPathModifications(tsFileResource, deviceID);
+    List<ModEntry> modifications = queryContext.getPathModifications(tsFileResource, deviceID);
     List<TimeRange> timeRangeList =
         modifications.stream()
-            .filter(Deletion.class::isInstance)
-            .map(Deletion.class::cast)
-            .map(Deletion::getTimeRange)
+            .map(ModEntry::getTimeRange)
             .collect(Collectors.toList());
     return ModificationUtils.isPointDeletedWithoutOrderedRange(timestamp, timeRangeList);
   }
@@ -99,13 +98,11 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
       return ModificationUtils.isPointDeleted(timestamp, modificationTimeRange.get(timeSeriesName));
     }
 
-    List<Modification> modifications =
+    List<ModEntry> modifications =
         queryContext.getPathModifications(tsFileResource, deviceID, timeSeriesName);
     List<TimeRange> timeRangeList =
         modifications.stream()
-            .filter(Deletion.class::isInstance)
-            .map(Deletion.class::cast)
-            .map(Deletion::getTimeRange)
+            .map(ModEntry::getTimeRange)
             .collect(Collectors.toList());
     TimeRange.sortAndMerge(timeRangeList);
     deviceToModifications

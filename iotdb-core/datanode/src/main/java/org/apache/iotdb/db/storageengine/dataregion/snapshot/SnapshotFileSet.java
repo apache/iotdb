@@ -36,7 +36,7 @@ public class SnapshotFileSet {
         TsFileConstant.TSFILE_SUFFIX.replace(".", ""),
         TsFileResource.RESOURCE_SUFFIX.replace(".", ""),
         ModificationFileV1.FILE_SUFFIX.replace(".", ""),
-          ModificationFile.FILE_SUFFIX.replace(".", ""),
+        ModificationFile.FILE_SUFFIX.replace(".", ""),
       };
 
   private static final Set<String> DATA_FILE_SUFFIX_SET =

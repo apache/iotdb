@@ -21,8 +21,6 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 
@@ -111,7 +109,8 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
       }
 
       Pair<Integer, Boolean> deletedNumAndIsFullyDeleted =
-          memChunk.deleteDataFromAColumn(modEntry.getStartTime(), modEntry.getEndTime(), measurement);
+          memChunk.deleteDataFromAColumn(
+              modEntry.getStartTime(), modEntry.getEndTime(), measurement);
       deletedPointsNumber += deletedNumAndIsFullyDeleted.left;
       if (Boolean.TRUE.equals(deletedNumAndIsFullyDeleted.right)) {
         columnsToBeRemoved.add(measurement);

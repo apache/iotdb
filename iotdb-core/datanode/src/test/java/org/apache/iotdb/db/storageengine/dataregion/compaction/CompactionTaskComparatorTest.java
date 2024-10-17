@@ -340,7 +340,9 @@ public class CompactionTaskComparatorTest {
     String targetFileName = "101-101-0-0.tsfile";
     FakedTsFileResource fakedTsFileResource =
         new FakedTsFileResource(new File(targetFileName), 100);
-    fakedTsFileResource.getOldModFile().write(new Deletion(new MeasurementPath("root.test.d1"), 1, 1));
+    fakedTsFileResource
+        .getOldModFile()
+        .write(new Deletion(new MeasurementPath("root.test.d1"), 1, 1));
     compactionTaskQueue.put(
         new SettleCompactionTask(
             0,

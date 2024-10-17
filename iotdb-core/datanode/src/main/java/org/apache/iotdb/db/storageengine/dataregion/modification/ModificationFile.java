@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
-import static java.nio.file.StandardOpenOption.APPEND;
-import static java.nio.file.StandardOpenOption.CREATE;
+import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedOutputStream;
 import java.io.EOFException;
@@ -31,19 +35,13 @@ import java.io.OutputStream;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.Set;
-import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import org.apache.iotdb.commons.utils.FileUtils;
-import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import static java.nio.file.StandardOpenOption.APPEND;
+import static java.nio.file.StandardOpenOption.CREATE;
 
 public class ModificationFile implements AutoCloseable {
 
@@ -65,7 +63,8 @@ public class ModificationFile implements AutoCloseable {
     lock.writeLock().lock();
     try {
       if (fileOutputStream == null) {
-        fileOutputStream = new BufferedOutputStream(Files.newOutputStream(file.toPath(), CREATE, APPEND));
+        fileOutputStream =
+            new BufferedOutputStream(Files.newOutputStream(file.toPath(), CREATE, APPEND));
         channel = FileChannel.open(file.toPath(), CREATE, APPEND);
       }
       entry.serialize(fileOutputStream);
@@ -136,7 +135,11 @@ public class ModificationFile implements AutoCloseable {
       this.inputStream = Files.newInputStream(file.toPath());
       long skipped = inputStream.skip(offset);
       if (skipped != offset) {
-        LOGGER.warn("Fail to read Mod file {}, expecting offset {}, actually skipped {}", file, offset, skipped);
+        LOGGER.warn(
+            "Fail to read Mod file {}, expecting offset {}, actually skipped {}",
+            file,
+            offset,
+            skipped);
       }
     }
 
@@ -207,8 +210,7 @@ public class ModificationFile implements AutoCloseable {
   }
 
   public static ModificationFile getCompactionMods(TsFileResource tsFileResource) {
-    return new ModificationFile(
-        new File(tsFileResource.getTsFilePath() + COMPACTION_FILE_SUFFIX));
+    return new ModificationFile(new File(tsFileResource.getTsFilePath() + COMPACTION_FILE_SUFFIX));
   }
 
   public static File getCompactionMods(File tsFile) {
@@ -223,8 +225,6 @@ public class ModificationFile implements AutoCloseable {
 
   @Override
   public String toString() {
-    return "ModificationFile{" +
-        "file=" + file +
-        '}';
+    return "ModificationFile{" + "file=" + file + '}';
   }
 }

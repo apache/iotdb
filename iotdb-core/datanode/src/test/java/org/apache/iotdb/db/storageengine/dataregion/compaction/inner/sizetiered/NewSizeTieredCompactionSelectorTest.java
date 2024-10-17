@@ -31,7 +31,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.NewSizeTieredCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 
@@ -394,7 +393,8 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
             "1-1-0-0.tsfile", new TimeRange[] {new TimeRange(100, 200)}, true, "d1", "d2");
     resource1
         .getNewModFile()
-        .write(new TreeDeletionEntry(new MeasurementPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
+        .write(
+            new TreeDeletionEntry(new MeasurementPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
     resource1.getNewModFile().close();
     seqResources.add(resource1);
     TsFileResource resource2 =
@@ -402,7 +402,8 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
             "2-2-0-0.tsfile", new TimeRange[] {new TimeRange(300, 400)}, true, "d3", "d4");
     resource2
         .getNewModFile()
-        .write(new TreeDeletionEntry(new MeasurementPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
+        .write(
+            new TreeDeletionEntry(new MeasurementPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
     resource2.getNewModFile().close();
     seqResources.add(resource2);
 
@@ -428,7 +429,8 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
             "1-1-0-0.tsfile", new TimeRange[] {new TimeRange(100, 200)}, true, "d1", "d2");
     resource1
         .getNewModFile()
-        .write(new TreeDeletionEntry(new MeasurementPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
+        .write(
+            new TreeDeletionEntry(new MeasurementPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
     resource1.getNewModFile().close();
     seqResources.add(resource1);
     TsFileResource resource2 =
@@ -452,7 +454,8 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
             "5-5-0-0.tsfile", new TimeRange[] {new TimeRange(900, 1000)}, true, "d1", "d4");
     resource5
         .getNewModFile()
-        .write(new TreeDeletionEntry(new MeasurementPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
+        .write(
+            new TreeDeletionEntry(new MeasurementPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
     resource5.getNewModFile().close();
     seqResources.add(resource5);
 

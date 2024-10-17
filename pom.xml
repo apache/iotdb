@@ -31,7 +31,7 @@
     <version>2.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Apache IoTDB Project Parent POM</name>
-    <description>This is the top level project that builds, packages the tsfile, iotdb engine, jdbc, and integration libs.</description>
+    <description>This is the top level project that builds, packages the iotdb engine, client, and integration libs.</description>
     <modules>
         <module>iotdb-api</module>
         <module>iotdb-client</module>
@@ -100,7 +100,7 @@
         <!-- This is the last version to support the javax namespace -->
         <jersey.version>2.40</jersey.version>
         <!-- This was the last version to support Java 8 -->
-        <jetty.version>9.4.55.v20240627</jetty.version>
+        <jetty.version>9.4.56.v20240826</jetty.version>
         <jjwt.version>0.11.5</jjwt.version>
         <jline.version>3.26.2</jline.version>
         <jna.version>5.14.0</jna.version>

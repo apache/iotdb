@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.IFullPath;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
@@ -58,8 +57,6 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.flush.NotifyFlushMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IFileScanHandle;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl.DiskAlignedChunkHandleImpl;
@@ -103,7 +100,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -352,7 +348,7 @@ public class TsFileProcessor {
     costsForMetrics[3] += System.nanoTime() - startTime;
   }
 
-  public void insert(InsertRowsNode insertRowsNode, long[] costsForMetrics)
+  public void insertRows(InsertRowsNode insertRowsNode, long[] costsForMetrics)
       throws WriteProcessException {
 
     ensureMemTable(costsForMetrics);
@@ -450,14 +446,20 @@ public class TsFileProcessor {
     walNode.onMemTableCreated(workMemTable, tsFileResource.getTsFilePath());
   }
 
-  private long[] checkMemCost(
-      InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results, boolean noFailure)
+  private long[] scheduleMemoryBlock(
+      InsertTabletNode insertTabletNode,
+      int start,
+      int end,
+      TSStatus[] results,
+      boolean noFailure,
+      long[] costsForMetrics)
       throws WriteProcessException {
     long[] memIncrements;
     try {
-      long startTime = System.nanoTime();
+      long memControlStartTime = System.nanoTime();
       memIncrements = checkMemCost(insertTabletNode, start, end, noFailure, results);
-      PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemoryBlockCost(System.nanoTime() - startTime);
+      // recordScheduleMemoryBlockCost
+      costsForMetrics[1] += System.nanoTime() - memControlStartTime;
     } catch (WriteProcessException e) {
       for (int i = start; i < end; i++) {
         results[i] = RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT, e.getMessage());
@@ -526,18 +528,18 @@ public class TsFileProcessor {
    * @param results result array
    */
   public void insertTablet(
-      InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results, boolean noFailure)
+      InsertTabletNode insertTabletNode,
+      int start,
+      int end,
+      TSStatus[] results,
+      boolean noFailure,
+      long[] costsForMetrics)
       throws WriteProcessException {
 
-    if (workMemTable == null) {
-      long startTime = System.nanoTime();
-      createNewWorkingMemTable();
-      PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(System.nanoTime() - startTime);
-      WritingMetrics.getInstance()
-          .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), 1);
-    }
+    ensureMemTable(costsForMetrics);
 
-    long[] memIncrements = checkMemCost(insertTabletNode, start, end, results, noFailure);
+    long[] memIncrements =
+        scheduleMemoryBlock(insertTabletNode, start, end, results, noFailure, costsForMetrics);
 
     long startTime = System.nanoTime();
     WALFlushListener walFlushListener;
@@ -553,7 +555,8 @@ public class TsFileProcessor {
       rollbackMemoryInfo(memIncrements);
       throw new WriteProcessException(e);
     } finally {
-      PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(System.nanoTime() - startTime);
+      // recordScheduleWalCost
+      costsForMetrics[2] += System.nanoTime() - startTime;
     }
 
     startTime = System.nanoTime();
@@ -611,7 +614,8 @@ public class TsFileProcessor {
 
     tsFileResource.updateProgressIndex(insertTabletNode.getProgressIndex());
 
-    PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(System.nanoTime() - startTime);
+    // recordScheduleMemTableCost
+    costsForMetrics[3] += System.nanoTime() - startTime;
   }
 
   @SuppressWarnings("squid:S3776") // High Cognitive Complexity
@@ -1142,9 +1146,7 @@ public class TsFileProcessor {
     }
     try {
       if (workMemTable != null) {
-        logger.info(
-            "[Deletion] Deletion with {} in workMemTable",
-            deletion);
+        logger.info("[Deletion] Deletion with {} in workMemTable", deletion);
         workMemTable.delete(deletion);
       }
       // Flushing memTables are immutable, only record this deletion in these memTables for read
@@ -1596,9 +1598,7 @@ public class TsFileProcessor {
           this.tsFileResource.getNewModFile().write(entry.left);
           tsFileResource.getNewModFile().close();
           iterator.remove();
-          logger.info(
-              "[Deletion] Deletion : {} written when flush memtable",
-              entry.left);
+          logger.info("[Deletion] Deletion : {} written when flush memtable", entry.left);
         }
       }
     } catch (IOException e) {
@@ -2311,9 +2311,6 @@ public class TsFileProcessor {
 
   public void registerToTsFile(
       String tableName, Function<String, TableSchema> tableSchemaFunction) {
-    getWriter()
-        .getKnownSchema()
-        .getTableSchemaMap()
-        .computeIfAbsent(tableName, tableSchemaFunction);
+    getWriter().getSchema().getTableSchemaMap().computeIfAbsent(tableName, tableSchemaFunction);
   }
 }

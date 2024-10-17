@@ -19,14 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
-import java.io.IOException;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
@@ -34,7 +31,10 @@ import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory.ModsSerializer;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -42,8 +42,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** QueryContext contains the shared information with in a query. */
 public class QueryContext {
@@ -102,8 +100,7 @@ public class QueryContext {
     return true;
   }
 
-  private PatternTreeMap<ModEntry, ModsSerializer> getAllModifications(
-      ModificationFile modFile) {
+  private PatternTreeMap<ModEntry, ModsSerializer> getAllModifications(ModificationFile modFile) {
     return fileModCache.computeIfAbsent(
         modFile.getFile().getPath(),
         k -> {

@@ -18,13 +18,15 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
+import org.apache.iotdb.commons.path.PartialPath;
+
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.common.TimeRange;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.read.common.TimeRange;
 
 public class TableDeletionEntry extends ModEntry {
   private DeletionPredicate predicate;
@@ -72,6 +74,11 @@ public class TableDeletionEntry extends ModEntry {
   }
 
   @Override
+  public int serializedSize() {
+    return super.serializedSize() + predicate.serializedSize();
+  }
+
+  @Override
   public boolean affects(IDeviceID deviceID, long startTime, long endTime) {
     return predicate.matches(deviceID) && timeRange.contains(startTime, endTime);
   }
@@ -93,7 +100,7 @@ public class TableDeletionEntry extends ModEntry {
 
   @Override
   public PartialPath keyOfPatternTree() {
-    return new PartialPath(new String[]{predicate.getTableName()});
+    return new PartialPath(new String[] {predicate.getTableName()});
   }
 
   @Override

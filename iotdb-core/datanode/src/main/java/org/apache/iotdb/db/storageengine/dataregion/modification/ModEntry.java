@@ -18,17 +18,19 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.utils.IOUtils.BufferSerializable;
 import org.apache.iotdb.db.utils.IOUtils.StreamSerializable;
 import org.apache.iotdb.db.utils.annotations.TreeModel;
+
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 
 public abstract class ModEntry
     implements StreamSerializable, BufferSerializable, Comparable<ModEntry> {
@@ -38,6 +40,11 @@ public abstract class ModEntry
 
   protected ModEntry(ModType modType) {
     this.modType = modType;
+  }
+
+  public int serializedSize() {
+    // modType + time range
+    return Byte.BYTES + Long.BYTES * 2;
   }
 
   @Override
@@ -76,6 +83,7 @@ public abstract class ModEntry
 
   /**
    * Test if a path can be matched by this modification.
+   *
    * @param path a path to be matched.
    * @return true if the path can be matched by this modification, false otherwise.
    */
@@ -83,25 +91,21 @@ public abstract class ModEntry
   public abstract boolean matches(PartialPath path);
 
   /**
-   * Test if a device and associated time range can be affected by this modification.
-   * This deletion does not necessarily delete the time column.
+   * Test if a device and associated time range can be affected by this modification. This deletion
+   * does not necessarily delete the time column.
    */
   public abstract boolean affects(IDeviceID deviceID, long startTime, long endTime);
 
   /**
-   * Test if a device can be affected by this modification.
-   * This deletion does not necessarily delete the time column.
+   * Test if a device can be affected by this modification. This deletion does not necessarily
+   * delete the time column.
    */
   public abstract boolean affects(IDeviceID deviceID);
 
-  /**
-   * Test if a measurement can be affected by this modification.
-   */
+  /** Test if a measurement can be affected by this modification. */
   public abstract boolean affects(String measurementID);
 
-  /**
-   * Test if the deletion affects all column (including the time column) of a device.
-   */
+  /** Test if the deletion affects all column (including the time column) of a device. */
   public abstract boolean affectsAll(IDeviceID deviceID);
 
   public abstract PartialPath keyOfPatternTree();

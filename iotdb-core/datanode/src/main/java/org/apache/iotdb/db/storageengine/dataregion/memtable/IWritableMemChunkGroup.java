@@ -20,11 +20,9 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 
-import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 

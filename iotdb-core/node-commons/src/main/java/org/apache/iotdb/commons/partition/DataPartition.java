@@ -231,7 +231,7 @@ public class DataPartition extends Partition {
       throw new RuntimeException(
           "Database "
               + databaseName
-              + "not exists and failed to create automatically because enable_auto_create_schema is FALSE.");
+              + " not exists and failed to create automatically because enable_auto_create_schema is FALSE.");
     }
     List<TRegionReplicaSet> regions =
         databasePartitionMap.get(seriesPartitionSlot).get(timePartitionSlot);

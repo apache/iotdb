@@ -513,7 +513,7 @@ public class TableMetadataImpl implements Metadata {
     } else if (TableBuiltinScalarFunction.DATE_BIN
         .getFunctionName()
         .equalsIgnoreCase(functionName)) {
-      if (!(argumentTypes.size() == 4 && isTimestampType(argumentTypes.get(2)))) {
+      if (!isTimestampType(argumentTypes.get(2))) {
         throw new SemanticException(
             "Scalar function "
                 + functionName.toLowerCase(Locale.ENGLISH)
@@ -561,6 +561,7 @@ public class TableMetadataImpl implements Metadata {
               String.format(
                   "Second argument of Aggregate functions [%s] should be orderable", functionName));
         }
+        break;
       case SqlConstant.FIRST_BY:
       case SqlConstant.LAST_BY:
       case SqlConstant.MAX_BY:

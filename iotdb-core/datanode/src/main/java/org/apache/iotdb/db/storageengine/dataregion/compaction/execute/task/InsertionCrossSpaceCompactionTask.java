@@ -30,7 +30,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.SimpleCompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.TsFileIdentifier;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCrossCompactionTaskResource;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -381,5 +380,10 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
             targetFile.getTsFileSize(),
             true,
             targetFile.getTsFile().getName());
+  }
+
+  @Override
+  public long getSelectedFileSize() {
+    return unseqFileToInsert.getTsFileSize();
   }
 }

@@ -18,23 +18,25 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternUtil;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
+
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Comparator;
 import java.util.Objects;
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathPatternUtil;
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
-import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.read.common.TimeRange;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class TreeDeletionEntry extends ModEntry {
 
@@ -68,6 +70,13 @@ public class TreeDeletionEntry extends ModEntry {
 
   public TreeDeletionEntry(Deletion deletion) {
     this(deletion.getPath(), deletion.getTimeRange());
+  }
+
+  @Override
+  public int serializedSize() {
+    String patternFullPath = pathPattern.getFullPath();
+    int length = patternFullPath.length();
+    return super.serializedSize() + ReadWriteForEncodingUtils.varIntSize(length) + length * Character.BYTES;
   }
 
   @Override

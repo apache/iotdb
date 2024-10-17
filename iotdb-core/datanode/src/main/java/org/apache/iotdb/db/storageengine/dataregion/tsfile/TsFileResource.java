@@ -19,14 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
-import java.nio.file.Files;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
@@ -78,12 +70,20 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -123,6 +123,7 @@ public class TsFileResource {
   private ITimeIndex timeIndex;
 
   private Future<ModificationFile> modFileFuture;
+
   @SuppressWarnings("squid:S3077")
   private volatile ModificationFile newModFile;
 
@@ -422,9 +423,8 @@ public class TsFileResource {
     return compactionModFile;
   }
 
-
   public void removeCompactionModFile() throws IOException {
-    if(compactionModFileExists()) {
+    if (compactionModFileExists()) {
       getCompactionModFile().remove();
     }
     compactionModFile = null;
@@ -1317,17 +1317,19 @@ public class TsFileResource {
       return;
     }
 
-    modFileFuture = upgradeModFileThreadPool.submit(() -> {
-      ModificationFile newMFile = ModificationFile.getNormalMods(this);
-      try {
-        for (Modification oldMod : oldModFile.getModificationsIter()) {
-          newMFile.write(new TreeDeletionEntry((Deletion) oldMod));
-        }
-      } finally {
-        newMFile.close();
-      }
-      oldModFile.remove();
-      return newMFile;
-    });
+    modFileFuture =
+        upgradeModFileThreadPool.submit(
+            () -> {
+              ModificationFile newMFile = ModificationFile.getNormalMods(this);
+              try {
+                for (Modification oldMod : oldModFile.getModificationsIter()) {
+                  newMFile.write(new TreeDeletionEntry((Deletion) oldMod));
+                }
+              } finally {
+                newMFile.close();
+              }
+              oldModFile.remove();
+              return newMFile;
+            });
   }
 }

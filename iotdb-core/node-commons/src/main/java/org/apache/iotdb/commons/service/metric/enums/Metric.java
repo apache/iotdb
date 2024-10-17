@@ -91,6 +91,7 @@ public enum Metric {
   COMPACTION_TASK_SELECTION("compaction_task_selection"),
   COMPACTION_TASK_SELECTION_COST("compaction_task_selection_cost"),
   COMPACTION_TASK_SELECTED_FILE("compaction_task_selected_file"),
+  COMPACTION_TASK_SELECTED_FILE_SIZE("compaction_task_selected_file_size"),
   // schema engine related
   MEM("mem"),
   CACHE("cache"),
@@ -152,6 +153,7 @@ public enum Metric {
   PIPE_MEM("pipe_mem"),
   PIPE_PINNED_MEMTABLE_COUNT("pipe_pinned_memtable_count"),
   PIPE_LINKED_TSFILE_COUNT("pipe_linked_tsfile_count"),
+  PIPE_PHANTOM_REFERENCE_COUNT("pipe_phantom_reference_count"),
   PIPE_ASYNC_CONNECTOR_RETRY_EVENT_QUEUE_SIZE("pipe_async_connector_retry_event_queue_size"),
   PIPE_EVENT_COMMIT_QUEUE_SIZE("pipe_event_commit_queue_size"),
   PIPE_PROCEDURE("pipe_procedure"),

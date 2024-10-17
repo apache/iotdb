@@ -194,8 +194,7 @@ public class SettleSelectorImpl implements ISettleSelector {
    *
    * @return dirty status means the status of current resource.
    */
-  private FileDirtyInfo selectFileBaseOnDirtyData(TsFileResource resource)
-      throws IOException {
+  private FileDirtyInfo selectFileBaseOnDirtyData(TsFileResource resource) throws IOException {
 
     Collection<ModEntry> modifications = resource.getAllModEntries();
     ITimeIndex timeIndex = resource.getTimeIndex();
@@ -205,7 +204,6 @@ public class SettleSelectorImpl implements ISettleSelector {
     Set<IDeviceID> deletedDevices = new HashSet<>();
     boolean hasExpiredTooLong = false;
     long currentTime = CommonDateTimeUtils.currentTime();
-
 
     for (IDeviceID device : ((ArrayDeviceTimeIndex) timeIndex).getDevices()) {
       // check expired device by ttl

@@ -21,8 +21,11 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational.agg
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.statistics.IntegerStatistics;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
+import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -34,7 +37,7 @@ import java.io.IOException;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class AvgAccumulator implements Accumulator {
+public class AvgAccumulator implements TableAccumulator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(AvgAccumulator.class);
   private final TSDataType argumentDataType;
@@ -52,7 +55,7 @@ public class AvgAccumulator implements Accumulator {
   }
 
   @Override
-  public Accumulator copy() {
+  public TableAccumulator copy() {
     return new AvgAccumulator(argumentDataType);
   }
 
@@ -87,13 +90,21 @@ public class AvgAccumulator implements Accumulator {
   @Override
   public void addIntermediate(Column argument) {
     checkArgument(
-        argument instanceof BinaryColumn,
+        argument instanceof BinaryColumn || argument instanceof RunLengthEncodedColumn,
         "intermediate input and output of Avg should be BinaryColumn");
-    if (argument.isNull(0)) {
-      return;
+
+    for (int i = 0; i < argument.getPositionCount(); i++) {
+      if (argument.isNull(i)) {
+        continue;
+      }
+
+      initResult = true;
+      long midCountValue = BytesUtils.bytesToLong(argument.getBinary(i).getValues(), Long.BYTES);
+      double midSumValue = BytesUtils.bytesToDouble(argument.getBinary(i).getValues(), Long.BYTES);
+      countValue += midCountValue;
+      sumValue += midSumValue;
     }
-    initResult = true;
-    deserialize(argument.getBinary(0).getValues());
+
     if (countValue == 0) {
       initResult = false;
     }
@@ -109,11 +120,6 @@ public class AvgAccumulator implements Accumulator {
     } else {
       columnBuilder.writeBinary(new Binary(serializeState()));
     }
-  }
-
-  private void deserialize(byte[] bytes) {
-    countValue = BytesUtils.bytesToLong(bytes, Long.BYTES);
-    sumValue = BytesUtils.bytesToDouble(bytes, Long.BYTES);
   }
 
   private byte[] serializeState() {
@@ -183,8 +189,30 @@ public class AvgAccumulator implements Accumulator {
   }
 
   @Override
+  public boolean hasFinalResult() {
+    return false;
+  }
+
+  @Override
+  public void addStatistics(Statistics statistics) {
+    if (statistics == null) {
+      return;
+    }
+    initResult = true;
+    countValue += statistics.getCount();
+    if (statistics instanceof IntegerStatistics) {
+      sumValue += statistics.getSumLongValue();
+    } else {
+      sumValue += statistics.getSumDoubleValue();
+    }
+    if (countValue == 0) {
+      initResult = false;
+    }
+  }
+
+  @Override
   public void reset() {
-    initResult = false;
+    this.initResult = false;
     this.countValue = 0;
     this.sumValue = 0.0;
   }

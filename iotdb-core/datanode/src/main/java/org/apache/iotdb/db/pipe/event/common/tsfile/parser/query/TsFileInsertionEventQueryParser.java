@@ -69,9 +69,13 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
 
   @TestOnly
   public TsFileInsertionEventQueryParser(
-      final File tsFile, final TreePattern pattern, final long startTime, final long endTime)
+      final File tsFile,
+      final TreePattern pattern,
+      final long startTime,
+      final long endTime,
+      final PipeInsertionEvent sourceEvent)
       throws IOException {
-    this(tsFile, pattern, startTime, endTime, null, null);
+    this(tsFile, pattern, startTime, endTime, null, sourceEvent);
   }
 
   public TsFileInsertionEventQueryParser(
@@ -307,6 +311,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
             if (!hasNext()) {
               next =
                   new PipeRawTabletInsertionEvent(
+                      sourceEvent != null ? sourceEvent.isTableModelEvent() : null,
                       sourceEvent != null ? sourceEvent.getTreeModelDatabaseName() : null,
                       tablet,
                       isAligned,
@@ -319,6 +324,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
             } else {
               next =
                   new PipeRawTabletInsertionEvent(
+                      sourceEvent != null ? sourceEvent.isTableModelEvent() : null,
                       sourceEvent != null ? sourceEvent.getTreeModelDatabaseName() : null,
                       tablet,
                       isAligned,

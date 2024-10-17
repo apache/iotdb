@@ -18,6 +18,15 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate.IDPredicate.NOP;
+import org.apache.iotdb.db.utils.IOUtils.BufferSerializable;
+import org.apache.iotdb.db.utils.IOUtils.StreamSerializable;
+
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Deserializer;
+import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -26,13 +35,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate.IDPredicate.NOP;
-import org.apache.iotdb.db.utils.IOUtils.BufferSerializable;
-import org.apache.iotdb.db.utils.IOUtils.StreamSerializable;
-import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.IDeviceID.Deserializer;
-import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 public class DeletionPredicate implements StreamSerializable, BufferSerializable {
 
@@ -41,8 +43,7 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
   // an empty list means affecting all columns
   private List<String> measurementNames = Collections.emptyList();
 
-  public DeletionPredicate() {
-  }
+  public DeletionPredicate() {}
 
   public DeletionPredicate(String tableName) {
     this.tableName = tableName;
@@ -53,8 +54,8 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
     this.idPredicate = idPredicate;
   }
 
-  public DeletionPredicate(String tableName, IDPredicate idPredicate,
-      List<String> measurementNames) {
+  public DeletionPredicate(
+      String tableName, IDPredicate idPredicate, List<String> measurementNames) {
     this.tableName = tableName;
     this.idPredicate = idPredicate;
     this.measurementNames = measurementNames;
@@ -128,7 +129,23 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
     }
   }
 
+  public int serializedSize() {
+    // table name + id predicate +
+    int size = ReadWriteForEncodingUtils.varIntSize(tableName.length()) + tableName.length() * Character.BYTES
+        + idPredicate.serializedSize()
+        + ReadWriteForEncodingUtils.varIntSize(measurementNames.size());
+    for (String measurementName : measurementNames) {
+      size += ReadWriteForEncodingUtils.varIntSize(measurementName.length() * measurementName.length() * Character.BYTES);
+    }
+    return size;
+  }
+
   public abstract static class IDPredicate implements StreamSerializable, BufferSerializable {
+
+    public int serializedSize() {
+      // type
+      return Byte.BYTES;
+    }
 
     @SuppressWarnings("java:S6548")
     public enum IDPredicateType {
@@ -232,6 +249,11 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
       public FullExactMatch(IDeviceID deviceID) {
         super(IDPredicateType.FULL_EXACT_MATCH);
         this.deviceID = deviceID;
+      }
+
+      @Override
+      public int serializedSize() {
+        return super.serializedSize() + deviceID.serializedSize();
       }
 
       @Override

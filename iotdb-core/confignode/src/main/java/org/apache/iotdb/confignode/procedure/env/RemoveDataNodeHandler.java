@@ -30,7 +30,7 @@ import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
-import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
@@ -117,7 +117,7 @@ public class RemoveDataNodeHandler {
         nodeStatusMap);
 
     DataNodeAsyncRequestContext<String, TSStatus> changeDataNodeStatusContext =
-        new DataNodeAsyncRequestContext<>(CnToDnRequestType.SET_SYSTEM_STATUS);
+        new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.SET_SYSTEM_STATUS);
 
     for (TDataNodeLocation dataNode : removedDataNodes) {
       changeDataNodeStatusContext.putRequest(
@@ -201,7 +201,7 @@ public class RemoveDataNodeHandler {
             .collect(Collectors.toList());
 
     DataNodeAsyncRequestContext<TCleanDataNodeCacheReq, TSStatus> cleanDataNodeCacheContext =
-        new DataNodeAsyncRequestContext<>(CnToDnRequestType.CLEAN_DATA_NODE_CACHE);
+        new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.CLEAN_DATA_NODE_CACHE);
 
     for (TDataNodeConfiguration node : otherOnlineDataNodes) {
       TCleanDataNodeCacheReq disableReq = new TCleanDataNodeCacheReq(dataNodes);
@@ -268,7 +268,7 @@ public class RemoveDataNodeHandler {
         removedDataNodes);
 
     DataNodeAsyncRequestContext<TDataNodeLocation, TSStatus> stopDataNodesContext =
-        new DataNodeAsyncRequestContext<>(CnToDnRequestType.STOP_DATA_NODE);
+        new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.STOP_DATA_NODE);
 
     for (TDataNodeLocation dataNode : removedDataNodes) {
       stopDataNodesContext.putRequest(dataNode.getDataNodeId(), dataNode);

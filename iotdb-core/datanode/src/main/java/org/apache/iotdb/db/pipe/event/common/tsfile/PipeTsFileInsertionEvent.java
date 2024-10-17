@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
+import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
+import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.aggregator.TsFileInsertionPointCounter;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
@@ -33,6 +35,7 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTimeP
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -51,13 +54,17 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_ROOT;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
-public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFileInsertionEvent {
+public class PipeTsFileInsertionEvent extends PipeInsertionEvent
+    implements TsFileInsertionEvent, ReferenceTrackableEvent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileInsertionEvent.class);
+
+  private static final String TREE_MODEL_EVENT_TABLE_NAME_PREFIX = PATH_ROOT + PATH_SEPARATOR;
 
   private final TsFileResource resource;
   private File tsFile;
@@ -88,6 +95,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFi
       final boolean isGeneratedByHistoricalExtractor) {
     // The modFile must be copied before the event is assigned to the listening pipes
     this(
+        null,
         databaseName,
         resource,
         true,
@@ -104,6 +112,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFi
   }
 
   public PipeTsFileInsertionEvent(
+      final Boolean isTableModelEvent,
       final String databaseName,
       final TsFileResource resource,
       final boolean isWithMod,
@@ -125,14 +134,15 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFi
         tablePattern,
         startTime,
         endTime,
+        isTableModelEvent,
         databaseName);
 
     this.resource = resource;
     tsFile = resource.getTsFile();
 
-    final ModificationFileV1 modFile = resource.getOldModFile();
+    final ModificationFile modFile = resource.getNewModFile();
     this.isWithMod = isWithMod && modFile.exists();
-    this.modFile = this.isWithMod ? new File(modFile.getFilePath()) : null;
+    this.modFile = this.isWithMod ? modFile.getFile() : null;
 
     this.isLoaded = isLoaded;
     this.isGeneratedByPipe = isGeneratedByPipe;
@@ -344,6 +354,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFi
       final long startTime,
       final long endTime) {
     return new PipeTsFileInsertionEvent(
+        getRawIsTableModelEvent(),
         getTreeModelDatabaseName(),
         resource,
         isWithMod,
@@ -389,13 +400,19 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFi
           Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
       return deviceSet.stream()
           .anyMatch(
-              deviceID ->
-                  // Table model
-                  !(deviceID instanceof PlainDeviceID
-                          || deviceID.getTableName().startsWith(PATH_ROOT + PATH_SEPARATOR)
-                          || deviceID.getTableName().equals(PATH_ROOT))
-                      // Tree model
-                      || treePattern.mayOverlapWithDevice(deviceID));
+              deviceID -> {
+                // Tree model
+                if (deviceID instanceof PlainDeviceID
+                    || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
+                    || deviceID.getTableName().equals(PATH_ROOT)) {
+                  markAsTreeModelEvent();
+                  return treePattern.mayOverlapWithDevice(deviceID);
+                }
+
+                // Table model
+                markAsTableModelEvent();
+                return true;
+              });
     } catch (final Exception e) {
       LOGGER.warn(
           "Pipe {}: failed to get devices from TsFile {}, extract it anyway",
@@ -404,6 +421,49 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFi
           e);
       return true;
     }
+  }
+
+  /////////////////////////// PipeInsertionEvent ///////////////////////////
+
+  /**
+   * Judge whether the TsFile is table model or tree model. If the TsFile is table model, the method
+   * will return true. If the TsFile is tree model, the method will return false. If the TsFile is
+   * mixed model, the method will return true and mark the event as table model event.
+   */
+  @Override
+  public boolean isTableModelEvent() {
+    if (getRawIsTableModelEvent() == null) {
+      try {
+        final Map<IDeviceID, Boolean> deviceIsAlignedMap =
+            PipeDataNodeResourceManager.tsfile()
+                .getDeviceIsAlignedMapFromCache(
+                    PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+                        resource.getTsFile()),
+                    false);
+        final Set<IDeviceID> deviceSet =
+            Objects.nonNull(deviceIsAlignedMap)
+                ? deviceIsAlignedMap.keySet()
+                : resource.getDevices();
+        for (final IDeviceID deviceID : deviceSet) {
+          if (deviceID instanceof PlainDeviceID
+              || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
+              || deviceID.getTableName().equals(PATH_ROOT)) {
+            markAsTreeModelEvent();
+          } else {
+            markAsTableModelEvent();
+            break;
+          }
+        }
+      } catch (final Exception e) {
+        throw new PipeException(
+            String.format(
+                "Pipe %s: failed to judge whether TsFile %s is table model or tree model",
+                pipeName, resource.getTsFilePath()),
+            e);
+      }
+    }
+
+    return getRawIsTableModelEvent();
   }
 
   /////////////////////////// TsFileInsertionEvent ///////////////////////////
@@ -507,5 +567,50 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFi
             resource, tsFile, isLoaded, isGeneratedByPipe, isClosed.get())
         + " - "
         + super.coreReportMessage();
+  }
+
+  /////////////////////////// ReferenceTrackableEvent ///////////////////////////
+
+  @Override
+  public void trackResource() {
+    PipeDataNodeResourceManager.ref().trackPipeEventResource(this, eventResourceBuilder());
+  }
+
+  @Override
+  public PipeEventResource eventResourceBuilder() {
+    return new PipeTsFileInsertionEventResource(
+        this.isReleased, this.referenceCount, this.tsFile, this.isWithMod, this.modFile);
+  }
+
+  private static class PipeTsFileInsertionEventResource extends PipeEventResource {
+
+    private final File tsFile;
+    private final boolean isWithMod;
+    private final File modFile;
+
+    private PipeTsFileInsertionEventResource(
+        final AtomicBoolean isReleased,
+        final AtomicInteger referenceCount,
+        final File tsFile,
+        final boolean isWithMod,
+        final File modFile) {
+      super(isReleased, referenceCount);
+      this.tsFile = tsFile;
+      this.isWithMod = isWithMod;
+      this.modFile = modFile;
+    }
+
+    @Override
+    protected void finalizeResource() {
+      try {
+        PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile);
+        if (isWithMod) {
+          PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile);
+        }
+      } catch (final Exception e) {
+        LOGGER.warn(
+            String.format("Decrease reference count for TsFile %s error.", tsFile.getPath()), e);
+      }
+    }
   }
 }

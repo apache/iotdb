@@ -435,8 +435,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
 
     List<ModEntry> modifications =
         modificationCache.computeIfAbsent(
-            tsFileResource,
-            r -> new ArrayList<>(tsFileResource.getAllModEntries()));
+            tsFileResource, r -> new ArrayList<>(tsFileResource.getAllModEntries()));
 
     // construct the input params List<List<Modification>> for QueryUtils.modifyAlignedChunkMetaData
     AlignedChunkMetadata alignedChunkMetadata = alignedChunkMetadataList.get(0);
@@ -683,8 +682,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
 
           List<ModEntry> modificationsInThisResource =
               modificationCache.computeIfAbsent(
-                  resource,
-                  r -> new ArrayList<>(r.getAllModEntries()));
+                  resource, r -> new ArrayList<>(r.getAllModEntries()));
           LinkedList<ModEntry> modificationForCurrentSeries = new LinkedList<>();
           // collect the modifications for current series
           for (ModEntry modification : modificationsInThisResource) {
