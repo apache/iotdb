@@ -702,42 +702,43 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           TSStatusCode.PIPE_TRANSFER_EXECUTE_STATEMENT_ERROR, "Execute null statement.");
     }
 
-    String dataBaseName = null;
-    boolean isWriteToTable = false;
+    // Judge which model the statement belongs to
+    final boolean isTableModelStatement;
+    final String dataBaseName;
     if (statement instanceof LoadTsFileStatement
         && ((LoadTsFileStatement) statement)
             .getModel()
             .equals(LoadTsFileConfigurator.MODEL_TABLE_VALUE)) {
-      isWriteToTable = true;
+      isTableModelStatement = true;
       dataBaseName = ((LoadTsFileStatement) statement).getDatabase();
-    }
-    if (statement instanceof InsertBaseStatement
+    } else if (statement instanceof InsertBaseStatement
         && ((InsertBaseStatement) statement).isWriteToTable()) {
-      isWriteToTable = true;
-      dataBaseName = ((InsertBaseStatement) statement).getDatabaseName().get();
+      isTableModelStatement = true;
+      dataBaseName =
+          ((InsertBaseStatement) statement).getDatabaseName().isPresent()
+              ? ((InsertBaseStatement) statement).getDatabaseName().get()
+              : null;
+    } else {
+      isTableModelStatement = false;
+      dataBaseName = null;
     }
 
-    final TSStatus status = executeStatement(statement, isWriteToTable, dataBaseName);
-
-    if (isWriteToTable) {
+    final TSStatus status =
+        isTableModelStatement
+            ? executeStatementForTableModel(statement, dataBaseName)
+            : executeStatementForTreeModel(statement);
+    // Data type conversion is not supported for table model statements
+    if (isTableModelStatement) {
       return status;
     }
-
+    // Try to convert data type if the statement is a tree model statement
+    // and the status code is not success
     return shouldConvertDataTypeOnTypeMismatch
             && ((statement instanceof InsertBaseStatement
                     && ((InsertBaseStatement) statement).hasFailedMeasurements())
                 || status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
         ? statement.accept(statementDataTypeConvertExecutionVisitor, status).orElse(status)
         : status;
-  }
-
-  private TSStatus executeStatement(
-      final Statement statement, final boolean isWriteToTable, final String dataBaseName) {
-    if (isWriteToTable) {
-      return executeStatementForTableModel(statement, dataBaseName);
-    }
-
-    return executeStatementForTreeModel(statement);
   }
 
   private TSStatus executeStatementForTableModel(Statement statement, String dataBaseName) {
