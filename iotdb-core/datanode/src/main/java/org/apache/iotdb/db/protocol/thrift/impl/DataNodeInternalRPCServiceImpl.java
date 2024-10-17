@@ -1546,6 +1546,17 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
+  public TSStatus invalidateTableCache(final String database, final String tableName) {
+    DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
+    try {
+      TableDeviceSchemaCache.getInstance().invalidate(database, tableName);
+      return StatusUtils.OK;
+    } finally {
+      DataNodeSchemaLockManager.getInstance().releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
+    }
+  }
+
+  @Override
   public TSStatus deleteDataForDropTable(final TDeleteDataOrDevicesForDropTableReq req) {
     return executeInternalSchemaTask(
         req.getRegionIdList(),

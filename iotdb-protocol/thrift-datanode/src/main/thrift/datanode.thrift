@@ -1063,6 +1063,11 @@ service IDataNodeRPCService {
   common.TSStatus updateTable(TUpdateTableReq req)
 
   /**
+  * Delete data for drop table, this database is without "root"
+  */
+  common.TSStatus invalidateTableCache(string database, string tableName)
+
+  /**
   * Delete data for drop table
   */
   common.TSStatus deleteDataForDropTable(TDeleteDataOrDevicesForDropTableReq req)
