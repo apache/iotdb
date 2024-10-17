@@ -134,29 +134,26 @@ public class RemoveDataNodeHandler {
 
       int dataNodeId = entry.getKey();
       NodeStatus nodeStatus = nodeStatusMap.get(dataNodeId);
-
-      // Force updating NodeStatus to NodeStatus.Removing
+      RegionStatus regionStatus = RegionStatus.valueOf(nodeStatus.getStatus());
+      // Force updating NodeStatus
       configManager
           .getLoadManager()
           .forceUpdateNodeCache(
               NodeType.DataNode, dataNodeId, new NodeHeartbeatSample(currentTime, nodeStatus));
 
-      if (nodeStatus == NodeStatus.Removing) {
-        Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>> removingHeartbeatSampleMap =
-            new TreeMap<>();
-        // Force update RegionStatus to NodeStatus.Removing
-        configManager
-            .getPartitionManager()
-            .getAllReplicaSets(entry.getKey())
-            .forEach(
-                replicaSet ->
-                    removingHeartbeatSampleMap.put(
-                        replicaSet.getRegionId(),
-                        Collections.singletonMap(
-                            dataNodeId,
-                            new RegionHeartbeatSample(currentTime, RegionStatus.Removing))));
-        configManager.getLoadManager().forceUpdateRegionGroupCache(removingHeartbeatSampleMap);
-      }
+      Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>> heartbeatSampleMap =
+          new TreeMap<>();
+      // Force update RegionStatus
+      configManager
+          .getPartitionManager()
+          .getAllReplicaSets(entry.getKey())
+          .forEach(
+              replicaSet ->
+                  heartbeatSampleMap.put(
+                      replicaSet.getRegionId(),
+                      Collections.singletonMap(
+                          dataNodeId, new RegionHeartbeatSample(currentTime, regionStatus))));
+      configManager.getLoadManager().forceUpdateRegionGroupCache(heartbeatSampleMap);
     }
   }
 
