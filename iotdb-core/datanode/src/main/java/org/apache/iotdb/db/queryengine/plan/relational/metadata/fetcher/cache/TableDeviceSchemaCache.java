@@ -205,11 +205,9 @@ public class TableDeviceSchemaCache {
    * @param database the device's database, without "root"
    * @param deviceId {@link IDeviceID}
    * @param measurements the fetched measurements
-   * @param timeValuePairs {@code null} for the first fetch, the {@link TimeValuePair} with indexes
-   *     corresponding to the measurements for the second fetch, all {@code null}s if the query has
-   *     ended abnormally before the second push and need to invalidate the entry.
+   * @param isInvalidate whether to init or invalidate the cache
    */
-  public void updateLastCache(
+  public void initOrInvalidateLastCache(
       final String database,
       final IDeviceID deviceId,
       final String[] measurements,

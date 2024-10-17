@@ -398,11 +398,10 @@ public class TreeDeviceSchemaCacheManager {
    *
    * <p>Note: The query shall put the {@link TableDeviceLastCache} twice:
    *
-   * <p>- First time set the "isCommit" to {@code false} before the query accesses data., which will
-   * put the {@link TimeValuePair} as {@code null}. It does not indicate that the measurements are
-   * all {@code null}s, just to allow the writing to update the cache, then avoid that the query put
-   * a stale value to cache and break the consistency. WARNING: The writing may temporarily put a
-   * stale value in cache if a stale value is written, but it won't affect the eventual consistency.
+   * <p>- First time set the "isCommit" to {@code false} before the query accesses data. It is just
+   * to allow the writing to update the cache, then avoid that the query put a stale value to cache
+   * and break the consistency. WARNING: The writing may temporarily put a stale value in cache if a
+   * stale value is written, but it won't affect the eventual consistency.
    *
    * <p>- Second time put the calculated {@link TimeValuePair}, and use {@link
    * #updateLastCacheIfExists(String, IDeviceID, String[], TimeValuePair[], boolean,
@@ -411,9 +410,8 @@ public class TreeDeviceSchemaCacheManager {
    * TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR}. This method is not supposed to update time column.
    *
    * <p>If the query has ended abnormally, it shall call this to invalidate the entry it has pushed
-   * in the first time, to avoid the stale writing damaging the eventual consistency. The input
-   * {@link TimeValuePair} shall be {@code null} in this case and the "isCommit" shall be {@code
-   * true}.
+   * in the first time, to avoid the stale writing damaging the eventual consistency. In this case
+   * and the "isInvalidate" shall be {@code true}.
    *
    * @param database the device's database, WITH "root"
    * @param measurementPath the fetched {@link MeasurementPath}

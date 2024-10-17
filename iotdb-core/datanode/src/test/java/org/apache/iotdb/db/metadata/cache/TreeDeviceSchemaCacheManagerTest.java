@@ -198,9 +198,9 @@ public class TreeDeviceSchemaCacheManagerTest {
     final TimeValuePair tv1 = new TimeValuePair(1, new TsPrimitiveType.TsInt(1));
 
     treeDeviceSchemaCacheManager.updateLastCache(
-        database, new MeasurementPath(device.concatNode("s1"), s1), null, false);
+        database, new MeasurementPath(device.concatNode("s1"), s1), false);
     treeDeviceSchemaCacheManager.updateLastCache(
-        database, new MeasurementPath(device.concatNode("s3"), s3), null, false);
+        database, new MeasurementPath(device.concatNode("s3"), s3), false);
 
     // Simulate "s1" revert when the query has failed in calculation
     treeDeviceSchemaCacheManager.updateLastCacheIfExists(

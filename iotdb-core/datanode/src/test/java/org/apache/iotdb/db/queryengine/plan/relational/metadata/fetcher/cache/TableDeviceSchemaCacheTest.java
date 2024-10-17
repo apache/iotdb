@@ -218,7 +218,7 @@ public class TableDeviceSchemaCacheTest {
         cache.getLastEntry(database, convertIdValuesToDeviceID(table1, device0), "s3"));
 
     // Test null hit measurements
-    cache.updateLastCache(
+    cache.initOrInvalidateLastCache(
         database,
         convertIdValuesToDeviceID(table1, device0),
         new String[] {"s4"},
@@ -458,8 +458,8 @@ public class TableDeviceSchemaCacheTest {
       final IDeviceID deviceID,
       final String[] measurement,
       final TimeValuePair[] data) {
-    cache.updateLastCache(database, deviceID, measurement, null);
-    cache.updateLastCache(database, deviceID, measurement, data);
+    cache.initOrInvalidateLastCache(database, deviceID, measurement, null);
+    cache.initOrInvalidateLastCache(database, deviceID, measurement, data);
   }
 
   @Test
