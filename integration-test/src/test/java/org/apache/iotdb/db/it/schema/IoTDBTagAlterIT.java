@@ -612,7 +612,7 @@ public class IoTDBTagAlterIT extends AbstractSchemaIT {
   @Test
   public void alterDuplicateAliasTest() {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
-         final Statement statement = connection.createStatement()) {
+        final Statement statement = connection.createStatement()) {
       statement.execute(
           "create timeseries root.turbine.d1.s1(a1) with datatype=FLOAT, encoding=RLE, compression=SNAPPY;");
       statement.execute("create timeseries root.turbine.d1.s2 with datatype=INT32, encoding=RLE;");
