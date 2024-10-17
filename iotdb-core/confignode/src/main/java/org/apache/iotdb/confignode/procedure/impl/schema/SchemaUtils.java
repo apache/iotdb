@@ -29,7 +29,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCType;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
-import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -86,7 +86,7 @@ public class SchemaUtils {
                 configManager,
                 relatedSchemaRegionGroup,
                 false,
-                CnToDnRequestType.COUNT_PATHS_USING_TEMPLATE,
+                CnToDnAsyncRequestType.COUNT_PATHS_USING_TEMPLATE,
                 ((dataNodeLocation, consensusGroupIdList) ->
                     new TCountPathsUsingTemplateReq(
                         template.getId(), patternTreeBytes, consensusGroupIdList))) {
@@ -164,7 +164,7 @@ public class SchemaUtils {
                 configManager,
                 relatedSchemaRegionGroup,
                 false,
-                CnToDnRequestType.CHECK_SCHEMA_REGION_USING_TEMPLATE,
+                CnToDnAsyncRequestType.CHECK_SCHEMA_REGION_USING_TEMPLATE,
                 ((dataNodeLocation, consensusGroupIdList) ->
                     new TCheckSchemaRegionUsingTemplateReq(consensusGroupIdList))) {
 
@@ -227,7 +227,8 @@ public class SchemaUtils {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(CnToDnRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
+        new DataNodeAsyncRequestContext<>(
+            CnToDnAsyncRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     return clientHandler.getResponseMap().entrySet().stream()
         .filter(entry -> entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
@@ -250,7 +251,8 @@ public class SchemaUtils {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(CnToDnRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
+        new DataNodeAsyncRequestContext<>(
+            CnToDnAsyncRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     return clientHandler.getResponseMap().entrySet().stream()
         .filter(entry -> entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
@@ -273,7 +275,8 @@ public class SchemaUtils {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(CnToDnRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
+        new DataNodeAsyncRequestContext<>(
+            CnToDnAsyncRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     return clientHandler.getResponseMap().entrySet().stream()
         .filter(entry -> entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())

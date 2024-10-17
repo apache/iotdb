@@ -240,10 +240,10 @@ showFunctionsStatement
 
 // -------------------------------------------- Load Statement ---------------------------------------------------------
 loadTsFileStatement
-    : LOAD fileName=string (loadFileWithAttributeClauses)?
+    : LOAD fileName=string (loadFileWithAttributesClause)?
     ;
 
-loadFileWithAttributeClauses
+loadFileWithAttributesClause
     : WITH
         '('
         (loadFileWithAttributeClause ',')* loadFileWithAttributeClause?
@@ -251,7 +251,7 @@ loadFileWithAttributeClauses
     ;
 
 loadFileWithAttributeClause
-    : loadFileWithKey=STRING EQ loadFileWithValue=STRING
+    : loadFileWithKey=string EQ loadFileWithValue=string
     ;
 
 
@@ -433,7 +433,7 @@ flushStatement
     ;
 
 clearCacheStatement
-    : CLEAR CACHE (localOrClusterMode)?
+    : CLEAR clearCacheOptions? CACHE localOrClusterMode?
     ;
 
 repairDataStatement
@@ -467,6 +467,12 @@ loadConfigurationStatement
 // Set Configuration
 setConfigurationStatement
     : SET CONFIGURATION propertyAssignments (ON INTEGER_VALUE)?
+    ;
+
+clearCacheOptions
+    : ATTRIBUTE
+    | QUERY
+    | ALL
     ;
 
 localOrClusterMode

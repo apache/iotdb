@@ -804,21 +804,23 @@ public final class SqlFormatter {
       builder.append("\"" + node.getFilePath() + "\"");
       builder.append(" \n");
 
-      builder
-          .append("WITH (")
-          .append("\n")
-          .append(
-              node.getLoadAttributes().entrySet().stream()
-                  .map(
-                      entry ->
-                          indentString(1)
-                              + "\""
-                              + entry.getKey()
-                              + "\" = \""
-                              + entry.getValue()
-                              + "\"")
-                  .collect(joining(", " + "\n")))
-          .append(")\n");
+      if (!node.getLoadAttributes().isEmpty()) {
+        builder
+            .append("WITH (")
+            .append("\n")
+            .append(
+                node.getLoadAttributes().entrySet().stream()
+                    .map(
+                        entry ->
+                            indentString(1)
+                                + "\""
+                                + entry.getKey()
+                                + "\" = \""
+                                + entry.getValue()
+                                + "\"")
+                    .collect(joining(", " + "\n")))
+            .append(")\n");
+      }
       return null;
     }
 

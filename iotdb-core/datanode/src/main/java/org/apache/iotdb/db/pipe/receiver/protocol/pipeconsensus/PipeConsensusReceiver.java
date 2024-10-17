@@ -1267,6 +1267,7 @@ public class PipeConsensusReceiver {
     private final PipeConsensusTsFileWriterPool tsFileWriterPool;
     private long onSyncedCommitIndex = 0;
     private int connectorRebootTimes = 0;
+    private int pipeTaskRestartTimes = 0;
     private AtomicInteger WALEventCount = new AtomicInteger(0);
     private AtomicInteger tsFileEventCount = new AtomicInteger(0);
 
@@ -1274,7 +1275,8 @@ public class PipeConsensusReceiver {
         PipeConsensusReceiverMetrics metric, PipeConsensusTsFileWriterPool tsFileWriterPool) {
       this.reqExecutionOrderBuffer =
           new TreeSet<>(
-              Comparator.comparingInt(RequestMeta::getRebootTimes)
+              Comparator.comparingInt(RequestMeta::getDataNodeRebootTimes)
+                  .thenComparingInt(RequestMeta::getPipeTaskRestartTimes)
                   .thenComparingLong(RequestMeta::getCommitIndex));
       this.lock = new ReentrantLock();
       this.condition = lock.newCondition();
@@ -1282,13 +1284,13 @@ public class PipeConsensusReceiver {
       this.tsFileWriterPool = tsFileWriterPool;
     }
 
-    private void onSuccess(long nextSyncedCommitIndex, boolean isTransferTsFileSeal) {
+    private void onSuccess(TCommitId commitId, boolean isTransferTsFileSeal) {
       LOGGER.info(
           "PipeConsensus-PipeName-{}: process no.{} event successfully!",
           consensusPipeName,
-          nextSyncedCommitIndex);
+          commitId);
       RequestMeta curMeta = reqExecutionOrderBuffer.pollFirst();
-      onSyncedCommitIndex = nextSyncedCommitIndex;
+      onSyncedCommitIndex = commitId.getCommitIndex();
       // update metric, notice that curMeta is never null.
       if (isTransferTsFileSeal) {
         tsFileEventCount.decrementAndGet();
@@ -1314,7 +1316,7 @@ public class PipeConsensusReceiver {
         LOGGER.info(
             "PipeConsensus-PipeName-{}: start to receive no.{} event",
             consensusPipeName,
-            tCommitId.getCommitIndex());
+            tCommitId);
         // if a req is deprecated, we will discard it
         // This case may happen in this scenario: leader has transferred {1,2} and is intending to
         // transfer {3, 4, 5, 6}. And in one moment, follower has received {4, 5, 6}, {3} is still
@@ -1324,7 +1326,7 @@ public class PipeConsensusReceiver {
         // receives
         // the request with incremental rebootTimes, the {3} sent before the leader restart needs to
         // be discarded.
-        if (tCommitId.getRebootTimes() < connectorRebootTimes) {
+        if (tCommitId.getDataNodeRebootTimes() < connectorRebootTimes) {
           final TSStatus status =
               new TSStatus(
                   RpcUtils.getStatus(
@@ -1335,10 +1337,27 @@ public class PipeConsensusReceiver {
               consensusPipeName);
           return new TPipeConsensusTransferResp(status);
         }
+        // Similarly, check pipeTask restartTimes
+        if (tCommitId.getDataNodeRebootTimes() == connectorRebootTimes
+            && tCommitId.getPipeTaskRestartTimes() < pipeTaskRestartTimes) {
+          final TSStatus status =
+              new TSStatus(
+                  RpcUtils.getStatus(
+                      TSStatusCode.PIPE_CONSENSUS_DEPRECATED_REQUEST,
+                      "PipeConsensus receiver received a deprecated request, which may be sent before the pipe task restart. Consider to discard it"));
+          LOGGER.info(
+              "PipeConsensus-PipeName-{}: received a deprecated request, which may be sent before the pipe task restart. Consider to discard it",
+              consensusPipeName);
+          return new TPipeConsensusTransferResp(status);
+        }
         // Judge whether connector has rebooted or not, if the rebootTimes increases compared to
         // connectorRebootTimes, need to reset receiver because connector has been restarted.
-        if (tCommitId.getRebootTimes() > connectorRebootTimes) {
-          resetWithNewestRebootTime(tCommitId.getRebootTimes());
+        if (tCommitId.getDataNodeRebootTimes() > connectorRebootTimes) {
+          resetWithNewestRebootTime(tCommitId.getDataNodeRebootTimes());
+        }
+        // Similarly, check pipeTask restartTimes
+        if (tCommitId.getPipeTaskRestartTimes() > pipeTaskRestartTimes) {
+          resetWithNewestRestartTime(tCommitId.getPipeTaskRestartTimes());
         }
         // update metric
         if (isTransferTsFilePiece && !reqExecutionOrderBuffer.contains(requestMeta)) {
@@ -1385,7 +1404,7 @@ public class PipeConsensusReceiver {
             // when the last seal req is applied, we can discard this event.
             if (resp != null
                 && resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              onSuccess(onSyncedCommitIndex + 1, isTransferTsFileSeal);
+              onSuccess(tCommitId, isTransferTsFileSeal);
             }
             return resp;
           }
@@ -1400,7 +1419,7 @@ public class PipeConsensusReceiver {
 
             if (resp != null
                 && resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              onSuccess(tCommitId.getCommitIndex(), isTransferTsFileSeal);
+              onSuccess(tCommitId, isTransferTsFileSeal);
               // signal all other reqs that may wait for this event
               condition.signalAll();
             }
@@ -1428,7 +1447,7 @@ public class PipeConsensusReceiver {
 
                 if (resp != null
                     && resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                  onSuccess(tCommitId.getCommitIndex(), isTransferTsFileSeal);
+                  onSuccess(tCommitId, isTransferTsFileSeal);
                   // signal all other reqs that may wait for this event
                   condition.signalAll();
                 }
@@ -1463,11 +1482,29 @@ public class PipeConsensusReceiver {
       LOGGER.info(
           "PipeConsensus-PipeName-{}: receiver detected an newer rebootTimes, which indicates the leader has rebooted. receiver will reset all its data.",
           consensusPipeName);
-      this.reqExecutionOrderBuffer.clear();
-      this.onSyncedCommitIndex = 0;
-      // sync the follower's connectorRebootTimes with connector's actual rebootTimes
+      // since pipe task will resend all data that hasn't synchronized after dataNode reboots, it's
+      // safe to clear all events in buffer.
+      clear();
+      // sync the follower's connectorRebootTimes with connector's actual rebootTimes.
       this.connectorRebootTimes = connectorRebootTimes;
+      // Note: dataNode rebooting will reset pipeTaskRestartTimes.
+      this.pipeTaskRestartTimes = 0;
+    }
+
+    private void resetWithNewestRestartTime(int pipeTaskRestartTimes) {
+      LOGGER.info(
+          "PipeConsensus-PipeName-{}: receiver detected an newer pipeTaskRestartTimes, which indicates the pipe task has restarted. receiver will reset all its data.",
+          consensusPipeName);
+      // since pipe task will resend all data that hasn't synchronized after restarts, it's safe to
+      // clear all events in buffer.
+      clear();
+      this.pipeTaskRestartTimes = pipeTaskRestartTimes;
+    }
+
+    private void clear() {
+      this.reqExecutionOrderBuffer.clear();
       this.tsFileWriterPool.handleExit(consensusPipeName);
+      this.onSyncedCommitIndex = 0;
     }
   }
 
@@ -1479,8 +1516,12 @@ public class PipeConsensusReceiver {
       this.commitId = commitId;
     }
 
-    public int getRebootTimes() {
-      return commitId.getRebootTimes();
+    public int getDataNodeRebootTimes() {
+      return commitId.getDataNodeRebootTimes();
+    }
+
+    public int getPipeTaskRestartTimes() {
+      return commitId.getPipeTaskRestartTimes();
     }
 
     public long getCommitIndex() {
