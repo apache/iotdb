@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.subscription.agent;
 
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMetaKeeper;
 import org.apache.iotdb.db.subscription.broker.SubscriptionBroker;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
@@ -35,6 +36,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
 
 public class SubscriptionBrokerAgent {
 
@@ -204,13 +206,16 @@ public class SubscriptionBrokerAgent {
     broker.executePrefetch(topicName);
   }
 
-  public int getPipeEventCount(final String consumerGroupId, final String topicName) {
+  public int getPipeEventCount(
+      final String consumerGroupId,
+      final String topicName,
+      final Predicate<EnrichedEvent> predicate) {
     final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
       LOGGER.warn(
           "Subscription: broker bound to consumer group [{}] does not exist", consumerGroupId);
       return 0;
     }
-    return broker.getPipeEventCount(topicName);
+    return broker.getPipeEventCount(topicName, predicate);
   }
 }

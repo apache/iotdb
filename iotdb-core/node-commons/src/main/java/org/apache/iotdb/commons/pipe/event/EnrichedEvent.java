@@ -326,6 +326,10 @@ public abstract class EnrichedEvent implements Event {
     return !(this instanceof PipeWritePlanEvent) && !(this instanceof PipeSnapshotEvent);
   }
 
+  public boolean isDataRegionRealtimeEvent() {
+    return true;
+  }
+
   /**
    * Get the pattern string of this {@link EnrichedEvent}.
    *
@@ -394,6 +398,10 @@ public abstract class EnrichedEvent implements Event {
   /** Whether the {@link EnrichedEvent} need to be committed in order. */
   public boolean needToCommit() {
     return true;
+  }
+
+  public boolean needToCommitRate() {
+    return this.needToCommit() && shouldReportOnCommit;
   }
 
   public abstract boolean mayEventTimeOverlappedWithTimeRange();

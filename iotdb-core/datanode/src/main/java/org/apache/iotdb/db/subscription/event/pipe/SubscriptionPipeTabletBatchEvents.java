@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.subscription.event.pipe;
 
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
 
 import java.io.File;
+import java.util.function.Predicate;
 
 public class SubscriptionPipeTabletBatchEvents implements SubscriptionPipeEvents {
 
@@ -56,7 +58,7 @@ public class SubscriptionPipeTabletBatchEvents implements SubscriptionPipeEvents
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 
   @Override
-  public int getPipeEventCount() {
-    return batch.getPipeEventCount();
+  public int getPipeEventCount(final Predicate<EnrichedEvent> predicate) {
+    return batch.getPipeEventCount(predicate);
   }
 }

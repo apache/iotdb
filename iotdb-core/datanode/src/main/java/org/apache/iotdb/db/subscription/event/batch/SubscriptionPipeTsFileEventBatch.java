@@ -43,7 +43,6 @@ import java.util.function.Consumer;
 public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch {
 
   private final PipeTabletEventTsFileBatch batch;
-  private final List<EnrichedEvent> enrichedEvents;
 
   public SubscriptionPipeTsFileEventBatch(
       final int regionId,
@@ -52,7 +51,6 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
       final long maxBatchSizeInBytes) {
     super(regionId, prefetchingQueue, maxDelayInMs, maxBatchSizeInBytes);
     this.batch = new PipeTabletEventTsFileBatch(maxDelayInMs, maxBatchSizeInBytes);
-    this.enrichedEvents = new ArrayList<>();
   }
 
   @Override
@@ -131,11 +129,5 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
     final Map<String, String> coreReportMessage = super.coreReportMessage();
     coreReportMessage.put("batch", batch.toString());
     return coreReportMessage;
-  }
-
-  //////////////////////////// APIs provided for metric framework ////////////////////////////
-
-  public int getPipeEventCount() {
-    return enrichedEvents.size();
   }
 }
