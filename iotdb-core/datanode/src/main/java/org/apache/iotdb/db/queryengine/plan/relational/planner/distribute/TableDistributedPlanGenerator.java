@@ -511,14 +511,17 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitAggregation(AggregationNode node, PlanContext context) {
+    OrderingScheme expectedOrderingSchema = null;
     if (node.isStreamable()) {
-      context.setExpectedOrderingScheme(constructOrderingSchema(node.getPreGroupedSymbols()));
+      expectedOrderingSchema = constructOrderingSchema(node.getPreGroupedSymbols());
+      context.setExpectedOrderingScheme(expectedOrderingSchema);
     }
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
     OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
-    if (childOrdering != null) {
-      nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
-    }
+    // TODO add back while implementing StreamingAggregationOperator
+    //    if (childOrdering != null) {
+    //      nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
+    //    }
 
     if (childrenNodes.size() == 1) {
       node.setChild(childrenNodes.get(0));
@@ -531,18 +534,28 @@ public class TableDistributedPlanGenerator
     childrenNodes =
         childrenNodes.stream()
             .map(
-                child ->
-                    new AggregationNode(
-                        queryId.genPlanNodeId(),
-                        child,
-                        intermediate.getAggregations(),
-                        intermediate.getGroupingSets(),
-                        intermediate.getPreGroupedSymbols(),
-                        intermediate.getStep(),
-                        intermediate.getHashSymbol(),
-                        intermediate.getGroupIdSymbol()))
+                child -> {
+                  PlanNodeId planNodeId = queryId.genPlanNodeId();
+                  AggregationNode aggregationNode =
+                      new AggregationNode(
+                          planNodeId,
+                          child,
+                          intermediate.getAggregations(),
+                          intermediate.getGroupingSets(),
+                          intermediate.getPreGroupedSymbols(),
+                          intermediate.getStep(),
+                          intermediate.getHashSymbol(),
+                          intermediate.getGroupIdSymbol());
+                  // TODO add back while implementing StreamingAggregationOperator
+                  //                  if (node.isStreamable()) {
+                  //                    nodeOrderingMap.put(planNodeId, childOrdering);
+                  //                  }
+                  return aggregationNode;
+                })
             .collect(Collectors.toList());
-    splitResult.left.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
+    splitResult.left.setChild(
+        mergeChildrenViaCollectOrMergeSort(
+            nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId()), childrenNodes));
     return Collections.singletonList(splitResult.left);
   }
 
