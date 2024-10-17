@@ -26,7 +26,7 @@ import java.util.Objects;
 
 public class PipeEnriched extends Statement {
 
-  Statement innerStatement;
+  private final Statement innerStatement;
 
   public PipeEnriched(@NotNull Statement innerstatement) {
     super(innerstatement.getLocation().isPresent() ? innerstatement.getLocation().get() : null);
