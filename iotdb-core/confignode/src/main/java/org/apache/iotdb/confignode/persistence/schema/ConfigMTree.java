@@ -681,7 +681,7 @@ public class ConfigMTree {
           database.getFullPath().substring(ROOT.length() + 1), tableName);
     }
     final ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
-    if (!tableNode.getStatus().equals(TableNodeStatus.USING)) {
+    if (tableNode.getStatus().equals(TableNodeStatus.PRE_CREATE)) {
       throw new IllegalStateException();
     }
     tableNode.setStatus(TableNodeStatus.PRE_DELETE);
