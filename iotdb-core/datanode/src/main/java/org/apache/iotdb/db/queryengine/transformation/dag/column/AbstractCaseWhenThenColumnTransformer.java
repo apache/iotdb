@@ -55,15 +55,86 @@ public abstract class AbstractCaseWhenThenColumnTransformer extends ColumnTransf
 
   @Override
   public void evaluate() {
-    int[] branchIndexForEachRow = new int[elseTransformer.getColumnCachePositionCount()];
+
+    List<Column> thenColumnList = new ArrayList<>();
+
+    // region evaluate first when
+    ColumnTransformer firstWhenColumnTransformer = whenThenTransformers.get(0).left;
+    firstWhenColumnTransformer.evaluate();
+    Column firstWhenColumn = firstWhenColumnTransformer.getColumn();
+
+    int positionCount = firstWhenColumn.getPositionCount();
+    boolean[] selection = new boolean[positionCount];
+    Arrays.fill(selection, true);
+
+    int[] branchIndexForEachRow = new int[positionCount];
     Arrays.fill(branchIndexForEachRow, -1);
 
-    doTransform(branchIndexForEachRow);
+    boolean[] selectionForThen = selection.clone();
+
+    // Update branchIndexForEachRow based on first whenColumn
+    for (int i = 0; i < positionCount; i++) {
+      // Update selectionForThen and branchIndexForEachRow when there is no matching whenTransformer
+      // for the current row.
+      if (branchIndexForEachRow[i] == -1) {
+        if (!firstWhenColumn.isNull(i) && firstWhenColumn.getBoolean(i)) {
+          branchIndexForEachRow[i] = 0;
+          selectionForThen[i] = true;
+          selection[i] = false;
+        } else {
+          selectionForThen[i] = false;
+        }
+      }
+    }
+
+    ColumnTransformer firstThenColumnTransformer = whenThenTransformers.get(0).right;
+    firstThenColumnTransformer.evaluateWithSelection(selectionForThen);
+    Column firstThenColumn = firstThenColumnTransformer.getColumn();
+    thenColumnList.add(firstThenColumn);
+
+    // endregion
+
+    // when and then columns
+    for (int i = 1; i < whenThenTransformers.size(); i++) {
+      ColumnTransformer whenColumnTransformer = whenThenTransformers.get(i).left;
+      whenColumnTransformer.evaluateWithSelection(selection);
+      Column whenColumn = whenColumnTransformer.getColumn();
+
+      selectionForThen = selection.clone();
+
+      for (int j = 0; j < positionCount; j++) {
+        if (selection[j] && !whenColumn.isNull(j) && whenColumn.getBoolean(j)) {
+          branchIndexForEachRow[j] = i;
+          selectionForThen[j] = true;
+          // also update selection array
+          selection[j] = false;
+        } else {
+          selectionForThen[j] = false;
+        }
+      }
+
+      ColumnTransformer thenColumnTransformer = whenThenTransformers.get(i).right;
+      thenColumnTransformer.evaluateWithSelection(selectionForThen);
+      Column thenColumn = thenColumnTransformer.getColumn();
+      thenColumnList.add(thenColumn);
+    }
+
+    // elseColumn
+    doTransform(branchIndexForEachRow, positionCount, thenColumnList);
   }
 
   @Override
   public void evaluateWithSelection(boolean[] selection) {
+
+    // region initialize branchIndexForEachRow.
+    // branchIndexForEachRow indicates the index of the WhenTransformer matched by each row.
     int[] branchIndexForEachRow = new int[selection.length];
+    // positionCount indicates the length of column
+    int positionCount = selection.length;
+    boolean[] selectionForWhen = selection.clone();
+
+    // An assignment of -1 means that evaluation is required, otherwise it means that evaluation is
+    // not required.
     for (int i = 0; i < selection.length; i++) {
       if (selection[i]) {
         branchIndexForEachRow[i] = -1;
@@ -71,91 +142,77 @@ public abstract class AbstractCaseWhenThenColumnTransformer extends ColumnTransf
         branchIndexForEachRow[i] = whenThenTransformers.size();
       }
     }
-    doTransform(branchIndexForEachRow);
-  }
+    // endregion
 
-  private void doTransform(int[] branch) {
-    int[] branchIndexForEachRow = null;
     List<Column> thenColumnList = new ArrayList<>();
 
     // when and then columns
     for (int i = 0; i < whenThenTransformers.size(); i++) {
       ColumnTransformer whenColumnTransformer = whenThenTransformers.get(i).left;
-      whenColumnTransformer.tryEvaluate();
+      whenColumnTransformer.evaluateWithSelection(selectionForWhen);
       Column whenColumn = whenColumnTransformer.getColumn();
 
-      int positionCount = whenColumn.getPositionCount();
-      boolean[] selection = new boolean[positionCount];
-
-      if (branchIndexForEachRow == null) {
-        // init branchIndexForEachRow if it is null
-        branchIndexForEachRow = new int[positionCount];
-        Arrays.fill(branchIndexForEachRow, -1);
-      } else {
-        // update selection with branchIndexForEachRow
-        for (int j = 0; j < branchIndexForEachRow.length; j++) {
-          if (branchIndexForEachRow[j] != -1) {
-            selection[j] = true;
-          }
-        }
-      }
+      boolean[] selectionForThen = selectionForWhen.clone();
 
       for (int j = 0; j < positionCount; j++) {
-        if (!whenColumn.isNull(j) && whenColumn.getBoolean(j)) {
+        if (selectionForWhen[j] && !whenColumn.isNull(j) && whenColumn.getBoolean(j)) {
           branchIndexForEachRow[j] = i;
-          selection[j] = true;
+          selectionForThen[j] = true;
+          // also update selection array
+          selectionForWhen[j] = false;
         } else {
-          selection[j] = false;
+          selectionForThen[j] = false;
         }
       }
 
       ColumnTransformer thenColumnTransformer = whenThenTransformers.get(i).right;
-      thenColumnTransformer.evaluateWithSelection(selection);
+      thenColumnTransformer.evaluateWithSelection(selectionForThen);
       Column thenColumn = thenColumnTransformer.getColumn();
       thenColumnList.add(thenColumn);
     }
 
     // elseColumn
-    if (branchIndexForEachRow != null) {
-      int positionCount = branchIndexForEachRow.length;
-      boolean[] selectionForElse = new boolean[positionCount];
-      for (int i = 0; i < branchIndexForEachRow.length; i++) {
-        if (branchIndexForEachRow[i] == -1) {
-          selectionForElse[i] = true;
-        }
+    // when selectionForElse[i] is false represent the rows that do not need to evaluate
+    doTransform(branchIndexForEachRow, positionCount, thenColumnList);
+  }
+
+  private void doTransform(
+      int[] branchIndexForEachRow, int positionCount, List<Column> thenColumnList) {
+    boolean[] selectionForElse = new boolean[positionCount];
+    for (int i = 0; i < branchIndexForEachRow.length; i++) {
+      if (branchIndexForEachRow[i] == -1) {
+        selectionForElse[i] = true;
       }
-      elseTransformer.evaluateWithSelection(selectionForElse);
+    }
+    elseTransformer.evaluateWithSelection(selectionForElse);
 
-      ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
-      Column elseColumn = elseTransformer.getColumn();
+    ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
+    Column elseColumn = elseTransformer.getColumn();
 
-      for (int i = 0; i < positionCount; i++) {
-        Column resultColumn = null;
-        if (branchIndexForEachRow[i] == -1) {
-          resultColumn = elseColumn;
-        } else if (branchIndexForEachRow[i] < whenThenTransformers.size()) {
-          resultColumn = thenColumnList.get(branchIndexForEachRow[i]);
-        }
-
-        if (resultColumn == null || resultColumn.isNull(i)) {
-          builder.appendNull();
-        } else {
-          writeToColumnBuilder(
-              branchIndexForEachRow[i] == -1
-                  ? elseTransformer.getType()
-                  : whenThenTransformers.get(branchIndexForEachRow[i]).right.getType(),
-              resultColumn,
-              i,
-              builder);
-        }
+    for (int i = 0; i < positionCount; i++) {
+      Column resultColumn = null;
+      Type thenColumnType = null;
+      if (branchIndexForEachRow[i] == -1) {
+        resultColumn = elseColumn;
+        thenColumnType = elseTransformer.getType();
+      } else if (branchIndexForEachRow[i] < whenThenTransformers.size()) {
+        resultColumn = thenColumnList.get(branchIndexForEachRow[i]);
+        thenColumnType = whenThenTransformers.get(branchIndexForEachRow[i]).right.getType();
       }
 
-      initializeColumnCache(builder.build());
-      for (Pair<ColumnTransformer, ColumnTransformer> whenThenColumnTransformer :
-          whenThenTransformers) {
-        whenThenColumnTransformer.left.clearCache();
-        whenThenColumnTransformer.right.clearCache();
+      if (resultColumn == null || resultColumn.isNull(i)) {
+        builder.appendNull();
+      } else {
+        writeToColumnBuilder(thenColumnType, resultColumn, i, builder);
       }
+    }
+
+    initializeColumnCache(builder.build());
+    for (Pair<ColumnTransformer, ColumnTransformer> whenThenColumnTransformer :
+        whenThenTransformers) {
+      whenThenColumnTransformer.left.clearCache();
+      whenThenColumnTransformer.right.clearCache();
+      elseTransformer.clearCache();
     }
   }
 
