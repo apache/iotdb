@@ -177,11 +177,18 @@ public class TableModelPlanner implements IPlanner {
   public void setRedirectInfo(
       IAnalysis iAnalysis, TEndPoint localEndPoint, TSStatus tsstatus, TSStatusCode statusCode) {
     Analysis analysis = (Analysis) iAnalysis;
-    if (!(analysis.getStatement() instanceof WrappedInsertStatement)) {
+
+    // Get the inner statement of PipeEnriched
+    Statement statementToRedirect =
+        analysis.getStatement() instanceof PipeEnriched
+            ? ((PipeEnriched) analysis.getStatement()).getInnerStatement()
+            : analysis.getStatement();
+
+    if (!(statementToRedirect instanceof WrappedInsertStatement)) {
       return;
     }
     InsertBaseStatement insertStatement =
-        ((WrappedInsertStatement) analysis.getStatement()).getInnerTreeStatement();
+        ((WrappedInsertStatement) statementToRedirect).getInnerTreeStatement();
 
     if (!analysis.isFinishQueryAfterAnalyze()) {
       // Table Model Session only supports insertTablet
