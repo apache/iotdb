@@ -38,14 +38,15 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 
-import org.apache.commons.lang3.stream.Streams;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.file.metadata.statistics.StringStatistics;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.Binary;
@@ -101,7 +102,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   private final int maxTsBlockLineNum;
 
   // for different aggregations aiming to same column, use this variable to point to same column
-  private final int[] layoutArray;
+  private final List<Integer> aggArguments;
 
   private QueryDataSource queryDataSource;
 
@@ -129,7 +130,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
       GroupByTimeParameter groupByTimeParameter,
       long maxReturnSize,
       boolean canUseStatistics,
-      int[] layoutArray) {
+      List<Integer> aggArguments) {
 
     super(
         sourceId,
@@ -161,7 +162,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     this.measurementColumnTSDataTypes =
         measurementSchemas.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
     this.currentDeviceIndex = 0;
-    this.layoutArray = layoutArray;
+    this.aggArguments = aggArguments;
     this.timeIterator = tableTimeRangeIterator;
     if (tableTimeRangeIterator.getType()
         == ITableTimeRangeIterator.TimeIteratorType.SINGLE_TIME_ITERATOR) {
@@ -400,29 +401,81 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     TsBlock inputRegion = inputTsBlock.getRegion(0, lastIndexToProcess + 1);
 
     // TODO(beyyes) add optimization: if only agg measurement columns, no need to transfer
-    Column[] valueColumns = new Column[tableAggregators.size()];
-    for (int i = 0; i < tableAggregators.size(); i++) {
-      ColumnSchema columnSchema = columnSchemas.get(layoutArray[i]);
-      if (Streams.of(
-              TsTableColumnCategory.ID, TsTableColumnCategory.ATTRIBUTE, TsTableColumnCategory.TIME)
-          .anyMatch(columnSchema.getColumnCategory()::equals)) {
-        valueColumns[i] = inputRegion.getTimeColumn();
+
+    Column[] valueColumns = new Column[aggArguments.size()];
+    for (int i = 0; i < aggArguments.size(); i++) {
+      int idx = aggArguments.get(i);
+      if (valueColumns[aggArguments.get(i)] != null) {
+        continue;
+      }
+      TsTableColumnCategory columnSchemaCategory =
+          columnSchemas.get(aggArguments.get(i)).getColumnCategory();
+      if (columnSchemaCategory == TsTableColumnCategory.TIME) {
+        valueColumns[idx] = inputRegion.getTimeColumn();
+      } else if (columnSchemaCategory == TsTableColumnCategory.ATTRIBUTE) {
+        String attr =
+            deviceEntries
+                .get(currentDeviceIndex)
+                .getAttributeColumnValues()
+                .get(columnsIndexArray[aggArguments.get(i)]);
+        if (attr == null) {
+          valueColumns[idx] =
+              new RunLengthEncodedColumn(
+                  new BinaryColumn(1, Optional.of(new boolean[] {true}), new Binary[] {null}),
+                  inputRegion.getTimeColumn().getPositionCount());
+        } else {
+          valueColumns[idx] =
+              new RunLengthEncodedColumn(
+                  new BinaryColumn(1, Optional.empty(), new Binary[] {new Binary(attr.getBytes())}),
+                  inputRegion.getTimeColumn().getPositionCount());
+        }
+      } else if (columnSchemaCategory == TsTableColumnCategory.ID) {
+        // TODO avoid create deviceStatics multi times; count, sum can use time statistics
+        String id =
+            (String)
+                deviceEntries
+                    .get(currentDeviceIndex)
+                    .getNthSegment(columnsIndexArray[aggArguments.get(i)] + 1);
+        if (id == null) {
+          valueColumns[idx] =
+              new RunLengthEncodedColumn(
+                  new BinaryColumn(1, Optional.of(new boolean[] {true}), new Binary[] {null}),
+                  inputRegion.getTimeColumn().getPositionCount());
+        } else {
+          valueColumns[idx] =
+              new RunLengthEncodedColumn(
+                  new BinaryColumn(1, Optional.empty(), new Binary[] {new Binary(id.getBytes())}),
+                  inputRegion.getTimeColumn().getPositionCount());
+        }
       } else {
-        valueColumns[i] = inputRegion.getColumn(columnsIndexArray[i]);
+        valueColumns[idx] = inputRegion.getColumn(columnsIndexArray[aggArguments.get(i)]);
       }
     }
+
+    //      if (Streams.of(
+    //              TsTableColumnCategory.ID, TsTableColumnCategory.ATTRIBUTE,
+    // TsTableColumnCategory.TIME)
+    //          .anyMatch(columnSchema.getColumnCategory()::equals)) {
+    //        if (isNullIdOrAttribute(i)) {
+    //          valueColumns[i] =
+    //              new RunLengthEncodedColumn(
+    //                  new BinaryColumn(1, Optional.of(new boolean[] {true}), new Binary[] {null}),
+    //                  inputRegion.getTimeColumn().getPositionCount());
+    //        } else {
+    //          valueColumns[i] = inputRegion.getTimeColumn();
+    //        }
+    //      } else {
+    //        valueColumns[i] = inputRegion.getColumn(columnsIndexArray[aggArguments.get(i)]);
+    //      }
+    //    }
+
     TsBlock tsBlock =
         new TsBlock(
             inputRegion.getPositionCount(),
             new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, inputRegion.getPositionCount()),
             valueColumns);
 
-    for (int i = 0; i < aggregators.size(); i++) {
-      if (isNullIdOrAttribute(i)) {
-        continue;
-      }
-
-      TableAggregator aggregator = aggregators.get(i);
+    for (TableAggregator aggregator : tableAggregators) {
       // current agg method has been calculated
       if (aggregator.hasFinalResult()) {
         continue;
@@ -430,6 +483,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
 
       aggregator.processBlock(tsBlock);
     }
+
     int lastReadRowIndex = lastIndexToProcess + 1;
     if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
       return null;
@@ -440,33 +494,82 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
 
   /** ID or Attribute is null, skip this aggregation logic */
   private boolean isNullIdOrAttribute(int i) {
-    if (TsTableColumnCategory.ID == columnSchemas.get(layoutArray[i]).getColumnCategory()
-        && deviceEntries.get(currentDeviceIndex).getNthSegment(columnsIndexArray[i] + 1) == null) {
+    if (TsTableColumnCategory.ID == columnSchemas.get(aggArguments.get(i)).getColumnCategory()
+        && deviceEntries
+                .get(currentDeviceIndex)
+                .getNthSegment(columnsIndexArray[aggArguments.get(i)] + 1)
+            == null) {
       return true;
     }
 
-    return TsTableColumnCategory.ATTRIBUTE == columnSchemas.get(layoutArray[i]).getColumnCategory()
+    return TsTableColumnCategory.ATTRIBUTE
+            == columnSchemas.get(aggArguments.get(i)).getColumnCategory()
         && deviceEntries
                 .get(currentDeviceIndex)
                 .getAttributeColumnValues()
-                .get(columnsIndexArray[i])
+                .get(columnsIndexArray[aggArguments.get(i)])
             == null;
   }
 
   protected void calcFromStatistics(Statistics timeStatistics, Statistics[] valueStatistics) {
-    for (int i = 0; i < tableAggregators.size(); i++) {
-      if (isNullIdOrAttribute(i)) {
-        continue;
-      }
+    int idx = -1;
 
-      TableAggregator aggregator = tableAggregators.get(i);
+    for (TableAggregator aggregator : tableAggregators) {
+
       if (aggregator.hasFinalResult()) {
         continue;
       }
-      aggregator.processStatistics(
-          columnSchemas.get(layoutArray[i]).getColumnCategory() == TsTableColumnCategory.MEASUREMENT
-              ? valueStatistics[columnsIndexArray[i]]
-              : timeStatistics);
+
+      Statistics[] statisticsArray = new Statistics[aggregator.getChannelCount()];
+
+      for (int i = 0; i < aggregator.getChannelCount(); i++) {
+        idx++;
+
+        TsTableColumnCategory columnSchemaCategory =
+            columnSchemas.get(aggArguments.get(idx)).getColumnCategory();
+        if (columnSchemaCategory == TsTableColumnCategory.TIME) {
+          statisticsArray[i] = timeStatistics;
+        } else if (columnSchemaCategory == TsTableColumnCategory.ATTRIBUTE) {
+          String attr =
+              deviceEntries
+                  .get(currentDeviceIndex)
+                  .getAttributeColumnValues()
+                  .get(columnsIndexArray[aggArguments.get(idx)]);
+          if (attr == null) {
+            statisticsArray[i] = null;
+          } else {
+            StringStatistics stringStatics = new StringStatistics();
+            stringStatics.setCount((int) timeStatistics.getCount());
+            stringStatics.setStartTime(timeStatistics.getStartTime());
+            stringStatics.setEndTime(timeStatistics.getEndTime());
+            Binary v = new Binary(attr.getBytes());
+            stringStatics.initializeStats(v, v, v, v);
+            statisticsArray[i] = stringStatics;
+          }
+        } else if (columnSchemaCategory == TsTableColumnCategory.ID) {
+          // TODO avoid create deviceStatics multi times; count, sum can use time statistics
+          String id =
+              (String)
+                  deviceEntries
+                      .get(currentDeviceIndex)
+                      .getNthSegment(columnsIndexArray[aggArguments.get(idx)] + 1);
+          if (id == null) {
+            statisticsArray[i] = null;
+          } else {
+            StringStatistics stringStatics = new StringStatistics();
+            stringStatics.setCount((int) timeStatistics.getCount());
+            stringStatics.setStartTime(timeStatistics.getStartTime());
+            stringStatics.setEndTime(timeStatistics.getEndTime());
+            Binary v = new Binary(id.getBytes());
+            stringStatics.initializeStats(v, v, v, v);
+            statisticsArray[i] = stringStatics;
+          }
+        } else {
+          statisticsArray[i] = valueStatistics[columnsIndexArray[aggArguments.get(idx)]];
+        }
+      }
+
+      aggregator.processStatistics(statisticsArray);
     }
   }
 

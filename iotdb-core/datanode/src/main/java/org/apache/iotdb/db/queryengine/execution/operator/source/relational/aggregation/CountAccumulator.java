@@ -81,11 +81,11 @@ public class CountAccumulator implements TableAccumulator {
   }
 
   @Override
-  public void addStatistics(Statistics statistics) {
-    if (statistics == null) {
+  public void addStatistics(Statistics[] statistics) {
+    if (statistics[0] == null) {
       return;
     }
-    countState += statistics.getCount();
+    countState += statistics[0].getCount();
   }
 
   @Override
