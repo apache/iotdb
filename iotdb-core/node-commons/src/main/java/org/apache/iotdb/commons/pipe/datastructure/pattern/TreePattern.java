@@ -30,11 +30,13 @@ import org.slf4j.LoggerFactory;
 import java.util.Arrays;
 import java.util.Objects;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_CAPTURE_TREE_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_KEY;
@@ -64,7 +66,7 @@ public abstract class TreePattern {
   }
 
   /**
-   * Interpret from source parameters and get a {@link PipePattern}.
+   * Interpret from source parameters and get a {@link TreePattern}.
    *
    * @return The interpreted {@link TreePattern} which is not {@code null}.
    */
@@ -80,7 +82,15 @@ public abstract class TreePattern {
                     SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
                 .equals(SystemConstant.SQL_DIALECT_TREE_VALUE));
 
-    final String path = sourceParameters.getStringByKeys(EXTRACTOR_PATH_KEY, SOURCE_PATH_KEY);
+    final String path;
+    if (sourceParameters.hasAnyAttributes(
+        EXTRACTOR_CAPTURE_TREE_PATH_KEY, SOURCE_CAPTURE_TREE_PATH_KEY)) {
+      path =
+          sourceParameters.getStringByKeys(
+              EXTRACTOR_CAPTURE_TREE_PATH_KEY, SOURCE_CAPTURE_TREE_PATH_KEY);
+    } else {
+      path = sourceParameters.getStringByKeys(EXTRACTOR_PATH_KEY, SOURCE_PATH_KEY);
+    }
 
     // 1. If "source.path" is specified, it will be interpreted as an IoTDB-style path,
     // ignoring the other 2 parameters.

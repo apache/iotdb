@@ -28,6 +28,9 @@ public class PipeExtractorConstant {
   public static final String SOURCE_CAPTURE_TREE_KEY = "source.capture.tree";
   public static final String EXTRACTOR_CAPTURE_TABLE_KEY = "extractor.capture.table";
   public static final String SOURCE_CAPTURE_TABLE_KEY = "source.capture.table";
+  public static final String EXTRACTOR_CAPTURE_TREE_PATH_KEY = "extractor.capture.tree.path";
+  public static final String SOURCE_CAPTURE_TREE_PATH_KEY = "source.capture.tree.path";
+  public static final String SOURCE_CAPTURE_TREE_PATH_DEFAULT_VALUE = "root.**";
 
   public static final String EXTRACTOR_INCLUSION_KEY = "extractor.inclusion";
   public static final String SOURCE_INCLUSION_KEY = "source.inclusion";
@@ -82,6 +85,9 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_MODS_ENABLE_KEY = "extractor.mods.enable";
   public static final String SOURCE_MODS_ENABLE_KEY = "source.mods.enable";
   public static final boolean EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE = false;
+  public static final String EXTRACTOR_MODS_KEY = "extractor.mods";
+  public static final String SOURCE_MODS_KEY = "source.mods";
+  public static final boolean EXTRACTOR_MODS_DEFAULT_VALUE = EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE;
 
   public static final String EXTRACTOR_REALTIME_ENABLE_KEY = "extractor.realtime.enable";
   public static final String SOURCE_REALTIME_ENABLE_KEY = "source.realtime.enable";

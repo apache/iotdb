@@ -57,6 +57,7 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_KEY;
@@ -72,6 +73,9 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_STREAMING_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_STREAMING_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_STRICT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE;
@@ -88,6 +92,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_WATERMARK_INTERVAL_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_WATERMARK_INTERVAL_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_CAPTURE_TREE_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_END_TIME_KEY;
@@ -97,6 +102,9 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODE_SNAPSHOT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODE_STREAMING_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODE_STRICT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODS_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODS_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_REALTIME_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_REALTIME_LOOSE_RANGE_KEY;
@@ -148,6 +156,8 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
         && validator
             .getParameters()
             .hasAnyAttributes(
+                PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_PATH_KEY,
+                PipeExtractorConstant.SOURCE_CAPTURE_TREE_PATH_KEY,
                 PipeExtractorConstant.EXTRACTOR_PATH_KEY,
                 PipeExtractorConstant.SOURCE_PATH_KEY,
                 PipeExtractorConstant.EXTRACTOR_PATTERN_KEY,
@@ -364,6 +374,32 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
             EXTRACTOR_REALTIME_LOOSE_RANGE_KEY,
             SOURCE_REALTIME_LOOSE_RANGE_KEY);
       }
+    }
+
+    // Check coexistence of mods and mods.enable
+    if (validator
+            .getParameters()
+            .hasAnyAttributes(EXTRACTOR_MODS_ENABLE_KEY, SOURCE_MODS_ENABLE_KEY)
+        && validator.getParameters().hasAnyAttributes(EXTRACTOR_MODS_KEY, SOURCE_MODS_KEY)) {
+      LOGGER.warn(
+          "When {} or {} is specified, specifying {} and {} is invalid.",
+          EXTRACTOR_MODS_KEY,
+          SOURCE_MODS_KEY,
+          EXTRACTOR_MODS_ENABLE_KEY,
+          SOURCE_MODS_ENABLE_KEY);
+    }
+
+    // Check coexistence of capture.tree.path and path
+    if (validator
+            .getParameters()
+            .hasAnyAttributes(EXTRACTOR_CAPTURE_TREE_PATH_KEY, SOURCE_CAPTURE_TREE_PATH_KEY)
+        && validator.getParameters().hasAnyAttributes(EXTRACTOR_PATH_KEY, SOURCE_PATH_KEY)) {
+      LOGGER.warn(
+          "When {} or {} is specified, specifying {} and {} is invalid.",
+          EXTRACTOR_CAPTURE_TREE_PATH_KEY,
+          SOURCE_CAPTURE_TREE_PATH_KEY,
+          EXTRACTOR_PATH_KEY,
+          SOURCE_PATH_KEY);
     }
 
     constructHistoricalExtractor();
