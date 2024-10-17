@@ -577,7 +577,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
               } else {
                 // In case of table model deviceID
                 if (tablePattern.isTableModelDataAllowedToBeCaptured()
-                    && tablePattern.matchesDatabase(resource.getDatabaseName())
+                    // The database name in resource is prefixed with "root."
+                    && tablePattern.matchesDatabase(resource.getDatabaseName().substring(5))
                     && tablePattern.matchesTable(deviceID.getTableName())) {
                   tsfile2IsTableModelMap.compute(
                       resource,
