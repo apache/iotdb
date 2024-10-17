@@ -1371,7 +1371,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             functionName,
             getAggregationTypeByFuncName(functionName),
             argumentTypes,
-            Collections.emptyList(),
+            aggregation.getArguments(),
             Collections.emptyMap(),
             true);
 
