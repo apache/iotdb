@@ -194,7 +194,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
       // executed on all nodes to ensure the consistency.
       return;
     } else {
-      if (!topicMeta.hasSubscribedConsumerGroup()) {
+      if (!consumerGroupMetaKeeper.isTopicSubscribedByConsumerGroup(topicName)) {
         return;
       }
     }
@@ -506,6 +506,16 @@ public class SubscriptionInfo implements SnapshotProcessor {
     }
   }
 
+  public boolean isTopicSubscribedByConsumerGroup(
+      final String topicName, final String consumerGroupId) {
+    acquireReadLock();
+    try {
+      return consumerGroupMetaKeeper.isTopicSubscribedByConsumerGroup(topicName, consumerGroupId);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
   public TSStatus alterConsumerGroup(AlterConsumerGroupPlan plan) {
     acquireWriteLock();
     try {
@@ -630,7 +640,8 @@ public class SubscriptionInfo implements SnapshotProcessor {
   private List<SubscriptionMeta> getAllSubscriptionMeta() {
     List<SubscriptionMeta> allSubscriptions = new ArrayList<>();
     for (TopicMeta topicMeta : topicMetaKeeper.getAllTopicMeta()) {
-      for (String consumerGroupId : topicMeta.getSubscribedConsumerGroupIds()) {
+      for (String consumerGroupId :
+          consumerGroupMetaKeeper.getSubscribedConsumerGroupIds(topicMeta.getTopicName())) {
         Set<String> subscribedConsumerIDs =
             consumerGroupMetaKeeper.getConsumersSubscribingTopic(
                 consumerGroupId, topicMeta.getTopicName());
