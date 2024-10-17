@@ -284,7 +284,33 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
           EXTRACTOR_HISTORY_END_TIME_KEY);
     }
 
-    // TODO: Check if specify mode.streaming or mode.snapshot when disable realtime extractor
+    // Check if specifying mode.snapshot or mode.streaming when disable realtime extractor
+    if (!validator
+        .getParameters()
+        .getBooleanOrDefault(
+            Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
+            EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE)) {
+      if (validator
+          .getParameters()
+          .hasAnyAttributes(EXTRACTOR_MODE_SNAPSHOT_KEY, SOURCE_MODE_SNAPSHOT_KEY)) {
+        LOGGER.info(
+            "When '{}' ('{}') is set to false, specifying {} and {} is invalid.",
+            EXTRACTOR_REALTIME_ENABLE_KEY,
+            SOURCE_REALTIME_ENABLE_KEY,
+            EXTRACTOR_MODE_SNAPSHOT_KEY,
+            SOURCE_MODE_SNAPSHOT_KEY);
+      }
+      if (validator
+          .getParameters()
+          .hasAnyAttributes(EXTRACTOR_MODE_STREAMING_KEY, SOURCE_MODE_STREAMING_KEY)) {
+        LOGGER.info(
+            "When '{}' ('{}') is set to false, specifying {} and {} is invalid.",
+            EXTRACTOR_REALTIME_ENABLE_KEY,
+            SOURCE_REALTIME_ENABLE_KEY,
+            EXTRACTOR_MODE_STREAMING_KEY,
+            SOURCE_MODE_STREAMING_KEY);
+      }
+    }
 
     // Check coexistence of mode.snapshot and mode
     if (validator
