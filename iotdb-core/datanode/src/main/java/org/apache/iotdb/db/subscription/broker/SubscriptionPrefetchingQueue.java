@@ -429,18 +429,18 @@ public abstract class SubscriptionPrefetchingQueue {
                 ev,
                 commitContext,
                 this);
-            return ev;
-          }
-
-          if (ev.isCommitted()) {
-            LOGGER.warn(
-                "Subscription: subscription event {} is committed, subscription commit context {}, prefetching queue: {}",
-                ev,
-                commitContext,
-                this);
             // clean up committed event
             ev.cleanUp();
             return null; // remove this entry
+          }
+
+          if (!ev.isCommittable()) {
+            LOGGER.warn(
+                "Subscription: subscription event {} is not committable, subscription commit context {}, prefetching queue: {}",
+                ev,
+                commitContext,
+                this);
+            return ev;
           }
 
           // check if a consumer acks event from another consumer group...
