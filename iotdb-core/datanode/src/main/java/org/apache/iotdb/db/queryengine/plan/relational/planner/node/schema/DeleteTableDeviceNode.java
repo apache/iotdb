@@ -36,6 +36,8 @@ import java.util.List;
 
 public class DeleteTableDeviceNode extends PlanNode implements ISchemaRegionPlan {
   private final String tableName;
+  public static final DeleteTableDeviceNode MOCK_INSTANCE =
+      new DeleteTableDeviceNode(new PlanNodeId(""), null);
 
   public DeleteTableDeviceNode(final PlanNodeId id, final String tableName) {
     super(id);
