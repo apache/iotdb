@@ -18,21 +18,23 @@
  */
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash;
 
-import sun.misc.Unsafe;
-
 import java.io.IOException;
 import java.io.InputStream;
 
+import static java.lang.Long.rotateLeft;
+import static org.apache.tsfile.utils.BytesUtils.bytesToLongFromOffset;
+import static org.apache.tsfile.utils.RamUsageEstimator.sizeOf;
+
 public class XxHash64 {
-  private static final long PRIME64_1 = -7046029288634856825L;
-  private static final long PRIME64_2 = -4417276706812531889L;
-  private static final long PRIME64_3 = 1609587929392839161L;
-  private static final long PRIME64_4 = -8796714831421723037L;
-  private static final long PRIME64_5 = 2870177450012600261L;
+  private static final long PRIME64_1 = 0x9E3779B185EBCA87L;
+  private static final long PRIME64_2 = 0x9E3779B185EBCA87L;
+  private static final long PRIME64_3 = 0x165667B19E3779F9L;
+  private static final long PRIME64_4 = 0x85EBCA77C2b2AE63L;
+  private static final long PRIME64_5 = 0x27D4EB2F165667C5L;
   private static final long DEFAULT_SEED = 0L;
   private final long seed;
-  private static final long BUFFER_ADDRESS;
-  private final byte[] buffer;
+  private static final int BUFFER_ADDRESS;
+  private final byte[] buffer = new byte[32];
   private int bufferSize;
   private long bodyLength;
   private long v1;
@@ -47,22 +49,23 @@ public class XxHash64 {
     this(0L);
   }
 
+  // copy from
+  // https://github.com/airlift/slice/blob/master/src/main/java/io/airlift/slice/XxHash64.java
   public XxHash64(long seed) {
-    this.buffer = new byte[32];
     this.seed = seed;
-    this.v1 = seed + -7046029288634856825L + -4417276706812531889L;
-    this.v2 = seed + -4417276706812531889L;
+    this.v1 = seed + PRIME64_1 + PRIME64_2;
+    this.v2 = seed + PRIME64_2;
     this.v3 = seed;
-    this.v4 = seed - -7046029288634856825L;
+    this.v4 = seed - PRIME64_1;
   }
 
   public XxHash64 update(byte[] data) {
-    return this.update((byte[]) data, 0, data.length);
+    return this.update(data, 0, data.length);
   }
 
   public XxHash64 update(byte[] data, int offset, int length) {
     // Objects.checkFromIndexSize(offset, length, data.length);
-    this.updateHash(data, (long) (Unsafe.ARRAY_BYTE_BASE_OFFSET + offset), length);
+    this.updateHash(data, BUFFER_ADDRESS + offset, length);
     return this;
   }
 
@@ -71,7 +74,7 @@ public class XxHash64 {
     if (this.bodyLength > 0L) {
       hash = this.computeBody();
     } else {
-      hash = this.seed + 2870177450012600261L;
+      hash = this.seed + PRIME64_5;
     }
 
     hash += this.bodyLength + (long) this.bufferSize;
@@ -80,10 +83,10 @@ public class XxHash64 {
 
   private long computeBody() {
     long hash =
-        Long.rotateLeft(this.v1, 1)
-            + Long.rotateLeft(this.v2, 7)
-            + Long.rotateLeft(this.v3, 12)
-            + Long.rotateLeft(this.v4, 18);
+        rotateLeft(this.v1, 1)
+            + rotateLeft(this.v2, 7)
+            + rotateLeft(this.v3, 12)
+            + rotateLeft(this.v4, 18);
     hash = update(hash, this.v1);
     hash = update(hash, this.v2);
     hash = update(hash, this.v3);
@@ -91,14 +94,13 @@ public class XxHash64 {
     return hash;
   }
 
-  private void updateHash(byte[] base, long address, int length) {
+  private void updateHash(byte[] base, int address, int length) {
     int index;
     if (this.bufferSize > 0) {
       index = Math.min(32 - this.bufferSize, length);
-      JvmUtils.unsafe.copyMemory(
-          base, address, this.buffer, BUFFER_ADDRESS + (long) this.bufferSize, (long) index);
+      System.arraycopy(base, address, this.buffer, BUFFER_ADDRESS + this.bufferSize, index);
       this.bufferSize += index;
-      address += (long) index;
+      address += index;
       length -= index;
       if (this.bufferSize == 32) {
         this.updateBody(this.buffer, BUFFER_ADDRESS, this.bufferSize);
@@ -108,28 +110,28 @@ public class XxHash64 {
 
     if (length >= 32) {
       index = this.updateBody(base, address, length);
-      address += (long) index;
+      address += index;
       length -= index;
     }
 
     if (length > 0) {
-      JvmUtils.unsafe.copyMemory(base, address, this.buffer, BUFFER_ADDRESS, (long) length);
+      System.arraycopy(base, address, this.buffer, BUFFER_ADDRESS, length);
       this.bufferSize = length;
     }
   }
 
-  private int updateBody(byte[] base, long address, int length) {
+  private int updateBody(byte[] base, int address, int length) {
     int remaining;
     for (remaining = length; remaining >= 32; remaining -= 32) {
-      this.v1 = mix(this.v1, JvmUtils.unsafe.getLong(base, address));
-      this.v2 = mix(this.v2, JvmUtils.unsafe.getLong(base, address + 8L));
-      this.v3 = mix(this.v3, JvmUtils.unsafe.getLong(base, address + 16L));
-      this.v4 = mix(this.v4, JvmUtils.unsafe.getLong(base, address + 24L));
-      address += 32L;
+      this.v1 = mix(this.v1, bytesToLongFromOffset(base, Long.BYTES, address));
+      this.v2 = mix(this.v2, bytesToLongFromOffset(base, Long.BYTES, address + 8));
+      this.v3 = mix(this.v3, bytesToLongFromOffset(base, Long.BYTES, address + 16));
+      this.v4 = mix(this.v4, bytesToLongFromOffset(base, Long.BYTES, address + 24));
+      address += 32;
     }
 
     int index = length - remaining;
-    this.bodyLength += (long) index;
+    this.bodyLength += index;
     return index;
   }
 
@@ -138,7 +140,7 @@ public class XxHash64 {
   }
 
   public static long hash(long seed, long value) {
-    long hash = seed + 2870177450012600261L + 8L;
+    long hash = seed + PRIME64_5 + 8L;
     hash = updateTail(hash, value);
     hash = finalShuffle(hash);
     return hash;
@@ -158,7 +160,7 @@ public class XxHash64 {
         return hash.hash();
       }
 
-      hash.update((byte[]) buffer, 0, length);
+      hash.update(buffer, 0, length);
     }
   }
 
@@ -176,32 +178,34 @@ public class XxHash64 {
 
   public static long hash(long seed, byte[] data, int offset, int length) {
     // Objects.checkFromIndexSize(offset, length, data.length());
-    long address = (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + (long) offset;
+    int address = BUFFER_ADDRESS + offset;
     long hash;
     if (length >= 32) {
       hash = updateBody(seed, data, address, length);
     } else {
-      hash = seed + 2870177450012600261L;
+      hash = seed + PRIME64_5;
     }
 
     hash += length;
-    int index = length & -32;
+    // round to the closest 32 byte boundary
+    // this is the point up to which updateBody() processed
+    int index = length & 0xFFFFFFE0;
     return updateTail(hash, data, address, index, length);
   }
 
-  private static long updateTail(long hash, byte[] base, long address, int index, int length) {
+  private static long updateTail(long hash, byte[] base, int address, int index, int length) {
     while (index <= length - 8) {
-      hash = updateTail(hash, JvmUtils.unsafe.getLong(base, address + (long) index));
+      hash = updateTail(hash, bytesToLongFromOffset(base, Long.BYTES, address + index));
       index += 8;
     }
 
     if (index <= length - 4) {
-      hash = updateTail(hash, JvmUtils.unsafe.getInt(base, address + (long) index));
+      hash = updateTail(hash, bytesToLongFromOffset(base, Long.BYTES, address + index));
       index += 4;
     }
 
     while (index < length) {
-      hash = updateTail(hash, JvmUtils.unsafe.getByte(base, address + (long) index));
+      hash = updateTail(hash, bytesToLongFromOffset(base, Long.BYTES, address + index));
       ++index;
     }
 
@@ -209,25 +213,21 @@ public class XxHash64 {
     return hash;
   }
 
-  private static long updateBody(long seed, byte[] base, long address, int length) {
-    long v1 = seed + -7046029288634856825L + -4417276706812531889L;
-    long v2 = seed + -4417276706812531889L;
+  private static long updateBody(long seed, byte[] base, int address, int length) {
+    long v1 = seed + PRIME64_1 + PRIME64_2;
+    long v2 = seed + PRIME64_2;
     long v3 = seed;
-    long v4 = seed - -7046029288634856825L;
+    long v4 = seed - PRIME64_1;
 
     for (int remaining = length; remaining >= 32; remaining -= 32) {
-      v1 = mix(v1, JvmUtils.unsafe.getLong(base, address));
-      v2 = mix(v2, JvmUtils.unsafe.getLong(base, address + 8L));
-      v3 = mix(v3, JvmUtils.unsafe.getLong(base, address + 16L));
-      v4 = mix(v4, JvmUtils.unsafe.getLong(base, address + 24L));
-      address += 32L;
+      v1 = mix(v1, bytesToLongFromOffset(base, Long.BYTES, address));
+      v2 = mix(v2, bytesToLongFromOffset(base, Long.BYTES, address + 8));
+      v3 = mix(v3, bytesToLongFromOffset(base, Long.BYTES, address + 16));
+      v4 = mix(v4, bytesToLongFromOffset(base, Long.BYTES, address + 24));
+      address += 32;
     }
 
-    long hash =
-        Long.rotateLeft(v1, 1)
-            + Long.rotateLeft(v2, 7)
-            + Long.rotateLeft(v3, 12)
-            + Long.rotateLeft(v4, 18);
+    long hash = rotateLeft(v1, 1) + rotateLeft(v2, 7) + rotateLeft(v3, 12) + rotateLeft(v4, 18);
     hash = update(hash, v1);
     hash = update(hash, v2);
     hash = update(hash, v3);
@@ -236,41 +236,41 @@ public class XxHash64 {
   }
 
   private static long mix(long current, long value) {
-    return Long.rotateLeft(current + value * -4417276706812531889L, 31) * -7046029288634856825L;
+    return rotateLeft(current + value * PRIME64_2, 31) * PRIME64_1;
   }
 
   private static long update(long hash, long value) {
-    long temp = hash ^ mix(0L, value);
-    return temp * -7046029288634856825L + -8796714831421723037L;
+    long temp = hash ^ mix(0, value);
+    return temp * PRIME64_1 + PRIME64_4;
   }
 
   private static long updateTail(long hash, long value) {
-    long temp = hash ^ mix(0L, value);
-    return Long.rotateLeft(temp, 27) * -7046029288634856825L + -8796714831421723037L;
+    long temp = hash ^ mix(0, value);
+    return rotateLeft(temp, 27) * PRIME64_1 + PRIME64_4;
   }
 
   private static long updateTail(long hash, int value) {
-    long unsigned = (long) value & 4294967295L;
-    long temp = hash ^ unsigned * -7046029288634856825L;
-    return Long.rotateLeft(temp, 23) * -4417276706812531889L + 1609587929392839161L;
+    long unsigned = value & 0xFFFF_FFFFL;
+    long temp = hash ^ (unsigned * PRIME64_1);
+    return rotateLeft(temp, 23) * PRIME64_2 + PRIME64_3;
   }
 
   private static long updateTail(long hash, byte value) {
-    int unsigned = value & 255;
-    long temp = hash ^ (long) unsigned * 2870177450012600261L;
-    return Long.rotateLeft(temp, 11) * -7046029288634856825L;
+    int unsigned = value & 0xFF;
+    long temp = hash ^ (unsigned * PRIME64_5);
+    return rotateLeft(temp, 11) * PRIME64_1;
   }
 
   private static long finalShuffle(long hash) {
     hash ^= hash >>> 33;
-    hash *= -4417276706812531889L;
+    hash *= PRIME64_2;
     hash ^= hash >>> 29;
-    hash *= 1609587929392839161L;
+    hash *= PRIME64_3;
     hash ^= hash >>> 32;
     return hash;
   }
 
   static {
-    BUFFER_ADDRESS = Unsafe.ARRAY_BYTE_BASE_OFFSET;
+    BUFFER_ADDRESS = (int) sizeOf(new byte[0]);
   }
 }

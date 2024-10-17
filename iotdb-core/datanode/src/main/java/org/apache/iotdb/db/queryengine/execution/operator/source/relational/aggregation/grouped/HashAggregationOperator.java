@@ -27,21 +27,16 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.builder.InMemoryHashAggregationBuilder;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
-import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory.NOOP;
@@ -68,10 +63,6 @@ public class HashAggregationOperator implements ProcessOperator {
   private final long unspillMemoryLimit;
 
   private HashAggregationBuilder aggregationBuilder;
-
-  private final TsBlockBuilder resultBuilder;
-
-  private final ColumnBuilder[] resultColumnsBuilder;
 
   private final long maxReturnSize =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
@@ -101,13 +92,6 @@ public class HashAggregationOperator implements ProcessOperator {
     this.maxPartialMemory = maxPartialMemory;
     this.spillEnabled = spillEnabled;
     this.unspillMemoryLimit = unspillMemoryLimit;
-    this.resultBuilder =
-        new TsBlockBuilder(
-            Stream.concat(
-                    groupByTypes.stream().map(InternalTypeManager::getTSDataType),
-                    aggregators.stream().map(GroupedAggregator::getType))
-                .collect(Collectors.toList()));
-    this.resultColumnsBuilder = resultBuilder.getValueColumnBuilders();
     this.memoryReservationManager =
         operatorContext
             .getDriverContext()
@@ -166,7 +150,7 @@ public class HashAggregationOperator implements ProcessOperator {
 
   private TsBlock getOutput() {
     // only flush if we are finishing or the aggregation builder is full
-    if ((aggregationBuilder == null || !aggregationBuilder.isFull())) {
+    if (aggregationBuilder == null) {
       return null;
     }
 
@@ -225,7 +209,6 @@ public class HashAggregationOperator implements ProcessOperator {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
         + aggregators.stream().mapToLong(GroupedAggregator::getEstimatedSize).count()
-        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
-        + resultBuilder.getRetainedSizeInBytes();
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext);
   }
 }

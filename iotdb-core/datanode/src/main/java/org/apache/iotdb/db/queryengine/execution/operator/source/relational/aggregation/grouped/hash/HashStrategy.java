@@ -29,7 +29,6 @@ import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.TypeUtil.getFlatVariableWidthSize;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.TypeUtil.notDistinctFrom;
-import static org.apache.tsfile.utils.Preconditions.checkArgument;
 
 public class HashStrategy implements FlatHashStrategy {
 
@@ -189,8 +188,7 @@ public class HashStrategy implements FlatHashStrategy {
 
   @Override
   public void hashBatched(Column[] columns, long[] hashes, int offset, int length) {
-    checkArgument(columns[0].getPositionCount() == hashes.length);
-    for (int i = 0; i < hashes.length; i++) {
+    for (int i = 0; i < length; i++) {
       hashes[i] = hash(columns, i);
     }
   }

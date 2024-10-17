@@ -48,7 +48,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static java.lang.Double.doubleToLongBits;
-import static java.lang.Long.rotateLeft;
+import static java.lang.Float.floatToIntBits;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.XxHash64.FALSE_XX_HASH;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.XxHash64.TRUE_XX_HASH;
 import static org.apache.tsfile.read.common.type.IntType.INT32;
@@ -219,16 +219,21 @@ public class TypeUtil {
     switch (type.getTypeEnum()) {
       case BOOLEAN:
         columnBuilder.writeBoolean(fixedChunk[fixedOffset] != 0);
+        break;
       case INT32:
       case DATE:
         columnBuilder.writeInt(bytesToInt(fixedChunk, fixedOffset));
+        break;
       case INT64:
       case TIMESTAMP:
-        columnBuilder.writeLong(bytesToLongFromOffset(fixedChunk, 0, fixedOffset));
+        columnBuilder.writeLong(bytesToLongFromOffset(fixedChunk, Long.BYTES, fixedOffset));
+        break;
       case FLOAT:
         columnBuilder.writeFloat(bytesToFloat(fixedChunk, fixedOffset));
+        break;
       case DOUBLE:
         columnBuilder.writeDouble(bytesToDouble(fixedChunk, fixedOffset));
+        break;
       case TEXT:
       case STRING:
       case BLOB:
@@ -242,6 +247,7 @@ public class TypeUtil {
           System.arraycopy(variableChunk, variableSizeOffset, result, 0, length);
           columnBuilder.writeBinary(new Binary(result));
         }
+        break;
       default:
         throw new UnsupportedOperationException();
     }
@@ -258,16 +264,20 @@ public class TypeUtil {
     switch (type.getTypeEnum()) {
       case BOOLEAN:
         fixedChunk[fixedOffset] = (byte) (column.getBoolean(position) ? 1 : 0);
+        break;
       case INT32:
       case DATE:
         intToBytes(column.getInt(position), fixedChunk, fixedOffset);
       case INT64:
       case TIMESTAMP:
         longToBytes(column.getLong(position), fixedChunk, fixedOffset);
+        break;
       case FLOAT:
         floatToBytes(column.getFloat(position), fixedChunk, fixedOffset);
+        break;
       case DOUBLE:
         doubleToBytes(column.getDouble(position), fixedChunk, fixedOffset);
+        break;
       case TEXT:
       case STRING:
       case BLOB:
@@ -279,6 +289,7 @@ public class TypeUtil {
           intToBytes(variableOffset, fixedChunk, fixedOffset + Integer.BYTES + Long.BYTES);
           System.arraycopy(value, 0, variableChunk, variableOffset, value.length);
         }
+        break;
       default:
         throw new UnsupportedOperationException();
     }
@@ -299,7 +310,8 @@ public class TypeUtil {
         return bytesToInt(fixedChunk, fixedOffset) == column.getInt(position);
       case INT64:
       case TIMESTAMP:
-        return bytesToLongFromOffset(fixedChunk, 0, fixedOffset) == column.getLong(position);
+        return bytesToLongFromOffset(fixedChunk, Long.BYTES, fixedOffset)
+            == column.getLong(position);
       case FLOAT:
         return bytesToFloat(fixedChunk, fixedOffset) == column.getFloat(position);
       case DOUBLE:
@@ -327,7 +339,7 @@ public class TypeUtil {
     }
   }
 
-  public static long hash(Type type, byte[] fixedChunk, int fixedOffset, byte[] variableChunk) {
+  /*public static long hash(Type type, byte[] fixedChunk, int fixedOffset, byte[] variableChunk) {
     switch (type.getTypeEnum()) {
       case BOOLEAN:
         return fixedChunk[fixedOffset] != 0 ? TRUE_XX_HASH : FALSE_XX_HASH;
@@ -339,14 +351,15 @@ public class TypeUtil {
       case TIMESTAMP:
         // xxHash64 mix
         return rotateLeft(
-                bytesToLongFromOffset(fixedChunk, 0, fixedOffset) * 0xC2B2AE3D27D4EB4FL, 31)
+                bytesToLongFromOffset(fixedChunk, Long.BYTES, fixedOffset) * 0xC2B2AE3D27D4EB4FL,
+                31)
             * 0x9E3779B185EBCA87L;
       case FLOAT:
         float value = bytesToFloat(fixedChunk, fixedOffset);
         if (value == 0) {
           return 0;
         }
-        return rotateLeft(((long) Float.floatToIntBits(value) * 0xC2B2AE3D27D4EB4FL), 31)
+        return rotateLeft(((long) floatToIntBits(value) * 0xC2B2AE3D27D4EB4FL), 31)
             * 0x9E3779B185EBCA87L;
       case DOUBLE:
         double value1 = bytesToDouble(fixedChunk, fixedOffset);
@@ -371,9 +384,51 @@ public class TypeUtil {
       default:
         throw new UnsupportedOperationException();
     }
+  }*/
+
+  public static long hash(Type type, byte[] fixedChunk, int fixedOffset, byte[] variableChunk) {
+    switch (type.getTypeEnum()) {
+      case BOOLEAN:
+        return fixedChunk[fixedOffset] != 0 ? TRUE_XX_HASH : FALSE_XX_HASH;
+      case INT32:
+      case DATE:
+        return XxHash64.hash(bytesToInt(fixedChunk, fixedOffset));
+      case INT64:
+      case TIMESTAMP:
+        // xxHash64 mix
+
+        return XxHash64.hash(bytesToLongFromOffset(fixedChunk, Long.BYTES, fixedOffset));
+      case FLOAT:
+        float value = bytesToFloat(fixedChunk, fixedOffset);
+        if (value == 0) {
+          return 0;
+        }
+        return XxHash64.hash(floatToIntBits(value));
+      case DOUBLE:
+        double value1 = bytesToDouble(fixedChunk, fixedOffset);
+        if (value1 == 0) {
+          return 0;
+        }
+        return XxHash64.hash(doubleToLongBits(value1));
+      case TEXT:
+      case STRING:
+      case BLOB:
+        int length = bytesToInt(fixedChunk, fixedOffset);
+        byte[] values = new byte[length];
+
+        if (length <= 12) {
+          System.arraycopy(fixedChunk, fixedOffset + Integer.BYTES, values, 0, length);
+        } else {
+          int variableSizeOffset = bytesToInt(fixedChunk, fixedOffset + Integer.BYTES + Long.BYTES);
+          System.arraycopy(variableChunk, variableSizeOffset, values, 0, length);
+        }
+        return XxHash64.hash(values);
+      default:
+        throw new UnsupportedOperationException();
+    }
   }
 
-  public static long hash(Type type, Column column, int position) {
+  /*public static long hash(Type type, Column column, int position) {
     switch (type.getTypeEnum()) {
       case BOOLEAN:
         return column.getBoolean(position) ? TRUE_XX_HASH : FALSE_XX_HASH;
@@ -390,7 +445,7 @@ public class TypeUtil {
         if (value == 0) {
           return 0;
         }
-        return rotateLeft(((long) Float.floatToIntBits(value) * 0xC2B2AE3D27D4EB4FL), 31)
+        return rotateLeft(((long) floatToIntBits(value) * 0xC2B2AE3D27D4EB4FL), 31)
             * 0x9E3779B185EBCA87L;
       case DOUBLE:
         double value1 = column.getDouble(position);
@@ -399,6 +454,38 @@ public class TypeUtil {
         }
         return rotateLeft((doubleToLongBits(value1) * 0xC2B2AE3D27D4EB4FL), 31)
             * 0x9E3779B185EBCA87L;
+      case TEXT:
+      case STRING:
+      case BLOB:
+        return XxHash64.hash(column.getBinary(position).getValues());
+      default:
+        throw new UnsupportedOperationException();
+    }
+  }*/
+
+  public static long hash(Type type, Column column, int position) {
+    switch (type.getTypeEnum()) {
+      case BOOLEAN:
+        return column.getBoolean(position) ? TRUE_XX_HASH : FALSE_XX_HASH;
+      case INT32:
+      case DATE:
+        return XxHash64.hash(column.getInt(position));
+      case INT64:
+      case TIMESTAMP:
+        // xxHash64 mix
+        return XxHash64.hash(column.getLong(position));
+      case FLOAT:
+        float value = column.getFloat(position);
+        if (value == 0) {
+          return 0;
+        }
+        return XxHash64.hash(floatToIntBits(column.getFloat(position)));
+      case DOUBLE:
+        double value1 = column.getDouble(position);
+        if (value1 == 0) {
+          return 0;
+        }
+        return XxHash64.hash(doubleToLongBits(column.getDouble(position)));
       case TEXT:
       case STRING:
       case BLOB:

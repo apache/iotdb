@@ -14,26 +14,32 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.builder;
 
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAggregator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.GroupByHash;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.primitives.Ints;
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.GroupByHash.createGroupByHash;
 
@@ -111,7 +117,7 @@ public class InMemoryHashAggregationBuilder implements HashAggregationBuilder {
 
   @Override
   public void updateMemory() {
-    updateMemory.update();
+    //  updateMemory.update();
   }
 
   @Override
@@ -198,11 +204,21 @@ public class InMemoryHashAggregationBuilder implements HashAggregationBuilder {
       }
     }
 
-    return pageBuilder.build();
+    return TsBlock.wrapBlocksWithoutCopy(
+        pageBuilder.getPositionCount(),
+        new RunLengthEncodedColumn(
+            TableScanOperator.TIME_COLUMN_TEMPLATE, pageBuilder.getPositionCount()),
+        Arrays.stream(pageBuilder.getValueColumnBuilders())
+            .map(ColumnBuilder::build)
+            .toArray(Column[]::new));
   }
 
   public List<TSDataType> buildTypes() {
-    return groupedAggregators.stream().map(GroupedAggregator::getType).collect(Collectors.toList());
+
+    return Stream.concat(
+            groupByOutputTypes.stream().map(InternalTypeManager::getTSDataType),
+            groupedAggregators.stream().map(GroupedAggregator::getType))
+        .collect(Collectors.toList());
   }
 
   private Iterator<Integer> consecutiveGroupIds() {
