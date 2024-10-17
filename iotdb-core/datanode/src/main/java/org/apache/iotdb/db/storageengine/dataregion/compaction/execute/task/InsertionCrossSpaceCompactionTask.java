@@ -371,7 +371,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   @Override
-  public long getCompactionRewriteFileSize() {
+  public long getCompactionRewriteDataSize() {
     return 0;
   }
 

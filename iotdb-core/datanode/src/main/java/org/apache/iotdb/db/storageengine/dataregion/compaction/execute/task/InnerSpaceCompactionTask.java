@@ -612,7 +612,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     return filesView.sequence;
   }
 
-  public long getCompactionRewriteFileSize() {
+  public long getCompactionRewriteDataSize() {
     return filesView.selectedFileSize;
   }
 

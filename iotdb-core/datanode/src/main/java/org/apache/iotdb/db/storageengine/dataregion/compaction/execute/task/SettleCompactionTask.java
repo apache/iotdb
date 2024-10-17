@@ -424,7 +424,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
   }
 
   @Override
-  public long getCompactionRewriteFileSize() {
+  public long getCompactionRewriteDataSize() {
     return (long) partiallyDirtyFileSize;
   }
 }

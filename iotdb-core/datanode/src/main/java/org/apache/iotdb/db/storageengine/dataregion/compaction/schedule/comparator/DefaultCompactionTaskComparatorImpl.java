@@ -126,7 +126,7 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
     // if the number of selected files is roughly the same,
     // we prefer to execute the one with the smaller total
     // file size
-    return o2.getCompactionRewriteFileSize() > o1.getCompactionRewriteFileSize() ? -1 : 1;
+    return o2.getCompactionRewriteDataSize() > o1.getCompactionRewriteDataSize() ? -1 : 1;
   }
 
   public int compareCrossSpaceCompactionTask(

@@ -501,7 +501,7 @@ public abstract class AbstractCompactionTask {
 
   public abstract CompactionTaskType getCompactionTaskType();
 
-  public abstract long getCompactionRewriteFileSize();
+  public abstract long getCompactionRewriteDataSize();
 
   @TestOnly
   public void setRecoverMemoryStatus(boolean recoverMemoryStatus) {

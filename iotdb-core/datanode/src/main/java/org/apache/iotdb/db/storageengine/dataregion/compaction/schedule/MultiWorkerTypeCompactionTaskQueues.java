@@ -113,16 +113,13 @@ public class MultiWorkerTypeCompactionTaskQueues {
 
   public void put(AbstractCompactionTask compactionTask) throws InterruptedException {
     long avgZeroLevelFileSize = FileMetrics.getInstance().getAverageTsFileSize(0);
+    long rewriteDataSize = compactionTask.getCompactionRewriteDataSize();
+    long rewriteFileNum = compactionTask.getSelectedTsFileResourceList().size();
     boolean isSmallTask;
-    if (avgZeroLevelFileSize > 0) {
-      isSmallTask =
-          compactionTask.getCompactionRewriteFileSize()
-                  / compactionTask.getSelectedTsFileResourceList().size()
-              < avgZeroLevelFileSize / 2;
+    if (avgZeroLevelFileSize > 0 && rewriteFileNum != 0) {
+      isSmallTask = rewriteDataSize / rewriteFileNum < avgZeroLevelFileSize / 2;
     } else {
-      isSmallTask =
-          compactionTask.getCompactionRewriteFileSize()
-              < config.getSmallCompactionTaskFileSizeInBytes();
+      isSmallTask = rewriteDataSize < config.getSmallCompactionTaskFileSizeInBytes();
     }
     if (isSmallTask) {
       candidateLightweightCompactionTaskQueue.put(compactionTask);
