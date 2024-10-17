@@ -173,20 +173,18 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     final Map<TConsensusGroupId, TRegionReplicaSet> relatedDataRegionGroup =
         env.getConfigManager().getRelatedDataRegionGroup(patternTree);
 
-    if (relatedDataRegionGroup.isEmpty()) {
-      return;
+    if (!relatedDataRegionGroup.isEmpty()) {
+      new DropTableRegionTaskExecutor<>(
+              "delete data for drop table",
+              env,
+              relatedDataRegionGroup,
+              true,
+              CnToDnAsyncRequestType.DELETE_DATA_FOR_DROP_TABLE,
+              ((dataNodeLocation, consensusGroupIdList) ->
+                  new TDeleteDataOrDevicesForDropTableReq(
+                      new ArrayList<>(consensusGroupIdList), tableName)))
+          .execute();
     }
-
-    new DropTableRegionTaskExecutor<>(
-            "delete data for drop table",
-            env,
-            relatedDataRegionGroup,
-            true,
-            CnToDnAsyncRequestType.DELETE_DATA_FOR_DROP_TABLE,
-            ((dataNodeLocation, consensusGroupIdList) ->
-                new TDeleteDataOrDevicesForDropTableReq(
-                    new ArrayList<>(consensusGroupIdList), tableName)))
-        .execute();
 
     setNextState(DropTableState.DELETE_DEVICES);
   }
@@ -211,20 +209,18 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     final Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
         env.getConfigManager().getRelatedSchemaRegionGroup(patternTree);
 
-    if (relatedSchemaRegionGroup.isEmpty()) {
-      return;
+    if (!relatedSchemaRegionGroup.isEmpty()) {
+      new DropTableRegionTaskExecutor<>(
+              "delete devices for drop table",
+              env,
+              relatedSchemaRegionGroup,
+              true,
+              CnToDnAsyncRequestType.DELETE_DEVICES_FOR_DROP_TABLE,
+              ((dataNodeLocation, consensusGroupIdList) ->
+                  new TDeleteDataOrDevicesForDropTableReq(
+                      new ArrayList<>(consensusGroupIdList), tableName)))
+          .execute();
     }
-
-    new DropTableRegionTaskExecutor<>(
-            "delete devices for drop table",
-            env,
-            relatedSchemaRegionGroup,
-            true,
-            CnToDnAsyncRequestType.DELETE_DEVICES_FOR_DROP_TABLE,
-            ((dataNodeLocation, consensusGroupIdList) ->
-                new TDeleteDataOrDevicesForDropTableReq(
-                    new ArrayList<>(consensusGroupIdList), tableName)))
-        .execute();
 
     setNextState(DropTableState.DROP_TABLE);
   }
