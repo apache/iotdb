@@ -19,97 +19,64 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.table;
 
-import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.read.ReadProcessException;
-import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.read.expression.IExpression;
 import org.apache.tsfile.read.query.executor.TableQueryExecutor;
 import org.apache.tsfile.read.reader.block.TsBlockReader;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
-import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class TsFileInsertionEventTableParserTabletIterator implements Iterator<Tablet> {
 
-  private final TableQueryExecutor tableQueryExecutor;
+  private final String tableName;
 
-  private final IDeviceID deviceId;
-  private final List<String> measurements;
-  private final Map<String, TableSchema> tableSchemaMap;
-
-  private final IExpression timeFilterExpression;
   private final long startTime;
   private final long endTime;
 
+  private final List<IMeasurementSchema> columnSchemas;
+  private final List<String> columnNames;
   private final TsBlockReader tsBlockReader;
 
-  // TODO: memory control
-  private final PipeMemoryBlock allocatedBlockForTablet;
-
-  TsFileInsertionEventTableParserTabletIterator(
+  public TsFileInsertionEventTableParserTabletIterator(
       final TableQueryExecutor tableQueryExecutor,
-      final IDeviceID deviceId,
-      final List<String> measurements,
-      final Map<String, TableSchema> tableSchemaMap,
-      final IExpression timeFilterExpression,
+      final String tableName,
+      final TableSchema tableSchema,
       final long startTime,
-      final long endTime,
-      final PipeMemoryBlock allocatedBlockForTablet)
-      throws ReadProcessException {
-    this.tableQueryExecutor = tableQueryExecutor;
-
-    this.deviceId = deviceId;
-    this.measurements =
-        measurements.stream()
-            .filter(
-                measurement ->
-                    // time column in aligned time-series should not be a query column
-                    measurement != null && !measurement.isEmpty())
-            .sorted()
-            .collect(Collectors.toList());
-    this.tableSchemaMap = tableSchemaMap;
-
-    this.timeFilterExpression = timeFilterExpression;
+      final long endTime) {
+    this.tableName = tableName;
     this.startTime = startTime;
     this.endTime = endTime;
 
-    this.tsBlockReader = buildQueryDataSet();
-
-    this.allocatedBlockForTablet = Objects.requireNonNull(allocatedBlockForTablet);
-  }
-
-  private TsBlockReader buildQueryDataSet() throws ReadProcessException {
-    return tableQueryExecutor.query(
-        deviceId.getTableName(),
-        tableSchemaMap.get(deviceId.getTableName()).getColumnSchemas().stream()
-            .map(IMeasurementSchema::getMeasurementId)
-            .filter(
-                measurement ->
-                    // time column in aligned time-series should not be a query column
-                    measurement != null && !measurement.isEmpty())
-            .sorted()
-            .collect(Collectors.toList()),
-        // TODO: time filter
-        null,
-        null,
-        null);
+    try {
+      columnSchemas =
+          tableSchema.getColumnSchemas().stream()
+              // time column in aligned time-series should not be a query column
+              .filter(
+                  schema ->
+                      schema.getMeasurementId() != null && !schema.getMeasurementId().isEmpty())
+              .collect(Collectors.toList());
+      columnNames =
+          columnSchemas.stream()
+              .map(IMeasurementSchema::getMeasurementId)
+              .collect(Collectors.toList());
+      tsBlockReader = tableQueryExecutor.query(tableName, columnNames, null, null, null);
+    } catch (final ReadProcessException e) {
+      throw new PipeException("Failed to build query data set", e);
+    }
   }
 
   @Override
@@ -134,19 +101,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
   private Tablet buildNextTablet() throws IOException {
     final TsBlock tsBlock = tsBlockReader.next();
 
-    final List<IMeasurementSchema> schemas = new ArrayList<>();
-    for (int i = 0, size = measurements.size(); i < size; i++) {
-      schemas.add(
-          new MeasurementSchema(measurements.get(i), tsBlock.getAllColumns()[i].getDataType()));
-    }
-
-    final Tablet tablet =
-        new Tablet(
-            deviceId.getTableName(),
-            tableSchemaMap.get(deviceId.getTableName()).getColumnSchemas().stream()
-                .filter(schema -> measurements.contains(schema.getMeasurementId()))
-                .collect(Collectors.toList()),
-            tsBlock.getPositionCount());
+    final Tablet tablet = new Tablet(tableName, columnSchemas, tsBlock.getPositionCount());
     tablet.initBitMaps();
 
     final TsBlock.TsBlockRowIterator rowIterator = tsBlock.getTsBlockRowIterator();
@@ -160,7 +115,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
 
       final List<Field> fields = new ArrayList<>();
       for (int i = 0; i < row.length - 1; ++i) {
-        final TSDataType dataType = schemas.get(i).getType();
+        final TSDataType dataType = columnSchemas.get(i).getType();
         if (dataType == null) {
           fields.add(null);
           continue;
@@ -206,9 +161,9 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
       for (int i = 0; i < fieldSize; i++) {
         final Field field = fields.get(i);
         tablet.addValue(
-            measurements.get(i),
+            columnNames.get(i),
             rowIndex,
-            field == null ? null : field.getObjectValue(schemas.get(i).getType()));
+            field == null ? null : field.getObjectValue(columnSchemas.get(i).getType()));
       }
       tablet.rowSize++;
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
