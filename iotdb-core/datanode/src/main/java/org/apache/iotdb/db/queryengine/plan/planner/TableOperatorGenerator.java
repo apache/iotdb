@@ -75,6 +75,9 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.Tabl
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAggregator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAggregator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.HashAggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -164,13 +167,14 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
-import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.createAccumulator;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.createGroupedAccumulator;
 import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.convertPredicateToFilter;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.ASC_TIME_COMPARATOR;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.IDENTITY_FILL;
@@ -1319,8 +1323,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       return planGlobalAggregation(node, child, context.getTypeProvider(), operatorContext);
     }
 
-    throw new UnsupportedOperationException();
-    // return planGroupByAggregation(node, child, outputTypes, operatorContext);
+    return planGroupByAggregation(node, child, context.getTypeProvider(), operatorContext);
   }
 
   private Operator planGlobalAggregation(
@@ -1376,6 +1379,92 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             true);
 
     return new TableAggregator(
+        accumulator,
+        step,
+        getTSDataType(typeProvider.getTableModelType(symbol)),
+        argumentChannels,
+        OptionalInt.empty());
+  }
+
+  private Operator planGroupByAggregation(
+      AggregationNode node,
+      Operator child,
+      TypeProvider typeProvider,
+      OperatorContext operatorContext) {
+    ImmutableList.Builder<GroupedAggregator> aggregatorBuilder = new ImmutableList.Builder<>();
+    Map<Symbol, Integer> childLayout =
+        makeLayoutFromOutputSymbols(node.getChild().getOutputSymbols());
+
+    node.getAggregations()
+        .forEach(
+            (k, v) ->
+                aggregatorBuilder.add(
+                    buildGroupByAggregator(childLayout, k, v, node.getStep(), typeProvider)));
+
+    List<Integer> groupByChannels = getChannelsForSymbols(node.getGroupingKeys(), childLayout);
+    List<Type> groupByTypes =
+        node.getGroupingKeys().stream()
+            .map(typeProvider::getTableModelType)
+            .collect(toImmutableList());
+
+    if (node.isStreamable()) {
+      /*return new StreamingAggregationOperator;*/
+    }
+
+    return new HashAggregationOperator(
+        operatorContext,
+        child,
+        groupByTypes,
+        groupByChannels,
+        aggregatorBuilder.build(),
+        node.getStep(),
+        10_000,
+        Long.MAX_VALUE,
+        false,
+        Long.MAX_VALUE);
+  }
+
+  private static List<Integer> getChannelsForSymbols(
+      List<Symbol> symbols, Map<Symbol, Integer> layout) {
+    ImmutableList.Builder<Integer> builder = ImmutableList.builder();
+    for (Symbol symbol : symbols) {
+      builder.add(layout.get(symbol));
+    }
+    return builder.build();
+  }
+
+  private GroupedAggregator buildGroupByAggregator(
+      Map<Symbol, Integer> childLayout,
+      Symbol symbol,
+      AggregationNode.Aggregation aggregation,
+      AggregationNode.Step step,
+      TypeProvider typeProvider) {
+    List<Integer> argumentChannels = new ArrayList<>();
+    List<TSDataType> argumentTypes = new ArrayList<>();
+    for (Expression argument : aggregation.getArguments()) {
+      Symbol argumentSymbol = Symbol.from(argument);
+      argumentChannels.add(childLayout.get(argumentSymbol));
+
+      // get argument types
+      Type type = typeProvider.getTableModelType(argumentSymbol);
+      if (type instanceof RowType) {
+        type.getTypeParameters().forEach(subType -> argumentTypes.add(getTSDataType(subType)));
+      } else {
+        argumentTypes.add(getTSDataType(type));
+      }
+    }
+
+    String functionName = aggregation.getResolvedFunction().getSignature().getName();
+    GroupedAccumulator accumulator =
+        createGroupedAccumulator(
+            functionName,
+            getAggregationTypeByFuncName(functionName),
+            argumentTypes,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true);
+
+    return new GroupedAggregator(
         accumulator,
         step,
         getTSDataType(typeProvider.getTableModelType(symbol)),
