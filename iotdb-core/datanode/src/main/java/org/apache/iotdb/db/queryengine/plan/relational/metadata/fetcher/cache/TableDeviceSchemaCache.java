@@ -213,7 +213,7 @@ public class TableDeviceSchemaCache {
       final String database,
       final IDeviceID deviceId,
       final String[] measurements,
-      final @Nullable TimeValuePair[] timeValuePairs) {
+      final boolean isInvalidate) {
     readWriteLock.readLock().lock();
     try {
       dualKeyCache.update(
@@ -222,8 +222,8 @@ public class TableDeviceSchemaCache {
           new TableDeviceCacheEntry(),
           entry ->
               entry.initOrInvalidateLastCache(
-                  database, deviceId.getTableName(), measurements, timeValuePairs, true),
-          Objects.isNull(timeValuePairs));
+                  database, deviceId.getTableName(), measurements, isInvalidate, true),
+          !isInvalidate);
     } finally {
       readWriteLock.readLock().unlock();
     }
@@ -357,7 +357,7 @@ public class TableDeviceSchemaCache {
       final @Nullable TimeValuePair[] timeValuePairs,
       final boolean isAligned,
       final IMeasurementSchema[] measurementSchemas,
-      final boolean forceUpdate) {
+      final boolean initOrInvalidate) {
     final String previousDatabase = treeModelDatabasePool.putIfAbsent(database, database);
     final String database2Use = Objects.nonNull(previousDatabase) ? previousDatabase : database;
 
@@ -365,7 +365,7 @@ public class TableDeviceSchemaCache {
         new TableId(null, deviceID.getTableName()),
         deviceID,
         new TableDeviceCacheEntry(),
-        forceUpdate
+        initOrInvalidate
             ? entry ->
                 entry.setMeasurementSchema(
                         database2Use, isAligned, measurements, measurementSchemas)
@@ -379,7 +379,7 @@ public class TableDeviceSchemaCache {
                 entry.setMeasurementSchema(
                         database2Use, isAligned, measurements, measurementSchemas)
                     + entry.tryUpdateLastCache(measurements, timeValuePairs),
-        forceUpdate);
+        Objects.isNull(timeValuePairs));
   }
 
   // WARNING: This is not guaranteed to affect table model's cache
