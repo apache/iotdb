@@ -26,6 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.Com
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairDataFileScanUtil;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.RepairUnsortedFileCompactionEstimator;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -168,10 +169,10 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
       CompactionUtils.combineModsInInnerCompaction(
           filesView.sourceFilesInCompactionPerformer, filesView.targetFilesInPerformer);
     } else {
-      if (sourceFile.modFileExists()) {
+      if (sourceFile.newModFileExists()) {
         Files.createLink(
-            new File(filesView.targetFilesInPerformer.get(0).getModFile().getFilePath()).toPath(),
-            new File(sourceFile.getModFile().getFilePath()).toPath());
+            ModificationFile.getNormalMods(filesView.targetFilesInPerformer.get(0).getTsFile()).toPath(),
+            ModificationFile.getCompactionMods(sourceFile.getTsFile()).toPath());
       }
     }
   }

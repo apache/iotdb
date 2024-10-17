@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SettleSelectorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
 
@@ -56,15 +58,10 @@ public class ModificationUtils {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void modifyChunkMetaData(
-      List<? extends IChunkMetadata> chunkMetaData, List<Modification> modifications) {
+      List<? extends IChunkMetadata> chunkMetaData, List<ModEntry> modifications) {
     for (IChunkMetadata metaData : chunkMetaData) {
-      for (Modification modification : modifications) {
-        // The case modification.getFileOffset() == metaData.getOffsetOfChunkHeader()
-        // is not supposed to exist as getFileOffset() is offset containing full chunk,
-        // while getOffsetOfChunkHeader() returns the chunk header offset
-        if (modification.getFileOffset() > metaData.getOffsetOfChunkHeader()) {
-          doModifyChunkMetaData(modification, metaData);
-        }
+      for (ModEntry modification : modifications) {
+        doModifyChunkMetaData(modification, metaData);
       }
     }
     // remove chunks that are completely deleted
@@ -86,7 +83,7 @@ public class ModificationUtils {
   }
 
   public static void modifyAlignedChunkMetaData(
-      List<AlignedChunkMetadata> chunkMetaData, List<List<Modification>> modifications) {
+      List<AlignedChunkMetadata> chunkMetaData, List<List<ModEntry>> modifications) {
     for (AlignedChunkMetadata metaData : chunkMetaData) {
       modifyValueColumns(metaData, modifications);
     }
@@ -102,20 +99,15 @@ public class ModificationUtils {
   }
 
   private static void modifyValueColumns(
-      AlignedChunkMetadata metaData, List<List<Modification>> valueColumnsModifications) {
+      AlignedChunkMetadata metaData, List<List<ModEntry>> valueColumnsModifications) {
     List<IChunkMetadata> valueChunkMetadataList = metaData.getValueChunkMetadataList();
     // deal with each sub sensor
     for (int j = 0; j < valueChunkMetadataList.size(); j++) {
       IChunkMetadata v = valueChunkMetadataList.get(j);
       if (v != null) {
-        List<Modification> modificationList = valueColumnsModifications.get(j);
-        for (Modification modification : modificationList) {
-          // The case modification.getFileOffset() == metaData.getOffsetOfChunkHeader()
-          // is not supposed to exist as getFileOffset() is offset containing full chunk,
-          // while getOffsetOfChunkHeader() returns the chunk header offset
-          if (modification.getFileOffset() > v.getOffsetOfChunkHeader()) {
-            doModifyChunkMetaData(modification, v);
-          }
+        List<ModEntry> modificationList = valueColumnsModifications.get(j);
+        for (ModEntry modification : modificationList) {
+          doModifyChunkMetaData(modification, v);
         }
       }
     }
@@ -163,19 +155,14 @@ public class ModificationUtils {
 
   public static void modifyAlignedChunkMetaData(
       List<AlignedChunkMetadata> chunkMetaData,
-      List<Modification> timeColumnModifications,
-      List<List<Modification>> valueColumnsModifications,
+      List<ModEntry> timeColumnModifications,
+      List<List<ModEntry>> valueColumnsModifications,
       boolean ignoreAllNullRows) {
     for (AlignedChunkMetadata metaData : chunkMetaData) {
       IChunkMetadata timeColumnChunkMetadata = metaData.getTimeChunkMetadata();
 
-      for (Modification modification : timeColumnModifications) {
-        // The case modification.getFileOffset() == metaData.getOffsetOfChunkHeader()
-        // is not supposed to exist as getFileOffset() is offset containing full chunk,
-        // while getOffsetOfChunkHeader() returns the chunk header offset
-        if (modification.getFileOffset() > timeColumnChunkMetadata.getOffsetOfChunkHeader()) {
-          doModifyChunkMetaData(modification, timeColumnChunkMetadata);
-        }
+      for (ModEntry modification : timeColumnModifications) {
+        doModifyChunkMetaData(modification, timeColumnChunkMetadata);
       }
       modifyValueColumns(metaData, valueColumnsModifications);
     }
@@ -300,11 +287,8 @@ public class ModificationUtils {
     return false;
   }
 
-  private static void doModifyChunkMetaData(Modification modification, IChunkMetadata metaData) {
-    if (modification instanceof Deletion) {
-      Deletion deletion = (Deletion) modification;
-      metaData.insertIntoSortedDeletions(deletion.getTimeRange());
-    }
+  private static void doModifyChunkMetaData(ModEntry modification, IChunkMetadata metaData) {
+    metaData.insertIntoSortedDeletions(modification.getTimeRange());
   }
 
   /** Methods for modification in memory table */
@@ -312,25 +296,21 @@ public class ModificationUtils {
       IDeviceID deviceID,
       List<String> measurementList,
       IMemTable memTable,
-      List<Pair<Modification, IMemTable>> modsToMemtable,
+      List<Pair<ModEntry, IMemTable>> modsToMemtable,
       long timeLowerBound) {
     if (measurementList.isEmpty()) {
       return Collections.emptyList();
     }
-    List<Modification> modifications =
+    List<ModEntry> modifications =
         ModificationUtils.getModificationsForMemtable(memTable, modsToMemtable);
     List<List<TimeRange>> deletionList = new ArrayList<>();
     for (String measurement : measurementList) {
       List<TimeRange> columnDeletionList = new ArrayList<>();
       columnDeletionList.add(new TimeRange(Long.MIN_VALUE, timeLowerBound));
-      for (Modification modification : modifications) {
-        if (modification instanceof Deletion) {
-          Deletion deletion = (Deletion) modification;
-          if (deletion.getPath().matchFullPath(deviceID, measurement)
-              && deletion.getEndTime() > timeLowerBound) {
-            long lowerBound = Math.max(deletion.getStartTime(), timeLowerBound);
-            columnDeletionList.add(new TimeRange(lowerBound, deletion.getEndTime()));
-          }
+      for (ModEntry modification : modifications) {
+        if (modification.affects(deviceID) && modification.affects(measurement) && modification.getEndTime() > timeLowerBound) {
+          long lowerBound = Math.max(modification.getStartTime(), timeLowerBound);
+          columnDeletionList.add(new TimeRange(lowerBound, modification.getEndTime()));
         }
       }
       deletionList.add(TimeRange.sortAndMerge(columnDeletionList));
@@ -348,33 +328,48 @@ public class ModificationUtils {
       IDeviceID deviceID,
       String measurement,
       IMemTable memTable,
-      List<Pair<Modification, IMemTable>> modsToMemtable,
+      List<Pair<ModEntry, IMemTable>> modsToMemtable,
       long timeLowerBound) {
     List<TimeRange> deletionList = new ArrayList<>();
     deletionList.add(new TimeRange(Long.MIN_VALUE, timeLowerBound));
-    for (Modification modification : getModificationsForMemtable(memTable, modsToMemtable)) {
-      if (modification instanceof Deletion) {
-        Deletion deletion = (Deletion) modification;
-        if (deletion.getPath().matchFullPath(deviceID, measurement)
-            && deletion.getEndTime() > timeLowerBound) {
-          long lowerBound = Math.max(deletion.getStartTime(), timeLowerBound);
-          deletionList.add(new TimeRange(lowerBound, deletion.getEndTime()));
-        }
+    for (ModEntry modification : getModificationsForMemtable(memTable, modsToMemtable)) {
+      if (modification.affects(deviceID) && modification.affects(measurement) && modification.getEndTime() > timeLowerBound) {
+        long lowerBound = Math.max(modification.getStartTime(), timeLowerBound);
+        deletionList.add(new TimeRange(lowerBound, modification.getEndTime()));
       }
     }
     return TimeRange.sortAndMerge(deletionList);
   }
 
-  private static List<Modification> getModificationsForMemtable(
-      IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable) {
-    List<Modification> modifications = new ArrayList<>();
+  private static List<ModEntry> getModificationsForMemtable(
+      IMemTable memTable, List<Pair<ModEntry, IMemTable>> modsToMemtable) {
+    List<ModEntry> modifications = new ArrayList<>();
     boolean foundMemtable = false;
-    for (Pair<Modification, IMemTable> entry : modsToMemtable) {
+    for (Pair<ModEntry, IMemTable> entry : modsToMemtable) {
       if (foundMemtable || entry.right.equals(memTable)) {
         modifications.add(entry.left);
         foundMemtable = true;
       }
     }
     return modifications;
+  }
+
+  public static List<ModEntry> sortAndMerge(List<ModEntry> modifications) {
+    modifications.sort(null);
+    List<ModEntry> result = new ArrayList<>();
+    if (!modifications.isEmpty()) {
+      TreeDeletionEntry current = new TreeDeletionEntry((TreeDeletionEntry) modifications.get(0));
+      for (int i = 1; i < modifications.size(); i++) {
+        TreeDeletionEntry del = (TreeDeletionEntry) modifications.get(i);
+        if (current.intersects(del)) {
+          current.merge(del);
+        } else {
+          result.add(current);
+          current = new TreeDeletionEntry(del);
+        }
+      }
+      result.add(current);
+    }
+    return result;
   }
 }

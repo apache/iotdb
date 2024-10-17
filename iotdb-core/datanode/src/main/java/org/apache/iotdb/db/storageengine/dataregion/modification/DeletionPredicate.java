@@ -25,16 +25,56 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate.IDPredicate.NOP;
 import org.apache.iotdb.db.utils.IOUtils.BufferSerializable;
 import org.apache.iotdb.db.utils.IOUtils.StreamSerializable;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Deserializer;
 import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 public class DeletionPredicate implements StreamSerializable, BufferSerializable {
 
   private String tableName;
-  private IDPredicate idPredicate;
-  private List<String> measurementNames;
+  private IDPredicate idPredicate = new NOP();
+  // an empty list means affecting all columns
+  private List<String> measurementNames = Collections.emptyList();
+
+  public DeletionPredicate() {
+  }
+
+  public DeletionPredicate(String tableName) {
+    this.tableName = tableName;
+  }
+
+  public DeletionPredicate(String tableName, IDPredicate idPredicate) {
+    this.tableName = tableName;
+    this.idPredicate = idPredicate;
+  }
+
+  public DeletionPredicate(String tableName, IDPredicate idPredicate,
+      List<String> measurementNames) {
+    this.tableName = tableName;
+    this.idPredicate = idPredicate;
+    this.measurementNames = measurementNames;
+  }
+
+  public boolean matches(IDeviceID deviceID) {
+    return tableName.equals(deviceID.getTableName()) && idPredicate.matches(deviceID);
+  }
+
+  public String getTableName() {
+    return tableName;
+  }
+
+  public List<String> getMeasurementNames() {
+    return measurementNames;
+  }
+
+  public boolean affects(String measurementName) {
+    return measurementNames.isEmpty() || measurementNames.contains(measurementName);
+  }
 
   @Override
   public void serialize(OutputStream stream) throws IOException {
@@ -59,8 +99,7 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
   @Override
   public void deserialize(InputStream stream) throws IOException {
     tableName = ReadWriteIOUtils.readVarIntString(stream);
-    idPredicate = new IDPredicate();
-    idPredicate.deserialize(stream);
+    idPredicate = IDPredicate.createFrom(stream);
 
     int measurementLength = ReadWriteForEncodingUtils.readVarInt(stream);
     if (measurementLength > 0) {
@@ -76,8 +115,7 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
   @Override
   public void deserialize(ByteBuffer buffer) {
     tableName = ReadWriteIOUtils.readVarIntString(buffer);
-    idPredicate = new IDPredicate();
-    idPredicate.deserialize(buffer);
+    idPredicate = IDPredicate.createFrom(buffer);
 
     int measurementLength = ReadWriteForEncodingUtils.readVarInt(buffer);
     if (measurementLength > 0) {
@@ -90,26 +128,136 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
     }
   }
 
-  public static class IDPredicate implements StreamSerializable, BufferSerializable {
+  public abstract static class IDPredicate implements StreamSerializable, BufferSerializable {
+
+    @SuppressWarnings("java:S6548")
+    public enum IDPredicateType {
+      NOP,
+      FULL_EXACT_MATCH;
+
+      public void serialize(OutputStream stream) throws IOException {
+        stream.write((byte) ordinal());
+      }
+
+      public void serialize(ByteBuffer buffer) {
+        buffer.put((byte) ordinal());
+      }
+
+      public static IDPredicateType deserialize(InputStream stream) throws IOException {
+        return values()[stream.read()];
+      }
+
+      public static IDPredicateType deserialize(ByteBuffer buffer) {
+        return values()[buffer.get()];
+      }
+    }
+
+    protected final IDPredicateType type;
+
+    protected IDPredicate(IDPredicateType type) {
+      this.type = type;
+    }
+
+    public abstract boolean matches(IDeviceID deviceID);
 
     @Override
-    public void serialize(OutputStream stream) {
-      throw new UnsupportedOperationException("Not implemented in this version");
+    public void serialize(OutputStream stream) throws IOException {
+      type.serialize(stream);
     }
 
     @Override
     public void serialize(ByteBuffer buffer) {
-      throw new UnsupportedOperationException("Not implemented in this version");
+      type.serialize(buffer);
     }
 
-    @Override
-    public void deserialize(InputStream stream) {
-      throw new UnsupportedOperationException("Not implemented in this version");
+    public static IDPredicate createFrom(ByteBuffer buffer) {
+      IDPredicateType type = IDPredicateType.deserialize(buffer);
+      IDPredicate predicate;
+      if (Objects.requireNonNull(type) == IDPredicateType.NOP) {
+        predicate = new NOP();
+      } else {
+        throw new IllegalArgumentException("Unrecognized predicate type: " + type);
+      }
+      predicate.deserialize(buffer);
+      return predicate;
     }
 
-    @Override
-    public void deserialize(ByteBuffer buffer) {
-      throw new UnsupportedOperationException("Not implemented in this version");
+    public static IDPredicate createFrom(InputStream stream) throws IOException {
+      IDPredicateType type = IDPredicateType.deserialize(stream);
+      IDPredicate predicate;
+      if (Objects.requireNonNull(type) == IDPredicateType.NOP) {
+        predicate = new NOP();
+      } else {
+        throw new IllegalArgumentException("Unrecognized predicate type: " + type);
+      }
+      predicate.deserialize(stream);
+      return predicate;
+    }
+
+    public static class NOP extends IDPredicate {
+
+      public NOP() {
+        super(IDPredicateType.NOP);
+      }
+
+      @Override
+      public void serialize(OutputStream stream) {
+        // nothing to be done
+      }
+
+      @Override
+      public void serialize(ByteBuffer buffer) {
+        // nothing to be done
+      }
+
+      @Override
+      public void deserialize(InputStream stream) {
+        // nothing to be done
+      }
+
+      @Override
+      public void deserialize(ByteBuffer buffer) {
+        // nothing to be done
+      }
+
+      @Override
+      public boolean matches(IDeviceID deviceID) {
+        return true;
+      }
+    }
+
+    public static class FullExactMatch extends IDPredicate {
+      private IDeviceID deviceID;
+
+      public FullExactMatch(IDeviceID deviceID) {
+        super(IDPredicateType.FULL_EXACT_MATCH);
+        this.deviceID = deviceID;
+      }
+
+      @Override
+      public void serialize(OutputStream stream) throws IOException {
+        deviceID.serialize(stream);
+      }
+
+      @Override
+      public void serialize(ByteBuffer buffer) {
+        deviceID.serialize(buffer);
+      }
+
+      @Override
+      public void deserialize(InputStream stream) throws IOException {
+        Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(stream);
+      }
+
+      @Override
+      public void deserialize(ByteBuffer buffer) {
+        Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(buffer);
+      }
+
+      @Override
+      public boolean matches(IDeviceID deviceID) {
+        return this.deviceID.equals(deviceID);
+      }
     }
   }
 }

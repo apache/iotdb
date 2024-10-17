@@ -704,9 +704,9 @@ public class ReadChunkCompactionPerformerAlignedTest {
       writer.endFile();
       TsFileResource resource = new TsFileResource(writer.getFile(), TsFileResourceStatus.NORMAL);
       resource
-          .getModFile()
+          .getOldModFile()
           .write(new Deletion(new MeasurementPath("root.sg.d1.*"), i * 100, i * 100 + 20));
-      resource.getModFile().close();
+      resource.getOldModFile().close();
       int finalI = i;
       originData.forEach(
           (x, y) ->

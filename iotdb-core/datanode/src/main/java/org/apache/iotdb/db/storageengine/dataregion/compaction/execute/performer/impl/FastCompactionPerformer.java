@@ -40,6 +40,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.wri
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.FastCrossCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.FastInnerCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -88,7 +90,7 @@ public class FastCompactionPerformer
   private List<TsFileResource> targetFiles;
 
   // tsFile name -> modifications
-  private Map<String, PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer>>
+  private Map<String, PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>>
       modificationCache = new ConcurrentHashMap<>();
 
   private final boolean isCrossCompaction;
@@ -143,10 +145,9 @@ public class FastCompactionPerformer
             x -> x.definitelyNotContains(device) || !x.isDeviceAlive(device, ttl));
         sortedSourceFiles.sort(Comparator.comparingLong(x -> x.getStartTime(device)));
         if (ttl != Long.MAX_VALUE) {
-          Deletion ttlDeletion =
-              new Deletion(
+          TreeDeletionEntry ttlDeletion =
+              new TreeDeletionEntry(
                   new MeasurementPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD),
-                  Long.MAX_VALUE,
                   Long.MIN_VALUE,
                   deviceIterator.getTimeLowerBoundForCurrentDevice());
           for (TsFileResource sourceFile : sortedSourceFiles) {
@@ -154,7 +155,7 @@ public class FastCompactionPerformer
                 .computeIfAbsent(
                     sourceFile.getTsFile().getName(),
                     k -> PatternTreeMapFactory.getModsPatternTreeMap())
-                .append(ttlDeletion.getPath(), ttlDeletion);
+                .append(ttlDeletion.getPathPattern(), ttlDeletion);
           }
         }
 
@@ -343,14 +344,14 @@ public class FastCompactionPerformer
 
   private void readModification(List<TsFileResource> resources) {
     for (TsFileResource resource : resources) {
-      if (resource.getModFile() == null || !resource.getModFile().exists()) {
+      if (resource.getTotalModSizeInByte() == 0) {
         continue;
       }
       // read mods
-      PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer> modifications =
+      PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications =
           PatternTreeMapFactory.getModsPatternTreeMap();
-      for (Modification modification : resource.getModFile().getModificationsIter()) {
-        modifications.append(modification.getPath(), modification);
+      for (ModEntry modification : resource.getAllModEntries()) {
+        modifications.append(modification.keyOfPatternTree(), modification);
       }
       modificationCache.put(resource.getTsFile().getName(), modifications);
     }

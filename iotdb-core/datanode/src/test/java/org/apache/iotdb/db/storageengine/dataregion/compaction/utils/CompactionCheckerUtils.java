@@ -35,7 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.rea
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.SeriesDataBlockReader;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -135,7 +135,7 @@ public class CompactionCheckerUtils {
           List<Modification> seriesModifications = new LinkedList<>();
 
           if (!"".equals(path.getMeasurement())) {
-            for (Modification modification : tsFileResource.getModFile().getModifications()) {
+            for (Modification modification : tsFileResource.getOldModFile().getModifications()) {
               if (modification.getPath().matchFullPath(new PartialPath(path.getFullPath()))) {
                 seriesModifications.add(modification);
               }
@@ -301,7 +301,7 @@ public class CompactionCheckerUtils {
       }
 
       Collection<Modification> modifications =
-          ModificationFile.getNormalMods(mergedFile).getModifications();
+          ModificationFileV1.getNormalMods(mergedFile).getModifications();
       for (Modification modification : modifications) {
         Deletion deletion = (Deletion) modification;
         if (mergedData.containsKey(deletion.getPath().getFullPath())) {

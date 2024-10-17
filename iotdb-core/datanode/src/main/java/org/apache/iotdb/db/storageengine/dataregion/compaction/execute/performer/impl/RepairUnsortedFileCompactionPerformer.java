@@ -68,10 +68,10 @@ public class RepairUnsortedFileCompactionPerformer extends ReadPointCompactionPe
     } else {
       targetFile.setTimeIndex(CompactionUtils.buildDeviceTimeIndex(seqSourceFile));
     }
-    if (seqSourceFile.modFileExists()) {
+    if (seqSourceFile.newModFileExists()) {
       Files.createLink(
-          new File(seqSourceFile.getCompactionModFile().getFilePath()).toPath(),
-          new File(seqSourceFile.getModFile().getFilePath()).toPath());
+          seqSourceFile.getCompactionModFile().getFile().toPath(),
+          seqSourceFile.getNewModFile().getFile().toPath());
     }
   }
 

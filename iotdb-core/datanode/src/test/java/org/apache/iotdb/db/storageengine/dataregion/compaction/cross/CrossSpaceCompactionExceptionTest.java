@@ -37,7 +37,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -392,12 +392,12 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.getTsFile().exists());
       Assert.assertFalse(resource.getCompactionModFile().exists());
-      Assert.assertFalse(resource.getModFile().exists());
+      Assert.assertFalse(resource.getOldModFile().exists());
     }
     for (TsFileResource resource : unseqResources) {
       Assert.assertFalse(resource.getTsFile().exists());
       Assert.assertFalse(resource.getCompactionModFile().exists());
-      Assert.assertFalse(resource.getModFile().exists());
+      Assert.assertFalse(resource.getOldModFile().exists());
     }
     // tmp target file and tmp target resource file should not exist, target file and target
     // resource file should exist
@@ -423,7 +423,7 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
       Assert.assertTrue(
           new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
       // mods file of the target file should exist
-      Assert.assertTrue(resource.getModFile().exists());
+      Assert.assertTrue(resource.getOldModFile().exists());
     }
 
     // compaction log file should not exist
@@ -523,13 +523,13 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
           new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
 
       // mods file of the target file should not exist
-      Assert.assertFalse(resource.getModFile().exists());
+      Assert.assertFalse(resource.getOldModFile().exists());
     }
 
     // all compaction mods file of each source file should not exist
     for (int i = 0; i < seqResources.size(); i++) {
       seqResources.get(i).resetModFile();
-      ModificationFile f = seqResources.get(i).getCompactionModFile();
+      ModificationFileV1 f = seqResources.get(i).getCompactionModFile();
       Assert.assertFalse(f.exists());
     }
     for (int i = 0; i < unseqResources.size(); i++) {
@@ -540,13 +540,13 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     // all mods file of each source file should exist
     for (TsFileResource resource : seqResources) {
       resource.resetModFile();
-      Assert.assertTrue(resource.getModFile().exists());
-      Assert.assertEquals(1, resource.getModFile().getModifications().size());
+      Assert.assertTrue(resource.getOldModFile().exists());
+      Assert.assertEquals(1, resource.getOldModFile().getModifications().size());
     }
     for (TsFileResource resource : unseqResources) {
       resource.resetModFile();
-      Assert.assertTrue(resource.getModFile().exists());
-      Assert.assertEquals(1, resource.getModFile().getModifications().size());
+      Assert.assertTrue(resource.getOldModFile().exists());
+      Assert.assertEquals(1, resource.getOldModFile().getModifications().size());
     }
 
     // compaction log file should not exist
@@ -619,14 +619,14 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
       Assert.assertFalse(resource.getTsFile().exists());
       Assert.assertFalse(
           new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
-      Assert.assertFalse(resource.getModFile().exists());
+      Assert.assertFalse(resource.getOldModFile().exists());
       Assert.assertFalse(resource.getCompactionModFile().exists());
     }
     for (TsFileResource resource : unseqResources) {
       Assert.assertFalse(resource.getTsFile().exists());
       Assert.assertFalse(
           new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
-      Assert.assertFalse(resource.getModFile().exists());
+      Assert.assertFalse(resource.getOldModFile().exists());
       Assert.assertFalse(resource.getCompactionModFile().exists());
     }
     // the first target file should be deleted after compaction, the others still exist
@@ -718,14 +718,14 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
       Assert.assertTrue(resource.getTsFile().exists());
       Assert.assertTrue(
           new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
-      Assert.assertTrue(resource.getModFile().exists());
+      Assert.assertTrue(resource.getOldModFile().exists());
       Assert.assertFalse(resource.getCompactionModFile().exists());
     }
     for (TsFileResource resource : unseqResources) {
       Assert.assertTrue(resource.getTsFile().exists());
       Assert.assertTrue(
           new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
-      Assert.assertTrue(resource.getModFile().exists());
+      Assert.assertTrue(resource.getOldModFile().exists());
       Assert.assertFalse(resource.getCompactionModFile().exists());
     }
     // tmp target file, target file and target resource file should be deleted after compaction

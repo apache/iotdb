@@ -602,12 +602,12 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     // all mods file of each source file should exist
     for (int i = 0; i < seqResources.size(); i++) {
       seqResources.get(i).resetModFile();
-      Assert.assertTrue(seqResources.get(i).getModFile().exists());
-      Assert.assertEquals(1, seqResources.get(i).getModFile().getModifications().size());
+      Assert.assertTrue(seqResources.get(i).getOldModFile().exists());
+      Assert.assertEquals(1, seqResources.get(i).getOldModFile().getModifications().size());
     }
 
     // mods file of the target file should not exist
-    Assert.assertFalse(targetResource.getModFile().exists());
+    Assert.assertFalse(targetResource.getOldModFile().exists());
 
     // compaction log file should not exist
     Assert.assertFalse(logFile.exists());
@@ -673,12 +673,12 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     // all mods file of each source file should exist
     for (int i = 0; i < seqResources.size(); i++) {
       seqResources.get(i).resetModFile();
-      Assert.assertTrue(seqResources.get(i).getModFile().exists());
-      Assert.assertEquals(1, seqResources.get(i).getModFile().getModifications().size());
+      Assert.assertTrue(seqResources.get(i).getOldModFile().exists());
+      Assert.assertEquals(1, seqResources.get(i).getOldModFile().getModifications().size());
     }
 
     // mods file of the target file should not exist
-    Assert.assertFalse(targetResource.getModFile().exists());
+    Assert.assertFalse(targetResource.getOldModFile().exists());
 
     // compaction log file should not exist
     Assert.assertFalse(logFile.exists());
@@ -747,11 +747,11 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     // all compaction mods file and old mods file of each source file should not exist
     for (int i = 0; i < seqResources.size(); i++) {
       Assert.assertFalse(seqResources.get(i).getCompactionModFile().exists());
-      Assert.assertFalse(seqResources.get(i).getModFile().exists());
+      Assert.assertFalse(seqResources.get(i).getOldModFile().exists());
     }
 
     // mods file of the target file should exist
-    Assert.assertTrue(targetResource.getModFile().exists());
+    Assert.assertTrue(targetResource.getOldModFile().exists());
 
     // compaction log file should not exist
     Assert.assertFalse(logFile.exists());
@@ -1261,7 +1261,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
       Assert.assertFalse(resource.getTsFile().exists());
       Assert.assertFalse(
           new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
-      Assert.assertFalse(resource.getModFile().exists());
+      Assert.assertFalse(resource.getOldModFile().exists());
       Assert.assertFalse(resource.getCompactionModFile().exists());
     }
     // the target file should be deleted
@@ -1336,7 +1336,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
       Assert.assertFalse(resource.getTsFile().exists());
       Assert.assertFalse(
           new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
-      Assert.assertFalse(resource.getModFile().exists());
+      Assert.assertFalse(resource.getOldModFile().exists());
       Assert.assertFalse(resource.getCompactionModFile().exists());
     }
     // the target file should be deleted
@@ -1404,7 +1404,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
       Assert.assertTrue(resource.getTsFile().exists());
       Assert.assertTrue(
           new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
-      Assert.assertTrue(resource.getModFile().exists());
+      Assert.assertTrue(resource.getOldModFile().exists());
       Assert.assertFalse(resource.getCompactionModFile().exists());
     }
     // tmp target file, target file and target resource file should be deleted after compaction

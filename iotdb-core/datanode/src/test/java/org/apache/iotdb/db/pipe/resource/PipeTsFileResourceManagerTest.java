@@ -28,7 +28,7 @@ import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResource;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -135,7 +135,7 @@ public class PipeTsFileResourceManagerTest {
           new Deletion(new MeasurementPath("root.lemming.**"), 11, 1, Long.MAX_VALUE)
         };
 
-    try (ModificationFile mFile = new ModificationFile(modsFilePath)) {
+    try (ModificationFileV1 mFile = new ModificationFileV1(modsFilePath)) {
       for (Modification mod : modifications) {
         mFile.write(mod);
       }

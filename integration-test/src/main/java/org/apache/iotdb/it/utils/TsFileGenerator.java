@@ -22,7 +22,7 @@ package org.apache.iotdb.it.utils;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -249,8 +249,8 @@ public class TsFileGenerator implements AutoCloseable {
 
   public void generateDeletion(final String device, final int number)
       throws IOException, IllegalPathException {
-    try (final ModificationFile modificationFile =
-        new ModificationFile(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX)) {
+    try (final ModificationFileV1 modificationFile =
+        new ModificationFileV1(tsFile.getAbsolutePath() + ModificationFileV1.FILE_SUFFIX)) {
       writer.flushAllChunkGroups();
       final TreeSet<Long> timeSet = device2TimeSet.get(device);
       if (timeSet.isEmpty()) {

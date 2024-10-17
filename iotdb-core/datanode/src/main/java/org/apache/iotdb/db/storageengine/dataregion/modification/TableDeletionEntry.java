@@ -23,6 +23,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.TimeRange;
 
 public class TableDeletionEntry extends ModEntry {
@@ -65,8 +66,34 @@ public class TableDeletionEntry extends ModEntry {
   }
 
   @Override
-  public boolean matchesFull(PartialPath path) {
-    return false;
+  public boolean matches(PartialPath path) {
+    IDeviceID iDeviceID = path.getIDeviceID();
+    return predicate.matches(iDeviceID);
+  }
+
+  @Override
+  public boolean affects(IDeviceID deviceID, long startTime, long endTime) {
+    return predicate.matches(deviceID) && timeRange.contains(startTime, endTime);
+  }
+
+  @Override
+  public boolean affects(IDeviceID deviceID) {
+    return predicate.matches(deviceID);
+  }
+
+  @Override
+  public boolean affects(String measurementID) {
+    return predicate.affects(measurementID);
+  }
+
+  @Override
+  public boolean affectsAll(IDeviceID deviceID) {
+    return predicate.matches(deviceID) && predicate.getMeasurementNames().isEmpty();
+  }
+
+  @Override
+  public PartialPath keyOfPatternTree() {
+    return new PartialPath(new String[]{predicate.getTableName()});
   }
 
   @Override

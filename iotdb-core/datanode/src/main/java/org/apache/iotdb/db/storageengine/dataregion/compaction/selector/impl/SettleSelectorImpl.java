@@ -19,8 +19,6 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -30,9 +28,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Sett
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ISettleSelector;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -183,11 +179,8 @@ public class SettleSelectorImpl implements ISettleSelector {
   }
 
   private FileDirtyInfo selectFileBaseOnModSize(TsFileResource resource) {
-    ModificationFile modFile = resource.getModFile();
-    if (modFile == null || !modFile.exists()) {
-      return new FileDirtyInfo(DirtyStatus.NOT_SATISFIED);
-    }
-    return modFile.getSize() > config.getInnerCompactionTaskSelectionModsFileThreshold()
+    long totalModSize = resource.getTotalModSizeInByte();
+    return totalModSize > config.getInnerCompactionTaskSelectionModsFileThreshold()
             || !CompactionUtils.isDiskHasSpace(
                 config.getInnerCompactionTaskSelectionDiskRedundancy())
         ? new FileDirtyInfo(PARTIALLY_DIRTY)
@@ -202,8 +195,9 @@ public class SettleSelectorImpl implements ISettleSelector {
    * @return dirty status means the status of current resource.
    */
   private FileDirtyInfo selectFileBaseOnDirtyData(TsFileResource resource)
-      throws IOException, IllegalPathException {
-    ModificationFile modFile = resource.getModFile();
+      throws IOException {
+
+    Collection<ModEntry> modifications = resource.getAllModEntries();
     ITimeIndex timeIndex = resource.getTimeIndex();
     if (timeIndex instanceof FileTimeIndex) {
       timeIndex = CompactionUtils.buildDeviceTimeIndex(resource);
@@ -212,7 +206,7 @@ public class SettleSelectorImpl implements ISettleSelector {
     boolean hasExpiredTooLong = false;
     long currentTime = CommonDateTimeUtils.currentTime();
 
-    Collection<Modification> modifications = modFile.getModifications();
+
     for (IDeviceID device : ((ArrayDeviceTimeIndex) timeIndex).getDevices()) {
       // check expired device by ttl
       // TODO: remove deviceId conversion
@@ -266,13 +260,9 @@ public class SettleSelectorImpl implements ISettleSelector {
 
   /** Check whether the device is completely deleted by mods or not. */
   private boolean isDeviceDeletedByMods(
-      Collection<Modification> modifications, IDeviceID device, long startTime, long endTime)
-      throws IllegalPathException {
-    for (Modification modification : modifications) {
-      PartialPath path = modification.getPath();
-      if (path.endWithMultiLevelWildcard()
-          && path.getDevicePath().matchFullPath(new PartialPath(device))
-          && ((Deletion) modification).getTimeRange().contains(startTime, endTime)) {
+      Collection<ModEntry> modifications, IDeviceID device, long startTime, long endTime) {
+    for (ModEntry modification : modifications) {
+      if (modification.affects(device, startTime, endTime)) {
         return true;
       }
     }

@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover.CompactionRecoverManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
@@ -52,7 +52,7 @@ public class ModificationFileTest {
           new Deletion(new MeasurementPath(new String[] {"d1", "s3"}), 3, 3, 4),
           new Deletion(new MeasurementPath(new String[] {"d1", "s41"}), 4, 4, 5)
         };
-    try (ModificationFile mFile = new ModificationFile(tempFileName)) {
+    try (ModificationFileV1 mFile = new ModificationFileV1(tempFileName)) {
       for (int i = 0; i < 2; i++) {
         mFile.write(modifications[i]);
       }
@@ -83,7 +83,7 @@ public class ModificationFileTest {
           new Deletion(new MeasurementPath(new String[] {"d1", "s1"}), 1, 1),
           new Deletion(new MeasurementPath(new String[] {"d1", "s2"}), 2, 2)
         };
-    try (ModificationFile mFile = new ModificationFile(tempFileName)) {
+    try (ModificationFileV1 mFile = new ModificationFileV1(tempFileName)) {
       mFile.write(modifications[0]);
       try (LocalTextModificationAccessor accessor =
           new LocalTextModificationAccessor(tempFileName)) {
@@ -107,7 +107,7 @@ public class ModificationFileTest {
   public void testCompact01() {
     String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact01.mods");
     long time = 1000;
-    try (ModificationFile modificationFile = new ModificationFile(tempFileName)) {
+    try (ModificationFileV1 modificationFile = new ModificationFileV1(tempFileName)) {
       while (modificationFile.getSize() < 1024 * 1024) {
         modificationFile.write(
             new Deletion(
@@ -135,7 +135,7 @@ public class ModificationFileTest {
   public void testCompact02() {
     String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact02.mods");
     long time = 1000;
-    try (ModificationFile modificationFile = new ModificationFile(tempFileName)) {
+    try (ModificationFileV1 modificationFile = new ModificationFileV1(tempFileName)) {
       while (modificationFile.getSize() < 1024 * 100) {
         modificationFile.write(
             new Deletion(
@@ -158,7 +158,7 @@ public class ModificationFileTest {
   @Test
   public void testCompact03() {
     String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact03.mods");
-    try (ModificationFile modificationFile = new ModificationFile(tempFileName)) {
+    try (ModificationFileV1 modificationFile = new ModificationFileV1(tempFileName)) {
       while (modificationFile.getSize() < 1024 * 1024) {
         modificationFile.write(
             new Deletion(
@@ -184,7 +184,7 @@ public class ModificationFileTest {
   @Test
   public void testCompact04() {
     String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact04.mods");
-    try (ModificationFile modificationFile = new ModificationFile(tempFileName)) {
+    try (ModificationFileV1 modificationFile = new ModificationFileV1(tempFileName)) {
       long time = 0;
       while (modificationFile.getSize() < 1024 * 1024) {
         for (int i = 0; i < 5; i++) {
@@ -218,8 +218,8 @@ public class ModificationFileTest {
     String modsFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact01.mods");
     String modsSettleFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact01.mods.settle");
 
-    try (ModificationFile modsFile = new ModificationFile(modsFileName);
-        ModificationFile modsSettleFile = new ModificationFile(modsSettleFileName)) {
+    try (ModificationFileV1 modsFile = new ModificationFileV1(modsFileName);
+        ModificationFileV1 modsSettleFile = new ModificationFileV1(modsSettleFileName)) {
 
       modsFile.write(
           new Deletion(
@@ -256,7 +256,7 @@ public class ModificationFileTest {
   public void testRecover02() {
     String modsSettleFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact02.mods.settle");
     String originModsFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact02.mods");
-    try (ModificationFile modsSettleFile = new ModificationFile(modsSettleFileName)) {
+    try (ModificationFileV1 modsSettleFile = new ModificationFileV1(modsSettleFileName)) {
       modsSettleFile.write(
           new Deletion(
               new MeasurementPath(new String[] {"root", "sg", "d1"}),

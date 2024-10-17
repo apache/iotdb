@@ -38,7 +38,9 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,18 +48,16 @@ import org.slf4j.LoggerFactory;
 public class ModificationFile implements AutoCloseable {
 
   public static final String FILE_SUFFIX = ".mods2";
+  public static final String COMPACTION_FILE_SUFFIX = ".compaction.mods2";
   private static final Logger LOGGER = LoggerFactory.getLogger(ModificationFile.class);
 
   private final File file;
   private FileChannel channel;
   private OutputStream fileOutputStream;
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
-  private final Set<TsFileResource> tsFileRefs =
-      new ConcurrentSkipListSet<>(Comparator.comparing(TsFileResource::getTsFilePath));
 
-  public ModificationFile(File file, TsFileResource firstResource) {
+  public ModificationFile(File file) {
     this.file = file;
-    tsFileRefs.add(firstResource);
   }
 
   @SuppressWarnings("java:S2093") // cannot use try-with-resource, should not close here
@@ -110,46 +110,6 @@ public class ModificationFile implements AutoCloseable {
 
   public File getFile() {
     return file;
-  }
-
-  /**
-   * Add a TsFile to the reference set only if the set is not empty.
-   *
-   * @param tsFile TsFile to be added
-   * @return true if the TsFile is successfully added, false if the reference set is empty.
-   */
-  public boolean addReference(TsFileResource tsFile) {
-    // adding references can be concurrent, but adding and removing cannot
-    lock.readLock().lock();
-    try {
-      if (!tsFileRefs.isEmpty()) {
-        tsFileRefs.add(tsFile);
-        return true;
-      }
-      return false;
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  /**
-   * Remove the references of the given TsFiles.
-   *
-   * @param tsFiles references to remove
-   * @return true if the ref set is empty after removal, false otherwise
-   */
-  public boolean removeReferences(List<TsFileResource> tsFiles) {
-    lock.writeLock().lock();
-    try {
-      tsFiles.forEach(tsFileRefs::remove);
-      return tsFileRefs.isEmpty();
-    } finally {
-      lock.writeLock().unlock();
-    }
-  }
-
-  public boolean hasReference() {
-    return !tsFileRefs.isEmpty();
   }
 
   public static String composeFileName(long levelNum, long modFileNum) {
@@ -227,5 +187,44 @@ public class ModificationFile implements AutoCloseable {
       nextEntry = null;
       return ret;
     }
+  }
+
+  public boolean exists() {
+    return file.exists();
+  }
+
+  public void remove() throws IOException {
+    close();
+    FileUtils.deleteFileOrDirectory(file);
+  }
+
+  public static ModificationFile getNormalMods(TsFileResource tsFileResource) {
+    return new ModificationFile(new File(tsFileResource.getTsFilePath() + FILE_SUFFIX));
+  }
+
+  public static File getNormalMods(File tsFile) {
+    return new File(tsFile.getPath() + FILE_SUFFIX);
+  }
+
+  public static ModificationFile getCompactionMods(TsFileResource tsFileResource) {
+    return new ModificationFile(
+        new File(tsFileResource.getTsFilePath() + COMPACTION_FILE_SUFFIX));
+  }
+
+  public static File getCompactionMods(File tsFile) {
+    return new File(tsFile.getPath() + COMPACTION_FILE_SUFFIX);
+  }
+
+  public void truncate(long size) throws IOException {
+    if (channel != null) {
+      channel.truncate(size);
+    }
+  }
+
+  @Override
+  public String toString() {
+    return "ModificationFile{" +
+        "file=" + file +
+        '}';
   }
 }

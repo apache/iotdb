@@ -39,7 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePie
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadAgent;
@@ -357,7 +357,7 @@ public class LoadTsFileManager {
     private final File taskDir;
     private Map<DataPartitionInfo, TsFileIOWriter> dataPartition2Writer;
     private Map<DataPartitionInfo, String> dataPartition2LastDevice;
-    private Map<DataPartitionInfo, ModificationFile> dataPartition2ModificationFile;
+    private Map<DataPartitionInfo, ModificationFileV1> dataPartition2ModificationFile;
     private boolean isClosed;
 
     private TsFileWriterManager(File taskDir) {
@@ -423,7 +423,7 @@ public class LoadTsFileManager {
           if (!dataPartition2ModificationFile.containsKey(partitionInfo)) {
             File newModificationFile =
                 SystemFileFactory.INSTANCE.getFile(
-                    writer.getFile().getAbsolutePath() + ModificationFile.FILE_SUFFIX);
+                    writer.getFile().getAbsolutePath() + ModificationFileV1.FILE_SUFFIX);
             if (!newModificationFile.createNewFile()) {
               LOGGER.error(
                   "Can not create ModificationFile {} for writing.", newModificationFile.getPath());
@@ -431,9 +431,9 @@ public class LoadTsFileManager {
             }
 
             dataPartition2ModificationFile.put(
-                partitionInfo, new ModificationFile(newModificationFile.getAbsolutePath()));
+                partitionInfo, new ModificationFileV1(newModificationFile.getAbsolutePath()));
           }
-          ModificationFile modificationFile = dataPartition2ModificationFile.get(partitionInfo);
+          ModificationFileV1 modificationFile = dataPartition2ModificationFile.get(partitionInfo);
           writer.flush();
           deletionData.writeToModificationFile(modificationFile, writer.getFile().length());
         }
@@ -445,7 +445,7 @@ public class LoadTsFileManager {
       if (isClosed) {
         throw new IOException(String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
       }
-      for (Map.Entry<DataPartitionInfo, ModificationFile> entry :
+      for (Map.Entry<DataPartitionInfo, ModificationFileV1> entry :
           dataPartition2ModificationFile.entrySet()) {
         entry.getValue().close();
       }
@@ -505,10 +505,10 @@ public class LoadTsFileManager {
         }
       }
       if (dataPartition2ModificationFile != null) {
-        for (Map.Entry<DataPartitionInfo, ModificationFile> entry :
+        for (Map.Entry<DataPartitionInfo, ModificationFileV1> entry :
             dataPartition2ModificationFile.entrySet()) {
           try {
-            final ModificationFile modificationFile = entry.getValue();
+            final ModificationFileV1 modificationFile = entry.getValue();
             modificationFile.close();
             final Path modificationFilePath = new File(modificationFile.getFilePath()).toPath();
             if (Files.exists(modificationFilePath)) {

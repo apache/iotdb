@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.tools.validate;
 
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 
@@ -129,10 +130,10 @@ public class TsFileOverlapValidationAndRepairTool {
     moveFile(
         new File(tsfile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
         new File(targetFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
-    if (resource.modFileExists()) {
+    if (resource.newModFileExists()) {
       moveFile(
-          new File(tsfile.getAbsolutePath() + ModificationFile.FILE_SUFFIX),
-          new File(targetFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX));
+          ModificationFile.getNormalMods(tsfile),
+          ModificationFile.getNormalMods(targetFile));
     }
   }
 
@@ -288,8 +289,8 @@ public class TsFileOverlapValidationAndRepairTool {
                   Long.parseLong(f2.getTsFile().getName().split("-")[0]));
           return timeDiff == 0
               ? Long.compareUnsigned(
-                  Long.parseLong(f1.getTsFile().getName().split("-")[1]),
-                  Long.parseLong(f2.getTsFile().getName().split("-")[1]))
+              Long.parseLong(f1.getTsFile().getName().split("-")[1]),
+              Long.parseLong(f2.getTsFile().getName().split("-")[1]))
               : timeDiff;
         });
 

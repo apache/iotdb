@@ -48,9 +48,9 @@ import java.util.stream.Collectors;
  * ModificationFile stores the Modifications of a TsFile or unseq file in another file in the same
  * directory. Methods in this class are highly synchronized for concurrency safety.
  */
-public class ModificationFile implements AutoCloseable {
+public class ModificationFileV1 implements AutoCloseable {
 
-  private static final Logger logger = LoggerFactory.getLogger(ModificationFile.class);
+  private static final Logger logger = LoggerFactory.getLogger(ModificationFileV1.class);
   public static final String FILE_SUFFIX = ".mods";
   public static final String COMPACT_SUFFIX = ".settle";
   public static final String COMPACTION_FILE_SUFFIX = ".compaction.mods";
@@ -72,7 +72,7 @@ public class ModificationFile implements AutoCloseable {
    *
    * @param filePath the path of the storage file.
    */
-  public ModificationFile(String filePath) {
+  public ModificationFileV1(String filePath) {
     LocalTextModificationAccessor accessor = new LocalTextModificationAccessor(filePath);
     this.writer = accessor;
     this.reader = accessor;
@@ -169,7 +169,7 @@ public class ModificationFile implements AutoCloseable {
    * @return a new ModificationFile with its path changed to the hardlink, or null if the origin
    *     file does not exist or the hardlink cannot be created.
    */
-  public ModificationFile createHardlink() {
+  public ModificationFileV1 createHardlink() {
     if (!exists()) {
       return null;
     }
@@ -181,7 +181,7 @@ public class ModificationFile implements AutoCloseable {
 
       try {
         Files.createLink(Paths.get(hardlink.getAbsolutePath()), Paths.get(filePath));
-        return new ModificationFile(hardlink.getAbsolutePath());
+        return new ModificationFileV1(hardlink.getAbsolutePath());
       } catch (FileAlreadyExistsException e) {
         // retry a different name if the file is already created
       } catch (IOException e) {
@@ -191,13 +191,12 @@ public class ModificationFile implements AutoCloseable {
     }
   }
 
-  public static ModificationFile getNormalMods(TsFileResource tsFileResource) {
-    return new ModificationFile(tsFileResource.getTsFilePath() + ModificationFile.FILE_SUFFIX);
+  public static ModificationFileV1 getNormalMods(TsFileResource tsFileResource) {
+    return new ModificationFileV1(tsFileResource.getTsFilePath() + ModificationFileV1.FILE_SUFFIX);
   }
 
-  public static ModificationFile getCompactionMods(TsFileResource tsFileResource) {
-    return new ModificationFile(
-        tsFileResource.getTsFilePath() + ModificationFile.COMPACTION_FILE_SUFFIX);
+  public static File getNormalMods(File tsFile) {
+    return new File(tsFile.getPath() + ModificationFileV1.FILE_SUFFIX);
   }
 
   public long getSize() {
@@ -216,7 +215,7 @@ public class ModificationFile implements AutoCloseable {
           getModifications().stream().collect(Collectors.groupingBy(Modification::getPathString));
       String newModsFileName = filePath + COMPACT_SUFFIX;
       List<Modification> allSettledModifications = new ArrayList<>();
-      try (ModificationFile compactedModificationFile = new ModificationFile(newModsFileName)) {
+      try (ModificationFileV1 compactedModificationFile = new ModificationFileV1(newModsFileName)) {
         Set<Map.Entry<String, List<Modification>>> modificationsEntrySet =
             pathModificationMap.entrySet();
         for (Map.Entry<String, List<Modification>> modificationEntry : modificationsEntrySet) {

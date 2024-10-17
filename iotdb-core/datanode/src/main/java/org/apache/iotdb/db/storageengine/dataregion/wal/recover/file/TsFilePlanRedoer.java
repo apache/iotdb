@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -56,19 +57,14 @@ public class TsFilePlanRedoer {
     List<MeasurementPath> paths = deleteDataNode.getPathList();
     for (MeasurementPath path : paths) {
       // path here is device path pattern
+      TreeDeletionEntry deletionEntry = new TreeDeletionEntry(path,
+          deleteDataNode.getDeleteStartTime(), deleteDataNode.getDeleteEndTime());
       recoveryMemTable.delete(
-          path,
-          path.getDevicePath(),
-          deleteDataNode.getDeleteStartTime(),
-          deleteDataNode.getDeleteEndTime());
+          deletionEntry
+         );
       tsFileResource
-          .getModFile()
-          .write(
-              new Deletion(
-                  path,
-                  tsFileResource.getTsFileSize(),
-                  deleteDataNode.getDeleteStartTime(),
-                  deleteDataNode.getDeleteEndTime()));
+          .getNewModFile()
+          .write(deletionEntry);
     }
   }
 

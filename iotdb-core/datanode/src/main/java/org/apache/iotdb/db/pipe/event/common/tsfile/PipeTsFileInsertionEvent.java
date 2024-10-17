@@ -33,7 +33,7 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTimeP
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -130,7 +130,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent implements TsFi
     this.resource = resource;
     tsFile = resource.getTsFile();
 
-    final ModificationFile modFile = resource.getModFile();
+    final ModificationFileV1 modFile = resource.getOldModFile();
     this.isWithMod = isWithMod && modFile.exists();
     this.modFile = this.isWithMod ? new File(modFile.getFilePath()) : null;
 

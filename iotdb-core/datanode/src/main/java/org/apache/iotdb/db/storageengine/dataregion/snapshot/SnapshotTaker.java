@@ -24,7 +24,8 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DirectoryNotLegalException;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -206,10 +207,10 @@ public class SnapshotTaker {
         createHardLink(
             new File(snapshotTsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
             new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
-        if (resource.getModFile().exists()) {
+        if (resource.newModFileExists()) {
           copyFile(
-              new File(snapshotTsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX),
-              new File(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX));
+              ModificationFile.getNormalMods(snapshotTsFile),
+              ModificationFile.getNormalMods(tsFile));
         }
       }
       return true;

@@ -25,13 +25,20 @@ import java.nio.ByteBuffer;
 import java.util.Comparator;
 import java.util.Objects;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternUtil;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TreeDeletionEntry extends ModEntry {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(TreeDeletionEntry.class);
   private PartialPath pathPattern;
 
   public TreeDeletionEntry() {
@@ -96,8 +103,43 @@ public class TreeDeletionEntry extends ModEntry {
   }
 
   @Override
-  public boolean matchesFull(PartialPath path) {
+  public boolean matches(PartialPath path) {
     return pathPattern.matchFullPath(path);
+  }
+
+  @Override
+  public boolean affects(IDeviceID deviceID, long startTime, long endTime) {
+    try {
+      return pathPattern.endWithMultiLevelWildcard()
+          && pathPattern.getDevicePath().matchFullPath(new PartialPath(deviceID))
+          && timeRange.contains(startTime, endTime);
+    } catch (IllegalPathException e) {
+      return false;
+    }
+  }
+
+  @Override
+  public boolean affects(IDeviceID deviceID) {
+    try {
+      return pathPattern.matchFullPath(new PartialPath(deviceID));
+    } catch (IllegalPathException e) {
+      return false;
+    }
+  }
+
+  @Override
+  public boolean affects(String measurementID) {
+    return PathPatternUtil.isNodeMatch(pathPattern.getMeasurement(), measurementID);
+  }
+
+  @Override
+  public boolean affectsAll(IDeviceID deviceID) {
+    return pathPattern.matchFullPath(deviceID, AlignedPath.VECTOR_PLACEHOLDER);
+  }
+
+  @Override
+  public PartialPath keyOfPatternTree() {
+    return pathPattern;
   }
 
   @Override

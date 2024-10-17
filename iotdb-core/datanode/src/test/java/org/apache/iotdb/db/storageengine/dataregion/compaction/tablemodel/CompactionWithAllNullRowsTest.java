@@ -263,9 +263,9 @@ public class CompactionWithAllNullRowsTest extends AbstractCompactionTest {
       writer.endFile();
     }
     resource1
-        .getModFile()
+        .getOldModFile()
         .write(new Deletion(new MeasurementPath(deviceID, ""), Long.MAX_VALUE, Long.MAX_VALUE));
-    resource1.getModFile().close();
+    resource1.getOldModFile().close();
     seqResources.add(resource1);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, getPerformer(), 0);
@@ -291,18 +291,18 @@ public class CompactionWithAllNullRowsTest extends AbstractCompactionTest {
       writer.endFile();
     }
     resource1
-        .getModFile()
+        .getOldModFile()
         .write(new Deletion(new MeasurementPath(deviceID, "s0"), Long.MAX_VALUE, 11));
     resource1
-        .getModFile()
+        .getOldModFile()
         .write(new Deletion(new MeasurementPath(deviceID, "s1"), Long.MAX_VALUE, 11));
     resource1
-        .getModFile()
+        .getOldModFile()
         .write(new Deletion(new MeasurementPath(deviceID, "s2"), Long.MAX_VALUE, 11));
     resource1
-        .getModFile()
+        .getOldModFile()
         .write(new Deletion(new MeasurementPath(deviceID, "s3"), Long.MAX_VALUE, 11));
-    resource1.getModFile().close();
+    resource1.getOldModFile().close();
     seqResources.add(resource1);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, getPerformer(), 0);

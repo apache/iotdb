@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
+import java.util.Collection;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.DataRegionException;
@@ -31,9 +32,16 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate.IDPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate.IDPredicate.FullExactMatch;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
@@ -42,6 +50,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALRecove
 
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,6 +71,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
  * This class doesn't guarantee concurrency safety.
  */
 public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerformer {
+
   private static final Logger logger =
       LoggerFactory.getLogger(UnsealedTsFileRecoverPerformer.class);
 
@@ -94,7 +104,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
    * truncate the file to remaining corrected data.
    *
    * @throws DataRegionException when failing to recover.
-   * @throws IOException when failing to recover.
+   * @throws IOException         when failing to recover.
    */
   public void startRecovery() throws DataRegionException, IOException {
     super.recoverWithWriter();
@@ -108,8 +118,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
   }
 
   private void constructResourceFromTsFile() {
-    Map<IDeviceID, Map<String, List<Deletion>>> modificationsForResource =
-        loadModificationsForResource();
+    Collection<ModEntry> modificationsForResource = tsFileResource.getAllModEntries();
     Map<IDeviceID, List<ChunkMetadata>> deviceChunkMetaDataMap = writer.getDeviceChunkMetadataMap();
     for (Map.Entry<IDeviceID, List<ChunkMetadata>> entry : deviceChunkMetaDataMap.entrySet()) {
       IDeviceID deviceId = entry.getKey();
@@ -127,30 +136,25 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
         // calculate startTime and endTime according to chunkMetaData and modifications
         long startTime = chunkMetaData.getStartTime();
         long endTime = chunkMetaData.getEndTime();
-        long chunkHeaderOffset = chunkMetaData.getOffsetOfChunkHeader();
-        if (modificationsForResource.containsKey(deviceId)
-            && modificationsForResource
-                .get(deviceId)
-                .containsKey(chunkMetaData.getMeasurementUid())) {
-          // exist deletion for current measurement
-          for (Deletion modification :
-              modificationsForResource.get(deviceId).get(chunkMetaData.getMeasurementUid())) {
-            long fileOffset = modification.getFileOffset();
-            if (chunkHeaderOffset < fileOffset) {
-              // deletion is valid for current chunk
-              long modsStartTime = modification.getStartTime();
-              long modsEndTime = modification.getEndTime();
-              if (startTime >= modsStartTime && endTime <= modsEndTime) {
-                startTime = Long.MAX_VALUE;
-                endTime = Long.MIN_VALUE;
-              } else if (startTime >= modsStartTime && startTime <= modsEndTime) {
-                startTime = modsEndTime + 1;
-              } else if (endTime >= modsStartTime && endTime <= modsEndTime) {
-                endTime = modsStartTime - 1;
-              }
-            }
+        // exist deletion for current measurement
+        for (ModEntry modification : modificationsForResource) {
+          if (!(modification.affects(deviceId, startTime, endTime) && modification.affects(
+              chunkMetaData.getMeasurementUid()))) {
+            continue;
+          }
+          // deletion is valid for current chunk
+          long modsStartTime = modification.getStartTime();
+          long modsEndTime = modification.getEndTime();
+          if (startTime >= modsStartTime && endTime <= modsEndTime) {
+            startTime = Long.MAX_VALUE;
+            endTime = Long.MIN_VALUE;
+          } else if (startTime >= modsStartTime && startTime <= modsEndTime) {
+            startTime = modsEndTime + 1;
+          } else if (endTime >= modsStartTime && endTime <= modsEndTime) {
+            endTime = modsStartTime - 1;
           }
         }
+
         tsFileResource.updateStartTime(deviceId, startTime);
         tsFileResource.updateEndTime(deviceId, endTime);
       }
@@ -159,28 +163,9 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
     tsFileResource.updatePlanIndexes(writer.getMaxPlanIndex());
   }
 
-  // load modifications for recovering tsFileResource
-  private Map<IDeviceID, Map<String, List<Deletion>>> loadModificationsForResource() {
-    Map<IDeviceID, Map<String, List<Deletion>>> modificationsForResource = new HashMap<>();
-    ModificationFile modificationFile = tsFileResource.getModFile();
-    if (modificationFile.exists()) {
-      List<Modification> modifications = (List<Modification>) modificationFile.getModifications();
-      for (Modification modification : modifications) {
-        if (modification.getType().equals(Modification.Type.DELETION)) {
-          IDeviceID deviceId = modification.getPath().getIDeviceID();
-          String measurementId = modification.getPath().getMeasurement();
-          Map<String, List<Deletion>> measurementModsMap =
-              modificationsForResource.computeIfAbsent(deviceId, n -> new HashMap<>());
-          List<Deletion> list =
-              measurementModsMap.computeIfAbsent(measurementId, n -> new ArrayList<>());
-          list.add((Deletion) modification);
-        }
-      }
-    }
-    return modificationsForResource;
-  }
-
-  /** Redo log. */
+  /**
+   * Redo log.
+   */
   public void redoLog(WALEntry walEntry) {
     // skip redo wal log when this TsFile is not crashed
     if (!hasCrashed()) {
@@ -195,12 +180,17 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
           IMemTable memTable = (IMemTable) walEntry.getValue();
           if (!memTable.isSignalMemTable()) {
             if (tsFileResource != null) {
+              // delete data already flushed in the MemTable to avoid duplicates
               for (IDeviceID device : tsFileResource.getDevices()) {
-                memTable.delete(
-                    new MeasurementPath(device, "*"),
-                    new PartialPath(device),
-                    tsFileResource.getStartTime(device),
-                    tsFileResource.getEndTime(device));
+                if (device.isTableModel()) {
+                  memTable.delete(new TableDeletionEntry(
+                      new DeletionPredicate(device.getTableName(), new FullExactMatch(device)),
+                      new TimeRange(tsFileResource.getStartTime(device),
+                          tsFileResource.getEndTime(device))));
+                } else {
+                  memTable.delete(new TreeDeletionEntry(new MeasurementPath(device, "*"),
+                      tsFileResource.getStartTime(device), tsFileResource.getEndTime(device)));
+                }
               }
             }
             walRedoer.resetRecoveryMemTable(memTable);

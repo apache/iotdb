@@ -19,13 +19,17 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
+import java.io.IOException;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory.ModsSerializer;
 
@@ -38,10 +42,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** QueryContext contains the shared information with in a query. */
 public class QueryContext {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(QueryContext.class);
   private QueryStatistics queryStatistics = new QueryStatistics();
 
   /**
@@ -49,7 +56,7 @@ public class QueryContext {
    * use this field because each call of Modification.getModifications() return a copy of the
    * Modifications, and we do not want it to create multiple copies within a query.
    */
-  private final Map<String, PatternTreeMap<Modification, ModsSerializer>> fileModCache =
+  private final Map<String, PatternTreeMap<ModEntry, ModsSerializer>> fileModCache =
       new ConcurrentHashMap<>();
 
   protected long queryId;
@@ -87,7 +94,7 @@ public class QueryContext {
       return false;
     }
 
-    ModificationFile modFile = tsFileResource.getModFile();
+    ModificationFile modFile = tsFileResource.getNewModFile();
     if (!modFile.exists()) {
       nonExistentModFiles.add(tsFileResource.getTsFileID());
       return false;
@@ -95,40 +102,44 @@ public class QueryContext {
     return true;
   }
 
-  private PatternTreeMap<Modification, ModsSerializer> getAllModifications(
+  private PatternTreeMap<ModEntry, ModsSerializer> getAllModifications(
       ModificationFile modFile) {
     return fileModCache.computeIfAbsent(
-        modFile.getFilePath(),
+        modFile.getFile().getPath(),
         k -> {
-          PatternTreeMap<Modification, ModsSerializer> modifications =
+          PatternTreeMap<ModEntry, ModsSerializer> modifications =
               PatternTreeMapFactory.getModsPatternTreeMap();
-          for (Modification modification : modFile.getModificationsIter()) {
-            modifications.append(modification.getPath(), modification);
+          try {
+            for (ModEntry modification : modFile.getAllMods()) {
+              modifications.append(modification.keyOfPatternTree(), modification);
+            }
+          } catch (IOException e) {
+            LOGGER.error("Error occurred while reading modification file {}", modFile, e);
           }
           return modifications;
         });
   }
 
-  public List<Modification> getPathModifications(
+  public List<ModEntry> getPathModifications(
       TsFileResource tsFileResource, IDeviceID deviceID, String measurement) {
     // if the mods file does not exist, do not add it to the cache
     if (!checkIfModificationExists(tsFileResource)) {
       return Collections.emptyList();
     }
 
-    return ModificationFile.sortAndMerge(
-        getAllModifications(tsFileResource.getModFile()).getOverlapped(deviceID, measurement));
+    return ModificationUtils.sortAndMerge(
+        getAllModifications(tsFileResource.getNewModFile()).getOverlapped(deviceID, measurement));
   }
 
-  public List<Modification> getPathModifications(TsFileResource tsFileResource, IDeviceID deviceID)
+  public List<ModEntry> getPathModifications(TsFileResource tsFileResource, IDeviceID deviceID)
       throws IllegalPathException {
     // if the mods file does not exist, do not add it to the cache
     if (!checkIfModificationExists(tsFileResource)) {
       return Collections.emptyList();
     }
 
-    return ModificationFile.sortAndMerge(
-        getAllModifications(tsFileResource.getModFile())
+    return ModificationUtils.sortAndMerge(
+        getAllModifications(tsFileResource.getNewModFile())
             .getDeviceOverlapped(new PartialPath(deviceID)));
   }
 
@@ -136,10 +147,10 @@ public class QueryContext {
    * Find the modifications of all aligned 'paths' in 'modFile'. If they are not in the cache, read
    * them from 'modFile' and put then into the cache.
    */
-  public List<List<Modification>> getPathModifications(
+  public List<List<ModEntry>> getPathModifications(
       TsFileResource tsFileResource, IDeviceID deviceID, List<String> measurementList) {
     int n = measurementList.size();
-    List<List<Modification>> ans = new ArrayList<>(n);
+    List<List<ModEntry>> ans = new ArrayList<>(n);
     for (String s : measurementList) {
       ans.add(getPathModifications(tsFileResource, deviceID, s));
     }
