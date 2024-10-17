@@ -20,8 +20,10 @@
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
@@ -90,13 +92,14 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
   public TsFileInsertionEventScanParser(
       final File tsFile,
-      final TreePattern pattern,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipeInsertionEvent sourceEvent)
       throws IOException {
-    super(pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+    super(treePattern, tablePattern, startTime, endTime, pipeTaskMeta, sourceEvent);
 
     this.startTime = startTime;
     this.endTime = endTime;
@@ -381,7 +384,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             break;
           }
 
-          if (!pattern.matchesMeasurement(currentDevice, chunkHeader.getMeasurementID())) {
+          if (!patternMatchesMeasurement(currentDevice, chunkHeader.getMeasurementID())) {
             tsFileSequenceReader.position(
                 tsFileSequenceReader.position() + chunkHeader.getDataSize());
             break;
@@ -408,7 +411,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             chunkHeader = tsFileSequenceReader.readChunkHeader(marker);
 
             if (Objects.isNull(currentDevice)
-                || !pattern.matchesMeasurement(currentDevice, chunkHeader.getMeasurementID())) {
+                || !patternMatchesMeasurement(currentDevice, chunkHeader.getMeasurementID())) {
               tsFileSequenceReader.position(
                   tsFileSequenceReader.position() + chunkHeader.getDataSize());
               break;
@@ -456,7 +459,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
           isMultiPageList.clear();
           measurementIndexMap.clear();
           final IDeviceID deviceID = tsFileSequenceReader.readChunkGroupHeader().getDeviceID();
-          currentDevice = pattern.mayOverlapWithDevice(deviceID) ? deviceID : null;
+          currentDevice = patternMayOverlapWithDevice(deviceID) ? deviceID : null;
           break;
         case MetaMarker.OPERATION_INDEX_RANGE:
           tsFileSequenceReader.readPlanIndex();
@@ -469,6 +472,22 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     lastMarker = marker;
     if (!recordAlignedChunk(valueChunkList, marker)) {
       chunkReader = null;
+    }
+  }
+
+  private boolean patternMayOverlapWithDevice(final IDeviceID device) {
+    if (PathUtils.isTreeModelDevice(device)) {
+      return Objects.isNull(treePattern) || treePattern.mayOverlapWithDevice(device);
+    } else {
+      return Objects.isNull(tablePattern) || tablePattern.matchesTable(device.getTableName());
+    }
+  }
+
+  private boolean patternMatchesMeasurement(final IDeviceID device, final String measurementId) {
+    if (PathUtils.isTreeModelDevice(device)) {
+      return Objects.isNull(treePattern) || treePattern.matchesMeasurement(device, measurementId);
+    } else {
+      return Objects.isNull(tablePattern) || tablePattern.matchesTable(device.getTableName());
     }
   }
 
