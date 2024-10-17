@@ -250,7 +250,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
       deviceAttributeStore = new DeviceAttributeStore(regionStatistics);
       deviceAttributeCacheUpdater =
-          new DeviceAttributeCacheUpdater(regionStatistics, PathUtils.unQualifyDatabaseName(storageGroupFullPath));
+          new DeviceAttributeCacheUpdater(
+              regionStatistics, PathUtils.unQualifyDatabaseName(storageGroupFullPath));
       tagManager = new TagManager(schemaRegionDirPath, regionStatistics);
       mtree =
           new MTreeBelowSGMemoryImpl(
