@@ -391,7 +391,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
           SOURCE_PATH_KEY);
     }
 
-    // Check coexistence of watermark-interval-ms and watermark.interval-ms
+    // Check coexistence of watermark.interval-ms and watermark-interval-ms
     if (parameters.hasAnyAttributes(EXTRACTOR_WATERMARK_INTERVAL_KEY, SOURCE_WATERMARK_INTERVAL_KEY)
         && parameters.hasAnyAttributes(
             _EXTRACTOR_WATERMARK_INTERVAL_KEY, _SOURCE_WATERMARK_INTERVAL_KEY)) {
