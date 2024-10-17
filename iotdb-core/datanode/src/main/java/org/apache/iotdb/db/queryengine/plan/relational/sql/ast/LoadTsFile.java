@@ -52,7 +52,7 @@ public class LoadTsFile extends Statement {
   private final List<Long> writePointCountList;
 
   public LoadTsFile(NodeLocation location, String filePath, Map<String, String> loadAttributes) {
-    super(requireNonNull(location, "location is null"));
+    super(location);
     this.filePath = requireNonNull(filePath, "filePath is null");
 
     this.file = new File(filePath);

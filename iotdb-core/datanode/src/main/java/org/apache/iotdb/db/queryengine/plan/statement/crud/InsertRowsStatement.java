@@ -24,6 +24,8 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.utils.annotations.TableModel;
@@ -200,5 +202,11 @@ public class InsertRowsStatement extends InsertBaseStatement {
       database = childDatabaseName;
     }
     return database;
+  }
+
+  @TableModel
+  @Override
+  public Statement toRelationalStatement(MPPQueryContext context) {
+    return new InsertRows(this, context);
   }
 }
