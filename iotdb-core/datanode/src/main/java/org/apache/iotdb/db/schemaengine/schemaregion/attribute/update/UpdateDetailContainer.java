@@ -280,9 +280,9 @@ public class UpdateDetailContainer implements UpdateContainer {
     return map.size() * RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
         + map.entrySet().stream()
             .mapToLong(
-                attributeKV ->
-                    RamUsageEstimator.sizeOf(attributeKV.getKey())
-                        + RamUsageEstimator.sizeOf(attributeKV.getValue()))
+                innerEntry ->
+                    RamUsageEstimator.sizeOf(innerEntry.getKey())
+                        + RamUsageEstimator.sizeOf(innerEntry.getValue()))
             .reduce(0, Long::sum);
   }
 

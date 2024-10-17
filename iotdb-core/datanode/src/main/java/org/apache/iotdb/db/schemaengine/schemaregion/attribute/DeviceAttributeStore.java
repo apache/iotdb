@@ -50,9 +50,7 @@ import java.util.Objects;
 public class DeviceAttributeStore implements IDeviceAttributeStore {
 
   private static final Logger logger = LoggerFactory.getLogger(DeviceAttributeStore.class);
-  private static final long MAP_SIZE_WITH_REF =
-      RamUsageEstimator.shallowSizeOfInstance(HashMap.class)
-          + RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+  private static final long MAP_SIZE = RamUsageEstimator.shallowSizeOfInstance(HashMap.class);
 
   private final List<Map<String, String>> deviceAttributeList = new ArrayList<>();
 
@@ -132,7 +130,7 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   @Override
   public synchronized int createAttribute(final List<String> nameList, final Object[] valueList) {
     // todo implement storage for device of diverse data types
-    long memUsage = MAP_SIZE_WITH_REF;
+    long memUsage = MAP_SIZE + RamUsageEstimator.NUM_BYTES_OBJECT_REF;
     final Map<String, String> attributeMap = new HashMap<>();
     String value;
     for (int i = 0; i < nameList.size(); i++) {
@@ -191,7 +189,8 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
 
   @Override
   public Map<String, String> removeAttribute(final int pointer) {
-    releaseMemory(UpdateDetailContainer.sizeOfMapEntries(deviceAttributeList.get(pointer)));
+    releaseMemory(
+        MAP_SIZE + UpdateDetailContainer.sizeOfMapEntries(deviceAttributeList.get(pointer)));
     deviceAttributeList.set(pointer, null);
     return null;
   }
