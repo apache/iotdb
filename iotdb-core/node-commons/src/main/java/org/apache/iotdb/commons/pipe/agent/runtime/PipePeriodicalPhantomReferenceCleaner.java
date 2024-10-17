@@ -23,42 +23,32 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.WrappedRunnable;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.utils.TestOnly;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Single thread to execute pipe periodical jobs on DataNode or ConfigNode. This is for limiting the
- * thread num on the DataNode or ConfigNode instance. The shortest scheduling cycle for these jobs
- * is {@link PipePeriodicalJobExecutor#MIN_INTERVAL_SECONDS}, suitable for jobs that are NOT
+ * Single thread to execute pipe periodical phantom referenced clean job on DataNode or ConfigNode.
+ * The shortest scheduling cycle for these jobs is {@link
+ * PipePeriodicalPhantomReferenceCleaner#MIN_INTERVAL_SECONDS}, suitable for jobs that are
  * time-critical.
  */
-public class PipePeriodicalJobExecutor {
+public class PipePeriodicalPhantomReferenceCleaner extends PipePeriodicalJobExecutor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipePeriodicalJobExecutor.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(PipePeriodicalPhantomReferenceCleaner.class);
 
   private static final ScheduledExecutorService PERIODICAL_JOB_EXECUTOR =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-          ThreadName.PIPE_RUNTIME_PERIODICAL_JOB_EXECUTOR.getName());
+          ThreadName.PIPE_RUNTIME_PERIODICAL_PHANTOM_REFERENCE_CLEANER.getName());
 
-  private static final long MIN_INTERVAL_SECONDS =
-      PipeConfig.getInstance().getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds();
+  private static final long MIN_INTERVAL_SECONDS = 1L;
 
-  protected long rounds;
-  protected Future<?> executorFuture;
-
-  // <Periodical job, Interval in rounds>
-  protected final List<Pair<WrappedRunnable, Long>> periodicalJobs = new CopyOnWriteArrayList<>();
-
+  @Override
   public void register(String id, Runnable periodicalJob, long intervalInSeconds) {
     periodicalJobs.add(
         new Pair<>(
@@ -68,17 +58,18 @@ public class PipePeriodicalJobExecutor {
                 try {
                   periodicalJob.run();
                 } catch (Exception e) {
-                  LOGGER.warn("Periodical job {} failed.", id, e);
+                  LOGGER.warn("Periodical phantom referenced clean job {} failed.", id, e);
                 }
               }
             },
-            Math.max(intervalInSeconds / MIN_INTERVAL_SECONDS, 1)));
+            Math.max(intervalInSeconds, MIN_INTERVAL_SECONDS)));
     LOGGER.info(
-        "Pipe periodical job {} is registered successfully. Interval: {} seconds.",
+        "Pipe periodical phantom referenced clean job {} is registered successfully. Interval: {} seconds.",
         id,
-        Math.max(intervalInSeconds / MIN_INTERVAL_SECONDS, 1) * MIN_INTERVAL_SECONDS);
+        Math.max(intervalInSeconds, MIN_INTERVAL_SECONDS));
   }
 
+  @Override
   public synchronized void start() {
     if (executorFuture == null) {
       rounds = 0;
@@ -92,33 +83,5 @@ public class PipePeriodicalJobExecutor {
               TimeUnit.SECONDS);
       LOGGER.info("Pipe periodical job executor is started successfully.");
     }
-  }
-
-  protected void execute() {
-    ++rounds;
-
-    for (final Pair<WrappedRunnable, Long> periodicalJob : periodicalJobs) {
-      if (rounds % periodicalJob.right == 0) {
-        periodicalJob.left.run();
-      }
-    }
-  }
-
-  public synchronized void stop() {
-    if (executorFuture != null) {
-      executorFuture.cancel(false);
-      executorFuture = null;
-      LOGGER.info("Pipe periodical job executor is stopped successfully.");
-    }
-  }
-
-  @TestOnly
-  public void clear() {
-    periodicalJobs.clear();
-    LOGGER.info("All pipe periodical jobs are cleared successfully.");
-  }
-
-  public static long getMinIntervalSeconds() {
-    return MIN_INTERVAL_SECONDS;
   }
 }
