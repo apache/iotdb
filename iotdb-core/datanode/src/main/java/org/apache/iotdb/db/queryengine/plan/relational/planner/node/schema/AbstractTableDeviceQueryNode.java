@@ -17,14 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read;
+package org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceSourceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.DeviceAttributeCacheUpdater;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -57,8 +59,8 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
       final List<List<SchemaFilter>> idDeterminedPredicateList,
       final Expression idFuzzyPredicate,
       final List<ColumnHeader> columnHeaderList,
-      final TRegionReplicaSet schemaRegionReplicaSet) {
-    super(planNodeId, database, tableName, columnHeaderList, schemaRegionReplicaSet);
+      final TDataNodeLocation senderLocation) {
+    super(planNodeId, database, tableName, columnHeaderList, senderLocation);
     this.idDeterminedPredicateList = idDeterminedPredicateList;
     this.idFuzzyPredicate = idFuzzyPredicate;
   }
@@ -94,6 +96,13 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
     for (final ColumnHeader columnHeader : columnHeaderList) {
       columnHeader.serialize(byteBuffer);
     }
+
+    if (Objects.nonNull(senderLocation)) {
+      ReadWriteIOUtils.write(true, byteBuffer);
+      DeviceAttributeCacheUpdater.serializeNodeLocation4AttributeUpdate(senderLocation, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(false, byteBuffer);
+    }
   }
 
   @Override
@@ -118,6 +127,13 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
     ReadWriteIOUtils.write(columnHeaderList.size(), stream);
     for (final ColumnHeader columnHeader : columnHeaderList) {
       columnHeader.serialize(stream);
+    }
+
+    if (Objects.nonNull(senderLocation)) {
+      ReadWriteIOUtils.write(true, stream);
+      DeviceAttributeCacheUpdater.serializeNodeLocation4AttributeUpdate(senderLocation, stream);
+    } else {
+      ReadWriteIOUtils.write(false, stream);
     }
   }
 
@@ -146,6 +162,12 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
       columnHeaderList.add(ColumnHeader.deserialize(buffer));
     }
 
+    TDataNodeLocation senderLocation = null;
+    if (ReadWriteIOUtils.readBool(buffer)) {
+      senderLocation =
+          DeviceAttributeCacheUpdater.deserializeNodeLocationForAttributeUpdate(buffer);
+    }
+
     final long offset = isScan ? ReadWriteIOUtils.readLong(buffer) : 0;
     final long limit = isScan ? ReadWriteIOUtils.readLong(buffer) : 0;
 
@@ -158,7 +180,7 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
             idDeterminedFilterList,
             idFuzzyFilter,
             columnHeaderList,
-            null,
+            senderLocation,
             offset,
             limit)
         : new TableDeviceQueryCountNode(
@@ -167,8 +189,7 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
             tableName,
             idDeterminedFilterList,
             idFuzzyFilter,
-            columnHeaderList,
-            null);
+            columnHeaderList);
   }
 
   @Override

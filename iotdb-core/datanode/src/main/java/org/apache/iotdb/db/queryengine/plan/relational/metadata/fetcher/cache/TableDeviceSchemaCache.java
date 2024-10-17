@@ -520,6 +520,34 @@ public class TableDeviceSchemaCache {
     }
   }
 
+  public void invalidateLastCache() {
+    readWriteLock.writeLock().lock();
+    try {
+      dualKeyCache.update(tableId -> true, deviceID -> true, entry -> -entry.invalidateLastCache());
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
+  public void invalidateAttributeCache() {
+    readWriteLock.writeLock().lock();
+    try {
+      dualKeyCache.update(tableId -> true, deviceID -> true, entry -> -entry.invalidateAttribute());
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
+  public void invalidateTreeSchema() {
+    readWriteLock.writeLock().lock();
+    try {
+      dualKeyCache.update(
+          tableId -> true, deviceID -> true, entry -> -entry.invalidateTreeSchema());
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
   public void invalidateAll() {
     dualKeyCache.invalidateAll();
   }
