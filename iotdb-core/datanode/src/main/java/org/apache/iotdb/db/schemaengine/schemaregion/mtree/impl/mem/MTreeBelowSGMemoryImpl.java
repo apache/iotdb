@@ -1584,8 +1584,12 @@ public class MTreeBelowSGMemoryImpl {
 
   public void renameTableAttribute() {}
 
-  public void deleteTableDevice(final String tableName) {
-    storageGroupMNode.deleteChild(tableName);
+  public boolean deleteTableDevice(final String tableName) {
+    if (store.hasChild(storageGroupMNode, tableName)) {
+      store.deleteChild(storageGroupMNode, tableName);
+      return true;
+    }
+    return false;
   }
 
   // endregion
