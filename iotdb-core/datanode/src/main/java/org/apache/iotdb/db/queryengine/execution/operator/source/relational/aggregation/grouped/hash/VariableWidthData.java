@@ -24,9 +24,9 @@ import static com.google.common.base.Verify.verify;
 import static java.lang.Math.addExact;
 import static java.lang.Math.max;
 import static java.lang.Math.subtractExact;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.FlatHash.bytesToInt;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.FlatHash.intToBytes;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.FlatHash.sumExact;
-import static org.apache.tsfile.utils.BytesUtils.bytesToInt;
-import static org.apache.tsfile.utils.BytesUtils.intToBytes;
 import static org.apache.tsfile.utils.RamUsageEstimator.sizeOf;
 import static org.apache.tsfile.utils.RamUsageEstimator.sizeOfObjectArray;
 
@@ -184,8 +184,8 @@ public final class VariableWidthData {
 
   public static void writePointer(
       byte[] pointer, int pointerOffset, int chunkIndex, int chunkOffset, int valueLength) {
-    intToBytes(chunkIndex, pointer, pointerOffset);
-    intToBytes(chunkOffset, pointer, pointerOffset + Integer.BYTES);
-    intToBytes(valueLength, pointer, pointerOffset + Long.BYTES);
+    intToBytes(pointer, pointerOffset, chunkIndex);
+    intToBytes(pointer, pointerOffset + Integer.BYTES, chunkOffset);
+    intToBytes(pointer, pointerOffset + Long.BYTES, valueLength);
   }
 }

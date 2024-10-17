@@ -28,10 +28,6 @@ import static java.lang.Math.min;
 import static java.lang.Math.toIntExact;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.VariableWidthData.EMPTY_CHUNK;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.VariableWidthData.POINTER_SIZE;
-import static org.apache.tsfile.utils.BytesUtils.bytesToInt;
-import static org.apache.tsfile.utils.BytesUtils.bytesToLongFromOffset;
-import static org.apache.tsfile.utils.BytesUtils.intToBytes;
-import static org.apache.tsfile.utils.BytesUtils.longToBytes;
 import static org.apache.tsfile.utils.RamUsageEstimator.sizeOf;
 import static org.apache.tsfile.utils.RamUsageEstimator.sizeOfByteArray;
 import static org.apache.tsfile.utils.RamUsageEstimator.sizeOfIntArray;
@@ -125,6 +121,51 @@ public final class FlatHash {
     return capacity;
   }
 
+  public static long bytesToLong(byte[] bytes, int index) {
+    if (bytes.length - 8 < 4) {
+      throw new IllegalArgumentException("Invalid input: bytes.length - offset < 8");
+    }
+    long num = 0;
+    for (int ix = index + 7; ix >= index; ix--) {
+      num <<= 8;
+      num |= (bytes[ix] & 0xff);
+    }
+    return num;
+  }
+
+  public static int bytesToInt(byte[] bytes, int index) {
+    if (bytes.length - index < 4) {
+      throw new IllegalArgumentException("Invalid input: bytes.length - offset < 4");
+    }
+
+    int num = 0;
+    for (int ix = index + 3; ix >= index; ix--) {
+      num <<= 8;
+      num |= (bytes[ix] & 0xff);
+    }
+    return num;
+  }
+
+  public static void intToBytes(byte[] desc, int offset, int i) {
+    if (desc.length - offset < 4) {
+      throw new IllegalArgumentException("Invalid input: desc.length - offset < 4");
+    }
+    desc[3 + offset] = (byte) ((i >> 24) & 0xFF);
+    desc[2 + offset] = (byte) ((i >> 16) & 0xFF);
+    desc[1 + offset] = (byte) ((i >> 8) & 0xFF);
+    desc[offset] = (byte) (i & 0xFF);
+  }
+
+  private static void longToBytes(byte[] desc, int offset, long num) {
+    if (desc.length - offset < 8) {
+      throw new IllegalArgumentException("Invalid input: desc.length - offset < 4");
+    }
+    for (int ix = 0; ix < 8; ++ix) {
+      int i = ix * 8;
+      desc[ix + offset] = (byte) ((num >> i) & 0xff);
+    }
+  }
+
   public long hashPosition(int groupId) {
     // for spilling
     checkArgument(groupId < nextGroupId, "groupId out of range");
@@ -132,7 +173,7 @@ public final class FlatHash {
     int index = groupRecordIndex[groupId];
     byte[] records = getRecords(index);
     if (hasPrecomputedHash) {
-      return bytesToLongFromOffset(records, Long.BYTES, getRecordOffset(index) + recordHashOffset);
+      return bytesToLong(records, getRecordOffset(index) + recordHashOffset);
     } else {
       return valueHashCode(records, index);
     }
@@ -153,7 +194,7 @@ public final class FlatHash {
         records, recordOffset + recordValueOffset, variableWidthChunk, columnBuilders);
     if (hasPrecomputedHash) {
       columnBuilders[columnBuilders.length - 1].writeLong(
-          bytesToLongFromOffset(records, Long.BYTES, recordOffset + recordHashOffset));
+          bytesToLong(records, recordOffset + recordHashOffset));
     }
   }
 
@@ -209,7 +250,7 @@ public final class FlatHash {
     long repeated = repeat(hashPrefix);
 
     while (true) {
-      final long controlVector = bytesToLongFromOffset(control, Long.BYTES, bucket);
+      final long controlVector = bytesToLong(control, bucket);
 
       int matchIndex = matchInVector(columns, position, hash, bucket, repeated, controlVector);
       if (matchIndex >= 0) {
@@ -261,11 +302,11 @@ public final class FlatHash {
     int recordOffset = getRecordOffset(index);
 
     int groupId = nextGroupId++;
-    intToBytes(groupId, records, recordOffset + recordGroupIdOffset);
+    intToBytes(records, recordOffset + recordGroupIdOffset, groupId);
     groupRecordIndex[groupId] = index;
 
     if (hasPrecomputedHash) {
-      longToBytes(hash, records, recordOffset + recordHashOffset);
+      longToBytes(records, recordOffset + recordHashOffset, hash);
     }
 
     byte[] variableWidthChunk = EMPTY_CHUNK;
@@ -357,9 +398,7 @@ public final class FlatHash {
 
         long hash;
         if (hasPrecomputedHash) {
-          hash =
-              bytesToLongFromOffset(
-                  oldRecords, Long.BYTES, getRecordOffset(oldIndex) + recordHashOffset);
+          hash = bytesToLong(oldRecords, getRecordOffset(oldIndex) + recordHashOffset);
         } else {
           hash = valueHashCode(oldRecords, oldIndex);
         }
@@ -370,7 +409,7 @@ public final class FlatHash {
         // getIndex is not used here because values in a rehash are always distinct
         int step = 1;
         while (true) {
-          final long controlVector = bytesToLongFromOffset(control, Long.BYTES, bucket);
+          final long controlVector = bytesToLong(control, bucket);
           // values are already distinct, so just find the first empty slot
           int emptyIndex = findEmptyInVector(controlVector, bucket);
           if (emptyIndex >= 0) {
@@ -483,8 +522,7 @@ public final class FlatHash {
     int leftRecordOffset = getRecordOffset(leftIndex);
 
     if (hasPrecomputedHash) {
-      long leftHash =
-          bytesToLongFromOffset(leftRecords, Long.BYTES, leftRecordOffset + recordHashOffset);
+      long leftHash = bytesToLong(leftRecords, leftRecordOffset + recordHashOffset);
       if (leftHash != rightHash) {
         return false;
       }

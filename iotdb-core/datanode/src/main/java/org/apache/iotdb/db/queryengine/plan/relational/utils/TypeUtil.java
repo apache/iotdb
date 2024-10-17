@@ -268,6 +268,7 @@ public class TypeUtil {
       case INT32:
       case DATE:
         intToBytes(column.getInt(position), fixedChunk, fixedOffset);
+        break;
       case INT64:
       case TIMESTAMP:
         longToBytes(column.getLong(position), fixedChunk, fixedOffset);
