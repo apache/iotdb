@@ -235,9 +235,13 @@ public class LoadTsFileStatement extends Statement {
       MPPQueryContext context) {
     loadAttributes = new HashMap<>();
     loadAttributes.put(DATABASE_LEVEL_KEY, String.valueOf(databaseLevel));
-    loadAttributes.put(DATABASE_NAME_KEY, database);
+    if (database != null) {
+      loadAttributes.put(DATABASE_NAME_KEY, database);
+    }
     loadAttributes.put(ON_SUCCESS_KEY, String.valueOf(deleteAfterLoad));
-    loadAttributes.put(MODEL_KEY, model);
+    if (model != null) {
+      loadAttributes.put(MODEL_KEY, model);
+    }
     return new LoadTsFile(null, file.getAbsolutePath(), loadAttributes);
   }
 

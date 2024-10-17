@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.utils.annotations.TableModel;
 
 import java.util.Collections;
 import java.util.List;
@@ -72,6 +73,7 @@ public class PipeEnrichedStatement extends Statement {
     return Collections.emptyList();
   }
 
+  @TableModel
   @Override
   public org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement toRelationalStatement(
       MPPQueryContext context) {
