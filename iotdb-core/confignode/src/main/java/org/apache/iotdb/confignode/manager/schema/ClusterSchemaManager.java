@@ -1066,9 +1066,10 @@ public class ClusterSchemaManager {
 
   // region table management
 
-  public TShowTableResp showTables(final String database) {
+  public TShowTableResp showTables(final String database, final boolean isDetails) {
     try {
-      return ((ShowTableResp) configManager.getConsensusManager().read(new ShowTablePlan(database)))
+      return ((ShowTableResp)
+              configManager.getConsensusManager().read(new ShowTablePlan(database, isDetails)))
           .convertToTShowTableResp();
     } catch (final ConsensusException e) {
       LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);

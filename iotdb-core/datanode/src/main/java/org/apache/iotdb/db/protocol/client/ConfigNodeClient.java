@@ -1275,9 +1275,10 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TShowTableResp showTables(final String database) throws TException {
+  public TShowTableResp showTables(final String database, final boolean isDetails)
+      throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.showTables(database), resp -> !updateConfigNodeLeader(resp.status));
+        () -> client.showTables(database, isDetails), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override

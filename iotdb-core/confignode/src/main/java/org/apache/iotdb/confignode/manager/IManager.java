@@ -834,7 +834,7 @@ public interface IManager {
 
   TSStatus alterOrDropTable(final TAlterOrDropTableReq req);
 
-  TShowTableResp showTables(final String database);
+  TShowTableResp showTables(final String database, final boolean isDetails);
 
   TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap);
 }

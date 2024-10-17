@@ -1112,18 +1112,35 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     try {
       return new ShowTableResp(
           StatusUtils.OK,
-          mTree
-              .getAllUsingTablesUnderSpecificDatabase(
-                  getQualifiedDatabasePartialPath(plan.getDatabase()))
-              .stream()
-              .map(
-                  tsTable ->
-                      new TTableInfo(
-                          tsTable.getTableName(),
-                          tsTable
-                              .getPropValue(TTL_PROPERTY.toLowerCase(Locale.ENGLISH))
-                              .orElse(TTL_INFINITE)))
-              .collect(Collectors.toList()));
+          plan.isDetails()
+              ? mTree
+                  .getAllTablesUnderSpecificDatabase(
+                      getQualifiedDatabasePartialPath(plan.getDatabase()))
+                  .stream()
+                  .map(
+                      pair -> {
+                        final TTableInfo info =
+                            new TTableInfo(
+                                pair.getLeft().getTableName(),
+                                pair.getLeft()
+                                    .getPropValue(TTL_PROPERTY.toLowerCase(Locale.ENGLISH))
+                                    .orElse(TTL_INFINITE));
+                        info.setState(pair.getRight().ordinal());
+                        return info;
+                      })
+                  .collect(Collectors.toList())
+              : mTree
+                  .getAllUsingTablesUnderSpecificDatabase(
+                      getQualifiedDatabasePartialPath(plan.getDatabase()))
+                  .stream()
+                  .map(
+                      tsTable ->
+                          new TTableInfo(
+                              tsTable.getTableName(),
+                              tsTable
+                                  .getPropValue(TTL_PROPERTY.toLowerCase(Locale.ENGLISH))
+                                  .orElse(TTL_INFINITE)))
+                  .collect(Collectors.toList()));
     } catch (final MetadataException e) {
       return new ShowTableResp(
           RpcUtils.getStatus(e.getErrorCode(), e.getMessage()), Collections.emptyList());

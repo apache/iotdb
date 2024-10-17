@@ -3121,7 +3121,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final TShowTableResp resp = configNodeClient.showTables(database);
+      final TShowTableResp resp = configNodeClient.showTables(database, isDetails);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.getStatus().getCode()) {
         LOGGER.warn(
             "Failed to show tables in database {} in config node, status is {}.",
@@ -3135,7 +3135,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 resp.getStatus().code));
         return future;
       }
-      ShowTablesTask.buildTsBlock(resp.getTableInfoList(), future);
+      if (isDetails) {
+
+      } else {
+        ShowTablesTask.buildTsBlock(resp.getTableInfoList(), future);
+      }
     } catch (final Exception e) {
       future.setException(e);
     }

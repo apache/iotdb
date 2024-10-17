@@ -1304,8 +1304,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TShowTableResp showTables(final String database) {
-    return configManager.showTables(database);
+  public TShowTableResp showTables(final String database, final boolean isDetails) {
+    return configManager.showTables(database, isDetails);
   }
 
   @Override

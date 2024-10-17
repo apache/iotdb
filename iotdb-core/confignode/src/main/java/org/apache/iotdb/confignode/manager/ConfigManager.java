@@ -2590,10 +2590,10 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TShowTableResp showTables(final String database) {
+  public TShowTableResp showTables(final String database, final boolean isDetails) {
     final TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? clusterSchemaManager.showTables(database)
+        ? clusterSchemaManager.showTables(database, isDetails)
         : new TShowTableResp(status);
   }
 

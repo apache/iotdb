@@ -1053,6 +1053,7 @@ struct TTableInfo {
    1: required string tableName
    // TTL is stored as string in table props
    2: required string TTL
+   3: optional i32 state
 }
 
 service IConfigNodeRPCService {
@@ -1789,7 +1790,7 @@ service IConfigNodeRPCService {
 
   common.TSStatus alterOrDropTable(TAlterOrDropTableReq req)
 
-  TShowTableResp showTables(string database)
+  TShowTableResp showTables(string database, bool isDetails)
 
   TFetchTableResp fetchTables(map<string, set<string>> fetchTableMap)
 }

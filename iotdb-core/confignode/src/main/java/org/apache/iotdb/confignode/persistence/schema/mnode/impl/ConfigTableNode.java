@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
+import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.persistence.schema.mnode.container.ConfigMNodeContainer;
