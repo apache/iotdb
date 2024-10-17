@@ -167,7 +167,7 @@ dropTableStatement
 
 showTableStatement
     : SHOW TABLES ((FROM | IN) database=identifier)?
-          // ((LIKE pattern=string) | (WHERE expression))?
+          // ((LIKE pattern=string (ESCAPE escape=string)) | (WHERE expression))?
     ;
 
 descTableStatement
@@ -240,8 +240,20 @@ showFunctionsStatement
 
 // -------------------------------------------- Load Statement ---------------------------------------------------------
 loadTsFileStatement
-    : LOAD fileName=string properties?
+    : LOAD fileName=string (loadFileWithAttributesClause)?
     ;
+
+loadFileWithAttributesClause
+    : WITH
+        '('
+        (loadFileWithAttributeClause ',')* loadFileWithAttributeClause?
+        ')'
+    ;
+
+loadFileWithAttributeClause
+    : loadFileWithKey=string EQ loadFileWithValue=string
+    ;
+
 
 
 // -------------------------------------------- Pipe Statement ---------------------------------------------------------
@@ -370,7 +382,7 @@ showClusterStatement
 
 showRegionsStatement
     : SHOW (SCHEMA | DATA)? REGIONS ((FROM | IN) identifier)?
-          // ((LIKE pattern=string) | (WHERE expression))?
+          // ((LIKE pattern=string (ESCAPE escape=string)) | (WHERE expression))?
     ;
 
 showDataNodesStatement
@@ -421,7 +433,7 @@ flushStatement
     ;
 
 clearCacheStatement
-    : CLEAR CACHE (localOrClusterMode)?
+    : CLEAR clearCacheOptions? CACHE localOrClusterMode?
     ;
 
 repairDataStatement
@@ -455,6 +467,12 @@ loadConfigurationStatement
 // Set Configuration
 setConfigurationStatement
     : SET CONFIGURATION propertyAssignments (ON INTEGER_VALUE)?
+    ;
+
+clearCacheOptions
+    : ATTRIBUTE
+    | QUERY
+    | ALL
     ;
 
 localOrClusterMode
@@ -650,7 +668,6 @@ relationPrimary
     | '(' relation ')'                                                #parenthesizedRelation
     ;
 
-
 expression
     : booleanExpression
     ;
@@ -705,6 +722,7 @@ primaryExpression
     | TRIM '(' trimSource=valueExpression ',' trimChar=valueExpression ')'                #trim
     | SUBSTRING '(' valueExpression FROM valueExpression (FOR valueExpression)? ')'       #substring
     | DATE_BIN '(' timeDuration ',' valueExpression (',' timeValue)? ')'                  #dateBin
+    | DATE_BIN_GAPFILL '(' timeDuration ',' valueExpression (',' timeValue)? ')'          #dateBinGapFill
     | '(' expression ')'                                                                  #parenthesizedExpression
     ;
 
@@ -948,6 +966,7 @@ DATABASES: 'DATABASES';
 DATANODES: 'DATANODES';
 DATE: 'DATE';
 DATE_BIN: 'DATE_BIN';
+DATE_BIN_GAPFILL: 'DATE_BIN_GAPFILL';
 DAY: 'DAY' | 'D';
 DEALLOCATE: 'DEALLOCATE';
 DECLARE: 'DECLARE';

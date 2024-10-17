@@ -48,6 +48,7 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -81,6 +82,12 @@ public abstract class SubscriptionPrefetchingQueue {
    * operations such as {@link SubscriptionPrefetchingQueue#poll}, {@link
    * SubscriptionPrefetchingQueue#ack}, etc. However, it does not enforce mutual exclusion among the
    * other operations themselves.
+   *
+   * <p>Under the premise of obtaining this lock, to avoid inconsistencies, updates to the {@link
+   * SubscriptionEvent} in both {@link SubscriptionPrefetchingQueue#prefetchingQueue} and {@link
+   * SubscriptionPrefetchingQueue#inFlightEvents} MUST be performed within the {@link
+   * ConcurrentHashMap#compute} method of inFlightEvents in the {@link
+   * SubscriptionPrefetchingQueue}.
    *
    * <p>This lock is created with fairness set to true, which means threads acquire the lock in the
    * order they requested it, to avoid thread starvation.
@@ -404,50 +411,60 @@ public abstract class SubscriptionPrefetchingQueue {
    */
   private boolean ackInternal(
       final String consumerId, final SubscriptionCommitContext commitContext) {
-    final SubscriptionEvent event = inFlightEvents.get(new Pair<>(consumerId, commitContext));
-    if (Objects.isNull(event)) {
-      LOGGER.warn(
-          "Subscription: subscription commit context {} does not exist, it may have been committed or something unexpected happened, prefetching queue: {}",
-          commitContext,
-          this);
-      return false;
-    }
+    final AtomicBoolean acked = new AtomicBoolean(false);
+    inFlightEvents.compute(
+        new Pair<>(consumerId, commitContext),
+        (key, ev) -> {
+          if (Objects.isNull(ev)) {
+            LOGGER.warn(
+                "Subscription: subscription commit context {} does not exist, it may have been committed or something unexpected happened, prefetching queue: {}",
+                commitContext,
+                this);
+            return null;
+          }
 
-    if (event.isCommitted()) {
-      LOGGER.warn(
-          "Subscription: subscription event {} is committed, subscription commit context {}, prefetching queue: {}",
-          event,
-          commitContext,
-          this);
-      return false;
-    }
+          if (ev.isCommitted()) {
+            LOGGER.warn(
+                "Subscription: subscription event {} is committed, subscription commit context {}, prefetching queue: {}",
+                ev,
+                commitContext,
+                this);
+            // clean up committed event
+            ev.cleanUp();
+            return null; // remove this entry
+          }
 
-    if (!event.isCommittable()) {
-      LOGGER.warn(
-          "Subscription: subscription event {} is not committable, subscription commit context {}, prefetching queue: {}",
-          event,
-          commitContext,
-          this);
-      return false;
-    }
+          if (!ev.isCommittable()) {
+            LOGGER.warn(
+                "Subscription: subscription event {} is not committable, subscription commit context {}, prefetching queue: {}",
+                ev,
+                commitContext,
+                this);
+            return ev;
+          }
 
-    // check if a consumer acks event from another consumer group...
-    final String consumerGroupId = commitContext.getConsumerGroupId();
-    if (!Objects.equals(consumerGroupId, brokerId)) {
-      LOGGER.warn(
-          "inconsistent consumer group when acking event, current: {}, incoming: {}, consumer id: {}, event commit context: {}, prefetching queue: {}, commit it anyway...",
-          brokerId,
-          consumerGroupId,
-          consumerId,
-          commitContext,
-          this);
-    }
+          // check if a consumer acks event from another consumer group...
+          final String consumerGroupId = commitContext.getConsumerGroupId();
+          if (!Objects.equals(consumerGroupId, brokerId)) {
+            LOGGER.warn(
+                "inconsistent consumer group when acking event, current: {}, incoming: {}, consumer id: {}, event commit context: {}, prefetching queue: {}, commit it anyway...",
+                brokerId,
+                consumerGroupId,
+                consumerId,
+                commitContext,
+                this);
+          }
 
-    event.ack();
-    event.recordCommittedTimestamp(); // now committed
+          ev.ack();
+          ev.recordCommittedTimestamp(); // now committed
+          acked.set(true);
 
-    // no need to update inFlightEvents
-    return true;
+          // clean up committed event
+          ev.cleanUp();
+          return null; // remove this entry
+        });
+
+    return acked.get();
   }
 
   /**
@@ -472,37 +489,44 @@ public abstract class SubscriptionPrefetchingQueue {
       final String consumerId,
       final SubscriptionCommitContext commitContext,
       final long invisibleDurationMs) {
-    final SubscriptionEvent event = inFlightEvents.get(new Pair<>(consumerId, commitContext));
-    if (Objects.isNull(event)) {
-      LOGGER.warn(
-          "Subscription: subscription commit context [{}] does not exist, it may have been committed or something unexpected happened, prefetching queue: {}",
-          commitContext,
-          this);
-      return false;
-    }
+    final AtomicBoolean nacked = new AtomicBoolean(false);
+    inFlightEvents.compute(
+        new Pair<>(consumerId, commitContext),
+        (key, ev) -> {
+          if (Objects.isNull(ev)) {
+            LOGGER.warn(
+                "Subscription: subscription commit context [{}] does not exist, it may have been committed or something unexpected happened, prefetching queue: {}",
+                commitContext,
+                this);
+            return null;
+          }
 
-    // check if a consumer nacks event from another consumer group...
-    final String consumerGroupId = commitContext.getConsumerGroupId();
-    if (!Objects.equals(consumerGroupId, brokerId)) {
-      LOGGER.warn(
-          "inconsistent consumer group when nacking event, current: {}, incoming: {}, consumer id: {}, event commit context: {}, prefetching queue: {}, commit it anyway...",
-          brokerId,
-          consumerGroupId,
-          consumerId,
-          commitContext,
-          this);
-    }
+          // check if a consumer nacks event from another consumer group...
+          final String consumerGroupId = commitContext.getConsumerGroupId();
+          if (!Objects.equals(consumerGroupId, brokerId)) {
+            LOGGER.warn(
+                "inconsistent consumer group when nacking event, current: {}, incoming: {}, consumer id: {}, event commit context: {}, prefetching queue: {}, commit it anyway...",
+                brokerId,
+                consumerGroupId,
+                consumerId,
+                commitContext,
+                this);
+          }
 
-    if (invisibleDurationMs == 0L) {
-      event.nack(); // now pollable
-    } else {
-      event.changeInvisibleDuration(invisibleDurationMs);
-      // NOTE: the current response index should not be reset here, but rather perform nack by
-      // inactive recycle after the invisible duration
-    }
+          if (invisibleDurationMs == 0L) {
+            ev.nack(); // now pollable
+          } else {
+            ev.changeInvisibleDuration(invisibleDurationMs);
+            // NOTE: the current response index should not be reset here, but rather perform nack by
+            // inactive recycle after the invisible duration
+          }
+          nacked.set(true);
 
-    // no need to update inFlightEvents and prefetchingQueue
-    return true;
+          // no need to update inFlightEvents and prefetchingQueue
+          return ev;
+        });
+
+    return nacked.get();
   }
 
   public SubscriptionCommitContext generateSubscriptionCommitContext() {
@@ -556,7 +580,7 @@ public abstract class SubscriptionPrefetchingQueue {
             .map(SubscriptionEvent::getPipeEventCount)
             .reduce(Integer::sum)
             .orElse(0)
-        + +inFlightEvents.values().stream()
+        + inFlightEvents.values().stream()
             .map(SubscriptionEvent::getPipeEventCount)
             .reduce(Integer::sum)
             .orElse(0);

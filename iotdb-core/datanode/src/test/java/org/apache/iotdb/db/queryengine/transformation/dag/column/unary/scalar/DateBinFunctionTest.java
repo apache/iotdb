@@ -22,18 +22,18 @@ import java.text.SimpleDateFormat;
 import java.time.ZoneId;
 import java.util.TimeZone;
 
-import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.DateBinFunctionColumnTransformer.dateBin;
 import static org.junit.Assert.assertEquals;
 
 public class DateBinFunctionTest {
 
   private static final SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
-  private static DateBinFunctionColumnTransformer transformer;
-
   private static final long MILLIS_IN_SECOND = 1000;
   private static final long MILLIS_IN_MINUTE = 60 * MILLIS_IN_SECOND;
   private static final long MILLIS_IN_HOUR = 60 * MILLIS_IN_MINUTE;
   private static final long MILLIS_IN_DAY = 24 * MILLIS_IN_HOUR;
+
+  private final ZoneId zoneId = ZoneId.of("UTC+0");
 
   @Before
   public void before() {
@@ -44,58 +44,81 @@ public class DateBinFunctionTest {
     return format.parse(time).getTime();
   }
 
-  public DateBinFunctionColumnTransformer getTransformer(
-      long monthDuration, long nonMonthDuration, long origin) {
-    return new DateBinFunctionColumnTransformer(
-        TIMESTAMP, monthDuration, nonMonthDuration, null, origin, ZoneId.of("UTC+0"));
-  }
-
   @Test
   public void testWithoutOrigin() throws ParseException {
-    transformer = getTransformer(0, MILLIS_IN_DAY, 0);
-    long result = transformer.dateBin(getTimestamp("2000-01-01 00:00:00.000"));
+    long result = dateBin(getTimestamp("2000-01-01 00:00:00.000"), 0, 0, MILLIS_IN_DAY, zoneId);
     assertEquals(getTimestamp("2000-01-01 00:00:00.000"), result);
   }
 
   @Test
   public void testOrigin() throws ParseException {
-    transformer = getTransformer(0, MILLIS_IN_HOUR, getTimestamp("2000-01-01 01:00:00.000"));
-    long result = transformer.dateBin(getTimestamp("2000-01-01 01:30:00.000"));
+    long result =
+        dateBin(
+            getTimestamp("2000-01-01 01:30:00.000"),
+            getTimestamp("2000-01-01 01:00:00.000"),
+            0,
+            MILLIS_IN_HOUR,
+            zoneId);
     assertEquals(getTimestamp("2000-01-01 01:00:00.000"), result);
   }
 
   @Test
   public void testMonthInterval() throws ParseException {
-    transformer = getTransformer(1, 0, getTimestamp("2000-01-01 00:00:00.000"));
-    long result = transformer.dateBin(getTimestamp("2000-01-01 00:30:00.000"));
+    long result =
+        dateBin(
+            getTimestamp("2000-01-01 00:30:00.000"),
+            getTimestamp("2000-01-01 00:00:00.000"),
+            1,
+            0,
+            zoneId);
     assertEquals(getTimestamp("2000-01-01 00:00:00.000"), result);
   }
 
   @Test
   public void testOriginGtSource() throws ParseException {
-    transformer = getTransformer(1, 0, getTimestamp("2000-05-01 00:00:00.000"));
-    long result = transformer.dateBin(getTimestamp("2000-01-01 00:00:00.000"));
+    long result =
+        dateBin(
+            getTimestamp("2000-01-01 00:00:00.000"),
+            getTimestamp("2000-05-01 00:00:00.000"),
+            1,
+            0,
+            zoneId);
     assertEquals(getTimestamp("2000-01-01 00:00:00.000"), result);
   }
 
   @Test
   public void testOriginBeforeUnixEpoch() throws ParseException {
-    transformer = getTransformer(0, MILLIS_IN_DAY, getTimestamp("1969-12-31 00:00:00.000"));
-    long result = transformer.dateBin(getTimestamp("2000-01-01 00:00:00.000"));
+    long result =
+        dateBin(
+            getTimestamp("2000-01-01 00:00:00.000"),
+            getTimestamp("1969-12-31 00:00:00.000"),
+            0,
+            MILLIS_IN_DAY,
+            zoneId);
     assertEquals(getTimestamp("2000-01-01 00:00:00.000"), result);
   }
 
   @Test
   public void testZeroInterval() throws ParseException {
-    transformer = getTransformer(0, 0, getTimestamp("2000-01-01 00:00:00.000"));
-    long result = transformer.dateBin(getTimestamp("2000-01-01 00:00:00.000"));
+    long result =
+        dateBin(
+            getTimestamp("2000-01-01 00:00:00.000"),
+            getTimestamp("2000-01-01 00:00:00.000"),
+            0,
+            0,
+            zoneId);
     assertEquals(getTimestamp("2000-01-01 00:00:00.000"), result);
   }
 
   @Test
   public void testSourceBeforeUnixEpoch() throws ParseException {
-    transformer = getTransformer(0, MILLIS_IN_DAY, getTimestamp("2000-01-01 00:00:00.000"));
-    long result = transformer.dateBin(getTimestamp("1969-12-31 23:00:00.000"));
+    long result =
+        dateBin(
+            getTimestamp("1969-12-31 23:00:00.000"),
+            getTimestamp("2000-01-01 00:00:00.000"),
+            0,
+            MILLIS_IN_DAY,
+            zoneId);
     assertEquals(getTimestamp("1969-12-31 00:00:00.000"), result);
   }
 }

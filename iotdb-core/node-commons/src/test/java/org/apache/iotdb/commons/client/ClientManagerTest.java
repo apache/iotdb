@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
 
 import org.apache.commons.pool2.KeyedObjectPool;
@@ -43,6 +44,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.CountDownLatch;
@@ -66,7 +68,7 @@ public class ClientManagerTest {
     service = new MockInternalRPCService(endPoint);
     IDataNodeRPCService.Iface processor = mock(IDataNodeRPCService.Iface.class);
     // timeout method
-    when(processor.clearCache())
+    when(processor.clearCache(Collections.singleton(CacheClearOptions.DEFAULT.ordinal())))
         .thenAnswer(
             invocation -> {
               Thread.sleep(CONNECTION_TIMEOUT + 1000);
@@ -530,7 +532,7 @@ public class ClientManagerTest {
 
     // timeout RPC
     try (SyncDataNodeInternalServiceClient syncClient = syncClusterManager.borrowClient(endPoint)) {
-      syncClient.clearCache();
+      syncClient.clearCache(Collections.singleton(CacheClearOptions.DEFAULT.ordinal()));
       Assert.fail("A timeout exception should occur here");
     } catch (Exception ignored) {
       // no handling
@@ -581,6 +583,7 @@ public class ClientManagerTest {
     AtomicBoolean finalFailed1 = failed;
     CountDownLatch finalLatch1 = latch;
     asyncClient.clearCache(
+        Collections.singleton(CacheClearOptions.DEFAULT.ordinal()),
         new AsyncMethodCallback<TSStatus>() {
           @Override
           public void onComplete(TSStatus response) {

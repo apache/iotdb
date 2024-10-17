@@ -75,6 +75,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.udf.api.customizer.strategy.AccessStrategy;
 
+import org.apache.tsfile.common.regexp.LikePattern;
 import org.apache.tsfile.enums.TSDataType;
 
 import java.io.IOException;
@@ -312,7 +313,9 @@ public class IntermediateLayerVisitor
         return new ArithmeticNegationTransformer(parentReader);
       case LIKE:
         LikeExpression likeExpression = (LikeExpression) expression;
-        return new LikeTransformer(parentReader, likeExpression.getPattern());
+        LikePattern pattern =
+            LikePattern.compile(likeExpression.getPattern(), likeExpression.getEscape());
+        return new LikeTransformer(parentReader, pattern);
       case REGEXP:
         RegularExpression regularExpression = (RegularExpression) expression;
         return new RegularTransformer(parentReader, regularExpression.getPattern());

@@ -26,7 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
@@ -154,7 +154,7 @@ public class DeleteTimeSeriesProcedure
             "construct schema engine black list",
             env,
             targetSchemaRegionGroup,
-            CnToDnRequestType.CONSTRUCT_SCHEMA_BLACK_LIST,
+            CnToDnAsyncRequestType.CONSTRUCT_SCHEMA_BLACK_LIST,
             ((dataNodeLocation, consensusGroupIdList) ->
                 new TConstructSchemaBlackListReq(consensusGroupIdList, patternTreeBytes))) {
           @Override
@@ -200,7 +200,7 @@ public class DeleteTimeSeriesProcedure
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
     final DataNodeAsyncRequestContext<TInvalidateMatchedSchemaCacheReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            CnToDnRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
+            CnToDnAsyncRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
             new TInvalidateMatchedSchemaCacheReq(patternTreeBytes),
             dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
@@ -250,7 +250,7 @@ public class DeleteTimeSeriesProcedure
             env,
             relatedDataRegionGroup,
             true,
-            CnToDnRequestType.DELETE_DATA_FOR_DELETE_SCHEMA,
+            CnToDnAsyncRequestType.DELETE_DATA_FOR_DELETE_SCHEMA,
             ((dataNodeLocation, consensusGroupIdList) ->
                 new TDeleteDataForDeleteSchemaReq(
                         new ArrayList<>(consensusGroupIdList),
@@ -265,7 +265,7 @@ public class DeleteTimeSeriesProcedure
             "delete time series in schema engine",
             env,
             env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
-            CnToDnRequestType.DELETE_TIMESERIES,
+            CnToDnAsyncRequestType.DELETE_TIMESERIES,
             ((dataNodeLocation, consensusGroupIdList) ->
                 new TDeleteTimeSeriesReq(consensusGroupIdList, patternTreeBytes)
                     .setIsGeneratedByPipe(isGeneratedByPipe)));
@@ -302,7 +302,7 @@ public class DeleteTimeSeriesProcedure
               "roll back schema engine black list",
               env,
               env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
-              CnToDnRequestType.ROLLBACK_SCHEMA_BLACK_LIST,
+              CnToDnAsyncRequestType.ROLLBACK_SCHEMA_BLACK_LIST,
               (dataNodeLocation, consensusGroupIdList) ->
                   new TRollbackSchemaBlackListReq(consensusGroupIdList, patternTreeBytes));
       rollbackStateTask.execute();
@@ -403,7 +403,7 @@ public class DeleteTimeSeriesProcedure
         final String taskName,
         final ConfigNodeProcedureEnv env,
         final Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup,
-        final CnToDnRequestType dataNodeRequestType,
+        final CnToDnAsyncRequestType dataNodeRequestType,
         final BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
       super(env, targetSchemaRegionGroup, false, dataNodeRequestType, dataNodeRequestGenerator);
       this.taskName = taskName;
@@ -414,7 +414,7 @@ public class DeleteTimeSeriesProcedure
         final ConfigNodeProcedureEnv env,
         final Map<TConsensusGroupId, TRegionReplicaSet> targetDataRegionGroup,
         final boolean executeOnAllReplicaset,
-        final CnToDnRequestType dataNodeRequestType,
+        final CnToDnAsyncRequestType dataNodeRequestType,
         final BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
       super(
           env,
