@@ -42,6 +42,8 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
   protected final TreePattern treePattern; // used to filter data
   protected final TablePattern tablePattern; // used to filter data
   protected final GlobalTimeExpression timeFilterExpression; // used to filter data
+  protected final long startTime; // used to filter data
+  protected final long endTime; // used to filter data
 
   protected final PipeTaskMeta pipeTaskMeta; // used to report progress
   protected final PipeInsertionEvent sourceEvent; // used to report progress
@@ -63,6 +65,8 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
         (startTime == Long.MIN_VALUE && endTime == Long.MAX_VALUE)
             ? null
             : new GlobalTimeExpression(TimeFilterApi.between(startTime, endTime));
+    this.startTime = startTime;
+    this.endTime = endTime;
 
     this.pipeTaskMeta = pipeTaskMeta;
     this.sourceEvent = sourceEvent;

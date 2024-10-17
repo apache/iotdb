@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
-import org.apache.iotdb.db.pipe.event.common.tsfile.parser.query.TsFileInsertionEventQueryParserTabletIterator;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
@@ -33,11 +32,13 @@ import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.read.TsFileDeviceIterator;
-import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.controller.CachedChunkLoaderImpl;
+import org.apache.tsfile.read.controller.MetadataQuerierByFileImpl;
+import org.apache.tsfile.read.query.executor.TableQueryExecutor;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
@@ -61,11 +62,12 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       LoggerFactory.getLogger(TsFileInsertionEventTableParser.class);
 
   private final PipeMemoryBlock allocatedMemoryBlock;
-  private final TsFileReader tsFileReader;
+  private final TableQueryExecutor tableQueryExecutor;
+
+  private final Map<String, TableSchema> tableSchemaMap;
 
   private final Iterator<Map.Entry<IDeviceID, List<String>>> deviceMeasurementsMapIterator;
   private final Map<IDeviceID, Boolean> deviceIsAlignedMap;
-  private final Map<String, TSDataType> measurementDataTypeMap;
 
   public TsFileInsertionEventTableParser(
       final File tsFile,
@@ -78,7 +80,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
     this(tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent, null);
   }
 
-  public TsFileInsertionEventTableParser(
+  private TsFileInsertionEventTableParser(
       final File tsFile,
       final TablePattern pattern,
       final long startTime,
@@ -97,7 +99,14 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       long memoryRequiredInBytes =
           PipeConfig.getInstance().getPipeMemoryAllocateForTsFileSequenceReaderInBytes();
       tsFileSequenceReader = new TsFileSequenceReader(tsFile.getPath(), true, true);
-      tsFileReader = new TsFileReader(tsFileSequenceReader);
+
+      tableSchemaMap = tsFileSequenceReader.readFileMetadata().getTableSchemaMap();
+
+      tableQueryExecutor =
+          new TableQueryExecutor(
+              new MetadataQuerierByFileImpl(tsFileSequenceReader),
+              new CachedChunkLoaderImpl(tsFileSequenceReader),
+              TableQueryExecutor.TableQueryOrdering.DEVICE);
 
       if (tsFileResourceManager.cacheObjectsIfAbsent(tsFile)) {
         // These read-only objects can be found in cache.
@@ -105,7 +114,6 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
             Objects.nonNull(deviceIsAlignedMap)
                 ? deviceIsAlignedMap
                 : tsFileResourceManager.getDeviceIsAlignedMapFromCache(tsFile, true);
-        measurementDataTypeMap = tsFileResourceManager.getMeasurementDataTypeMapFromCache(tsFile);
         deviceMeasurementsMap = tsFileResourceManager.getDeviceMeasurementsMapFromCache(tsFile);
       } else {
         // We need to create these objects here and remove them later.
@@ -122,10 +130,6 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
           this.deviceIsAlignedMap = deviceIsAlignedMap;
           devices = deviceIsAlignedMap.keySet();
         }
-
-        measurementDataTypeMap = readFilteredFullPathDataTypeMap(devices);
-        memoryRequiredInBytes +=
-            PipeMemoryWeightUtil.memoryOfStr2TSDataType(measurementDataTypeMap);
 
         deviceMeasurementsMap = readFilteredDeviceMeasurementsMap(devices);
         memoryRequiredInBytes +=
@@ -146,42 +150,6 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
     }
   }
 
-  private Map<IDeviceID, List<String>> filterDeviceMeasurementsMapByPattern(
-      final Map<IDeviceID, List<String>> originalDeviceMeasurementsMap) {
-    final Map<IDeviceID, List<String>> filteredDeviceMeasurementsMap = new HashMap<>();
-    for (Map.Entry<IDeviceID, List<String>> entry : originalDeviceMeasurementsMap.entrySet()) {
-      final IDeviceID deviceId = entry.getKey();
-
-      // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
-      // in this case, all data can be matched without checking the measurements
-      if (Objects.isNull(treePattern)
-          || treePattern.isRoot()
-          || treePattern.coversDevice(deviceId)) {
-        if (!entry.getValue().isEmpty()) {
-          filteredDeviceMeasurementsMap.put(deviceId, entry.getValue());
-        }
-      }
-
-      // case 2: for example, pattern is root.a.b.c and device is root.a.b
-      // in this case, we need to check the full path
-      else if (treePattern.mayOverlapWithDevice(deviceId)) {
-        final List<String> filteredMeasurements = new ArrayList<>();
-
-        for (final String measurement : entry.getValue()) {
-          if (treePattern.matchesMeasurement(deviceId, measurement)) {
-            filteredMeasurements.add(measurement);
-          }
-        }
-
-        if (!filteredMeasurements.isEmpty()) {
-          filteredDeviceMeasurementsMap.put(deviceId, filteredMeasurements);
-        }
-      }
-    }
-
-    return filteredDeviceMeasurementsMap;
-  }
-
   private Map<IDeviceID, Boolean> readDeviceIsAlignedMap() throws IOException {
     final Map<IDeviceID, Boolean> deviceIsAlignedResultMap = new HashMap<>();
     final TsFileDeviceIterator deviceIsAlignedIterator =
@@ -194,45 +162,20 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
   }
 
   private Set<IDeviceID> filterDevicesByPattern(final Set<IDeviceID> devices) {
-    if (Objects.isNull(treePattern) || treePattern.isRoot()) {
+    if (Objects.isNull(tablePattern)
+        || !tablePattern.hasUserSpecifiedDatabasePatternOrTablePattern()) {
       return devices;
     }
 
     final Set<IDeviceID> filteredDevices = new HashSet<>();
     for (final IDeviceID device : devices) {
-      if (treePattern.coversDevice(device) || treePattern.mayOverlapWithDevice(device)) {
+      if (tablePattern.matchesTable(device.getTableName())) {
         filteredDevices.add(device);
       }
     }
     return filteredDevices;
   }
 
-  /**
-   * This method is similar to {@link TsFileSequenceReader#getFullPathDataTypeMap()}, but only reads
-   * the given devices.
-   */
-  private Map<String, TSDataType> readFilteredFullPathDataTypeMap(final Set<IDeviceID> devices)
-      throws IOException {
-    final Map<String, TSDataType> result = new HashMap<>();
-
-    for (final IDeviceID device : devices) {
-      tsFileSequenceReader
-          .readDeviceMetadata(device)
-          .values()
-          .forEach(
-              timeseriesMetadata ->
-                  result.put(
-                      device.toString() + "." + timeseriesMetadata.getMeasurementId(),
-                      timeseriesMetadata.getTsDataType()));
-    }
-
-    return result;
-  }
-
-  /**
-   * This method is similar to {@link TsFileSequenceReader#getDeviceMeasurementsMap()}, but only
-   * reads the given devices.
-   */
   private Map<IDeviceID, List<String>> readFilteredDeviceMeasurementsMap(
       final Set<IDeviceID> devices) throws IOException {
     final Map<IDeviceID, List<String>> result = new HashMap<>();
@@ -251,12 +194,24 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
     return result;
   }
 
+  private Map<IDeviceID, List<String>> filterDeviceMeasurementsMapByPattern(
+      final Map<IDeviceID, List<String>> originalDeviceMeasurementsMap) {
+    final Map<IDeviceID, List<String>> filteredDeviceMeasurementsMap = new HashMap<>();
+    for (Map.Entry<IDeviceID, List<String>> entry : originalDeviceMeasurementsMap.entrySet()) {
+      final IDeviceID deviceId = entry.getKey();
+      if (Objects.isNull(tablePattern) || tablePattern.matchesTable(deviceId.getTableName())) {
+        filteredDeviceMeasurementsMap.put(deviceId, entry.getValue());
+      }
+    }
+    return filteredDeviceMeasurementsMap;
+  }
+
   @Override
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
     return () ->
         new Iterator<TabletInsertionEvent>() {
 
-          private TsFileInsertionEventQueryParserTabletIterator tabletIterator = null;
+          private TsFileInsertionEventTableParserTabletIterator tabletIterator = null;
 
           @Override
           public boolean hasNext() {
@@ -269,7 +224,16 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
               final Map.Entry<IDeviceID, List<String>> entry = deviceMeasurementsMapIterator.next();
 
               try {
-                tabletIterator = null;
+                tabletIterator =
+                    new TsFileInsertionEventTableParserTabletIterator(
+                        tableQueryExecutor,
+                        entry.getKey(),
+                        entry.getValue(),
+                        tableSchemaMap,
+                        timeFilterExpression,
+                        startTime,
+                        endTime,
+                        allocatedMemoryBlockForTablet);
               } catch (final Exception e) {
                 close();
                 throw new PipeException("failed to create TsFileInsertionDataTabletIterator", e);
@@ -287,18 +251,15 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
             }
 
             final Tablet tablet = tabletIterator.next();
-            final boolean isAligned =
-                deviceIsAlignedMap.getOrDefault(
-                    IDeviceID.Factory.DEFAULT_FACTORY.create(tablet.getDeviceId()), false);
 
             final TabletInsertionEvent next;
             if (!hasNext()) {
               next =
                   new PipeRawTabletInsertionEvent(
-                      sourceEvent != null ? sourceEvent.isTableModelEvent() : null,
+                      Boolean.TRUE,
                       sourceEvent != null ? sourceEvent.getTreeModelDatabaseName() : null,
                       tablet,
-                      isAligned,
+                      true,
                       sourceEvent != null ? sourceEvent.getPipeName() : null,
                       sourceEvent != null ? sourceEvent.getCreationTime() : 0,
                       pipeTaskMeta,
@@ -308,10 +269,10 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
             } else {
               next =
                   new PipeRawTabletInsertionEvent(
-                      sourceEvent != null ? sourceEvent.isTableModelEvent() : null,
+                      Boolean.TRUE,
                       sourceEvent != null ? sourceEvent.getTreeModelDatabaseName() : null,
                       tablet,
-                      isAligned,
+                      true,
                       sourceEvent != null ? sourceEvent.getPipeName() : null,
                       sourceEvent != null ? sourceEvent.getCreationTime() : 0,
                       pipeTaskMeta,
@@ -325,14 +286,6 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
 
   @Override
   public void close() {
-    try {
-      if (tsFileReader != null) {
-        tsFileReader.close();
-      }
-    } catch (final IOException e) {
-      LOGGER.warn("Failed to close TsFileReader", e);
-    }
-
     super.close();
 
     if (allocatedMemoryBlock != null) {

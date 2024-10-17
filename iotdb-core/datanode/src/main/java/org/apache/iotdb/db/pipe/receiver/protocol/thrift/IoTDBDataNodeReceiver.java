@@ -122,6 +122,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.apache.iotdb.db.exception.metadata.DatabaseNotSetException.DATABASE_NOT_SET;
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR_CHAR;
 
@@ -759,9 +760,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
           .status;
     } catch (final Exception e) {
-      if (e.getMessage() != null
-          && e.getMessage().contains(DATABASE_NOT_SET.toLowerCase(Locale.ROOT))) {
-        ALREADY_CREATED_DATABASES.remove(dataBaseName);
+      ALREADY_CREATED_DATABASES.remove(dataBaseName);
+
+      final Throwable rootCause = getRootCause(e);
+      if (rootCause.getMessage() != null
+          && rootCause.getMessage().contains(DATABASE_NOT_SET.toLowerCase(Locale.ROOT))) {
         autoCreateDatabaseIfNecessary(dataBaseName);
 
         // Retry after creating the database
