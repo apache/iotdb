@@ -363,6 +363,12 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.ADD_TABLE_COLUMN_PROCEDURE;
     } else if (procedure instanceof SetTablePropertiesProcedure) {
       return ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE;
+    } else if (procedure instanceof RenameTableColumnProcedure) {
+      return ProcedureType.RENAME_TABLE_COLUMN_PROCEDURE;
+    } else if (procedure instanceof DropTableColumnProcedure) {
+      return ProcedureType.DROP_TABLE_COLUMN_PROCEDURE;
+    } else if (procedure instanceof DropTableProcedure) {
+      return ProcedureType.DROP_TABLE_PROCEDURE;
     } else if (procedure instanceof CreatePipePluginProcedure) {
       return ProcedureType.CREATE_PIPE_PLUGIN_PROCEDURE;
     } else if (procedure instanceof DropPipePluginProcedure) {
