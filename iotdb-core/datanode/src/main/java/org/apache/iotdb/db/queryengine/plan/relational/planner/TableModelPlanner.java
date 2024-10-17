@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
+import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.IPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
@@ -37,11 +38,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.StatementAnalyze
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.scheduler.ClusterScheduler;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
+import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -130,17 +133,29 @@ public class TableModelPlanner implements IPlanner {
       DistributedQueryPlan distributedPlan,
       MPPQueryContext context,
       QueryStateMachine stateMachine) {
-    IScheduler scheduler =
-        new ClusterScheduler(
-            context,
-            stateMachine,
-            distributedPlan.getInstances(),
-            context.getQueryType(),
-            executor,
-            writeOperationExecutor,
-            scheduledExecutor,
-            syncInternalServiceClientManager,
-            asyncInternalServiceClientManager);
+    IScheduler scheduler;
+    if (statement instanceof LoadTsFile) {
+      scheduler =
+          new LoadTsFileScheduler(
+              distributedPlan,
+              context,
+              stateMachine,
+              syncInternalServiceClientManager,
+              ClusterPartitionFetcher.getInstance(),
+              false);
+    } else {
+      scheduler =
+          new ClusterScheduler(
+              context,
+              stateMachine,
+              distributedPlan.getInstances(),
+              context.getQueryType(),
+              executor,
+              writeOperationExecutor,
+              scheduledExecutor,
+              syncInternalServiceClientManager,
+              asyncInternalServiceClientManager);
+    }
     scheduler.start();
     return scheduler;
   }

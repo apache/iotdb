@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkState;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableBuiltinAggregationFunction.LAST;
 
 public class AccumulatorFactory {
 
@@ -95,6 +96,10 @@ public class AccumulatorFactory {
         return new CountAccumulator();
       case AVG:
         return new AvgAccumulator(inputDataTypes.get(0));
+      case SUM:
+        return new SumAccumulator(inputDataTypes.get(0));
+      case LAST:
+        return new LastAccumulator(inputDataTypes.get(0));
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }

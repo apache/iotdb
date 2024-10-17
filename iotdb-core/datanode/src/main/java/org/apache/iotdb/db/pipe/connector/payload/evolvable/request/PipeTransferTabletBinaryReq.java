@@ -42,10 +42,14 @@ import java.util.Objects;
 
 public class PipeTransferTabletBinaryReq extends TPipeTransferReq {
 
-  private transient ByteBuffer byteBuffer;
+  protected transient ByteBuffer byteBuffer;
 
-  private PipeTransferTabletBinaryReq() {
+  protected PipeTransferTabletBinaryReq() {
     // Do nothing
+  }
+
+  public ByteBuffer getByteBuffer() {
+    return byteBuffer;
   }
 
   public InsertBaseStatement constructStatement() {
@@ -64,7 +68,7 @@ public class PipeTransferTabletBinaryReq extends TPipeTransferReq {
         IoTDBDataNodeReceiver.PLAN_TO_STATEMENT_VISITOR.process(insertNode, null);
   }
 
-  private InsertNode parseByteBuffer() {
+  protected InsertNode parseByteBuffer() {
     final PlanNode node = WALEntry.deserializeForConsensus(byteBuffer);
     return node instanceof InsertNode ? (InsertNode) node : null;
   }

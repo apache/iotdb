@@ -180,6 +180,7 @@ public abstract class PlanNode implements IConsensusRequest {
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       serialize(outputStream);
+
       return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     } catch (IOException e) {
       LOGGER.error("Unexpected error occurs when serializing writePlanNode.", e);

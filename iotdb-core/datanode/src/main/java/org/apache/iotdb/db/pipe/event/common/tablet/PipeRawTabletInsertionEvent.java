@@ -104,7 +104,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
       final EnrichedEvent sourceEvent,
       final boolean needToReport) {
     this(
-        null,
+        isTableModelEvent,
         databaseName,
         tablet,
         isAligned,
