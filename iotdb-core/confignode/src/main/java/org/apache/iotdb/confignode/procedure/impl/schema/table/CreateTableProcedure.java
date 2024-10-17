@@ -178,7 +178,7 @@ public class CreateTableProcedure
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     final PartialPath path;
     try {
-      path = new PartialPath(new String[] {ROOT, database, table.getTableName()});
+      path = new PartialPath(new String[] {ROOT, database.substring(5), table.getTableName()});
       patternTree.appendPathPattern(path);
       patternTree.appendPathPattern(path.concatAsMeasurementPath(MULTI_LEVEL_PATH_WILDCARD));
       patternTree.serialize(dataOutputStream);
