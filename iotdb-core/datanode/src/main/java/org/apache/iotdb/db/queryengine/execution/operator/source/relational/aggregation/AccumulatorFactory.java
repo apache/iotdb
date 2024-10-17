@@ -65,6 +65,10 @@ public class AccumulatorFactory {
         return new SumAccumulator(inputDataTypes.get(0));
       case LAST:
         return new LastAccumulator(inputDataTypes.get(0));
+      case MAX:
+        return new MaxAccumulator(inputDataTypes.get(0));
+      case MIN:
+        return new MinAccumulator(inputDataTypes.get(0));
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }
