@@ -21,19 +21,12 @@ package org.apache.iotdb.db.subscription.event.pipe;
 
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 
-import java.io.File;
-
 public class SubscriptionPipeTsFilePlainEvent implements SubscriptionPipeEvents {
 
   private final PipeTsFileInsertionEvent tsFileInsertionEvent;
 
   public SubscriptionPipeTsFilePlainEvent(final PipeTsFileInsertionEvent tsFileInsertionEvent) {
     this.tsFileInsertionEvent = tsFileInsertionEvent;
-  }
-
-  @Override
-  public File getTsFile() {
-    return tsFileInsertionEvent.getTsFile();
   }
 
   @Override
