@@ -550,4 +550,8 @@ public abstract class AstVisitor<R, C> {
   protected R visitLoadTsFile(LoadTsFile node, C context) {
     return visitStatement(node, context);
   }
+
+  protected R visitPipeEnriched(PipeEnriched node, C context) {
+    return visitStatement(node, context);
+  }
 }

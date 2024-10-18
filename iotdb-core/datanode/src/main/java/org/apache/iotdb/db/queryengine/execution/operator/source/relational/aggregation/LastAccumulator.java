@@ -90,7 +90,7 @@ public class LastAccumulator implements TableAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in LastValue: %s", seriesDataType));
+            String.format("Unsupported data type in Last: %s", seriesDataType));
     }
   }
 
@@ -104,7 +104,6 @@ public class LastAccumulator implements TableAccumulator {
       if (argument.isNull(i)) {
         continue;
       }
-      initResult = true;
 
       byte[] bytes = argument.getBinary(i).getValues();
       long time = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, 0);
@@ -274,7 +273,7 @@ public class LastAccumulator implements TableAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in Extreme: %s", seriesDataType));
+              String.format("Unsupported data type in Last: %s", seriesDataType));
       }
     } catch (IOException e) {
       throw new UnsupportedOperationException(

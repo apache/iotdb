@@ -452,23 +452,6 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
       }
     }
 
-    //      if (Streams.of(
-    //              TsTableColumnCategory.ID, TsTableColumnCategory.ATTRIBUTE,
-    // TsTableColumnCategory.TIME)
-    //          .anyMatch(columnSchema.getColumnCategory()::equals)) {
-    //        if (isNullIdOrAttribute(i)) {
-    //          valueColumns[i] =
-    //              new RunLengthEncodedColumn(
-    //                  new BinaryColumn(1, Optional.of(new boolean[] {true}), new Binary[] {null}),
-    //                  inputRegion.getTimeColumn().getPositionCount());
-    //        } else {
-    //          valueColumns[i] = inputRegion.getTimeColumn();
-    //        }
-    //      } else {
-    //        valueColumns[i] = inputRegion.getColumn(columnsIndexArray[aggArguments.get(i)]);
-    //      }
-    //    }
-
     TsBlock tsBlock =
         new TsBlock(
             inputRegion.getPositionCount(),
@@ -490,25 +473,6 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     } else {
       return inputTsBlock.subTsBlock(lastReadRowIndex);
     }
-  }
-
-  /** ID or Attribute is null, skip this aggregation logic */
-  private boolean isNullIdOrAttribute(int i) {
-    if (TsTableColumnCategory.ID == columnSchemas.get(aggArguments.get(i)).getColumnCategory()
-        && deviceEntries
-                .get(currentDeviceIndex)
-                .getNthSegment(columnsIndexArray[aggArguments.get(i)] + 1)
-            == null) {
-      return true;
-    }
-
-    return TsTableColumnCategory.ATTRIBUTE
-            == columnSchemas.get(aggArguments.get(i)).getColumnCategory()
-        && deviceEntries
-                .get(currentDeviceIndex)
-                .getAttributeColumnValues()
-                .get(columnsIndexArray[aggArguments.get(i)])
-            == null;
   }
 
   protected void calcFromStatistics(Statistics timeStatistics, Statistics[] valueStatistics) {

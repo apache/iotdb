@@ -23,6 +23,11 @@ import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAvgAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCountAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedFirstAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedLastAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedMaxAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedMinAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedSumAccumulator;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
@@ -80,6 +85,16 @@ public class AccumulatorFactory {
         return new GroupedCountAccumulator();
       case AVG:
         return new GroupedAvgAccumulator(inputDataTypes.get(0));
+      case SUM:
+        return new GroupedSumAccumulator(inputDataTypes.get(0));
+      case LAST:
+        return new GroupedLastAccumulator(inputDataTypes.get(0));
+      case FIRST:
+        return new GroupedFirstAccumulator(inputDataTypes.get(0));
+      case MAX:
+        return new GroupedMaxAccumulator(inputDataTypes.get(0));
+      case MIN:
+        return new GroupedMinAccumulator(inputDataTypes.get(0));
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }
@@ -100,6 +115,12 @@ public class AccumulatorFactory {
         return new SumAccumulator(inputDataTypes.get(0));
       case LAST:
         return new LastAccumulator(inputDataTypes.get(0));
+      case FIRST:
+        return new FirstAccumulator(inputDataTypes.get(0));
+      case MAX:
+        return new MaxAccumulator(inputDataTypes.get(0));
+      case MIN:
+        return new MinAccumulator(inputDataTypes.get(0));
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }
