@@ -123,7 +123,7 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   }
 
   @Override
-  public IMemMNode addChild(IMemMNode parent, String childName, IMemMNode child) {
+  public IMemMNode addChild(final IMemMNode parent, final String childName, final IMemMNode child) {
     IMemMNode result = parent.addChild(childName, child);
     if (result == child) {
       requestMemory(child.estimateSize());
@@ -132,7 +132,7 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   }
 
   @Override
-  public void deleteChild(IMemMNode parent, String childName) {
+  public void deleteChild(final IMemMNode parent, final String childName) {
     releaseMemory(parent.deleteChild(childName).estimateSize());
   }
 
@@ -239,7 +239,7 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
     }
   }
 
-  private void releaseMemory(int size) {
+  public void releaseMemory(int size) {
     if (regionStatistics != null) {
       regionStatistics.releaseMemory(size);
     }

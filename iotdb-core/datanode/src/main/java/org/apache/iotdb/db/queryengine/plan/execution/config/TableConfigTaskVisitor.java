@@ -35,16 +35,21 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowCluste
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableAddColumnTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableDropColumnTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableRenameColumnTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableRenameTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableSetPropertiesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ClearCacheTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DropDBTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DropTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowAINodesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowConfigNodesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowDataNodesTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesDetailsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.UseDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.FlushTask;
@@ -69,6 +74,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
@@ -80,6 +86,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
@@ -297,6 +305,25 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
+  protected IConfigTask visitRenameTable(final RenameTable node, final MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getSource());
+
+    final String oldName = databaseTablePair.getRight();
+    final String newName = node.getTarget().getValue();
+    if (oldName.equals(newName)) {
+      throw new SemanticException("The table's old name shall not be equal to the new one.");
+    }
+
+    return new AlterTableRenameTableTask(
+        databaseTablePair.getLeft(),
+        databaseTablePair.getRight(),
+        node.getTarget().getValue(),
+        context.getQueryId().getId(),
+        node.tableIfExists());
+  }
+
+  @Override
   protected IConfigTask visitAddColumn(final AddColumn node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName());
@@ -313,6 +340,41 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
         context.getQueryId().getId(),
         node.tableIfExists(),
         node.columnIfNotExists());
+  }
+
+  @Override
+  protected IConfigTask visitRenameColumn(final RenameColumn node, final MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable());
+
+    final String oldName = node.getSource().getValue();
+    final String newName = node.getTarget().getValue();
+    if (oldName.equals(newName)) {
+      throw new SemanticException("The column's old name shall not be equal to the new one.");
+    }
+
+    return new AlterTableRenameColumnTask(
+        databaseTablePair.getLeft(),
+        databaseTablePair.getRight(),
+        node.getSource().getValue(),
+        node.getTarget().getValue(),
+        context.getQueryId().getId(),
+        node.tableIfExists(),
+        node.columnIfExists());
+  }
+
+  @Override
+  protected IConfigTask visitDropColumn(final DropColumn node, final MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable());
+
+    return new AlterTableDropColumnTask(
+        databaseTablePair.getLeft(),
+        databaseTablePair.getRight(),
+        node.getField().getValue(),
+        context.getQueryId().getId(),
+        node.tableIfExists(),
+        node.columnIfExists());
   }
 
   @Override
@@ -394,8 +456,14 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitDropTable(DropTable node, MPPQueryContext context) {
-    return super.visitDropTable(node, context);
+  protected IConfigTask visitDropTable(final DropTable node, final MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName());
+    return new DropTableTask(
+        databaseTablePair.getLeft(),
+        databaseTablePair.getRight(),
+        context.getQueryId().getId(),
+        node.isExists());
   }
 
   @Override
@@ -408,7 +476,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     if (database == null) {
       throw new SemanticException(DATABASE_NOT_SPECIFIED);
     }
-    return new ShowTablesTask(database);
+    return node.isDetails() ? new ShowTablesDetailsTask(database) : new ShowTablesTask(database);
   }
 
   @Override

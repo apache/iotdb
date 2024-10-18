@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
+import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.persistence.schema.mnode.container.ConfigMNodeContainer;
@@ -41,7 +42,7 @@ public class ConfigTableNode implements IConfigMNode {
 
   private ConfigTableInfo tableNodeInfo;
 
-  public ConfigTableNode(IConfigMNode parent, String name) {
+  public ConfigTableNode(final IConfigMNode parent, final String name) {
     this.parent = parent;
     this.tableNodeInfo = new ConfigTableInfo(name);
   }
@@ -50,7 +51,7 @@ public class ConfigTableNode implements IConfigMNode {
     return tableNodeInfo.getTable();
   }
 
-  public void setTable(TsTable table) {
+  public void setTable(final TsTable table) {
     tableNodeInfo.setTable(table);
   }
 
@@ -58,7 +59,7 @@ public class ConfigTableNode implements IConfigMNode {
     return tableNodeInfo.getStatus();
   }
 
-  public void setStatus(TableNodeStatus status) {
+  public void setStatus(final TableNodeStatus status) {
     tableNodeInfo.setStatus(status);
   }
 
@@ -68,7 +69,7 @@ public class ConfigTableNode implements IConfigMNode {
   }
 
   @Override
-  public void setName(String name) {
+  public void setName(final String name) {
     tableNodeInfo.setName(name);
   }
 
@@ -78,7 +79,7 @@ public class ConfigTableNode implements IConfigMNode {
   }
 
   @Override
-  public void setParent(IConfigMNode parent) {
+  public void setParent(final IConfigMNode parent) {
     this.parent = parent;
   }
 
@@ -91,7 +92,7 @@ public class ConfigTableNode implements IConfigMNode {
   }
 
   String concatFullPath() {
-    StringBuilder builder = new StringBuilder(getName());
+    final StringBuilder builder = new StringBuilder(getName());
     IConfigMNode curr = this;
     while (curr.getParent() != null) {
       curr = curr.getParent();
@@ -101,13 +102,13 @@ public class ConfigTableNode implements IConfigMNode {
   }
 
   @Override
-  public void setFullPath(String fullPath) {
+  public void setFullPath(final String fullPath) {
     this.fullPath = fullPath;
   }
 
   @Override
   public PartialPath getPartialPath() {
-    List<String> detachedPath = new ArrayList<>();
+    final List<String> detachedPath = new ArrayList<>();
     IConfigMNode temp = this;
     detachedPath.add(temp.getName());
     while (temp.getParent() != null) {
@@ -123,7 +124,7 @@ public class ConfigTableNode implements IConfigMNode {
   }
 
   @Override
-  public <R, C> R accept(MNodeVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final MNodeVisitor<R, C> visitor, final C context) {
     return visitor.visitBasicMNode(this, context);
   }
 
@@ -139,28 +140,28 @@ public class ConfigTableNode implements IConfigMNode {
 
   /** check whether the MNode has a child with the name */
   @Override
-  public boolean hasChild(String name) {
+  public boolean hasChild(final String name) {
     return false;
   }
 
   /** get the child with the name */
   @Override
-  public IConfigMNode getChild(String name) {
+  public IConfigMNode getChild(final String name) {
     return null;
   }
 
   @Override
-  public IConfigMNode addChild(String name, IConfigMNode child) {
+  public IConfigMNode addChild(final String name, final IConfigMNode child) {
     return null;
   }
 
   @Override
-  public IConfigMNode addChild(IConfigMNode child) {
+  public IConfigMNode addChild(final IConfigMNode child) {
     return null;
   }
 
   @Override
-  public IConfigMNode deleteChild(String name) {
+  public IConfigMNode deleteChild(final String name) {
     return null;
   }
 
@@ -170,7 +171,7 @@ public class ConfigTableNode implements IConfigMNode {
   }
 
   @Override
-  public void setChildren(IMNodeContainer<IConfigMNode> children) {
+  public void setChildren(final IMNodeContainer<IConfigMNode> children) {
     // do nothing
   }
 
@@ -190,7 +191,7 @@ public class ConfigTableNode implements IConfigMNode {
   }
 
   @Override
-  public void setSchemaTemplateId(int id) {
+  public void setSchemaTemplateId(final int id) {
     throw new UnsupportedOperationException();
   }
 

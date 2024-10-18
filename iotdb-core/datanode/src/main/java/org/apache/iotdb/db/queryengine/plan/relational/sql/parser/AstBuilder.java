@@ -307,29 +307,33 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitDropTableStatement(RelationalSqlParser.DropTableStatementContext ctx) {
+  public Node visitDropTableStatement(final RelationalSqlParser.DropTableStatementContext ctx) {
     return new DropTable(
         getLocation(ctx), getQualifiedName(ctx.qualifiedName()), ctx.EXISTS() != null);
   }
 
   @Override
-  public Node visitShowTableStatement(RelationalSqlParser.ShowTableStatementContext ctx) {
-    if (ctx.database == null) {
-      return new ShowTables(getLocation(ctx));
-    } else {
-      return new ShowTables(getLocation(ctx), lowerIdentifier((Identifier) visit(ctx.database)));
-    }
+  public Node visitShowTableStatement(final RelationalSqlParser.ShowTableStatementContext ctx) {
+    return Objects.nonNull(ctx.database)
+        ? new ShowTables(
+            getLocation(ctx),
+            lowerIdentifier((Identifier) visit(ctx.database)),
+            Objects.nonNull(ctx.DETAILS()))
+        : new ShowTables(getLocation(ctx), Objects.nonNull(ctx.DETAILS()));
   }
 
   @Override
-  public Node visitDescTableStatement(RelationalSqlParser.DescTableStatementContext ctx) {
+  public Node visitDescTableStatement(final RelationalSqlParser.DescTableStatementContext ctx) {
     return new DescribeTable(getLocation(ctx), getQualifiedName(ctx.table));
   }
 
   @Override
-  public Node visitRenameTable(RelationalSqlParser.RenameTableContext ctx) {
+  public Node visitRenameTable(final RelationalSqlParser.RenameTableContext ctx) {
     return new RenameTable(
-        getLocation(ctx), getQualifiedName(ctx.from), lowerIdentifier((Identifier) visit(ctx.to)));
+        getLocation(ctx),
+        getQualifiedName(ctx.from),
+        lowerIdentifier((Identifier) visit(ctx.to)),
+        Objects.nonNull(ctx.EXISTS()));
   }
 
   @Override
@@ -343,20 +347,36 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitRenameColumn(RelationalSqlParser.RenameColumnContext ctx) {
+  public Node visitRenameColumn(final RelationalSqlParser.RenameColumnContext ctx) {
     return new RenameColumn(
         getLocation(ctx),
         getQualifiedName(ctx.tableName),
         (Identifier) visit(ctx.from),
-        (Identifier) visit(ctx.to));
+        (Identifier) visit(ctx.to),
+        ctx.EXISTS().stream()
+            .anyMatch(
+                node ->
+                    node.getSymbol().getTokenIndex() < ctx.COLUMN().getSymbol().getTokenIndex()),
+        ctx.EXISTS().stream()
+            .anyMatch(
+                node ->
+                    node.getSymbol().getTokenIndex() > ctx.COLUMN().getSymbol().getTokenIndex()));
   }
 
   @Override
-  public Node visitDropColumn(RelationalSqlParser.DropColumnContext ctx) {
+  public Node visitDropColumn(final RelationalSqlParser.DropColumnContext ctx) {
     return new DropColumn(
         getLocation(ctx),
         getQualifiedName(ctx.tableName),
-        lowerIdentifier((Identifier) visit(ctx.column)));
+        lowerIdentifier((Identifier) visit(ctx.column)),
+        ctx.EXISTS().stream()
+            .anyMatch(
+                node ->
+                    node.getSymbol().getTokenIndex() < ctx.COLUMN().getSymbol().getTokenIndex()),
+        ctx.EXISTS().stream()
+            .anyMatch(
+                node ->
+                    node.getSymbol().getTokenIndex() > ctx.COLUMN().getSymbol().getTokenIndex()));
   }
 
   @Override

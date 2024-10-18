@@ -554,6 +554,13 @@ public class ColumnHeaderConstant {
       ImmutableList.of(
           new ColumnHeader(TABLE_NAME, TSDataType.TEXT),
           new ColumnHeader(COLUMN_TTL, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showTablesDetailsColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(TABLE_NAME, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_TTL, TSDataType.TEXT),
+          new ColumnHeader(STATUS, TSDataType.TEXT));
+
   public static final List<ColumnHeader> LIST_USER_PRIVILEGES_Column_HEADERS =
       ImmutableList.of(
           new ColumnHeader(ROLE, TSDataType.TEXT),

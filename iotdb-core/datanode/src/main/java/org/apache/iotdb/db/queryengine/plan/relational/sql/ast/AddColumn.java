@@ -113,7 +113,7 @@ public class AddColumn extends Statement {
         .add("tableName", tableName)
         .add("column", column)
         .add("tableIfExists", tableIfExists)
-        .add("columnIfExists", columnIfNotExists)
+        .add("columnIfNotExists", columnIfNotExists)
         .toString();
   }
 }
