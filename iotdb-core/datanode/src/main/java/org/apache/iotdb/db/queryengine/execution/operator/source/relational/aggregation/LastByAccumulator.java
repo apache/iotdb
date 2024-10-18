@@ -37,6 +37,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_BY;
 
 public class LastByAccumulator implements TableAccumulator {
 
@@ -115,7 +116,7 @@ public class LastByAccumulator implements TableAccumulator {
   public void addIntermediate(Column argument) {
     checkArgument(
         argument instanceof BinaryColumn || argument instanceof RunLengthEncodedColumn,
-        "intermediate input and output of Last should be BinaryColumn");
+        "intermediate input and output of LastBy should be BinaryColumn");
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {
@@ -126,6 +127,8 @@ public class LastByAccumulator implements TableAccumulator {
       long time = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, 0);
       int offset = Long.BYTES;
       boolean isXNull = BytesUtils.bytesToBool(bytes, offset);
+      offset += 1;
+
       if (isXNull) {
         if (!initResult || time > yLastTime) {
           initResult = true;
@@ -178,6 +181,7 @@ public class LastByAccumulator implements TableAccumulator {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
         "intermediate input and output of LastBy should be BinaryColumn");
+
     if (!initResult) {
       columnBuilder.appendNull();
     } else {
@@ -187,12 +191,7 @@ public class LastByAccumulator implements TableAccumulator {
 
   @Override
   public void evaluateFinal(ColumnBuilder columnBuilder) {
-    if (!initResult) {
-      columnBuilder.appendNull();
-      return;
-    }
-
-    if (xIsNull) {
+    if (!initResult || xIsNull) {
       columnBuilder.appendNull();
       return;
     }
@@ -314,9 +313,10 @@ public class LastByAccumulator implements TableAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in Last Aggregation: %s", yDataType));
+              String.format("Unsupported data type: %s in Aggregation: %s", yDataType, LAST_BY));
       }
     } else {
+      // x is time column
       if (yStatistics != null) {
         if (!initResult || yStatistics.getEndTime() > yLastTime) {
           initResult = true;
@@ -369,12 +369,14 @@ public class LastByAccumulator implements TableAccumulator {
             break;
           default:
             throw new UnSupportedDataTypeException(
-                String.format("Unsupported data type in Extreme: %s", xDataType));
+                String.format("Unsupported data type: %s in aggregation %s", xDataType, LAST_BY));
         }
       }
     } catch (IOException e) {
       throw new UnsupportedOperationException(
-          "Failed to serialize intermediate result for AvgAccumulator.", e);
+          String.format(
+              "Failed to serialize intermediate result for Accumulator %s, errorMsg: %s.",
+              LAST_BY, e.getMessage()));
     }
     return byteArrayOutputStream.toByteArray();
   }
