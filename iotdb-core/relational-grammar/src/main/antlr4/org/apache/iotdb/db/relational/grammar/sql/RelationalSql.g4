@@ -433,7 +433,7 @@ flushStatement
     ;
 
 clearCacheStatement
-    : CLEAR CACHE (localOrClusterMode)?
+    : CLEAR clearCacheOptions? CACHE localOrClusterMode?
     ;
 
 repairDataStatement
@@ -467,6 +467,12 @@ loadConfigurationStatement
 // Set Configuration
 setConfigurationStatement
     : SET CONFIGURATION propertyAssignments (ON INTEGER_VALUE)?
+    ;
+
+clearCacheOptions
+    : ATTRIBUTE
+    | QUERY
+    | ALL
     ;
 
 localOrClusterMode

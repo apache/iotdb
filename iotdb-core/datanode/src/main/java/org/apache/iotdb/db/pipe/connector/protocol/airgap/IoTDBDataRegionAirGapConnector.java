@@ -21,13 +21,15 @@ package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReqV2;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReqV2;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReqV2;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -209,9 +211,16 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
         pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
     final byte[] bytes =
         Objects.isNull(insertNode)
-            ? PipeTransferTabletBinaryReq.toTPipeTransferBytes(
-                pipeInsertNodeTabletInsertionEvent.getByteBuffer())
-            : PipeTransferTabletInsertNodeReq.toTPipeTransferBytes(insertNode);
+            ? PipeTransferTabletBinaryReqV2.toTPipeTransferBytes(
+                pipeInsertNodeTabletInsertionEvent.getByteBuffer(),
+                pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
+                    ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
+                    : null)
+            : PipeTransferTabletInsertNodeReqV2.toTPipeTransferBytes(
+                insertNode,
+                pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
+                    ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
+                    : null);
 
     if (!send(
         pipeInsertNodeTabletInsertionEvent.getPipeName(),
@@ -253,9 +262,12 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
         pipeRawTabletInsertionEvent.getPipeName(),
         pipeRawTabletInsertionEvent.getCreationTime(),
         socket,
-        PipeTransferTabletRawReq.toTPipeTransferBytes(
+        PipeTransferTabletRawReqV2.toTPipeTransferBytes(
             pipeRawTabletInsertionEvent.convertToTablet(),
-            pipeRawTabletInsertionEvent.isAligned()))) {
+            pipeRawTabletInsertionEvent.isAligned(),
+            pipeRawTabletInsertionEvent.isTableModelEvent()
+                ? pipeRawTabletInsertionEvent.getTableModelDatabaseName()
+                : null))) {
       final String errorMessage =
           String.format(
               "Transfer PipeRawTabletInsertionEvent %s error. Socket: %s.",
@@ -303,7 +315,13 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
           creationTime,
           socket,
           PipeTransferTsFileSealWithModReq.toTPipeTransferBytes(
-              modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length()))) {
+              modFile.getName(),
+              modFile.length(),
+              tsFile.getName(),
+              tsFile.length(),
+              pipeTsFileInsertionEvent.isTableModelEvent()
+                  ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
+                  : null))) {
         receiverStatusHandler.handle(
             new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
                 .setMessage(errorMessage),
@@ -319,7 +337,12 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
           pipeName,
           creationTime,
           socket,
-          PipeTransferTsFileSealReq.toTPipeTransferBytes(tsFile.getName(), tsFile.length()))) {
+          PipeTransferTsFileSealWithModReq.toTPipeTransferBytes(
+              tsFile.getName(),
+              tsFile.length(),
+              pipeTsFileInsertionEvent.isTableModelEvent()
+                  ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
+                  : null))) {
         receiverStatusHandler.handle(
             new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
                 .setMessage(errorMessage),

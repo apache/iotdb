@@ -216,7 +216,8 @@ public class ActiveLoadTsFileLoader {
           "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to memory constraints, will retry later.",
           filePair.getLeft(),
           filePair.getRight());
-    } else if (status.getMessage() != null && status.getMessage().contains("read only")) {
+    } else if (CommonDescriptor.getInstance().getConfig().isReadOnly()
+        || (status.getMessage() != null && status.getMessage().contains("read only"))) {
       LOGGER.info(
           "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to the system is read only, will retry later.",
           filePair.getLeft(),
@@ -245,7 +246,8 @@ public class ActiveLoadTsFileLoader {
           "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to memory constraints, will retry later.",
           filePair.getLeft(),
           filePair.getRight());
-    } else if (e.getMessage() != null && e.getMessage().contains("read only")) {
+    } else if (CommonDescriptor.getInstance().getConfig().isReadOnly()
+        || (e.getMessage() != null && e.getMessage().contains("read only"))) {
       LOGGER.info(
           "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to the system is read only, will retry later.",
           filePair.getLeft(),

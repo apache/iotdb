@@ -96,7 +96,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final PipeTaskMeta pipeTaskMeta,
       final PipeInsertionEvent sourceEvent)
       throws IOException {
-    super(pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+    super(pattern, null, startTime, endTime, pipeTaskMeta, sourceEvent);
 
     this.startTime = startTime;
     this.endTime = endTime;
@@ -381,7 +381,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             break;
           }
 
-          if (!pattern.matchesMeasurement(currentDevice, chunkHeader.getMeasurementID())) {
+          if (!treePattern.matchesMeasurement(currentDevice, chunkHeader.getMeasurementID())) {
             tsFileSequenceReader.position(
                 tsFileSequenceReader.position() + chunkHeader.getDataSize());
             break;
@@ -408,7 +408,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             chunkHeader = tsFileSequenceReader.readChunkHeader(marker);
 
             if (Objects.isNull(currentDevice)
-                || !pattern.matchesMeasurement(currentDevice, chunkHeader.getMeasurementID())) {
+                || !treePattern.matchesMeasurement(currentDevice, chunkHeader.getMeasurementID())) {
               tsFileSequenceReader.position(
                   tsFileSequenceReader.position() + chunkHeader.getDataSize());
               break;
@@ -456,7 +456,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
           isMultiPageList.clear();
           measurementIndexMap.clear();
           final IDeviceID deviceID = tsFileSequenceReader.readChunkGroupHeader().getDeviceID();
-          currentDevice = pattern.mayOverlapWithDevice(deviceID) ? deviceID : null;
+          currentDevice = treePattern.mayOverlapWithDevice(deviceID) ? deviceID : null;
           break;
         case MetaMarker.OPERATION_INDEX_RANGE:
           tsFileSequenceReader.readPlanIndex();

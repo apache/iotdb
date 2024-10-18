@@ -71,11 +71,11 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
   }
 
   public void markAsTableModelEvent() {
-    isTableModelEvent = true;
+    isTableModelEvent = Boolean.TRUE;
   }
 
   public void markAsTreeModelEvent() {
-    isTableModelEvent = false;
+    isTableModelEvent = Boolean.FALSE;
   }
 
   public boolean isTableModelEvent() {

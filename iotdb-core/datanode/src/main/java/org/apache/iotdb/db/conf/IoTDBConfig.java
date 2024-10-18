@@ -1047,6 +1047,14 @@ public class IoTDBConfig {
 
   private int dataNodeTableCacheSemaphorePermitNum = 5;
 
+  /** GRASS Service */
+  private long generalRegionAttributeSecurityServiceIntervalSeconds = 30L;
+
+  private long generalRegionAttributeSecurityServiceTimeoutSeconds = 20L;
+  private long generalRegionAttributeSecurityServiceFailureDurationSecondsToFetch = 600L;
+  private int generalRegionAttributeSecurityServiceFailureTimesToFetch = 20;
+  private long detailContainerMinDegradeMemoryInBytes = 1024 * 1024L;
+
   private String readConsistencyLevel = "strong";
 
   /** Maximum execution time of a DriverTask */
@@ -3484,6 +3492,55 @@ public class IoTDBConfig {
 
   public void setDataNodeTableCacheSemaphorePermitNum(int dataNodeTableCacheSemaphorePermitNum) {
     this.dataNodeTableCacheSemaphorePermitNum = dataNodeTableCacheSemaphorePermitNum;
+  }
+
+  public long getGeneralRegionAttributeSecurityServiceIntervalSeconds() {
+    return generalRegionAttributeSecurityServiceIntervalSeconds;
+  }
+
+  public void setGeneralRegionAttributeSecurityServiceIntervalSeconds(
+      long generalRegionAttributeSecurityServiceIntervalSeconds) {
+    this.generalRegionAttributeSecurityServiceIntervalSeconds =
+        generalRegionAttributeSecurityServiceIntervalSeconds;
+  }
+
+  public long getGeneralRegionAttributeSecurityServiceTimeoutSeconds() {
+    return generalRegionAttributeSecurityServiceTimeoutSeconds;
+  }
+
+  public void setGeneralRegionAttributeSecurityServiceTimeoutSeconds(
+      long generalRegionAttributeSecurityServiceTimeoutSeconds) {
+    this.generalRegionAttributeSecurityServiceTimeoutSeconds =
+        generalRegionAttributeSecurityServiceTimeoutSeconds;
+  }
+
+  public long getGeneralRegionAttributeSecurityServiceFailureDurationSecondsToFetch() {
+    return generalRegionAttributeSecurityServiceFailureDurationSecondsToFetch;
+  }
+
+  public void setGeneralRegionAttributeSecurityServiceFailureDurationSecondsToFetch(
+      long generalRegionAttributeSecurityServiceFailureDurationSecondsToFetch) {
+    this.generalRegionAttributeSecurityServiceFailureDurationSecondsToFetch =
+        generalRegionAttributeSecurityServiceFailureDurationSecondsToFetch;
+  }
+
+  public int getGeneralRegionAttributeSecurityServiceFailureTimesToFetch() {
+    return generalRegionAttributeSecurityServiceFailureTimesToFetch;
+  }
+
+  public void setGeneralRegionAttributeSecurityServiceFailureTimesToFetch(
+      int generalRegionAttributeSecurityServiceFailureTimesToFetch) {
+    this.generalRegionAttributeSecurityServiceFailureTimesToFetch =
+        generalRegionAttributeSecurityServiceFailureTimesToFetch;
+  }
+
+  public long getDetailContainerMinDegradeMemoryInBytes() {
+    return detailContainerMinDegradeMemoryInBytes;
+  }
+
+  public void setDetailContainerMinDegradeMemoryInBytes(
+      long detailContainerMinDegradeMemoryInBytes) {
+    this.detailContainerMinDegradeMemoryInBytes = detailContainerMinDegradeMemoryInBytes;
   }
 
   public String getReadConsistencyLevel() {
