@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -67,8 +68,8 @@ public class MemTableFlushTask {
   private final Future<?> ioTaskFuture;
   private RestorableTsFileIOWriter writer;
 
-  private final LinkedBlockingQueue<Object> encodingTaskQueue = new LinkedBlockingQueue<>();
-  private final LinkedBlockingQueue<Object> ioTaskQueue =
+  private final BlockingQueue<Object> encodingTaskQueue = new LinkedBlockingQueue<>();
+  private final BlockingQueue<Object> ioTaskQueue =
       (SystemInfo.getInstance().isEncodingFasterThanIo())
           ? new LinkedBlockingQueue<>(config.getIoTaskQueueSizeForFlushing())
           : new LinkedBlockingQueue<>();
@@ -247,16 +248,7 @@ public class MemTableFlushTask {
             } else {
               long starTime = System.currentTimeMillis();
               IWritableMemChunk writableMemChunk = (IWritableMemChunk) task;
-              IChunkWriter seriesWriter = writableMemChunk.createIChunkWriter();
-              writableMemChunk.encode(seriesWriter);
-              seriesWriter.sealCurrentPage();
-              seriesWriter.clearPageWriter();
-              try {
-                ioTaskQueue.put(seriesWriter);
-              } catch (InterruptedException e) {
-                LOGGER.error("Put task into ioTaskQueue Interrupted");
-                Thread.currentThread().interrupt();
-              }
+              writableMemChunk.encode(ioTaskQueue);
               long subTaskTime = System.currentTimeMillis() - starTime;
               WRITING_METRICS.recordFlushSubTaskCost(WritingMetrics.ENCODING_TASK, subTaskTime);
               memSerializeTime += subTaskTime;

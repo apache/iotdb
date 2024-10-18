@@ -43,8 +43,6 @@ public class IoTDBDuplicateTimeIT {
 
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setAvgSeriesPointNumberThreshold(2);
-    // Adjust memstable threshold size to make it flush automatically
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -62,6 +60,7 @@ public class IoTDBDuplicateTimeIT {
       // version-1 tsfile
       statement.execute("insert into root.db.d1(time,s1) values (2,2)");
       statement.execute("insert into root.db.d1(time,s1) values (3,3)");
+      statement.execute("flush");
 
       // version-2 unseq work memtable
       statement.execute("insert into root.db.d1(time,s1) values (2,20)");
@@ -69,9 +68,11 @@ public class IoTDBDuplicateTimeIT {
       // version-3 tsfile
       statement.execute("insert into root.db.d1(time,s1) values (5,5)");
       statement.execute("insert into root.db.d1(time,s1) values (6,6)");
+      statement.execute("flush root.db true");
 
       // version-2 unseq work memtable -> unseq tsfile
       statement.execute("insert into root.db.d1(time,s1) values (5,50)");
+      statement.execute("flush");
 
       try (ResultSet set = statement.executeQuery("SELECT s1 FROM root.db.d1 where time = 5")) {
         int cnt = 0;
