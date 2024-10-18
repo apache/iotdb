@@ -223,12 +223,12 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
 
   private void doTransferWrapper(final PipeDeleteDataNodeEvent pipeDeleteDataNodeEvent)
       throws PipeException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeDeleteDataNodeEvent.increaseReferenceCount(
+        PipeConsensusSyncConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeDeleteDataNodeEvent.increaseReferenceCount(
-          PipeConsensusSyncConnector.class.getName())) {
-        return;
-      }
       doTransfer(pipeDeleteDataNodeEvent);
     } finally {
       pipeDeleteDataNodeEvent.decreaseReferenceCount(
