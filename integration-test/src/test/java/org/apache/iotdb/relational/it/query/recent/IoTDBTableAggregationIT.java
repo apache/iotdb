@@ -605,7 +605,6 @@ public class IoTDBTableAggregationIT {
     tableResultSetEqualTest("select avg(s4) from table1", expectedHeader, retArray, DATABASE_NAME);
   }
 
-  @Ignore
   @Test
   public void sumTest() {
     String[] expectedHeader = new String[] {"device_id", "color", "type", "_col3"};
