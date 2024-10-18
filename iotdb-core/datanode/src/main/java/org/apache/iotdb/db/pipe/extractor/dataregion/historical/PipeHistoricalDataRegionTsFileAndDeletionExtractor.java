@@ -416,18 +416,16 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
         "Pipe: start to extract historical TsFile and Deletion(if uses pipeConsensus)");
     try {
       List<PersistentResource> resourceList = new ArrayList<>();
+
       if (shouldExtractInsertion) {
-        // Flush TsFiles
         flushTsFilesForExtraction(dataRegion, startHistoricalExtractionTime);
-        // Extract TsFiles
         extractTsFiles(dataRegion, startHistoricalExtractionTime, resourceList);
       }
-
       if (shouldExtractDeletion) {
-        // Extract deletions
         Optional.ofNullable(DeletionResourceManager.getInstance(String.valueOf(dataRegionId)))
             .ifPresent(manager -> extractDeletions(manager, resourceList));
       }
+
       // Sort tsFileResource and deletionResource
       long startTime = System.currentTimeMillis();
       LOGGER.info("Pipe {}@{}: start to sort all extracted resources", pipeName, dataRegionId);
@@ -436,13 +434,13 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
               startIndex instanceof TimeWindowStateProgressIndex
                   ? Long.compare(o1.getFileStartTime(), o2.getFileStartTime())
                   : o1.getProgressIndex().topologicalCompareTo(o2.getProgressIndex()));
+      pendingQueue = new ArrayDeque<>(resourceList);
+
       LOGGER.info(
           "Pipe {}@{}: finish to sort all extracted resources, took {} ms",
           pipeName,
           dataRegionId,
           System.currentTimeMillis() - startTime);
-
-      pendingQueue = new ArrayDeque<>(resourceList);
     } finally {
       dataRegion.writeUnlock();
     }
@@ -771,6 +769,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
             treePattern,
             tablePattern,
             false);
+
     if (sloppyPattern || isDbNameCoveredByPattern) {
       event.skipParsingPattern();
     }
