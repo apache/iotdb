@@ -261,11 +261,8 @@ public class TableDeviceSchemaCacheTest {
         cache.getLastEntry(database1, convertIdValuesToDeviceID(table1, device0), "s3"));
 
     // Test null hit measurements
-    cache.updateLastCache(
-        database1,
-        convertIdValuesToDeviceID(table1, device0),
-        new String[] {"s4"},
-        new TimeValuePair[] {TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR});
+    cache.initOrInvalidateLastCache(
+        database1, convertIdValuesToDeviceID(table1, device0), new String[] {"s4"}, false);
 
     // Miss if the "null" time value pair is not in cache, meaning that the
     // entry is evicted
@@ -502,8 +499,8 @@ public class TableDeviceSchemaCacheTest {
       final IDeviceID deviceID,
       final String[] measurement,
       final TimeValuePair[] data) {
-    cache.updateLastCache(database, deviceID, measurement, null);
-    cache.updateLastCache(database, deviceID, measurement, data);
+    cache.initOrInvalidateLastCache(database, deviceID, measurement, false);
+    cache.updateLastCacheIfExists(database, deviceID, measurement, data);
   }
 
   @Test
