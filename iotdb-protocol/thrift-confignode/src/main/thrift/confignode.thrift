@@ -210,6 +210,7 @@ struct TDatabaseSchema {
     8: optional i32 minDataRegionGroupNum
     9: optional i32 maxDataRegionGroupNum
     10: optional i64 timePartitionOrigin
+    11: optional bool isTableModel
 }
 
 // Schema
