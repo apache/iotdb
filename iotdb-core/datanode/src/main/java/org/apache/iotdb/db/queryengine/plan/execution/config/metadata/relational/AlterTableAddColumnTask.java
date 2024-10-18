@@ -20,42 +20,26 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
-import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.List;
 
-public class AlterTableAddColumnTask implements IConfigTask {
-
-  private final String database;
-
-  private final String tableName;
-
+public class AlterTableAddColumnTask extends AbstractAlterOrDropTableTask {
   private final List<TsTableColumnSchema> columnList;
-
-  private final String queryId;
-
-  private final boolean tableIfExists;
-
   private final boolean columnIfExists;
 
   public AlterTableAddColumnTask(
-      String database,
+      final String database,
       final String tableName,
       final List<TsTableColumnSchema> columnList,
       final String queryId,
       final boolean tableIfExists,
       final boolean columnIfExists) {
-    database = PathUtils.qualifyDatabaseName(database);
-    this.database = database;
-    this.tableName = tableName;
+    super(database, tableName, queryId, tableIfExists);
     this.columnList = columnList;
-    this.queryId = queryId;
-    this.tableIfExists = tableIfExists;
     this.columnIfExists = columnIfExists;
   }
 

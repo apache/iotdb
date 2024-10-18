@@ -37,7 +37,7 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
-import javax.annotation.Nullable;
+import javax.annotation.Nonnull;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -386,9 +386,9 @@ public class TreeDeviceSchemaCacheManager {
       final String database,
       final IDeviceID deviceID,
       final String[] measurements,
-      final TimeValuePair[] timeValuePairs,
+      final @Nonnull TimeValuePair[] timeValuePairs,
       final boolean isAligned,
-      final MeasurementSchema[] measurementSchemas) {
+      final IMeasurementSchema[] measurementSchemas) {
     tableDeviceSchemaCache.updateLastCache(
         database, deviceID, measurements, timeValuePairs, isAligned, measurementSchemas, false);
   }
@@ -398,39 +398,33 @@ public class TreeDeviceSchemaCacheManager {
    *
    * <p>Note: The query shall put the {@link TableDeviceLastCache} twice:
    *
-   * <p>- First time set the "isCommit" to {@code false} before the query accesses data., which will
-   * put the {@link TimeValuePair} as {@code null}. It does not indicate that the measurements are
-   * all {@code null}s, just to allow the writing to update the cache, then avoid that the query put
-   * a stale value to cache and break the consistency. WARNING: The writing may temporarily put a
-   * stale value in cache if a stale value is written, but it won't affect the eventual consistency.
+   * <p>- First time set the "isCommit" to {@code false} before the query accesses data. It is just
+   * to allow the writing to update the cache, then avoid that the query put a stale value to cache
+   * and break the consistency. WARNING: The writing may temporarily put a stale value in cache if a
+   * stale value is written, but it won't affect the eventual consistency.
    *
-   * <p>- Second time put the calculated {@link TimeValuePair}. The input {@link TimeValuePair}
-   * shall never be or contain {@code null}, if the measurement is with all {@code null}s, its
-   * {@link TimeValuePair} shall be {@link TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR}. This method
-   * is not supposed to update time column.
+   * <p>- Second time put the calculated {@link TimeValuePair}, and use {@link
+   * #updateLastCacheIfExists(String, IDeviceID, String[], TimeValuePair[], boolean,
+   * IMeasurementSchema[])}. The input {@link TimeValuePair} shall never be or contain {@code null},
+   * if the measurement is with all {@code null}s, its {@link TimeValuePair} shall be {@link
+   * TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR}. This method is not supposed to update time column.
    *
    * <p>If the query has ended abnormally, it shall call this to invalidate the entry it has pushed
-   * in the first time, to avoid the stale writing damaging the eventual consistency. The input
-   * {@link TimeValuePair} shall be {@code null} in this case and the "isCommit" shall be {@code
-   * true}.
+   * in the first time, to avoid the stale writing damaging the eventual consistency. In this case
+   * and the "isInvalidate" shall be {@code true}.
    *
    * @param database the device's database, WITH "root"
    * @param measurementPath the fetched {@link MeasurementPath}
-   * @param timeValuePair {@code null} to invalidate the first pushed cache, or the {@link
-   *     TimeValuePair} corresponding to the measurement for the second fetch.
-   * @param isCommit {@code false} for the first fetch, {@code true} for the second fetch or
-   *     invalidation.
+   * @param isInvalidate {@code true} if invalidate the first pushed cache, or {@code null} for the
+   *     first fetch.
    */
   public void updateLastCache(
-      final String database,
-      final MeasurementPath measurementPath,
-      final @Nullable TimeValuePair timeValuePair,
-      final boolean isCommit) {
+      final String database, final MeasurementPath measurementPath, final boolean isInvalidate) {
     tableDeviceSchemaCache.updateLastCache(
         database,
         measurementPath.getIDeviceID(),
         new String[] {measurementPath.getMeasurement()},
-        isCommit ? new TimeValuePair[] {timeValuePair} : null,
+        isInvalidate ? new TimeValuePair[] {null} : null,
         measurementPath.isUnderAlignedEntity(),
         new IMeasurementSchema[] {measurementPath.getMeasurementSchema()},
         true);

@@ -1372,7 +1372,7 @@ public class DataRegion implements IDataRegionForQuery {
           tableName,
           t ->
               TableSchema.of(DataNodeTableCache.getInstance().getTable(getDatabaseName(), t))
-                  .toTsFileTableSchema());
+                  .toTsFileTableSchemaNoAttribute());
     }
   }
 

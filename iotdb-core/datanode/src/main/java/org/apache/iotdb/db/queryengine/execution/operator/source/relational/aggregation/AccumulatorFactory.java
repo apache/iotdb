@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAvgAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCountAccumulator;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
@@ -50,6 +53,38 @@ public class AccumulatorFactory {
     }
   }
 
+  public static GroupedAccumulator createGroupedAccumulator(
+      String functionName,
+      TAggregationType aggregationType,
+      List<TSDataType> inputDataTypes,
+      List<Expression> inputExpressions,
+      Map<String, String> inputAttributes,
+      boolean ascending) {
+    if (aggregationType == TAggregationType.UDAF) {
+      // If UDAF accumulator receives raw input, it needs to check input's attribute
+      throw new UnsupportedOperationException();
+    } else {
+      return createBuiltinGroupedAccumulator(
+          aggregationType, inputDataTypes, inputExpressions, inputAttributes, ascending);
+    }
+  }
+
+  private static GroupedAccumulator createBuiltinGroupedAccumulator(
+      TAggregationType aggregationType,
+      List<TSDataType> inputDataTypes,
+      List<Expression> inputExpressions,
+      Map<String, String> inputAttributes,
+      boolean ascending) {
+    switch (aggregationType) {
+      case COUNT:
+        return new GroupedCountAccumulator();
+      case AVG:
+        return new GroupedAvgAccumulator(inputDataTypes.get(0));
+      default:
+        throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
+    }
+  }
+
   public static TableAccumulator createBuiltinAccumulator(
       TAggregationType aggregationType,
       List<TSDataType> inputDataTypes,
@@ -65,6 +100,12 @@ public class AccumulatorFactory {
         return new SumAccumulator(inputDataTypes.get(0));
       case LAST:
         return new LastAccumulator(inputDataTypes.get(0));
+      case FIRST:
+        return new FirstAccumulator(inputDataTypes.get(0));
+      case MAX:
+        return new MaxAccumulator(inputDataTypes.get(0));
+      case MIN:
+        return new MinAccumulator(inputDataTypes.get(0));
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }

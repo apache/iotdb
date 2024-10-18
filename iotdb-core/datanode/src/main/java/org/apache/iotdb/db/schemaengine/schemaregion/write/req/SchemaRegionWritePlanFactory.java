@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
@@ -106,6 +107,8 @@ public class SchemaRegionWritePlanFactory {
         return TableDeviceAttributeCommitUpdateNode.MOCK_INSTANCE;
       case ADD_NODE_LOCATION:
         return TableNodeLocationAddNode.MOCK_INSTANCE;
+      case DELETE_TABLE_DEVICE:
+        return DeleteTableDeviceNode.MOCK_INSTANCE;
       default:
         throw new UnsupportedOperationException(
             String.format(
@@ -118,36 +121,37 @@ public class SchemaRegionWritePlanFactory {
     return new ChangeAliasPlanImpl(path, alias);
   }
 
-  public static IChangeTagOffsetPlan getChangeTagOffsetPlan(PartialPath fullPath, long tagOffset) {
+  public static IChangeTagOffsetPlan getChangeTagOffsetPlan(
+      final PartialPath fullPath, final long tagOffset) {
     return new ChangeTagOffsetPlanImpl(fullPath, tagOffset);
   }
 
-  public static IAutoCreateDeviceMNodePlan getAutoCreateDeviceMNodePlan(PartialPath path) {
+  public static IAutoCreateDeviceMNodePlan getAutoCreateDeviceMNodePlan(final PartialPath path) {
     return new AutoCreateDeviceMNodePlanImpl(path);
   }
 
   public static ICreateTimeSeriesPlan getCreateTimeSeriesPlan(
-      MeasurementPath path,
-      TSDataType dataType,
-      TSEncoding encoding,
-      CompressionType compressor,
-      Map<String, String> props,
-      Map<String, String> tags,
-      Map<String, String> attributes,
-      String alias) {
+      final MeasurementPath path,
+      final TSDataType dataType,
+      final TSEncoding encoding,
+      final CompressionType compressor,
+      final Map<String, String> props,
+      final Map<String, String> tags,
+      final Map<String, String> attributes,
+      final String alias) {
     return new CreateTimeSeriesPlanImpl(
         path, dataType, encoding, compressor, props, tags, attributes, alias);
   }
 
   public static ICreateAlignedTimeSeriesPlan getCreateAlignedTimeSeriesPlan(
-      PartialPath prefixPath,
-      List<String> measurements,
-      List<TSDataType> dataTypes,
-      List<TSEncoding> encodings,
-      List<CompressionType> compressors,
-      List<String> aliasList,
-      List<Map<String, String>> tagsList,
-      List<Map<String, String>> attributesList) {
+      final PartialPath prefixPath,
+      final List<String> measurements,
+      final List<TSDataType> dataTypes,
+      final List<TSEncoding> encodings,
+      final List<CompressionType> compressors,
+      final List<String> aliasList,
+      final List<Map<String, String>> tagsList,
+      final List<Map<String, String>> attributesList) {
     return new CreateAlignedTimeSeriesPlanImpl(
         prefixPath,
         measurements,
@@ -159,31 +163,31 @@ public class SchemaRegionWritePlanFactory {
         attributesList);
   }
 
-  public static IDeleteTimeSeriesPlan getDeleteTimeSeriesPlan(List<PartialPath> pathList) {
+  public static IDeleteTimeSeriesPlan getDeleteTimeSeriesPlan(final List<PartialPath> pathList) {
     return new DeleteTimeSeriesPlanImpl(pathList);
   }
 
-  public static IPreDeleteTimeSeriesPlan getPreDeleteTimeSeriesPlan(PartialPath path) {
+  public static IPreDeleteTimeSeriesPlan getPreDeleteTimeSeriesPlan(final PartialPath path) {
     return new PreDeleteTimeSeriesPlanImpl(path);
   }
 
   public static IRollbackPreDeleteTimeSeriesPlan getRollbackPreDeleteTimeSeriesPlan(
-      PartialPath path) {
+      final PartialPath path) {
     return new RollbackPreDeleteTimeSeriesPlanImpl(path);
   }
 
   public static IActivateTemplateInClusterPlan getActivateTemplateInClusterPlan(
-      PartialPath activatePath, int templateSetLevel, int templateId) {
+      final PartialPath activatePath, final int templateSetLevel, final int templateId) {
     return new ActivateTemplateInClusterPlanImpl(activatePath, templateSetLevel, templateId);
   }
 
   public static IPreDeactivateTemplatePlan getPreDeactivateTemplatePlan(
-      Map<PartialPath, List<Integer>> templateSetInfo) {
+      final Map<PartialPath, List<Integer>> templateSetInfo) {
     return new PreDeactivateTemplatePlanImpl(templateSetInfo);
   }
 
   public static IRollbackPreDeactivateTemplatePlan getRollbackPreDeactivateTemplatePlan(
-      Map<PartialPath, List<Integer>> templateSetInfo) {
+      final Map<PartialPath, List<Integer>> templateSetInfo) {
     return new RollbackPreDeactivateTemplatePlanImpl(templateSetInfo);
   }
 

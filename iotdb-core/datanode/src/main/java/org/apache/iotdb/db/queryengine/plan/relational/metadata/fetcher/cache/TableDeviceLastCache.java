@@ -30,6 +30,7 @@ import org.apache.tsfile.utils.TsPrimitiveType;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.GuardedBy;
+import javax.annotation.concurrent.ThreadSafe;
 
 import java.util.List;
 import java.util.Map;
@@ -39,6 +40,7 @@ import java.util.OptionalLong;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+@ThreadSafe
 public class TableDeviceLastCache {
   static final int INSTANCE_SIZE =
       (int) RamUsageEstimator.shallowSizeOfInstance(TableDeviceLastCache.class)
@@ -87,51 +89,49 @@ public class TableDeviceLastCache {
   // Time is seen as "" as a measurement
   private final Map<String, TimeValuePair> measurement2CachedLastMap = new ConcurrentHashMap<>();
 
-  int update(
+  int initOrInvalidate(
       final String database,
       final String tableName,
       final String[] measurements,
-      final @Nullable TimeValuePair[] timeValuePairs,
+      final boolean isInvalidate,
       final boolean isTableModel) {
     final AtomicInteger diff = new AtomicInteger(0);
 
-    for (int i = 0; i < measurements.length; ++i) {
-      final String measurement =
-          !measurement2CachedLastMap.containsKey(measurements[i]) && isTableModel
+    for (final String measurement : measurements) {
+      final String finalMeasurement =
+          !measurement2CachedLastMap.containsKey(measurement) && isTableModel
               ? DataNodeTableCache.getInstance()
-                  .tryGetInternColumnName(database, tableName, measurements[i])
-              : measurements[i];
+                  .tryGetInternColumnName(database, tableName, measurement)
+              : measurement;
 
-      final TimeValuePair newPair =
-          Objects.nonNull(timeValuePairs) ? timeValuePairs[i] : PLACEHOLDER_TIME_VALUE_PAIR;
+      final TimeValuePair newPair = isInvalidate ? null : PLACEHOLDER_TIME_VALUE_PAIR;
 
       measurement2CachedLastMap.compute(
-          measurement,
+          finalMeasurement,
           (measurementKey, tvPair) -> {
             if (Objects.isNull(newPair)) {
+              diff.addAndGet(
+                  -((isTableModel ? 0 : (int) RamUsageEstimator.sizeOf(finalMeasurement))
+                      + (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+                      + ((Objects.isNull(tvPair)
+                              || tvPair == PLACEHOLDER_TIME_VALUE_PAIR
+                              || tvPair == EMPTY_TIME_VALUE_PAIR)
+                          ? 0
+                          : tvPair.getSize())));
               return null;
             }
             if (Objects.isNull(tvPair)) {
-              if (newPair == PLACEHOLDER_TIME_VALUE_PAIR) {
-                diff.addAndGet(
-                    (isTableModel ? 0 : (int) RamUsageEstimator.sizeOf(measurement))
-                        + (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
-                        + newPair.getSize());
-                return newPair;
-              }
-            } else if (tvPair.getTimestamp() < newPair.getTimestamp()
-                || tvPair == PLACEHOLDER_TIME_VALUE_PAIR) {
-              diff.addAndGet(getDiffSize(tvPair, newPair));
+              diff.addAndGet(
+                  (isTableModel ? 0 : (int) RamUsageEstimator.sizeOf(finalMeasurement))
+                      + (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY);
               return newPair;
             }
-
             return tvPair;
           });
     }
     return diff.get();
   }
 
-  @GuardedBy("DataRegionInsertLock#writeLock")
   int tryUpdate(
       final @Nonnull String[] measurements, final @Nonnull TimeValuePair[] timeValuePairs) {
     final AtomicInteger diff = new AtomicInteger(0);
