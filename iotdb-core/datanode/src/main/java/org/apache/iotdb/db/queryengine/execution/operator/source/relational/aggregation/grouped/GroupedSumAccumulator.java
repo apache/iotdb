@@ -24,16 +24,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.read.common.block.column.BinaryColumn;
-import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
-import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
-
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -88,45 +80,22 @@ public class GroupedSumAccumulator implements GroupedAccumulator {
 
   @Override
   public void addIntermediate(int[] groupIds, Column argument) {
-    checkArgument(
-        argument instanceof BinaryColumn,
-        "intermediate input and output of Avg should be BinaryColumn");
 
     for (int i = 0; i < groupIds.length; i++) {
       if (!argument.isNull(i)) {
-        deserialize(groupIds[i], argument.getBinary(i).getValues());
+        initResult.set(groupIds[i], true);
+        sumValues.add(groupIds[i], argument.getDouble(i));
       }
     }
   }
 
   @Override
   public void evaluateIntermediate(int groupId, ColumnBuilder columnBuilder) {
-    checkArgument(
-        columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of Avg should be BinaryColumn");
     if (!initResult.get(groupId)) {
       columnBuilder.appendNull();
     } else {
-      columnBuilder.writeBinary(new Binary(serializeState(groupId)));
+      columnBuilder.writeDouble(sumValues.get(groupId));
     }
-  }
-
-  private void deserialize(int groupId, byte[] bytes) {
-    initResult.set(groupId, BytesUtils.bytesToBool(bytes));
-    sumValues.add(groupId, BytesUtils.bytesToDouble(bytes, Long.BYTES));
-  }
-
-  private byte[] serializeState(int groupId) {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    try {
-      dataOutputStream.writeBoolean(initResult.get(groupId));
-      dataOutputStream.writeDouble(sumValues.get(groupId));
-    } catch (IOException e) {
-      throw new UnsupportedOperationException(
-          "Failed to serialize intermediate result for AvgAccumulator.", e);
-    }
-    return byteArrayOutputStream.toByteArray();
   }
 
   private void addIntInput(int[] groupIds, Column column) {

@@ -29,12 +29,9 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
-
-import static com.google.common.base.Preconditions.checkArgument;
 
 public class GroupedMinAccumulator implements GroupedAccumulator {
   private static final long INSTANCE_SIZE =
@@ -162,9 +159,7 @@ public class GroupedMinAccumulator implements GroupedAccumulator {
 
   @Override
   public void evaluateIntermediate(int groupId, ColumnBuilder columnBuilder) {
-    checkArgument(
-        columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of should be BinaryColumn");
+
     if (!inits.get(groupId)) {
       columnBuilder.appendNull();
     } else {

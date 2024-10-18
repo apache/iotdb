@@ -29,13 +29,9 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.read.common.block.column.BinaryColumn;
-import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
-
-import static com.google.common.base.Preconditions.checkArgument;
 
 public class GroupedMaxAccumulator implements GroupedAccumulator {
   private static final long INSTANCE_SIZE =
@@ -125,9 +121,6 @@ public class GroupedMaxAccumulator implements GroupedAccumulator {
 
   @Override
   public void addIntermediate(int[] groupIds, Column argument) {
-    checkArgument(
-        argument instanceof BinaryColumn || argument instanceof RunLengthEncodedColumn,
-        "intermediate input and output should be BinaryColumn");
 
     for (int i = 0; i < groupIds.length; i++) {
       if (argument.isNull(i)) {
