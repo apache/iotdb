@@ -28,6 +28,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
+import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -63,6 +64,9 @@ public class DataNodeShutdownHook extends Thread {
     CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
     // Wait all wal are flushed
     WALManager.getInstance().waitAllWALFlushed();
+
+    // Wait all deletions are flushed
+    DeletionResourceManager.exit();
 
     // Flush data to Tsfile and remove WAL log files
     if (!IoTDBDescriptor.getInstance()

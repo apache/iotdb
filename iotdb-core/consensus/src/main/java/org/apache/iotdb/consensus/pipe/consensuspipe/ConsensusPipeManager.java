@@ -38,11 +38,14 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CONSENSUS_GROUP_ID_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CONSENSUS_RECEIVER_DATANODE_ID_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CONSENSUS_SENDER_DATANODE_ID_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_KEY;
 
 public class ConsensusPipeManager {
+  // Extract data.insert and data.delete to support deletion.
+  private static final String CONSENSUS_EXTRACTOR_INCLUSION_VALUE = "data";
   private final PipeConsensusConfig.Pipe config;
   private final ReplicateMode replicateMode;
   private final ConsensusPipeDispatcher dispatcher;
@@ -61,6 +64,7 @@ public class ConsensusPipeManager {
         consensusPipeName.toString(),
         ImmutableMap.<String, String>builder()
             .put(EXTRACTOR_KEY, config.getExtractorPluginName())
+            .put(EXTRACTOR_INCLUSION_KEY, CONSENSUS_EXTRACTOR_INCLUSION_VALUE)
             .put(
                 EXTRACTOR_CONSENSUS_GROUP_ID_KEY,
                 consensusPipeName.getConsensusGroupId().toString())
