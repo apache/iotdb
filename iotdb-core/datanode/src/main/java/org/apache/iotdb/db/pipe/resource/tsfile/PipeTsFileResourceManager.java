@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.resource.tsfile;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalJobExecutor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -61,7 +60,8 @@ public class PipeTsFileResourceManager {
 
   private void tryTtlCheck() {
     try {
-      final long timeout = PipePeriodicalJobExecutor.getMinIntervalSeconds() >> 1;
+      final long timeout =
+          PipeConfig.getInstance().getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds() >> 1;
       if (lock.tryLock(timeout, TimeUnit.SECONDS)) {
         try {
           ttlCheck();
