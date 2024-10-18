@@ -19,11 +19,16 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.buffer;
 
+import java.util.ArrayList;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 
+import org.apache.tsfile.utils.Pair;
+
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 
 /** This entry class stores info for persistence. */
@@ -42,19 +47,24 @@ public class WALInfoEntry extends WALEntry {
   public WALInfoEntry(long memTableId, WALEntryValue value) {
     this(memTableId, value, config.getWalMode() == WALMode.SYNC);
     if (value instanceof InsertTabletNode) {
-      tabletInfo = new TabletInfo(0, ((InsertTabletNode) value).getRowCount());
+      tabletInfo =
+          new TabletInfo(
+              Collections.singletonList(new Pair<>(0, ((InsertTabletNode) value).getRowCount())));
     }
   }
 
-  public WALInfoEntry(long memTableId, InsertTabletNode value, int tabletStart, int tabletEnd) {
+  public WALInfoEntry(
+      long memTableId, InsertTabletNode value, List<Pair<Integer, Integer>> tabletRangeList) {
     this(memTableId, value, config.getWalMode() == WALMode.SYNC);
-    tabletInfo = new TabletInfo(tabletStart, tabletEnd);
+    tabletInfo = new TabletInfo(tabletRangeList);
   }
 
   WALInfoEntry(WALEntryType type, long memTableId, WALEntryValue value) {
     super(type, memTableId, value, false);
     if (value instanceof InsertTabletNode) {
-      tabletInfo = new TabletInfo(0, ((InsertTabletNode) value).getRowCount());
+      tabletInfo =
+          new TabletInfo(
+              Collections.singletonList(new Pair<>(0, ((InsertTabletNode) value).getRowCount())));
     }
   }
 
@@ -65,18 +75,21 @@ public class WALInfoEntry extends WALEntry {
 
   @Override
   public void serialize(IWALByteBufferView buffer) {
-    buffer.put(type.getCode());
-    buffer.putLong(memTableId);
     switch (type) {
       case INSERT_TABLET_NODE:
-        ((InsertTabletNode) value)
-            .serializeToWAL(buffer, tabletInfo.tabletStart, tabletInfo.tabletEnd);
+        for (Pair<Integer, Integer> range : tabletInfo.tabletRangeList) {
+          buffer.put(type.getCode());
+          buffer.putLong(memTableId);
+          ((InsertTabletNode) value).serializeToWAL(buffer, range.left, range.right);
+        }
         break;
       case INSERT_ROW_NODE:
       case INSERT_ROWS_NODE:
       case DELETE_DATA_NODE:
       case MEMORY_TABLE_SNAPSHOT:
       case CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE:
+        buffer.put(type.getCode());
+        buffer.putLong(memTableId);
         value.serializeToWAL(buffer);
         break;
       case MEMORY_TABLE_CHECKPOINT:
@@ -87,35 +100,35 @@ public class WALInfoEntry extends WALEntry {
   }
 
   private static class TabletInfo {
-    // start row of insert tablet
-    private final int tabletStart;
-    // end row of insert tablet
-    private final int tabletEnd;
+    //    // start row of insert tablet
+    //    private final int tabletStart;
+    //    // end row of insert tablet
+    //    private final int tabletEnd;
+    List<Pair<Integer, Integer>> tabletRangeList;
 
-    public TabletInfo(int tabletStart, int tabletEnd) {
-      this.tabletStart = tabletStart;
-      this.tabletEnd = tabletEnd;
+    public TabletInfo(List<Pair<Integer, Integer>> tabletRangeList) {
+      this.tabletRangeList = new ArrayList<>(tabletRangeList);
     }
 
-    @Override
-    public int hashCode() {
-      return Objects.hash(tabletStart, tabletEnd);
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-      if (obj == this) {
-        return true;
-      }
-      if (obj == null) {
-        return false;
-      }
-      if (!(obj instanceof TabletInfo)) {
-        return false;
-      }
-      TabletInfo other = (TabletInfo) obj;
-      return this.tabletStart == other.tabletStart && this.tabletEnd == other.tabletEnd;
-    }
+    //    @Override
+    //    public int hashCode() {
+    //      return Objects.hash(tabletStart, tabletEnd);
+    //    }
+    //
+    //    @Override
+    //    public boolean equals(Object obj) {
+    //      if (obj == this) {
+    //        return true;
+    //      }
+    //      if (obj == null) {
+    //        return false;
+    //      }
+    //      if (!(obj instanceof TabletInfo)) {
+    //        return false;
+    //      }
+    //      TabletInfo other = (TabletInfo) obj;
+    //      return this.tabletStart == other.tabletStart && this.tabletEnd == other.tabletEnd;
+    //    }
   }
 
   @Override

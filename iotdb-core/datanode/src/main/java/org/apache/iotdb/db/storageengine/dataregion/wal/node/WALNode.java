@@ -59,6 +59,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushL
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsFileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -151,12 +152,12 @@ public class WALNode implements IWALNode {
 
   @Override
   public WALFlushListener log(
-      long memTableId, InsertTabletNode insertTabletNode, int start, int end) {
+      long memTableId, InsertTabletNode insertTabletNode, List<Pair<Integer, Integer>> rangeList) {
     logger.debug(
         "WAL node-{} logs insertTabletNode, the search index is {}.",
         identifier,
         insertTabletNode.getSearchIndex());
-    WALEntry walEntry = new WALInfoEntry(memTableId, insertTabletNode, start, end);
+    WALEntry walEntry = new WALInfoEntry(memTableId, insertTabletNode, rangeList);
     return log(walEntry);
   }
 
