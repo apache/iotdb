@@ -122,6 +122,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.apache.iotdb.db.exception.metadata.DatabaseNotSetException.DATABASE_NOT_SET;
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR_CHAR;
 
@@ -143,7 +144,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       new PipeStatementPatternParseVisitor();
   private final PipeStatementDataTypeConvertExecutionVisitor
       statementDataTypeConvertExecutionVisitor =
-          new PipeStatementDataTypeConvertExecutionVisitor(this::executeStatement);
+          new PipeStatementDataTypeConvertExecutionVisitor(this::executeStatementForTreeModel);
   private final PipeStatementToBatchVisitor batchVisitor = new PipeStatementToBatchVisitor();
 
   // Used for data transfer: confignode (cluster A) -> datanode (cluster B) -> confignode (cluster
@@ -702,31 +703,43 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           TSStatusCode.PIPE_TRANSFER_EXECUTE_STATEMENT_ERROR, "Execute null statement.");
     }
 
-    final TSStatus status = executeStatement(statement);
+    // Judge which model the statement belongs to
+    final boolean isTableModelStatement;
+    final String dataBaseName;
+    if (statement instanceof LoadTsFileStatement
+        && ((LoadTsFileStatement) statement)
+            .getModel()
+            .equals(LoadTsFileConfigurator.MODEL_TABLE_VALUE)) {
+      isTableModelStatement = true;
+      dataBaseName = ((LoadTsFileStatement) statement).getDatabase();
+    } else if (statement instanceof InsertBaseStatement
+        && ((InsertBaseStatement) statement).isWriteToTable()) {
+      isTableModelStatement = true;
+      dataBaseName =
+          ((InsertBaseStatement) statement).getDatabaseName().isPresent()
+              ? ((InsertBaseStatement) statement).getDatabaseName().get()
+              : null;
+    } else {
+      isTableModelStatement = false;
+      dataBaseName = null;
+    }
+
+    final TSStatus status =
+        isTableModelStatement
+            ? executeStatementForTableModel(statement, dataBaseName)
+            : executeStatementForTreeModel(statement);
+    // Data type conversion is not supported for table model statements
+    if (isTableModelStatement) {
+      return status;
+    }
+    // Try to convert data type if the statement is a tree model statement
+    // and the status code is not success
     return shouldConvertDataTypeOnTypeMismatch
             && ((statement instanceof InsertBaseStatement
                     && ((InsertBaseStatement) statement).hasFailedMeasurements())
                 || status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
         ? statement.accept(statementDataTypeConvertExecutionVisitor, status).orElse(status)
         : status;
-  }
-
-  private TSStatus executeStatement(Statement statement) {
-    if (statement instanceof LoadTsFileStatement
-        && ((LoadTsFileStatement) statement)
-            .getModel()
-            .equals(LoadTsFileConfigurator.MODEL_TABLE_VALUE)) {
-      return executeStatementForTableModel(
-          statement, ((LoadTsFileStatement) statement).getDatabase());
-    }
-
-    if (statement instanceof InsertBaseStatement
-        && ((InsertBaseStatement) statement).isWriteToTable()) {
-      return executeStatementForTableModel(
-          statement, ((InsertBaseStatement) statement).getDatabaseName().get());
-    }
-
-    return executeStatementForTreeModel(statement);
   }
 
   private TSStatus executeStatementForTableModel(Statement statement, String dataBaseName) {
@@ -747,9 +760,14 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
           .status;
     } catch (final Exception e) {
-      if (e.getMessage() != null
-          && e.getMessage().contains(DATABASE_NOT_SET.toLowerCase(Locale.ROOT))) {
-        ALREADY_CREATED_DATABASES.remove(dataBaseName);
+      ALREADY_CREATED_DATABASES.remove(dataBaseName);
+
+      final Throwable rootCause = getRootCause(e);
+      if (rootCause.getMessage() != null
+          && rootCause
+              .getMessage()
+              .toLowerCase(Locale.ENGLISH)
+              .contains(DATABASE_NOT_SET.toLowerCase(Locale.ENGLISH))) {
         autoCreateDatabaseIfNecessary(dataBaseName);
 
         // Retry after creating the database

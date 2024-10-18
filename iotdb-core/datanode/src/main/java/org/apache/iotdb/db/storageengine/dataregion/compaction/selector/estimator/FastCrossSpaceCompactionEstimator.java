@@ -40,7 +40,7 @@ public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimat
                 * taskInfo.getMaxChunkMetadataSize());
 
     // add ChunkMetadata size of targetFileWriter
-    cost += memoryBudgetForFileWriter;
+    cost += fixedMemoryBudget;
 
     return cost;
   }
@@ -103,7 +103,7 @@ public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimat
     // source files (chunk + uncompressed page) * overlap file num
     // target files (chunk + unsealed page writer)
     return (maxOverlapFileNum + 1) * maxConcurrentSeriesNum * (maxChunkSize + maxPageSize)
-        + memoryBudgetForFileWriter
+        + fixedMemoryBudget
         + metadataCost;
   }
 }

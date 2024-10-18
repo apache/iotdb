@@ -98,7 +98,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
       final PipeInsertionEvent sourceEvent,
       final Map<IDeviceID, Boolean> deviceIsAlignedMap)
       throws IOException {
-    super(pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+    super(pattern, null, startTime, endTime, pipeTaskMeta, sourceEvent);
 
     try {
       final PipeTsFileResourceManager tsFileResourceManager = PipeDataNodeResourceManager.tsfile();
@@ -165,7 +165,9 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
 
       // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
       // in this case, all data can be matched without checking the measurements
-      if (Objects.isNull(pattern) || pattern.isRoot() || pattern.coversDevice(deviceId)) {
+      if (Objects.isNull(treePattern)
+          || treePattern.isRoot()
+          || treePattern.coversDevice(deviceId)) {
         if (!entry.getValue().isEmpty()) {
           filteredDeviceMeasurementsMap.put(deviceId, entry.getValue());
         }
@@ -173,11 +175,11 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
 
       // case 2: for example, pattern is root.a.b.c and device is root.a.b
       // in this case, we need to check the full path
-      else if (pattern.mayOverlapWithDevice(deviceId)) {
+      else if (treePattern.mayOverlapWithDevice(deviceId)) {
         final List<String> filteredMeasurements = new ArrayList<>();
 
         for (final String measurement : entry.getValue()) {
-          if (pattern.matchesMeasurement(deviceId, measurement)) {
+          if (treePattern.matchesMeasurement(deviceId, measurement)) {
             filteredMeasurements.add(measurement);
           }
         }
@@ -203,13 +205,13 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
   }
 
   private Set<IDeviceID> filterDevicesByPattern(final Set<IDeviceID> devices) {
-    if (Objects.isNull(pattern) || pattern.isRoot()) {
+    if (Objects.isNull(treePattern) || treePattern.isRoot()) {
       return devices;
     }
 
     final Set<IDeviceID> filteredDevices = new HashSet<>();
     for (final IDeviceID device : devices) {
-      if (pattern.coversDevice(device) || pattern.mayOverlapWithDevice(device)) {
+      if (treePattern.coversDevice(device) || treePattern.mayOverlapWithDevice(device)) {
         filteredDevices.add(device);
       }
     }

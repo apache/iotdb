@@ -131,6 +131,7 @@ public class TabletInsertionEventTablePatternParser extends TabletInsertionEvent
     newTablet.bitMaps = nullValueColumnBitmaps;
     newTablet.values = valueColumns;
     newTablet.rowSize = rowCount;
+    newTablet.setColumnTypes(Arrays.asList(valueColumnTypes));
 
     tablet = newTablet;
 
