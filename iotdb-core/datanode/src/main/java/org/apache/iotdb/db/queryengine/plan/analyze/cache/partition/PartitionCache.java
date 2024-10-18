@@ -302,15 +302,8 @@ public class PartitionCache {
           }
           final TDatabaseSchema databaseSchema = new TDatabaseSchema();
           databaseSchema.setName(databaseName);
+          databaseSchema.setIsTableModel(false);
           final TSStatus tsStatus = client.setDatabase(databaseSchema);
-          if (SchemaConstant.SYSTEM_DATABASE.equals(databaseName)) {
-            databaseSchema.setSchemaReplicationFactor(1);
-            databaseSchema.setDataReplicationFactor(1);
-            databaseSchema.setMinSchemaRegionGroupNum(1);
-            databaseSchema.setMaxSchemaRegionGroupNum(1);
-            databaseSchema.setMaxDataRegionGroupNum(1);
-            databaseSchema.setMaxDataRegionGroupNum(1);
-          }
           if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
               || TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()) {
             successFullyCreatedDatabase.add(databaseName);
@@ -367,6 +360,7 @@ public class PartitionCache {
       }
       final TDatabaseSchema databaseSchema = new TDatabaseSchema();
       databaseSchema.setName(database);
+      databaseSchema.setIsTableModel(true);
       final TSStatus tsStatus = client.setDatabase(databaseSchema);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
           || TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()) {

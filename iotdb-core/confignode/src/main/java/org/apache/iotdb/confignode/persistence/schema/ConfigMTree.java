@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.persistence.schema.mnode.impl.ConfigTableNode
 import org.apache.iotdb.confignode.persistence.schema.mnode.impl.TableNodeStatus;
 import org.apache.iotdb.db.exception.metadata.DatabaseAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.DatabaseConflictException;
+import org.apache.iotdb.db.exception.metadata.DatabaseModelException;
 import org.apache.iotdb.db.exception.metadata.DatabaseNotSetException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -637,6 +638,9 @@ public class ConfigMTree {
   public void preCreateTable(final PartialPath database, final TsTable table)
       throws MetadataException {
     final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    if (!databaseNode.getDatabaseSchema().isIsTableModel()) {
+      throw new DatabaseModelException(database.getFullPath(), false);
+    }
     final IConfigMNode node = databaseNode.getChild(table.getTableName());
     if (node == null) {
       final ConfigTableNode tableNode =

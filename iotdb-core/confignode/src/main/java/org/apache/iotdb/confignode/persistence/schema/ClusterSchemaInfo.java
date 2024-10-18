@@ -192,7 +192,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       final TDatabaseSchema alterSchema = plan.getSchema();
       final PartialPath partialPathName = new PartialPath(alterSchema.getName());
 
-      TDatabaseSchema currentSchema =
+      final TDatabaseSchema currentSchema =
           mTree.getDatabaseNodeByDatabasePath(partialPathName).getAsMNode().getDatabaseSchema();
       // TODO: Support alter other fields
       if (alterSchema.isSetMinSchemaRegionGroupNum()) {
@@ -231,7 +231,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           .getAsMNode()
           .setDatabaseSchema(currentSchema);
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       LOGGER.error(ERROR_NAME, e);
       result.setCode(e.getErrorCode()).setMessage(e.getMessage());
     } finally {
