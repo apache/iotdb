@@ -39,6 +39,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecutor;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.state.schema.DropTableState;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataOrDevicesForDropTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateTableCacheReq;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -260,19 +261,15 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     return DropTableState.CHECK_AND_INVALIDATE_TABLE;
   }
 
+  @Override
+  public void serialize(final DataOutputStream stream) throws IOException {
+    stream.writeShort(ProcedureType.DROP_TABLE_PROCEDURE.getTypeCode());
+    super.serialize(stream);
+  }
+
   private class DropTableRegionTaskExecutor<Q> extends DataNodeRegionTaskExecutor<Q, TSStatus> {
 
     private final String taskName;
-
-    DropTableRegionTaskExecutor(
-        final String taskName,
-        final ConfigNodeProcedureEnv env,
-        final Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup,
-        final CnToDnAsyncRequestType dataNodeRequestType,
-        final BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
-      super(env, targetSchemaRegionGroup, false, dataNodeRequestType, dataNodeRequestGenerator);
-      this.taskName = taskName;
-    }
 
     DropTableRegionTaskExecutor(
         final String taskName,
