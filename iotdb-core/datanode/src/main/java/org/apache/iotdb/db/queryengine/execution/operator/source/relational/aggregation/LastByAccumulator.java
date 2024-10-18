@@ -23,6 +23,7 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.file.metadata.statistics.TimeStatistics;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
@@ -37,7 +38,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_BY;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_BY_AGGREGATION;
 
 public class LastByAccumulator implements TableAccumulator {
 
@@ -55,8 +56,7 @@ public class LastByAccumulator implements TableAccumulator {
   private final TsPrimitiveType xResult;
   private boolean xIsNull = true;
 
-  protected TsPrimitiveType lastValue;
-  protected boolean initResult = false;
+  private boolean initResult = false;
 
   public LastByAccumulator(
       TSDataType xDataType, TSDataType yDataType, boolean xIsTimeColumn, boolean yIsTimeColumn) {
@@ -93,18 +93,18 @@ public class LastByAccumulator implements TableAccumulator {
         addLongInput(arguments[0], arguments[1], arguments[2]);
         return;
       case FLOAT:
-        addFloatInput(arguments[0], arguments[1]);
+        addFloatInput(arguments[0], arguments[1], arguments[2]);
         return;
       case DOUBLE:
-        addDoubleInput(arguments[0], arguments[1]);
+        addDoubleInput(arguments[0], arguments[1], arguments[2]);
         return;
       case TEXT:
       case STRING:
       case BLOB:
-        addBinaryInput(arguments[0], arguments[1]);
+        addBinaryInput(arguments[0], arguments[1], arguments[2]);
         return;
       case BOOLEAN:
-        addBooleanInput(arguments[0], arguments[1]);
+        addBooleanInput(arguments[0], arguments[1], arguments[2]);
         return;
       default:
         throw new UnSupportedDataTypeException(
@@ -243,77 +243,61 @@ public class LastByAccumulator implements TableAccumulator {
     }
 
     if (yIsTimeColumn) {
-      switch (xDataType) {
-        case INT32:
-        case DATE:
-          if (xStatistics == null) {
-            if (!initResult || yStatistics.getEndTime() > yLastTime) {
-              initResult = true;
-              yLastTime = yStatistics.getEndTime();
-              xIsNull = true;
-            }
-          } else {
-            if (xStatistics.getEndTime() < yStatistics.getEndTime()) {
-              if (!initResult || yStatistics.getEndTime() > yLastTime) {
-                initResult = true;
-                yLastTime = yStatistics.getEndTime();
-                xIsNull = true;
-              }
-            } else {
-              if (!initResult || yStatistics.getEndTime() > yLastTime) {
-                initResult = true;
-                yLastTime = yStatistics.getEndTime();
-                xIsNull = false;
-                xResult.setInt((Integer) xStatistics.getLastValue());
-              }
-            }
+      if (xStatistics == null) {
+        if (!initResult || yStatistics.getEndTime() > yLastTime) {
+          initResult = true;
+          yLastTime = yStatistics.getEndTime();
+          xIsNull = true;
+        }
+      } else {
+        if (xStatistics.getEndTime() < yStatistics.getEndTime()) {
+          if (!initResult || yStatistics.getEndTime() > yLastTime) {
+            initResult = true;
+            yLastTime = yStatistics.getEndTime();
+            xIsNull = true;
           }
-          break;
-        case INT64:
-          if (xStatistics == null) {
-            if (!initResult || yStatistics.getEndTime() > yLastTime) {
-              initResult = true;
-              yLastTime = yStatistics.getEndTime();
-              xIsNull = true;
+        } else {
+          if (!initResult || yStatistics.getEndTime() > yLastTime) {
+            initResult = true;
+            yLastTime = yStatistics.getEndTime();
+            xIsNull = false;
+
+            if (xStatistics instanceof TimeStatistics) {
+              xResult.setLong(xStatistics.getEndTime());
+              return;
             }
-          } else {
-            if (xStatistics.getEndTime() < yStatistics.getEndTime()) {
-              if (!initResult || yStatistics.getEndTime() > yLastTime) {
-                initResult = true;
-                yLastTime = yStatistics.getEndTime();
-                xIsNull = true;
-              }
-            } else {
-              if (!initResult || yStatistics.getEndTime() > yLastTime) {
-                initResult = true;
-                yLastTime = yStatistics.getEndTime();
-                xIsNull = false;
+
+            switch (xDataType) {
+              case INT32:
+              case DATE:
+                xResult.setInt((int) xStatistics.getLastValue());
+                break;
+              case INT64:
+              case TIMESTAMP:
                 xResult.setLong((Long) xStatistics.getLastValue());
-              }
+                break;
+              case FLOAT:
+                xResult.setFloat((float) statistics[0].getLastValue());
+                break;
+              case DOUBLE:
+                xResult.setDouble((double) statistics[0].getLastValue());
+                break;
+              case TEXT:
+              case BLOB:
+              case STRING:
+                xResult.setBinary((Binary) statistics[0].getLastValue());
+                break;
+              case BOOLEAN:
+                xResult.setBoolean((boolean) statistics[0].getLastValue());
+                break;
+              default:
+                throw new UnSupportedDataTypeException(
+                    String.format(
+                        "Unsupported data type: %s in Aggregation: %s",
+                        yDataType, LAST_BY_AGGREGATION));
             }
           }
-          break;
-        case TIMESTAMP:
-          updateLongLastValue(statistics[0].getEndTime(), statistics[0].getEndTime());
-          break;
-        case FLOAT:
-          updateFloatLastValue((float) statistics[0].getLastValue(), statistics[0].getEndTime());
-          break;
-        case DOUBLE:
-          updateDoubleLastValue((double) statistics[0].getLastValue(), statistics[0].getEndTime());
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-          updateBinaryLastValue((Binary) statistics[0].getLastValue(), statistics[0].getEndTime());
-          break;
-        case BOOLEAN:
-          updateBooleanLastValue(
-              (boolean) statistics[0].getLastValue(), statistics[0].getEndTime());
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type: %s in Aggregation: %s", yDataType, LAST_BY));
+        }
       }
     } else {
       // x is time column
@@ -369,20 +353,21 @@ public class LastByAccumulator implements TableAccumulator {
             break;
           default:
             throw new UnSupportedDataTypeException(
-                String.format("Unsupported data type: %s in aggregation %s", xDataType, LAST_BY));
+                String.format(
+                    "Unsupported data type: %s in aggregation %s", xDataType, LAST_BY_AGGREGATION));
         }
       }
     } catch (IOException e) {
       throw new UnsupportedOperationException(
           String.format(
               "Failed to serialize intermediate result for Accumulator %s, errorMsg: %s.",
-              LAST_BY, e.getMessage()));
+              LAST_BY_AGGREGATION, e.getMessage()));
     }
     return byteArrayOutputStream.toByteArray();
   }
 
+  // TODO can add last position optimization if last position is null ?
   private void addIntInput(Column xColumn, Column yColumn, Column timeColumn) {
-    // TODO can add last position optimization if last position is null ?
     for (int i = 0; i < yColumn.getPositionCount(); i++) {
       if (!yColumn.isNull(i)) {
         updateIntLastValue(xColumn, i, timeColumn.getLong(i));
@@ -433,112 +418,132 @@ public class LastByAccumulator implements TableAccumulator {
     }
   }
 
-  protected void updateLongLastValue(long val, long curTime) {
+  protected void updateLongLastValue(long value, long curTime) {
     if (!initResult || curTime > yLastTime) {
       initResult = true;
       yLastTime = curTime;
       xIsNull = false;
-      xResult.setLong(val);
+      xResult.setLong(value);
     }
   }
 
-  private void addFloatInput(Column valueColumn, Column timeColumn) {
-    for (int i = 0; i < valueColumn.getPositionCount(); i++) {
-      if (!valueColumn.isNull(i)) {
-        updateFloatLastValue(valueColumn.getFloat(i), timeColumn.getLong(i));
+  private void addFloatInput(Column xColumn, Column yColumn, Column timeColumn) {
+    for (int i = 0; i < yColumn.getPositionCount(); i++) {
+      if (!yColumn.isNull(i)) {
+        updateFloatLastValue(xColumn, i, timeColumn.getLong(i));
+      }
+    }
+  }
+
+  protected void updateFloatLastValue(Column xColumn, int xIdx, long curTime) {
+    if (!initResult || curTime > yLastTime) {
+      initResult = true;
+      yLastTime = curTime;
+      if (xColumn.isNull(xIdx)) {
+        xIsNull = true;
+      } else {
+        xIsNull = false;
+        xResult.setFloat(xColumn.getFloat(xIdx));
       }
     }
   }
 
   protected void updateFloatLastValue(float value, long curTime) {
-    initResult = true;
-    if (curTime > yLastTime) {
+    if (!initResult || curTime > yLastTime) {
+      initResult = true;
       yLastTime = curTime;
-      lastValue.setFloat(value);
+      xIsNull = false;
+      xResult.setFloat(value);
     }
   }
 
-  private void addDoubleInput(Column valueColumn, Column timeColumn) {
-    for (int i = 0; i < valueColumn.getPositionCount(); i++) {
-      if (!valueColumn.isNull(i)) {
-        updateDoubleLastValue(valueColumn.getDouble(i), timeColumn.getLong(i));
+  private void addDoubleInput(Column xColumn, Column yColumn, Column timeColumn) {
+    for (int i = 0; i < yColumn.getPositionCount(); i++) {
+      if (!yColumn.isNull(i)) {
+        updateDoubleLastValue(xColumn, i, timeColumn.getLong(i));
       }
     }
   }
 
-  protected void updateDoubleLastValue(double value, long curTime) {
-    initResult = true;
-    if (curTime > yLastTime) {
+  protected void updateDoubleLastValue(Column xColumn, int xIdx, long curTime) {
+    if (!initResult || curTime > yLastTime) {
+      initResult = true;
       yLastTime = curTime;
-      lastValue.setDouble(value);
-    }
-  }
-
-  private void addBinaryInput(Column valueColumn, Column timeColumn) {
-    for (int i = 0; i < valueColumn.getPositionCount(); i++) {
-      if (!valueColumn.isNull(i)) {
-        updateBinaryLastValue(valueColumn.getBinary(i), timeColumn.getLong(i));
+      if (xColumn.isNull(xIdx)) {
+        xIsNull = true;
+      } else {
+        xIsNull = false;
+        xResult.setDouble(xColumn.getDouble(xIdx));
       }
     }
   }
 
-  protected void updateBinaryLastValue(Binary value, long curTime) {
-    initResult = true;
-    if (curTime > yLastTime) {
+  protected void updateDoubleLastValue(double val, long curTime) {
+    if (!initResult || curTime > yLastTime) {
+      initResult = true;
       yLastTime = curTime;
-      lastValue.setBinary(value);
+      xIsNull = false;
+      xResult.setDouble(val);
     }
   }
 
-  private void addBooleanInput(Column valueColumn, Column timeColumn) {
-    for (int i = 0; i < valueColumn.getPositionCount(); i++) {
-      if (!valueColumn.isNull(i)) {
-        updateBooleanLastValue(valueColumn.getBoolean(i), timeColumn.getLong(i));
+  private void addBinaryInput(Column xColumn, Column yColumn, Column timeColumn) {
+    for (int i = 0; i < yColumn.getPositionCount(); i++) {
+      if (!yColumn.isNull(i)) {
+        updateBinaryLastValue(xColumn, i, timeColumn.getLong(i));
       }
     }
   }
 
-  protected void updateBooleanLastValue(boolean value, long curTime) {
-    initResult = true;
-    if (curTime > yLastTime) {
+  protected void updateBinaryLastValue(Column xColumn, int xIdx, long curTime) {
+    if (!initResult || curTime > yLastTime) {
+      initResult = true;
       yLastTime = curTime;
-      lastValue.setBoolean(value);
+      if (xColumn.isNull(xIdx)) {
+        xIsNull = true;
+      } else {
+        xIsNull = false;
+        xResult.setBinary(xColumn.getBinary(xIdx));
+      }
     }
   }
 
-  //  private void updateX(Column xColumn, int xIndex) {
-  //    if (xColumn.isNull(xIndex)) {
-  //      xNull = true;
-  //    } else {
-  //      xNull = false;
-  //      switch (xDataType) {
-  //        case INT32:
-  //        case DATE:
-  //          xResult.setInt(xColumn.getInt(xIndex));
-  //          break;
-  //        case INT64:
-  //        case TIMESTAMP:
-  //          xResult.setLong(xColumn.getLong(xIndex));
-  //          break;
-  //        case FLOAT:
-  //          xResult.setFloat(xColumn.getFloat(xIndex));
-  //          break;
-  //        case DOUBLE:
-  //          xResult.setDouble(xColumn.getDouble(xIndex));
-  //          break;
-  //        case TEXT:
-  //        case STRING:
-  //        case BLOB:
-  //          xResult.setBinary(xColumn.getBinary(xIndex));
-  //          break;
-  //        case BOOLEAN:
-  //          xResult.setBoolean(xColumn.getBoolean(xIndex));
-  //          break;
-  //        default:
-  //          throw new UnSupportedDataTypeException(
-  //              String.format("Unsupported data type in Last Aggregation: %s", xDataType));
-  //      }
-  //    }
-  //  }
+  protected void updateBinaryLastValue(Binary val, long curTime) {
+    if (!initResult || curTime > yLastTime) {
+      initResult = true;
+      yLastTime = curTime;
+      xIsNull = false;
+      xResult.setBinary(val);
+    }
+  }
 
+  private void addBooleanInput(Column xColumn, Column yColumn, Column timeColumn) {
+    for (int i = 0; i < yColumn.getPositionCount(); i++) {
+      if (!yColumn.isNull(i)) {
+        updateBooleanLastValue(xColumn, i, timeColumn.getLong(i));
+      }
+    }
+  }
+
+  protected void updateBooleanLastValue(Column xColumn, int xIdx, long curTime) {
+    if (!initResult || curTime > yLastTime) {
+      initResult = true;
+      yLastTime = curTime;
+      if (xColumn.isNull(xIdx)) {
+        xIsNull = true;
+      } else {
+        xIsNull = false;
+        xResult.setBoolean(xColumn.getBoolean(xIdx));
+      }
+    }
+  }
+
+  protected void updateBooleanLastValue(boolean val, long curTime) {
+    if (!initResult || curTime > yLastTime) {
+      initResult = true;
+      yLastTime = curTime;
+      xIsNull = false;
+      xResult.setBoolean(val);
+    }
+  }
 }
