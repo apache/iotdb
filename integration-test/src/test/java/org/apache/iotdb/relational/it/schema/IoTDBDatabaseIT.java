@@ -84,7 +84,7 @@ public class IoTDBDatabaseIT {
       int[] schemaReplicaFactors = new int[] {1};
       int[] dataReplicaFactors = new int[] {1};
       int[] timePartitionInterval = new int[] {604800000};
-      String[] model = new String[] {"Table"};
+      String[] model = new String[] {"TABLE"};
 
       // show
       try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
