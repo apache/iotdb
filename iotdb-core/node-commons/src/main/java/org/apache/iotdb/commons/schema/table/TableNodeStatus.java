@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.persistence.schema.mnode.impl;
+package org.apache.iotdb.commons.schema.table;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -34,15 +34,15 @@ public enum TableNodeStatus {
 
   private final byte status;
 
-  private TableNodeStatus(byte status) {
+  TableNodeStatus(byte status) {
     this.status = status;
   }
 
-  public void serialize(OutputStream outputStream) throws IOException {
+  public void serialize(final OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(status, outputStream);
   }
 
-  public static TableNodeStatus deserialize(InputStream inputStream) throws IOException {
+  public static TableNodeStatus deserialize(final InputStream inputStream) throws IOException {
     byte status = ReadWriteIOUtils.readByte(inputStream);
     switch (status) {
       case 0:
