@@ -151,7 +151,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   /**
    * Cache DatabaseSchema.
    *
-   * @param plan DatabaseSchemaPlan
+   * @param plan {@link DatabaseSchemaPlan}
    * @return {@link TSStatusCode#SUCCESS_STATUS} if the Database is set successfully.
    */
   public TSStatus createDatabase(final DatabaseSchemaPlan plan) {

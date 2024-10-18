@@ -282,7 +282,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(MAX_SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
           new ColumnHeader(DATA_REGION_GROUP_NUM, TSDataType.INT32),
           new ColumnHeader(MIN_DATA_REGION_GROUP_NUM, TSDataType.INT32),
-          new ColumnHeader(MAX_DATA_REGION_GROUP_NUM, TSDataType.INT32));
+          new ColumnHeader(MAX_DATA_REGION_GROUP_NUM, TSDataType.INT32),
+          new ColumnHeader(MODEL, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showChildPathsColumnHeaders =
       ImmutableList.of(
