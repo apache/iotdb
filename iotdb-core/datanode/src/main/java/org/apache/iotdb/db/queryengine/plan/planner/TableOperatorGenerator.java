@@ -175,6 +175,7 @@ import static org.apache.iotdb.db.queryengine.execution.operator.process.join.me
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.createAccumulator;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.createGroupedAccumulator;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.isTimeColumn;
 import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.convertPredicateToFilter;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.ASC_TIME_COMPARATOR;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.IDENTITY_FILL;
@@ -184,8 +185,10 @@ import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableBuiltinAggregationFunction.getAggregationTypeByFuncName;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_AGGREGATION;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_AGGREGATION;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_BY_AGGREGATION;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
 /** This Visitor is responsible for transferring Table PlanNode Tree to Table Operator Tree. */
@@ -1374,7 +1377,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             functionName,
             getAggregationTypeByFuncName(functionName),
             argumentTypes,
-            Collections.emptyList(),
+            aggregation.getArguments(),
             Collections.emptyMap(),
             true);
 
@@ -1479,6 +1482,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     List<TableAggregator> aggregators = new ArrayList<>(node.getAggregations().size());
     Map<Symbol, Integer> columnLayout = new HashMap<>(node.getAggregations().size());
 
+    int distinctArgumentCount = node.getAssignments().size();
     int aggregationsCount = node.getAggregations().size();
     List<Integer> aggColumnIndexes = new ArrayList<>();
     int channel = 0;
@@ -1488,23 +1492,37 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     Map<Symbol, Integer> idAndAttributeColumnsIndexMap = node.getIdAndAttributeIndexMap();
     Map<Symbol, ColumnSchema> columnSchemaMap = node.getAssignments();
     List<ColumnSchema> columnSchemas = new ArrayList<>(aggregationsCount);
-    int[] columnsIndexArray = new int[aggregationsCount * 2];
+    int[] columnsIndexArray = new int[distinctArgumentCount];
     List<String> measurementColumnNames = new ArrayList<>();
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
 
     for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
-      String funcName = entry.getValue().getResolvedFunction().getSignature().getName();
+      AggregationNode.Aggregation aggregation = entry.getValue();
+      String funcName = aggregation.getResolvedFunction().getSignature().getName();
 
-      for (Expression argument : entry.getValue().getArguments()) {
-        idx++;
-        Symbol symbol = Symbol.from(argument);
-        ColumnSchema schema = requireNonNull(columnSchemaMap.get(symbol), symbol + " is null");
-        if (schema.getType().equals(BlobType.BLOB)
-            && (FIRST.equals(funcName) || LAST.equals(funcName))) {
-          // first/last aggregation with BLOB type can not use statistics
+      // first/last/first_by/last_by aggregation with BLOB type can not use statistics
+      if (FIRST_AGGREGATION.equals(funcName)
+          || LAST_AGGREGATION.equals(funcName)
+          || LAST_BY_AGGREGATION.equals(funcName)
+          || FIRST_BY_AGGREGATION.equals(funcName)) {
+        Symbol argument = Symbol.from(aggregation.getArguments().get(0));
+        if (!columnSchemaMap.containsKey(argument)
+            || BlobType.BLOB.equals(columnSchemaMap.get(argument).getType())) {
           canUseStatistic = false;
         }
 
+        // only last_by(time, x) or last_by(x,time) can use statistic
+        if ((LAST_BY_AGGREGATION.equals(funcName) || FIRST_BY_AGGREGATION.equals(funcName))
+            && !isTimeColumn(aggregation.getArguments().get(0))
+            && !isTimeColumn(aggregation.getArguments().get(1))) {
+          canUseStatistic = false;
+        }
+      }
+
+      for (Expression argument : aggregation.getArguments()) {
+        idx++;
+        Symbol symbol = Symbol.from(argument);
+        ColumnSchema schema = requireNonNull(columnSchemaMap.get(symbol), symbol + " is null");
         switch (schema.getColumnCategory()) {
           case ID:
           case ATTRIBUTE:

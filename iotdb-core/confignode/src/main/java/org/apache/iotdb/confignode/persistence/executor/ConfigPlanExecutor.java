@@ -115,7 +115,10 @@ import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.Dr
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.runtime.TopicHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.DropTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
@@ -509,8 +512,14 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.commitCreateTable((CommitCreateTablePlan) physicalPlan);
       case AddTableColumn:
         return clusterSchemaInfo.addTableColumn((AddTableColumnPlan) physicalPlan);
+      case RenameTableColumn:
+        return clusterSchemaInfo.renameTableColumn((RenameTableColumnPlan) physicalPlan);
       case SetTableProperties:
         return clusterSchemaInfo.setTableProperties((SetTablePropertiesPlan) physicalPlan);
+      case PreDeleteTable:
+        return clusterSchemaInfo.preDeleteTable((PreDeleteTablePlan) physicalPlan);
+      case DropTable:
+        return clusterSchemaInfo.dropTable((DropTablePlan) physicalPlan);
       case CreatePipeV2:
         return pipeInfo.createPipe((CreatePipePlanV2) physicalPlan);
       case SetPipeStatusV2:

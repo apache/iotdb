@@ -110,6 +110,10 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
     insertNodeBuffers.clear();
     tabletBuffers.clear();
 
+    binaryDataBases.clear();
+    inertNodeDataBases.clear();
+    tabletDataBases.clear();
+
     pipe2BytesAccumulated.clear();
   }
 

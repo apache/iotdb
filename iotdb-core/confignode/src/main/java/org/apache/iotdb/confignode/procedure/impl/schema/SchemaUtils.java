@@ -32,7 +32,10 @@ import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateReq;
@@ -43,6 +46,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -281,5 +285,18 @@ public class SchemaUtils {
     return clientHandler.getResponseMap().entrySet().stream()
         .filter(entry -> entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+  }
+
+  public static TSStatus executeInConsensusLayer(
+      final ConfigPhysicalPlan plan, final ConfigNodeProcedureEnv env, final Logger logger) {
+    TSStatus status;
+    try {
+      status = env.getConfigManager().getConsensusManager().write(plan);
+    } catch (final ConsensusException e) {
+      logger.warn("Failed in the write API executing the consensus layer due to: ", e);
+      status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      status.setMessage(e.getMessage());
+    }
+    return status;
   }
 }

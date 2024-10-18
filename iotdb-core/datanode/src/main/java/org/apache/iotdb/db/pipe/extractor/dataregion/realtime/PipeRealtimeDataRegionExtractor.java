@@ -63,8 +63,10 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_END_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_LOOSE_RANGE_ALL_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_LOOSE_RANGE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_LOOSE_RANGE_KEY;
@@ -73,6 +75,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODS_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_REALTIME_LOOSE_RANGE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_START_TIME_KEY;
 
@@ -240,10 +243,17 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
                 PipeExtractorConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
             PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
 
-    shouldTransferModFile =
-        parameters.getBooleanOrDefault(
-            Arrays.asList(SOURCE_MODS_ENABLE_KEY, EXTRACTOR_MODS_ENABLE_KEY),
-            EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE || shouldExtractDeletion);
+    if (parameters.hasAnyAttributes(EXTRACTOR_MODS_KEY, SOURCE_MODS_KEY)) {
+      shouldTransferModFile =
+          parameters.getBooleanOrDefault(
+              Arrays.asList(EXTRACTOR_MODS_KEY, SOURCE_MODS_KEY),
+              EXTRACTOR_MODS_DEFAULT_VALUE || shouldExtractDeletion);
+    } else {
+      shouldTransferModFile =
+          parameters.getBooleanOrDefault(
+              Arrays.asList(SOURCE_MODS_ENABLE_KEY, EXTRACTOR_MODS_ENABLE_KEY),
+              EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE || shouldExtractDeletion);
+    }
 
     if (LOGGER.isInfoEnabled()) {
       LOGGER.info(

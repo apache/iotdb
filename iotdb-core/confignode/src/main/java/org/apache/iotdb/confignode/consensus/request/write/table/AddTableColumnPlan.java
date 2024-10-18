@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.consensus.request.write.table;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -31,11 +30,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public class AddTableColumnPlan extends ConfigPhysicalPlan {
-
-  private String database;
-
-  private String tableName;
+public class AddTableColumnPlan extends AbstractTablePlan {
 
   private List<TsTableColumnSchema> columnSchemaList;
 
@@ -46,23 +41,13 @@ public class AddTableColumnPlan extends ConfigPhysicalPlan {
   }
 
   public AddTableColumnPlan(
-      String database,
-      String tableName,
-      List<TsTableColumnSchema> columnSchemaList,
-      boolean isRollback) {
-    super(ConfigPhysicalPlanType.AddTableColumn);
-    this.database = database;
-    this.tableName = tableName;
+      final String database,
+      final String tableName,
+      final List<TsTableColumnSchema> columnSchemaList,
+      final boolean isRollback) {
+    super(ConfigPhysicalPlanType.AddTableColumn, database, tableName);
     this.columnSchemaList = columnSchemaList;
     this.isRollback = isRollback;
-  }
-
-  public String getDatabase() {
-    return database;
-  }
-
-  public String getTableName() {
-    return tableName;
   }
 
   public List<TsTableColumnSchema> getColumnSchemaList() {
@@ -74,19 +59,15 @@ public class AddTableColumnPlan extends ConfigPhysicalPlan {
   }
 
   @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
-
-    ReadWriteIOUtils.write(database, stream);
-    ReadWriteIOUtils.write(tableName, stream);
+  protected void serializeImpl(final DataOutputStream stream) throws IOException {
+    super.serializeImpl(stream);
     TsTableColumnSchemaUtil.serialize(columnSchemaList, stream);
     ReadWriteIOUtils.write(isRollback, stream);
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    this.database = ReadWriteIOUtils.readString(buffer);
-    this.tableName = ReadWriteIOUtils.readString(buffer);
+  protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
+    super.deserializeImpl(buffer);
     this.columnSchemaList = TsTableColumnSchemaUtil.deserializeColumnSchemaList(buffer);
     this.isRollback = ReadWriteIOUtils.readBool(buffer);
   }
