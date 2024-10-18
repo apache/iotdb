@@ -102,6 +102,8 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
         new Tablet(tableName, columnSchemas, columnTypes, tsBlock.getPositionCount());
     tablet.initBitMaps();
 
+    boolean isAllNull = true;
+
     final TsBlock.TsBlockRowIterator rowIterator = tsBlock.getTsBlockRowIterator();
     while (rowIterator.hasNext()) {
       final Object[] row = rowIterator.next();
@@ -114,9 +116,17 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
       final int rowIndex = tablet.rowSize;
       tablet.addTimestamp(rowIndex, timestamp);
       for (int i = 0, fieldSize = row.length - 1; i < fieldSize; i++) {
-        tablet.addValue(columnNames.get(i), rowIndex, row[i]);
+        final Object value = row[i];
+        tablet.addValue(columnNames.get(i), rowIndex, value);
+        if (value != null && columnTypes.get(i) == Tablet.ColumnType.MEASUREMENT) {
+          isAllNull = false;
+        }
       }
       tablet.rowSize++;
+    }
+
+    if (isAllNull) {
+      tablet.rowSize = 0;
     }
 
     return tablet;
