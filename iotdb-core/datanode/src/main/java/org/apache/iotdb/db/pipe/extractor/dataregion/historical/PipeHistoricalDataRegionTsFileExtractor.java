@@ -76,15 +76,21 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_LOOSE_RANGE_PATH_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_LOOSE_RANGE_TIME_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_STRICT_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_STRICT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_LOOSE_RANGE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODE_STRICT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODS_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_START_TIME_KEY;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_ROOT;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
@@ -144,28 +150,39 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       throw new PipeParameterNotValidException(e.getMessage());
     }
 
-    final String extractorHistoryLooseRangeValue =
-        parameters
-            .getStringOrDefault(
-                Arrays.asList(EXTRACTOR_HISTORY_LOOSE_RANGE_KEY, SOURCE_HISTORY_LOOSE_RANGE_KEY),
-                EXTRACTOR_HISTORY_LOOSE_RANGE_DEFAULT_VALUE)
-            .trim();
-    if (EXTRACTOR_HISTORY_LOOSE_RANGE_ALL_VALUE.equalsIgnoreCase(extractorHistoryLooseRangeValue)) {
-      sloppyTimeRange = true;
-      sloppyPattern = true;
+    if (parameters.hasAnyAttributes(EXTRACTOR_MODE_STRICT_KEY, SOURCE_MODE_STRICT_KEY)) {
+      final boolean isStrictMode =
+          parameters.getBooleanOrDefault(
+              Arrays.asList(EXTRACTOR_MODE_STRICT_KEY, SOURCE_MODE_STRICT_KEY),
+              EXTRACTOR_MODE_STRICT_DEFAULT_VALUE);
+      sloppyTimeRange = !isStrictMode;
+      sloppyPattern = !isStrictMode;
     } else {
-      final Set<String> sloppyOptionSet =
-          Arrays.stream(extractorHistoryLooseRangeValue.split(","))
-              .map(String::trim)
-              .filter(s -> !s.isEmpty())
-              .map(String::toLowerCase)
-              .collect(Collectors.toSet());
-      sloppyTimeRange = sloppyOptionSet.remove(EXTRACTOR_HISTORY_LOOSE_RANGE_TIME_VALUE);
-      sloppyPattern = sloppyOptionSet.remove(EXTRACTOR_HISTORY_LOOSE_RANGE_PATH_VALUE);
-      if (!sloppyOptionSet.isEmpty()) {
-        throw new PipeParameterNotValidException(
-            String.format(
-                "Parameters in set %s are not allowed in 'history.loose-range'", sloppyOptionSet));
+      final String extractorHistoryLooseRangeValue =
+          parameters
+              .getStringOrDefault(
+                  Arrays.asList(EXTRACTOR_HISTORY_LOOSE_RANGE_KEY, SOURCE_HISTORY_LOOSE_RANGE_KEY),
+                  EXTRACTOR_HISTORY_LOOSE_RANGE_DEFAULT_VALUE)
+              .trim();
+      if (EXTRACTOR_HISTORY_LOOSE_RANGE_ALL_VALUE.equalsIgnoreCase(
+          extractorHistoryLooseRangeValue)) {
+        sloppyTimeRange = true;
+        sloppyPattern = true;
+      } else {
+        final Set<String> sloppyOptionSet =
+            Arrays.stream(extractorHistoryLooseRangeValue.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(String::toLowerCase)
+                .collect(Collectors.toSet());
+        sloppyTimeRange = sloppyOptionSet.remove(EXTRACTOR_HISTORY_LOOSE_RANGE_TIME_VALUE);
+        sloppyPattern = sloppyOptionSet.remove(EXTRACTOR_HISTORY_LOOSE_RANGE_PATH_VALUE);
+        if (!sloppyOptionSet.isEmpty()) {
+          throw new PipeParameterNotValidException(
+              String.format(
+                  "Parameters in set %s are not allowed in 'history.loose-range'",
+                  sloppyOptionSet));
+        }
       }
     }
 
@@ -333,12 +350,21 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       }
     }
 
-    shouldTransferModFile =
-        parameters.getBooleanOrDefault(
-            Arrays.asList(SOURCE_MODS_ENABLE_KEY, EXTRACTOR_MODS_ENABLE_KEY),
-            EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE
-                || // Should extract deletion
-                listeningOptionPair.getRight());
+    if (parameters.hasAnyAttributes(EXTRACTOR_MODS_KEY, SOURCE_MODS_KEY)) {
+      shouldTransferModFile =
+          parameters.getBooleanOrDefault(
+              Arrays.asList(EXTRACTOR_MODS_KEY, SOURCE_MODS_KEY),
+              EXTRACTOR_MODS_DEFAULT_VALUE
+                  || // Should extract deletion
+                  listeningOptionPair.getRight());
+    } else {
+      shouldTransferModFile =
+          parameters.getBooleanOrDefault(
+              Arrays.asList(SOURCE_MODS_ENABLE_KEY, EXTRACTOR_MODS_ENABLE_KEY),
+              EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE
+                  || // Should extract deletion
+                  listeningOptionPair.getRight());
+    }
 
     final String extractorModeValue =
         parameters.getStringOrDefault(
