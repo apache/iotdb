@@ -551,7 +551,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
           new ColumnHeader(DATA_REPLICATION_FACTOR, TSDataType.INT32),
           new ColumnHeader(TIME_PARTITION_INTERVAL, TSDataType.INT64),
-          new ColumnHeader(MODEL, TSDataType.INT64));
+          new ColumnHeader(MODEL, TSDataType.TEXT));
 
   public static final List<ColumnHeader> describeTableColumnHeaders =
       ImmutableList.of(
