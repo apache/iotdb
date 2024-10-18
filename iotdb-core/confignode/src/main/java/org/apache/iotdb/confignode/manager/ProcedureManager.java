@@ -85,8 +85,12 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedu
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTTLProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.AbstractAlterOrDropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.DropConsumerProcedure;
@@ -108,8 +112,8 @@ import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
-import org.apache.iotdb.confignode.rpc.thrift.TAlterTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
@@ -1493,7 +1497,7 @@ public class ProcedureManager {
         new CreateTableProcedure(database, table));
   }
 
-  public TSStatus alterTableAddColumn(final TAlterTableReq req) {
+  public TSStatus alterTableAddColumn(final TAlterOrDropTableReq req) {
     return executeWithoutDuplicate(
         req.database,
         null,
@@ -1507,7 +1511,7 @@ public class ProcedureManager {
             TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.updateInfo)));
   }
 
-  public TSStatus alterTableSetProperties(final TAlterTableReq req) {
+  public TSStatus alterTableSetProperties(final TAlterOrDropTableReq req) {
     return executeWithoutDuplicate(
         req.database,
         null,
@@ -1516,6 +1520,42 @@ public class ProcedureManager {
         ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE,
         new SetTablePropertiesProcedure(
             req.database, req.tableName, req.queryId, ReadWriteIOUtils.readMap(req.updateInfo)));
+  }
+
+  public TSStatus alterTableRenameColumn(final TAlterOrDropTableReq req) {
+    return executeWithoutDuplicate(
+        req.database,
+        null,
+        req.tableName,
+        req.queryId,
+        ProcedureType.RENAME_TABLE_COLUMN_PROCEDURE,
+        new RenameTableColumnProcedure(
+            req.database,
+            req.tableName,
+            req.queryId,
+            ReadWriteIOUtils.readString(req.updateInfo),
+            ReadWriteIOUtils.readString(req.updateInfo)));
+  }
+
+  public TSStatus alterTableDropColumn(final TAlterOrDropTableReq req) {
+    return executeWithoutDuplicate(
+        req.database,
+        null,
+        req.tableName,
+        req.queryId,
+        ProcedureType.DROP_TABLE_COLUMN_PROCEDURE,
+        new DropTableColumnProcedure(
+            req.database, req.tableName, req.queryId, ReadWriteIOUtils.readString(req.updateInfo)));
+  }
+
+  public TSStatus dropTable(final TAlterOrDropTableReq req) {
+    return executeWithoutDuplicate(
+        req.database,
+        null,
+        req.tableName,
+        req.queryId,
+        ProcedureType.DROP_TABLE_PROCEDURE,
+        new DropTableProcedure(req.database, req.tableName, req.queryId));
   }
 
   private TSStatus executeWithoutDuplicate(
@@ -1572,24 +1612,17 @@ public class ProcedureManager {
           }
           break;
         case ADD_TABLE_COLUMN_PROCEDURE:
-          final AddTableColumnProcedure addTableColumnProcedure =
-              (AddTableColumnProcedure) procedure;
-          if (type == thisType && queryId.equals(addTableColumnProcedure.getQueryId())) {
-            return new Pair<>(procedure.getProcId(), false);
-          }
-          if (database.equals(addTableColumnProcedure.getDatabase())
-              && Objects.equals(tableName, addTableColumnProcedure.getTableName())) {
-            return new Pair<>(-1L, true);
-          }
-          break;
         case SET_TABLE_PROPERTIES_PROCEDURE:
-          final SetTablePropertiesProcedure setTablePropertiesProcedure =
-              (SetTablePropertiesProcedure) procedure;
-          if (type == thisType && queryId.equals(setTablePropertiesProcedure.getQueryId())) {
+        case RENAME_TABLE_COLUMN_PROCEDURE:
+        case DROP_TABLE_COLUMN_PROCEDURE:
+        case DROP_TABLE_PROCEDURE:
+          final AbstractAlterOrDropTableProcedure<?> alterTableProcedure =
+              (AbstractAlterOrDropTableProcedure<?>) procedure;
+          if (type == thisType && queryId.equals(alterTableProcedure.getQueryId())) {
             return new Pair<>(procedure.getProcId(), false);
           }
-          if (database.equals(setTablePropertiesProcedure.getDatabase())
-              && Objects.equals(tableName, setTablePropertiesProcedure.getTableName())) {
+          if (database.equals(alterTableProcedure.getDatabase())
+              && Objects.equals(tableName, alterTableProcedure.getTableName())) {
             return new Pair<>(-1L, true);
           }
           break;

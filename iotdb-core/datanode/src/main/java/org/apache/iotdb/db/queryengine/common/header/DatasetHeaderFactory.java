@@ -232,4 +232,8 @@ public class DatasetHeaderFactory {
   public static DatasetHeader getShowTablesHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showTablesColumnHeaders, true);
   }
+
+  public static DatasetHeader getShowTablesDetailsHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showTablesDetailsColumnHeaders, true);
+  }
 }

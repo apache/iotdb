@@ -330,6 +330,16 @@ struct TUpdateTableReq {
   2: required binary tableInfo
 }
 
+struct TInvalidateTableCacheReq {
+  1: required string database,
+  2: required string tableName
+}
+
+struct TDeleteDataOrDevicesForDropTableReq {
+  1: required list<common.TConsensusGroupId> regionIdList
+  2: required string tableName
+}
+
 struct TTsFilePieceReq {
     1: required binary body
     2: required string uuid
@@ -1056,6 +1066,21 @@ service IDataNodeRPCService {
   * Update Table Cache
   */
   common.TSStatus updateTable(TUpdateTableReq req)
+
+  /**
+  * Delete data for drop table, this database is without "root"
+  */
+  common.TSStatus invalidateTableCache(TInvalidateTableCacheReq req)
+
+  /**
+  * Delete data for drop table
+  */
+  common.TSStatus deleteDataForDropTable(TDeleteDataOrDevicesForDropTableReq req)
+
+  /**
+  * Delete devices for drop table
+  */
+  common.TSStatus deleteDevicesForDropTable(TDeleteDataOrDevicesForDropTableReq req)
 
   common.TTestConnectionResp submitTestConnectionTask(common.TNodeLocations nodeLocations)
 
