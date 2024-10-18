@@ -208,6 +208,10 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSe
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.ROLLUP;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName.mapIdentifier;
 import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction.DATE_BIN;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_AGGREGATION;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_AGGREGATION;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_BY_AGGREGATION;
 
 public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
@@ -1881,7 +1885,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
               new DereferenceExpression(getLocation(ctx.label), (Identifier) visit(ctx.label)));
     }
 
-    if (name.toString().equalsIgnoreCase("first") || name.toString().equalsIgnoreCase("last")) {
+    if (name.toString().equalsIgnoreCase(FIRST_AGGREGATION)
+        || name.toString().equalsIgnoreCase(LAST_AGGREGATION)) {
       if (arguments.size() == 1) {
         arguments.add(
             new Identifier(
@@ -1896,6 +1901,23 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             ctx);
       } else {
         throw parseError("Invalid number of arguments for 'first' or 'last' function", ctx);
+      }
+    } else if (name.toString().equalsIgnoreCase(FIRST_BY_AGGREGATION)
+        || name.toString().equalsIgnoreCase(LAST_BY_AGGREGATION)) {
+      if (arguments.size() == 2) {
+        arguments.add(
+            new Identifier(
+                TimestampOperand.TIMESTAMP_EXPRESSION_STRING.toLowerCase(Locale.ENGLISH)));
+      } else if (arguments.size() == 3) {
+        check(
+            arguments
+                .get(2)
+                .toString()
+                .equalsIgnoreCase(TimestampOperand.TIMESTAMP_EXPRESSION_STRING),
+            "The third argument of 'first_by' or 'last_by' function must be 'time'",
+            ctx);
+      } else {
+        throw parseError("Invalid number of arguments for 'first_by' or 'last_by' function", ctx);
       }
     }
 
