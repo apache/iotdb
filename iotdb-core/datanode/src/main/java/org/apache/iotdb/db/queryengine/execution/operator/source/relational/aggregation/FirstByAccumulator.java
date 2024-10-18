@@ -40,10 +40,10 @@ import java.io.IOException;
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_BY_AGGREGATION;
 
-public class LastByAccumulator implements TableAccumulator {
+public class FirstByAccumulator implements TableAccumulator {
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(LastByAccumulator.class);
+      RamUsageEstimator.shallowSizeOfInstance(FirstByAccumulator.class);
 
   private final TSDataType xDataType;
   private final TSDataType yDataType;
@@ -51,14 +51,14 @@ public class LastByAccumulator implements TableAccumulator {
   private final boolean xIsTimeColumn;
   private final boolean yIsTimeColumn;
 
-  private long yLastTime = Long.MIN_VALUE;
+  private long yFirstTime = Long.MAX_VALUE;
 
   private final TsPrimitiveType xResult;
   private boolean xIsNull = true;
 
   private boolean initResult = false;
 
-  public LastByAccumulator(
+  public FirstByAccumulator(
       TSDataType xDataType, TSDataType yDataType, boolean xIsTimeColumn, boolean yIsTimeColumn) {
     this.xDataType = xDataType;
     this.yDataType = yDataType;
@@ -75,7 +75,7 @@ public class LastByAccumulator implements TableAccumulator {
 
   @Override
   public TableAccumulator copy() {
-    return new LastByAccumulator(xDataType, yDataType, xIsTimeColumn, yIsTimeColumn);
+    return new FirstByAccumulator(xDataType, yDataType, xIsTimeColumn, yIsTimeColumn);
   }
 
   @Override
@@ -130,9 +130,9 @@ public class LastByAccumulator implements TableAccumulator {
       offset += 1;
 
       if (isXNull) {
-        if (!initResult || curTime > yLastTime) {
+        if (!initResult || curTime < yFirstTime) {
           initResult = true;
-          yLastTime = curTime;
+          yFirstTime = curTime;
           xIsNull = true;
         }
         continue;
@@ -171,7 +171,7 @@ public class LastByAccumulator implements TableAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in Last Aggregation: %s", yDataType));
+              String.format("Unsupported data type in First Aggregation: %s", yDataType));
       }
     }
   }
@@ -180,7 +180,7 @@ public class LastByAccumulator implements TableAccumulator {
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of LastBy should be BinaryColumn");
+        "intermediate input and output of FirstBy should be BinaryColumn");
 
     if (!initResult) {
       columnBuilder.appendNull();
@@ -243,20 +243,20 @@ public class LastByAccumulator implements TableAccumulator {
     }
 
     if (yIsTimeColumn) {
-      if (xStatistics == null || xStatistics.getEndTime() < yStatistics.getEndTime()) {
-        if (!initResult || yStatistics.getEndTime() > yLastTime) {
+      if (xStatistics == null || xStatistics.getStartTime() < yStatistics.getStartTime()) {
+        if (!initResult || yStatistics.getStartTime() < yFirstTime) {
           initResult = true;
-          yLastTime = yStatistics.getEndTime();
+          yFirstTime = yStatistics.getStartTime();
           xIsNull = true;
         }
       } else {
-        if (!initResult || yStatistics.getEndTime() > yLastTime) {
+        if (!initResult || yStatistics.getStartTime() < yFirstTime) {
           initResult = true;
-          yLastTime = yStatistics.getEndTime();
+          yFirstTime = yStatistics.getStartTime();
           xIsNull = false;
 
           if (xStatistics instanceof TimeStatistics) {
-            xResult.setLong(xStatistics.getEndTime());
+            xResult.setLong(xStatistics.getStartTime());
             return;
           }
 
@@ -293,11 +293,11 @@ public class LastByAccumulator implements TableAccumulator {
       }
     } else {
       // x is time column
-      if (yStatistics != null && (!initResult || yStatistics.getEndTime() > yLastTime)) {
+      if (yStatistics != null && (!initResult || yStatistics.getStartTime() < yFirstTime)) {
         initResult = true;
         xIsNull = false;
-        yLastTime = yStatistics.getEndTime();
-        xResult.setLong(yStatistics.getEndTime());
+        yFirstTime = yStatistics.getStartTime();
+        xResult.setLong(yStatistics.getStartTime());
       }
     }
   }
@@ -306,7 +306,7 @@ public class LastByAccumulator implements TableAccumulator {
   public void reset() {
     initResult = false;
     xIsNull = true;
-    this.yLastTime = Long.MIN_VALUE;
+    this.yFirstTime = Long.MAX_VALUE;
     this.xResult.reset();
   }
 
@@ -314,7 +314,7 @@ public class LastByAccumulator implements TableAccumulator {
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     try {
-      dataOutputStream.writeLong(yLastTime);
+      dataOutputStream.writeLong(yFirstTime);
       dataOutputStream.writeBoolean(xIsNull);
       if (!xIsNull) {
         switch (xDataType) {
@@ -366,9 +366,9 @@ public class LastByAccumulator implements TableAccumulator {
   }
 
   protected void updateIntLastValue(Column xColumn, int xIdx, long curTime) {
-    if (!initResult || curTime > yLastTime) {
+    if (!initResult || curTime < yFirstTime) {
       initResult = true;
-      yLastTime = curTime;
+      yFirstTime = curTime;
       if (xColumn.isNull(xIdx)) {
         xIsNull = true;
       } else {
@@ -379,9 +379,9 @@ public class LastByAccumulator implements TableAccumulator {
   }
 
   protected void updateIntLastValue(int val, long curTime) {
-    if (!initResult || curTime > yLastTime) {
+    if (!initResult || curTime < yFirstTime) {
       initResult = true;
-      yLastTime = curTime;
+      yFirstTime = curTime;
       xIsNull = false;
       xResult.setInt(val);
     }
@@ -396,9 +396,9 @@ public class LastByAccumulator implements TableAccumulator {
   }
 
   protected void updateLongLastValue(Column xColumn, int xIdx, long curTime) {
-    if (!initResult || curTime > yLastTime) {
+    if (!initResult || curTime < yFirstTime) {
       initResult = true;
-      yLastTime = curTime;
+      yFirstTime = curTime;
       if (xColumn.isNull(xIdx)) {
         xIsNull = true;
       } else {
@@ -409,9 +409,9 @@ public class LastByAccumulator implements TableAccumulator {
   }
 
   protected void updateLongLastValue(long value, long curTime) {
-    if (!initResult || curTime > yLastTime) {
+    if (!initResult || curTime < yFirstTime) {
       initResult = true;
-      yLastTime = curTime;
+      yFirstTime = curTime;
       xIsNull = false;
       xResult.setLong(value);
     }
@@ -426,9 +426,9 @@ public class LastByAccumulator implements TableAccumulator {
   }
 
   protected void updateFloatLastValue(Column xColumn, int xIdx, long curTime) {
-    if (!initResult || curTime > yLastTime) {
+    if (!initResult || curTime < yFirstTime) {
       initResult = true;
-      yLastTime = curTime;
+      yFirstTime = curTime;
       if (xColumn.isNull(xIdx)) {
         xIsNull = true;
       } else {
@@ -439,9 +439,9 @@ public class LastByAccumulator implements TableAccumulator {
   }
 
   protected void updateFloatLastValue(float value, long curTime) {
-    if (!initResult || curTime > yLastTime) {
+    if (!initResult || curTime < yFirstTime) {
       initResult = true;
-      yLastTime = curTime;
+      yFirstTime = curTime;
       xIsNull = false;
       xResult.setFloat(value);
     }
@@ -456,9 +456,9 @@ public class LastByAccumulator implements TableAccumulator {
   }
 
   protected void updateDoubleLastValue(Column xColumn, int xIdx, long curTime) {
-    if (!initResult || curTime > yLastTime) {
+    if (!initResult || curTime < yFirstTime) {
       initResult = true;
-      yLastTime = curTime;
+      yFirstTime = curTime;
       if (xColumn.isNull(xIdx)) {
         xIsNull = true;
       } else {
@@ -469,9 +469,9 @@ public class LastByAccumulator implements TableAccumulator {
   }
 
   protected void updateDoubleLastValue(double val, long curTime) {
-    if (!initResult || curTime > yLastTime) {
+    if (!initResult || curTime < yFirstTime) {
       initResult = true;
-      yLastTime = curTime;
+      yFirstTime = curTime;
       xIsNull = false;
       xResult.setDouble(val);
     }
@@ -486,9 +486,9 @@ public class LastByAccumulator implements TableAccumulator {
   }
 
   protected void updateBinaryLastValue(Column xColumn, int xIdx, long curTime) {
-    if (!initResult || curTime > yLastTime) {
+    if (!initResult || curTime < yFirstTime) {
       initResult = true;
-      yLastTime = curTime;
+      yFirstTime = curTime;
       if (xColumn.isNull(xIdx)) {
         xIsNull = true;
       } else {
@@ -499,9 +499,9 @@ public class LastByAccumulator implements TableAccumulator {
   }
 
   protected void updateBinaryLastValue(Binary val, long curTime) {
-    if (!initResult || curTime > yLastTime) {
+    if (!initResult || curTime < yFirstTime) {
       initResult = true;
-      yLastTime = curTime;
+      yFirstTime = curTime;
       xIsNull = false;
       xResult.setBinary(val);
     }
@@ -516,9 +516,9 @@ public class LastByAccumulator implements TableAccumulator {
   }
 
   protected void updateBooleanLastValue(Column xColumn, int xIdx, long curTime) {
-    if (!initResult || curTime > yLastTime) {
+    if (!initResult || curTime < yFirstTime) {
       initResult = true;
-      yLastTime = curTime;
+      yFirstTime = curTime;
       if (xColumn.isNull(xIdx)) {
         xIsNull = true;
       } else {
@@ -529,9 +529,9 @@ public class LastByAccumulator implements TableAccumulator {
   }
 
   protected void updateBooleanLastValue(boolean val, long curTime) {
-    if (!initResult || curTime > yLastTime) {
+    if (!initResult || curTime < yFirstTime) {
       initResult = true;
-      yLastTime = curTime;
+      yFirstTime = curTime;
       xIsNull = false;
       xResult.setBoolean(val);
     }

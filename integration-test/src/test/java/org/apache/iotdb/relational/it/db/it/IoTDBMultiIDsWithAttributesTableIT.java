@@ -989,6 +989,67 @@ public class IoTDBMultiIDsWithAttributesTableIT {
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
+  @Test
+  public void lastByFirstByTest() {
+    String[] expectedHeader1 = buildHeaders(13);
+    String[] expectedHeader2 = buildHeaders(14);
+
+    sql =
+        "select last_by(time,time),last_by(device,time),last_by(level,time),last_by(attr1,time),last_by(attr2,time),last_by(num,time),last_by(bignum,time),last_by(floatnum,time),last_by(str,time),last_by(bool,time),last_by(date,time),last_by(ts,time),last_by(stringv,time) from table0 where device='d2'";
+    retArray =
+        new String[] {
+          "1971-08-20T11:33:20.000Z,d2,l5,null,null,15,3147483648,235.213,watermelon,true,2023-01-01,null,null,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader1, retArray, DATABASE_NAME);
+    sql =
+        "select last_by(time,time),last_by(device,time),last_by(level,time),last_by(attr1,time),last_by(attr2,time),last_by(num,time),last_by(bignum,time),last_by(floatnum,time),last_by(str,time),last_by(bool,time),last_by(date,time),last_by(ts,time),last_by(stringv,time),last_by(blob,time) from table0 where device='d2'";
+    retArray =
+        new String[] {
+          "1971-08-20T11:33:20.000Z,d2,l5,null,null,15,3147483648,235.213,watermelon,true,2023-01-01,null,null,null,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader2, retArray, DATABASE_NAME);
+
+    sql =
+        "select last_by(time,time),last_by(time,device),last_by(time,level),last_by(time,attr1),last_by(time,attr2),last_by(time,num),last_by(time,bignum),last_by(time,floatnum),last_by(time,str),last_by(time,bool),last_by(time,date),last_by(time,ts),last_by(time,stringv) from table0 where device='d2'";
+    retArray =
+        new String[] {
+          "1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-04-26T17:46:40.000Z,1971-01-01T00:01:40.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-01-01T00:01:40.000Z,1971-01-01T00:01:40.000Z,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader1, retArray, DATABASE_NAME);
+    sql =
+        "select last_by(time,time),last_by(time,device),last_by(time,level),last_by(time,attr1),last_by(time,attr2),last_by(time,num),last_by(time,bignum),last_by(time,floatnum),last_by(time,str),last_by(time,bool),last_by(time,date),last_by(time,ts),last_by(time,stringv),last_by(time,blob) from table0 where device='d2'";
+    retArray =
+        new String[] {
+          "1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-04-26T17:46:40.000Z,1971-01-01T00:01:40.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-01-01T00:01:40.000Z,1971-01-01T00:01:40.000Z,1970-01-01T00:00:00.080Z,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader2, retArray, DATABASE_NAME);
+
+    String[] expectedHeader11 = buildHeaders(expectedHeader1.length * 2);
+    sql =
+        "select last_by(time,time),last_by(device,time),last_by(level,time),last_by(attr1,time),last_by(attr2,time),last_by(num,time),last_by(bignum,time),last_by(floatnum,time),last_by(str,time),last_by(bool,time),last_by(date,time),last_by(ts,time),last_by(stringv,time),last_by(time,time),last_by(time,device),last_by(time,level),last_by(time,attr1),last_by(time,attr2),last_by(time,num),last_by(time,bignum),last_by(time,floatnum),last_by(time,str),last_by(time,bool),last_by(time,date),last_by(time,ts),last_by(time,stringv) from table0 where device='d2'";
+    retArray =
+        new String[] {
+          "1971-08-20T11:33:20.000Z,d2,l5,null,null,15,3147483648,235.213,watermelon,true,2023-01-01,null,null,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-04-26T17:46:40.000Z,1971-01-01T00:01:40.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-01-01T00:01:40.000Z,1971-01-01T00:01:40.000Z,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader11, retArray, DATABASE_NAME);
+
+    sql =
+        "select first_by(time,time),first_by(device,time),first_by(level,time),first_by(attr1,time),first_by(attr2,time),first_by(num,time),first_by(bignum,time),first_by(floatnum,time),first_by(str,time),first_by(bool,time),first_by(date,time),first_by(ts,time),first_by(stringv,time) from table0 where device='d2' and time>80";
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.100Z,d2,l5,null,null,8,2147483964,4654.231,papaya,true,null,null,null,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader1, retArray, DATABASE_NAME);
+
+    sql =
+        "select first_by(time,time),first_by(time,device),first_by(time,level),first_by(time,attr1),first_by(time,attr2),first_by(time,num),first_by(time,bignum),first_by(time,floatnum),first_by(time,str),first_by(time,bool),first_by(time,date),first_by(time,ts),first_by(time,stringv) from table0 where device='d2' and time>80";
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.100Z,1970-01-01T00:00:00.100Z,1970-01-01T00:00:00.100Z,1971-01-01T00:00:00.000Z,1971-01-01T00:00:00.000Z,1970-01-01T00:00:00.100Z,1970-01-01T00:00:00.100Z,1970-01-01T00:00:00.100Z,1970-01-01T00:00:00.100Z,1970-01-01T00:00:00.100Z,1971-08-20T11:33:20.000Z,1971-01-01T00:01:40.000Z,1971-01-01T00:01:40.000Z,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader1, retArray, DATABASE_NAME);
+  }
+
   // ==================================================================
   // ============================ Join Test ===========================
   // ==================================================================
@@ -1273,5 +1334,13 @@ public class IoTDBMultiIDsWithAttributesTableIT {
             + "ON t1.time = t2.time \n"
             + "ORDER BY time, t1.device, t2.device";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+  }
+
+  public static String[] buildHeaders(int length) {
+    String[] expectedHeader = new String[length];
+    for (int i = 0; i < length; i++) {
+      expectedHeader[i] = "_col" + i;
+    }
+    return expectedHeader;
   }
 }
