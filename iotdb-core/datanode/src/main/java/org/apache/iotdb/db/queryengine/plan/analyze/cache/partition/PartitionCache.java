@@ -233,12 +233,13 @@ public class PartitionCache {
   private void fetchDatabaseAndUpdateCache(String database)
       throws ClientManagerException, TException {
     databaseCacheLock.writeLock().lock();
-    try (ConfigNodeClient client =
+    try (final ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TGetDatabaseReq req = new TGetDatabaseReq(ROOT_PATH, SchemaConstant.ALL_MATCH_SCOPE_BINARY);
-      TDatabaseSchemaResp databaseSchemaResp = client.getMatchedDatabaseSchemas(req);
+      final TGetDatabaseReq req =
+          new TGetDatabaseReq(ROOT_PATH, SchemaConstant.ALL_MATCH_SCOPE_BINARY);
+      final TDatabaseSchemaResp databaseSchemaResp = client.getMatchedDatabaseSchemas(req);
       if (databaseSchemaResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        Set<String> databaseNames = databaseSchemaResp.getDatabaseSchemaMap().keySet();
+        final Set<String> databaseNames = databaseSchemaResp.getDatabaseSchemaMap().keySet();
         // update all database into cache
         updateDatabaseCache(databaseNames);
       }
@@ -274,7 +275,7 @@ public class PartitionCache {
           if (PathUtils.isStartWith(deviceID, SchemaConstant.SYSTEM_DATABASE)) {
             databaseNamesNeedCreated.add(SchemaConstant.SYSTEM_DATABASE);
           } else {
-            PartialPath databaseNameNeedCreated =
+            final PartialPath databaseNameNeedCreated =
                 MetaUtils.getDatabasePathByLevel(
                     new PartialPath(deviceID), config.getDefaultStorageGroupLevel());
             databaseNamesNeedCreated.add(databaseNameNeedCreated.getFullPath());
@@ -302,15 +303,8 @@ public class PartitionCache {
           }
           final TDatabaseSchema databaseSchema = new TDatabaseSchema();
           databaseSchema.setName(databaseName);
+          databaseSchema.setIsTableModel(false);
           final TSStatus tsStatus = client.setDatabase(databaseSchema);
-          if (SchemaConstant.SYSTEM_DATABASE.equals(databaseName)) {
-            databaseSchema.setSchemaReplicationFactor(1);
-            databaseSchema.setDataReplicationFactor(1);
-            databaseSchema.setMinSchemaRegionGroupNum(1);
-            databaseSchema.setMaxSchemaRegionGroupNum(1);
-            databaseSchema.setMaxDataRegionGroupNum(1);
-            databaseSchema.setMaxDataRegionGroupNum(1);
-          }
           if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
               || TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()) {
             successFullyCreatedDatabase.add(databaseName);
@@ -367,6 +361,7 @@ public class PartitionCache {
       }
       final TDatabaseSchema databaseSchema = new TDatabaseSchema();
       databaseSchema.setName(database);
+      databaseSchema.setIsTableModel(true);
       final TSStatus tsStatus = client.setDatabase(databaseSchema);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
           || TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()) {
@@ -387,7 +382,8 @@ public class PartitionCache {
    *
    * @param result contains result(boolean), failed devices and the map
    * @param deviceIDs the devices that need to hit
-   * @param failFast if true, return when failed. if false, return when all devices hit
+   * @param failFast if {@code true}, return when failed. if {@code false}, return when all devices
+   *     hit
    */
   private void getDatabaseMap(
       DatabaseCacheResult<?, ?> result, List<IDeviceID> deviceIDs, boolean failFast) {
@@ -471,7 +467,8 @@ public class PartitionCache {
     }
   }
 
-  public void checkAndAutoCreateDatabase(String database, boolean isAutoCreate, String userName) {
+  public void checkAndAutoCreateDatabase(
+      final String database, final boolean isAutoCreate, final String userName) {
     boolean isExisted = containsDatabase(database);
     if (!isExisted) {
       try {
@@ -482,7 +479,7 @@ public class PartitionCache {
           // try to auto create database of failed device
           createDatabaseAndUpdateCache(database, userName);
         }
-      } catch (TException | ClientManagerException e) {
+      } catch (final TException | ClientManagerException e) {
         throw new StatementAnalyzeException(
             "An error occurred when executing getDeviceToDatabase():" + e.getMessage());
       }

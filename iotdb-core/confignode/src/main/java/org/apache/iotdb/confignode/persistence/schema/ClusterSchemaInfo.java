@@ -154,7 +154,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   /**
    * Cache DatabaseSchema.
    *
-   * @param plan DatabaseSchemaPlan
+   * @param plan {@link DatabaseSchemaPlan}
    * @return {@link TSStatusCode#SUCCESS_STATUS} if the Database is set successfully.
    */
   public TSStatus createDatabase(final DatabaseSchemaPlan plan) {
@@ -195,7 +195,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       final TDatabaseSchema alterSchema = plan.getSchema();
       final PartialPath partialPathName = new PartialPath(alterSchema.getName());
 
-      TDatabaseSchema currentSchema =
+      final TDatabaseSchema currentSchema =
           mTree.getDatabaseNodeByDatabasePath(partialPathName).getAsMNode().getDatabaseSchema();
       // TODO: Support alter other fields
       if (alterSchema.isSetMinSchemaRegionGroupNum()) {
@@ -234,7 +234,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           .getAsMNode()
           .setDatabaseSchema(currentSchema);
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       LOGGER.error(ERROR_NAME, e);
       result.setCode(e.getErrorCode()).setMessage(e.getMessage());
     } finally {
