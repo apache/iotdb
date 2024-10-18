@@ -23,10 +23,15 @@ import org.apache.iotdb.metrics.type.HistogramSnapshot;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.AbstractMetricMBean;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 public class IoTDBTimer extends AbstractMetricMBean implements Timer, IoTDBTimerMBean {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBTimer.class);
   io.micrometer.core.instrument.Timer timer;
 
   public IoTDBTimer(io.micrometer.core.instrument.Timer timer) {
@@ -40,37 +45,73 @@ public class IoTDBTimer extends AbstractMetricMBean implements Timer, IoTDBTimer
 
   @Override
   public HistogramSnapshot takeSnapshot() {
-    return new IoTDBTimerHistogramSnapshot(timer);
+    try {
+      return new IoTDBTimerHistogramSnapshot(timer);
+    } catch (ArrayIndexOutOfBoundsException e) {
+      LOGGER.warn(
+          "Detected an error while taking snapshot, may cause a miss during this recording.", e);
+      return null;
+    }
   }
 
   @Override
   public double getSum() {
-    return this.takeSnapshot().getSum();
+    HistogramSnapshot snapshot = this.takeSnapshot();
+    if (Objects.isNull(snapshot)) {
+      LOGGER.warn("Snapshot is null, can't get sum, return 0.0 instead.");
+      return 0.0;
+    }
+    return snapshot.getSum();
   }
 
   @Override
   public double getMax() {
-    return this.takeSnapshot().getMax();
+    HistogramSnapshot snapshot = this.takeSnapshot();
+    if (Objects.isNull(snapshot)) {
+      LOGGER.warn("Snapshot is null, can't get max, return 0.0 instead.");
+      return 0.0;
+    }
+    return snapshot.getMax();
   }
 
   @Override
   public double getMean() {
-    return this.takeSnapshot().getMean();
+    HistogramSnapshot snapshot = this.takeSnapshot();
+    if (Objects.isNull(snapshot)) {
+      LOGGER.warn("Snapshot is null, can't get mean, return 0.0 instead.");
+      return 0.0;
+    }
+    return snapshot.getMean();
   }
 
   @Override
   public int getSize() {
-    return this.takeSnapshot().size();
+    HistogramSnapshot snapshot = this.takeSnapshot();
+    if (Objects.isNull(snapshot)) {
+      LOGGER.warn("Snapshot is null, can't get size, return 0 instead.");
+      return 0;
+    }
+    return snapshot.size();
   }
 
   @Override
   public double get50thPercentile() {
-    return this.takeSnapshot().getValue(0.5);
+    HistogramSnapshot snapshot = this.takeSnapshot();
+    if (Objects.isNull(snapshot)) {
+      LOGGER.warn("Snapshot is null, can't get 50th percentile, return 0.0 instead.");
+      return 0;
+    }
+    return snapshot.getValue(0.5);
   }
 
   @Override
   public double get99thPercentile() {
-    return this.takeSnapshot().getValue(0.99);
+    HistogramSnapshot snapshot = this.takeSnapshot();
+    if (Objects.isNull(snapshot)) {
+      LOGGER.warn("Snapshot is null, can't get 99th percentile, return 0.0 instead.");
+      return 0;
+    }
+    return snapshot.getValue(0.99);
   }
 
   @Override
