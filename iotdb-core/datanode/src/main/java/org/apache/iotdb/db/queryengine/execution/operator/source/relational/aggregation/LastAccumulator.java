@@ -151,7 +151,8 @@ public class LastAccumulator implements TableAccumulator {
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of Avg should be BinaryColumn");
+        "intermediate input and output of Last should be BinaryColumn");
+
     if (!initResult) {
       columnBuilder.appendNull();
     } else {
