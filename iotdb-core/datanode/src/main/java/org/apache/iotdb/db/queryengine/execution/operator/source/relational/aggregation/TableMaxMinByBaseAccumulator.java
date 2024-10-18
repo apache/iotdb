@@ -54,7 +54,7 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
 
   private boolean initResult;
 
-  private long yTimeStamp = Long.MAX_VALUE;
+  // private long yTimeStamp = Long.MAX_VALUE;
 
   private static final String UNSUPPORTED_TYPE_MESSAGE = "Unsupported data type in MaxBy/MinBy: %s";
 
@@ -65,7 +65,7 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
     this.yExtremeValue = TsPrimitiveType.getByType(yDataType);
   }
 
-  // Column should be like: | Time | x | y |
+  // Column should be like: | x | y |
   @Override
   public void addInput(Column[] arguments) {
     checkArgument(arguments.length == 2, "Length of input Column[] for MaxBy/MinBy should be 2");
@@ -75,21 +75,23 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
         addIntInput(arguments);
         return;
       case INT64:
-        //      case TIMESTAMP:
-        //        addLongInput(arguments);
-        //        return;
-        //      case FLOAT:
-        //        addFloatInput(arguments);
-        //        return;
-        //      case DOUBLE:
-        //        addDoubleInput(arguments);
-        //        return;
-        //      case STRING:
-        //        addBinaryInput(arguments);
-        //        return;
+      case TIMESTAMP:
+        addLongInput(arguments);
+        return;
+      case FLOAT:
+        addFloatInput(arguments);
+        return;
+      case DOUBLE:
+        addDoubleInput(arguments);
+        return;
+      case STRING:
       case TEXT:
       case BLOB:
+        addBinaryInput(arguments);
+        return;
       case BOOLEAN:
+        addBooleanInput(arguments);
+        return;
       default:
         throw new UnSupportedDataTypeException(String.format(UNSUPPORTED_TYPE_MESSAGE, yDataType));
     }
@@ -144,7 +146,7 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
     xNull = true;
     this.xResult.reset();
     this.yExtremeValue.reset();
-    yTimeStamp = Long.MAX_VALUE;
+    // yTimeStamp = Long.MAX_VALUE;
   }
 
   @Override
@@ -165,6 +167,91 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
     if (!initResult || check(yValue, yExtremeValue.getInt())) {
       initResult = true;
       yExtremeValue.setInt(yValue);
+      updateX(xColumn, xIndex);
+    }
+  }
+
+  private void addLongInput(Column[] column) {
+    int count = column[1].getPositionCount();
+    for (int i = 0; i < count; i++) {
+      if (!column[1].isNull(i)) {
+        updateLongResult(column[1].getLong(i), column[0], i);
+      }
+    }
+  }
+
+  private void updateLongResult(long yValue, Column xColumn, int xIndex) {
+    if (!initResult || check(yValue, yExtremeValue.getLong())) {
+      initResult = true;
+      yExtremeValue.setLong(yValue);
+      updateX(xColumn, xIndex);
+    }
+  }
+
+  private void addFloatInput(Column[] column) {
+    int count = column[1].getPositionCount();
+    for (int i = 0; i < count; i++) {
+      if (!column[1].isNull(i)) {
+        updateFloatResult(column[1].getFloat(i), column[0], i);
+      }
+    }
+  }
+
+  private void updateFloatResult(float yValue, Column xColumn, int xIndex) {
+    if (!initResult || check(yValue, yExtremeValue.getFloat())) {
+      initResult = true;
+      yExtremeValue.setFloat(yValue);
+      updateX(xColumn, xIndex);
+    }
+  }
+
+  private void addDoubleInput(Column[] column) {
+    int count = column[1].getPositionCount();
+    for (int i = 0; i < count; i++) {
+      if (!column[1].isNull(i)) {
+        updateDoubleResult(column[1].getDouble(i), column[0], i);
+      }
+    }
+  }
+
+  private void updateDoubleResult(double yValue, Column xColumn, int xIndex) {
+    if (!initResult || check(yValue, yExtremeValue.getDouble())) {
+      initResult = true;
+      yExtremeValue.setDouble(yValue);
+      updateX(xColumn, xIndex);
+    }
+  }
+
+  private void addBinaryInput(Column[] column) {
+    int count = column[1].getPositionCount();
+    for (int i = 0; i < count; i++) {
+      if (!column[1].isNull(i)) {
+        updateBinaryResult(column[1].getBinary(i), column[0], i);
+      }
+    }
+  }
+
+  private void updateBinaryResult(Binary yValue, Column xColumn, int xIndex) {
+    if (!initResult || check(yValue, yExtremeValue.getBinary())) {
+      initResult = true;
+      yExtremeValue.setBinary(yValue);
+      updateX(xColumn, xIndex);
+    }
+  }
+
+  private void addBooleanInput(Column[] column) {
+    int count = column[1].getPositionCount();
+    for (int i = 0; i < count; i++) {
+      if (!column[1].isNull(i)) {
+        updateBooleanResult(column[1].getBoolean(i), column[0], i);
+      }
+    }
+  }
+
+  private void updateBooleanResult(boolean yValue, Column xColumn, int xIndex) {
+    if (!initResult || check(yValue, yExtremeValue.getBoolean())) {
+      initResult = true;
+      yExtremeValue.setBoolean(yValue);
       updateX(xColumn, xIndex);
     }
   }
@@ -241,7 +328,7 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     try {
-      dataOutputStream.writeLong(yTimeStamp);
+      // dataOutputStream.writeLong(yTimeStamp);
       writeIntermediateToStream(yDataType, yExtremeValue, dataOutputStream);
       dataOutputStream.writeBoolean(xNull);
       if (!xNull) {
@@ -288,8 +375,8 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
   }
 
   private void updateFromBytesIntermediateInput(byte[] bytes) {
-    long time = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, 0);
-    int offset = Long.BYTES;
+    // long time = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, 0);
+    int offset = 0;
     // Use Column to store x value
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(xDataType));
     ColumnBuilder columnBuilder = builder.getValueColumnBuilders()[0];
@@ -301,36 +388,41 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
         readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
         updateIntResult(intMaxVal, columnBuilder.build(), 0);
         break;
-        //      case INT64:
-        //      case TIMESTAMP:
-        //        long longMaxVal = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, offset);
-        //        offset += Long.BYTES;
-        //        readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
-        //        updateLongResult(time, longMaxVal, columnBuilder.build(), 0);
-        //        break;
-        //      case FLOAT:
-        //        float floatMaxVal = BytesUtils.bytesToFloat(bytes, offset);
-        //        offset += Float.BYTES;
-        //        readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
-        //        updateFloatResult(time, floatMaxVal, columnBuilder.build(), 0);
-        //        break;
-        //      case DOUBLE:
-        //        double doubleMaxVal = BytesUtils.bytesToDouble(bytes, offset);
-        //        offset += Long.BYTES;
-        //        readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
-        //        updateDoubleResult(time, doubleMaxVal, columnBuilder.build(), 0);
-        //        break;
-        //      case STRING:
-        //        int length = BytesUtils.bytesToInt(bytes, offset);
-        //        offset += Integer.BYTES;
-        //        Binary binaryMaxVal = new Binary(BytesUtils.subBytes(bytes, offset, length));
-        //        offset += length;
-        //        readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
-        //        updateBinaryResult(time, binaryMaxVal, columnBuilder.build(), 0);
-        //        break;
+      case INT64:
+      case TIMESTAMP:
+        long longMaxVal = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, offset);
+        offset += Long.BYTES;
+        readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
+        updateLongResult(longMaxVal, columnBuilder.build(), 0);
+        break;
+      case FLOAT:
+        float floatMaxVal = BytesUtils.bytesToFloat(bytes, offset);
+        offset += Float.BYTES;
+        readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
+        updateFloatResult(floatMaxVal, columnBuilder.build(), 0);
+        break;
+      case DOUBLE:
+        double doubleMaxVal = BytesUtils.bytesToDouble(bytes, offset);
+        offset += Long.BYTES;
+        readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
+        updateDoubleResult(doubleMaxVal, columnBuilder.build(), 0);
+        break;
+      case STRING:
       case TEXT:
       case BLOB:
+        int length = BytesUtils.bytesToInt(bytes, offset);
+        offset += Integer.BYTES;
+        Binary binaryMaxVal = new Binary(BytesUtils.subBytes(bytes, offset, length));
+        offset += length;
+        readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
+        updateBinaryResult(binaryMaxVal, columnBuilder.build(), 0);
+        break;
       case BOOLEAN:
+        boolean booleanMaxVal = BytesUtils.bytesToBool(bytes, offset);
+        offset += 1;
+        readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
+        updateBooleanResult(booleanMaxVal, columnBuilder.build(), 0);
+        break;
       default:
         throw new UnSupportedDataTypeException(String.format(UNSUPPORTED_TYPE_MESSAGE, yDataType));
     }
@@ -389,4 +481,6 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
   protected abstract boolean check(double yValue, double yExtremeValue);
 
   protected abstract boolean check(Binary yValue, Binary yExtremeValue);
+
+  protected abstract boolean check(boolean yValue, boolean yExtremeValue);
 }

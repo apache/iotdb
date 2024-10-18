@@ -57,6 +57,11 @@ public class TableMinByAccumulator extends TableMaxMinByBaseAccumulator {
   }
 
   @Override
+  protected boolean check(boolean yValue, boolean yExtremeValue) {
+    return !yValue;
+  }
+
+  @Override
   public long getEstimatedSize() {
     return INSTANCE_SIZE;
   }
