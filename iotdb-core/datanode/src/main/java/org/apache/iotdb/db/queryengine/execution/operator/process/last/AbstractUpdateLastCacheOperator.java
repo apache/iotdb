@@ -36,6 +36,7 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import javax.annotation.Nullable;
 
@@ -125,7 +126,13 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
       }
 
       if (seriesScanInfo.left.decrementAndGet() == 0) {
-        lastCache.updateLastCache(getDatabaseName(), fullPath, seriesScanInfo.right, true);
+        lastCache.updateLastCacheIfExists(
+            getDatabaseName(),
+            fullPath.getIDeviceID(),
+            new String[] {fullPath.getMeasurement()},
+            new TimeValuePair[] {seriesScanInfo.right},
+            fullPath.isUnderAlignedEntity(),
+            new IMeasurementSchema[] {fullPath.getMeasurementSchema()});
       }
     } finally {
       dataNodeQueryContext.unLock();

@@ -49,9 +49,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TAlterTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
@@ -742,9 +742,9 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus clearCache() throws TException {
+  public TSStatus clearCache(final Set<Integer> clearCacheOptions) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.clearCache(), status -> !updateConfigNodeLeader(status));
+        () -> client.clearCache(clearCacheOptions), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
@@ -1269,15 +1269,16 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus alterTable(final TAlterTableReq req) throws TException {
+  public TSStatus alterOrDropTable(final TAlterOrDropTableReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.alterTable(req), status -> !updateConfigNodeLeader(status));
+        () -> client.alterOrDropTable(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
-  public TShowTableResp showTables(final String database) throws TException {
+  public TShowTableResp showTables(final String database, final boolean isDetails)
+      throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.showTables(database), resp -> !updateConfigNodeLeader(resp.status));
+        () -> client.showTables(database, isDetails), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override

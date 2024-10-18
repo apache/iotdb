@@ -75,15 +75,15 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.Tabl
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAggregator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAggregator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.HashAggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.CountSchemaMergeNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceFetchNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryCountNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
@@ -122,6 +122,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNo
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryCountNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
@@ -137,6 +140,7 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.type.BlobType;
 import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.Type;
@@ -163,13 +167,14 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
-import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.createAccumulator;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.createGroupedAccumulator;
 import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.convertPredicateToFilter;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.ASC_TIME_COMPARATOR;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.IDENTITY_FILL;
@@ -1318,8 +1323,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       return planGlobalAggregation(node, child, context.getTypeProvider(), operatorContext);
     }
 
-    throw new UnsupportedOperationException();
-    // return planGroupByAggregation(node, child, outputTypes, operatorContext);
+    return planGroupByAggregation(node, child, context.getTypeProvider(), operatorContext);
   }
 
   private Operator planGlobalAggregation(
@@ -1382,6 +1386,92 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         OptionalInt.empty());
   }
 
+  private Operator planGroupByAggregation(
+      AggregationNode node,
+      Operator child,
+      TypeProvider typeProvider,
+      OperatorContext operatorContext) {
+    ImmutableList.Builder<GroupedAggregator> aggregatorBuilder = new ImmutableList.Builder<>();
+    Map<Symbol, Integer> childLayout =
+        makeLayoutFromOutputSymbols(node.getChild().getOutputSymbols());
+
+    node.getAggregations()
+        .forEach(
+            (k, v) ->
+                aggregatorBuilder.add(
+                    buildGroupByAggregator(childLayout, k, v, node.getStep(), typeProvider)));
+
+    List<Integer> groupByChannels = getChannelsForSymbols(node.getGroupingKeys(), childLayout);
+    List<Type> groupByTypes =
+        node.getGroupingKeys().stream()
+            .map(typeProvider::getTableModelType)
+            .collect(toImmutableList());
+
+    if (node.isStreamable()) {
+      /*return new StreamingAggregationOperator;*/
+    }
+
+    return new HashAggregationOperator(
+        operatorContext,
+        child,
+        groupByTypes,
+        groupByChannels,
+        aggregatorBuilder.build(),
+        node.getStep(),
+        10_000,
+        Long.MAX_VALUE,
+        false,
+        Long.MAX_VALUE);
+  }
+
+  private static List<Integer> getChannelsForSymbols(
+      List<Symbol> symbols, Map<Symbol, Integer> layout) {
+    ImmutableList.Builder<Integer> builder = ImmutableList.builder();
+    for (Symbol symbol : symbols) {
+      builder.add(layout.get(symbol));
+    }
+    return builder.build();
+  }
+
+  private GroupedAggregator buildGroupByAggregator(
+      Map<Symbol, Integer> childLayout,
+      Symbol symbol,
+      AggregationNode.Aggregation aggregation,
+      AggregationNode.Step step,
+      TypeProvider typeProvider) {
+    List<Integer> argumentChannels = new ArrayList<>();
+    List<TSDataType> argumentTypes = new ArrayList<>();
+    for (Expression argument : aggregation.getArguments()) {
+      Symbol argumentSymbol = Symbol.from(argument);
+      argumentChannels.add(childLayout.get(argumentSymbol));
+
+      // get argument types
+      Type type = typeProvider.getTableModelType(argumentSymbol);
+      if (type instanceof RowType) {
+        type.getTypeParameters().forEach(subType -> argumentTypes.add(getTSDataType(subType)));
+      } else {
+        argumentTypes.add(getTSDataType(type));
+      }
+    }
+
+    String functionName = aggregation.getResolvedFunction().getSignature().getName();
+    GroupedAccumulator accumulator =
+        createGroupedAccumulator(
+            functionName,
+            getAggregationTypeByFuncName(functionName),
+            argumentTypes,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true);
+
+    return new GroupedAggregator(
+        accumulator,
+        step,
+        getTSDataType(typeProvider.getTableModelType(symbol)),
+        argumentChannels,
+        OptionalInt.empty());
+  }
+
   @Override
   public Operator visitAggregationTableScan(
       AggregationTableScanNode node, LocalExecutionPlanContext context) {
@@ -1390,7 +1480,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     Map<Symbol, Integer> columnLayout = new HashMap<>(node.getAggregations().size());
 
     int aggregationsCount = node.getAggregations().size();
-    int[] layoutArray = new int[aggregationsCount];
+    List<Integer> aggColumnIndexes = new ArrayList<>();
     int channel = 0;
     int idx = -1;
     int measurementColumnCount = 0;
@@ -1398,64 +1488,59 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     Map<Symbol, Integer> idAndAttributeColumnsIndexMap = node.getIdAndAttributeIndexMap();
     Map<Symbol, ColumnSchema> columnSchemaMap = node.getAssignments();
     List<ColumnSchema> columnSchemas = new ArrayList<>(aggregationsCount);
-    int[] columnsIndexArray = new int[aggregationsCount];
+    int[] columnsIndexArray = new int[aggregationsCount * 2];
     List<String> measurementColumnNames = new ArrayList<>();
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
 
-    // TODO test aggregation function which has more than one arguements
     for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
-      idx++;
-      Symbol symbol = Symbol.from(entry.getValue().getArguments().get(0));
-      ColumnSchema schema = requireNonNull(columnSchemaMap.get(symbol), symbol + " is null");
-
       String funcName = entry.getValue().getResolvedFunction().getSignature().getName();
-      if (schema.getType().equals(BlobType.BLOB)
-          && (FIRST.equals(funcName) || LAST.equals(funcName))) {
-        // first/last aggregation with BLOB type can not use statistics
-        canUseStatistic = false;
-      }
 
-      switch (schema.getColumnCategory()) {
-        case ID:
-        case ATTRIBUTE:
-          if (columnLayout.containsKey(symbol)) {
-            columnsIndexArray[idx] = columnsIndexArray[columnLayout.get(symbol)];
-          } else {
-            columnsIndexArray[idx] =
-                requireNonNull(idAndAttributeColumnsIndexMap.get(symbol), symbol + " is null");
-            columnSchemas.add(schema);
-          }
-          break;
-        case MEASUREMENT:
-          if (columnLayout.containsKey(symbol)) {
-            columnsIndexArray[idx] = columnsIndexArray[columnLayout.get(symbol)];
-          } else {
-            columnsIndexArray[idx] = measurementColumnCount;
-            measurementColumnCount++;
-            measurementColumnNames.add(symbol.getName());
-            measurementSchemas.add(
-                new MeasurementSchema(schema.getName(), getTSDataType(schema.getType())));
-            columnSchemas.add(schema);
-          }
-          break;
-        case TIME:
-          if (columnLayout.containsKey(symbol)) {
-            columnsIndexArray[idx] = columnsIndexArray[columnLayout.get(symbol)];
-          } else {
-            columnsIndexArray[idx] = -1;
-            columnSchemas.add(schema);
-          }
-          break;
-        default:
-          throw new IllegalArgumentException(
-              "Unexpected column category: " + schema.getColumnCategory());
-      }
+      for (Expression argument : entry.getValue().getArguments()) {
+        idx++;
+        Symbol symbol = Symbol.from(argument);
+        ColumnSchema schema = requireNonNull(columnSchemaMap.get(symbol), symbol + " is null");
+        if (schema.getType().equals(BlobType.BLOB)
+            && (FIRST.equals(funcName) || LAST.equals(funcName))) {
+          // first/last aggregation with BLOB type can not use statistics
+          canUseStatistic = false;
+        }
 
-      if (!columnLayout.containsKey(symbol)) {
-        layoutArray[idx] = channel;
-        columnLayout.put(symbol, channel++);
-      } else {
-        layoutArray[idx] = columnLayout.get(symbol);
+        switch (schema.getColumnCategory()) {
+          case ID:
+          case ATTRIBUTE:
+            if (!columnLayout.containsKey(symbol)) {
+              columnsIndexArray[channel] =
+                  requireNonNull(idAndAttributeColumnsIndexMap.get(symbol), symbol + " is null");
+              columnSchemas.add(schema);
+            }
+            break;
+          case MEASUREMENT:
+            if (!columnLayout.containsKey(symbol)) {
+              columnsIndexArray[channel] = measurementColumnCount;
+              measurementColumnCount++;
+              measurementColumnNames.add(symbol.getName());
+              measurementSchemas.add(
+                  new MeasurementSchema(schema.getName(), getTSDataType(schema.getType())));
+              columnSchemas.add(schema);
+            }
+            break;
+          case TIME:
+            if (!columnLayout.containsKey(symbol)) {
+              columnsIndexArray[channel] = -1;
+              columnSchemas.add(schema);
+            }
+            break;
+          default:
+            throw new IllegalArgumentException(
+                "Unexpected column category: " + schema.getColumnCategory());
+        }
+
+        if (!columnLayout.containsKey(symbol)) {
+          aggColumnIndexes.add(channel);
+          columnLayout.put(symbol, channel++);
+        } else {
+          aggColumnIndexes.add(columnLayout.get(symbol));
+        }
       }
 
       aggregators.add(
@@ -1467,6 +1552,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               context.getTypeProvider()));
     }
 
+    // TODO if this needed?
     for (Map.Entry<Symbol, ColumnSchema> entry : node.getAssignments().entrySet()) {
       if (!columnLayout.containsKey(entry.getKey())
           && entry.getValue().getColumnCategory() == MEASUREMENT) {
@@ -1513,7 +1599,14 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       }
     }
     if (timeRangeIterator == null) {
-      timeRangeIterator = new TableSingleTimeWindowIterator(Long.MIN_VALUE, Long.MAX_VALUE);
+      if (node.getGroupingKeys().isEmpty()) {
+        // global aggregation, has no group by, output init value if no data
+        timeRangeIterator =
+            new TableSingleTimeWindowIterator(new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE));
+      } else {
+        // aggregation with group by, only has data the result will not be empty
+        timeRangeIterator = new TableSingleTimeWindowIterator();
+      }
     }
 
     final OperatorContext operatorContext =
@@ -1558,7 +1651,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             null,
             calculateMaxAggregationResultSize(),
             canUseStatistic,
-            layoutArray);
+            aggColumnIndexes);
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(aggTableScanOperator);
 

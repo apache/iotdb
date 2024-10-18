@@ -41,6 +41,9 @@ public class CompactionLogger implements AutoCloseable {
   private FileOutputStream logStream;
 
   public CompactionLogger(File logFile) throws IOException {
+    if (!logFile.getParentFile().exists()) {
+      logFile.getParentFile().mkdirs();
+    }
     logStream = new FileOutputStream(logFile, true);
   }
 

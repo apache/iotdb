@@ -47,17 +47,17 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         "CREATE DATABASE db",
         "USE db",
         "CREATE TABLE table0 (device string id, level string id, attr1 string attribute, attr2 string attribute, num int32 measurement, bigNum int64 measurement, "
-            + "floatNum double measurement, str TEXT measurement, bool BOOLEAN measurement, date DATE measurement)",
+            + "floatNum double measurement, str TEXT measurement, bool BOOLEAN measurement, date DATE measurement, blob BLOB measurement, ts TIMESTAMP measurement, stringV STRING measurement)",
         "insert into table0(device, level, attr1, attr2, time,num,bigNum,floatNum,str,bool) values('d1', 'l1', 'c', 'd', 0,3,2947483648,231.2121,'coconut',FALSE)",
-        "insert into table0(device, level, attr1, attr2, time,num,bigNum,floatNum,str,bool) values('d1', 'l2', 'y', 'z', 20,2,2147483648,434.12,'pineapple',TRUE)",
+        "insert into table0(device, level, attr1, attr2, time,num,bigNum,floatNum,str,bool,blob,ts) values('d1', 'l2', 'y', 'z', 20,2,2147483648,434.12,'pineapple',TRUE,X'108DCD62',2024-09-24T06:15:35.000+00:00)",
         "insert into table0(device, level, attr1, attr2, time,num,bigNum,floatNum,str,bool) values('d1', 'l3', 't', 'a', 40,1,2247483648,12.123,'apricot',TRUE)",
         "insert into table0(device, level, time,num,bigNum,floatNum,str,bool) values('d1', 'l4', 80,9,2147483646,43.12,'apple',FALSE)",
         "insert into table0(device, level, time,num,bigNum,floatNum,str,bool) values('d1', 'l5', 100,8,2147483964,4654.231,'papaya',TRUE)",
         "insert into table0(device, level, time,num,bigNum,floatNum,str,bool) values('d1', 'l1', 31536000000,6,2147483650,1231.21,'banana',TRUE)",
         "insert into table0(device, level, time,num,bigNum,floatNum,str,bool) values('d1', 'l2',31536000100,10,3147483648,231.55,'pumelo',FALSE)",
         "insert into table0(device,level,  time,num,bigNum,floatNum,str,bool) values('d1', 'l3',31536000500,4,2147493648,213.1,'peach',FALSE)",
-        "insert into table0(device, level, time,num,bigNum,floatNum,str,bool) values('d1', 'l4',31536001000,5,2149783648,56.32,'orange',FALSE)",
-        "insert into table0(device, level, time,num,bigNum,floatNum,str,bool) values('d1', 'l5',31536010000,7,2147983648,213.112,'lemon',TRUE)",
+        "insert into table0(device, level, time,num,bigNum,floatNum,str,bool,blob,ts,stringV) values('d1', 'l4',31536001000,5,2149783648,56.32,'orange',FALSE,X'108DCD62',2024-09-15T06:15:35.000+00:00,'test-string1')",
+        "insert into table0(device, level, time,num,bigNum,floatNum,str,bool,blob,ts) values('d1', 'l5',31536010000,7,2147983648,213.112,'lemon',TRUE,X'108DCD63',2024-09-25T06:15:35.000+00:00)",
         "insert into table0(device, level, time,num,bigNum,floatNum,str,bool) values('d1', 'l1',31536100000,11,2147468648,54.121,'pitaya',FALSE)",
         "insert into table0(device,level,attr1,attr2,time,num,bigNum,floatNum,str,bool) values('d2','l1','d','c',0,3,2947483648,231.2121,'coconut',FALSE)",
         "insert into table0(device,level,attr1,time,num,bigNum,floatNum,str,bool) values('d2','l2', 'vv', 31536000100,10,3147483648,231.55,'pumelo',FALSE)",
@@ -72,14 +72,14 @@ public class IoTDBMultiIDsWithAttributesTableIT {
       new String[] {
         "insert into table0(device,level,time,num,bigNum,floatNum,str,bool) values('d2','l2',20,2,2147483648,434.12,'pineapple',TRUE)",
         "insert into table0(device,level,time,num,bigNum,floatNum,str,bool) values('d2','l3',40,1,2247483648,12.123,'apricot',TRUE)",
-        "insert into table0(device,level,time,num,bigNum,floatNum,str,bool) values('d2','l4',80,9,2147483646,43.12,'apple',FALSE)",
+        "insert into table0(device,level,time,num,bigNum,floatNum,str,bool,blob,ts,stringV) values('d2','l4',80,9,2147483646,43.12,'apple',FALSE,X'108DCD63',2024-09-20T06:15:35.000+00:00,'test-string2')",
         "insert into table0(device,level,time,num,bigNum,floatNum,str,bool) values('d2','l5',100,8,2147483964,4654.231,'papaya',TRUE)",
         "insert into table0(device,level,time,num,bigNum,floatNum,str,bool) values('d2','l1',31536000000,6,2147483650,1231.21,'banana',TRUE)",
         "insert into table0(device,level,time,num,bigNum,floatNum,str,bool) values('d2','l3',31536000500,4,2147493648,213.1,'peach',FALSE)",
         "insert into table0(device,level,time,num,bigNum,floatNum,str,bool) values('d2','l4',31536001000,5,2149783648,56.32,'orange',FALSE)",
         "insert into table0(device,level,time,num,bigNum,floatNum,str,bool) values('d2','l5',31536010000,7,2147983648,213.112,'lemon',TRUE)",
         "flush",
-        "insert into table0(device,level,time,num,bigNum,floatNum,str,bool) values('d2','l1',31536100000,11,2147468648,54.121,'pitaya',FALSE)",
+        "insert into table0(device,level,time,num,bigNum,floatNum,str,bool,ts,StringV) values('d2','l1',31536100000,11,2147468648,54.121,'pitaya',FALSE,2024-08-01T06:15:35.000+00:00,'test-string3')",
         "insert into table0(device,level,time,num,bigNum,floatNum,str,bool) values('d2','l2',41536000000,12,2146483648,45.231,'strawberry',FALSE)",
         "insert into table0(device,level,time,num,bigNum,floatNum,str,bool) values('d2','l3',41536000020,14,2907483648,231.34,'cherry',FALSE)",
         "insert into table0(device,level,time,num,bigNum,floatNum,str,bool) values('d2','l4',41536900000,13,2107483648,54.12,'lychee',TRUE)",
@@ -461,7 +461,9 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         DATABASE_NAME);
   }
 
+  // =========================================================================
   // ============================ Aggregation Test ===========================
+  // =========================================================================
   @Test
   public void aggregationTest() {
     String[] expectedHeader =
@@ -633,11 +635,34 @@ public class IoTDBMultiIDsWithAttributesTableIT {
           "d2,l4,3,3,3,0,0,0,3,27.0,",
           "d2,l5,3,3,3,1,0,0,3,30.0,",
         };
-    String sql =
+    sql =
         "select device, level, "
             + "count(num) as count_num, count(*) as count_star, count(device) as count_device, count(date) as count_date, "
             + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num "
             + "from table0 group by device,level order by device, level";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {
+          "device",
+          "count_num",
+          "count_star",
+          "count_device",
+          "count_date",
+          "count_attr1",
+          "count_attr2",
+          "count_time",
+          "sum_num"
+        };
+    retArray =
+        new String[] {
+          "d1,3,3,3,0,3,3,3,20.0,",
+        };
+    sql =
+        "select device, "
+            + "count(num) as count_num, count(*) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num "
+            + "from table0 where device='d1' and level='l1' group by device order by device";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
@@ -765,6 +790,41 @@ public class IoTDBMultiIDsWithAttributesTableIT {
             + "from table0 group by 3, device, level order by device, level, bin";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
+    // only group by date_bin
+    expectedHeader = new String[] {"bin"};
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,", "1971-01-01T00:00:00.000Z,", "1971-04-26T00:00:00.000Z,"
+        };
+    sql =
+        "select date_bin(1d, time) as bin from table0 where device='d1' and level='l2' group by 1";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {
+          "bin",
+          "count_num",
+          "count_star",
+          "count_device",
+          "count_date",
+          "count_attr1",
+          "count_attr2",
+          "count_time",
+          "avg_num"
+        };
+    sql =
+        "select date_bin(1s, time) as bin,"
+            + "count(num) as count_num, count(*) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, avg(num) as avg_num "
+            + "from table0 where device='d1' and level='l2' group by 1";
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,1,1,1,0,1,1,1,2.0,",
+          "1971-01-01T00:00:00.000Z,1,1,1,0,1,1,1,10.0,",
+          "1971-04-26T17:46:40.000Z,1,1,1,0,1,1,1,12.0,"
+        };
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
     // TODO(beyyes) test below
     //    sql = "select count(*) from (\n" +
     //            "\tselect device, level, date_bin(1d, time) as bin, \n" +
@@ -776,7 +836,162 @@ public class IoTDBMultiIDsWithAttributesTableIT {
     //            ")\n";
   }
 
+  @Test
+  public void aggregationNoDataTest() {
+    expectedHeader =
+        new String[] {
+          "count_num",
+          "count_star",
+          "count_device",
+          "count_date",
+          "count_attr1",
+          "count_attr2",
+          "count_time",
+          "sum_num",
+          "avg_num"
+        };
+
+    retArray =
+        new String[] {
+          "0,0,0,0,0,0,0,null,null,",
+        };
+    sql =
+        "select count(num) as count_num, count(*) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
+            + "avg(num) as avg_num from table0 where time=32";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "2,2,2,0,2,1,2,24.0,12.0,",
+        };
+    sql =
+        "select count(num) as count_num, count(*) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
+            + "avg(num) as avg_num from table0 where time=32 or time=1971-04-27T01:46:40.000+08:00";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {
+          "device",
+          "level",
+          "count_num",
+          "count_star",
+          "count_device",
+          "count_date",
+          "count_attr1",
+          "count_attr2",
+          "count_time",
+          "sum_num",
+          "avg_num"
+        };
+    retArray = new String[] {};
+    sql =
+        "select device, level, count(num) as count_num, count(*) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
+            + "avg(num) as avg_num from table0 where time=32 group by device, level order by device, level";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    retArray = new String[] {"d1,l2,1,1,1,0,1,1,1,12.0,12.0,", "d2,l2,1,1,1,0,1,0,1,12.0,12.0,"};
+    sql =
+        "select device, level, count(num) as count_num, count(*) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
+            + "avg(num) as avg_num from table0 where time=32 or time=1971-04-27T01:46:40.000+08:00 group by device, level order by device, level";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {
+          "device",
+          "level",
+          "bin",
+          "count_num",
+          "count_star",
+          "count_device",
+          "count_date",
+          "count_attr1",
+          "count_attr2",
+          "count_time",
+          "sum_num",
+          "avg_num"
+        };
+    retArray = new String[] {};
+    sql =
+        "select device, level, date_bin(1d, time) as bin, count(num) as count_num, count(*) as count_star, "
+            + "count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
+            + "avg(num) as avg_num from table0 where time=32 group by 3, device, level order by device, level";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    retArray =
+        new String[] {
+          "d1,l2,1971-04-26T00:00:00.000Z,1,1,1,0,1,1,1,12.0,12.0,",
+          "d2,l2,1971-04-26T00:00:00.000Z,1,1,1,0,1,0,1,12.0,12.0,"
+        };
+    sql =
+        "select device, level, date_bin(1d, time) as bin, count(num) as count_num, count(*) as count_star, "
+            + "count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
+            + "avg(num) as avg_num from table0 where time=32 or time=1971-04-27T01:46:40.000+08:00 group by 3, device, level order by device, level";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+  }
+
+  @Test
+  public void lastFirstMaxMinTest() {
+    expectedHeader =
+        new String[] {
+          "_col0", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9",
+          "_col10", "_col11", "_col12", "_col13",
+        };
+    retArray =
+        new String[] {
+          "1971-04-26T18:01:40.000Z,d1,l4,null,null,13,2107483648,54.12,lychee,true,null,0x108dcd62,2024-09-15T06:15:35.000Z,test-string1,",
+        };
+    sql =
+        "select last(time),last(device),last(level),last(attr1),last(attr2),last(num),last(bignum),last(floatnum),last(str),last(bool),last(date),last(blob),last(ts),last(stringv) from table0 where device='d1' and level='l4'";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.080Z,d1,l4,null,null,9,2147483646,43.12,apple,false,null,0x108dcd62,2024-09-15T06:15:35.000Z,test-string1,",
+        };
+    sql =
+        "select first(time),first(device),first(level),first(attr1),first(attr2),first(num),first(bignum),first(floatnum),first(str),first(bool),first(date),first(blob),first(ts),first(stringv) from table0 where device='d1' and level='l4'";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {
+          "_col0", "_col1", "_col2", "_col3", "_col4", "_col5",
+        };
+    retArray =
+        new String[] {
+          "15,3147483648,4654.231,1,2107483648,12.123,",
+        };
+    sql =
+        "select max(num),max(bignum),max(floatnum),min(num),min(bignum),min(floatnum) from table0";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {
+          "device", "level", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7",
+        };
+    retArray =
+        new String[] {
+          "d1,l1,11,2947483648,1231.21,3,2147468648,54.121,",
+          "d1,l2,12,3147483648,434.12,2,2146483648,45.231,",
+          "d1,l3,14,2907483648,231.34,1,2147493648,12.123,",
+          "d1,l4,13,2149783648,56.32,5,2107483648,43.12,",
+          "d1,l5,15,3147483648,4654.231,7,2147483964,213.112,",
+          "d2,l1,11,2947483648,1231.21,3,2147468648,54.121,",
+          "d2,l2,12,3147483648,434.12,2,2146483648,45.231,",
+          "d2,l3,14,2907483648,231.34,1,2147493648,12.123,",
+          "d2,l4,13,2149783648,56.32,5,2107483648,43.12,",
+          "d2,l5,15,3147483648,4654.231,7,2147483964,213.112,",
+        };
+    sql =
+        "select device,level,max(num),max(bignum),max(floatnum),min(num),min(bignum),min(floatnum) from table0 group by device,level order by device,level";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+  }
+
+  // ==================================================================
   // ============================ Join Test ===========================
+  // ==================================================================
   // no filter
   @Test
   public void innerJoinTest1() {

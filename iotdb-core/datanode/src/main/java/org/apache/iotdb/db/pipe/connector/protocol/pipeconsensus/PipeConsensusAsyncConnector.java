@@ -269,6 +269,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
       tCommitId =
           new TCommitId(
               pipeInsertNodeTabletInsertionEvent.getCommitId(),
+              pipeInsertNodeTabletInsertionEvent.getCommitterKey().getRestartTimes(),
               pipeInsertNodeTabletInsertionEvent.getRebootTimes());
 
       // We increase the reference count for this event to determine if the event may be released.
@@ -346,7 +347,9 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
         (PipeTsFileInsertionEvent) tsFileInsertionEvent;
     TCommitId tCommitId =
         new TCommitId(
-            pipeTsFileInsertionEvent.getCommitId(), pipeTsFileInsertionEvent.getRebootTimes());
+            pipeTsFileInsertionEvent.getCommitId(),
+            pipeTsFileInsertionEvent.getCommitterKey().getRestartTimes(),
+            pipeTsFileInsertionEvent.getRebootTimes());
     TConsensusGroupId tConsensusGroupId =
         new TConsensusGroupId(TConsensusGroupType.DataRegion, consensusGroupId);
     // We increase the reference count for this event to determine if the event may be released.

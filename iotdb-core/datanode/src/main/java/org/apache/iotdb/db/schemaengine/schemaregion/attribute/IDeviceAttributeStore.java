@@ -38,5 +38,7 @@ public interface IDeviceAttributeStore {
   Map<String, String> alterAttribute(
       final int pointer, final List<String> nameList, final Object[] valueList);
 
+  Map<String, String> removeAttribute(final int pointer);
+
   String getAttribute(final int pointer, final String name);
 }
