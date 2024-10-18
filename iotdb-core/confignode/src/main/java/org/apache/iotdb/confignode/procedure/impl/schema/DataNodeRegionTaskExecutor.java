@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.schema;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -45,7 +45,7 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
   protected final Map<TConsensusGroupId, TRegionReplicaSet> targetRegionGroup;
   protected final boolean executeOnAllReplicaset;
 
-  protected final CnToDnRequestType dataNodeRequestType;
+  protected final CnToDnAsyncRequestType dataNodeRequestType;
   protected final BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q>
       dataNodeRequestGenerator;
 
@@ -55,7 +55,7 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
       ConfigManager configManager,
       Map<TConsensusGroupId, TRegionReplicaSet> targetRegionGroup,
       boolean executeOnAllReplicaset,
-      CnToDnRequestType dataNodeRequestType,
+      CnToDnAsyncRequestType dataNodeRequestType,
       BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
     this.configManager = configManager;
     this.targetRegionGroup = targetRegionGroup;
@@ -68,7 +68,7 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
       ConfigNodeProcedureEnv env,
       Map<TConsensusGroupId, TRegionReplicaSet> targetRegionGroup,
       boolean executeOnAllReplicaset,
-      CnToDnRequestType dataNodeRequestType,
+      CnToDnAsyncRequestType dataNodeRequestType,
       BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
     this.configManager = env.getConfigManager();
     this.targetRegionGroup = targetRegionGroup;

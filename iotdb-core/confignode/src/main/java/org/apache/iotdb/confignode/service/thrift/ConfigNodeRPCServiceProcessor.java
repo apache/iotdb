@@ -925,12 +925,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus clearCache() {
-    return configManager.clearCache();
+  public TSStatus clearCache(final Set<Integer> clearCacheOptions) {
+    return configManager.clearCache(clearCacheOptions);
   }
 
   @Override
-  public TSStatus setConfiguration(TSetConfigurationReq req) throws TException {
+  public TSStatus setConfiguration(TSetConfigurationReq req) {
     return configManager.setConfiguration(req);
   }
 

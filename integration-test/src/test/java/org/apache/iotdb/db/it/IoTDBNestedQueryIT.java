@@ -624,12 +624,8 @@ public class IoTDBNestedQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       String query =
-          "SELECT s1 FROM root.vehicle.d1 WHERE s3 LIKE '_' && s3 REGEXP '[0-9]' && s3 IN ('4', '2', '3')";
+          "SELECT s1 FROM root.vehicle.d1 WHERE s3 LIKE '_' && s3 not REGEXP '[0-9]' && s3 IN ('4', '2', '3')";
       try (ResultSet rs = statement.executeQuery(query)) {
-        for (int i = 2; i <= 4; i++) {
-          Assert.assertTrue(rs.next());
-          Assert.assertEquals(i, rs.getLong(1));
-        }
         Assert.assertFalse(rs.next());
       }
 

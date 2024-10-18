@@ -958,6 +958,89 @@ public class IoTDBInsertTableIT {
     }
   }
 
+  @Test
+  public void testInsertUnsequenceData()
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection(BaseEnv.TABLE_SQL_DIALECT)) {
+      session.executeNonQueryStatement("USE \"test\"");
+      // the table is missing column "m2"
+      session.executeNonQueryStatement(
+          "CREATE TABLE table4 (id1 string id, attr1 string attribute, "
+              + "m1 double "
+              + "measurement)");
+
+      // the insertion contains "m2"
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
+      schemaList.add(new MeasurementSchema("m2", TSDataType.DOUBLE));
+      final List<Tablet.ColumnType> columnTypes =
+          Arrays.asList(
+              Tablet.ColumnType.ID,
+              Tablet.ColumnType.ATTRIBUTE,
+              Tablet.ColumnType.MEASUREMENT,
+              Tablet.ColumnType.MEASUREMENT);
+
+      long timestamp = 0;
+      Tablet tablet = new Tablet("table4", schemaList, columnTypes, 15);
+
+      for (long row = 0; row < 15; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, timestamp + row);
+        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("attr1", rowIndex, "attr:" + row);
+        tablet.addValue("m1", rowIndex, row * 1.0);
+        tablet.addValue("m2", rowIndex, row * 1.0);
+        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+          try {
+            session.insertRelationalTablet(tablet, true);
+          } catch (StatementExecutionException e) {
+            // a partial insertion should be reported
+            if (!e.getMessage()
+                .equals(
+                    "507: Fail to insert measurements [m2] caused by [Column m2 does not exists or fails to be created]")) {
+              throw e;
+            }
+          }
+          tablet.reset();
+        }
+      }
+
+      session.executeNonQueryStatement("FLush");
+
+      for (long row = 0; row < 15; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, 14 - row);
+        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("attr1", rowIndex, "attr:" + row);
+        tablet.addValue("m1", rowIndex, row * 1.0);
+        tablet.addValue("m2", rowIndex, row * 1.0);
+        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+          try {
+            session.insertRelationalTablet(tablet, true);
+          } catch (StatementExecutionException e) {
+            if (!e.getMessage()
+                .equals(
+                    "507: Fail to insert measurements [m2] caused by [Column m2 does not exists or fails to be created]")) {
+              throw e;
+            }
+          }
+          tablet.reset();
+        }
+      }
+      session.executeNonQueryStatement("FLush");
+
+      int cnt = 0;
+      SessionDataSet dataSet = session.executeQueryStatement("select * from table4");
+      while (dataSet.hasNext()) {
+        dataSet.next();
+        cnt++;
+      }
+      assertEquals(29, cnt);
+    }
+  }
+
   private List<Integer> checkHeader(
       ResultSetMetaData resultSetMetaData, String expectedHeaderStrings, int[] expectedTypes)
       throws SQLException {

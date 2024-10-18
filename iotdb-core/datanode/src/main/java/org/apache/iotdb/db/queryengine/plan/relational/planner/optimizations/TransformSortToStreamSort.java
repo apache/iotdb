@@ -120,21 +120,6 @@ public class TransformSortToStreamSort implements PlanOptimizer {
       return node;
     }
 
-    private boolean isOrderByAllIdsAndTime(
-        Map<Symbol, ColumnSchema> tableColumnSchema,
-        OrderingScheme orderingScheme,
-        int streamSortIndex) {
-      for (Map.Entry<Symbol, ColumnSchema> entry : tableColumnSchema.entrySet()) {
-        if (entry.getValue().getColumnCategory() == TsTableColumnCategory.ID
-            && !orderingScheme.getOrderings().containsKey(entry.getKey())) {
-          return false;
-        }
-      }
-      return orderingScheme.getOrderings().size() == streamSortIndex + 1
-          || TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(
-              orderingScheme.getOrderBy().get(streamSortIndex + 1).getName());
-    }
-
     @Override
     public PlanNode visitTableScan(TableScanNode node, Context context) {
       context.setTableScanNode(node);
@@ -152,6 +137,21 @@ public class TransformSortToStreamSort implements PlanOptimizer {
       context.setCanTransform(false);
       return visitTableScan(node, context);
     }
+  }
+
+  public static boolean isOrderByAllIdsAndTime(
+      Map<Symbol, ColumnSchema> tableColumnSchema,
+      OrderingScheme orderingScheme,
+      int streamSortIndex) {
+    for (Map.Entry<Symbol, ColumnSchema> entry : tableColumnSchema.entrySet()) {
+      if (entry.getValue().getColumnCategory() == TsTableColumnCategory.ID
+          && !orderingScheme.getOrderings().containsKey(entry.getKey())) {
+        return false;
+      }
+    }
+    return orderingScheme.getOrderings().size() == streamSortIndex + 1
+        || TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(
+            orderingScheme.getOrderBy().get(streamSortIndex + 1).getName());
   }
 
   private static class Context {

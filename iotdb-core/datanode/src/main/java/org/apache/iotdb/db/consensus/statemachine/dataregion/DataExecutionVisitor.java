@@ -169,6 +169,9 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
       dataRegion.insertTablets(node);
       dataRegion.insertSeparatorToWAL();
       return StatusUtils.OK;
+    } catch (WriteProcessRejectException e) {
+      LOGGER.warn("Reject in executing plan node: {}, caused by {}", node, e.getMessage());
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (BatchProcessException e) {
       LOGGER.warn("Batch failure in executing a InsertMultiTabletsNode.");
       TSStatus firstStatus = null;

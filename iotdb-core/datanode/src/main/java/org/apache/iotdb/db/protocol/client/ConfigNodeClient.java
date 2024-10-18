@@ -742,9 +742,9 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus clearCache() throws TException {
+  public TSStatus clearCache(final Set<Integer> clearCacheOptions) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.clearCache(), status -> !updateConfigNodeLeader(status));
+        () -> client.clearCache(clearCacheOptions), status -> !updateConfigNodeLeader(status));
   }
 
   @Override

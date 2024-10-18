@@ -96,7 +96,7 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
 
       return true;
     } catch (final IOException e) {
-      logger.error("Failed to create mtree snapshot due to {}", e.getMessage(), e);
+      logger.error("Failed to create device attribute snapshot due to {}", e.getMessage(), e);
       FileUtils.deleteFileIfExist(snapshot);
       return false;
     } finally {
@@ -185,18 +185,18 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   }
 
   @Override
-  public String getAttribute(int pointer, String name) {
+  public String getAttribute(final int pointer, final String name) {
     return deviceAttributeList.get(pointer).get(name);
   }
 
-  private void serialize(OutputStream outputStream) throws IOException {
+  private void serialize(final OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(deviceAttributeList.size(), outputStream);
-    for (Map<String, String> attributeMap : deviceAttributeList) {
+    for (final Map<String, String> attributeMap : deviceAttributeList) {
       ReadWriteIOUtils.write(attributeMap, outputStream);
     }
   }
 
-  private void deserialize(InputStream inputStream) throws IOException {
+  private void deserialize(final InputStream inputStream) throws IOException {
     int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; i++) {
       deviceAttributeList.add(ReadWriteIOUtils.readMap(inputStream));

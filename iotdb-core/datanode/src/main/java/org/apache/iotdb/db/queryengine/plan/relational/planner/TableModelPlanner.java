@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
+import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.IPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
@@ -37,11 +38,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.StatementAnalyze
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.scheduler.ClusterScheduler;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
+import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -130,17 +134,33 @@ public class TableModelPlanner implements IPlanner {
       DistributedQueryPlan distributedPlan,
       MPPQueryContext context,
       QueryStateMachine stateMachine) {
-    IScheduler scheduler =
-        new ClusterScheduler(
-            context,
-            stateMachine,
-            distributedPlan.getInstances(),
-            context.getQueryType(),
-            executor,
-            writeOperationExecutor,
-            scheduledExecutor,
-            syncInternalServiceClientManager,
-            asyncInternalServiceClientManager);
+    IScheduler scheduler;
+
+    boolean isPipeEnrichedTsFileLoad =
+        statement instanceof PipeEnriched
+            && ((PipeEnriched) statement).getInnerStatement() instanceof LoadTsFile;
+    if (statement instanceof LoadTsFile || isPipeEnrichedTsFileLoad) {
+      scheduler =
+          new LoadTsFileScheduler(
+              distributedPlan,
+              context,
+              stateMachine,
+              syncInternalServiceClientManager,
+              ClusterPartitionFetcher.getInstance(),
+              isPipeEnrichedTsFileLoad);
+    } else {
+      scheduler =
+          new ClusterScheduler(
+              context,
+              stateMachine,
+              distributedPlan.getInstances(),
+              context.getQueryType(),
+              executor,
+              writeOperationExecutor,
+              scheduledExecutor,
+              syncInternalServiceClientManager,
+              asyncInternalServiceClientManager);
+    }
     scheduler.start();
     return scheduler;
   }
@@ -157,11 +177,18 @@ public class TableModelPlanner implements IPlanner {
   public void setRedirectInfo(
       IAnalysis iAnalysis, TEndPoint localEndPoint, TSStatus tsstatus, TSStatusCode statusCode) {
     Analysis analysis = (Analysis) iAnalysis;
-    if (!(analysis.getStatement() instanceof WrappedInsertStatement)) {
+
+    // Get the inner statement of PipeEnriched
+    Statement statementToRedirect =
+        analysis.getStatement() instanceof PipeEnriched
+            ? ((PipeEnriched) analysis.getStatement()).getInnerStatement()
+            : analysis.getStatement();
+
+    if (!(statementToRedirect instanceof WrappedInsertStatement)) {
       return;
     }
     InsertBaseStatement insertStatement =
-        ((WrappedInsertStatement) analysis.getStatement()).getInnerTreeStatement();
+        ((WrappedInsertStatement) statementToRedirect).getInnerTreeStatement();
 
     if (!analysis.isFinishQueryAfterAnalyze()) {
       // Table Model Session only supports insertTablet

@@ -25,6 +25,7 @@ import org.apache.tsfile.file.metadata.statistics.IntegerStatistics;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
+import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -89,7 +90,7 @@ public class AvgAccumulator implements TableAccumulator {
   @Override
   public void addIntermediate(Column argument) {
     checkArgument(
-        argument instanceof BinaryColumn,
+        argument instanceof BinaryColumn || argument instanceof RunLengthEncodedColumn,
         "intermediate input and output of Avg should be BinaryColumn");
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
@@ -119,6 +120,44 @@ public class AvgAccumulator implements TableAccumulator {
     } else {
       columnBuilder.writeBinary(new Binary(serializeState()));
     }
+  }
+
+  @Override
+  public void evaluateFinal(ColumnBuilder columnBuilder) {
+    if (!initResult) {
+      columnBuilder.appendNull();
+    } else {
+      columnBuilder.writeDouble(sumValue / countValue);
+    }
+  }
+
+  @Override
+  public boolean hasFinalResult() {
+    return false;
+  }
+
+  @Override
+  public void addStatistics(Statistics[] statistics) {
+    if (statistics == null) {
+      return;
+    }
+    initResult = true;
+    countValue += statistics[0].getCount();
+    if (statistics[0] instanceof IntegerStatistics) {
+      sumValue += statistics[0].getSumLongValue();
+    } else {
+      sumValue += statistics[0].getSumDoubleValue();
+    }
+    if (countValue == 0) {
+      initResult = false;
+    }
+  }
+
+  @Override
+  public void reset() {
+    this.initResult = false;
+    this.countValue = 0;
+    this.sumValue = 0.0;
   }
 
   private byte[] serializeState() {
@@ -176,43 +215,5 @@ public class AvgAccumulator implements TableAccumulator {
         sumValue += column.getDouble(i);
       }
     }
-  }
-
-  @Override
-  public void evaluateFinal(ColumnBuilder columnBuilder) {
-    if (!initResult) {
-      columnBuilder.appendNull();
-    } else {
-      columnBuilder.writeDouble(sumValue / countValue);
-    }
-  }
-
-  @Override
-  public boolean hasFinalResult() {
-    return false;
-  }
-
-  @Override
-  public void addStatistics(Statistics statistics) {
-    if (statistics == null) {
-      return;
-    }
-    initResult = true;
-    countValue += statistics.getCount();
-    if (statistics instanceof IntegerStatistics) {
-      sumValue += statistics.getSumLongValue();
-    } else {
-      sumValue += statistics.getSumDoubleValue();
-    }
-    if (countValue == 0) {
-      initResult = false;
-    }
-  }
-
-  @Override
-  public void reset() {
-    initResult = false;
-    this.countValue = 0;
-    this.sumValue = 0.0;
   }
 }

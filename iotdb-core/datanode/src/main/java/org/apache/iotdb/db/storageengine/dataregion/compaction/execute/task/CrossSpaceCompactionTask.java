@@ -81,6 +81,12 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         serialId);
     this.selectedSequenceFiles = selectedSequenceFiles;
     this.selectedUnsequenceFiles = selectedUnsequenceFiles;
+    for (TsFileResource resource : selectedSequenceFiles) {
+      selectedSeqFileSize += resource.getTsFileSize();
+    }
+    for (TsFileResource resource : selectedUnsequenceFiles) {
+      selectedUnseqFileSize += resource.getTsFileSize();
+    }
     this.emptyTargetTsFileResourceList = new ArrayList<>();
     this.performer = performer;
     this.hashCode = this.toString().hashCode();
@@ -144,13 +150,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
           storageGroupName,
           dataRegionId);
       return true;
-    }
-
-    for (TsFileResource resource : selectedSequenceFiles) {
-      selectedSeqFileSize += resource.getTsFileSize();
-    }
-    for (TsFileResource resource : selectedUnsequenceFiles) {
-      selectedUnseqFileSize += resource.getTsFileSize();
     }
     LOGGER.info(
         "{}-{} [Compaction] CrossSpaceCompaction task starts with {} seq files "
@@ -447,5 +446,10 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   @Override
   public void setCompactionConfigVersion(long compactionConfigVersion) {
     this.compactionConfigVersion = Math.min(this.compactionConfigVersion, compactionConfigVersion);
+  }
+
+  @Override
+  public long getSelectedFileSize() {
+    return (long) (selectedSeqFileSize + selectedUnseqFileSize);
   }
 }

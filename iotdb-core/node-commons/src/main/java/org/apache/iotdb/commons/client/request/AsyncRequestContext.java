@@ -66,18 +66,22 @@ public class AsyncRequestContext<Request, Response, RequestType, NodeLocation> {
   private CountDownLatch countDownLatch;
 
   /** Custom constructor. */
-  public AsyncRequestContext(RequestType requestType) {
+  public AsyncRequestContext(final RequestType requestType) {
     this.requestType = requestType;
     this.requestMap = new ConcurrentHashMap<>();
     this.nodeLocationMap = new ConcurrentHashMap<>();
     this.responseMap = new ConcurrentHashMap<>();
   }
 
-  public void putRequest(int requestId, Request request) {
+  public void putRequest(final int requestId, final Request request) {
     requestMap.put(requestId, request);
   }
 
-  public void putNodeLocation(int requestId, NodeLocation nodeLocation) {
+  public Request putRequestIfAbsent(final int requestId, final Request request) {
+    return requestMap.putIfAbsent(requestId, request);
+  }
+
+  public void putNodeLocation(final int requestId, final NodeLocation nodeLocation) {
     nodeLocationMap.put(requestId, nodeLocation);
   }
 

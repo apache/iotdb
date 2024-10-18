@@ -887,4 +887,24 @@ public class IoTDBCaseWhenThenIT {
         };
     resultSetEqualTest(sql, expectedHeader, retArray);
   }
+
+  @Test
+  public void testMultipleSatisfyCase() {
+    // Test the result when two when clause are satisfied
+    String sql =
+        "select case when s3 < 20 or s4 > 60 then \"just so so~~~\" when s3 > 20 or s4 < 60 then \"very well~~~\" end from root.sg.d2";
+    String[] expectedHeader =
+        new String[] {
+          TIMESTAMP_STR,
+          "CASE WHEN root.sg.d2.s3 < 20 | root.sg.d2.s4 > 60 THEN \"just so so~~~\" WHEN root.sg.d2.s3 > 20 | root.sg.d2.s4 < 60 THEN \"very well~~~\" END"
+        };
+    String[] retArray =
+        new String[] {
+          "0,just so so~~~,",
+          "1000000,just so so~~~,",
+          "20000000,just so so~~~,",
+          "210000000,just so so~~~,",
+        };
+    resultSetEqualTest(sql, expectedHeader, retArray);
+  }
 }

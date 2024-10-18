@@ -22,4 +22,5 @@ package org.apache.iotdb.db.protocol.client.dn;
 /** For DataNode async call DataNode */
 public enum DnToDnRequestType {
   TEST_CONNECTION,
+  UPDATE_ATTRIBUTE,
 }

@@ -712,6 +712,17 @@ public class CompactionMetrics implements IMetricSet {
   private Histogram settleCompactionTaskSelectedFileNum =
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
 
+  private Histogram seqInnerSpaceCompactionTaskSelectedFileSize =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram unseqInnerSpaceCompactionTaskSelectedFileSize =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram crossSpaceCompactionTaskSelectedFileSize =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram insertionCrossSpaceCompactionTaskSelectedFileSize =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram settleCompactionTaskSelectedFileSize =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+
   public void updateCompactionTaskSelectionNum(CompactionScheduleContext context) {
     seqInnerSpaceCompactionTaskSelectedNum.set(context.getSubmitSeqInnerSpaceCompactionTaskNum());
     unseqInnerSpaceCompactionTaskSelectedNum.set(
@@ -760,6 +771,27 @@ public class CompactionMetrics implements IMetricSet {
         settleCompactionTaskSelectedFileNum.update(selectedFileNum);
         break;
       case INSERTION:
+      default:
+        break;
+    }
+  }
+
+  public void updateCompactionTaskSelectedFileSize(CompactionTaskType taskType, long size) {
+    switch (taskType) {
+      case INNER_SEQ:
+        seqInnerSpaceCompactionTaskSelectedFileSize.update(size);
+        break;
+      case INNER_UNSEQ:
+        unseqInnerSpaceCompactionTaskSelectedFileSize.update(size);
+        break;
+      case CROSS:
+        crossSpaceCompactionTaskSelectedFileSize.update(size);
+        break;
+      case SETTLE:
+        settleCompactionTaskSelectedFileSize.update(size);
+        break;
+      case INSERTION:
+        insertionCrossSpaceCompactionTaskSelectedFileSize.update(size);
       default:
         break;
     }
@@ -847,6 +879,37 @@ public class CompactionMetrics implements IMetricSet {
     settleCompactionTaskSelectedFileNum =
         metricService.getOrCreateHistogram(
             Metric.COMPACTION_TASK_SELECTED_FILE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "settle");
+
+    seqInnerSpaceCompactionTaskSelectedFileSize =
+        metricService.getOrCreateHistogram(
+            Metric.COMPACTION_TASK_SELECTED_FILE_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "seq");
+    unseqInnerSpaceCompactionTaskSelectedFileSize =
+        metricService.getOrCreateHistogram(
+            Metric.COMPACTION_TASK_SELECTED_FILE_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "unseq");
+    crossSpaceCompactionTaskSelectedFileSize =
+        metricService.getOrCreateHistogram(
+            Metric.COMPACTION_TASK_SELECTED_FILE_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "cross");
+    insertionCrossSpaceCompactionTaskSelectedFileSize =
+        metricService.getOrCreateHistogram(
+            Metric.COMPACTION_TASK_SELECTED_FILE_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "insertion");
+    settleCompactionTaskSelectedFileSize =
+        metricService.getOrCreateHistogram(
+            Metric.COMPACTION_TASK_SELECTED_FILE_SIZE.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             "settle");

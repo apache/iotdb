@@ -497,7 +497,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       if (eventParser == null) {
         eventParser =
             new TsFileInsertionEventParserProvider(
-                    tsFile, treePattern, startTime, endTime, pipeTaskMeta, this)
+                    tsFile, treePattern, tablePattern, startTime, endTime, pipeTaskMeta, this)
                 .provide();
       }
       return eventParser;

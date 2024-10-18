@@ -28,7 +28,6 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.client.IoTDBDataNodeAsyncClientManager;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -77,6 +76,8 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
 
   private final boolean transferMod;
 
+  private final String dataBaseName;
+
   private final int readFileBufferSize;
   private final byte[] readBuffer;
   private long position;
@@ -96,7 +97,8 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
       final AtomicBoolean eventsHadBeenAddedToRetryQueue,
       final File tsFile,
       final File modFile,
-      final boolean transferMod)
+      final boolean transferMod,
+      final String dataBaseName)
       throws FileNotFoundException {
     this.connector = connector;
 
@@ -109,6 +111,7 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
     this.tsFile = tsFile;
     this.modFile = modFile;
     this.transferMod = transferMod;
+    this.dataBaseName = dataBaseName;
     currentFile = transferMod ? modFile : tsFile;
 
     readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
@@ -152,8 +155,13 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
         final TPipeTransferReq uncompressedReq =
             transferMod
                 ? PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                    modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length())
-                : PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length());
+                    modFile.getName(),
+                    modFile.length(),
+                    tsFile.getName(),
+                    tsFile.length(),
+                    dataBaseName)
+                : PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+                    tsFile.getName(), tsFile.length(), dataBaseName);
         final TPipeTransferReq req =
             connector.isRpcCompressionEnabled()
                 ? PipeTransferCompressedReq.toTPipeTransferReq(

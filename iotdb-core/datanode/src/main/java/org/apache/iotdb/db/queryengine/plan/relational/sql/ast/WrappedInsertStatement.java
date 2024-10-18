@@ -101,10 +101,13 @@ public abstract class WrappedInsertStatement extends WrappedStatement
   public void validateTableSchema(Metadata metadata, MPPQueryContext context) {
     String databaseName = getDatabase();
     final TableSchema incomingSchema = getTableSchema();
-    final TableSchema realSchema =
-        metadata
-            .validateTableHeaderSchema(databaseName, incomingSchema, context, true)
-            .orElse(null);
+    final TableSchema realSchema;
+    synchronized (metadata) {
+      realSchema =
+          metadata
+              .validateTableHeaderSchema(databaseName, incomingSchema, context, true)
+              .orElse(null);
+    }
     if (realSchema == null) {
       throw new SemanticException(
           "Schema validation failed, table cannot be created: " + incomingSchema);

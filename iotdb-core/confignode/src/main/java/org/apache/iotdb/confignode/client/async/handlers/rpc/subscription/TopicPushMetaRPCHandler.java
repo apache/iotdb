@@ -20,7 +20,7 @@
 package org.apache.iotdb.confignode.client.async.handlers.rpc.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeAsyncRequestRPCHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -37,7 +37,7 @@ public class TopicPushMetaRPCHandler extends DataNodeAsyncRequestRPCHandler<TPus
   private static final Logger LOGGER = LoggerFactory.getLogger(TopicPushMetaRPCHandler.class);
 
   public TopicPushMetaRPCHandler(
-      CnToDnRequestType requestType,
+      CnToDnAsyncRequestType requestType,
       int requestId,
       TDataNodeLocation targetDataNode,
       Map<Integer, TDataNodeLocation> dataNodeLocationMap,

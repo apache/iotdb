@@ -513,7 +513,7 @@ public class TableMetadataImpl implements Metadata {
     } else if (TableBuiltinScalarFunction.DATE_BIN
         .getFunctionName()
         .equalsIgnoreCase(functionName)) {
-      if (!(argumentTypes.size() == 4 && isTimestampType(argumentTypes.get(2)))) {
+      if (!isTimestampType(argumentTypes.get(2))) {
         throw new SemanticException(
             "Scalar function "
                 + functionName.toLowerCase(Locale.ENGLISH)
@@ -527,9 +527,6 @@ public class TableMetadataImpl implements Metadata {
     switch (functionName.toLowerCase(Locale.ENGLISH)) {
       case SqlConstant.AVG:
       case SqlConstant.SUM:
-      case SqlConstant.EXTREME:
-      case SqlConstant.MIN:
-      case SqlConstant.MAX:
       case SqlConstant.STDDEV:
       case SqlConstant.STDDEV_POP:
       case SqlConstant.STDDEV_SAMP:
@@ -543,6 +540,9 @@ public class TableMetadataImpl implements Metadata {
                   functionName));
         }
         break;
+      case SqlConstant.EXTREME:
+      case SqlConstant.MIN:
+      case SqlConstant.MAX:
       case SqlConstant.MODE:
         if (argumentTypes.size() != 1) {
           throw new SemanticException(

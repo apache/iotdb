@@ -1614,18 +1614,18 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus flush(TFlushReq req) {
-    TSStatus status = confirmLeader();
+  public TSStatus flush(final TFlushReq req) {
+    final TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? RpcUtils.squashResponseStatusList(nodeManager.flush(req))
         : status;
   }
 
   @Override
-  public TSStatus clearCache() {
-    TSStatus status = confirmLeader();
+  public TSStatus clearCache(final Set<Integer> clearCacheOptions) {
+    final TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? RpcUtils.squashResponseStatusList(nodeManager.clearCache())
+        ? RpcUtils.squashResponseStatusList(nodeManager.clearCache(clearCacheOptions))
         : status;
   }
 

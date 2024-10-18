@@ -267,3 +267,11 @@ which is under Apache License 2.0:
 ./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/LocalExecutionPlanner.java
 ./iotdb-core/tsfile/src/main/java/org/apache/iotdb/tsfile/read/common/block/*
 
+--------------------------------------------------------------------------------
+
+The following files include code modified from Apache Kafka project.
+
+./iotdb-client/session/src/main/java/org/apache/iotdb/session/subscription/util/PollTimer.java
+
+Project page: https://github.com/apache/kafka
+License: http://www.apache.org/licenses/LICENSE-2.0

@@ -557,7 +557,7 @@ public interface IManager {
   TSStatus flush(TFlushReq req);
 
   /** Clear cache on all DataNodes. */
-  TSStatus clearCache();
+  TSStatus clearCache(final Set<Integer> clearCacheOptions);
 
   /** Set Configuration. */
   TSStatus setConfiguration(TSetConfigurationReq req);

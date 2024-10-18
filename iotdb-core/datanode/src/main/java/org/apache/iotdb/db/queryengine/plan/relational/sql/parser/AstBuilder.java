@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.parser;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -38,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
@@ -89,6 +91,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinUsing;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Limit;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NaturalJoin;
@@ -159,6 +162,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Ta
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlBaseVisitor;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlLexer;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser;
+import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 
@@ -180,12 +184,14 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
@@ -559,7 +565,26 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitLoadTsFileStatement(RelationalSqlParser.LoadTsFileStatementContext ctx) {
-    return super.visitLoadTsFileStatement(ctx);
+    final Map<String, String> withAttributes =
+        ctx.loadFileWithAttributesClause() != null
+            ? parseLoadFileWithAttributeClauses(
+                ctx.loadFileWithAttributesClause().loadFileWithAttributeClause())
+            : new HashMap<>();
+
+    withAttributes.forEach(LoadTsFileConfigurator::validateParameters);
+    return new LoadTsFile(
+        getLocation(ctx), ((StringLiteral) visit(ctx.fileName)).getValue(), withAttributes);
+  }
+
+  private Map<String, String> parseLoadFileWithAttributeClauses(
+      List<RelationalSqlParser.LoadFileWithAttributeClauseContext> contexts) {
+    final Map<String, String> withAttributesMap = new HashMap<>();
+    for (RelationalSqlParser.LoadFileWithAttributeClauseContext context : contexts) {
+      withAttributesMap.put(
+          ((StringLiteral) visit(context.loadFileWithKey)).getValue(),
+          ((StringLiteral) visit(context.loadFileWithValue)).getValue());
+    }
+    return withAttributesMap;
   }
 
   @Override
@@ -872,8 +897,28 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitClearCacheStatement(RelationalSqlParser.ClearCacheStatementContext ctx) {
-    return super.visitClearCacheStatement(ctx);
+  public Node visitClearCacheStatement(final RelationalSqlParser.ClearCacheStatementContext ctx) {
+    final Set<CacheClearOptions> options;
+    final RelationalSqlParser.ClearCacheOptionsContext context = ctx.clearCacheOptions();
+
+    if (Objects.isNull(context)) {
+      options = Collections.singleton(CacheClearOptions.DEFAULT);
+    } else if (context.ATTRIBUTE() != null) {
+      options = Collections.singleton(CacheClearOptions.TABLE_ATTRIBUTE);
+    } else if (context.QUERY() != null) {
+      options = Collections.singleton(CacheClearOptions.QUERY);
+    } else {
+      options =
+          new HashSet<>(
+              Arrays.asList(
+                  CacheClearOptions.TABLE_ATTRIBUTE,
+                  CacheClearOptions.TREE_SCHEMA,
+                  CacheClearOptions.QUERY));
+    }
+    return new ClearCache(
+        Objects.isNull(ctx.localOrClusterMode())
+            || Objects.nonNull(ctx.localOrClusterMode().CLUSTER()),
+        options);
   }
 
   @Override
@@ -1835,6 +1880,39 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     }
 
     return new FunctionCall(getLocation(ctx), name, distinct, arguments);
+  }
+
+  @Override
+  public Node visitDateBinGapFill(RelationalSqlParser.DateBinGapFillContext ctx) {
+    TimeDuration timeDuration = DateTimeUtils.constructTimeDuration(ctx.timeDuration().getText());
+
+    if (timeDuration.monthDuration != 0 && timeDuration.nonMonthDuration != 0) {
+      throw new SemanticException(
+          "Simultaneous setting of monthly and non-monthly intervals is not supported.");
+    }
+
+    LongLiteral monthDuration =
+        new LongLiteral(
+            getLocation(ctx.timeDuration()), String.valueOf(timeDuration.monthDuration));
+    LongLiteral nonMonthDuration =
+        new LongLiteral(
+            getLocation(ctx.timeDuration()), String.valueOf(timeDuration.nonMonthDuration));
+    LongLiteral origin =
+        ctx.timeValue() == null
+            ? new LongLiteral("0")
+            : new LongLiteral(
+                getLocation(ctx.timeValue()),
+                String.valueOf(parseTimeValue(ctx.timeValue(), CommonDateTimeUtils.currentTime())));
+
+    List<Expression> arguments =
+        Arrays.asList(
+            monthDuration,
+            nonMonthDuration,
+            (Expression) visit(ctx.valueExpression()),
+            origin,
+            new BooleanLiteral("true"));
+    return new FunctionCall(
+        getLocation(ctx), QualifiedName.of(DATE_BIN.getFunctionName()), arguments);
   }
 
   @Override

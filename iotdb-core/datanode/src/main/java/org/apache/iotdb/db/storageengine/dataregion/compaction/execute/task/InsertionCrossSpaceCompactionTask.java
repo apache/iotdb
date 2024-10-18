@@ -384,4 +384,9 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
             true,
             targetFile.getTsFile().getName());
   }
+
+  @Override
+  public long getSelectedFileSize() {
+    return unseqFileToInsert.getTsFileSize();
+  }
 }

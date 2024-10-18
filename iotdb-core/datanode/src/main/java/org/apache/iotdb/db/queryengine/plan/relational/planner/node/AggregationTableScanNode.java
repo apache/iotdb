@@ -199,9 +199,7 @@ public class AggregationTableScanNode extends TableScanNode {
   }
 
   public boolean isStreamable() {
-    return !preGroupedSymbols.isEmpty()
-        && groupingSets.getGroupingSetCount() == 1
-        && groupingSets.getGlobalGroupingSets().isEmpty();
+    return true;
   }
 
   public AggregationNode.Step getStep() {
@@ -317,7 +315,10 @@ public class AggregationTableScanNode extends TableScanNode {
       return false;
     }
     AggregationTableScanNode that = (AggregationTableScanNode) o;
-    return Objects.equals(projection, that.projection)
+    return Objects.equals(qualifiedObjectName, that.qualifiedObjectName)
+        && Objects.equals(outputSymbols, that.outputSymbols)
+        && Objects.equals(regionReplicaSet, that.regionReplicaSet)
+        && Objects.equals(projection, that.projection)
         && Objects.equals(aggregations, that.aggregations)
         && Objects.equals(groupingSets, that.groupingSets)
         && Objects.equals(step, that.step)

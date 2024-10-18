@@ -218,7 +218,9 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       final String databaseName = dataRegion.getDatabaseName();
       if (databaseName != null) {
         isDbNameCoveredByPattern =
-            treePattern.coversDb(databaseName) && tablePattern.coversDb(databaseName);
+            treePattern.coversDb(databaseName)
+                // The database name is prefixed with "root."
+                && tablePattern.coversDb(databaseName.substring(5));
       }
     }
 

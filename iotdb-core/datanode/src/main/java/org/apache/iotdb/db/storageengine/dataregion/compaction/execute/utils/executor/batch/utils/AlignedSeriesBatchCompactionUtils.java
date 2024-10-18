@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.ex
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
 
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.TimeRange;
@@ -61,6 +62,10 @@ public class AlignedSeriesBatchCompactionUtils {
         }
       }
     }
+  }
+
+  public static boolean isTimeChunk(ChunkMetadata chunkMetadata) {
+    return chunkMetadata.getMeasurementUid().isEmpty();
   }
 
   public static AlignedChunkMetadata filterAlignedChunkMetadataByIndex(

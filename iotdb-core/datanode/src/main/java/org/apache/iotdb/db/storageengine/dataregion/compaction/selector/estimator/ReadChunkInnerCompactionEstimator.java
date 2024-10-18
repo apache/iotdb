@@ -39,7 +39,7 @@ public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimat
                 * taskInfo.getMaxChunkMetadataSize());
 
     // add ChunkMetadata size of targetFileWriter
-    cost += memoryBudgetForFileWriter;
+    cost += fixedMemoryBudget;
 
     return cost;
   }
@@ -89,7 +89,7 @@ public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimat
     // source files (chunk + uncompressed page)
     // target file (chunk + unsealed page writer)
     return 2 * maxConcurrentSeriesNum * (maxChunkSize + maxPageSize)
-        + memoryBudgetForFileWriter
+        + fixedMemoryBudget
         + metadataCost;
   }
 }

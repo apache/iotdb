@@ -82,6 +82,8 @@ public class CompactionWorker implements Runnable {
           .updateCompactionMemoryMetrics(taskType, task.getEstimatedMemoryCost());
       CompactionMetrics.getInstance()
           .updateCompactionTaskSelectedFileNum(taskType, task.getAllSourceTsFiles().size());
+      CompactionMetrics.getInstance()
+          .updateCompactionTaskSelectedFileSize(taskType, task.getSelectedFileSize());
       CompactionTaskSummary summary = task.getSummary();
       CompactionTaskFuture future = new CompactionTaskFuture(summary);
       CompactionTaskManager.getInstance().recordTask(task, future);

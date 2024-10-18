@@ -81,9 +81,7 @@ public class TableAggregator {
     }
   }
 
-  /** Used for AggregateTableScanOperator. */
-  public void processStatistics(Statistics statistics) {
-    checkArgument(inputChannels.length == 1, "expected 1 input channel for processStatistics");
+  public void processStatistics(Statistics[] statistics) {
     accumulator.addStatistics(statistics);
   }
 
@@ -97,5 +95,9 @@ public class TableAggregator {
 
   public long getEstimatedSize() {
     return accumulator.getEstimatedSize();
+  }
+
+  public int getChannelCount() {
+    return this.inputChannels.length;
   }
 }

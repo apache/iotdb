@@ -45,6 +45,7 @@ import org.apache.iotdb.db.utils.DateTimeUtils;
 
 import com.google.common.io.BaseEncoding;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.common.regexp.LikePattern;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.factory.FilterFactory;
@@ -159,10 +160,12 @@ public class ConvertPredicateToFilterVisitor
     PartialPath path = ((TimeSeriesOperand) operand).getPath();
     int measurementIndex = context.getMeasurementIndex(path.getMeasurement());
     TSDataType dataType = context.getType(path);
+    LikePattern pattern =
+        LikePattern.compile(likeExpression.getPattern(), likeExpression.getEscape());
     if (likeExpression.isNot()) {
-      return ValueFilterApi.notLike(measurementIndex, likeExpression.getPattern(), dataType);
+      return ValueFilterApi.notLike(measurementIndex, pattern, dataType);
     } else {
-      return ValueFilterApi.like(measurementIndex, likeExpression.getPattern(), dataType);
+      return ValueFilterApi.like(measurementIndex, pattern, dataType);
     }
   }
 

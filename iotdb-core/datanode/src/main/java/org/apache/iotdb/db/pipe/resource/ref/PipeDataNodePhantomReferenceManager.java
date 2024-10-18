@@ -31,7 +31,8 @@ public class PipeDataNodePhantomReferenceManager extends PipePhantomReferenceMan
     PipeDataNodeAgent.runtime()
         .registerPeriodicalJob(
             "PipePhantomReferenceManager#gcHook()",
-            super::gcHook,
+            // NOTE: lambda CAN NOT be replaced with method reference
+            () -> super.gcHook(),
             PipeConfig.getInstance().getPipeEventReferenceEliminateIntervalSeconds());
   }
 }

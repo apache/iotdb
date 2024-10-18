@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
@@ -206,7 +206,7 @@ public class CreateTableProcedure
                 env,
                 relatedSchemaRegionGroup,
                 false,
-                CnToDnRequestType.CHECK_TIMESERIES_EXISTENCE,
+                CnToDnAsyncRequestType.CHECK_TIMESERIES_EXISTENCE,
                 ((dataNodeLocation, consensusGroupIdList) ->
                     new TCheckTimeSeriesExistenceReq(patternTreeBytes, consensusGroupIdList))) {
 

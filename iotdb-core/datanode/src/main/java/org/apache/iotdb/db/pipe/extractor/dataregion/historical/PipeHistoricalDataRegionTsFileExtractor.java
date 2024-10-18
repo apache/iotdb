@@ -287,7 +287,9 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       final String databaseName = dataRegion.getDatabaseName();
       if (Objects.nonNull(databaseName)) {
         isDbNameCoveredByPattern =
-            treePattern.coversDb(databaseName) && tablePattern.coversDb(databaseName);
+            treePattern.coversDb(databaseName)
+                // The database name is prefixed with "root."
+                && tablePattern.coversDb(databaseName.substring(5));
       }
     }
 
@@ -561,35 +563,18 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                 // In case of tree model deviceID
                 if (treePattern.isTreeModelDataAllowedToBeCaptured()
                     && treePattern.mayOverlapWithDevice(deviceID)) {
-                  tsfile2IsTableModelMap.compute(
-                      resource,
-                      (tsFileResource, isTableModel) -> {
-                        if (Objects.isNull(isTableModel) || !isTableModel) {
-                          return Boolean.FALSE;
-                        }
-                        throw new IllegalStateException(
-                            String.format(
-                                "Pipe %s@%s: TsFile %s contains both table model and tree model data",
-                                pipeName, dataRegionId, resource.getTsFilePath()));
-                      });
+                  tsfile2IsTableModelMap.computeIfAbsent(
+                      resource, (tsFileResource) -> Boolean.FALSE);
                   return true;
                 }
               } else {
                 // In case of table model deviceID
                 if (tablePattern.isTableModelDataAllowedToBeCaptured()
-                    && tablePattern.matchesDatabase(resource.getDatabaseName())
+                    // The database name in resource is prefixed with "root."
+                    && tablePattern.matchesDatabase(resource.getDatabaseName().substring(5))
                     && tablePattern.matchesTable(deviceID.getTableName())) {
-                  tsfile2IsTableModelMap.compute(
-                      resource,
-                      (tsFileResource, isTableModel) -> {
-                        if (Objects.isNull(isTableModel) || isTableModel) {
-                          return Boolean.TRUE;
-                        }
-                        throw new IllegalStateException(
-                            String.format(
-                                "Pipe %s@%s: TsFile %s contains both table model and tree model data",
-                                pipeName, dataRegionId, resource.getTsFilePath()));
-                      });
+                  tsfile2IsTableModelMap.computeIfAbsent(
+                      resource, (tsFileResource) -> Boolean.TRUE);
                   return true;
                 }
               }

@@ -64,11 +64,11 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression.getEscapeCharacter;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor.getLongValue;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor.isTimeColumn;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isSymbolReference;
-import static org.apache.tsfile.common.regexp.LikePattern.getEscapeCharacter;
 
 public class ConvertPredicateToFilterVisitor
     extends PredicateVisitor<Filter, ConvertPredicateToFilterVisitor.Context> {
@@ -211,16 +211,15 @@ public class ConvertPredicateToFilterVisitor
     SymbolReference operand = (SymbolReference) node.getValue();
     checkArgument(context.isMeasurementColumn(operand));
     int measurementIndex = context.getMeasurementIndex(operand.getName());
-    Optional<String> escapeValueOpt =
+    Optional<Character> escapeSet =
         node.getEscape().isPresent()
-            ? Optional.ofNullable(((StringLiteral) node.getEscape().get()).getValue())
+            ? getEscapeCharacter(((StringLiteral) node.getEscape().get()).getValue())
             : Optional.empty();
     Type type = context.getType(Symbol.from(operand));
     TSDataType dataType = InternalTypeManager.getTSDataType(type);
     return ValueFilterApi.like(
         measurementIndex,
-        LikePattern.compile(
-            ((StringLiteral) node.getPattern()).getValue(), getEscapeCharacter(escapeValueOpt)),
+        LikePattern.compile(((StringLiteral) node.getPattern()).getValue(), escapeSet),
         dataType);
   }
 

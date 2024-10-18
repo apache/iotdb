@@ -245,6 +245,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
     TCommitId tCommitId =
         new TCommitId(
             pipeInsertNodeTabletInsertionEvent.getCommitId(),
+            pipeInsertNodeTabletInsertionEvent.getCommitterKey().getRestartTimes(),
             pipeInsertNodeTabletInsertionEvent.getRebootTimes());
     TConsensusGroupId tConsensusGroupId =
         new TConsensusGroupId(TConsensusGroupType.DataRegion, consensusGroupId);
@@ -302,7 +303,9 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
         syncRetryClientManager.borrowClient(getFollowerUrl())) {
       final TCommitId tCommitId =
           new TCommitId(
-              pipeTsFileInsertionEvent.getCommitId(), pipeTsFileInsertionEvent.getRebootTimes());
+              pipeTsFileInsertionEvent.getCommitId(),
+              pipeTsFileInsertionEvent.getCommitterKey().getRestartTimes(),
+              pipeTsFileInsertionEvent.getRebootTimes());
       final TConsensusGroupId tConsensusGroupId =
           new TConsensusGroupId(TConsensusGroupType.DataRegion, consensusGroupId);
 

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.i
 import java.util.Iterator;
 import java.util.Map;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 
 /**
  * This interface defines the behaviour of a cache entry group, which is mainly accessed via first
@@ -36,13 +37,15 @@ interface ICacheEntryGroup<FK, SK, V, T extends ICacheEntry<SK, V>> {
 
   FK getFirstKey();
 
-  T getCacheEntry(SK secondKey);
+  T getCacheEntry(final SK secondKey);
 
   Iterator<Map.Entry<SK, T>> getAllCacheEntries();
 
-  T computeCacheEntry(SK secondKey, BiFunction<SK, T, T> computation);
+  T computeCacheEntry(final SK secondKey, final BiFunction<SK, T, T> computation);
 
-  T removeCacheEntry(SK secondKey);
+  T computeCacheEntryIfAbsent(final SK secondKey, final Function<SK, T> computation);
+
+  T removeCacheEntry(final SK secondKey);
 
   boolean isEmpty();
 }

@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
@@ -46,6 +47,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 
 import java.util.AbstractMap.SimpleEntry;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -167,6 +169,30 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               node.getPushDownLimit(),
               node.getPushDownOffset(),
               node.isPushLimitToEachDevice()),
+          mapping);
+    }
+
+    @Override
+    public PlanAndMappings visitGapFill(GapFillNode node, UnaliasContext context) {
+      PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
+      Map<Symbol, Symbol> mapping = new HashMap<>(rewrittenSource.getMappings());
+      SymbolMapper mapper = symbolMapper(mapping);
+
+      List<Symbol> groupingKeys = Collections.emptyList();
+      if (!node.getGapFillGroupingKeys().isEmpty()) {
+        groupingKeys = mapper.mapAndDistinct(node.getGapFillGroupingKeys());
+      }
+
+      return new PlanAndMappings(
+          new GapFillNode(
+              node.getPlanNodeId(),
+              rewrittenSource.getRoot(),
+              node.getStartTime(),
+              node.getEndTime(),
+              node.getMonthDuration(),
+              node.getNonMonthDuration(),
+              mapper.map(node.getGapFillColumn()),
+              groupingKeys),
           mapping);
     }
 

@@ -71,6 +71,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.TransformUtils;
 
+import org.apache.tsfile.common.regexp.LikePattern;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.LongType;
 import org.apache.tsfile.read.common.type.Type;
@@ -443,8 +444,9 @@ public class ColumnTransformerVisitor
         return new ArithmeticNegationColumnTransformer(returnType, childColumnTransformer);
       case LIKE:
         LikeExpression likeExpression = (LikeExpression) expression;
-        return new LikeColumnTransformer(
-            returnType, childColumnTransformer, likeExpression.getPattern());
+        LikePattern pattern =
+            LikePattern.compile(likeExpression.getPattern(), likeExpression.getEscape());
+        return new LikeColumnTransformer(returnType, childColumnTransformer, pattern);
       case REGEXP:
         RegularExpression regularExpression = (RegularExpression) expression;
         return new RegularColumnTransformer(

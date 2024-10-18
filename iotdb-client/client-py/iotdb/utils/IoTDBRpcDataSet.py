@@ -216,17 +216,7 @@ class IoTDBRpcDataSet(object):
                     data_array.dtype.newbyteorder("<")
                 )
             if len(data_array) < total_length:
-                # INT32, INT64, BOOLEAN, TIMESTAMP, DATE
-                if (
-                    data_type == 0
-                    or data_type == 1
-                    or data_type == 2
-                    or data_type == 8
-                    or data_type == 9
-                ):
-                    tmp_array = np.full(total_length, np.nan, np.float32)
-                else:
-                    tmp_array = np.full(total_length, None, dtype=object)
+                tmp_array = np.full(total_length, None, dtype=object)
 
                 bitmap_buffer = self.__query_data_set.bitmapList[location]
                 buffer = _to_bitbuffer(bitmap_buffer)

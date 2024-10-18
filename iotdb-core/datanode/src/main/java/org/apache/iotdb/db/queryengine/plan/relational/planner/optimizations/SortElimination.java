@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
@@ -106,11 +107,22 @@ public class SortElimination implements PlanOptimizer {
       context.setHasSeenFill(!(node instanceof ValueFillNode));
       return newNode;
     }
+
+    @Override
+    public PlanNode visitGapFill(GapFillNode node, Context context) {
+      PlanNode newNode = node.clone();
+      for (PlanNode child : node.getChildren()) {
+        newNode.addChild(child.accept(this, context));
+      }
+      context.setHasSeenFill(true);
+      return newNode;
+    }
   }
 
   private static class Context {
     private int totalDeviceEntrySize = 0;
 
+    // has seen linear fill, previous fill or gapfill
     private boolean hasSeenFill = false;
 
     Context() {}

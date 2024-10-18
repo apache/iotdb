@@ -908,6 +908,7 @@ public class RatisConfig {
 
     private final int retryTimesMax;
     private final long retryWaitMillis;
+    private final long retryMaxWaitMillis;
 
     private final long checkAndTakeSnapshotInterval;
     private final long raftLogSizeMaxThreshold;
@@ -917,11 +918,13 @@ public class RatisConfig {
     public Impl(
         int retryTimesMax,
         long retryWaitMillis,
+        long retryMaxWaitMillis,
         long checkAndTakeSnapshotInterval,
         long raftLogSizeMaxThreshold,
         long forceSnapshotInterval) {
       this.retryTimesMax = retryTimesMax;
       this.retryWaitMillis = retryWaitMillis;
+      this.retryMaxWaitMillis = retryMaxWaitMillis;
       this.checkAndTakeSnapshotInterval = checkAndTakeSnapshotInterval;
       this.raftLogSizeMaxThreshold = raftLogSizeMaxThreshold;
       this.forceSnapshotInterval = forceSnapshotInterval;
@@ -947,14 +950,19 @@ public class RatisConfig {
       return forceSnapshotInterval;
     }
 
+    public long getRetryMaxWaitMillis() {
+      return retryMaxWaitMillis;
+    }
+
     public static Impl.Builder newBuilder() {
       return new Builder();
     }
 
     public static class Builder {
 
-      private int retryTimesMax = 3;
-      private long retryWaitMillis = 500;
+      private int retryTimesMax = 10;
+      private long retryWaitMillis = 100;
+      private long retryMaxWaitMillis = 5000;
 
       // 120s
       private long checkAndTakeSnapshotInterval = 120;
@@ -967,6 +975,7 @@ public class RatisConfig {
         return new Impl(
             retryTimesMax,
             retryWaitMillis,
+            retryMaxWaitMillis,
             checkAndTakeSnapshotInterval,
             raftLogSizeMaxThreshold,
             forceSnapshotInterval);
@@ -994,6 +1003,11 @@ public class RatisConfig {
 
       public Impl.Builder setForceSnapshotInterval(long forceSnapshotInterval) {
         this.forceSnapshotInterval = forceSnapshotInterval;
+        return this;
+      }
+
+      public Impl.Builder setRetryMaxWaitMillis(long retryMaxWaitTimeMillis) {
+        this.retryMaxWaitMillis = retryMaxWaitTimeMillis;
         return this;
       }
     }

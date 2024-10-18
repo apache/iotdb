@@ -92,6 +92,7 @@ import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.ReservedIdentifiers.reserved;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.SqlFormatter.formatName;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.SqlFormatter.formatSql;
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction.DATE_BIN;
 
 public final class ExpressionFormatter {
 
@@ -296,8 +297,17 @@ public final class ExpressionFormatter {
       if (node.isDistinct()) {
         arguments = "DISTINCT " + arguments;
       }
-
-      builder.append(formatName(node.getName())).append('(').append(arguments);
+      // deal with date_bin_gapfill
+      if (QualifiedName.of(DATE_BIN.getFunctionName()).equals(node.getName())
+          && node.getArguments().size() == 5) {
+        arguments = joinExpressions(node.getArguments().subList(0, 5));
+        builder
+            .append(formatName(QualifiedName.of(DATE_BIN.getFunctionName() + "_gapfill")))
+            .append('(')
+            .append(arguments);
+      } else {
+        builder.append(formatName(node.getName())).append('(').append(arguments);
+      }
 
       builder.append(')');
 
