@@ -130,7 +130,8 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+  public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+      throws PipeException, IOException {
     LOGGER.info("PipeMetaSyncProcedure: executeFromOperateOnDataNodes");
 
     Map<Integer, TPushPipeMetaResp> respMap = pushPipeMetaToDataNodes(env);

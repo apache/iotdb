@@ -31,10 +31,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 public class TopicMeta {
 
@@ -42,12 +40,8 @@ public class TopicMeta {
   private long creationTime; // unit in ms
   private TopicConfig config;
 
-  private Set<String> subscribedConsumerGroupIds;
-
   private TopicMeta() {
     this.config = new TopicConfig(new HashMap<>());
-
-    this.subscribedConsumerGroupIds = new HashSet<>();
   }
 
   public TopicMeta(
@@ -55,8 +49,6 @@ public class TopicMeta {
     this.topicName = topicName;
     this.creationTime = creationTime;
     this.config = new TopicConfig(topicAttributes);
-
-    this.subscribedConsumerGroupIds = new HashSet<>();
   }
 
   public TopicMeta deepCopy() {
@@ -64,8 +56,6 @@ public class TopicMeta {
     copied.topicName = topicName;
     copied.creationTime = creationTime;
     copied.config = new TopicConfig(new HashMap<>(config.getAttribute()));
-
-    copied.subscribedConsumerGroupIds = new HashSet<>(subscribedConsumerGroupIds);
     return copied;
   }
 
@@ -79,29 +69,6 @@ public class TopicMeta {
 
   public TopicConfig getConfig() {
     return config;
-  }
-
-  /**
-   * @return true if the consumer group did not already subscribe this topic
-   */
-  public boolean addSubscribedConsumerGroup(final String consumerGroupId) {
-    return subscribedConsumerGroupIds.add(consumerGroupId);
-  }
-
-  public void removeSubscribedConsumerGroup(final String consumerGroupId) {
-    subscribedConsumerGroupIds.remove(consumerGroupId);
-  }
-
-  public Set<String> getSubscribedConsumerGroupIds() {
-    return subscribedConsumerGroupIds;
-  }
-
-  public boolean isSubscribedByConsumerGroup(final String consumerGroupId) {
-    return subscribedConsumerGroupIds.contains(consumerGroupId);
-  }
-
-  public boolean hasSubscribedConsumerGroup() {
-    return !subscribedConsumerGroupIds.isEmpty();
   }
 
   ////////////////////////////////////// de/ser ////////////////////////////////
@@ -122,11 +89,6 @@ public class TopicMeta {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       ReadWriteIOUtils.write(entry.getValue(), outputStream);
     }
-
-    ReadWriteIOUtils.write(subscribedConsumerGroupIds.size(), outputStream);
-    for (final String subscribedConsumerGroupID : subscribedConsumerGroupIds) {
-      ReadWriteIOUtils.write(subscribedConsumerGroupID, outputStream);
-    }
   }
 
   public static TopicMeta deserialize(final InputStream inputStream) throws IOException {
@@ -140,11 +102,6 @@ public class TopicMeta {
       final String key = ReadWriteIOUtils.readString(inputStream);
       final String value = ReadWriteIOUtils.readString(inputStream);
       topicMeta.config.getAttribute().put(key, value);
-    }
-
-    size = ReadWriteIOUtils.readInt(inputStream);
-    for (int i = 0; i < size; i++) {
-      topicMeta.subscribedConsumerGroupIds.add(ReadWriteIOUtils.readString(inputStream));
     }
 
     return topicMeta;
@@ -161,11 +118,6 @@ public class TopicMeta {
       final String key = ReadWriteIOUtils.readString(byteBuffer);
       final String value = ReadWriteIOUtils.readString(byteBuffer);
       topicMeta.config.getAttribute().put(key, value);
-    }
-
-    size = ReadWriteIOUtils.readInt(byteBuffer);
-    for (int i = 0; i < size; i++) {
-      topicMeta.subscribedConsumerGroupIds.add(ReadWriteIOUtils.readString(byteBuffer));
     }
 
     return topicMeta;
@@ -218,13 +170,12 @@ public class TopicMeta {
     final TopicMeta that = (TopicMeta) obj;
     return creationTime == that.creationTime
         && Objects.equals(topicName, that.topicName)
-        && Objects.equals(config, that.config)
-        && Objects.equals(subscribedConsumerGroupIds, that.subscribedConsumerGroupIds);
+        && Objects.equals(config, that.config);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(topicName, creationTime, subscribedConsumerGroupIds, config);
+    return Objects.hash(topicName, creationTime, config);
   }
 
   @Override
@@ -232,13 +183,10 @@ public class TopicMeta {
     return "TopicMeta{"
         + "topicName='"
         + topicName
-        + '\''
-        + ", creationTime="
+        + "', creationTime="
         + creationTime
         + ", config="
         + config
-        + ", subscribedConsumerGroupIds="
-        + subscribedConsumerGroupIds
         + '}';
   }
 }
