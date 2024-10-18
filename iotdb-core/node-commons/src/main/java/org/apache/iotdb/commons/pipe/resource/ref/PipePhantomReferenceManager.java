@@ -63,13 +63,13 @@ public abstract class PipePhantomReferenceManager {
 
     Reference<? extends EnrichedEvent> reference;
     try {
-      while (count < maxCount && (reference = REFERENCE_QUEUE.remove(500)) != null) {
+      while (count < maxCount && ((reference = REFERENCE_QUEUE.remove(500)) != null)) {
         finalizeResource((PipeEventPhantomReference) reference);
         count++;
       }
     } catch (final InterruptedException e) {
       // Finalize remaining references.
-      while (count < maxCount && (reference = REFERENCE_QUEUE.poll()) != null) {
+      while (count < maxCount && ((reference = REFERENCE_QUEUE.poll()) != null)) {
         finalizeResource((PipeEventPhantomReference) reference);
         count++;
       }
@@ -77,11 +77,13 @@ public abstract class PipePhantomReferenceManager {
       // Nowhere to really log this.
     }
 
-    LOGGER.info(
-        "Clean {} pipe phantom reference(s) successfully within {} ms, remaining reference count: {}",
-        count,
-        System.currentTimeMillis() - startTime,
-        getPhantomReferenceCount());
+    if (maxCount != 0 || getPhantomReferenceCount() != 0) {
+      LOGGER.info(
+          "Clean {} pipe phantom reference(s) successfully within {} ms, remaining reference count: {}",
+          count,
+          System.currentTimeMillis() - startTime,
+          getPhantomReferenceCount());
+    }
   }
 
   private void finalizeResource(final PipeEventPhantomReference reference) {
@@ -123,7 +125,6 @@ public abstract class PipePhantomReferenceManager {
   public void trackPipeEventResource(final EnrichedEvent event, final PipeEventResource resource) {
     final PipeEventPhantomReference reference =
         new PipeEventPhantomReference(event, resource, REFERENCE_QUEUE);
-    LOGGER.info("track");
     PIPE_EVENT_PHANTOM_REFERENCES.add(reference);
   }
 
