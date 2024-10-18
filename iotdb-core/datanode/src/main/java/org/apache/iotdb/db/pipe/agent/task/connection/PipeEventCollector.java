@@ -120,12 +120,11 @@ public class PipeEventCollector implements EventCollector {
       return;
     }
 
-    if (!forceTabletFormat && !sourceEvent.shouldParseTimeOrPattern()) {
-      collectEvent(sourceEvent);
-      return;
-    }
-
-    if (sourceEvent.isTableModelEvent() && sourceEvent.getTablePattern() == null) {
+    if (!forceTabletFormat
+        && (!sourceEvent.shouldParseTimeOrPattern()
+            || (sourceEvent.isTableModelEvent()
+                && sourceEvent.getTablePattern() == null
+                && !sourceEvent.shouldParseTime()))) {
       collectEvent(sourceEvent);
       return;
     }
