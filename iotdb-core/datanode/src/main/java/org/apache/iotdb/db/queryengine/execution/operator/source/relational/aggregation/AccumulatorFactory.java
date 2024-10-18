@@ -51,13 +51,18 @@ public class AccumulatorFactory {
     } else if ((LAST_BY.getFunctionName().equals(functionName)
             || FIRST_BY.getFunctionName().equals(functionName))
         && inputExpressions.size() > 1) {
-      boolean xIsTimeColumn = isTimeColumn(inputExpressions.get(0));
-      boolean yIsTimeColumn = isTimeColumn(inputExpressions.get(1));
+      boolean xIsTimeColumn = false;
+      boolean yIsTimeColumn = false;
+      if (isTimeColumn(inputExpressions.get(1))) {
+        yIsTimeColumn = true;
+      } else if (isTimeColumn(inputExpressions.get(0))) {
+        xIsTimeColumn = true;
+      }
       if (LAST_BY.getFunctionName().equals(functionName)) {
         return new LastByAccumulator(
             inputDataTypes.get(0), inputDataTypes.get(1), xIsTimeColumn, yIsTimeColumn);
       } else {
-        return new LastByAccumulator(
+        return new FirstByAccumulator(
             inputDataTypes.get(0), inputDataTypes.get(1), xIsTimeColumn, yIsTimeColumn);
       }
     } else {
@@ -121,6 +126,8 @@ public class AccumulatorFactory {
         return new MinAccumulator(inputDataTypes.get(0));
       case LAST_BY:
         return new LastByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1), false, false);
+      case FIRST_BY:
+        return new FirstByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1), false, false);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }
@@ -233,37 +240,6 @@ public class AccumulatorFactory {
   public interface KeepEvaluator {
     boolean apply(long keep);
   }
-
-  //  public static KeepEvaluator initKeepEvaluator(Expression keepExpression) {
-  //    // We have checked semantic in FE,
-  //    // keep expression must be ConstantOperand or CompareBinaryExpression here
-  //    if (keepExpression instanceof ConstantOperand) {
-  //      return keep -> keep >= Long.parseLong(keepExpression.getExpressionString());
-  //    } else {
-  //      long constant =
-  //          Long.parseLong(
-  //              ((CompareBinaryExpression) keepExpression)
-  //                  .getRightExpression()
-  //                  .getExpressionString());
-  //      switch (keepExpression.getExpressionType()) {
-  //        case LESS_THAN:
-  //          return keep -> keep < constant;
-  //        case LESS_EQUAL:
-  //          return keep -> keep <= constant;
-  //        case GREATER_THAN:
-  //          return keep -> keep > constant;
-  //        case GREATER_EQUAL:
-  //          return keep -> keep >= constant;
-  //        case EQUAL_TO:
-  //          return keep -> keep == constant;
-  //        case NON_EQUAL:
-  //          return keep -> keep != constant;
-  //        default:
-  //          throw new IllegalArgumentException(
-  //              "unsupported expression type: " + keepExpression.getExpressionType());
-  //      }
-  //    }
-  //  }
 
   public static boolean isTimeColumn(Expression expression) {
     return expression instanceof SymbolReference
