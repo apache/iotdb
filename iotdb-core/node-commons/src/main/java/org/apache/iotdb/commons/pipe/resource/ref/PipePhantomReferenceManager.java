@@ -55,6 +55,8 @@ public abstract class PipePhantomReferenceManager {
       return;
     }
 
+    final long startTime = System.currentTimeMillis();
+
     // limit control to avoid infinite execution
     final int maxCount = getPhantomReferenceCount();
     int count = 0;
@@ -78,6 +80,12 @@ public abstract class PipePhantomReferenceManager {
     } catch (final Exception e) {
       // Nowhere to really log this.
     }
+
+    LOGGER.info(
+        "Clean {} pipe phantom reference(s) successfully within {} ms, remaining reference count: {}",
+        count,
+        System.currentTimeMillis() - startTime,
+        getPhantomReferenceCount());
   }
 
   private void finalizeResource(final PipeEventPhantomReference reference) {
@@ -119,6 +127,7 @@ public abstract class PipePhantomReferenceManager {
   public void trackPipeEventResource(final EnrichedEvent event, final PipeEventResource resource) {
     final PipeEventPhantomReference reference =
         new PipeEventPhantomReference(event, resource, REFERENCE_QUEUE);
+    LOGGER.info("track");
     PIPE_EVENT_PHANTOM_REFERENCES.add(reference);
   }
 
