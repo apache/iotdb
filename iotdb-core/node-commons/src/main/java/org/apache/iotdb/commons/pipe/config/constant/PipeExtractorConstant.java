@@ -28,9 +28,6 @@ public class PipeExtractorConstant {
   public static final String SOURCE_CAPTURE_TREE_KEY = "source.capture.tree";
   public static final String EXTRACTOR_CAPTURE_TABLE_KEY = "extractor.capture.table";
   public static final String SOURCE_CAPTURE_TABLE_KEY = "source.capture.table";
-  public static final String EXTRACTOR_CAPTURE_TREE_PATH_KEY = "extractor.capture.tree.path";
-  public static final String SOURCE_CAPTURE_TREE_PATH_KEY = "source.capture.tree.path";
-  public static final String SOURCE_CAPTURE_TREE_PATH_DEFAULT_VALUE = "root.**";
 
   public static final String EXTRACTOR_INCLUSION_KEY = "extractor.inclusion";
   public static final String SOURCE_INCLUSION_KEY = "source.inclusion";
