@@ -1265,11 +1265,11 @@ public class PipeConsensusReceiver {
     private final Condition condition;
     private final PipeConsensusReceiverMetrics metric;
     private final PipeConsensusTsFileWriterPool tsFileWriterPool;
+    private final AtomicInteger WALEventCount = new AtomicInteger(0);
+    private final AtomicInteger tsFileEventCount = new AtomicInteger(0);
     private long onSyncedCommitIndex = 0;
     private int connectorRebootTimes = 0;
     private int pipeTaskRestartTimes = 0;
-    private AtomicInteger WALEventCount = new AtomicInteger(0);
-    private AtomicInteger tsFileEventCount = new AtomicInteger(0);
 
     public RequestExecutor(
         PipeConsensusReceiverMetrics metric, PipeConsensusTsFileWriterPool tsFileWriterPool) {

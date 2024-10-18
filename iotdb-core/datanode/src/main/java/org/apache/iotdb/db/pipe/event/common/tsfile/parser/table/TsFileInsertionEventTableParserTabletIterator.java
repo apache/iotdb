@@ -30,10 +30,10 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.stream.Collectors;
 
 public class TsFileInsertionEventTableParserTabletIterator implements Iterator<Tablet> {
 
@@ -43,6 +43,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
   private final long endTime;
 
   private final List<IMeasurementSchema> columnSchemas;
+  private final List<Tablet.ColumnType> columnTypes;
   private final List<String> columnNames;
   private final TsBlockReader tsBlockReader;
 
@@ -56,18 +57,19 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     this.startTime = startTime;
     this.endTime = endTime;
 
+    columnSchemas = new ArrayList<>();
+    columnTypes = new ArrayList<>();
+    columnNames = new ArrayList<>();
     try {
-      columnSchemas =
-          tableSchema.getColumnSchemas().stream()
-              // time column in aligned time-series should not be a query column
-              .filter(
-                  schema ->
-                      schema.getMeasurementId() != null && !schema.getMeasurementId().isEmpty())
-              .collect(Collectors.toList());
-      columnNames =
-          columnSchemas.stream()
-              .map(IMeasurementSchema::getMeasurementId)
-              .collect(Collectors.toList());
+      for (int i = 0, size = tableSchema.getColumnSchemas().size(); i < size; i++) {
+        final IMeasurementSchema schema = tableSchema.getColumnSchemas().get(i);
+        if (schema.getMeasurementId() != null && !schema.getMeasurementId().isEmpty()) {
+          columnSchemas.add(schema);
+          columnTypes.add(tableSchema.getColumnTypes().get(i));
+          columnNames.add(schema.getMeasurementId());
+        }
+      }
+
       tsBlockReader = tableQueryExecutor.query(tableName, columnNames, null, null, null);
     } catch (final ReadProcessException e) {
       throw new PipeException("Failed to build query data set", e);
@@ -96,7 +98,8 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
   private Tablet buildNextTablet() throws IOException {
     final TsBlock tsBlock = tsBlockReader.next();
 
-    final Tablet tablet = new Tablet(tableName, columnSchemas, tsBlock.getPositionCount());
+    final Tablet tablet =
+        new Tablet(tableName, columnSchemas, columnTypes, tsBlock.getPositionCount());
     tablet.initBitMaps();
 
     final TsBlock.TsBlockRowIterator rowIterator = tsBlock.getTsBlockRowIterator();
