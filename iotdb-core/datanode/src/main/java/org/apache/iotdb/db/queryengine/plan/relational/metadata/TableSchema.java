@@ -81,6 +81,25 @@ public class TableSchema {
         tableName, measurementSchemas, columnTypes);
   }
 
+  public org.apache.tsfile.file.metadata.TableSchema toTsFileTableSchemaNoAttribute() {
+    // TODO-Table: unify redundant definitions
+    String tableName = this.getTableName();
+    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+    List<ColumnType> columnTypes = new ArrayList<>();
+    for (ColumnSchema column : columns) {
+      if (column.getColumnCategory() == TsTableColumnCategory.TIME
+          || column.getColumnCategory() == TsTableColumnCategory.ATTRIBUTE) {
+        continue;
+      }
+      measurementSchemas.add(
+          new MeasurementSchema(
+              column.getName(), InternalTypeManager.getTSDataType(column.getType())));
+      columnTypes.add(column.getColumnCategory().toTsFileColumnType());
+    }
+    return new org.apache.tsfile.file.metadata.TableSchema(
+        tableName, measurementSchemas, columnTypes);
+  }
+
   private static final Logger LOGGER = org.slf4j.LoggerFactory.getLogger(TableSchema.class);
 
   public static TableSchema fromTsFileTableSchema(
