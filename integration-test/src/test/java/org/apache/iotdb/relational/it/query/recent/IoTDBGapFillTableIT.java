@@ -27,7 +27,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -63,6 +62,7 @@ public class IoTDBGapFillTableIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setSortBufferSize(128 * 1024);
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnableCrossSpaceCompaction(false);
     EnvFactory.getEnv().initClusterEnvironment();
     prepareTableData(createSqls);
@@ -73,7 +73,6 @@ public class IoTDBGapFillTableIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  @Ignore
   @Test
   public void normalGapFillTest() {
 
@@ -118,30 +117,30 @@ public class IoTDBGapFillTableIT {
     expectedHeader = new String[] {"hour_time", "city", "device_id", "avg_s1"};
     retArray =
         new String[] {
-          "2024-09-24T04:00:00.000Z,shanghai,d1,null,",
-          "2024-09-24T05:00:00.000Z,shanghai,d1,null,",
-          "2024-09-24T06:00:00.000Z,shanghai,d1,null,",
-          "2024-09-24T07:00:00.000Z,shanghai,d1,27.2,",
-          "2024-09-24T08:00:00.000Z,shanghai,d1,27.3,",
-          "2024-09-24T09:00:00.000Z,shanghai,d1,null,",
-          "2024-09-24T10:00:00.000Z,shanghai,d1,null,",
-          "2024-09-24T11:00:00.000Z,shanghai,d1,29.3,",
-          "2024-09-24T04:00:00.000Z,beijing,d2,25.1,",
-          "2024-09-24T05:00:00.000Z,beijing,d2,null,",
-          "2024-09-24T06:00:00.000Z,beijing,d2,null,",
-          "2024-09-24T07:00:00.000Z,beijing,d2,null,",
-          "2024-09-24T08:00:00.000Z,beijing,d2,null,",
-          "2024-09-24T09:00:00.000Z,beijing,d2,null,",
-          "2024-09-24T10:00:00.000Z,beijing,d2,null,",
-          "2024-09-24T11:00:00.000Z,beijing,d2,28.2,",
-          "2024-09-24T04:00:00.000Z,shanghai,d3,null,",
-          "2024-09-24T05:00:00.000Z,shanghai,d3,null,",
-          "2024-09-24T06:00:00.000Z,shanghai,d3,null,",
-          "2024-09-24T07:00:00.000Z,shanghai,d3,null,",
-          "2024-09-24T08:00:00.000Z,shanghai,d3,25.8,",
-          "2024-09-24T09:00:00.000Z,shanghai,d3,null,",
-          "2024-09-24T10:00:00.000Z,shanghai,d3,null,",
-          "2024-09-24T11:00:00.000Z,shanghai,d3,null,",
+            "2024-09-24T04:00:00.000Z,beijing,d2,25.1,",
+            "2024-09-24T05:00:00.000Z,beijing,d2,null,",
+            "2024-09-24T06:00:00.000Z,beijing,d2,null,",
+            "2024-09-24T07:00:00.000Z,beijing,d2,null,",
+            "2024-09-24T08:00:00.000Z,beijing,d2,null,",
+            "2024-09-24T09:00:00.000Z,beijing,d2,null,",
+            "2024-09-24T10:00:00.000Z,beijing,d2,null,",
+            "2024-09-24T11:00:00.000Z,beijing,d2,28.2,",
+            "2024-09-24T04:00:00.000Z,shanghai,d1,null,",
+            "2024-09-24T05:00:00.000Z,shanghai,d1,null,",
+            "2024-09-24T06:00:00.000Z,shanghai,d1,null,",
+            "2024-09-24T07:00:00.000Z,shanghai,d1,27.2,",
+            "2024-09-24T08:00:00.000Z,shanghai,d1,27.3,",
+            "2024-09-24T09:00:00.000Z,shanghai,d1,null,",
+            "2024-09-24T10:00:00.000Z,shanghai,d1,null,",
+            "2024-09-24T11:00:00.000Z,shanghai,d1,29.3,",
+            "2024-09-24T04:00:00.000Z,shanghai,d3,null,",
+            "2024-09-24T05:00:00.000Z,shanghai,d3,null,",
+            "2024-09-24T06:00:00.000Z,shanghai,d3,null,",
+            "2024-09-24T07:00:00.000Z,shanghai,d3,null,",
+            "2024-09-24T08:00:00.000Z,shanghai,d3,25.8,",
+            "2024-09-24T09:00:00.000Z,shanghai,d3,null,",
+            "2024-09-24T10:00:00.000Z,shanghai,d3,null,",
+            "2024-09-24T11:00:00.000Z,shanghai,d3,null,",
         };
     tableResultSetEqualTest(
         "select date_bin_gapfill(1h, time) as hour_time, city, device_id, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) GROUP BY 1,2,device_id order by city,3,1",
@@ -265,7 +264,6 @@ public class IoTDBGapFillTableIT {
         DATABASE_NAME);
   }
 
-  @Ignore
   @Test
   public void gapFillWithFillClauseTest() {
 
@@ -309,30 +307,30 @@ public class IoTDBGapFillTableIT {
     expectedHeader = new String[] {"hour_time", "city", "device_id", "avg_s1"};
     retArray =
         new String[] {
-          "2024-09-24T04:00:00.000Z,shanghai,d1,null,",
-          "2024-09-24T05:00:00.000Z,shanghai,d1,null,",
-          "2024-09-24T06:00:00.000Z,shanghai,d1,null,",
-          "2024-09-24T07:00:00.000Z,shanghai,d1,27.2,",
-          "2024-09-24T08:00:00.000Z,shanghai,d1,27.3,",
-          "2024-09-24T09:00:00.000Z,shanghai,d1,27.3,",
-          "2024-09-24T10:00:00.000Z,shanghai,d1,27.3,",
-          "2024-09-24T11:00:00.000Z,shanghai,d1,29.3,",
-          "2024-09-24T04:00:00.000Z,beijing,d2,25.1,",
-          "2024-09-24T05:00:00.000Z,beijing,d2,25.1,",
-          "2024-09-24T06:00:00.000Z,beijing,d2,25.1,",
-          "2024-09-24T07:00:00.000Z,beijing,d2,25.1,",
-          "2024-09-24T08:00:00.000Z,beijing,d2,25.1,",
-          "2024-09-24T09:00:00.000Z,beijing,d2,25.1,",
-          "2024-09-24T10:00:00.000Z,beijing,d2,25.1,",
-          "2024-09-24T11:00:00.000Z,beijing,d2,28.2,",
-          "2024-09-24T04:00:00.000Z,shanghai,d3,null,",
-          "2024-09-24T05:00:00.000Z,shanghai,d3,null,",
-          "2024-09-24T06:00:00.000Z,shanghai,d3,null,",
-          "2024-09-24T07:00:00.000Z,shanghai,d3,null,",
-          "2024-09-24T08:00:00.000Z,shanghai,d3,25.8,",
-          "2024-09-24T09:00:00.000Z,shanghai,d3,25.8,",
-          "2024-09-24T10:00:00.000Z,shanghai,d3,25.8,",
-          "2024-09-24T11:00:00.000Z,shanghai,d3,25.8,",
+            "2024-09-24T04:00:00.000Z,beijing,d2,25.1,",
+            "2024-09-24T05:00:00.000Z,beijing,d2,25.1,",
+            "2024-09-24T06:00:00.000Z,beijing,d2,25.1,",
+            "2024-09-24T07:00:00.000Z,beijing,d2,25.1,",
+            "2024-09-24T08:00:00.000Z,beijing,d2,25.1,",
+            "2024-09-24T09:00:00.000Z,beijing,d2,25.1,",
+            "2024-09-24T10:00:00.000Z,beijing,d2,25.1,",
+            "2024-09-24T11:00:00.000Z,beijing,d2,28.2,",
+            "2024-09-24T04:00:00.000Z,shanghai,d1,null,",
+            "2024-09-24T05:00:00.000Z,shanghai,d1,null,",
+            "2024-09-24T06:00:00.000Z,shanghai,d1,null,",
+            "2024-09-24T07:00:00.000Z,shanghai,d1,27.2,",
+            "2024-09-24T08:00:00.000Z,shanghai,d1,27.3,",
+            "2024-09-24T09:00:00.000Z,shanghai,d1,27.3,",
+            "2024-09-24T10:00:00.000Z,shanghai,d1,27.3,",
+            "2024-09-24T11:00:00.000Z,shanghai,d1,29.3,",
+            "2024-09-24T04:00:00.000Z,shanghai,d3,null,",
+            "2024-09-24T05:00:00.000Z,shanghai,d3,null,",
+            "2024-09-24T06:00:00.000Z,shanghai,d3,null,",
+            "2024-09-24T07:00:00.000Z,shanghai,d3,null,",
+            "2024-09-24T08:00:00.000Z,shanghai,d3,25.8,",
+            "2024-09-24T09:00:00.000Z,shanghai,d3,25.8,",
+            "2024-09-24T10:00:00.000Z,shanghai,d3,25.8,",
+            "2024-09-24T11:00:00.000Z,shanghai,d3,25.8,",
         };
     tableResultSetEqualTest(
         "select date_bin_gapfill(1h, time) as hour_time, city, device_id, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) GROUP BY 1,2,device_id FILL METHOD PREVIOUS FILL_GROUP 2,3 order by city,3,1",
@@ -375,11 +373,11 @@ public class IoTDBGapFillTableIT {
           "2024-09-24T08:00:00.000Z,shanghai,d3,25.8,",
           "2024-09-24T09:00:00.000Z,shanghai,d3,25.8,",
           "2024-09-24T10:00:00.000Z,shanghai,d3,null,",
-          "2024-09-24T11:00:00.000Z,shanghai,d3,null",
+          "2024-09-24T11:00:00.000Z,shanghai,d3,null,",
         };
     // with time bound
     tableResultSetEqualTest(
-        "select date_bin_gapfill(1h, time) as hour_time, city, device_id, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) GROUP BY 1,2,3 FILL METHOD PREVIOUS TIME_BOUND 1ms FILL_GROUP 2,3 order by 2,3,1",
+        "select date_bin_gapfill(1h, time) as hour_time, city, device_id, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T04:00:00.000+00:00 AND time < 2024-09-24T12:00:00.00+00:00) GROUP BY 1,2,3 FILL METHOD PREVIOUS TIME_BOUND 1h FILL_GROUP 2,3 order by 3,2,1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
