@@ -125,6 +125,11 @@ public class PipeEventCollector implements EventCollector {
       return;
     }
 
+    if (sourceEvent.isTableModelEvent() && sourceEvent.getTablePattern() == null) {
+      collectEvent(sourceEvent);
+      return;
+    }
+
     try {
       for (final TabletInsertionEvent parsedEvent : sourceEvent.toTabletInsertionEvents()) {
         collectParsedRawTableEvent((PipeRawTabletInsertionEvent) parsedEvent);
