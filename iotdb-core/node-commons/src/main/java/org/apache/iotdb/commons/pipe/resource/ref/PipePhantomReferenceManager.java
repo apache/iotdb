@@ -63,19 +63,15 @@ public abstract class PipePhantomReferenceManager {
 
     Reference<? extends EnrichedEvent> reference;
     try {
-      while ((reference = REFERENCE_QUEUE.remove(500)) != null) {
+      while (count < maxCount && (reference = REFERENCE_QUEUE.remove(500)) != null) {
         finalizeResource((PipeEventPhantomReference) reference);
-        if (++count >= maxCount) {
-          break;
-        }
+        count++;
       }
     } catch (final InterruptedException e) {
       // Finalize remaining references.
-      while ((reference = REFERENCE_QUEUE.poll()) != null) {
+      while (count < maxCount && (reference = REFERENCE_QUEUE.poll()) != null) {
         finalizeResource((PipeEventPhantomReference) reference);
-        if (++count >= maxCount) {
-          break;
-        }
+        count++;
       }
     } catch (final Exception e) {
       // Nowhere to really log this.
