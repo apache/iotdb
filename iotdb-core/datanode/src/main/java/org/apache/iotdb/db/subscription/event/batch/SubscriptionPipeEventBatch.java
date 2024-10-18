@@ -25,11 +25,13 @@ import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 public abstract class SubscriptionPipeEventBatch {
 
@@ -39,6 +41,7 @@ public abstract class SubscriptionPipeEventBatch {
   protected final int maxDelayInMs;
   protected final long maxBatchSizeInBytes;
 
+  protected final List<EnrichedEvent> enrichedEvents = new ArrayList<>();
   protected volatile List<SubscriptionEvent> events = null;
 
   protected SubscriptionPipeEventBatch(
@@ -83,5 +86,11 @@ public abstract class SubscriptionPipeEventBatch {
     result.put("maxDelayInMs", String.valueOf(maxDelayInMs));
     result.put("maxBatchSizeInBytes", String.valueOf(maxBatchSizeInBytes));
     return result;
+  }
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  public int getPipeEventCount(final Predicate<EnrichedEvent> predicate) {
+    return (int) enrichedEvents.stream().filter(predicate).count();
   }
 }
