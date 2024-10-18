@@ -189,10 +189,11 @@ public class TableDeviceSchemaCache {
    * consistency. WARNING: The writing may temporarily put a stale value in cache if a stale value
    * is written, but it won't affect the eventual consistency.
    *
-   * <p>- Second time put the calculated {@link TimeValuePair}s. The input {@link TimeValuePair}s
-   * shall never be or contain {@code null}, if a measurement is with all {@code null}s, its {@link
-   * TimeValuePair} shall be {@link TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR}. For time column,
-   * the input measurement shall be "", and the value shall be {@link
+   * <p>- Second time put the calculated {@link TimeValuePair}s, and use {@link
+   * #updateLastCacheIfExists(String, IDeviceID, String[], TimeValuePair[])}. The input {@link
+   * TimeValuePair}s shall never be or contain {@code null}, if a measurement is with all {@code
+   * null}s, its {@link TimeValuePair} shall be {@link TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR}.
+   * For time column, the input measurement shall be "", and the value shall be {@link
    * TableDeviceLastCache#EMPTY_PRIMITIVE_TYPE}. If the time column is not explicitly specified, the
    * device's last time won't be updated because we cannot guarantee the completeness of the
    * existing measurements in cache.
@@ -204,15 +205,13 @@ public class TableDeviceSchemaCache {
    * @param database the device's database, without "root"
    * @param deviceId {@link IDeviceID}
    * @param measurements the fetched measurements
-   * @param timeValuePairs {@code null} for the first fetch, the {@link TimeValuePair} with indexes
-   *     corresponding to the measurements for the second fetch, all {@code null}s if the query has
-   *     ended abnormally before the second push and need to invalidate the entry.
+   * @param isInvalidate whether to init or invalidate the cache
    */
-  public void updateLastCache(
+  public void initOrInvalidateLastCache(
       final String database,
       final IDeviceID deviceId,
       final String[] measurements,
-      final @Nullable TimeValuePair[] timeValuePairs) {
+      final boolean isInvalidate) {
     readWriteLock.readLock().lock();
     try {
       dualKeyCache.update(
@@ -220,18 +219,19 @@ public class TableDeviceSchemaCache {
           deviceId,
           new TableDeviceCacheEntry(),
           entry ->
-              entry.updateLastCache(
-                  database, deviceId.getTableName(), measurements, timeValuePairs, true),
-          Objects.isNull(timeValuePairs));
+              entry.initOrInvalidateLastCache(
+                  database, deviceId.getTableName(), measurements, isInvalidate, true),
+          !isInvalidate);
     } finally {
       readWriteLock.readLock().unlock();
     }
   }
 
   /**
-   * Update the last cache in writing. If a measurement is with all {@code null}s or is an
-   * id/attribute column, its timeValuePair shall be {@code null}. For correctness, this will put
-   * the cache lazily and only update the existing last caches of measurements.
+   * Update the last cache in writing or the second push of last cache query. If a measurement is
+   * with all {@code null}s or is an id/attribute column, its {@link TimeValuePair}[] shall be
+   * {@code null}. For correctness, this will put the cache lazily and only update the existing last
+   * caches of measurements.
    *
    * @param database the device's database, without "root"
    * @param deviceId {@link IDeviceID}
@@ -355,7 +355,7 @@ public class TableDeviceSchemaCache {
       final @Nullable TimeValuePair[] timeValuePairs,
       final boolean isAligned,
       final IMeasurementSchema[] measurementSchemas,
-      final boolean isQuery) {
+      final boolean initOrInvalidate) {
     final String previousDatabase = treeModelDatabasePool.putIfAbsent(database, database);
     final String database2Use = Objects.nonNull(previousDatabase) ? previousDatabase : database;
 
@@ -363,17 +363,21 @@ public class TableDeviceSchemaCache {
         new TableId(null, deviceID.getTableName()),
         deviceID,
         new TableDeviceCacheEntry(),
-        isQuery
+        initOrInvalidate
             ? entry ->
                 entry.setMeasurementSchema(
                         database2Use, isAligned, measurements, measurementSchemas)
-                    + entry.updateLastCache(
-                        database, deviceID.getTableName(), measurements, timeValuePairs, false)
+                    + entry.initOrInvalidateLastCache(
+                        database,
+                        deviceID.getTableName(),
+                        measurements,
+                        Objects.nonNull(timeValuePairs),
+                        false)
             : entry ->
                 entry.setMeasurementSchema(
                         database2Use, isAligned, measurements, measurementSchemas)
                     + entry.tryUpdateLastCache(measurements, timeValuePairs),
-        isQuery);
+        Objects.isNull(timeValuePairs));
   }
 
   // WARNING: This is not guaranteed to affect table model's cache
