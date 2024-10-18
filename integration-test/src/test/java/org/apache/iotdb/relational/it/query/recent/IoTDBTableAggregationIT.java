@@ -788,4 +788,624 @@ public class IoTDBTableAggregationIT {
     retArray = new String[] {"908.0,"};
     tableResultSetEqualTest("select sum(s3) from table1;", expectedHeader, retArray, DATABASE_NAME);
   }
+
+  @Ignore
+  @Test
+  public void minTest() {
+    String[] expectedHeader =
+        new String[] {"device_id", "color", "type", "_col3", "_col4", "_col5", "_col6"};
+    String[] retArray =
+        new String[] {
+          "d01,red,A,2024-09-24T06:15:30.000Z,35.0,2024-09-24T06:15:30.000Z,2024-09-24,",
+        };
+    tableResultSetEqualTest(
+        "select device_id, color, type, min(time),min(s4), min(s9), min(s10) from table1 where time >= 2024-09-24T06:15:30.000+00:00 and time <= 2024-09-24T06:15:59.999+00:00 and device_id = 'd01' group by 1,2,3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"device_id", "color", "type", "_col3", "_col4"};
+    retArray =
+        new String[] {
+          "d01,red,A,2024-09-24T06:15:40.000Z,55.0,",
+        };
+    tableResultSetEqualTest(
+        "select device_id, color, type, min(time),min(s4) from table1 where time >= 2024-09-24T06:15:30.000+00:00 and time <= 2024-09-24T06:15:59.999+00:00 and device_id = 'd01' and s1 >= 40 group by color,type,device_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"_col0", "device_id", "_col2", "_col3"};
+    retArray =
+        new String[] {
+          "2024-09-24T06:15:30.000Z,d01,2024-09-24T06:15:30.000Z,30.0,",
+          "2024-09-24T06:15:35.000Z,d01,2024-09-24T06:15:35.000Z,35.0,",
+          "2024-09-24T06:15:40.000Z,d01,2024-09-24T06:15:40.000Z,40.0,",
+          "2024-09-24T06:15:50.000Z,d01,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:55.000Z,d01,2024-09-24T06:15:55.000Z,null,",
+        };
+    tableResultSetEqualTest(
+        "select date_bin(5s, time), device_id, min(time),min(s3) from table1 where device_id = 'd01' group by 1, 2 order by 2,1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {"_col0", "province", "city", "region", "device_id", "_col5", "_col6"};
+    retArray =
+        new String[] {
+          "2024-09-24T06:15:30.000Z,beijing,beijing,chaoyang,d09,2024-09-24T06:15:30.000Z,null,",
+          "2024-09-24T06:15:35.000Z,beijing,beijing,chaoyang,d09,2024-09-24T06:15:35.000Z,35.0,",
+          "2024-09-24T06:15:40.000Z,beijing,beijing,chaoyang,d09,2024-09-24T06:15:40.000Z,null,",
+          "2024-09-24T06:15:50.000Z,beijing,beijing,chaoyang,d09,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:55.000Z,beijing,beijing,chaoyang,d09,2024-09-24T06:15:55.000Z,55.0,",
+          "2024-09-24T06:15:35.000Z,beijing,beijing,chaoyang,d10,2024-09-24T06:15:36.000Z,null,",
+          "2024-09-24T06:15:40.000Z,beijing,beijing,chaoyang,d10,2024-09-24T06:15:40.000Z,40.0,",
+          "2024-09-24T06:15:50.000Z,beijing,beijing,chaoyang,d10,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:30.000Z,beijing,beijing,chaoyang,d11,2024-09-24T06:15:31.000Z,null,",
+          "2024-09-24T06:15:35.000Z,beijing,beijing,chaoyang,d11,2024-09-24T06:15:36.000Z,36.0,",
+          "2024-09-24T06:15:40.000Z,beijing,beijing,chaoyang,d11,2024-09-24T06:15:41.000Z,null,",
+          "2024-09-24T06:15:45.000Z,beijing,beijing,chaoyang,d11,2024-09-24T06:15:46.000Z,46.0,",
+          "2024-09-24T06:15:50.000Z,beijing,beijing,chaoyang,d11,2024-09-24T06:15:51.000Z,null,",
+          "2024-09-24T06:15:30.000Z,beijing,beijing,chaoyang,d12,2024-09-24T06:15:30.000Z,null,",
+          "2024-09-24T06:15:40.000Z,beijing,beijing,chaoyang,d12,2024-09-24T06:15:40.000Z,null,",
+          "2024-09-24T06:15:55.000Z,beijing,beijing,chaoyang,d12,2024-09-24T06:15:55.000Z,55.0,",
+          "2024-09-24T06:15:30.000Z,beijing,beijing,haidian,d13,2024-09-24T06:15:30.000Z,null,",
+          "2024-09-24T06:15:35.000Z,beijing,beijing,haidian,d13,2024-09-24T06:15:35.000Z,35.0,",
+          "2024-09-24T06:15:40.000Z,beijing,beijing,haidian,d13,2024-09-24T06:15:40.000Z,null,",
+          "2024-09-24T06:15:50.000Z,beijing,beijing,haidian,d13,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:55.000Z,beijing,beijing,haidian,d13,2024-09-24T06:15:55.000Z,55.0,",
+          "2024-09-24T06:15:35.000Z,beijing,beijing,haidian,d14,2024-09-24T06:15:36.000Z,null,",
+          "2024-09-24T06:15:40.000Z,beijing,beijing,haidian,d14,2024-09-24T06:15:40.000Z,40.0,",
+          "2024-09-24T06:15:50.000Z,beijing,beijing,haidian,d14,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:30.000Z,beijing,beijing,haidian,d15,2024-09-24T06:15:31.000Z,null,",
+          "2024-09-24T06:15:35.000Z,beijing,beijing,haidian,d15,2024-09-24T06:15:36.000Z,36.0,",
+          "2024-09-24T06:15:40.000Z,beijing,beijing,haidian,d15,2024-09-24T06:15:41.000Z,null,",
+          "2024-09-24T06:15:45.000Z,beijing,beijing,haidian,d15,2024-09-24T06:15:46.000Z,46.0,",
+          "2024-09-24T06:15:50.000Z,beijing,beijing,haidian,d15,2024-09-24T06:15:51.000Z,null,",
+          "2024-09-24T06:15:30.000Z,beijing,beijing,haidian,d16,2024-09-24T06:15:30.000Z,null,",
+          "2024-09-24T06:15:40.000Z,beijing,beijing,haidian,d16,2024-09-24T06:15:40.000Z,null,",
+          "2024-09-24T06:15:55.000Z,beijing,beijing,haidian,d16,2024-09-24T06:15:55.000Z,55.0,",
+          "2024-09-24T06:15:30.000Z,shanghai,shanghai,huangpu,d01,2024-09-24T06:15:30.000Z,null,",
+          "2024-09-24T06:15:35.000Z,shanghai,shanghai,huangpu,d01,2024-09-24T06:15:35.000Z,35.0,",
+          "2024-09-24T06:15:40.000Z,shanghai,shanghai,huangpu,d01,2024-09-24T06:15:40.000Z,null,",
+          "2024-09-24T06:15:50.000Z,shanghai,shanghai,huangpu,d01,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:55.000Z,shanghai,shanghai,huangpu,d01,2024-09-24T06:15:55.000Z,55.0,",
+          "2024-09-24T06:15:35.000Z,shanghai,shanghai,huangpu,d02,2024-09-24T06:15:36.000Z,null,",
+          "2024-09-24T06:15:40.000Z,shanghai,shanghai,huangpu,d02,2024-09-24T06:15:40.000Z,40.0,",
+          "2024-09-24T06:15:50.000Z,shanghai,shanghai,huangpu,d02,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:30.000Z,shanghai,shanghai,huangpu,d03,2024-09-24T06:15:31.000Z,null,",
+          "2024-09-24T06:15:35.000Z,shanghai,shanghai,huangpu,d03,2024-09-24T06:15:36.000Z,36.0,",
+          "2024-09-24T06:15:40.000Z,shanghai,shanghai,huangpu,d03,2024-09-24T06:15:41.000Z,null,",
+          "2024-09-24T06:15:45.000Z,shanghai,shanghai,huangpu,d03,2024-09-24T06:15:46.000Z,46.0,",
+          "2024-09-24T06:15:50.000Z,shanghai,shanghai,huangpu,d03,2024-09-24T06:15:51.000Z,null,",
+          "2024-09-24T06:15:30.000Z,shanghai,shanghai,huangpu,d04,2024-09-24T06:15:30.000Z,null,",
+          "2024-09-24T06:15:40.000Z,shanghai,shanghai,huangpu,d04,2024-09-24T06:15:40.000Z,null,",
+          "2024-09-24T06:15:55.000Z,shanghai,shanghai,huangpu,d04,2024-09-24T06:15:55.000Z,55.0,",
+          "2024-09-24T06:15:30.000Z,shanghai,shanghai,pudong,d05,2024-09-24T06:15:30.000Z,null,",
+          "2024-09-24T06:15:35.000Z,shanghai,shanghai,pudong,d05,2024-09-24T06:15:35.000Z,35.0,",
+          "2024-09-24T06:15:40.000Z,shanghai,shanghai,pudong,d05,2024-09-24T06:15:40.000Z,null,",
+          "2024-09-24T06:15:50.000Z,shanghai,shanghai,pudong,d05,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:55.000Z,shanghai,shanghai,pudong,d05,2024-09-24T06:15:55.000Z,55.0,",
+          "2024-09-24T06:15:35.000Z,shanghai,shanghai,pudong,d06,2024-09-24T06:15:36.000Z,null,",
+          "2024-09-24T06:15:40.000Z,shanghai,shanghai,pudong,d06,2024-09-24T06:15:40.000Z,40.0,",
+          "2024-09-24T06:15:50.000Z,shanghai,shanghai,pudong,d06,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:30.000Z,shanghai,shanghai,pudong,d07,2024-09-24T06:15:31.000Z,null,",
+          "2024-09-24T06:15:35.000Z,shanghai,shanghai,pudong,d07,2024-09-24T06:15:36.000Z,36.0,",
+          "2024-09-24T06:15:40.000Z,shanghai,shanghai,pudong,d07,2024-09-24T06:15:41.000Z,null,",
+          "2024-09-24T06:15:45.000Z,shanghai,shanghai,pudong,d07,2024-09-24T06:15:46.000Z,46.0,",
+          "2024-09-24T06:15:50.000Z,shanghai,shanghai,pudong,d07,2024-09-24T06:15:51.000Z,null,",
+          "2024-09-24T06:15:30.000Z,shanghai,shanghai,pudong,d08,2024-09-24T06:15:30.000Z,null,",
+          "2024-09-24T06:15:40.000Z,shanghai,shanghai,pudong,d08,2024-09-24T06:15:40.000Z,null,",
+          "2024-09-24T06:15:55.000Z,shanghai,shanghai,pudong,d08,2024-09-24T06:15:55.000Z,55.0,",
+        };
+    tableResultSetEqualTest(
+        "select date_bin(5s, time),province,city,region,device_id,min(time),min(s4) from table1 group by 1,2,3,4,5 order by 2,3,4,5,1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {"_col0", "province", "city", "region", "device_id", "_col5", "_col6"};
+    retArray =
+        new String[] {
+          "2024-09-24T06:15:30.000Z,beijing,beijing,chaoyang,d09,2024-09-24T06:15:30.000Z,30,",
+          "2024-09-24T06:15:35.000Z,beijing,beijing,chaoyang,d09,2024-09-24T06:15:35.000Z,null,",
+          "2024-09-24T06:15:40.000Z,beijing,beijing,chaoyang,d09,2024-09-24T06:15:40.000Z,40,",
+          "2024-09-24T06:15:50.000Z,beijing,beijing,chaoyang,d09,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:55.000Z,beijing,beijing,chaoyang,d09,2024-09-24T06:15:55.000Z,55,",
+          "2024-09-24T06:15:35.000Z,beijing,beijing,chaoyang,d10,2024-09-24T06:15:36.000Z,36,",
+          "2024-09-24T06:15:40.000Z,beijing,beijing,chaoyang,d10,2024-09-24T06:15:40.000Z,40,",
+          "2024-09-24T06:15:50.000Z,beijing,beijing,chaoyang,d10,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:30.000Z,beijing,beijing,chaoyang,d11,2024-09-24T06:15:31.000Z,null,",
+          "2024-09-24T06:15:35.000Z,beijing,beijing,chaoyang,d11,2024-09-24T06:15:36.000Z,36,",
+          "2024-09-24T06:15:40.000Z,beijing,beijing,chaoyang,d11,2024-09-24T06:15:41.000Z,41,",
+          "2024-09-24T06:15:45.000Z,beijing,beijing,chaoyang,d11,2024-09-24T06:15:46.000Z,null,",
+          "2024-09-24T06:15:50.000Z,beijing,beijing,chaoyang,d11,2024-09-24T06:15:51.000Z,null,",
+          "2024-09-24T06:15:30.000Z,beijing,beijing,chaoyang,d12,2024-09-24T06:15:30.000Z,null,",
+          "2024-09-24T06:15:40.000Z,beijing,beijing,chaoyang,d12,2024-09-24T06:15:40.000Z,null,",
+          "2024-09-24T06:15:55.000Z,beijing,beijing,chaoyang,d12,2024-09-24T06:15:55.000Z,55,",
+          "2024-09-24T06:15:30.000Z,beijing,beijing,haidian,d13,2024-09-24T06:15:30.000Z,30,",
+          "2024-09-24T06:15:35.000Z,beijing,beijing,haidian,d13,2024-09-24T06:15:35.000Z,null,",
+          "2024-09-24T06:15:40.000Z,beijing,beijing,haidian,d13,2024-09-24T06:15:40.000Z,40,",
+          "2024-09-24T06:15:50.000Z,beijing,beijing,haidian,d13,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:55.000Z,beijing,beijing,haidian,d13,2024-09-24T06:15:55.000Z,55,",
+          "2024-09-24T06:15:35.000Z,beijing,beijing,haidian,d14,2024-09-24T06:15:36.000Z,36,",
+          "2024-09-24T06:15:40.000Z,beijing,beijing,haidian,d14,2024-09-24T06:15:40.000Z,40,",
+          "2024-09-24T06:15:50.000Z,beijing,beijing,haidian,d14,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:30.000Z,beijing,beijing,haidian,d15,2024-09-24T06:15:31.000Z,null,",
+          "2024-09-24T06:15:35.000Z,beijing,beijing,haidian,d15,2024-09-24T06:15:36.000Z,36,",
+          "2024-09-24T06:15:40.000Z,beijing,beijing,haidian,d15,2024-09-24T06:15:41.000Z,41,",
+          "2024-09-24T06:15:45.000Z,beijing,beijing,haidian,d15,2024-09-24T06:15:46.000Z,null,",
+          "2024-09-24T06:15:50.000Z,beijing,beijing,haidian,d15,2024-09-24T06:15:51.000Z,null,",
+          "2024-09-24T06:15:30.000Z,beijing,beijing,haidian,d16,2024-09-24T06:15:30.000Z,null,",
+          "2024-09-24T06:15:40.000Z,beijing,beijing,haidian,d16,2024-09-24T06:15:40.000Z,null,",
+          "2024-09-24T06:15:55.000Z,beijing,beijing,haidian,d16,2024-09-24T06:15:55.000Z,55,",
+          "2024-09-24T06:15:30.000Z,shanghai,shanghai,huangpu,d01,2024-09-24T06:15:30.000Z,30,",
+          "2024-09-24T06:15:35.000Z,shanghai,shanghai,huangpu,d01,2024-09-24T06:15:35.000Z,null,",
+          "2024-09-24T06:15:40.000Z,shanghai,shanghai,huangpu,d01,2024-09-24T06:15:40.000Z,40,",
+          "2024-09-24T06:15:50.000Z,shanghai,shanghai,huangpu,d01,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:55.000Z,shanghai,shanghai,huangpu,d01,2024-09-24T06:15:55.000Z,55,",
+          "2024-09-24T06:15:35.000Z,shanghai,shanghai,huangpu,d02,2024-09-24T06:15:36.000Z,36,",
+          "2024-09-24T06:15:40.000Z,shanghai,shanghai,huangpu,d02,2024-09-24T06:15:40.000Z,40,",
+          "2024-09-24T06:15:50.000Z,shanghai,shanghai,huangpu,d02,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:30.000Z,shanghai,shanghai,huangpu,d03,2024-09-24T06:15:31.000Z,null,",
+          "2024-09-24T06:15:35.000Z,shanghai,shanghai,huangpu,d03,2024-09-24T06:15:36.000Z,36,",
+          "2024-09-24T06:15:40.000Z,shanghai,shanghai,huangpu,d03,2024-09-24T06:15:41.000Z,41,",
+          "2024-09-24T06:15:45.000Z,shanghai,shanghai,huangpu,d03,2024-09-24T06:15:46.000Z,null,",
+          "2024-09-24T06:15:50.000Z,shanghai,shanghai,huangpu,d03,2024-09-24T06:15:51.000Z,null,",
+          "2024-09-24T06:15:30.000Z,shanghai,shanghai,huangpu,d04,2024-09-24T06:15:30.000Z,null,",
+          "2024-09-24T06:15:40.000Z,shanghai,shanghai,huangpu,d04,2024-09-24T06:15:40.000Z,null,",
+          "2024-09-24T06:15:55.000Z,shanghai,shanghai,huangpu,d04,2024-09-24T06:15:55.000Z,55,",
+          "2024-09-24T06:15:30.000Z,shanghai,shanghai,pudong,d05,2024-09-24T06:15:30.000Z,30,",
+          "2024-09-24T06:15:35.000Z,shanghai,shanghai,pudong,d05,2024-09-24T06:15:35.000Z,null,",
+          "2024-09-24T06:15:40.000Z,shanghai,shanghai,pudong,d05,2024-09-24T06:15:40.000Z,40,",
+          "2024-09-24T06:15:50.000Z,shanghai,shanghai,pudong,d05,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:55.000Z,shanghai,shanghai,pudong,d05,2024-09-24T06:15:55.000Z,55,",
+          "2024-09-24T06:15:35.000Z,shanghai,shanghai,pudong,d06,2024-09-24T06:15:36.000Z,36,",
+          "2024-09-24T06:15:40.000Z,shanghai,shanghai,pudong,d06,2024-09-24T06:15:40.000Z,40,",
+          "2024-09-24T06:15:50.000Z,shanghai,shanghai,pudong,d06,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:30.000Z,shanghai,shanghai,pudong,d07,2024-09-24T06:15:31.000Z,null,",
+          "2024-09-24T06:15:35.000Z,shanghai,shanghai,pudong,d07,2024-09-24T06:15:36.000Z,36,",
+          "2024-09-24T06:15:40.000Z,shanghai,shanghai,pudong,d07,2024-09-24T06:15:41.000Z,41,",
+          "2024-09-24T06:15:45.000Z,shanghai,shanghai,pudong,d07,2024-09-24T06:15:46.000Z,null,",
+          "2024-09-24T06:15:50.000Z,shanghai,shanghai,pudong,d07,2024-09-24T06:15:51.000Z,null,",
+          "2024-09-24T06:15:30.000Z,shanghai,shanghai,pudong,d08,2024-09-24T06:15:30.000Z,null,",
+          "2024-09-24T06:15:40.000Z,shanghai,shanghai,pudong,d08,2024-09-24T06:15:40.000Z,null,",
+          "2024-09-24T06:15:55.000Z,shanghai,shanghai,pudong,d08,2024-09-24T06:15:55.000Z,55,",
+        };
+    tableResultSetEqualTest(
+        "select date_bin(5s, time),province,city,region,device_id,min(time),min(s1) from table1 group by 1,2,3,4,5 order by 2,3,4,5,1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"province", "city", "region", "device_id", "_col4", "_col5"};
+    retArray =
+        new String[] {
+          "beijing,beijing,chaoyang,d09,2024-09-24T06:15:30.000Z,35000,",
+          "beijing,beijing,chaoyang,d10,2024-09-24T06:15:36.000Z,50000,",
+          "beijing,beijing,chaoyang,d11,2024-09-24T06:15:31.000Z,31000,",
+          "beijing,beijing,chaoyang,d12,2024-09-24T06:15:30.000Z,40000,",
+          "beijing,beijing,haidian,d13,2024-09-24T06:15:30.000Z,35000,",
+          "beijing,beijing,haidian,d14,2024-09-24T06:15:36.000Z,50000,",
+          "beijing,beijing,haidian,d15,2024-09-24T06:15:31.000Z,31000,",
+          "beijing,beijing,haidian,d16,2024-09-24T06:15:30.000Z,40000,",
+          "shanghai,shanghai,huangpu,d01,2024-09-24T06:15:30.000Z,35000,",
+          "shanghai,shanghai,huangpu,d02,2024-09-24T06:15:36.000Z,50000,",
+          "shanghai,shanghai,huangpu,d03,2024-09-24T06:15:31.000Z,31000,",
+          "shanghai,shanghai,huangpu,d04,2024-09-24T06:15:30.000Z,40000,",
+          "shanghai,shanghai,pudong,d05,2024-09-24T06:15:30.000Z,35000,",
+          "shanghai,shanghai,pudong,d06,2024-09-24T06:15:36.000Z,50000,",
+          "shanghai,shanghai,pudong,d07,2024-09-24T06:15:31.000Z,31000,",
+          "shanghai,shanghai,pudong,d08,2024-09-24T06:15:30.000Z,40000,",
+        };
+    tableResultSetEqualTest(
+        "select province,city,region,device_id,min(time),min(s2) from table1 group by 1,2,3,4 order by 1,2,3,4",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"province", "city", "region", "_col3"};
+    retArray =
+        new String[] {
+          "beijing,beijing,chaoyang,2024-09-24T06:15:30.000Z,35.0,",
+          "beijing,beijing,haidian,2024-09-24T06:15:30.000Z,35.0,",
+          "shanghai,shanghai,huangpu,2024-09-24T06:15:30.000Z,35.0,",
+          "shanghai,shanghai,pudong,2024-09-24T06:15:30.000Z,35.0,",
+        };
+    tableResultSetEqualTest(
+        "select province,city,region,min(time),min(s4) from table1 group by 1,2,3 order by 1,2,3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"province", "city", "_col2", "_col3"};
+    retArray =
+        new String[] {
+          "beijing,beijing,2024-09-24T06:15:30.000Z,35.0,",
+          "shanghai,shanghai,2024-09-24T06:15:30.000Z,35.0,",
+        };
+    tableResultSetEqualTest(
+        "select province,city,min(time),min(s4) from table1 group by 1,2 order by 1,2",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"province", "_col1", "_col2"};
+    retArray =
+        new String[] {
+          "beijing,2024-09-24T06:15:30.000Z,35.0,", "shanghai,2024-09-24T06:15:30.000Z,35.0,",
+        };
+    tableResultSetEqualTest(
+        "select province,min(time),min(s4) from table1 group by 1 order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"_col0", "_col1"};
+    retArray = new String[] {"2024-09-24T06:15:30.000Z,30.0,"};
+    tableResultSetEqualTest(
+        "select min(time),min(s3) from table1;", expectedHeader, retArray, DATABASE_NAME);
+  }
+
+  @Ignore
+  @Test
+  public void maxTest() {
+    String[] expectedHeader =
+        new String[] {"device_id", "color", "type", "_col3", "_col4", "_col5", "_col6"};
+    String[] retArray =
+        new String[] {
+          "d01,red,A,2024-09-24T06:15:55.000Z,55.0,2024-09-24T06:15:55.000Z,2024-09-24,",
+        };
+    tableResultSetEqualTest(
+        "select device_id,color,type,max(time),max(s4),max(s9),max(s10) from table1 where time >= 2024-09-24T06:15:30.000+00:00 and time <= 2024-09-24T06:15:59.999+00:00 and device_id = 'd01' group by 1,2,3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"device_id", "color", "type", "_col3", "_col4"};
+    retArray =
+        new String[] {
+          "d01,red,A,2024-09-24T06:15:55.000Z,55.0,",
+        };
+    tableResultSetEqualTest(
+        "select device_id,color,type,max(time),max(s4) from table1 where time >= 2024-09-24T06:15:30.000+00:00 and time <= 2024-09-24T06:15:59.999+00:00 and device_id = 'd01' and s1 >= 40 group by color,type,device_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"_col0", "device_id", "_col2", "_col3"};
+    retArray =
+        new String[] {
+          "2024-09-24T06:15:30.000Z,d01,2024-09-24T06:15:30.000Z,30.0,",
+          "2024-09-24T06:15:35.000Z,d01,2024-09-24T06:15:35.000Z,35.0,",
+          "2024-09-24T06:15:40.000Z,d01,2024-09-24T06:15:40.000Z,40.0,",
+          "2024-09-24T06:15:50.000Z,d01,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:55.000Z,d01,2024-09-24T06:15:55.000Z,null,",
+        };
+    tableResultSetEqualTest(
+        "select date_bin(5s, time), device_id, max(time),max(s3) from table1 where device_id = 'd01' group by 1, 2 order by 2,1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {"_col0", "province", "city", "region", "device_id", "_col5", "_col6"};
+    retArray =
+        new String[] {
+          "2024-09-24T06:15:30.000Z,beijing,beijing,chaoyang,d09,2024-09-24T06:15:30.000Z,null,",
+          "2024-09-24T06:15:35.000Z,beijing,beijing,chaoyang,d09,2024-09-24T06:15:35.000Z,35.0,",
+          "2024-09-24T06:15:40.000Z,beijing,beijing,chaoyang,d09,2024-09-24T06:15:40.000Z,null,",
+          "2024-09-24T06:15:50.000Z,beijing,beijing,chaoyang,d09,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:55.000Z,beijing,beijing,chaoyang,d09,2024-09-24T06:15:55.000Z,55.0,",
+          "2024-09-24T06:15:35.000Z,beijing,beijing,chaoyang,d10,2024-09-24T06:15:36.000Z,null,",
+          "2024-09-24T06:15:40.000Z,beijing,beijing,chaoyang,d10,2024-09-24T06:15:40.000Z,40.0,",
+          "2024-09-24T06:15:50.000Z,beijing,beijing,chaoyang,d10,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:30.000Z,beijing,beijing,chaoyang,d11,2024-09-24T06:15:31.000Z,null,",
+          "2024-09-24T06:15:35.000Z,beijing,beijing,chaoyang,d11,2024-09-24T06:15:36.000Z,36.0,",
+          "2024-09-24T06:15:40.000Z,beijing,beijing,chaoyang,d11,2024-09-24T06:15:41.000Z,null,",
+          "2024-09-24T06:15:45.000Z,beijing,beijing,chaoyang,d11,2024-09-24T06:15:46.000Z,46.0,",
+          "2024-09-24T06:15:50.000Z,beijing,beijing,chaoyang,d11,2024-09-24T06:15:51.000Z,null,",
+          "2024-09-24T06:15:30.000Z,beijing,beijing,chaoyang,d12,2024-09-24T06:15:30.000Z,null,",
+          "2024-09-24T06:15:40.000Z,beijing,beijing,chaoyang,d12,2024-09-24T06:15:40.000Z,null,",
+          "2024-09-24T06:15:55.000Z,beijing,beijing,chaoyang,d12,2024-09-24T06:15:55.000Z,55.0,",
+          "2024-09-24T06:15:30.000Z,beijing,beijing,haidian,d13,2024-09-24T06:15:30.000Z,null,",
+          "2024-09-24T06:15:35.000Z,beijing,beijing,haidian,d13,2024-09-24T06:15:35.000Z,35.0,",
+          "2024-09-24T06:15:40.000Z,beijing,beijing,haidian,d13,2024-09-24T06:15:40.000Z,null,",
+          "2024-09-24T06:15:50.000Z,beijing,beijing,haidian,d13,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:55.000Z,beijing,beijing,haidian,d13,2024-09-24T06:15:55.000Z,55.0,",
+          "2024-09-24T06:15:35.000Z,beijing,beijing,haidian,d14,2024-09-24T06:15:36.000Z,null,",
+          "2024-09-24T06:15:40.000Z,beijing,beijing,haidian,d14,2024-09-24T06:15:40.000Z,40.0,",
+          "2024-09-24T06:15:50.000Z,beijing,beijing,haidian,d14,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:30.000Z,beijing,beijing,haidian,d15,2024-09-24T06:15:31.000Z,null,",
+          "2024-09-24T06:15:35.000Z,beijing,beijing,haidian,d15,2024-09-24T06:15:36.000Z,36.0,",
+          "2024-09-24T06:15:40.000Z,beijing,beijing,haidian,d15,2024-09-24T06:15:41.000Z,null,",
+          "2024-09-24T06:15:45.000Z,beijing,beijing,haidian,d15,2024-09-24T06:15:46.000Z,46.0,",
+          "2024-09-24T06:15:50.000Z,beijing,beijing,haidian,d15,2024-09-24T06:15:51.000Z,null,",
+          "2024-09-24T06:15:30.000Z,beijing,beijing,haidian,d16,2024-09-24T06:15:30.000Z,null,",
+          "2024-09-24T06:15:40.000Z,beijing,beijing,haidian,d16,2024-09-24T06:15:40.000Z,null,",
+          "2024-09-24T06:15:55.000Z,beijing,beijing,haidian,d16,2024-09-24T06:15:55.000Z,55.0,",
+          "2024-09-24T06:15:30.000Z,shanghai,shanghai,huangpu,d01,2024-09-24T06:15:30.000Z,null,",
+          "2024-09-24T06:15:35.000Z,shanghai,shanghai,huangpu,d01,2024-09-24T06:15:35.000Z,35.0,",
+          "2024-09-24T06:15:40.000Z,shanghai,shanghai,huangpu,d01,2024-09-24T06:15:40.000Z,null,",
+          "2024-09-24T06:15:50.000Z,shanghai,shanghai,huangpu,d01,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:55.000Z,shanghai,shanghai,huangpu,d01,2024-09-24T06:15:55.000Z,55.0,",
+          "2024-09-24T06:15:35.000Z,shanghai,shanghai,huangpu,d02,2024-09-24T06:15:36.000Z,null,",
+          "2024-09-24T06:15:40.000Z,shanghai,shanghai,huangpu,d02,2024-09-24T06:15:40.000Z,40.0,",
+          "2024-09-24T06:15:50.000Z,shanghai,shanghai,huangpu,d02,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:30.000Z,shanghai,shanghai,huangpu,d03,2024-09-24T06:15:31.000Z,null,",
+          "2024-09-24T06:15:35.000Z,shanghai,shanghai,huangpu,d03,2024-09-24T06:15:36.000Z,36.0,",
+          "2024-09-24T06:15:40.000Z,shanghai,shanghai,huangpu,d03,2024-09-24T06:15:41.000Z,null,",
+          "2024-09-24T06:15:45.000Z,shanghai,shanghai,huangpu,d03,2024-09-24T06:15:46.000Z,46.0,",
+          "2024-09-24T06:15:50.000Z,shanghai,shanghai,huangpu,d03,2024-09-24T06:15:51.000Z,null,",
+          "2024-09-24T06:15:30.000Z,shanghai,shanghai,huangpu,d04,2024-09-24T06:15:30.000Z,null,",
+          "2024-09-24T06:15:40.000Z,shanghai,shanghai,huangpu,d04,2024-09-24T06:15:40.000Z,null,",
+          "2024-09-24T06:15:55.000Z,shanghai,shanghai,huangpu,d04,2024-09-24T06:15:55.000Z,55.0,",
+          "2024-09-24T06:15:30.000Z,shanghai,shanghai,pudong,d05,2024-09-24T06:15:30.000Z,null,",
+          "2024-09-24T06:15:35.000Z,shanghai,shanghai,pudong,d05,2024-09-24T06:15:35.000Z,35.0,",
+          "2024-09-24T06:15:40.000Z,shanghai,shanghai,pudong,d05,2024-09-24T06:15:40.000Z,null,",
+          "2024-09-24T06:15:50.000Z,shanghai,shanghai,pudong,d05,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:55.000Z,shanghai,shanghai,pudong,d05,2024-09-24T06:15:55.000Z,55.0,",
+          "2024-09-24T06:15:35.000Z,shanghai,shanghai,pudong,d06,2024-09-24T06:15:36.000Z,null,",
+          "2024-09-24T06:15:40.000Z,shanghai,shanghai,pudong,d06,2024-09-24T06:15:40.000Z,40.0,",
+          "2024-09-24T06:15:50.000Z,shanghai,shanghai,pudong,d06,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:30.000Z,shanghai,shanghai,pudong,d07,2024-09-24T06:15:31.000Z,null,",
+          "2024-09-24T06:15:35.000Z,shanghai,shanghai,pudong,d07,2024-09-24T06:15:36.000Z,36.0,",
+          "2024-09-24T06:15:40.000Z,shanghai,shanghai,pudong,d07,2024-09-24T06:15:41.000Z,null,",
+          "2024-09-24T06:15:45.000Z,shanghai,shanghai,pudong,d07,2024-09-24T06:15:46.000Z,46.0,",
+          "2024-09-24T06:15:50.000Z,shanghai,shanghai,pudong,d07,2024-09-24T06:15:51.000Z,null,",
+          "2024-09-24T06:15:30.000Z,shanghai,shanghai,pudong,d08,2024-09-24T06:15:30.000Z,null,",
+          "2024-09-24T06:15:40.000Z,shanghai,shanghai,pudong,d08,2024-09-24T06:15:40.000Z,null,",
+          "2024-09-24T06:15:55.000Z,shanghai,shanghai,pudong,d08,2024-09-24T06:15:55.000Z,55.0,",
+        };
+    tableResultSetEqualTest(
+        "select date_bin(5s, time),province,city,region,device_id,max(time),max(s4) from table1 group by 1,2,3,4,5 order by 2,3,4,5,1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {"_col0", "province", "city", "region", "device_id", "_col5", "_col6"};
+    retArray =
+        new String[] {
+          "2024-09-24T06:15:30.000Z,beijing,beijing,chaoyang,d09,2024-09-24T06:15:30.000Z,null,",
+          "2024-09-24T06:15:35.000Z,beijing,beijing,chaoyang,d09,2024-09-24T06:15:35.000Z,35.0,",
+          "2024-09-24T06:15:40.000Z,beijing,beijing,chaoyang,d09,2024-09-24T06:15:40.000Z,null,",
+          "2024-09-24T06:15:50.000Z,beijing,beijing,chaoyang,d09,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:55.000Z,beijing,beijing,chaoyang,d09,2024-09-24T06:15:55.000Z,55.0,",
+          "2024-09-24T06:15:35.000Z,beijing,beijing,chaoyang,d10,2024-09-24T06:15:36.000Z,null,",
+          "2024-09-24T06:15:40.000Z,beijing,beijing,chaoyang,d10,2024-09-24T06:15:40.000Z,40.0,",
+          "2024-09-24T06:15:50.000Z,beijing,beijing,chaoyang,d10,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:30.000Z,beijing,beijing,chaoyang,d11,2024-09-24T06:15:31.000Z,null,",
+          "2024-09-24T06:15:35.000Z,beijing,beijing,chaoyang,d11,2024-09-24T06:15:36.000Z,36.0,",
+          "2024-09-24T06:15:40.000Z,beijing,beijing,chaoyang,d11,2024-09-24T06:15:41.000Z,null,",
+          "2024-09-24T06:15:45.000Z,beijing,beijing,chaoyang,d11,2024-09-24T06:15:46.000Z,46.0,",
+          "2024-09-24T06:15:50.000Z,beijing,beijing,chaoyang,d11,2024-09-24T06:15:51.000Z,null,",
+          "2024-09-24T06:15:30.000Z,beijing,beijing,chaoyang,d12,2024-09-24T06:15:30.000Z,null,",
+          "2024-09-24T06:15:40.000Z,beijing,beijing,chaoyang,d12,2024-09-24T06:15:40.000Z,null,",
+          "2024-09-24T06:15:55.000Z,beijing,beijing,chaoyang,d12,2024-09-24T06:15:55.000Z,55.0,",
+          "2024-09-24T06:15:30.000Z,beijing,beijing,haidian,d13,2024-09-24T06:15:30.000Z,null,",
+          "2024-09-24T06:15:35.000Z,beijing,beijing,haidian,d13,2024-09-24T06:15:35.000Z,35.0,",
+          "2024-09-24T06:15:40.000Z,beijing,beijing,haidian,d13,2024-09-24T06:15:40.000Z,null,",
+          "2024-09-24T06:15:50.000Z,beijing,beijing,haidian,d13,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:55.000Z,beijing,beijing,haidian,d13,2024-09-24T06:15:55.000Z,55.0,",
+          "2024-09-24T06:15:35.000Z,beijing,beijing,haidian,d14,2024-09-24T06:15:36.000Z,null,",
+          "2024-09-24T06:15:40.000Z,beijing,beijing,haidian,d14,2024-09-24T06:15:40.000Z,40.0,",
+          "2024-09-24T06:15:50.000Z,beijing,beijing,haidian,d14,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:30.000Z,beijing,beijing,haidian,d15,2024-09-24T06:15:31.000Z,null,",
+          "2024-09-24T06:15:35.000Z,beijing,beijing,haidian,d15,2024-09-24T06:15:36.000Z,36.0,",
+          "2024-09-24T06:15:40.000Z,beijing,beijing,haidian,d15,2024-09-24T06:15:41.000Z,null,",
+          "2024-09-24T06:15:45.000Z,beijing,beijing,haidian,d15,2024-09-24T06:15:46.000Z,46.0,",
+          "2024-09-24T06:15:50.000Z,beijing,beijing,haidian,d15,2024-09-24T06:15:51.000Z,null,",
+          "2024-09-24T06:15:30.000Z,beijing,beijing,haidian,d16,2024-09-24T06:15:30.000Z,null,",
+          "2024-09-24T06:15:40.000Z,beijing,beijing,haidian,d16,2024-09-24T06:15:40.000Z,null,",
+          "2024-09-24T06:15:55.000Z,beijing,beijing,haidian,d16,2024-09-24T06:15:55.000Z,55.0,",
+          "2024-09-24T06:15:30.000Z,shanghai,shanghai,huangpu,d01,2024-09-24T06:15:30.000Z,null,",
+          "2024-09-24T06:15:35.000Z,shanghai,shanghai,huangpu,d01,2024-09-24T06:15:35.000Z,35.0,",
+          "2024-09-24T06:15:40.000Z,shanghai,shanghai,huangpu,d01,2024-09-24T06:15:40.000Z,null,",
+          "2024-09-24T06:15:50.000Z,shanghai,shanghai,huangpu,d01,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:55.000Z,shanghai,shanghai,huangpu,d01,2024-09-24T06:15:55.000Z,55.0,",
+          "2024-09-24T06:15:35.000Z,shanghai,shanghai,huangpu,d02,2024-09-24T06:15:36.000Z,null,",
+          "2024-09-24T06:15:40.000Z,shanghai,shanghai,huangpu,d02,2024-09-24T06:15:40.000Z,40.0,",
+          "2024-09-24T06:15:50.000Z,shanghai,shanghai,huangpu,d02,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:30.000Z,shanghai,shanghai,huangpu,d03,2024-09-24T06:15:31.000Z,null,",
+          "2024-09-24T06:15:35.000Z,shanghai,shanghai,huangpu,d03,2024-09-24T06:15:36.000Z,36.0,",
+          "2024-09-24T06:15:40.000Z,shanghai,shanghai,huangpu,d03,2024-09-24T06:15:41.000Z,null,",
+          "2024-09-24T06:15:45.000Z,shanghai,shanghai,huangpu,d03,2024-09-24T06:15:46.000Z,46.0,",
+          "2024-09-24T06:15:50.000Z,shanghai,shanghai,huangpu,d03,2024-09-24T06:15:51.000Z,null,",
+          "2024-09-24T06:15:30.000Z,shanghai,shanghai,huangpu,d04,2024-09-24T06:15:30.000Z,null,",
+          "2024-09-24T06:15:40.000Z,shanghai,shanghai,huangpu,d04,2024-09-24T06:15:40.000Z,null,",
+          "2024-09-24T06:15:55.000Z,shanghai,shanghai,huangpu,d04,2024-09-24T06:15:55.000Z,55.0,",
+          "2024-09-24T06:15:30.000Z,shanghai,shanghai,pudong,d05,2024-09-24T06:15:30.000Z,null,",
+          "2024-09-24T06:15:35.000Z,shanghai,shanghai,pudong,d05,2024-09-24T06:15:35.000Z,35.0,",
+          "2024-09-24T06:15:40.000Z,shanghai,shanghai,pudong,d05,2024-09-24T06:15:40.000Z,null,",
+          "2024-09-24T06:15:50.000Z,shanghai,shanghai,pudong,d05,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:55.000Z,shanghai,shanghai,pudong,d05,2024-09-24T06:15:55.000Z,55.0,",
+          "2024-09-24T06:15:35.000Z,shanghai,shanghai,pudong,d06,2024-09-24T06:15:36.000Z,null,",
+          "2024-09-24T06:15:40.000Z,shanghai,shanghai,pudong,d06,2024-09-24T06:15:40.000Z,40.0,",
+          "2024-09-24T06:15:50.000Z,shanghai,shanghai,pudong,d06,2024-09-24T06:15:50.000Z,null,",
+          "2024-09-24T06:15:30.000Z,shanghai,shanghai,pudong,d07,2024-09-24T06:15:31.000Z,null,",
+          "2024-09-24T06:15:35.000Z,shanghai,shanghai,pudong,d07,2024-09-24T06:15:36.000Z,36.0,",
+          "2024-09-24T06:15:40.000Z,shanghai,shanghai,pudong,d07,2024-09-24T06:15:41.000Z,null,",
+          "2024-09-24T06:15:45.000Z,shanghai,shanghai,pudong,d07,2024-09-24T06:15:46.000Z,46.0,",
+          "2024-09-24T06:15:50.000Z,shanghai,shanghai,pudong,d07,2024-09-24T06:15:51.000Z,null,",
+          "2024-09-24T06:15:30.000Z,shanghai,shanghai,pudong,d08,2024-09-24T06:15:30.000Z,null,",
+          "2024-09-24T06:15:40.000Z,shanghai,shanghai,pudong,d08,2024-09-24T06:15:40.000Z,null,",
+          "2024-09-24T06:15:55.000Z,shanghai,shanghai,pudong,d08,2024-09-24T06:15:55.000Z,55.0,",
+        };
+    tableResultSetEqualTest(
+        "select date_bin(5s, time),province,city,region,device_id,max(time),max(s4) from table1 group by 1,2,3,4,5 order by 2,3,4,5,1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"province", "city", "region", "device_id", "_col4", "_col5"};
+    retArray =
+        new String[] {
+          "beijing,beijing,chaoyang,d09,2024-09-24T06:15:55.000Z,55.0,",
+          "beijing,beijing,chaoyang,d10,2024-09-24T06:15:50.000Z,40.0,",
+          "beijing,beijing,chaoyang,d11,2024-09-24T06:15:51.000Z,46.0,",
+          "beijing,beijing,chaoyang,d12,2024-09-24T06:15:55.000Z,55.0,",
+          "beijing,beijing,haidian,d13,2024-09-24T06:15:55.000Z,55.0,",
+          "beijing,beijing,haidian,d14,2024-09-24T06:15:50.000Z,40.0,",
+          "beijing,beijing,haidian,d15,2024-09-24T06:15:51.000Z,46.0,",
+          "beijing,beijing,haidian,d16,2024-09-24T06:15:55.000Z,55.0,",
+          "shanghai,shanghai,huangpu,d01,2024-09-24T06:15:55.000Z,55.0,",
+          "shanghai,shanghai,huangpu,d02,2024-09-24T06:15:50.000Z,40.0,",
+          "shanghai,shanghai,huangpu,d03,2024-09-24T06:15:51.000Z,46.0,",
+          "shanghai,shanghai,huangpu,d04,2024-09-24T06:15:55.000Z,55.0,",
+          "shanghai,shanghai,pudong,d05,2024-09-24T06:15:55.000Z,55.0,",
+          "shanghai,shanghai,pudong,d06,2024-09-24T06:15:50.000Z,40.0,",
+          "shanghai,shanghai,pudong,d07,2024-09-24T06:15:51.000Z,46.0,",
+          "shanghai,shanghai,pudong,d08,2024-09-24T06:15:55.000Z,55.0,",
+        };
+    tableResultSetEqualTest(
+        "select province,city,region,device_id,max(time),max(s4) from table1 group by 1,2,3,4 order by 1,2,3,4",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"province", "city", "region", "_col3"};
+    retArray =
+        new String[] {
+          "beijing,beijing,chaoyang,2024-09-24T06:15:55.000Z,55.0,",
+          "beijing,beijing,haidian,2024-09-24T06:15:55.000Z,55.0,",
+          "shanghai,shanghai,huangpu,2024-09-24T06:15:55.000Z,55.0,",
+          "shanghai,shanghai,pudong,2024-09-24T06:15:55.000Z,55.0,",
+        };
+    tableResultSetEqualTest(
+        "select province,city,region,max(time),max(s4) from table1 group by 1,2,3 order by 1,2,3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"province", "city", "_col2", "_col3"};
+    retArray =
+        new String[] {
+          "beijing,beijing,2024-09-24T06:15:55.000Z,55.0,",
+          "shanghai,shanghai,2024-09-24T06:15:55.000Z,55.0,",
+        };
+    tableResultSetEqualTest(
+        "select province,city,max(time),max(s4) from table1 group by 1,2 order by 1,2",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"province", "_col1", "_col2"};
+    retArray =
+        new String[] {
+          "beijing,2024-09-24T06:15:55.000Z,55.0,", "shanghai,2024-09-24T06:15:55.000Z,55.0,",
+        };
+    tableResultSetEqualTest(
+        "select province,max(time),max(s4) from table1 group by 1 order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"_col0", "_col1"};
+    retArray = new String[] {"2024-09-24T06:15:55.000Z,51.0,"};
+    tableResultSetEqualTest(
+        "select max(time),max(s3) from table1;", expectedHeader, retArray, DATABASE_NAME);
+  }
+
+  @Ignore
+  @Test
+  public void groupByAttributeTest() {
+
+    String[] expectedHeader = new String[] {"color", "_col1"};
+    String[] retArray =
+        new String[] {
+          "red,32,", "yellow,32,",
+        };
+    tableResultSetEqualTest(
+        "select color, count(*) from table1 group by color order by color",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"color", "device_id"};
+    retArray =
+        new String[] {
+          "read,d01,",
+          "read,d05,",
+          "read,d09,",
+          "read,d13,",
+          "read,d03,",
+          "read,d07,",
+          "read,d11,",
+          "read,d15,",
+        };
+    tableResultSetEqualTest(
+        "SELECT color, device_id FROM (SELECT date_bin(5s, time), color, device_id, avg(s4) as avg_s4 FROM table1 WHERE type='A' AND (time >= 2024-09-24T06:15:30.000+00:00 AND time <= 2024-09-24T06:15:59.999+00:00) GROUP BY 1,2,3) WHERE avg_s4 > 1.0 GROUP BY color, device_id HAVING count(*) >= 2 ORDER BY color, device_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"_col0", "city", "type", "_col3"};
+    retArray = new String[] {};
+
+    tableResultSetEqualTest(
+        "SELECT date_bin(10s, five_seconds), city, type, sum(five_seconds_count) / 2 FROM (SELECT date_bin(5s, time) AS five_seconds, city, type, count(*) AS five_seconds_count FROM table1 WHERE (time >= 2024-09-24T06:15:30.000+00:00 AND time <= 2024-09-24T06:15:59.999+00:00) AND device_id IS NOT NULL GROUP BY 1, city, type, device_id HAVING avg(s1) > 1) GROUP BY 1, city, type order by 2,3,1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Ignore
+  @Test
+  public void subQueryTest() {
+
+    String[] expectedHeader = new String[] {"ts", "type", "color", "device_id", "current_s7"};
+    String[] retArray = new String[] {};
+
+    tableResultSetEqualTest(
+        "SELECT ts, type, color, device_id, current_s7 FROM (SELECT type, color, device_id, last(time) as ts, last_by(s7,time) as current_s7 FROM table1 WHERE city='shanghai' GROUP BY type, color, device_id) WHERE strpos(current_s7, color) != 0 order by type, color, device_id, ts",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"color", "device_id"};
+    retArray =
+        new String[] {
+          "read,d01,",
+          "read,d05,",
+          "read,d09,",
+          "read,d13,",
+          "read,d03,",
+          "read,d07,",
+          "read,d11,",
+          "read,d15,",
+        };
+    tableResultSetEqualTest(
+        "SELECT color, device_id FROM (SELECT date_bin(5s, time), color, device_id, avg(s4) as avg_s4 FROM table1 WHERE type='A' AND (time >= 2024-09-24T06:15:30.000+00:00 AND time <= 2024-09-24T06:15:59.999+00:00) GROUP BY 1,2,3) WHERE avg_s4 > 1.0 GROUP BY color, device_id HAVING count(*) >= 2 ORDER BY color, device_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"_col0", "city", "type", "_col3"};
+    retArray = new String[] {};
+
+    tableResultSetEqualTest(
+        "SELECT date_bin(10s, five_seconds), city, type, sum(five_seconds_count) / 2 FROM (SELECT date_bin(5s, time) AS five_seconds, city, type, count(*) AS five_seconds_count FROM table1 WHERE (time >= 2024-09-24T06:15:30.000+00:00 AND time <= 2024-09-24T06:15:59.999+00:00) AND device_id IS NOT NULL GROUP BY 1, city, type, device_id HAVING avg(s1) > 1) GROUP BY 1, city, type order by 2,3,1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Ignore
+  @Test
+  public void specialCasesTest() {
+    String[] expectedHeader = new String[] {"device_id"};
+    String[] retArray =
+        new String[] {
+          "d01,", "d02,", "d03,", "d04,", "d05,", "d06,", "d07,", "d08,", "d09,", "d10,", "d11,",
+          "d12,", "d13,", "d14,", "d15,", "d16,",
+        };
+    tableResultSetEqualTest(
+        "SELECT device_id FROM table1 GROUP BY device_id order by device_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
 }
