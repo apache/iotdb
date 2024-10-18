@@ -233,12 +233,13 @@ public class PartitionCache {
   private void fetchDatabaseAndUpdateCache(String database)
       throws ClientManagerException, TException {
     databaseCacheLock.writeLock().lock();
-    try (ConfigNodeClient client =
+    try (final ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TGetDatabaseReq req = new TGetDatabaseReq(ROOT_PATH, SchemaConstant.ALL_MATCH_SCOPE_BINARY);
-      TDatabaseSchemaResp databaseSchemaResp = client.getMatchedDatabaseSchemas(req);
+      final TGetDatabaseReq req =
+          new TGetDatabaseReq(ROOT_PATH, SchemaConstant.ALL_MATCH_SCOPE_BINARY);
+      final TDatabaseSchemaResp databaseSchemaResp = client.getMatchedDatabaseSchemas(req);
       if (databaseSchemaResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        Set<String> databaseNames = databaseSchemaResp.getDatabaseSchemaMap().keySet();
+        final Set<String> databaseNames = databaseSchemaResp.getDatabaseSchemaMap().keySet();
         // update all database into cache
         updateDatabaseCache(databaseNames);
       }
@@ -381,7 +382,8 @@ public class PartitionCache {
    *
    * @param result contains result(boolean), failed devices and the map
    * @param deviceIDs the devices that need to hit
-   * @param failFast if true, return when failed. if false, return when all devices hit
+   * @param failFast if {@code true}, return when failed. if {@code false}, return when all devices
+   *     hit
    */
   private void getDatabaseMap(
       DatabaseCacheResult<?, ?> result, List<IDeviceID> deviceIDs, boolean failFast) {
@@ -465,7 +467,8 @@ public class PartitionCache {
     }
   }
 
-  public void checkAndAutoCreateDatabase(String database, boolean isAutoCreate, String userName) {
+  public void checkAndAutoCreateDatabase(
+      final String database, final boolean isAutoCreate, final String userName) {
     boolean isExisted = containsDatabase(database);
     if (!isExisted) {
       try {
@@ -476,7 +479,7 @@ public class PartitionCache {
           // try to auto create database of failed device
           createDatabaseAndUpdateCache(database, userName);
         }
-      } catch (TException | ClientManagerException e) {
+      } catch (final TException | ClientManagerException e) {
         throw new StatementAnalyzeException(
             "An error occurred when executing getDeviceToDatabase():" + e.getMessage());
       }
