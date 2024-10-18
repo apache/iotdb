@@ -25,11 +25,6 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 
 public abstract class PipeInsertionEvent extends EnrichedEvent {
 
-  /**
-   * If the event is marked as a table model event, it will be treated as a table model event in the
-   * following process. If the event is marked as a tree model event, and then mark as a table model
-   * event, it will be treated as a table model event.
-   */
   private Boolean isTableModelEvent; // lazy initialization
 
   private final String treeModelDatabaseName;
@@ -79,16 +74,7 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
     isTableModelEvent = Boolean.TRUE;
   }
 
-  /**
-   * If the event is marked as a table model event, it will be treated as a table model event in the
-   * following process. If the event is marked as a tree model event, and then mark as a table model
-   * event, it will be treated as a table model event.
-   */
   public void markAsTreeModelEvent() {
-    if (isTableModelEvent != null && isTableModelEvent) {
-      return;
-    }
-
     isTableModelEvent = Boolean.FALSE;
   }
 
