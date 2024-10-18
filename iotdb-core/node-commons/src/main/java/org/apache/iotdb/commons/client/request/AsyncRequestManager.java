@@ -58,11 +58,17 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
     actionMapBuilder = ImmutableMap.builder();
     initActionMapBuilder();
     this.actionMap = this.actionMapBuilder.build();
+    checkActionMapCompleteness();
   }
 
   protected abstract void initClientManager();
 
   protected abstract void initActionMapBuilder();
+
+  protected void checkActionMapCompleteness() {
+    // No check by default
+  }
+  ;
 
   /**
    * Send asynchronous requests to the specified Nodes with default retry num
