@@ -40,6 +40,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
@@ -218,7 +219,10 @@ public class DataRegionTest {
                 CompressionType.UNCOMPRESSED,
                 Collections.emptyMap()));
 
-    dataRegion.deleteByDevice(new MeasurementPath(deviceId, measurementId), 0, 15L, -1);
+    MeasurementPath path = new MeasurementPath(deviceId, measurementId);
+    DeleteDataNode deleteDataNode1 =
+        new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 0, 15L);
+    dataRegion.deleteByDevice(new MeasurementPath(deviceId, measurementId), deleteDataNode1);
 
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     for (TsFileProcessor tsfileProcessor : dataRegion.getWorkUnsequenceTsFileProcessors()) {
@@ -1404,11 +1408,18 @@ public class DataRegionTest {
       dataRegion.syncCloseAllWorkingTsFileProcessors();
     }
 
+    MeasurementPath path = new MeasurementPath("root.vehicle.d2.s0");
+    DeleteDataNode deleteDataNode1 =
+        new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 50, 150);
+    deleteDataNode1.setSearchIndex(0);
     // delete root.vehicle.d2.s0 data in the second file
-    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d2.s0"), 50, 150, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d2.s0"), deleteDataNode1);
 
+    DeleteDataNode deleteDataNode2 =
+        new DeleteDataNode(new PlanNodeId("2"), Collections.singletonList(path), 150, 450);
+    deleteDataNode2.setSearchIndex(0);
     // delete root.vehicle.d2.s0 data in the third file
-    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d2.s0"), 150, 450, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d2.s0"), deleteDataNode2);
 
     for (int i = 0; i < dataRegion.getSequenceFileList().size(); i++) {
       TsFileResource resource = dataRegion.getSequenceFileList().get(i);
@@ -1453,11 +1464,19 @@ public class DataRegionTest {
     TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
     tsFileProcessor.getFlushingMemTable().addLast(tsFileProcessor.getWorkMemTable());
 
+    MeasurementPath path = new MeasurementPath("root.vehicle.d2.s0");
+    DeleteDataNode deleteDataNode1 =
+        new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 50, 70);
+    deleteDataNode1.setSearchIndex(0);
     // delete data which is in memtable
-    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d2.s0"), 50, 70, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d2.s0"), deleteDataNode1);
 
+    MeasurementPath path2 = new MeasurementPath("root.vehicle.d200.s0");
+    DeleteDataNode deleteDataNode2 =
+        new DeleteDataNode(new PlanNodeId("2"), Collections.singletonList(path2), 50, 70);
+    deleteDataNode2.setSearchIndex(0);
     // delete data which is not in memtable
-    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d200.s0"), 50, 70, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d200.s0"), deleteDataNode2);
 
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     Assert.assertFalse(tsFileResource.getModFile().exists());
@@ -1475,14 +1494,31 @@ public class DataRegionTest {
     TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
     tsFileProcessor.getFlushingMemTable().addLast(tsFileProcessor.getWorkMemTable());
 
+    MeasurementPath path = new MeasurementPath("root.vehicle.d0.s0");
+    DeleteDataNode deleteDataNode1 =
+        new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 50, 99);
+    deleteDataNode1.setSearchIndex(0);
+    MeasurementPath path2 = new MeasurementPath("root.vehicle.d200.s0");
+    DeleteDataNode deleteDataNode2 =
+        new DeleteDataNode(new PlanNodeId("2"), Collections.singletonList(path2), 50, 70);
+    deleteDataNode2.setSearchIndex(0);
     // delete data which is not in flushing memtable
-    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 50, 99, 0);
-    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d200.s0"), 50, 70, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), deleteDataNode1);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), deleteDataNode2);
 
+    DeleteDataNode deleteDataNode3 =
+        new DeleteDataNode(new PlanNodeId("3"), Collections.singletonList(path), 50, 100);
+    deleteDataNode3.setSearchIndex(0);
+    DeleteDataNode deleteDataNode4 =
+        new DeleteDataNode(new PlanNodeId("4"), Collections.singletonList(path), 50, 150);
+    deleteDataNode4.setSearchIndex(0);
+    DeleteDataNode deleteDataNode5 =
+        new DeleteDataNode(new PlanNodeId("5"), Collections.singletonList(path), 100, 190);
+    deleteDataNode5.setSearchIndex(0);
     // delete data which is in flushing memtable
-    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 50, 100, 0);
-    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 50, 150, 0);
-    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 100, 190, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), deleteDataNode3);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), deleteDataNode4);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), deleteDataNode4);
 
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     Assert.assertTrue(tsFileResource.getModFile().exists());
@@ -1499,14 +1535,31 @@ public class DataRegionTest {
     }
     TsFileResource tsFileResource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
 
+    MeasurementPath path = new MeasurementPath("root.vehicle.d0.s0");
+    DeleteDataNode deleteDataNode1 =
+        new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 50, 99);
+    deleteDataNode1.setSearchIndex(0);
+    MeasurementPath path2 = new MeasurementPath("root.vehicle.d200.s0");
+    DeleteDataNode deleteDataNode2 =
+        new DeleteDataNode(new PlanNodeId("2"), Collections.singletonList(path2), 50, 70);
+    deleteDataNode2.setSearchIndex(0);
     // delete data which is not in work memtable
-    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 50, 99, 0);
-    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d200.s0"), 50, 70, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), deleteDataNode1);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), deleteDataNode2);
 
+    DeleteDataNode deleteDataNode3 =
+        new DeleteDataNode(new PlanNodeId("3"), Collections.singletonList(path), 50, 100);
+    deleteDataNode3.setSearchIndex(0);
+    DeleteDataNode deleteDataNode4 =
+        new DeleteDataNode(new PlanNodeId("4"), Collections.singletonList(path), 50, 150);
+    deleteDataNode4.setSearchIndex(0);
+    DeleteDataNode deleteDataNode5 =
+        new DeleteDataNode(new PlanNodeId("5"), Collections.singletonList(path), 100, 190);
+    deleteDataNode5.setSearchIndex(0);
     // delete data which is in work memtable
-    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 50, 100, 0);
-    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 50, 150, 0);
-    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 100, 190, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), deleteDataNode3);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), deleteDataNode4);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), deleteDataNode5);
 
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     Assert.assertFalse(tsFileResource.getModFile().exists());
@@ -1517,12 +1570,19 @@ public class DataRegionTest {
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
     }
-    // delete data which is not in work memtable
-    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 200, 299, 0);
-    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d200.s0"), 50, 70, 0);
 
+    DeleteDataNode deleteDataNode6 =
+        new DeleteDataNode(new PlanNodeId("6"), Collections.singletonList(path), 200, 299);
+    deleteDataNode6.setSearchIndex(0);
+    // delete data which is not in work memtable
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), deleteDataNode6);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d200.s0"), deleteDataNode2);
+
+    DeleteDataNode deleteDataNode7 =
+        new DeleteDataNode(new PlanNodeId("7"), Collections.singletonList(path), 80, 85);
+    deleteDataNode7.setSearchIndex(0);
     // delete data which is in work memtable
-    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 80, 85, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), deleteDataNode7);
 
     Assert.assertFalse(tsFileResource.getModFile().exists());
 
@@ -1530,15 +1590,30 @@ public class DataRegionTest {
     TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
     tsFileProcessor.getFlushingMemTable().addLast(tsFileProcessor.getWorkMemTable());
 
+    DeleteDataNode deleteDataNode8 =
+        new DeleteDataNode(new PlanNodeId("8"), Collections.singletonList(path), 0, 49);
+    deleteDataNode8.setSearchIndex(0);
+    DeleteDataNode deleteDataNode9 =
+        new DeleteDataNode(new PlanNodeId("9"), Collections.singletonList(path), 100, 200);
+    deleteDataNode9.setSearchIndex(0);
     // delete data which is not in flushing memtable
-    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 0, 49, 0);
-    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 100, 200, 0);
-    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d200.s0"), 50, 70, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), deleteDataNode8);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), deleteDataNode9);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d200.s0"), deleteDataNode2);
 
+    DeleteDataNode deleteDataNode10 =
+        new DeleteDataNode(new PlanNodeId("10"), Collections.singletonList(path2), 25, 50);
+    deleteDataNode10.setSearchIndex(0);
+    DeleteDataNode deleteDataNode11 =
+        new DeleteDataNode(new PlanNodeId("11"), Collections.singletonList(path2), 50, 80);
+    deleteDataNode11.setSearchIndex(0);
+    DeleteDataNode deleteDataNode12 =
+        new DeleteDataNode(new PlanNodeId("12"), Collections.singletonList(path2), 99, 150);
+    deleteDataNode12.setSearchIndex(0);
     // delete data which is in flushing memtable
-    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 25, 50, 0);
-    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 50, 80, 0);
-    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 99, 150, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), deleteDataNode10);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), deleteDataNode11);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), deleteDataNode12);
 
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     Assert.assertTrue(tsFileResource.getModFile().exists());
@@ -1560,12 +1635,24 @@ public class DataRegionTest {
     }
     TsFileResource tsFileResource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
 
+    MeasurementPath path = new MeasurementPath("root.vehicle.d0.s0");
+    DeleteDataNode deleteDataNode1 =
+        new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 50, 99);
+    deleteDataNode1.setSearchIndex(0);
+    MeasurementPath path2 = new MeasurementPath("root.vehicle.d200.s0");
+    DeleteDataNode deleteDataNode2 =
+        new DeleteDataNode(new PlanNodeId("2"), Collections.singletonList(path2), 50, 70);
+    deleteDataNode2.setSearchIndex(0);
     // delete data which is not in working memtable
-    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 50, 99, 0);
-    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d200.s0"), 50, 70, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), deleteDataNode1);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d200.s0"), deleteDataNode2);
 
+    MeasurementPath path3 = new MeasurementPath("root.vehicle.d199.*");
+    DeleteDataNode deleteDataNode3 =
+        new DeleteDataNode(new PlanNodeId("3"), Collections.singletonList(path3), 50, 500);
+    deleteDataNode3.setSearchIndex(0);
     // delete data which is in working memtable
-    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d199.*"), 50, 500, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d199.*"), deleteDataNode3);
 
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     Assert.assertFalse(tsFileResource.getModFile().exists());
@@ -1585,8 +1672,12 @@ public class DataRegionTest {
     }
     TsFileResource tsFileResource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
 
+    MeasurementPath path = new MeasurementPath("root.vehicle.d0.s0");
+    DeleteDataNode deleteDataNode =
+        new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 100, 200);
+    deleteDataNode.setSearchIndex(0);
     // delete all data which is in flushing memtable
-    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), 100, 200, 0);
+    dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), deleteDataNode);
 
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     Assert.assertFalse(tsFileResource.getTsFile().exists());
@@ -1622,19 +1713,29 @@ public class DataRegionTest {
 
     TsFileResource tsFileResource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
     // delete data in work mem, no mods.
-    dataRegion.deleteDataDirectly(new MeasurementPath("root.vehicle.d0.**"), 50, 100, 0);
+    MeasurementPath path = new MeasurementPath("root.vehicle.d0.**");
+    DeleteDataNode deleteDataNode1 =
+        new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 50, 100);
+    deleteDataNode1.setSearchIndex(0);
+    dataRegion.deleteDataDirectly(new MeasurementPath("root.vehicle.d0.**"), deleteDataNode1);
     Assert.assertTrue(tsFileResource.getTsFile().exists());
     Assert.assertFalse(tsFileResource.getModFile().exists());
 
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     // delete data in closed file, but time not match
-    dataRegion.deleteDataDirectly(new MeasurementPath("root.vehicle.d0.**"), 100, 120, 0);
+    DeleteDataNode deleteDataNode2 =
+        new DeleteDataNode(new PlanNodeId("2"), Collections.singletonList(path), 100, 120);
+    deleteDataNode2.setSearchIndex(0);
+    dataRegion.deleteDataDirectly(new MeasurementPath("root.vehicle.d0.**"), deleteDataNode2);
     Assert.assertTrue(tsFileResource.getTsFile().exists());
     Assert.assertTrue(tsFileResource.getModFile().exists());
 
     // delete data in closed file, and time all match
-    dataRegion.deleteDataDirectly(new MeasurementPath("root.vehicle.d0.**"), 100, 199, 0);
+    DeleteDataNode deleteDataNode3 =
+        new DeleteDataNode(new PlanNodeId("3"), Collections.singletonList(path), 100, 199);
+    deleteDataNode3.setSearchIndex(0);
+    dataRegion.deleteDataDirectly(new MeasurementPath("root.vehicle.d0.**"), deleteDataNode3);
     Assert.assertFalse(tsFileResource.getTsFile().exists());
     Assert.assertFalse(tsFileResource.getModFile().exists());
   }
@@ -1664,9 +1765,16 @@ public class DataRegionTest {
     Assert.assertTrue(tsFileResourceUnSeq.getTsFile().exists());
 
     // already closed, will have a mods file.
-    dataRegion.deleteDataDirectly(new MeasurementPath("root.vehicle.d0.**"), 40, 60, 0);
+    MeasurementPath path = new MeasurementPath("root.vehicle.d0.**");
+    DeleteDataNode deleteDataNode1 =
+        new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 40, 60);
+    deleteDataNode1.setSearchIndex(0);
+    dataRegion.deleteDataDirectly(new MeasurementPath("root.vehicle.d0.**"), deleteDataNode1);
     // not close yet, just delete in memory.
-    dataRegion.deleteDataDirectly(new MeasurementPath("root.vehicle.d0.**"), 140, 160, 0);
+    DeleteDataNode deleteDataNode2 =
+        new DeleteDataNode(new PlanNodeId("2"), Collections.singletonList(path), 140, 160);
+    deleteDataNode2.setSearchIndex(0);
+    dataRegion.deleteDataDirectly(new MeasurementPath("root.vehicle.d0.**"), deleteDataNode2);
 
     // delete data in mem table, there is no mods
     Assert.assertTrue(tsFileResourceSeq.getTsFile().exists());
@@ -1675,14 +1783,23 @@ public class DataRegionTest {
     Assert.assertFalse(tsFileResourceUnSeq.getModFile().exists());
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
-    dataRegion.deleteDataDirectly(new MeasurementPath("root.vehicle.d0.**"), 40, 80, 0);
+    DeleteDataNode deleteDataNode3 =
+        new DeleteDataNode(new PlanNodeId("3"), Collections.singletonList(path), 40, 80);
+    deleteDataNode3.setSearchIndex(0);
+    dataRegion.deleteDataDirectly(new MeasurementPath("root.vehicle.d0.**"), deleteDataNode3);
     Assert.assertTrue(tsFileResourceUnSeq.getTsFile().exists());
     Assert.assertTrue(tsFileResourceUnSeq.getModFile().exists());
 
     // seq file and unseq file have data file and mod file now,
     // this deletion will remove data file and mod file.
-    dataRegion.deleteDataDirectly(new MeasurementPath("root.vehicle.d0.**"), 30, 100, 0);
-    dataRegion.deleteDataDirectly(new MeasurementPath("root.vehicle.d0.**"), 100, 199, 0);
+    DeleteDataNode deleteDataNode4 =
+        new DeleteDataNode(new PlanNodeId("4"), Collections.singletonList(path), 30, 100);
+    deleteDataNode4.setSearchIndex(0);
+    DeleteDataNode deleteDataNode5 =
+        new DeleteDataNode(new PlanNodeId("5"), Collections.singletonList(path), 100, 199);
+    deleteDataNode5.setSearchIndex(0);
+    dataRegion.deleteDataDirectly(new MeasurementPath("root.vehicle.d0.**"), deleteDataNode4);
+    dataRegion.deleteDataDirectly(new MeasurementPath("root.vehicle.d0.**"), deleteDataNode5);
 
     Assert.assertFalse(tsFileResourceSeq.getTsFile().exists());
     Assert.assertFalse(tsFileResourceUnSeq.getTsFile().exists());

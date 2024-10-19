@@ -54,6 +54,31 @@ public class TableSchema {
     return columns;
   }
 
+  /** Get the column with the specified name and category, return null if not found. */
+  public ColumnSchema getColumn(String columnName, TsTableColumnCategory columnCategory) {
+    for (final ColumnSchema column : columns) {
+      if (column.getName().equals(columnName) && column.getColumnCategory() == columnCategory) {
+        return column;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Given the name of an ID column, return the index of this column among all ID columns, return -1
+   * if not found.
+   */
+  public int getIndexAmongIdColumns(String idColumnName) {
+    int index = 0;
+    for (ColumnSchema column : getIdColumns()) {
+      if (column.getName().equals(idColumnName)) {
+        return index;
+      }
+      index++;
+    }
+    return -1;
+  }
+
   public static TableSchema of(TsTable tsTable) {
     String tableName = tsTable.getTableName();
     List<ColumnSchema> columns = new ArrayList<>();
@@ -112,6 +137,12 @@ public class TableSchema {
           continue;
         }
 
+        // TsFile should not contain attribute columns by design.
+        final ColumnType columnType = tsFileTableSchema.getColumnTypes().get(i);
+        if (columnType == ColumnType.ATTRIBUTE) {
+          continue;
+        }
+
         final TSDataType dataType = tsFileTableSchema.getColumnSchemas().get(i).getType();
         if (dataType == TSDataType.VECTOR) {
           continue;
@@ -122,8 +153,7 @@ public class TableSchema {
                 columnName,
                 InternalTypeManager.fromTSDataType(dataType),
                 false,
-                TsTableColumnCategory.fromTsFileColumnType(
-                    tsFileTableSchema.getColumnTypes().get(i))));
+                TsTableColumnCategory.fromTsFileColumnType(columnType)));
       }
       return new TableSchema(tableName, columns);
     } catch (Exception e) {
