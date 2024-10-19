@@ -45,6 +45,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.awaitility.Awaitility;
 import org.junit.After;
@@ -169,7 +170,10 @@ public class WALNodeTest {
           getInsertTabletNode(devicePath + memTableId, new long[] {i});
       expectedInsertTabletNodes.add(insertTabletNode);
       WALFlushListener walFlushListener =
-          walNode.log(memTableId, insertTabletNode, 0, insertTabletNode.getRowCount());
+          walNode.log(
+              memTableId,
+              insertTabletNode,
+              Collections.singletonList(new Pair<>(0, insertTabletNode.getRowCount())));
       walFlushListeners.add(walFlushListener);
     }
   }
@@ -297,7 +301,10 @@ public class WALNodeTest {
       InsertTabletNode insertTabletNode =
           getInsertTabletNode(devicePath + memTableId, new long[] {time});
       WALFlushListener walFlushListener =
-          walNode.log(memTableId, insertTabletNode, 0, insertTabletNode.getRowCount());
+          walNode.log(
+              memTableId,
+              insertTabletNode,
+              Collections.singletonList(new Pair<>(0, insertTabletNode.getRowCount())));
       walFlushListeners.add(walFlushListener);
     }
     walNode.onMemTableFlushed(memTable);

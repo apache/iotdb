@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.buffer;
 
-import java.util.ArrayList;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
@@ -27,6 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 
 import org.apache.tsfile.utils.Pair;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
