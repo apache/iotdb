@@ -100,35 +100,32 @@ public class WALInfoEntry extends WALEntry {
   }
 
   private static class TabletInfo {
-    //    // start row of insert tablet
-    //    private final int tabletStart;
-    //    // end row of insert tablet
-    //    private final int tabletEnd;
-    List<Pair<Integer, Integer>> tabletRangeList;
+    // ranges of insert tablet
+    private final List<Pair<Integer, Integer>> tabletRangeList;
 
     public TabletInfo(List<Pair<Integer, Integer>> tabletRangeList) {
       this.tabletRangeList = new ArrayList<>(tabletRangeList);
     }
 
-    //    @Override
-    //    public int hashCode() {
-    //      return Objects.hash(tabletStart, tabletEnd);
-    //    }
-    //
-    //    @Override
-    //    public boolean equals(Object obj) {
-    //      if (obj == this) {
-    //        return true;
-    //      }
-    //      if (obj == null) {
-    //        return false;
-    //      }
-    //      if (!(obj instanceof TabletInfo)) {
-    //        return false;
-    //      }
-    //      TabletInfo other = (TabletInfo) obj;
-    //      return this.tabletStart == other.tabletStart && this.tabletEnd == other.tabletEnd;
-    //    }
+    @Override
+    public int hashCode() {
+      return Objects.hash(tabletRangeList);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (obj == this) {
+        return true;
+      }
+      if (obj == null) {
+        return false;
+      }
+      if (!(obj instanceof TabletInfo)) {
+        return false;
+      }
+      TabletInfo other = (TabletInfo) obj;
+      return Objects.equals(tabletRangeList, other.tabletRangeList);
+    }
   }
 
   @Override
