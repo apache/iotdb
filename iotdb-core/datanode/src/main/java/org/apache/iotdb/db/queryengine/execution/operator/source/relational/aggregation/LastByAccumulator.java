@@ -80,7 +80,7 @@ public class LastByAccumulator implements TableAccumulator {
 
   @Override
   public void addInput(Column[] arguments) {
-    checkArgument(arguments.length == 3, "Length of input Column[] for LastBy/FirstBy should be 3");
+    checkArgument(arguments.length == 3, "Length of input Column[] for LastBy should be 3");
 
     // arguments[0] is x column, arguments[1] is y column, arguments[2] is time column
     switch (xDataType) {
@@ -267,7 +267,7 @@ public class LastByAccumulator implements TableAccumulator {
               break;
             case INT64:
             case TIMESTAMP:
-              xResult.setLong((Long) xStatistics.getLastValue());
+              xResult.setLong((long) xStatistics.getLastValue());
               break;
             case FLOAT:
               xResult.setFloat((float) statistics[0].getLastValue());
