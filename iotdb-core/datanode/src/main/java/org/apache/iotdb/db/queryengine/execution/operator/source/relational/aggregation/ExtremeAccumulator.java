@@ -30,6 +30,7 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 public class ExtremeAccumulator implements TableAccumulator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(ExtremeAccumulator.class);
+  private static final String UNSUPPORTED_DATA_TYPE = "Unsupported data type in Extreme: %s";
   private final TSDataType seriesDataType;
   private final TsPrimitiveType extremeResult;
   private boolean initResult;
@@ -72,11 +73,10 @@ public class ExtremeAccumulator implements TableAccumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Extreme: %s", seriesDataType));
+            String.format(UNSUPPORTED_DATA_TYPE, seriesDataType));
     }
   }
 
-  // partialResult should be like: | PartialExtremeValue |
   @Override
   public void addIntermediate(Column argument) {
     for (int i = 0; i < argument.getPositionCount(); i++) {
@@ -105,7 +105,7 @@ public class ExtremeAccumulator implements TableAccumulator {
         case TIMESTAMP:
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in Extreme: %s", seriesDataType));
+              String.format(UNSUPPORTED_DATA_TYPE, seriesDataType));
       }
     }
   }
@@ -141,11 +141,10 @@ public class ExtremeAccumulator implements TableAccumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Extreme: %s", seriesDataType));
+            String.format(UNSUPPORTED_DATA_TYPE, seriesDataType));
     }
   }
 
-  // columnBuilder should be single in ExtremeAccumulator
   @Override
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
     if (!initResult) {
@@ -174,7 +173,7 @@ public class ExtremeAccumulator implements TableAccumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Extreme: %s", seriesDataType));
+            String.format(UNSUPPORTED_DATA_TYPE, seriesDataType));
     }
   }
 
@@ -206,7 +205,7 @@ public class ExtremeAccumulator implements TableAccumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Extreme: %s", seriesDataType));
+            String.format(UNSUPPORTED_DATA_TYPE, seriesDataType));
     }
   }
 
