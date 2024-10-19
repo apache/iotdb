@@ -710,13 +710,13 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         "select device,level,attr1,date_bin(1d,time) as bin from table0 group by 4,device,level,attr1 order by device,level,attr1,bin";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
-    //    expectedHeader = new String[] {"attr1", "attr2"};
-    //    retArray =
-    //        new String[] {
-    //          "c,d,", "d,c,", "t,a,", "vv,null,", "yy,zz,", "null,null,",
-    //        };
-    //    sql = "select attr1,attr2 from table0 group by attr1,attr2 order by attr1,attr2";
-    //    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    expectedHeader = new String[] {"attr1", "attr2"};
+    retArray =
+        new String[] {
+          "c,d,", "d,c,", "t,a,", "vv,null,", "yy,zz,", "null,null,",
+        };
+    sql = "select attr1,attr2 from table0 group by attr1,attr2 order by attr1,attr2";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
   @Test
