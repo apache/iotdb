@@ -81,11 +81,69 @@ public class GroupedMinAccumulator implements GroupedAccumulator {
 
   @Override
   public long getEstimatedSize() {
-    return INSTANCE_SIZE;
+    long valuesSize = 0;
+    switch (seriesDataType) {
+      case INT32:
+      case DATE:
+        valuesSize += intValues.sizeOf();
+        break;
+      case INT64:
+      case TIMESTAMP:
+        valuesSize += longValues.sizeOf();
+        break;
+      case FLOAT:
+        valuesSize += floatValues.sizeOf();
+        break;
+      case DOUBLE:
+        valuesSize += doubleValues.sizeOf();
+        break;
+      case TEXT:
+      case STRING:
+      case BLOB:
+        valuesSize += binaryValues.sizeOf();
+        break;
+      case BOOLEAN:
+        valuesSize += booleanValues.sizeOf();
+        break;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type in : %s", seriesDataType));
+    }
+
+    return INSTANCE_SIZE + valuesSize + inits.sizeOf();
   }
 
   @Override
-  public void setGroupCount(long groupCount) {}
+  public void setGroupCount(long groupCount) {
+    inits.ensureCapacity(groupCount);
+    switch (seriesDataType) {
+      case INT32:
+      case DATE:
+        intValues.ensureCapacity(groupCount);
+        return;
+      case INT64:
+      case TIMESTAMP:
+        longValues.ensureCapacity(groupCount);
+        return;
+      case FLOAT:
+        floatValues.ensureCapacity(groupCount);
+        return;
+      case DOUBLE:
+        doubleValues.ensureCapacity(groupCount);
+        return;
+      case TEXT:
+      case STRING:
+      case BLOB:
+        binaryValues.ensureCapacity(groupCount);
+        return;
+      case BOOLEAN:
+        booleanValues.ensureCapacity(groupCount);
+        return;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type in : %s", seriesDataType));
+    }
+  }
 
   @Override
   public void addInput(int[] groupIds, Column[] arguments) {
