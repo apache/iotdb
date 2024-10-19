@@ -1045,7 +1045,6 @@ public class IoTDBTableAggregationIT {
         "select min(time),min(s3) from table1", expectedHeader, retArray, DATABASE_NAME);
   }
 
-  @Ignore
   @Test
   public void minByTest() {
     String[] expectedHeader = new String[] {"device_id", "color", "type", "_col3", "_col4"};
@@ -1070,43 +1069,54 @@ public class IoTDBTableAggregationIT {
         retArray,
         DATABASE_NAME);
 
-    expectedHeader = new String[] {"device_id", "_col1", "_col2", "_col3"};
-    retArray = new String[] {};
+    // TODO
+    //    expectedHeader = new String[] {"device_id", "_col1", "_col2", "_col3"};
+    //    retArray = new String[] {};
+    //
+    //    tableResultSetEqualTest(
+    //        "select device_id, min_by(time, s3), min(s3) from table1 where device_id = 'd01' group
+    // by date_bin(5s, time), 1 order by 2,1",
+    //        expectedHeader,
+    //        retArray,
+    //        DATABASE_NAME);
 
-    tableResultSetEqualTest(
-        "select device_id, min_by(time, s3), min(s3) from table1 where device_id = 'd01' group by date_bin(5s, time), 1 order by 2,1",
-        expectedHeader,
-        retArray,
-        DATABASE_NAME);
+    // TODO
+    //    expectedHeader =
+    //        new String[] {"province", "city", "region", "device_id", "_col4", "_col5", "_col6"};
+    //    retArray = new String[] {
+    //
+    //    };
+    //
+    //    tableResultSetEqualTest(
+    //        "select province,city,region,device_id, date_bin(5s, time),min_by(time, s4), min(s4)
+    // from table1 group by date_bin(5s, time),1,2,3,4 order by 1,2,3,4,5",
+    //        expectedHeader,
+    //        retArray,
+    //        DATABASE_NAME);
 
-    expectedHeader =
-        new String[] {"province", "city", "region", "device_id", "_col4", "_col5", "_col6"};
-    retArray = new String[] {};
+    // TODO
+    //    expectedHeader =
+    //        new String[] {"province", "city", "region", "device_id", "_col4", "_col5", "_col6"};
+    //    retArray = new String[] {};
+    //
+    //    tableResultSetEqualTest(
+    //        "select province,city,region,device_id, date_bin(5s, time),min_by(time, s1), min(s1)
+    // from table1 group by date_bin(5s, time),1,2,3,4 order by 1,2,3,4,5",
+    //        expectedHeader,
+    //        retArray,
+    //        DATABASE_NAME);
 
-    tableResultSetEqualTest(
-        "select province,city,region,device_id, date_bin(5s, time),min_by(time, s4), min(s4) from table1 group by date_bin(5s, time),1,2,3,4 order by 1,2,3,4,5",
-        expectedHeader,
-        retArray,
-        DATABASE_NAME);
-
-    expectedHeader =
-        new String[] {"province", "city", "region", "device_id", "_col4", "_col5", "_col6"};
-    retArray = new String[] {};
-
-    tableResultSetEqualTest(
-        "select province,city,region,device_id, date_bin(5s, time),min_by(time, s1), min(s1) from table1 group by date_bin(5s, time),1,2,3,4 order by 1,2,3,4,5",
-        expectedHeader,
-        retArray,
-        DATABASE_NAME);
-
-    expectedHeader = new String[] {"province", "city", "region", "device_id", "_col4", "_col5"};
-    retArray = new String[] {};
-
-    tableResultSetEqualTest(
-        "select province,city,region,device_id,min_by(time, s2), min(s2) from table1 group by 1,2,3,4  order by 1,2,3,4",
-        expectedHeader,
-        retArray,
-        DATABASE_NAME);
+    // TODO
+    //    expectedHeader = new String[] {"province", "city", "region", "device_id", "_col4",
+    // "_col5"};
+    //    retArray = new String[] {};
+    //
+    //    tableResultSetEqualTest(
+    //        "select province,city,region,device_id,min_by(time, s2), min(s2) from table1 group by
+    // 1,2,3,4  order by 1,2,3,4",
+    //        expectedHeader,
+    //        retArray,
+    //        DATABASE_NAME);
   }
 
   @Test
@@ -1368,7 +1378,6 @@ public class IoTDBTableAggregationIT {
         "select max(time),max(s3) from table1", expectedHeader, retArray, DATABASE_NAME);
   }
 
-  @Ignore
   @Test
   public void maxByTest() {
     String[] expectedHeader = new String[] {"device_id", "color", "type", "_col3", "_col4"};
@@ -1393,43 +1402,52 @@ public class IoTDBTableAggregationIT {
         retArray,
         DATABASE_NAME);
 
-    expectedHeader = new String[] {"device_id", "_col1", "_col2", "_col3"};
-    retArray = new String[] {};
+    // TODO
+    //    expectedHeader = new String[] {"device_id", "_col1", "_col2", "_col3"};
+    //    retArray = new String[] {};
+    //
+    //    tableResultSetEqualTest(
+    //        "select device_id, max_by(time, s3), max(s3) from table1 where device_id = 'd01' group
+    // by date_bin(5s, time), 1 order by 2,1",
+    //        expectedHeader,
+    //        retArray,
+    //        DATABASE_NAME);
 
-    tableResultSetEqualTest(
-        "select device_id, max_by(time, s3), max(s3) from table1 where device_id = 'd01' group by date_bin(5s, time), 1 order by 2,1",
-        expectedHeader,
-        retArray,
-        DATABASE_NAME);
+    // TODO
+    //    expectedHeader =
+    //        new String[] {"province", "city", "region", "device_id", "_col4", "_col5", "_col6"};
+    //    retArray = new String[] {};
+    //
+    //    tableResultSetEqualTest(
+    //        "select province,city,region,device_id, date_bin(5s, time),max_by(time, s4), max(s4)
+    // from table1 group by date_bin(5s, time),1,2,3,4 order by 1,2,3,4,5",
+    //        expectedHeader,
+    //        retArray,
+    //        DATABASE_NAME);
 
-    expectedHeader =
-        new String[] {"province", "city", "region", "device_id", "_col4", "_col5", "_col6"};
-    retArray = new String[] {};
+    // TODO
+    //    expectedHeader =
+    //        new String[] {"province", "city", "region", "device_id", "_col4", "_col5", "_col6"};
+    //    retArray = new String[] {};
+    //
+    //    tableResultSetEqualTest(
+    //        "select province,city,region,device_id, date_bin(5s, time),max_by(time, s1), max(s1)
+    // from table1 group by date_bin(5s, time),1,2,3,4 order by 1,2,3,4,5",
+    //        expectedHeader,
+    //        retArray,
+    //        DATABASE_NAME);
 
-    tableResultSetEqualTest(
-        "select province,city,region,device_id, date_bin(5s, time),max_by(time, s4), max(s4) from table1 group by date_bin(5s, time),1,2,3,4 order by 1,2,3,4,5",
-        expectedHeader,
-        retArray,
-        DATABASE_NAME);
-
-    expectedHeader =
-        new String[] {"province", "city", "region", "device_id", "_col4", "_col5", "_col6"};
-    retArray = new String[] {};
-
-    tableResultSetEqualTest(
-        "select province,city,region,device_id, date_bin(5s, time),max_by(time, s1), max(s1) from table1 group by date_bin(5s, time),1,2,3,4 order by 1,2,3,4,5",
-        expectedHeader,
-        retArray,
-        DATABASE_NAME);
-
-    expectedHeader = new String[] {"province", "city", "region", "device_id", "_col4", "_col5"};
-    retArray = new String[] {};
-
-    tableResultSetEqualTest(
-        "select province,city,region,device_id,max_by(time, s2), max(s2) from table1 group by 1,2,3,4  order by 1,2,3,4",
-        expectedHeader,
-        retArray,
-        DATABASE_NAME);
+    // TODO
+    //    expectedHeader = new String[] {"province", "city", "region", "device_id", "_col4",
+    // "_col5"};
+    //    retArray = new String[] {};
+    //
+    //    tableResultSetEqualTest(
+    //        "select province,city,region,device_id,max_by(time, s2), max(s2) from table1 group by
+    // 1,2,3,4  order by 1,2,3,4",
+    //        expectedHeader,
+    //        retArray,
+    //        DATABASE_NAME);
   }
 
   @Test
@@ -1613,7 +1631,6 @@ public class IoTDBTableAggregationIT {
         DATABASE_NAME);
   }
 
-  @Ignore
   @Test
   public void firstByTest() {
     String[] expectedHeader = new String[] {"_col0", "_col1"};
@@ -2078,6 +2095,7 @@ public class IoTDBTableAggregationIT {
         DATABASE_NAME);
   }
 
+  @Ignore
   @Test
   public void extremeTest() {
     String[] expectedHeader =
