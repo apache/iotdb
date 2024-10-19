@@ -1050,6 +1050,18 @@ public class IoTDBMultiIDsWithAttributesTableIT {
     tableResultSetEqualTest(sql, expectedHeader1, retArray, DATABASE_NAME);
   }
 
+  @Test
+  public void maxByMinByTest() {
+    String[] expectedHeader1 = buildHeaders(10);
+    sql =
+        "select max_by(time,floatnum),min_by(time,floatnum),max_by(time,date),min_by(time,date),max_by(time,floatnum),min_by(time,floatnum),max_by(time,ts),min_by(time,ts),max_by(time,stringv),min_by(time,stringv) from table0";
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.100Z,1970-01-01T00:00:00.040Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1970-01-01T00:00:00.100Z,1970-01-01T00:00:00.040Z,1971-01-01T00:00:10.000Z,1971-01-01T00:01:40.000Z,1971-01-01T00:01:40.000Z,1971-01-01T00:00:01.000Z,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader1, retArray, DATABASE_NAME);
+  }
+
   // ==================================================================
   // ============================ Join Test ===========================
   // ==================================================================
