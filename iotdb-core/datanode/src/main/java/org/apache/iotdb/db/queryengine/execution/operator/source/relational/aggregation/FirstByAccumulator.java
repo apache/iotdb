@@ -38,7 +38,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_BY_AGGREGATION;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
 
 public class FirstByAccumulator implements TableAccumulator {
 
@@ -80,7 +80,7 @@ public class FirstByAccumulator implements TableAccumulator {
 
   @Override
   public void addInput(Column[] arguments) {
-    checkArgument(arguments.length == 3, "Length of input Column[] for LastBy/FirstBy should be 3");
+    checkArgument(arguments.length == 3, "Length of input Column[] for FirstBy should be 3");
 
     // arguments[0] is x column, arguments[1] is y column, arguments[2] is time column
     switch (xDataType) {
@@ -108,7 +108,7 @@ public class FirstByAccumulator implements TableAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in LastBy: %s", yDataType));
+            String.format("Unsupported data type in FirstBy: %s", yDataType));
     }
   }
 
@@ -116,7 +116,7 @@ public class FirstByAccumulator implements TableAccumulator {
   public void addIntermediate(Column argument) {
     checkArgument(
         argument instanceof BinaryColumn || argument instanceof RunLengthEncodedColumn,
-        "intermediate input and output of LastBy should be BinaryColumn");
+        "intermediate input and output of FirstBy should be BinaryColumn");
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {
@@ -142,20 +142,20 @@ public class FirstByAccumulator implements TableAccumulator {
         case INT32:
         case DATE:
           int xIntVal = BytesUtils.bytesToInt(bytes, offset);
-          updateIntLastValue(xIntVal, curTime);
+          updateIntFirstValue(xIntVal, curTime);
           break;
         case INT64:
         case TIMESTAMP:
           long longVal = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, offset);
-          updateLongLastValue(longVal, curTime);
+          updateLongFirstValue(longVal, curTime);
           break;
         case FLOAT:
           float floatVal = BytesUtils.bytesToFloat(bytes, offset);
-          updateFloatLastValue(floatVal, curTime);
+          updateFloatFirstValue(floatVal, curTime);
           break;
         case DOUBLE:
           double doubleVal = BytesUtils.bytesToDouble(bytes, offset);
-          updateDoubleLastValue(doubleVal, curTime);
+          updateDoubleFirstValue(doubleVal, curTime);
           break;
         case TEXT:
         case BLOB:
@@ -163,11 +163,11 @@ public class FirstByAccumulator implements TableAccumulator {
           int length = BytesUtils.bytesToInt(bytes, offset);
           offset += Integer.BYTES;
           Binary binaryVal = new Binary(BytesUtils.subBytes(bytes, offset, length));
-          updateBinaryLastValue(binaryVal, curTime);
+          updateBinaryFirstValue(binaryVal, curTime);
           break;
         case BOOLEAN:
           boolean boolVal = BytesUtils.bytesToBool(bytes, offset);
-          updateBooleanLastValue(boolVal, curTime);
+          updateBooleanFirstValue(boolVal, curTime);
           break;
         default:
           throw new UnSupportedDataTypeException(
@@ -221,7 +221,7 @@ public class FirstByAccumulator implements TableAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in LastBy: %s", xDataType));
+            String.format("Unsupported data type in FirstBy: %s", xDataType));
     }
   }
 
@@ -233,7 +233,7 @@ public class FirstByAccumulator implements TableAccumulator {
   @Override
   public void addStatistics(Statistics[] statistics) {
 
-    // only last_by(x, time) and last_by(time, x) can use statistics optimization
+    // only first_by(x, time) and first_by(time, x) can use statistics optimization
 
     Statistics xStatistics = statistics[0];
     Statistics yStatistics = statistics[1];
@@ -243,7 +243,7 @@ public class FirstByAccumulator implements TableAccumulator {
     }
 
     if (yIsTimeColumn) {
-      if (xStatistics == null || xStatistics.getStartTime() < yStatistics.getStartTime()) {
+      if (xStatistics == null || xStatistics.getStartTime() > yStatistics.getStartTime()) {
         if (!initResult || yStatistics.getStartTime() < yFirstTime) {
           initResult = true;
           yFirstTime = yStatistics.getStartTime();
@@ -263,31 +263,31 @@ public class FirstByAccumulator implements TableAccumulator {
           switch (xDataType) {
             case INT32:
             case DATE:
-              xResult.setInt((int) xStatistics.getLastValue());
+              xResult.setInt((int) xStatistics.getFirstValue());
               break;
             case INT64:
             case TIMESTAMP:
-              xResult.setLong((Long) xStatistics.getLastValue());
+              xResult.setLong((long) xStatistics.getFirstValue());
               break;
             case FLOAT:
-              xResult.setFloat((float) statistics[0].getLastValue());
+              xResult.setFloat((float) statistics[0].getFirstValue());
               break;
             case DOUBLE:
-              xResult.setDouble((double) statistics[0].getLastValue());
+              xResult.setDouble((double) statistics[0].getFirstValue());
               break;
             case TEXT:
             case BLOB:
             case STRING:
-              xResult.setBinary((Binary) statistics[0].getLastValue());
+              xResult.setBinary((Binary) statistics[0].getFirstValue());
               break;
             case BOOLEAN:
-              xResult.setBoolean((boolean) statistics[0].getLastValue());
+              xResult.setBoolean((boolean) statistics[0].getFirstValue());
               break;
             default:
               throw new UnSupportedDataTypeException(
                   String.format(
                       "Unsupported data type: %s in Aggregation: %s",
-                      yDataType, LAST_BY_AGGREGATION));
+                      yDataType, FIRST_BY_AGGREGATION));
           }
         }
       }
@@ -344,28 +344,29 @@ public class FirstByAccumulator implements TableAccumulator {
           default:
             throw new UnSupportedDataTypeException(
                 String.format(
-                    "Unsupported data type: %s in aggregation %s", xDataType, LAST_BY_AGGREGATION));
+                    "Unsupported data type: %s in aggregation %s",
+                    xDataType, FIRST_BY_AGGREGATION));
         }
       }
     } catch (IOException e) {
       throw new UnsupportedOperationException(
           String.format(
               "Failed to serialize intermediate result for Accumulator %s, errorMsg: %s.",
-              LAST_BY_AGGREGATION, e.getMessage()));
+              FIRST_BY_AGGREGATION, e.getMessage()));
     }
     return byteArrayOutputStream.toByteArray();
   }
 
-  // TODO can add last position optimization if last position is null ?
+  // TODO can add first position optimization if first position is null ?
   private void addIntInput(Column xColumn, Column yColumn, Column timeColumn) {
     for (int i = 0; i < yColumn.getPositionCount(); i++) {
       if (!yColumn.isNull(i)) {
-        updateIntLastValue(xColumn, i, timeColumn.getLong(i));
+        updateIntFirstValue(xColumn, i, timeColumn.getLong(i));
       }
     }
   }
 
-  protected void updateIntLastValue(Column xColumn, int xIdx, long curTime) {
+  protected void updateIntFirstValue(Column xColumn, int xIdx, long curTime) {
     if (!initResult || curTime < yFirstTime) {
       initResult = true;
       yFirstTime = curTime;
@@ -378,7 +379,7 @@ public class FirstByAccumulator implements TableAccumulator {
     }
   }
 
-  protected void updateIntLastValue(int val, long curTime) {
+  protected void updateIntFirstValue(int val, long curTime) {
     if (!initResult || curTime < yFirstTime) {
       initResult = true;
       yFirstTime = curTime;
@@ -390,12 +391,12 @@ public class FirstByAccumulator implements TableAccumulator {
   private void addLongInput(Column xColumn, Column yColumn, Column timeColumn) {
     for (int i = 0; i < yColumn.getPositionCount(); i++) {
       if (!yColumn.isNull(i)) {
-        updateLongLastValue(xColumn, i, timeColumn.getLong(i));
+        updateLongFirstValue(xColumn, i, timeColumn.getLong(i));
       }
     }
   }
 
-  protected void updateLongLastValue(Column xColumn, int xIdx, long curTime) {
+  protected void updateLongFirstValue(Column xColumn, int xIdx, long curTime) {
     if (!initResult || curTime < yFirstTime) {
       initResult = true;
       yFirstTime = curTime;
@@ -408,7 +409,7 @@ public class FirstByAccumulator implements TableAccumulator {
     }
   }
 
-  protected void updateLongLastValue(long value, long curTime) {
+  protected void updateLongFirstValue(long value, long curTime) {
     if (!initResult || curTime < yFirstTime) {
       initResult = true;
       yFirstTime = curTime;
@@ -420,12 +421,12 @@ public class FirstByAccumulator implements TableAccumulator {
   private void addFloatInput(Column xColumn, Column yColumn, Column timeColumn) {
     for (int i = 0; i < yColumn.getPositionCount(); i++) {
       if (!yColumn.isNull(i)) {
-        updateFloatLastValue(xColumn, i, timeColumn.getLong(i));
+        updateFloatFirstValue(xColumn, i, timeColumn.getLong(i));
       }
     }
   }
 
-  protected void updateFloatLastValue(Column xColumn, int xIdx, long curTime) {
+  protected void updateFloatFirstValue(Column xColumn, int xIdx, long curTime) {
     if (!initResult || curTime < yFirstTime) {
       initResult = true;
       yFirstTime = curTime;
@@ -438,7 +439,7 @@ public class FirstByAccumulator implements TableAccumulator {
     }
   }
 
-  protected void updateFloatLastValue(float value, long curTime) {
+  protected void updateFloatFirstValue(float value, long curTime) {
     if (!initResult || curTime < yFirstTime) {
       initResult = true;
       yFirstTime = curTime;
@@ -450,12 +451,12 @@ public class FirstByAccumulator implements TableAccumulator {
   private void addDoubleInput(Column xColumn, Column yColumn, Column timeColumn) {
     for (int i = 0; i < yColumn.getPositionCount(); i++) {
       if (!yColumn.isNull(i)) {
-        updateDoubleLastValue(xColumn, i, timeColumn.getLong(i));
+        updateDoubleFirstValue(xColumn, i, timeColumn.getLong(i));
       }
     }
   }
 
-  protected void updateDoubleLastValue(Column xColumn, int xIdx, long curTime) {
+  protected void updateDoubleFirstValue(Column xColumn, int xIdx, long curTime) {
     if (!initResult || curTime < yFirstTime) {
       initResult = true;
       yFirstTime = curTime;
@@ -468,7 +469,7 @@ public class FirstByAccumulator implements TableAccumulator {
     }
   }
 
-  protected void updateDoubleLastValue(double val, long curTime) {
+  protected void updateDoubleFirstValue(double val, long curTime) {
     if (!initResult || curTime < yFirstTime) {
       initResult = true;
       yFirstTime = curTime;
@@ -480,12 +481,12 @@ public class FirstByAccumulator implements TableAccumulator {
   private void addBinaryInput(Column xColumn, Column yColumn, Column timeColumn) {
     for (int i = 0; i < yColumn.getPositionCount(); i++) {
       if (!yColumn.isNull(i)) {
-        updateBinaryLastValue(xColumn, i, timeColumn.getLong(i));
+        updateBinaryFirstValue(xColumn, i, timeColumn.getLong(i));
       }
     }
   }
 
-  protected void updateBinaryLastValue(Column xColumn, int xIdx, long curTime) {
+  protected void updateBinaryFirstValue(Column xColumn, int xIdx, long curTime) {
     if (!initResult || curTime < yFirstTime) {
       initResult = true;
       yFirstTime = curTime;
@@ -498,7 +499,7 @@ public class FirstByAccumulator implements TableAccumulator {
     }
   }
 
-  protected void updateBinaryLastValue(Binary val, long curTime) {
+  protected void updateBinaryFirstValue(Binary val, long curTime) {
     if (!initResult || curTime < yFirstTime) {
       initResult = true;
       yFirstTime = curTime;
@@ -510,12 +511,12 @@ public class FirstByAccumulator implements TableAccumulator {
   private void addBooleanInput(Column xColumn, Column yColumn, Column timeColumn) {
     for (int i = 0; i < yColumn.getPositionCount(); i++) {
       if (!yColumn.isNull(i)) {
-        updateBooleanLastValue(xColumn, i, timeColumn.getLong(i));
+        updateBooleanFirstValue(xColumn, i, timeColumn.getLong(i));
       }
     }
   }
 
-  protected void updateBooleanLastValue(Column xColumn, int xIdx, long curTime) {
+  protected void updateBooleanFirstValue(Column xColumn, int xIdx, long curTime) {
     if (!initResult || curTime < yFirstTime) {
       initResult = true;
       yFirstTime = curTime;
@@ -528,7 +529,7 @@ public class FirstByAccumulator implements TableAccumulator {
     }
   }
 
-  protected void updateBooleanLastValue(boolean val, long curTime) {
+  protected void updateBooleanFirstValue(boolean val, long curTime) {
     if (!initResult || curTime < yFirstTime) {
       initResult = true;
       yFirstTime = curTime;
