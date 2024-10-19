@@ -75,11 +75,62 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
 
   @Override
   public long getEstimatedSize() {
-    return INSTANCE_SIZE;
+    long valuesSize = 0;
+    switch (seriesDataType) {
+      case INT32:
+      case DATE:
+        valuesSize += intValues.sizeOf();
+        break;
+      case INT64:
+      case TIMESTAMP:
+        valuesSize += longValues.sizeOf();
+        break;
+      case FLOAT:
+        valuesSize += floatValues.sizeOf();
+        break;
+      case DOUBLE:
+        valuesSize += doubleValues.sizeOf();
+        break;
+      case TEXT:
+      case STRING:
+      case BLOB:
+        break;
+      case BOOLEAN:
+        break;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type in : %s", seriesDataType));
+    }
+
+    return INSTANCE_SIZE + valuesSize;
   }
 
   @Override
-  public void setGroupCount(long groupCount) {}
+  public void setGroupCount(long groupCount) {
+    switch (seriesDataType) {
+      case INT32:
+      case DATE:
+        intValues.ensureCapacity(groupCount);
+        return;
+      case INT64:
+      case TIMESTAMP:
+        longValues.ensureCapacity(groupCount);
+        return;
+      case FLOAT:
+        floatValues.ensureCapacity(groupCount);
+        return;
+      case DOUBLE:
+        doubleValues.ensureCapacity(groupCount);
+        return;
+      case TEXT:
+      case STRING:
+      case BLOB:
+      case BOOLEAN:
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type in : %s", seriesDataType));
+    }
+  }
 
   @Override
   public void addInput(int[] groupIds, Column[] arguments) {
