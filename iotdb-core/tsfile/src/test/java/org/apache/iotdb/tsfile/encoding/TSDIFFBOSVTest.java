@@ -588,7 +588,7 @@ public class TSDIFFBOSVTest {
         encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_x_l_plus, final_k_end_value, final_x_u_minus,
                 max_delta_value, min_delta, encode_pos , cur_byte);
 //        System.out.println(encode_pos);
-
+        System.out.println(encode_pos);
         return encode_pos;
     }
 
@@ -893,7 +893,7 @@ public class TSDIFFBOSVTest {
 //        dataset_block_size.add(1024);
 
         int repeatTime2 = 100;
-//        for (int file_i = 9; file_i < 10; file_i++) {
+//        for (int file_i = 1; file_i < 2; file_i++) {
 
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
@@ -1033,11 +1033,11 @@ public class TSDIFFBOSVTest {
 
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
 
-        int repeatTime2 = 1;
-        int[] file_i_list = {9};
+        int repeatTime2 = 20;
+        int[] file_i_list = {0,9,10};
 //        for (int file_i = 9; file_i < 10; file_i++) {
-        for(int file_i :file_i_list){
-//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//        for(int file_i :file_i_list){
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);

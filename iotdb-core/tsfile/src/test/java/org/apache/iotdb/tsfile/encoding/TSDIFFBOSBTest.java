@@ -1146,11 +1146,11 @@ public class TSDIFFBOSBTest {
 
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
 
-        int repeatTime2 = 1;
-        int[] file_i_list = {10};
+        int repeatTime2 = 50;
+//        int[] file_i_list = {0,9,10};
 //        for (int file_i = 9; file_i < 10; file_i++) {
-        for(int file_i :file_i_list){
-//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//        for(int file_i :file_i_list){
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
@@ -1237,7 +1237,7 @@ public class TSDIFFBOSBTest {
                     System.out.println(ratio);
 
                 }
-                Thread.sleep(10000);
+//                Thread.sleep(10000);
             }
             writer.close();
 
