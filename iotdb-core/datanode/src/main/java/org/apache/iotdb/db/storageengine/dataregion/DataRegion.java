@@ -1309,16 +1309,6 @@ public class DataRegion implements IDataRegionForQuery {
       long timePartitionId,
       boolean noFailure,
       long[] costsForMetrics) {
-    // return when start >= end or all measurement failed
-    //    if (start >= end || insertTabletNode.allMeasurementFailed()) {
-    //      if (logger.isDebugEnabled()) {
-    //        logger.debug(
-    //            "Won't insert tablet {}, because {}",
-    //            insertTabletNode.getSearchIndex(),
-    //            start >= end ? "start >= end" : "insertTabletNode allMeasurementFailed");
-    //      }
-    //      return true;
-    //    }
     if (insertTabletNode.allMeasurementFailed()) {
       if (logger.isDebugEnabled()) {
         logger.debug(
