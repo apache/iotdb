@@ -122,7 +122,7 @@ public class TagQueryHandler extends NewQueryHandler {
       realIotDBCondition
           .append(singleSeriesExpression.getSeriesPath().getFullPath())
           .append(" ")
-          .append((FilterUtils.getFilerSymbol(singleSeriesExpression.getFilter())))
+          .append((FilterUtils.getFilterSymbol(singleSeriesExpression.getFilter())))
           .append(" ")
           .append(FilterUtils.getFilterStringValue(singleSeriesExpression.getFilter()));
     }

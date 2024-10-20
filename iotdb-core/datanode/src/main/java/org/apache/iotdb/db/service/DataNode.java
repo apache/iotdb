@@ -78,6 +78,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeRegionManager;
+import org.apache.iotdb.db.protocol.thrift.impl.InfluxDBRPCService;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
@@ -1208,6 +1209,9 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   }
 
   private void initProtocols() throws StartupException {
+    if (config.isEnableInfluxDBRpcService()) {
+      registerManager.register(InfluxDBRPCService.getInstance());
+    }
     if (config.isEnableMQTTService()) {
       registerManager.register(MQTTService.getInstance());
     }

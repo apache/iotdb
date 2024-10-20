@@ -1072,6 +1072,20 @@ public class IoTDBDescriptor {
 
     loadIoTConsensusProps(properties);
     loadPipeConsensusProps(properties);
+
+    conf.setEnableInfluxDBRpcService(
+        Boolean.parseBoolean(
+            properties
+                .getProperty(
+                    "enable_influxdb_rpc_service",
+                    Boolean.toString(conf.isEnableInfluxDBRpcService()))
+                .trim()));
+
+    conf.setInfluxDBRpcPort(
+        Integer.parseInt(
+            properties
+                .getProperty("influxdb_rpc_port", Integer.toString(conf.getInfluxDBRpcPort()))
+                .trim()));
   }
 
   private void reloadConsensusProps(Properties properties) throws IOException {

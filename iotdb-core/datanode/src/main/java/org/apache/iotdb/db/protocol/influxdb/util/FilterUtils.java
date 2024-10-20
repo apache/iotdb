@@ -19,73 +19,36 @@
 package org.apache.iotdb.db.protocol.influxdb.util;
 
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
-
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.filter.basic.Filter;
-import org.apache.tsfile.read.filter.basic.OperatorType;
 import org.apache.tsfile.read.filter.factory.ValueFilterApi;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.apache.tsfile.utils.Binary;
 
 public class FilterUtils {
 
   public static String getFilterStringValue(Filter filter) {
-    if (filter == null) {
-      throw new UnSupportedDataTypeException("Null filter");
-    }
-    String filterString = filter.toString();
-    if (filter.getOperatorType().equals(OperatorType.VALUE_EQ)) {
-      return filterString.split("== ")[1];
-    } else if (filter.getOperatorType().equals(OperatorType.VALUE_NEQ)) {
-      return filterString.split("!= ")[1];
-    } else if (filter.getOperatorType().equals(OperatorType.VALUE_LTEQ)) {
-      return filterString.split("<= ")[1];
-    } else if (filter.getOperatorType().equals(OperatorType.VALUE_LT)) {
-      return filterString.split("< ")[1];
-    } else if (filter.getOperatorType().equals(OperatorType.VALUE_GTEQ)) {
-      return filterString.split(">= ")[1];
-    } else if (filter.getOperatorType().equals(OperatorType.VALUE_GT)) {
-      return filterString.split("> ")[1];
-    } else {
-      throw new UnSupportedDataTypeException("Unsupported filter :" + filter);
-    }
+    return filter.toString().split(filter.getOperatorType().getSymbol())[1].trim();
   }
 
-  public static String getFilerSymbol(Filter filter) {
-    if (filter == null) {
-      throw new UnSupportedDataTypeException("Null filter");
-    }
-    if (filter.getOperatorType().equals(OperatorType.VALUE_EQ)) {
-      return "=";
-    } else if (filter.getOperatorType().equals(OperatorType.VALUE_NEQ)) {
-      return "!=";
-    } else if (filter.getOperatorType().equals(OperatorType.VALUE_LTEQ)) {
-      return "<=";
-    } else if (filter.getOperatorType().equals(OperatorType.VALUE_LT)) {
-      return "<";
-    } else if (filter.getOperatorType().equals(OperatorType.VALUE_GTEQ)) {
-      return ">=";
-    } else if (filter.getOperatorType().equals(OperatorType.VALUE_GT)) {
-      return ">";
-    } else {
-      throw new UnSupportedDataTypeException("Unsupported filter :" + filter);
-    }
+  public static String getFilterSymbol(Filter filter) {
+    return filter.getOperatorType().getSymbol();
   }
 
   public static Filter expressionTypeToFilter(ExpressionType expressionType, String value) {
     // MeasurementIndex and DataType are not used here.
     switch (expressionType) {
       case EQUAL_TO:
-        return ValueFilterApi.eq(0, value, TSDataType.INT32);
+        return ValueFilterApi.eq(0, new Binary(value.getBytes()), TSDataType.STRING);
       case NON_EQUAL:
-        return ValueFilterApi.notEq(0, value, TSDataType.INT32);
+        return ValueFilterApi.notEq(0, new Binary(value.getBytes()), TSDataType.STRING);
       case LESS_EQUAL:
-        return ValueFilterApi.ltEq(0, value, TSDataType.INT32);
+        return ValueFilterApi.ltEq(0, new Binary(value.getBytes()), TSDataType.STRING);
       case LESS_THAN:
-        return ValueFilterApi.lt(0, value, TSDataType.INT32);
+        return ValueFilterApi.lt(0, new Binary(value.getBytes()), TSDataType.STRING);
       case GREATER_EQUAL:
-        return ValueFilterApi.gtEq(0, value, TSDataType.INT32);
+        return ValueFilterApi.gtEq(0, new Binary(value.getBytes()), TSDataType.STRING);
       case GREATER_THAN:
-        return ValueFilterApi.gt(0, value, TSDataType.INT32);
+        return ValueFilterApi.gt(0, new Binary(value.getBytes()), TSDataType.STRING);
       default:
         throw new IllegalArgumentException("Unsupported expression type:" + expressionType);
     }

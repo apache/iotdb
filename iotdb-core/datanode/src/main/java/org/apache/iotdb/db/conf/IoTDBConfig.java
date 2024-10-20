@@ -31,6 +31,7 @@ import org.apache.iotdb.db.audit.AuditLogOperation;
 import org.apache.iotdb.db.audit.AuditLogStorage;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl;
+import org.apache.iotdb.db.protocol.thrift.impl.NewInfluxDBServiceImpl;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerUnseqCompactionPerformer;
@@ -1193,6 +1194,12 @@ public class IoTDBConfig {
   private String RateLimiterType = "FixedIntervalRateLimiter";
 
   private CompressionType WALCompressionAlgorithm = CompressionType.LZ4;
+
+  private boolean enableInfluxDBRpcService = true;
+
+  private String influxdbImplClassName = NewInfluxDBServiceImpl.class.getName();
+
+  private int influxDBRpcPort = 8086;
 
   IoTDBConfig() {}
 
@@ -4186,5 +4193,29 @@ public class IoTDBConfig {
 
   public void setWALCompressionAlgorithm(CompressionType WALCompressionAlgorithm) {
     this.WALCompressionAlgorithm = WALCompressionAlgorithm;
+  }
+
+  public boolean isEnableInfluxDBRpcService() {
+    return enableInfluxDBRpcService;
+  }
+
+  public void setEnableInfluxDBRpcService(boolean enableInfluxDBRpcService) {
+    this.enableInfluxDBRpcService = enableInfluxDBRpcService;
+  }
+
+  public String getInfluxDBImplClassName() {
+    return influxdbImplClassName;
+  }
+
+  public void setInfluxDBImplClassName(String influxdbImplClassName) {
+    this.influxdbImplClassName = influxdbImplClassName;
+  }
+
+  public int getInfluxDBRpcPort() {
+    return influxDBRpcPort;
+  }
+
+  public void setInfluxDBRpcPort(int influxdbRpcPort) {
+    this.influxDBRpcPort = influxdbRpcPort;
   }
 }
