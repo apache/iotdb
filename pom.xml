@@ -83,6 +83,7 @@
         <guava.version>32.1.2-jre</guava.version>
         <httpclient.version>4.5.14</httpclient.version>
         <httpcore.version>4.4.16</httpcore.version>
+        <influxdb-java.version>2.21</influxdb-java.version>
         <!--
       This is the version of the thrift binary, that we release separately from here:
       https://github.com/apache/iotdb-bin-resources/tree/main/iotdb-tools-thrift
@@ -596,6 +597,11 @@
                 </exclusions>
             </dependency>
             <dependency>
+                <groupId>org.influxdb</groupId>
+                <artifactId>influxdb-java</artifactId>
+                <version>${influxdb-java.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>jakarta.ws.rs</groupId>
                 <artifactId>jakarta.ws.rs-api</artifactId>
                 <version>${jakarta.ws.rs-api.version}</version>
@@ -1031,6 +1037,7 @@
                         <sourceDirectory>iotdb-protocol/thrift-commons/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>iotdb-protocol/thrift-confignode/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>iotdb-protocol/thrift-consensus/target/generated-sources/thrift</sourceDirectory>
+                        <sourceDirectory>iotdb-protocol/thrift-influxdb/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>iotdb-protocol/openapi/target/generated-sources/java/src/gen/java</sourceDirectory>
                         <sourceDirectory>iotdb-protocol/openapi/target/generated-sources/java/src/main/java</sourceDirectory>
                         <sourceDirectory>iotdb-core/datanode/target/generated-sources/freemarker/</sourceDirectory>
@@ -1774,6 +1781,7 @@
                             <excludes>
                                 <exclude>org/apache/iotdb/service/sync/thrift/*</exclude>
                                 <exclude>org/apache/iotdb/service/rpc/thrift/*</exclude>
+                                <exclude>org/apache/iotdb/protocol/influxdb/rpc/thrift/*</exclude>
                                 <exclude>org/apache/iotdb/db/qp/sql/*</exclude>
                             </excludes>
                             <rules>
