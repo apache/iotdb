@@ -1346,7 +1346,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                         symbol,
                         aggregationMap.get(symbol),
                         node.getStep(),
-                        typeProvider)));
+                        typeProvider,
+                        true)));
     return new AggregationOperator(context, child, aggregatorBuilder.build());
   }
 
@@ -1355,7 +1356,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       Symbol symbol,
       AggregationNode.Aggregation aggregation,
       AggregationNode.Step step,
-      TypeProvider typeProvider) {
+      TypeProvider typeProvider,
+      boolean scanAscending) {
     List<Integer> argumentChannels = new ArrayList<>();
     List<TSDataType> argumentTypes = new ArrayList<>();
     for (Expression argument : aggregation.getArguments()) {
@@ -1379,7 +1381,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             argumentTypes,
             aggregation.getArguments(),
             Collections.emptyMap(),
-            true);
+            scanAscending);
 
     return new TableAggregator(
         accumulator,
@@ -1482,13 +1484,15 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     List<TableAggregator> aggregators = new ArrayList<>(node.getAggregations().size());
     Map<Symbol, Integer> columnLayout = new HashMap<>(node.getAggregations().size());
 
+    boolean[] ret = checkStatisticAndScanOrder(node);
+    boolean canUseStatistic = ret[0];
+    boolean scanAscending = ret[1];
     int distinctArgumentCount = node.getAssignments().size();
     int aggregationsCount = node.getAggregations().size();
     List<Integer> aggColumnIndexes = new ArrayList<>();
     int channel = 0;
     int idx = -1;
     int measurementColumnCount = 0;
-    boolean canUseStatistic = true;
     Map<Symbol, Integer> idAndAttributeColumnsIndexMap = node.getIdAndAttributeIndexMap();
     Map<Symbol, ColumnSchema> columnSchemaMap = node.getAssignments();
     List<ColumnSchema> columnSchemas = new ArrayList<>(aggregationsCount);
@@ -1498,26 +1502,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
       AggregationNode.Aggregation aggregation = entry.getValue();
-      String funcName = aggregation.getResolvedFunction().getSignature().getName();
-
-      // first/last/first_by/last_by aggregation with BLOB type can not use statistics
-      if (FIRST_AGGREGATION.equals(funcName)
-          || LAST_AGGREGATION.equals(funcName)
-          || LAST_BY_AGGREGATION.equals(funcName)
-          || FIRST_BY_AGGREGATION.equals(funcName)) {
-        Symbol argument = Symbol.from(aggregation.getArguments().get(0));
-        if (!columnSchemaMap.containsKey(argument)
-            || BlobType.BLOB.equals(columnSchemaMap.get(argument).getType())) {
-          canUseStatistic = false;
-        }
-
-        // only last_by(time, x) or last_by(x,time) can use statistic
-        if ((LAST_BY_AGGREGATION.equals(funcName) || FIRST_BY_AGGREGATION.equals(funcName))
-            && !isTimeColumn(aggregation.getArguments().get(0))
-            && !isTimeColumn(aggregation.getArguments().get(1))) {
-          canUseStatistic = false;
-        }
-      }
 
       for (Expression argument : aggregation.getArguments()) {
         idx++;
@@ -1567,7 +1551,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               entry.getKey(),
               entry.getValue(),
               node.getStep(),
-              context.getTypeProvider()));
+              context.getTypeProvider(),
+              scanAscending));
     }
 
     // TODO if this needed?
@@ -1683,6 +1668,44 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     context.getDriverContext().setInputDriver(true);
 
     return aggTableScanOperator;
+  }
+
+  private boolean[] checkStatisticAndScanOrder(AggregationTableScanNode node) {
+    boolean canUseStatistic = true;
+    int ascendingCount = 0, descendingCount = 0;
+
+    for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
+      AggregationNode.Aggregation aggregation = entry.getValue();
+      String funcName = aggregation.getResolvedFunction().getSignature().getName();
+
+      if (FIRST_AGGREGATION.equals(funcName) || FIRST_BY_AGGREGATION.equals(funcName)) {
+        ascendingCount++;
+      }
+      if (LAST_AGGREGATION.equals(funcName) || LAST_BY_AGGREGATION.equals(funcName)) {
+        descendingCount++;
+      }
+
+      // first/last/first_by/last_by aggregation with BLOB type can not use statistics
+      if (FIRST_AGGREGATION.equals(funcName)
+          || LAST_AGGREGATION.equals(funcName)
+          || LAST_BY_AGGREGATION.equals(funcName)
+          || FIRST_BY_AGGREGATION.equals(funcName)) {
+        Symbol argument = Symbol.from(aggregation.getArguments().get(0));
+        if (!node.getAssignments().containsKey(argument)
+            || BlobType.BLOB.equals(node.getAssignments().get(argument).getType())) {
+          canUseStatistic = false;
+        }
+
+        // only last_by(time, x) or last_by(x,time) can use statistic
+        if ((LAST_BY_AGGREGATION.equals(funcName) || FIRST_BY_AGGREGATION.equals(funcName))
+            && !isTimeColumn(aggregation.getArguments().get(0))
+            && !isTimeColumn(aggregation.getArguments().get(1))) {
+          canUseStatistic = false;
+        }
+      }
+    }
+
+    return new boolean[] {canUseStatistic, ascendingCount >= descendingCount};
   }
 
   public static long calculateMaxAggregationResultSize(

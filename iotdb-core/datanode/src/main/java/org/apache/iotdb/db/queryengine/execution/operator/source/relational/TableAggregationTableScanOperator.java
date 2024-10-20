@@ -481,6 +481,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     for (TableAggregator aggregator : tableAggregators) {
 
       if (aggregator.hasFinalResult()) {
+        idx += aggregator.getChannelCount();
         continue;
       }
 
