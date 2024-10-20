@@ -341,7 +341,7 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
   private void addFloatInput(int[] groupIds, Column[] arguments) {
     for (int i = 0; i < groupIds.length; i++) {
       if (!arguments[1].isNull(i)) {
-        updateFloatResult(groupIds[i], arguments[1].getLong(i), arguments[0], i);
+        updateFloatResult(groupIds[i], arguments[1].getFloat(i), arguments[0], i);
       }
     }
   }
@@ -510,7 +510,7 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
 
   private void updateFromBytesIntermediateInput(int groupId, byte[] bytes) {
     // long time = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, 0);
-    int offset = Long.BYTES;
+    int offset = 0;
     // Use Column to store x value
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(xDataType));
     ColumnBuilder columnBuilder = builder.getValueColumnBuilders()[0];
