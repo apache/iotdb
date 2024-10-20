@@ -3247,7 +3247,6 @@ public class IoTDBTableAggregationIT {
         DATABASE_NAME);
   }
 
-  @Ignore
   @Test
   public void subQueryTest() {
 
@@ -3306,7 +3305,6 @@ public class IoTDBTableAggregationIT {
         DATABASE_NAME);
   }
 
-  @Ignore
   @Test
   public void specialCasesTest() {
     String[] expectedHeader = new String[] {"device_id"};

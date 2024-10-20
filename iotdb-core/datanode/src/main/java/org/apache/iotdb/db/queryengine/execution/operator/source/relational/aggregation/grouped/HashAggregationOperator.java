@@ -33,6 +33,8 @@ import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.RamUsageEstimator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Optional;
@@ -41,6 +43,7 @@ import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory.NOOP;
 
 public class HashAggregationOperator extends AbstractOperator {
+  private static final Logger LOGGER = LoggerFactory.getLogger(HashAggregationOperator.class);
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(HashAggregationOperator.class);
 
@@ -102,7 +105,7 @@ public class HashAggregationOperator extends AbstractOperator {
 
   @Override
   public boolean hasNext() throws Exception {
-    return !finished;
+    return !finished || retainedTsBlock != null;
   }
 
   @Override
@@ -171,7 +174,7 @@ public class HashAggregationOperator extends AbstractOperator {
 
   @Override
   public boolean isFinished() throws Exception {
-    return finished;
+    return finished && retainedTsBlock == null;
   }
 
   @Override
