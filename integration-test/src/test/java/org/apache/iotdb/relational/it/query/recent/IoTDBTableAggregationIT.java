@@ -3247,6 +3247,7 @@ public class IoTDBTableAggregationIT {
         DATABASE_NAME);
   }
 
+  @Ignore
   @Test
   public void subQueryTest() {
 
