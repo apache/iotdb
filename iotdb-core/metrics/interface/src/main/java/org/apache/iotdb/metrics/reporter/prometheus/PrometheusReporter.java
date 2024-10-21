@@ -50,6 +50,7 @@ import java.io.Writer;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class PrometheusReporter implements Reporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(PrometheusReporter.class);
@@ -144,6 +145,11 @@ public class PrometheusReporter implements Reporter {
         } else if (metric instanceof Timer) {
           Timer timer = (Timer) metric;
           HistogramSnapshot snapshot = timer.takeSnapshot();
+          if (Objects.isNull(snapshot)) {
+            LOGGER.warn(
+                "Detected an error when taking metric timer snapshot, will discard this metric");
+            continue;
+          }
           name += "_seconds";
           writeSnapshotAndCount(
               name,
