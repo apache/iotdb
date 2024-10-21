@@ -553,11 +553,11 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitRelationalInsertRow(RelationalInsertRowNode node, C context) {
-    return visitPlan(node, context);
+    return visitInsertRow(node, context);
   }
 
   public R visitRelationalInsertRows(RelationalInsertRowsNode node, C context) {
-    return visitPlan(node, context);
+    return visitInsertRows(node, context);
   }
 
   public R visitInsertTablet(InsertTabletNode node, C context) {
