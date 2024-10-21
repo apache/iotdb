@@ -39,13 +39,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
+
+  // Calculate from schema region extractors directly for it requires less computation
   private final Set<IoTDBSchemaRegionExtractor> schemaRegionExtractors =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   private final AtomicInteger insertionEventCount = new AtomicInteger(0);
   private final AtomicInteger tsfileEventCount = new AtomicInteger(0);
   private final AtomicInteger heartbeatEventCount = new AtomicInteger(0);
-  private final AtomicInteger schemaRegionEventCount = new AtomicInteger(0);
 
   private final AtomicReference<Meter> dataRegionCommitMeter = new AtomicReference<>(null);
   private final AtomicReference<Meter> schemaRegionCommitMeter = new AtomicReference<>(null);
@@ -79,14 +80,6 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
 
   void decreaseHeartbeatEventCount() {
     heartbeatEventCount.decrementAndGet();
-  }
-
-  void increaseSchemaRegionEventCount() {
-    schemaRegionEventCount.incrementAndGet();
-  }
-
-  void decreaseSchemaRegionEventCount() {
-    schemaRegionEventCount.decrementAndGet();
   }
 
   long getRemainingEvents() {
