@@ -129,6 +129,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.DateBinFunctionColumnTransformer;
@@ -1640,7 +1641,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             columnSchemas,
             columnsIndexArray,
             node.getDeviceEntries(),
-            node.getScanOrder(),
+            scanAscending ? Ordering.ASC : Ordering.DESC,
             scanOptionsBuilder.build(),
             measurementColumnNames,
             measurementSchemas,
@@ -1650,7 +1651,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             groupingKeySchemas,
             groupingKeyIndex,
             timeRangeIterator,
-            node.getScanOrder().isAscending(),
+            scanAscending,
             null,
             calculateMaxAggregationResultSize(),
             canUseStatistic,

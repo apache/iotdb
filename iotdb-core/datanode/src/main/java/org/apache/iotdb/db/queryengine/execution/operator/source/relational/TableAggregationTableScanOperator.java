@@ -110,6 +110,8 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
 
   ITableTimeRangeIterator timeIterator;
 
+  private boolean allAggregatorsHasFinalResult = false;
+
   public TableAggregationTableScanOperator(
       PlanNodeId sourceId,
       OperatorContext context,
@@ -278,17 +280,20 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     try {
       if (calcFromCachedData()) {
         updateResultTsBlock();
+        checkIfAllAggregatorHasFinalResult();
         return true;
       }
 
       if (readAndCalcFromPage()) {
         updateResultTsBlock();
+        checkIfAllAggregatorHasFinalResult();
         return true;
       }
 
       // only when all the page data has been consumed, we need to read the chunk data
       if (!seriesScanUtil.hasNextPage() && readAndCalcFromChunk()) {
         updateResultTsBlock();
+        checkIfAllAggregatorHasFinalResult();
         return true;
       }
 
@@ -297,6 +302,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
           && !seriesScanUtil.hasNextChunk()
           && readAndCalcFromFile()) {
         updateResultTsBlock();
+        checkIfAllAggregatorHasFinalResult();
         return true;
       }
 
@@ -338,13 +344,37 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     resetTableAggregators();
   }
 
+  private void checkIfAllAggregatorHasFinalResult() {
+    if (allAggregatorsHasFinalResult) {
+      // for SINGLE_TIME_ITERATOR, if allAggregatorsHasFinalResult, just consume next device
+      if (timeIterator.getType() == ITableTimeRangeIterator.TimeIteratorType.SINGLE_TIME_ITERATOR) {
+        currentDeviceIndex++;
+        inputTsBlock = null;
+
+        if (currentDeviceIndex < deviceCount) {
+          // construct AlignedSeriesScanUtil for next device
+          this.seriesScanUtil =
+              constructAlignedSeriesScanUtil(deviceEntries.get(currentDeviceIndex));
+          queryDataSource.reset();
+          this.seriesScanUtil.initQueryDataSource(queryDataSource);
+        }
+
+        if (currentDeviceIndex >= deviceCount) {
+          // all devices have been consumed
+          timeIterator.setFinished();
+        }
+
+        allAggregatorsHasFinalResult = false;
+      }
+    }
+  }
+
   protected boolean calcFromCachedData() {
     return calcFromRawData(inputTsBlock);
   }
 
   private boolean calcFromRawData(TsBlock tsBlock) {
-    Pair<Boolean, TsBlock> calcResult =
-        calculateAggregationFromRawData(tsBlock, tableAggregators, ascending);
+    Pair<Boolean, TsBlock> calcResult = calculateAggregationFromRawData(tsBlock, ascending);
     inputTsBlock = calcResult.getRight();
     return calcResult.getLeft();
   }
@@ -356,7 +386,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
    *     remaining tsBlock
    */
   public Pair<Boolean, TsBlock> calculateAggregationFromRawData(
-      TsBlock inputTsBlock, List<TableAggregator> aggregators, boolean ascending) {
+      TsBlock inputTsBlock, boolean ascending) {
     if (inputTsBlock == null || inputTsBlock.isEmpty()) {
       return new Pair<>(false, inputTsBlock);
     }
@@ -372,7 +402,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
         inputTsBlock = skipPointsOutOfTimeRange(inputTsBlock, curTimeRange, ascending);
       }
 
-      inputTsBlock = process(inputTsBlock, curTimeRange, aggregators);
+      inputTsBlock = process(inputTsBlock, curTimeRange);
     }
 
     // judge whether the calculation finished
@@ -382,11 +412,10 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
                 ? inputTsBlock.getEndTime() > curTimeRange.getMax()
                 : inputTsBlock.getEndTime() < curTimeRange.getMin());
     return new Pair<>(
-        isAllAggregatorsHasFinalResult(aggregators) || isTsBlockOutOfBound, inputTsBlock);
+        isAllAggregatorsHasFinalResult(tableAggregators) || isTsBlockOutOfBound, inputTsBlock);
   }
 
-  private TsBlock process(
-      TsBlock inputTsBlock, TimeRange curTimeRange, List<TableAggregator> aggregators) {
+  private TsBlock process(TsBlock inputTsBlock, TimeRange curTimeRange) {
     // Get the row which need to be processed by aggregator
     IWindow curWindow = new TimeWindow(curTimeRange);
     Column timeColumn = inputTsBlock.getTimeColumn();
@@ -758,7 +787,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     tsBlockBuilder.declarePosition();
   }
 
-  public static boolean isAllAggregatorsHasFinalResult(List<TableAggregator> aggregators) {
+  public boolean isAllAggregatorsHasFinalResult(List<TableAggregator> aggregators) {
     // no aggregation function, just output ids or attributes
     if (aggregators.isEmpty()) {
       return false;
@@ -769,6 +798,8 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
         return false;
       }
     }
+
+    this.allAggregatorsHasFinalResult = true;
     return true;
   }
 
