@@ -527,6 +527,7 @@ public class TableMetadataImpl implements Metadata {
     switch (functionName.toLowerCase(Locale.ENGLISH)) {
       case SqlConstant.AVG:
       case SqlConstant.SUM:
+      case SqlConstant.EXTREME:
       case SqlConstant.STDDEV:
       case SqlConstant.STDDEV_POP:
       case SqlConstant.STDDEV_SAMP:
@@ -540,7 +541,6 @@ public class TableMetadataImpl implements Metadata {
                   functionName));
         }
         break;
-      case SqlConstant.EXTREME:
       case SqlConstant.MIN:
       case SqlConstant.MAX:
       case SqlConstant.MODE:

@@ -68,7 +68,6 @@ public class DataRegionListeningFilter {
   public static Pair<Boolean, Boolean> parseInsertionDeletionListeningOptionPair(
       PipeParameters parameters) throws IllegalPathException, IllegalArgumentException {
     final Set<String> listeningOptions = new HashSet<>();
-
     final Set<PartialPath> inclusionOptions =
         parseOptions(
             parameters.getStringOrDefault(

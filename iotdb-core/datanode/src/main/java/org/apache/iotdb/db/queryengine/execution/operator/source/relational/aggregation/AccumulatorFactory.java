@@ -23,6 +23,16 @@ import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAvgAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCountAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedExtremeAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedFirstAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedFirstByAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedLastAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedLastByAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedMaxAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedMaxByAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedMinAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedMinByAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedSumAccumulator;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
@@ -98,6 +108,26 @@ public class AccumulatorFactory {
         return new GroupedCountAccumulator();
       case AVG:
         return new GroupedAvgAccumulator(inputDataTypes.get(0));
+      case SUM:
+        return new GroupedSumAccumulator(inputDataTypes.get(0));
+      case LAST:
+        return new GroupedLastAccumulator(inputDataTypes.get(0));
+      case FIRST:
+        return new GroupedFirstAccumulator(inputDataTypes.get(0));
+      case MAX:
+        return new GroupedMaxAccumulator(inputDataTypes.get(0));
+      case MIN:
+        return new GroupedMinAccumulator(inputDataTypes.get(0));
+      case EXTREME:
+        return new GroupedExtremeAccumulator(inputDataTypes.get(0));
+      case LAST_BY:
+        return new GroupedLastByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
+      case FIRST_BY:
+        return new GroupedFirstByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
+      case MAX_BY:
+        return new GroupedMaxByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
+      case MIN_BY:
+        return new GroupedMinByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }
@@ -128,6 +158,12 @@ public class AccumulatorFactory {
         return new LastByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1), false, false);
       case FIRST_BY:
         return new FirstByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1), false, false);
+      case MAX_BY:
+        return new TableMaxByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
+      case MIN_BY:
+        return new TableMinByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
+      case EXTREME:
+        return new ExtremeAccumulator(inputDataTypes.get(0));
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }

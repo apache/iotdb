@@ -198,8 +198,8 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
 
     // optimize for sql: select count(*) from (select count(s1), sum(s1) from table)
     if (tableAggregators.isEmpty()
-        && timeIterator.getType()
-            == ITableTimeRangeIterator.TimeIteratorType.SINGLE_TIME_ITERATOR) {
+        && timeIterator.getType() == ITableTimeRangeIterator.TimeIteratorType.SINGLE_TIME_ITERATOR
+        && resultTsBlockBuilder.getValueColumnBuilders().length == 0) {
       resultTsBlockBuilder.reset();
       currentDeviceIndex = deviceCount;
       timeIterator.setFinished();
@@ -724,21 +724,24 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     if (groupingKeyIndex != null) {
       for (int i = 0; i < groupKeySize; i++) {
         if (TsTableColumnCategory.ID == groupingKeySchemas.get(i).getColumnCategory()) {
-          columnBuilders[i].writeBinary(
-              new Binary(
-                  ((String)
-                          deviceEntries
-                              .get(currentDeviceIndex)
-                              .getNthSegment(groupingKeyIndex[i] + 1))
-                      .getBytes()));
+          String id =
+              (String) deviceEntries.get(currentDeviceIndex).getNthSegment(groupingKeyIndex[i] + 1);
+          if (id == null) {
+            columnBuilders[i].appendNull();
+          } else {
+            columnBuilders[i].writeBinary(new Binary((id).getBytes()));
+          }
         } else {
-          columnBuilders[i].writeBinary(
-              new Binary(
-                  deviceEntries
-                      .get(currentDeviceIndex)
-                      .getAttributeColumnValues()
-                      .get(groupingKeyIndex[i])
-                      .getBytes()));
+          String attribute =
+              deviceEntries
+                  .get(currentDeviceIndex)
+                  .getAttributeColumnValues()
+                  .get(groupingKeyIndex[i]);
+          if (attribute == null) {
+            columnBuilders[i].appendNull();
+          } else {
+            columnBuilders[i].writeBinary(new Binary(attribute.getBytes()));
+          }
         }
       }
     }
@@ -755,6 +758,11 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   }
 
   public static boolean isAllAggregatorsHasFinalResult(List<TableAggregator> aggregators) {
+    // no aggregation function, just output ids or attributes
+    if (aggregators.isEmpty()) {
+      return false;
+    }
+
     for (TableAggregator aggregator : aggregators) {
       if (!aggregator.hasFinalResult()) {
         return false;
