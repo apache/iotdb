@@ -146,7 +146,8 @@ public class PrometheusReporter implements Reporter {
           Timer timer = (Timer) metric;
           HistogramSnapshot snapshot = timer.takeSnapshot();
           if (Objects.isNull(snapshot)) {
-            LOGGER.warn("Detected an error when taking snapshot, will discard this metric");
+            LOGGER.warn(
+                "Detected an error when taking metric timer snapshot, will discard this metric");
             continue;
           }
           name += "_seconds";

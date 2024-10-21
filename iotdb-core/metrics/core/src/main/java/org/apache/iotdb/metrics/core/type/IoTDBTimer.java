@@ -26,7 +26,7 @@ import org.apache.iotdb.metrics.utils.AbstractMetricMBean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 public class IoTDBTimer extends AbstractMetricMBean implements Timer, IoTDBTimerMBean {
@@ -56,62 +56,36 @@ public class IoTDBTimer extends AbstractMetricMBean implements Timer, IoTDBTimer
 
   @Override
   public double getSum() {
-    HistogramSnapshot snapshot = this.takeSnapshot();
-    if (Objects.isNull(snapshot)) {
-      LOGGER.warn("Snapshot is null, can't get sum, return 0.0 instead.");
-      return 0.0;
-    }
-    return snapshot.getSum();
+    return Optional.ofNullable(takeSnapshot()).map(HistogramSnapshot::getSum).orElse(0.0);
   }
 
   @Override
   public double getMax() {
-    HistogramSnapshot snapshot = this.takeSnapshot();
-    if (Objects.isNull(snapshot)) {
-      LOGGER.warn("Snapshot is null, can't get max, return 0.0 instead.");
-      return 0.0;
-    }
-    return snapshot.getMax();
+    return Optional.ofNullable(takeSnapshot()).map(HistogramSnapshot::getMax).orElse(0.0);
   }
 
   @Override
   public double getMean() {
-    HistogramSnapshot snapshot = this.takeSnapshot();
-    if (Objects.isNull(snapshot)) {
-      LOGGER.warn("Snapshot is null, can't get mean, return 0.0 instead.");
-      return 0.0;
-    }
-    return snapshot.getMean();
+    return Optional.ofNullable(takeSnapshot()).map(HistogramSnapshot::getMean).orElse(0.0);
   }
 
   @Override
   public int getSize() {
-    HistogramSnapshot snapshot = this.takeSnapshot();
-    if (Objects.isNull(snapshot)) {
-      LOGGER.warn("Snapshot is null, can't get size, return 0 instead.");
-      return 0;
-    }
-    return snapshot.size();
+    return Optional.ofNullable(takeSnapshot()).map(HistogramSnapshot::size).orElse(0);
   }
 
   @Override
   public double get50thPercentile() {
-    HistogramSnapshot snapshot = this.takeSnapshot();
-    if (Objects.isNull(snapshot)) {
-      LOGGER.warn("Snapshot is null, can't get 50th percentile, return 0.0 instead.");
-      return 0;
-    }
-    return snapshot.getValue(0.5);
+    return Optional.ofNullable(takeSnapshot())
+        .map(histogramSnapshot -> histogramSnapshot.getValue(0.5))
+        .orElse(0.0);
   }
 
   @Override
   public double get99thPercentile() {
-    HistogramSnapshot snapshot = this.takeSnapshot();
-    if (Objects.isNull(snapshot)) {
-      LOGGER.warn("Snapshot is null, can't get 99th percentile, return 0.0 instead.");
-      return 0;
-    }
-    return snapshot.getValue(0.99);
+    return Optional.ofNullable(takeSnapshot())
+        .map(histogramSnapshot -> histogramSnapshot.getValue(0.99))
+        .orElse(0.0);
   }
 
   @Override
