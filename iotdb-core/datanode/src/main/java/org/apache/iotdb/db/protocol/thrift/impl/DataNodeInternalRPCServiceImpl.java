@@ -497,13 +497,19 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus invalidatePartitionCache(TInvalidateCacheReq req) {
+  public TSStatus invalidatePartitionCache(final TInvalidateCacheReq req) {
     ClusterPartitionFetcher.getInstance().invalidAllCache();
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
-  public TSStatus invalidateSchemaCache(TInvalidateCacheReq req) {
+  public TSStatus invalidateLastCache(final String database) {
+    DataNodeSchemaCache.getInstance().invalidateLastCacheInDataRegion(database);
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  @Override
+  public TSStatus invalidateSchemaCache(final TInvalidateCacheReq req) {
     DataNodeSchemaCache.getInstance().takeWriteLock();
     try {
       // req.getFullPath() is a database path

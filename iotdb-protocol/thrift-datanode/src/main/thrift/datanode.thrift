@@ -703,6 +703,13 @@ service IDataNodeRPCService {
   common.TSStatus invalidatePartitionCache(TInvalidateCacheReq req)
 
   /**
+   * Config node will invalidate last cache.
+   *
+   * @param string:database(without root)
+   */
+  common.TSStatus invalidateLastCache(string database)
+
+  /**
    * Config node will invalidate Schema Info cache.
    *
    * @param bool:isStorageGroup, string:fullPath
