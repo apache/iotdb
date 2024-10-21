@@ -17,15 +17,36 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.subscription.event.pipe;
+package org.apache.iotdb.db.subscription.event.response;
 
-public interface SubscriptionPipeEvents {
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
-  void ack();
+public interface SubscriptionEventResponse<E> {
+
+  /////////////////////////////// response ///////////////////////////////
+
+  E getCurrentResponse();
+
+  void prefetchRemainingResponses() throws IOException;
+
+  void fetchNextResponse() throws IOException;
+
+  /////////////////////////////// byte buffer ///////////////////////////////
+
+  void trySerializeCurrentResponse();
+
+  void trySerializeRemainingResponses();
+
+  ByteBuffer getCurrentResponseByteBuffer() throws IOException;
+
+  void invalidateCurrentResponseByteBuffer();
+
+  /////////////////////////////// lifecycle ///////////////////////////////
+
+  void nack();
 
   void cleanUp();
 
-  //////////////////////////// APIs provided for metric framework ////////////////////////////
-
-  int getPipeEventCount();
+  boolean isCommittable();
 }
