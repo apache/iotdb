@@ -76,7 +76,7 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
       return Flow.NO_MORE_STATE;
     }
 
-    RemoveDataNodeHandler removeDataNodeHandler = env.getRemoveDataNodeManager();
+    RemoveDataNodeHandler removeDataNodeHandler = env.getRemoveDataNodeHandler();
     try {
       switch (state) {
         case REGION_REPLICA_CHECK:
@@ -188,8 +188,8 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
             "{}, Region all migrated successfully, start to stop DataNode: {}",
             REMOVE_DATANODE_PROCESS,
             dataNode);
-        env.getRemoveDataNodeManager().removeDataNodePersistence(removedDataNodes);
-        env.getRemoveDataNodeManager().stopDataNodes(removedDataNodes);
+        env.getRemoveDataNodeHandler().removeDataNodePersistence(removedDataNodes);
+        env.getRemoveDataNodeHandler().stopDataNodes(removedDataNodes);
       }
     }
     if (!rollBackDataNodes.isEmpty()) {
@@ -197,8 +197,8 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
           "{}, Start to roll back the DataNodes status: {}",
           REMOVE_DATANODE_PROCESS,
           rollBackDataNodes);
-      env.getRemoveDataNodeManager().changeDataNodeStatus(rollBackDataNodes, nodeStatusMap);
-      env.getRemoveDataNodeManager().broadcastDataNodeStatusChange(rollBackDataNodes);
+      env.getRemoveDataNodeHandler().changeDataNodeStatus(rollBackDataNodes, nodeStatusMap);
+      env.getRemoveDataNodeHandler().broadcastDataNodeStatusChange(rollBackDataNodes);
       LOG.info(
           "{}, Roll back the DataNodes status successfully: {}",
           REMOVE_DATANODE_PROCESS,
