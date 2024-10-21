@@ -102,7 +102,7 @@ public class HashAggregationOperator extends AbstractOperator {
 
   @Override
   public boolean hasNext() throws Exception {
-    return !finished;
+    return !finished || retainedTsBlock != null;
   }
 
   @Override
@@ -171,7 +171,7 @@ public class HashAggregationOperator extends AbstractOperator {
 
   @Override
   public boolean isFinished() throws Exception {
-    return finished;
+    return finished && retainedTsBlock == null;
   }
 
   @Override

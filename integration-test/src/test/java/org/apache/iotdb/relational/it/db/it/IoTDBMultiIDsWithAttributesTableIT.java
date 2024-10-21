@@ -664,6 +664,59 @@ public class IoTDBMultiIDsWithAttributesTableIT {
             + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num "
             + "from table0 where device='d1' and level='l1' group by device order by device";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = new String[] {"device", "level"};
+    retArray =
+        new String[] {
+          "d1,l1,", "d1,l2,", "d1,l3,", "d1,l4,", "d1,l5,", "d2,l1,", "d2,l2,", "d2,l3,", "d2,l4,",
+          "d2,l5,",
+        };
+    sql = "select device,level from table0 group by device,level order by device,level";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = new String[] {"device", "level", "attr1", "bin"};
+    retArray =
+        new String[] {
+          "d1,l1,c,1970-01-01T00:00:00.000Z,",
+          "d1,l1,c,1971-01-01T00:00:00.000Z,",
+          "d1,l2,yy,1970-01-01T00:00:00.000Z,",
+          "d1,l2,yy,1971-01-01T00:00:00.000Z,",
+          "d1,l2,yy,1971-04-26T00:00:00.000Z,",
+          "d1,l3,t,1970-01-01T00:00:00.000Z,",
+          "d1,l3,t,1971-01-01T00:00:00.000Z,",
+          "d1,l3,t,1971-04-26T00:00:00.000Z,",
+          "d1,l4,null,1970-01-01T00:00:00.000Z,",
+          "d1,l4,null,1971-01-01T00:00:00.000Z,",
+          "d1,l4,null,1971-04-26T00:00:00.000Z,",
+          "d1,l5,null,1970-01-01T00:00:00.000Z,",
+          "d1,l5,null,1971-01-01T00:00:00.000Z,",
+          "d1,l5,null,1971-08-20T00:00:00.000Z,",
+          "d2,l1,d,1970-01-01T00:00:00.000Z,",
+          "d2,l1,d,1971-01-01T00:00:00.000Z,",
+          "d2,l2,vv,1970-01-01T00:00:00.000Z,",
+          "d2,l2,vv,1971-01-01T00:00:00.000Z,",
+          "d2,l2,vv,1971-04-26T00:00:00.000Z,",
+          "d2,l3,null,1970-01-01T00:00:00.000Z,",
+          "d2,l3,null,1971-01-01T00:00:00.000Z,",
+          "d2,l3,null,1971-04-26T00:00:00.000Z,",
+          "d2,l4,null,1970-01-01T00:00:00.000Z,",
+          "d2,l4,null,1971-01-01T00:00:00.000Z,",
+          "d2,l4,null,1971-04-26T00:00:00.000Z,",
+          "d2,l5,null,1970-01-01T00:00:00.000Z,",
+          "d2,l5,null,1971-01-01T00:00:00.000Z,",
+          "d2,l5,null,1971-08-20T00:00:00.000Z,",
+        };
+    sql =
+        "select device,level,attr1,date_bin(1d,time) as bin from table0 group by 4,device,level,attr1 order by device,level,attr1,bin";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = new String[] {"attr1", "attr2"};
+    retArray =
+        new String[] {
+          "c,d,", "d,c,", "t,a,", "vv,null,", "yy,zz,", "null,null,",
+        };
+    sql = "select attr1,attr2 from table0 group by attr1,attr2 order by attr1,attr2";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
   @Test
