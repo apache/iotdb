@@ -30,7 +30,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.iotdb.db.queryengine.execution.operator.window.IWindow;
 import org.apache.iotdb.db.queryengine.execution.operator.window.TimeWindow;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
@@ -67,8 +66,6 @@ import static org.apache.iotdb.db.queryengine.execution.operator.source.relation
 import static org.apache.tsfile.read.common.block.TsBlockUtil.skipPointsOutOfTimeRange;
 
 public class TableAggregationTableScanOperator extends AbstractSeriesAggregationScanOperator {
-
-  // TODO(beyyes) variable groupBy is no need in table model
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TableAggregationTableScanOperator.class);
@@ -110,6 +107,8 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
 
   ITableTimeRangeIterator timeIterator;
 
+  private boolean allAggregatorsHasFinalResult = false;
+
   public TableAggregationTableScanOperator(
       PlanNodeId sourceId,
       OperatorContext context,
@@ -121,13 +120,12 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
       List<String> measurementColumnNames,
       List<IMeasurementSchema> measurementSchemas,
       int maxTsBlockLineNum,
-      int subSensorSize,
+      int measurementCount,
       List<TableAggregator> tableAggregators,
       List<ColumnSchema> groupingKeySchemas,
       int[] groupingKeyIndex,
       ITableTimeRangeIterator tableTimeRangeIterator,
       boolean ascending,
-      GroupByTimeParameter groupByTimeParameter,
       long maxReturnSize,
       boolean canUseStatistics,
       List<Integer> aggArguments) {
@@ -136,12 +134,12 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
         sourceId,
         context,
         null,
-        subSensorSize,
+        measurementCount,
         null,
         null,
         ascending,
         false,
-        groupByTimeParameter,
+        null,
         maxReturnSize,
         canUseStatistics);
 
@@ -216,11 +214,6 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
         && (timeIterator.hasCachedTimeRange() || timeIterator.hasNextTimeRange())
         && !resultTsBlockBuilder.isFull()) {
 
-      //      if (curTimeRange == null) {
-      //        curTimeRange = tableTimeRangeIterator.nextTimeRange();
-      //        resetTableAggregators();
-      //      }
-
       // calculate aggregation result on current time window
       // return true if current time window is calc finished
       if (calculateAggregationResultForCurrentTimeRange()) {
@@ -274,21 +267,25 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   }
 
   /** Return true if we have the result of this timeRange. */
+  @Override
   protected boolean calculateAggregationResultForCurrentTimeRange() {
     try {
       if (calcFromCachedData()) {
         updateResultTsBlock();
+        checkIfAllAggregatorHasFinalResult();
         return true;
       }
 
       if (readAndCalcFromPage()) {
         updateResultTsBlock();
+        checkIfAllAggregatorHasFinalResult();
         return true;
       }
 
       // only when all the page data has been consumed, we need to read the chunk data
       if (!seriesScanUtil.hasNextPage() && readAndCalcFromChunk()) {
         updateResultTsBlock();
+        checkIfAllAggregatorHasFinalResult();
         return true;
       }
 
@@ -297,6 +294,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
           && !seriesScanUtil.hasNextChunk()
           && readAndCalcFromFile()) {
         updateResultTsBlock();
+        checkIfAllAggregatorHasFinalResult();
         return true;
       }
 
@@ -332,19 +330,20 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     }
   }
 
+  @Override
   protected void updateResultTsBlock() {
     appendAggregationResult(resultTsBlockBuilder, tableAggregators);
     // after appendAggregationResult invoked, aggregators must be cleared
     resetTableAggregators();
   }
 
+  @Override
   protected boolean calcFromCachedData() {
-    return calcFromRawData(inputTsBlock);
+    return calcUsingRawData(inputTsBlock);
   }
 
-  private boolean calcFromRawData(TsBlock tsBlock) {
-    Pair<Boolean, TsBlock> calcResult =
-        calculateAggregationFromRawData(tsBlock, tableAggregators, ascending);
+  protected boolean calcUsingRawData(TsBlock tsBlock) {
+    Pair<Boolean, TsBlock> calcResult = calculateAggregationFromRawData(tsBlock, ascending);
     inputTsBlock = calcResult.getRight();
     return calcResult.getLeft();
   }
@@ -356,7 +355,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
    *     remaining tsBlock
    */
   public Pair<Boolean, TsBlock> calculateAggregationFromRawData(
-      TsBlock inputTsBlock, List<TableAggregator> aggregators, boolean ascending) {
+      TsBlock inputTsBlock, boolean ascending) {
     if (inputTsBlock == null || inputTsBlock.isEmpty()) {
       return new Pair<>(false, inputTsBlock);
     }
@@ -372,7 +371,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
         inputTsBlock = skipPointsOutOfTimeRange(inputTsBlock, curTimeRange, ascending);
       }
 
-      inputTsBlock = process(inputTsBlock, curTimeRange, aggregators);
+      inputTsBlock = process(inputTsBlock, curTimeRange);
     }
 
     // judge whether the calculation finished
@@ -382,11 +381,10 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
                 ? inputTsBlock.getEndTime() > curTimeRange.getMax()
                 : inputTsBlock.getEndTime() < curTimeRange.getMin());
     return new Pair<>(
-        isAllAggregatorsHasFinalResult(aggregators) || isTsBlockOutOfBound, inputTsBlock);
+        isAllAggregatorsHasFinalResult(tableAggregators) || isTsBlockOutOfBound, inputTsBlock);
   }
 
-  private TsBlock process(
-      TsBlock inputTsBlock, TimeRange curTimeRange, List<TableAggregator> aggregators) {
+  private TsBlock process(TsBlock inputTsBlock, TimeRange curTimeRange) {
     // Get the row which need to be processed by aggregator
     IWindow curWindow = new TimeWindow(curTimeRange);
     Column timeColumn = inputTsBlock.getTimeColumn();
@@ -399,57 +397,13 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     }
 
     TsBlock inputRegion = inputTsBlock.getRegion(0, lastIndexToProcess + 1);
-
-    // TODO(beyyes) add optimization: if only agg measurement columns, no need to transfer
-
     Column[] valueColumns = new Column[aggArguments.size()];
-    for (int i = 0; i < aggArguments.size(); i++) {
-      int idx = aggArguments.get(i);
-      if (valueColumns[aggArguments.get(i)] != null) {
+    for (int idx : aggArguments) {
+      if (valueColumns[idx] != null) {
         continue;
       }
-      TsTableColumnCategory columnSchemaCategory =
-          columnSchemas.get(aggArguments.get(i)).getColumnCategory();
-      if (columnSchemaCategory == TsTableColumnCategory.TIME) {
-        valueColumns[idx] = inputRegion.getTimeColumn();
-      } else if (columnSchemaCategory == TsTableColumnCategory.ATTRIBUTE) {
-        String attr =
-            deviceEntries
-                .get(currentDeviceIndex)
-                .getAttributeColumnValues()
-                .get(columnsIndexArray[aggArguments.get(i)]);
-        if (attr == null) {
-          valueColumns[idx] =
-              new RunLengthEncodedColumn(
-                  new BinaryColumn(1, Optional.of(new boolean[] {true}), new Binary[] {null}),
-                  inputRegion.getTimeColumn().getPositionCount());
-        } else {
-          valueColumns[idx] =
-              new RunLengthEncodedColumn(
-                  new BinaryColumn(1, Optional.empty(), new Binary[] {new Binary(attr.getBytes())}),
-                  inputRegion.getTimeColumn().getPositionCount());
-        }
-      } else if (columnSchemaCategory == TsTableColumnCategory.ID) {
-        // TODO avoid create deviceStatics multi times; count, sum can use time statistics
-        String id =
-            (String)
-                deviceEntries
-                    .get(currentDeviceIndex)
-                    .getNthSegment(columnsIndexArray[aggArguments.get(i)] + 1);
-        if (id == null) {
-          valueColumns[idx] =
-              new RunLengthEncodedColumn(
-                  new BinaryColumn(1, Optional.of(new boolean[] {true}), new Binary[] {null}),
-                  inputRegion.getTimeColumn().getPositionCount());
-        } else {
-          valueColumns[idx] =
-              new RunLengthEncodedColumn(
-                  new BinaryColumn(1, Optional.empty(), new Binary[] {new Binary(id.getBytes())}),
-                  inputRegion.getTimeColumn().getPositionCount());
-        }
-      } else {
-        valueColumns[idx] = inputRegion.getColumn(columnsIndexArray[aggArguments.get(i)]);
-      }
+      valueColumns[idx] =
+          buildValueColumn(columnSchemas.get(idx).getColumnCategory(), inputRegion, idx);
     }
 
     TsBlock tsBlock =
@@ -475,70 +429,117 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     }
   }
 
+  private Column buildValueColumn(
+      TsTableColumnCategory columnSchemaCategory, TsBlock inputRegion, int columnIdx) {
+    switch (columnSchemaCategory) {
+      case TIME:
+        return inputRegion.getTimeColumn();
+      case ID:
+        // TODO avoid create deviceStatics multi times; count, sum can use time statistics
+        String id =
+            (String)
+                deviceEntries
+                    .get(currentDeviceIndex)
+                    .getNthSegment(columnsIndexArray[columnIdx] + 1);
+        return getIdOrAttrColumn(inputRegion.getTimeColumn().getPositionCount(), id);
+      case ATTRIBUTE:
+        String attr =
+            deviceEntries
+                .get(currentDeviceIndex)
+                .getAttributeColumnValues()
+                .get(columnsIndexArray[columnIdx]);
+        return getIdOrAttrColumn(inputRegion.getTimeColumn().getPositionCount(), attr);
+      case MEASUREMENT:
+        return inputRegion.getColumn(columnsIndexArray[columnIdx]);
+      default:
+        throw new IllegalStateException("Unsupported column type: " + columnSchemaCategory);
+    }
+  }
+
+  private Column getIdOrAttrColumn(int positionCount, String columnName) {
+    if (columnName == null) {
+      return new RunLengthEncodedColumn(
+          new BinaryColumn(positionCount, Optional.of(new boolean[] {true}), new Binary[] {null}),
+          positionCount);
+    } else {
+      return new RunLengthEncodedColumn(
+          new BinaryColumn(
+              positionCount, Optional.empty(), new Binary[] {new Binary(columnName.getBytes())}),
+          positionCount);
+    }
+  }
+
   protected void calcFromStatistics(Statistics timeStatistics, Statistics[] valueStatistics) {
     int idx = -1;
 
     for (TableAggregator aggregator : tableAggregators) {
-
       if (aggregator.hasFinalResult()) {
+        idx += aggregator.getChannelCount();
         continue;
       }
 
       Statistics[] statisticsArray = new Statistics[aggregator.getChannelCount()];
-
       for (int i = 0; i < aggregator.getChannelCount(); i++) {
         idx++;
 
         TsTableColumnCategory columnSchemaCategory =
             columnSchemas.get(aggArguments.get(idx)).getColumnCategory();
-        if (columnSchemaCategory == TsTableColumnCategory.TIME) {
-          statisticsArray[i] = timeStatistics;
-        } else if (columnSchemaCategory == TsTableColumnCategory.ATTRIBUTE) {
-          String attr =
-              deviceEntries
-                  .get(currentDeviceIndex)
-                  .getAttributeColumnValues()
-                  .get(columnsIndexArray[aggArguments.get(idx)]);
-          if (attr == null) {
-            statisticsArray[i] = null;
-          } else {
-            StringStatistics stringStatics = new StringStatistics();
-            stringStatics.setCount((int) timeStatistics.getCount());
-            stringStatics.setStartTime(timeStatistics.getStartTime());
-            stringStatics.setEndTime(timeStatistics.getEndTime());
-            Binary v = new Binary(attr.getBytes());
-            stringStatics.initializeStats(v, v, v, v);
-            statisticsArray[i] = stringStatics;
-          }
-        } else if (columnSchemaCategory == TsTableColumnCategory.ID) {
-          // TODO avoid create deviceStatics multi times; count, sum can use time statistics
-          String id =
-              (String)
-                  deviceEntries
-                      .get(currentDeviceIndex)
-                      .getNthSegment(columnsIndexArray[aggArguments.get(idx)] + 1);
-          if (id == null) {
-            statisticsArray[i] = null;
-          } else {
-            StringStatistics stringStatics = new StringStatistics();
-            stringStatics.setCount((int) timeStatistics.getCount());
-            stringStatics.setStartTime(timeStatistics.getStartTime());
-            stringStatics.setEndTime(timeStatistics.getEndTime());
-            Binary v = new Binary(id.getBytes());
-            stringStatics.initializeStats(v, v, v, v);
-            statisticsArray[i] = stringStatics;
-          }
-        } else {
-          statisticsArray[i] = valueStatistics[columnsIndexArray[aggArguments.get(idx)]];
-        }
+        statisticsArray[i] =
+            buildStatistics(
+                columnSchemaCategory, timeStatistics, valueStatistics, aggArguments.get(idx));
       }
 
       aggregator.processStatistics(statisticsArray);
     }
   }
 
+  private Statistics buildStatistics(
+      TsTableColumnCategory columnSchemaCategory,
+      Statistics timeStatistics,
+      Statistics[] valueStatistics,
+      int columnIdx) {
+    switch (columnSchemaCategory) {
+      case TIME:
+        return timeStatistics;
+      case ID:
+        // TODO avoid create deviceStatics multi times; count, sum can use time statistics
+        String id =
+            (String)
+                deviceEntries
+                    .get(currentDeviceIndex)
+                    .getNthSegment(columnsIndexArray[columnIdx] + 1);
+        return getStatistics(timeStatistics, id);
+      case ATTRIBUTE:
+        String attr =
+            deviceEntries
+                .get(currentDeviceIndex)
+                .getAttributeColumnValues()
+                .get(columnsIndexArray[columnIdx]);
+        return getStatistics(timeStatistics, attr);
+      case MEASUREMENT:
+        return valueStatistics[columnsIndexArray[columnIdx]];
+      default:
+        throw new IllegalStateException("Unsupported column type: " + columnSchemaCategory);
+    }
+  }
+
+  private Statistics getStatistics(Statistics timeStatistics, String columnName) {
+    if (columnName == null) {
+      return null;
+    } else {
+      StringStatistics stringStatics = new StringStatistics();
+      stringStatics.setCount((int) timeStatistics.getCount());
+      stringStatics.setStartTime(timeStatistics.getStartTime());
+      stringStatics.setEndTime(timeStatistics.getEndTime());
+      Binary v = new Binary(columnName.getBytes());
+      stringStatics.initializeStats(v, v, v, v);
+      return stringStatics;
+    }
+  }
+
   @SuppressWarnings({"squid:S3776", "squid:S135", "squid:S3740"})
-  protected boolean readAndCalcFromFile() throws IOException {
+  @Override
+  public boolean readAndCalcFromFile() throws IOException {
     // start stopwatch
     long start = System.nanoTime();
     while (System.nanoTime() - start < leftRuntimeOfOneNextCall && seriesScanUtil.hasNextFile()) {
@@ -677,7 +678,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
         }
 
         // calc from raw data
-        if (calcFromRawData(originalTsBlock)) {
+        if (calcUsingRawData(originalTsBlock)) {
           return true;
         }
       }
@@ -757,7 +758,12 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     tsBlockBuilder.declarePosition();
   }
 
-  public static boolean isAllAggregatorsHasFinalResult(List<TableAggregator> aggregators) {
+  public boolean isAllAggregatorsHasFinalResult(List<TableAggregator> aggregators) {
+    // In groupByDateBin, we need read real data to calc next time range
+    if (timeIterator.getType() == ITableTimeRangeIterator.TimeIteratorType.DATE_BIN_TIME_ITERATOR) {
+      return false;
+    }
+
     // no aggregation function, just output ids or attributes
     if (aggregators.isEmpty()) {
       return false;
@@ -768,7 +774,34 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
         return false;
       }
     }
+
+    this.allAggregatorsHasFinalResult = true;
     return true;
+  }
+
+  private void checkIfAllAggregatorHasFinalResult() {
+    if (allAggregatorsHasFinalResult) {
+      // for SINGLE_TIME_ITERATOR, if allAggregatorsHasFinalResult, just consume next device
+      if (timeIterator.getType() == ITableTimeRangeIterator.TimeIteratorType.SINGLE_TIME_ITERATOR) {
+        currentDeviceIndex++;
+        inputTsBlock = null;
+
+        if (currentDeviceIndex < deviceCount) {
+          // construct AlignedSeriesScanUtil for next device
+          this.seriesScanUtil =
+              constructAlignedSeriesScanUtil(deviceEntries.get(currentDeviceIndex));
+          queryDataSource.reset();
+          this.seriesScanUtil.initQueryDataSource(queryDataSource);
+        }
+
+        if (currentDeviceIndex >= deviceCount) {
+          // all devices have been consumed
+          timeIterator.setFinished();
+        }
+
+        allAggregatorsHasFinalResult = false;
+      }
+    }
   }
 
   private void resetTableAggregators() {
@@ -776,7 +809,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   }
 
   @Override
-  protected List<TSDataType> getResultDataTypes() {
+  public List<TSDataType> getResultDataTypes() {
     int groupingKeySize = groupingKeySchemas != null ? groupingKeySchemas.size() : 0;
     int dateBinSize =
         timeIterator.getType() == ITableTimeRangeIterator.TimeIteratorType.DATE_BIN_TIME_ITERATOR

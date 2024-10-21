@@ -69,11 +69,17 @@ public class AccumulatorFactory {
         xIsTimeColumn = true;
       }
       if (LAST_BY.getFunctionName().equals(functionName)) {
-        return new LastByAccumulator(
-            inputDataTypes.get(0), inputDataTypes.get(1), xIsTimeColumn, yIsTimeColumn);
+        return ascending
+            ? new LastByAccumulator(
+                inputDataTypes.get(0), inputDataTypes.get(1), xIsTimeColumn, yIsTimeColumn)
+            : new LastByDescAccumulator(
+                inputDataTypes.get(0), inputDataTypes.get(1), xIsTimeColumn, yIsTimeColumn);
       } else {
-        return new FirstByAccumulator(
-            inputDataTypes.get(0), inputDataTypes.get(1), xIsTimeColumn, yIsTimeColumn);
+        return ascending
+            ? new FirstByAccumulator(
+                inputDataTypes.get(0), inputDataTypes.get(1), xIsTimeColumn, yIsTimeColumn)
+            : new FirstByDescAccumulator(
+                inputDataTypes.get(0), inputDataTypes.get(1), xIsTimeColumn, yIsTimeColumn);
       }
     } else {
       return createBuiltinAccumulator(
@@ -147,17 +153,26 @@ public class AccumulatorFactory {
       case SUM:
         return new SumAccumulator(inputDataTypes.get(0));
       case LAST:
-        return new LastAccumulator(inputDataTypes.get(0));
+        return ascending
+            ? new LastAccumulator(inputDataTypes.get(0))
+            : new LastDescAccumulator(inputDataTypes.get(0));
       case FIRST:
-        return new FirstAccumulator(inputDataTypes.get(0));
+        return ascending
+            ? new FirstAccumulator(inputDataTypes.get(0))
+            : new FirstDescAccumulator(inputDataTypes.get(0));
       case MAX:
         return new MaxAccumulator(inputDataTypes.get(0));
       case MIN:
         return new MinAccumulator(inputDataTypes.get(0));
       case LAST_BY:
-        return new LastByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1), false, false);
+        return ascending
+            ? new LastByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1), false, false)
+            : new LastByDescAccumulator(inputDataTypes.get(0), inputDataTypes.get(1), false, false);
       case FIRST_BY:
-        return new FirstByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1), false, false);
+        return ascending
+            ? new FirstByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1), false, false)
+            : new FirstByDescAccumulator(
+                inputDataTypes.get(0), inputDataTypes.get(1), false, false);
       case MAX_BY:
         return new TableMaxByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
       case MIN_BY:

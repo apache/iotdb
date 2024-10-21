@@ -56,7 +56,7 @@ public class LastByAccumulator implements TableAccumulator {
   private final TsPrimitiveType xResult;
   private boolean xIsNull = true;
 
-  private boolean initResult = false;
+  protected boolean initResult = false;
 
   public LastByAccumulator(
       TSDataType xDataType, TSDataType yDataType, boolean xIsTimeColumn, boolean yIsTimeColumn) {
