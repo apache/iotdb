@@ -142,10 +142,9 @@ public abstract class EnrichedEvent implements Event {
     }
 
     if (isSuccessful) {
-      if (referenceCount.incrementAndGet() == 1) {
-        if (PipeConfig.getInstance().getPipeEventReferenceTrackingEnabled()) {
-          trackResource();
-        }
+      if (referenceCount.incrementAndGet() == 1
+          && PipeConfig.getInstance().getPipeEventReferenceTrackingEnabled()) {
+        trackResource();
       }
     } else {
       LOGGER.warn(
