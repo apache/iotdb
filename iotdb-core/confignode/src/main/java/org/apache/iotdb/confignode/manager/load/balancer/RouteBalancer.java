@@ -47,7 +47,6 @@ import org.apache.iotdb.confignode.manager.load.subscriber.RegionGroupStatistics
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
@@ -255,7 +254,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
 
   private void invalidateSchemaCacheOfOldLeaders(
       Map<TConsensusGroupId, Integer> oldLeaderMap, Set<TConsensusGroupId> successTransferSet) {
-    DataNodeAsyncRequestContext<TInvalidateCacheReq, TSStatus> invalidateSchemaCacheRequestHandler =
+    DataNodeAsyncRequestContext<String, TSStatus> invalidateSchemaCacheRequestHandler =
         new DataNodeAsyncRequestContext<>(CnToDnRequestType.INVALIDATE_LAST_CACHE);
     AtomicInteger requestIndex = new AtomicInteger(0);
     oldLeaderMap.entrySet().stream()
