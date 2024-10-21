@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.client.async.handlers.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -39,7 +39,7 @@ public class CheckTimeSeriesExistenceRPCHandler
       LoggerFactory.getLogger(CheckTimeSeriesExistenceRPCHandler.class);
 
   public CheckTimeSeriesExistenceRPCHandler(
-      CnToDnRequestType requestType,
+      CnToDnAsyncRequestType requestType,
       int requestId,
       TDataNodeLocation targetDataNode,
       Map<Integer, TDataNodeLocation> dataNodeLocationMap,
