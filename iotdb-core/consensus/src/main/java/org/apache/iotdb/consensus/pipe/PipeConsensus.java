@@ -30,8 +30,11 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
+import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusDeleteLocalPeerKillPoints;
+import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusRemovePeerCoordinatorKillPoints;
+import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.commons.utils.StatusUtils;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -258,12 +261,12 @@ public class PipeConsensus implements IConsensus {
     if (!peers.contains(new Peer(groupId, thisNodeId, thisNode))) {
       throw new IllegalPeerEndpointException(thisNode, peers);
     }
-    if (stateMachineMap.containsKey(groupId)) {
-      throw new ConsensusGroupAlreadyExistException(groupId);
-    }
 
     try {
       stateMachineMapLock.lock();
+      if (stateMachineMap.containsKey(groupId)) {
+        throw new ConsensusGroupAlreadyExistException(groupId);
+      }
 
       final String path = getPeerDir(groupId);
       if (!new File(path).mkdirs()) {
@@ -283,6 +286,7 @@ public class PipeConsensus implements IConsensus {
               syncClientManager);
       stateMachineMap.put(groupId, consensus);
       consensus.start(false); // pipe will start after creating
+      KillPoint.setKillPoint(DataNodeKillPoints.DESTINATION_CREATE_LOCAL_PEER);
     } catch (IOException e) {
       LOGGER.warn("Cannot create local peer for group {} with peers {}", groupId, peers, e);
       throw new ConsensusException(e);
@@ -293,17 +297,18 @@ public class PipeConsensus implements IConsensus {
 
   @Override
   public void deleteLocalPeer(ConsensusGroupId groupId) throws ConsensusException {
-    if (!stateMachineMap.containsKey(groupId)) {
-      throw new ConsensusGroupNotExistException(groupId);
-    }
-
+    KillPoint.setKillPoint(IoTConsensusDeleteLocalPeerKillPoints.BEFORE_DELETE);
     try {
       stateMachineMapLock.lock();
+      if (!stateMachineMap.containsKey(groupId)) {
+        throw new ConsensusGroupNotExistException(groupId);
+      }
 
       final PipeConsensusServerImpl consensus = stateMachineMap.get(groupId);
       consensus.clear();
 
       FileUtils.deleteFileOrDirectory(new File(getPeerDir(groupId)));
+      KillPoint.setKillPoint(IoTConsensusDeleteLocalPeerKillPoints.AFTER_DELETE);
     } catch (IOException e) {
       LOGGER.warn("Cannot delete local peer for group {}", groupId, e);
       throw new ConsensusException(e);
@@ -328,6 +333,7 @@ public class PipeConsensus implements IConsensus {
       // step 2: notify all the other Peers to create consensus pipes to newPeer
       LOGGER.info("[{}] notify current peers to create consensus pipes...", CLASS_NAME);
       impl.notifyPeersToCreateConsensusPipes(peer);
+      KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_TRANSITION);
 
       // step 3: wait until all the other Peers finish transferring
       LOGGER.info("[{}] wait until all the other peers finish transferring...", CLASS_NAME);
@@ -336,6 +342,7 @@ public class PipeConsensus implements IConsensus {
       // step 4: active new Peer
       LOGGER.info("[{}] activate new peer...", CLASS_NAME);
       impl.setRemotePeerActive(peer, true);
+      KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_DONE);
     } catch (ConsensusGroupModifyPeerException e) {
       try {
         LOGGER.info("[{}] add remote peer failed, automatic cleanup side effects...", CLASS_NAME);
@@ -359,22 +366,28 @@ public class PipeConsensus implements IConsensus {
     if (!impl.containsPeer(peer)) {
       throw new PeerNotInConsensusGroupException(groupId, peer.toString());
     }
+    KillPoint.setKillPoint(IoTConsensusRemovePeerCoordinatorKillPoints.INIT);
 
     try {
-      // let other peers remove the consensus pipe to target peer
-      impl.notifyPeersToDropConsensusPipe(peer);
       // let target peer reject new write
       impl.setRemotePeerActive(peer, false);
+      KillPoint.setKillPoint(IoTConsensusRemovePeerCoordinatorKillPoints.AFTER_INACTIVE_PEER);
       // wait its consensus pipes to complete
       impl.waitTargetPeerToPeersTransmissionCompleted(peer);
+      // remove consensus pipes between target peer and other peers
+      impl.notifyPeersToDropConsensusPipe(peer);
+      // wait target peer to release all resource
+      impl.waitReleaseAllRegionRelatedResource(peer);
     } catch (ConsensusGroupModifyPeerException e) {
       throw new ConsensusException(e.getMessage());
     }
+    KillPoint.setKillPoint(IoTConsensusRemovePeerCoordinatorKillPoints.FINISH);
   }
 
   @Override
   public void resetPeerList(ConsensusGroupId groupId, List<Peer> correctPeers)
       throws ConsensusException {
+    LOGGER.info("[RESET PEER LIST] Start to reset peer list to {}", correctPeers);
     PipeConsensusServerImpl impl =
         Optional.ofNullable(stateMachineMap.get(groupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
@@ -470,16 +483,11 @@ public class PipeConsensus implements IConsensus {
 
   @Override
   public void reloadConsensusConfig(ConsensusConfig consensusConfig) {
-    // TODO: impl for hot config loading
+    // PipeConsensus doesn't support reload consensus config, related config can be reloaded in
+    // iotdb-core layer.
   }
 
   public PipeConsensusServerImpl getImpl(ConsensusGroupId groupId) {
     return stateMachineMap.get(groupId);
-  }
-
-  //////////////////////////// APIs provided for Test ////////////////////////////
-  @TestOnly
-  public int getPipeCount() {
-    return this.consensusPipeManager.getAllConsensusPipe().size();
   }
 }

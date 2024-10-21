@@ -17,30 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.schema.table;
+package org.apache.iotdb.confignode.consensus.request.write.table;
 
-public enum AlterTableOperationType {
-  ADD_COLUMN((byte) 0),
-  SET_PROPERTIES((byte) 1);
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
-  private final byte type;
-
-  AlterTableOperationType(final byte type) {
-    this.type = type;
+public class DropTablePlan extends AbstractTablePlan {
+  public DropTablePlan() {
+    super(ConfigPhysicalPlanType.DropTable);
   }
 
-  public byte getTypeValue() {
-    return type;
-  }
-
-  public static AlterTableOperationType getType(final byte value) {
-    switch (value) {
-      case 0:
-        return ADD_COLUMN;
-      case 1:
-        return SET_PROPERTIES;
-      default:
-        throw new IllegalArgumentException();
-    }
+  public DropTablePlan(final String database, final String tableName) {
+    super(ConfigPhysicalPlanType.DropTable, database, tableName);
   }
 }

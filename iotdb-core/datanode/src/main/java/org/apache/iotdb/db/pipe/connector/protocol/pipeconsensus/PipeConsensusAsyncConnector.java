@@ -45,7 +45,8 @@ import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.handler.PipeCon
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.builder.PipeConsensusAsyncBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletInsertNodeReq;
-import org.apache.iotdb.db.pipe.consensus.PipeConsensusConnectorMetrics;
+import org.apache.iotdb.db.pipe.consensus.metric.PipeConsensusConnectorMetrics;
+import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -403,13 +404,16 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
     syncTransferQueuedEventsIfNecessary();
     transferBatchedEventsIfNecessary();
 
-    if (!(event instanceof PipeHeartbeatEvent)) {
-      LOGGER.warn(
-          "PipeConsensusAsyncConnector does not support transferring generic event: {}.", event);
+    // Transfer deletion
+    if (event instanceof PipeDeleteDataNodeEvent) {
+      retryConnector.transfer(event);
       return;
     }
 
-    retryConnector.transfer(event);
+    if (!(event instanceof PipeHeartbeatEvent)) {
+      LOGGER.warn(
+          "PipeConsensusAsyncConnector does not support transferring generic event: {}.", event);
+    }
   }
 
   /** Try its best to commit data in order. Flush can also be a trigger to transfer batched data. */

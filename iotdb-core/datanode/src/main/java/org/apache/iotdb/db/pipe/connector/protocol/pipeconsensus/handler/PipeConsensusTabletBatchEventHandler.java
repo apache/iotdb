@@ -27,7 +27,7 @@ import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusBatchTransferResp;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.PipeConsensusAsyncConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.builder.PipeConsensusAsyncBatchReqBuilder;
-import org.apache.iotdb.db.pipe.consensus.PipeConsensusConnectorMetrics;
+import org.apache.iotdb.db.pipe.consensus.metric.PipeConsensusConnectorMetrics;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
