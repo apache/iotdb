@@ -119,7 +119,7 @@ function build_iotdb(){
     fi
     echo "##### build IoTDB #####"
     cd $iotdb_path
-    mvn clean package -pl distribution -am -DskipTests
+    ./mvnw clean package -pl distribution -am -DskipTests
     if [[ ! -d ${iotdb_zip_path} ]]; then mkdir ${iotdb_zip_path}; fi
     cd ${iotdb_path}/distribution/target
     cp apache-iotdb-${version}-all-bin.zip apache-iotdb-${version}-confignode-bin.zip apache-iotdb-${version}-datanode-bin.zip ${iotdb_zip_path}/
