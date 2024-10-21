@@ -191,7 +191,8 @@ public class InMemoryHashAggregationBuilder implements HashAggregationBuilder {
 
     pageBuilder.reset();
 
-    while (!pageBuilder.isFull() && groupIds.hasNext()) {
+    // TODO Memory Control Weihao Li
+    while (groupIds.hasNext()) {
       int groupId = groupIds.next();
 
       groupByHash.appendValuesTo(groupId, pageBuilder);
