@@ -283,8 +283,8 @@ public class ActiveLoadTsFileLoader {
     }
   }
 
-  public boolean isFilePendingOrLoading(final String filePath) {
-    return pendingQueue.isFilePendingOrLoading(filePath);
+  public boolean isFilePendingOrLoading(final File file) {
+    return pendingQueue.isFilePendingOrLoading(file.getAbsolutePath());
   }
 
   // Metrics
