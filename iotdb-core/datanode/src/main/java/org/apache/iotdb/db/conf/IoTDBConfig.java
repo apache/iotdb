@@ -1195,7 +1195,7 @@ public class IoTDBConfig {
 
   private CompressionType WALCompressionAlgorithm = CompressionType.LZ4;
 
-  private boolean enableInfluxDBRpcService = true;
+  private boolean enableInfluxDBRpcService = false;
 
   private String influxdbImplClassName = NewInfluxDBServiceImpl.class.getName();
 
