@@ -158,8 +158,6 @@ public class SubscriptionConnectorSubtaskManager {
     final PipeConnectorSubtaskLifeCycle lifeCycle =
         attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString);
     lifeCycle.register();
-    PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-        .register(lifeCycle.getSubtask(), environment.getPipeName(), environment.getCreationTime());
 
     return attributeSortedString;
   }
