@@ -726,8 +726,8 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus alterDatabase(DatabaseSchemaPlan databaseSchemaPlan) {
-    TSStatus status = confirmLeader();
+  public TSStatus alterDatabase(final DatabaseSchemaPlan databaseSchemaPlan) {
+    final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return clusterSchemaManager.alterDatabase(databaseSchemaPlan, false);
     } else {
@@ -736,19 +736,19 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public synchronized TSStatus deleteDatabases(TDeleteDatabasesReq tDeleteReq) {
-    TSStatus status = confirmLeader();
+  public synchronized TSStatus deleteDatabases(final TDeleteDatabasesReq tDeleteReq) {
+    final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      List<String> deletedPaths = tDeleteReq.getPrefixPathList();
+      final List<String> deletedPaths = tDeleteReq.getPrefixPathList();
       // remove wild
-      Map<String, TDatabaseSchema> deleteDatabaseSchemaMap =
+      final Map<String, TDatabaseSchema> deleteDatabaseSchemaMap =
           getClusterSchemaManager().getMatchedDatabaseSchemasByName(deletedPaths);
       if (deleteDatabaseSchemaMap.isEmpty()) {
         return RpcUtils.getStatus(
             TSStatusCode.PATH_NOT_EXIST.getStatusCode(),
             String.format("Path %s does not exist", Arrays.toString(deletedPaths.toArray())));
       }
-      ArrayList<TDatabaseSchema> parsedDeleteDatabases =
+      final ArrayList<TDatabaseSchema> parsedDeleteDatabases =
           new ArrayList<>(deleteDatabaseSchemaMap.values());
       return procedureManager.deleteDatabases(
           parsedDeleteDatabases,
@@ -1834,14 +1834,15 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TShowDatabaseResp showDatabase(TGetDatabaseReq req) {
-    TSStatus status = confirmLeader();
+  public TShowDatabaseResp showDatabase(final TGetDatabaseReq req) {
+    final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      PathPatternTree scope =
+      final PathPatternTree scope =
           req.getScopePatternTree() == null
               ? SchemaConstant.ALL_MATCH_SCOPE
               : PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
-      GetDatabasePlan getDatabasePlan = new GetDatabasePlan(req.getDatabasePathPattern(), scope);
+      final GetDatabasePlan getDatabasePlan =
+          new GetDatabasePlan(req.getDatabasePathPattern(), scope);
       return getClusterSchemaManager().showDatabase(getDatabasePlan);
     } else {
       return new TShowDatabaseResp().setStatus(status);

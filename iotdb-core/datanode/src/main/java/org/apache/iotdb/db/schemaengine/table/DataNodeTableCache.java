@@ -369,12 +369,14 @@ public class DataNodeTableCache implements ITableCache {
     for (final Map.Entry<String, ? extends Map<String, ?>> dbEntry : tableMap.entrySet()) {
       final String database = dbEntry.getKey();
       if (!(path.startsWith(database, dbStartIndex)
+          && path.length() > dbStartIndex + database.length()
           && path.charAt(dbStartIndex + database.length()) == PATH_SEPARATOR)) {
         continue;
       }
       final int tableStartIndex = dbStartIndex + database.length() + 1;
       for (final String tableName : dbEntry.getValue().keySet()) {
         if (path.startsWith(tableName, tableStartIndex)
+            && path.length() > tableStartIndex + tableName.length()
             && path.charAt(tableStartIndex + tableName.length()) == PATH_SEPARATOR) {
           return new Pair<>(database, tableName);
         }

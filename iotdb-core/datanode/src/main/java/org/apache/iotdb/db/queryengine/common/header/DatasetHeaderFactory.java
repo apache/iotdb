@@ -57,7 +57,7 @@ public class DatasetHeaderFactory {
     return new DatasetHeader(ColumnHeaderConstant.showDevicesWithSgColumnHeaders, true);
   }
 
-  public static DatasetHeader getShowStorageGroupHeader(boolean isDetailed) {
+  public static DatasetHeader getShowStorageGroupHeader(final boolean isDetailed) {
     return isDetailed
         ? new DatasetHeader(ColumnHeaderConstant.showStorageGroupsDetailColumnHeaders, true)
         : new DatasetHeader(ColumnHeaderConstant.showStorageGroupsColumnHeaders, true);
@@ -219,6 +219,10 @@ public class DatasetHeaderFactory {
 
   public static DatasetHeader getShowDBHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showDBColumnHeaders, true);
+  }
+
+  public static DatasetHeader getShowDBDetailsHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showDBDetailsColumnHeaders, true);
   }
 
   public static DatasetHeader getDescribeTableHeader() {

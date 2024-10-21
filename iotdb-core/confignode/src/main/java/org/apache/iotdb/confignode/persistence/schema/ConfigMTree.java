@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.persistence.schema.mnode.factory.ConfigMNodeF
 import org.apache.iotdb.confignode.persistence.schema.mnode.impl.ConfigTableNode;
 import org.apache.iotdb.db.exception.metadata.DatabaseAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.DatabaseConflictException;
+import org.apache.iotdb.db.exception.metadata.DatabaseModelException;
 import org.apache.iotdb.db.exception.metadata.DatabaseNotSetException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -227,13 +228,16 @@ public class ConfigMTree {
    *
    * @return a list contains all distinct databases
    */
-  public List<PartialPath> getAllDatabasePaths() {
-    List<PartialPath> res = new ArrayList<>();
-    Deque<IConfigMNode> nodeStack = new ArrayDeque<>();
+  public List<PartialPath> getAllDatabasePaths(final boolean onlyTableModel) {
+    final List<PartialPath> res = new ArrayList<>();
+    final Deque<IConfigMNode> nodeStack = new ArrayDeque<>();
     nodeStack.add(root);
     while (!nodeStack.isEmpty()) {
-      IConfigMNode current = nodeStack.pop();
+      final IConfigMNode current = nodeStack.pop();
       if (current.isDatabase()) {
+        if (onlyTableModel && !current.getDatabaseSchema().isIsTableModel()) {
+          continue;
+        }
         res.add(current.getPartialPath());
       } else {
         nodeStack.addAll(current.getChildren().values());
@@ -637,6 +641,9 @@ public class ConfigMTree {
   public void preCreateTable(final PartialPath database, final TsTable table)
       throws MetadataException {
     final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    if (!databaseNode.getDatabaseSchema().isIsTableModel()) {
+      throw new DatabaseModelException(database.getFullPath(), false);
+    }
     final IConfigMNode node = databaseNode.getChild(table.getTableName());
     if (node == null) {
       final ConfigTableNode tableNode =
@@ -735,7 +742,7 @@ public class ConfigMTree {
   }
 
   public Map<String, List<TsTable>> getAllUsingTables() {
-    return getAllDatabasePaths().stream()
+    return getAllDatabasePaths(true).stream()
         .collect(
             Collectors.toMap(
                 PartialPath::getFullPath,
@@ -752,7 +759,7 @@ public class ConfigMTree {
 
   public Map<String, List<TsTable>> getAllPreCreateTables() throws MetadataException {
     final Map<String, List<TsTable>> result = new HashMap<>();
-    final List<PartialPath> databaseList = getAllDatabasePaths();
+    final List<PartialPath> databaseList = getAllDatabasePaths(true);
     for (PartialPath databasePath : databaseList) {
       final String database = databasePath.getFullPath().substring(ROOT.length() + 1);
       final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(databasePath).getAsMNode();

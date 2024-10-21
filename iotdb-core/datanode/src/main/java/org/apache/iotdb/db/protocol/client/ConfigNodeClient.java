@@ -622,7 +622,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public TSchemaPartitionTableResp getOrCreateSchemaPartitionTableWithSlots(
-      Map<String, List<TSeriesPartitionSlot>> dbSlotMap) throws TException {
+      final Map<String, List<TSeriesPartitionSlot>> dbSlotMap) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.getOrCreateSchemaPartitionTableWithSlots(dbSlotMap),
         resp -> !updateConfigNodeLeader(resp.status));
