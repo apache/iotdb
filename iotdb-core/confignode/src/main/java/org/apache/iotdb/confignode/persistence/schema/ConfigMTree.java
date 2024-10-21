@@ -228,13 +228,16 @@ public class ConfigMTree {
    *
    * @return a list contains all distinct databases
    */
-  public List<PartialPath> getAllDatabasePaths() {
-    List<PartialPath> res = new ArrayList<>();
-    Deque<IConfigMNode> nodeStack = new ArrayDeque<>();
+  public List<PartialPath> getAllDatabasePaths(final boolean onlyTableModel) {
+    final List<PartialPath> res = new ArrayList<>();
+    final Deque<IConfigMNode> nodeStack = new ArrayDeque<>();
     nodeStack.add(root);
     while (!nodeStack.isEmpty()) {
-      IConfigMNode current = nodeStack.pop();
+      final IConfigMNode current = nodeStack.pop();
       if (current.isDatabase()) {
+        if (onlyTableModel && !current.getDatabaseSchema().isIsTableModel()) {
+          continue;
+        }
         res.add(current.getPartialPath());
       } else {
         nodeStack.addAll(current.getChildren().values());
@@ -739,7 +742,7 @@ public class ConfigMTree {
   }
 
   public Map<String, List<TsTable>> getAllUsingTables() {
-    return getAllDatabasePaths().stream()
+    return getAllDatabasePaths(true).stream()
         .collect(
             Collectors.toMap(
                 PartialPath::getFullPath,
@@ -756,7 +759,7 @@ public class ConfigMTree {
 
   public Map<String, List<TsTable>> getAllPreCreateTables() throws MetadataException {
     final Map<String, List<TsTable>> result = new HashMap<>();
-    final List<PartialPath> databaseList = getAllDatabasePaths();
+    final List<PartialPath> databaseList = getAllDatabasePaths(true);
     for (PartialPath databasePath : databaseList) {
       final String database = databasePath.getFullPath().substring(ROOT.length() + 1);
       final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(databasePath).getAsMNode();
