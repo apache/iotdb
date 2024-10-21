@@ -37,7 +37,6 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.partition.PartitionCac
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
-import org.apache.tsfile.utils.Pair;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -50,6 +49,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
@@ -152,9 +152,7 @@ public class PartitionCacheTest {
   public void setUp() throws Exception {
     partitionCache = new PartitionCache();
     partitionCache.updateDatabaseCache(
-        storageGroups.stream()
-            .map(storageGroup -> new Pair<>(storageGroup, false))
-            .collect(Collectors.toSet()));
+        storageGroups.stream().collect(Collectors.toMap(Function.identity(), k -> false)));
     partitionCache.updateSchemaPartitionCache(schemaPartitionTable);
     partitionCache.updateDataPartitionCache(dataPartitionTable);
     partitionCache.updateGroupIdToReplicaSetMap(100, consensusGroupIdToRegionReplicaSet);
