@@ -1652,7 +1652,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             groupingKeyIndex,
             timeRangeIterator,
             scanAscending,
-            null,
             calculateMaxAggregationResultSize(),
             canUseStatistic,
             aggColumnIndexes);
@@ -1706,7 +1705,19 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       }
     }
 
-    return new boolean[] {canUseStatistic, ascendingCount >= descendingCount};
+    boolean isAscending = node.getScanOrder().isAscending();
+    boolean groupByDateBin = node.getProjection() != null && !node.getProjection().isEmpty();
+    // only in non-groupByDateBin situation can change the scan order
+    if (!groupByDateBin) {
+      if (ascendingCount >= descendingCount) {
+        node.setScanOrder(Ordering.ASC);
+        isAscending = true;
+      } else {
+        node.setScanOrder(Ordering.DESC);
+        isAscending = false;
+      }
+    }
+    return new boolean[] {canUseStatistic, isAscending};
   }
 
   public static long calculateMaxAggregationResultSize(
