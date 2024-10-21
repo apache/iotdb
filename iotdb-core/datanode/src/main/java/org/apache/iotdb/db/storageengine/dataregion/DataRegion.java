@@ -1142,7 +1142,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  private boolean insert(
+  private boolean doInsertTablet(
       InsertTabletNode insertTabletNode,
       Map<Long, List<int[]>[]> splitMap,
       TSStatus[] results,
@@ -1232,7 +1232,7 @@ public class DataRegion implements IDataRegionForQuery {
       split(insertTabletNode, start, end, splitInfo);
       start = end;
     }
-    noFailure = noFailure && insert(insertTabletNode, splitInfo, results, costsForMetrics);
+    noFailure = noFailure && doInsertTablet(insertTabletNode, splitInfo, results, costsForMetrics);
 
     if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
         && !insertTabletNode.isGeneratedByRemoteConsensusLeader()) {
