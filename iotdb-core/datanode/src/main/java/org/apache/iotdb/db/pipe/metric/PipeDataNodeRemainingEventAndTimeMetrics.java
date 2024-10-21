@@ -198,7 +198,8 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     }
   }
 
-  public void markRegionCommit(final String pipeID, final boolean isDataRegion) {
+  public void markRegionCommit(
+      final String pipeID, final boolean isDataRegion, final boolean isDataRegionRealtimeEvent) {
     if (Objects.isNull(metricService)) {
       return;
     }
@@ -212,23 +213,10 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     }
 
     if (isDataRegion) {
-      operator.markDataRegionCommit();
+      operator.markDataRegionCommit(isDataRegionRealtimeEvent);
     } else {
       operator.markSchemaRegionCommit();
     }
-  }
-
-  public void markCollectInvocationCount(final String pipeID, final long collectInvocationCount) {
-    if (Objects.isNull(metricService)) {
-      return;
-    }
-    final PipeDataNodeRemainingEventAndTimeOperator operator =
-        remainingEventAndTimeOperatorMap.get(pipeID);
-    if (Objects.isNull(operator)) {
-      return;
-    }
-
-    operator.markCollectInvocationCount(collectInvocationCount);
   }
 
   //////////////////////////// Show pipes ////////////////////////////

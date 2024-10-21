@@ -49,8 +49,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Predicate;
 
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext.INVALID_COMMIT_ID;
 
@@ -563,16 +565,23 @@ public abstract class SubscriptionPrefetchingQueue {
     return commitIdGenerator.get();
   }
 
-  public int getPipeEventCount() {
-    return inputPendingQueue.size()
-        + prefetchingQueue.stream()
-            .map(SubscriptionEvent::getPipeEventCount)
-            .reduce(Integer::sum)
-            .orElse(0)
-        + inFlightEvents.values().stream()
-            .map(SubscriptionEvent::getPipeEventCount)
+  public int getPipeEventCount(final Predicate<EnrichedEvent> predicate) {
+    // 1. events in inputPendingQueue
+    final AtomicInteger inputPendingQueuePipeEventCount = new AtomicInteger(0);
+    inputPendingQueue.forEach(
+        event -> {
+          if (event instanceof EnrichedEvent && predicate.test((EnrichedEvent) event)) {
+            inputPendingQueuePipeEventCount.incrementAndGet();
+          }
+        });
+    // 2. events in prefetchingQueue
+    final int prefetchingQueuePipeEventCount =
+        prefetchingQueue.stream()
+            .map(event -> event.getPipeEventCount(predicate))
             .reduce(Integer::sum)
             .orElse(0);
+    // do not consider events on the fly
+    return inputPendingQueuePipeEventCount.get() + prefetchingQueuePipeEventCount;
   }
 
   /////////////////////////////// close & termination ///////////////////////////////

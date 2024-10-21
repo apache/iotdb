@@ -217,6 +217,14 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   }
 
   @Override
+  public boolean isDataRegionRealtimeEvent() {
+    if (!(sourceEvent instanceof PipeTsFileInsertionEvent)) {
+      return false;
+    }
+    return sourceEvent.isDataRegionRealtimeEvent();
+  }
+
+  @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       final String pipeName,
       final long creationTime,
@@ -244,6 +252,13 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   @Override
   public boolean isGeneratedByPipe() {
     throw new UnsupportedOperationException("isGeneratedByPipe() is not supported!");
+  }
+
+  @Override
+  public boolean needToCommitRate() {
+    // When computing the commit rate, only consider events where needToReport is true to avoid
+    // counting unparsed source events that influence remaining time calculation.
+    return super.needToCommitRate() && needToReport;
   }
 
   @Override

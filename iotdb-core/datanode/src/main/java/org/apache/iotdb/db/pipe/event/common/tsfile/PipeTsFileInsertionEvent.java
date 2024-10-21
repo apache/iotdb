@@ -344,6 +344,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   }
 
   @Override
+  public boolean isDataRegionRealtimeEvent() {
+    return !isGeneratedByHistoricalExtractor;
+  }
+
+  @Override
   public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       final String pipeName,
       final long creationTime,

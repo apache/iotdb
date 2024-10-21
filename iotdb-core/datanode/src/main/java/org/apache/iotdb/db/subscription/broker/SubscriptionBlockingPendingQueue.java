@@ -22,6 +22,8 @@ package org.apache.iotdb.db.subscription.broker;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.event.Event;
 
+import java.util.function.Consumer;
+
 public abstract class SubscriptionBlockingPendingQueue {
 
   protected final UnboundedBlockingPendingQueue<Event> inputPendingQueue;
@@ -39,5 +41,10 @@ public abstract class SubscriptionBlockingPendingQueue {
 
   public boolean isEmpty() {
     return inputPendingQueue.isEmpty();
+  }
+
+  /** DO NOT FORGET to set eventCounter to new value after invoking this method. */
+  public void forEach(final Consumer<Event> action) {
+    inputPendingQueue.forEach(action);
   }
 }
