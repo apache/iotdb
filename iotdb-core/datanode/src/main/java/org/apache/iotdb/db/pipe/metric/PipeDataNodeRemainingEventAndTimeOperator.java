@@ -22,9 +22,6 @@ package org.apache.iotdb.db.pipe.metric;
 import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.metric.PipeRemainingOperator;
-import org.apache.iotdb.db.pipe.agent.task.subtask.connector.PipeConnectorSubtask;
-import org.apache.iotdb.db.pipe.agent.task.subtask.processor.PipeProcessorSubtask;
-import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.metrics.core.IoTDBMetricManager;
 import org.apache.iotdb.metrics.core.type.IoTDBHistogram;
@@ -38,17 +35,19 @@ import java.util.Collections;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
-  private final Set<IoTDBDataRegionExtractor> dataRegionExtractors =
-      Collections.newSetFromMap(new ConcurrentHashMap<>());
-  private final Set<PipeProcessorSubtask> dataRegionProcessors =
-      Collections.newSetFromMap(new ConcurrentHashMap<>());
-  private final Set<PipeConnectorSubtask> dataRegionConnectors =
-      Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+  // Calculate from schema region extractors directly for it requires less computation
   private final Set<IoTDBSchemaRegionExtractor> schemaRegionExtractors =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+  private final AtomicInteger insertionEventCount = new AtomicInteger(0);
+  private final AtomicInteger tsfileEventCount = new AtomicInteger(0);
+  private final AtomicInteger heartbeatEventCount = new AtomicInteger(0);
+
   private final AtomicReference<Meter> dataRegionCommitMeter = new AtomicReference<>(null);
   private final AtomicReference<Meter> schemaRegionCommitMeter = new AtomicReference<>(null);
   private final IoTDBHistogram collectInvocationHistogram =
@@ -59,19 +58,33 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
 
   //////////////////////////// Remaining event & time calculation ////////////////////////////
 
+  void increaseInsertionEventCount() {
+    tsfileEventCount.incrementAndGet();
+  }
+
+  void decreaseInsertionEventCount() {
+    tsfileEventCount.decrementAndGet();
+  }
+
+  void increaseTsFileEventCount() {
+    tsfileEventCount.incrementAndGet();
+  }
+
+  void decreaseTsFileEventCount() {
+    tsfileEventCount.decrementAndGet();
+  }
+
+  void increaseHeartbeatEventCount() {
+    heartbeatEventCount.incrementAndGet();
+  }
+
+  void decreaseHeartbeatEventCount() {
+    heartbeatEventCount.decrementAndGet();
+  }
+
   long getRemainingEvents() {
-    return dataRegionExtractors.stream()
-            .map(IoTDBDataRegionExtractor::getEventCount)
-            .reduce(Integer::sum)
-            .orElse(0)
-        + dataRegionProcessors.stream()
-            .map(processorSubtask -> processorSubtask.getEventCount(false))
-            .reduce(Integer::sum)
-            .orElse(0)
-        + dataRegionConnectors.stream()
-            .map(connectorSubtask -> connectorSubtask.getEventCount(pipeName))
-            .reduce(Integer::sum)
-            .orElse(0)
+    return tsfileEventCount.get()
+        + heartbeatEventCount.get()
         + schemaRegionExtractors.stream()
             .map(IoTDBSchemaRegionExtractor::getUnTransferredEventCount)
             .reduce(Long::sum)
@@ -92,27 +105,7 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     final double invocationValue = collectInvocationHistogram.getMean();
     // Do not take heartbeat event into account
     final double totalDataRegionWriteEventCount =
-        (dataRegionExtractors.stream()
-                        .map(IoTDBDataRegionExtractor::getEventCount)
-                        .reduce(Integer::sum)
-                        .orElse(0)
-                    - dataRegionExtractors.stream()
-                        .map(IoTDBDataRegionExtractor::getPipeHeartbeatEventCount)
-                        .reduce(Integer::sum)
-                        .orElse(0))
-                * Math.max(invocationValue, 1)
-            + dataRegionProcessors.stream()
-                .map(processorSubtask -> processorSubtask.getEventCount(true))
-                .reduce(Integer::sum)
-                .orElse(0)
-            + dataRegionConnectors.stream()
-                .map(connectorSubtask -> connectorSubtask.getEventCount(pipeName))
-                .reduce(Integer::sum)
-                .orElse(0)
-            - dataRegionConnectors.stream()
-                .map(PipeConnectorSubtask::getPipeHeartbeatEventCount)
-                .reduce(Integer::sum)
-                .orElse(0);
+        tsfileEventCount.get() * Math.max(invocationValue, 1) + insertionEventCount.get();
 
     dataRegionCommitMeter.updateAndGet(
         meter -> {
@@ -168,22 +161,6 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
 
   //////////////////////////// Register & deregister (pipe integration) ////////////////////////////
 
-  void register(final IoTDBDataRegionExtractor extractor) {
-    setNameAndCreationTime(extractor.getPipeName(), extractor.getCreationTime());
-    dataRegionExtractors.add(extractor);
-  }
-
-  void register(final PipeProcessorSubtask processorSubtask) {
-    setNameAndCreationTime(processorSubtask.getPipeName(), processorSubtask.getCreationTime());
-    dataRegionProcessors.add(processorSubtask);
-  }
-
-  void register(
-      final PipeConnectorSubtask connectorSubtask, final String pipeName, final long creationTime) {
-    setNameAndCreationTime(pipeName, creationTime);
-    dataRegionConnectors.add(connectorSubtask);
-  }
-
   void register(final IoTDBSchemaRegionExtractor extractor) {
     setNameAndCreationTime(extractor.getPipeName(), extractor.getCreationTime());
     schemaRegionExtractors.add(extractor);
@@ -211,7 +188,7 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
         });
   }
 
-  void markCollectInvocationCount(final long collectInvocationCount) {
+  void markTsFileCollectInvocationCount(final long collectInvocationCount) {
     // If collectInvocationCount == 0, the event will still be committed once
     collectInvocationHistogram.update(Math.max(collectInvocationCount, 1));
   }

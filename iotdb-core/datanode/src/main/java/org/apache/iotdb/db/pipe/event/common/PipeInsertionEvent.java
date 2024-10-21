@@ -17,11 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.event;
+package org.apache.iotdb.db.pipe.event.common;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 
 public abstract class PipeInsertionEvent extends EnrichedEvent {
 

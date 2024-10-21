@@ -25,14 +25,15 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
+import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventParser;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTablePatternParser;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTreePatternParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
@@ -168,11 +169,19 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         PipeDataNodeResourceManager.memory()
             .forceAllocateForTabletWithRetry(
                 PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet));
+    if (Objects.nonNull(pipeName)) {
+      PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+          .increaseInsertionEventCount(pipeName + "_" + creationTime);
+    }
     return true;
   }
 
   @Override
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
+    if (Objects.nonNull(pipeName)) {
+      PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+          .decreaseInsertionEventCount(pipeName + "_" + creationTime);
+    }
     allocatedMemoryBlock.close();
 
     // Record the deviceId before the memory is released,

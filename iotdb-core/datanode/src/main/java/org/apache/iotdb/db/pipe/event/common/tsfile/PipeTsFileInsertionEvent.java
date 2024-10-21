@@ -24,14 +24,15 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
-import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
+import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.aggregator.TsFileInsertionPointCounter;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParserProvider;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTimePartitionProgressIndexKeeper;
+import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
@@ -271,6 +272,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       if (isWithMod) {
         modFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(modFile, false, null);
       }
+      if (Objects.nonNull(pipeName)) {
+        PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+            .increaseTsFileEventCount(pipeName + "_" + creationTime);
+      }
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
@@ -297,6 +302,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
               tsFile.getPath(), holderMessage),
           e);
       return false;
+    } finally {
+      if (Objects.nonNull(pipeName)) {
+        PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+            .decreaseTsFileEventCount(pipeName + "_" + creationTime);
+      }
     }
   }
 
