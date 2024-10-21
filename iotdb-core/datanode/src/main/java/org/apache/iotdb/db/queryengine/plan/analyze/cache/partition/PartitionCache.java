@@ -204,10 +204,16 @@ public class PartitionCache {
    * @param database name
    * @return {@code true} if this database exists
    */
-  private boolean containsDatabase(final String database) {
+  private boolean containsDatabase(final String database) throws DatabaseModelException {
     try {
       databaseCacheLock.readLock().lock();
-      return databaseCache.containsKey(database);
+      if (databaseCache.containsKey(database)) {
+        if (Boolean.FALSE.equals(databaseCache.get(database))) {
+          throw new DatabaseModelException(PathUtils.unQualifyDatabaseName(database), false);
+        }
+        return true;
+      }
+      return false;
     } finally {
       databaseCacheLock.readLock().unlock();
     }
@@ -492,7 +498,8 @@ public class PartitionCache {
   }
 
   public void checkAndAutoCreateDatabase(
-      final String database, final boolean isAutoCreate, final String userName) {
+      final String database, final boolean isAutoCreate, final String userName)
+      throws DatabaseModelException {
     boolean isExisted = containsDatabase(database);
     if (!isExisted) {
       try {

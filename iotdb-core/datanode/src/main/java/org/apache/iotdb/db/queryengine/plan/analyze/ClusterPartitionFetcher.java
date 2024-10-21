@@ -235,7 +235,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     DataPartition dataPartition = partitionCache.getDataPartition(sgNameToQueryParamsMap);
     if (null == dataPartition) {
       // Do not use data partition cache
-      try (ConfigNodeClient client =
+      try (final ConfigNodeClient client =
           configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         final TDataPartitionTableResp dataPartitionTableResp =
             client.getOrCreateDataPartitionTable(constructDataPartitionReq(sgNameToQueryParamsMap));
@@ -259,15 +259,15 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   @Override
   public DataPartition getOrCreateDataPartition(
       final List<DataPartitionQueryParam> dataPartitionQueryParams, final String userName) {
+    DataPartition dataPartition;
+    try (final ConfigNodeClient client =
+        configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParams =
+          splitDataPartitionQueryParam(
+              dataPartitionQueryParams, config.isAutoCreateSchemaEnabled(), userName);
+      dataPartition = partitionCache.getDataPartition(splitDataPartitionQueryParams);
 
-    final Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParams =
-        splitDataPartitionQueryParam(
-            dataPartitionQueryParams, config.isAutoCreateSchemaEnabled(), userName);
-    DataPartition dataPartition = partitionCache.getDataPartition(splitDataPartitionQueryParams);
-
-    if (null == dataPartition) {
-      try (final ConfigNodeClient client =
-          configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      if (null == dataPartition) {
         final TDataPartitionReq req = constructDataPartitionReq(splitDataPartitionQueryParams);
         final TDataPartitionTableResp dataPartitionTableResp =
             client.getOrCreateDataPartitionTable(req);
@@ -282,10 +282,10 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
                   dataPartitionTableResp.getStatus().getMessage(),
                   dataPartitionTableResp.getStatus().getCode()));
         }
-      } catch (final ClientManagerException | TException e) {
-        throw new StatementAnalyzeException(
-            "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
       }
+    } catch (final ClientManagerException | TException | DatabaseModelException e) {
+      throw new StatementAnalyzeException(
+          "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
     }
     return dataPartition;
   }
@@ -347,7 +347,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         }
       }
       return schemaPartition;
-    } catch (final ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException | DatabaseModelException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getSchemaPartition():" + e.getMessage());
     }
@@ -370,7 +370,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   private Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParam(
       final List<DataPartitionQueryParam> dataPartitionQueryParams,
       final boolean isAutoCreate,
-      final String userName) {
+      final String userName)
+      throws DatabaseModelException {
     final List<IDeviceID> deviceIDs = new ArrayList<>();
     for (final DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
       deviceIDs.add(dataPartitionQueryParam.getDeviceID());
