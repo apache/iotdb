@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -120,8 +121,17 @@ public class WALInfoEntry extends WALEntry {
       if (!(obj instanceof TabletInfo)) {
         return false;
       }
-      TabletInfo other = (TabletInfo) obj;
-      return Objects.equals(tabletRangeList, other.tabletRangeList);
+      TabletInfo that = (TabletInfo) obj;
+      if (this.tabletRangeList.size() != that.tabletRangeList.size()) {
+        return false;
+      }
+
+      for (int i = 0; i < tabletRangeList.size(); i++) {
+        if (!Arrays.equals(this.tabletRangeList.get(i), that.tabletRangeList.get(i))) {
+          return false;
+        }
+      }
+      return true;
     }
   }
 
