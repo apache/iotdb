@@ -1076,7 +1076,7 @@ public class DataRegion implements IDataRegionForQuery {
       InsertTabletNode insertTabletNode,
       int loc,
       int endOffset,
-      Map<Long, List<Pair<Integer, Integer>>[]> splitInfo) {
+      Map<Long, List<int[]>[]> splitInfo) {
     // before is first start point
     int before = loc;
     long beforeTime = insertTabletNode.getTimes()[before];
@@ -1096,7 +1096,7 @@ public class DataRegion implements IDataRegionForQuery {
       if (timePartitionId != beforeTimePartition) {
         initFlushTimeMap(timePartitionId);
         lastFlushTime = getLastFlushTime(timePartitionId, insertTabletNode.getDeviceID(loc));
-        updateSplitInfo(splitInfo, beforeTimePartition, isSequence, new Pair<>(before, loc));
+        updateSplitInfo(splitInfo, beforeTimePartition, isSequence, new int[] {before, loc});
         before = loc;
         beforeTimePartition = timePartitionId;
         isSequence = time > lastFlushTime;
@@ -1105,7 +1105,7 @@ public class DataRegion implements IDataRegionForQuery {
         if (time > lastFlushTime) {
           // the same partition and switch to sequence data
           // insert previous range into unsequence
-          updateSplitInfo(splitInfo, beforeTimePartition, isSequence, new Pair<>(before, loc));
+          updateSplitInfo(splitInfo, beforeTimePartition, isSequence, new int[] {before, loc});
           before = loc;
           isSequence = true;
         }
@@ -1116,47 +1116,43 @@ public class DataRegion implements IDataRegionForQuery {
 
     // do not forget last part
     if (before < loc) {
-      updateSplitInfo(splitInfo, beforeTimePartition, isSequence, new Pair<>(before, loc));
+      updateSplitInfo(splitInfo, beforeTimePartition, isSequence, new int[] {before, loc});
     }
   }
 
   private void updateSplitInfo(
-      Map<Long, List<Pair<Integer, Integer>>[]> splitInfo,
-      long partitionId,
-      boolean isSequence,
-      Pair<Integer, Integer> newRange) {
-    List<Pair<Integer, Integer>>[] rangeLists =
-        splitInfo.computeIfAbsent(partitionId, k -> new List[2]);
+      Map<Long, List<int[]>[]> splitInfo, long partitionId, boolean isSequence, int[] newRange) {
+    List<int[]>[] rangeLists = splitInfo.computeIfAbsent(partitionId, k -> new List[2]);
 
-    List<Pair<Integer, Integer>> rangeList = rangeLists[isSequence ? 1 : 0];
+    List<int[]> rangeList = rangeLists[isSequence ? 1 : 0];
     if (rangeList == null) {
       rangeList = new ArrayList<>();
       rangeLists[isSequence ? 1 : 0] = rangeList;
     }
 
     if (!rangeList.isEmpty()) {
-      Pair<Integer, Integer> lastRange = rangeList.get(rangeList.size() - 1);
-      if (lastRange.right.equals(newRange.left)) {
-        lastRange.right = newRange.right;
+      int[] lastRange = rangeList.get(rangeList.size() - 1);
+      if (lastRange[1] == newRange[0]) {
+        lastRange[1] = newRange[1];
         return;
       }
     }
-    if (newRange.left < newRange.right) {
+    if (newRange[0] < newRange[1]) {
       rangeList.add(newRange);
     }
   }
 
   private boolean insert(
       InsertTabletNode insertTabletNode,
-      Map<Long, List<Pair<Integer, Integer>>[]> splitMap,
+      Map<Long, List<int[]>[]> splitMap,
       TSStatus[] results,
       long[] costsForMetrics) {
     boolean noFailure = true;
-    for (Entry<Long, List<Pair<Integer, Integer>>[]> entry : splitMap.entrySet()) {
+    for (Entry<Long, List<int[]>[]> entry : splitMap.entrySet()) {
       long timePartitionId = entry.getKey();
-      List<Pair<Integer, Integer>>[] rangeLists = entry.getValue();
-      List<Pair<Integer, Integer>> unSequenceRangeList = rangeLists[0];
-      List<Pair<Integer, Integer>> sequenceRangeList = rangeLists[1];
+      List<int[]>[] rangeLists = entry.getValue();
+      List<int[]> unSequenceRangeList = rangeLists[0];
+      List<int[]> sequenceRangeList = rangeLists[1];
       if (unSequenceRangeList != null) {
         noFailure =
             insertTabletToTsFileProcessor(
@@ -1230,7 +1226,7 @@ public class DataRegion implements IDataRegionForQuery {
     List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs =
         insertTabletNode.splitByDevice(loc, insertTabletNode.getRowCount());
     int start = loc;
-    Map<Long, List<Pair<Integer, Integer>>[]> splitInfo = new HashMap<>();
+    Map<Long, List<int[]>[]> splitInfo = new HashMap<>();
     for (Pair<IDeviceID, Integer> deviceEndOffsetPair : deviceEndOffsetPairs) {
       int end = deviceEndOffsetPair.getRight();
       split(insertTabletNode, start, end, splitInfo);
@@ -1321,7 +1317,7 @@ public class DataRegion implements IDataRegionForQuery {
    */
   private boolean insertTabletToTsFileProcessor(
       InsertTabletNode insertTabletNode,
-      List<Pair<Integer, Integer>> rangeList,
+      List<int[]> rangeList,
       boolean sequence,
       TSStatus[] results,
       long timePartitionId,
@@ -1339,9 +1335,9 @@ public class DataRegion implements IDataRegionForQuery {
 
     TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, sequence);
     if (tsFileProcessor == null) {
-      for (Pair<Integer, Integer> rangePair : rangeList) {
-        int start = rangePair.getLeft();
-        int end = rangePair.getRight();
+      for (int[] rangePair : rangeList) {
+        int start = rangePair[0];
+        int end = rangePair[1];
         for (int i = start; i < end; i++) {
           results[i] =
               RpcUtils.getStatus(

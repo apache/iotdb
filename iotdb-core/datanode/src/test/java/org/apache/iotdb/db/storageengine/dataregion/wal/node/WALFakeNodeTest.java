@@ -24,7 +24,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 
-import org.apache.tsfile.utils.Pair;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -47,7 +46,7 @@ public class WALFakeNodeTest {
         walNode.log(
             1,
             new InsertTabletNode(new PlanNodeId("1")),
-            Collections.singletonList(new Pair<>(0, 0))));
+            Collections.singletonList(new int[] {0, 0})));
     walFlushListeners.add(
         walNode.log(1, new DeleteDataNode(new PlanNodeId("2"), Collections.emptyList(), 0, 0)));
     // check flush listeners
@@ -71,7 +70,7 @@ public class WALFakeNodeTest {
         walNode.log(
             1,
             new InsertTabletNode(new PlanNodeId("1")),
-            Collections.singletonList(new Pair<>(0, 0))));
+            Collections.singletonList(new int[] {0, 0})));
     walFlushListeners.add(
         walNode.log(1, new DeleteDataNode(new PlanNodeId("2"), Collections.emptyList(), 0, 0)));
     // check flush listeners

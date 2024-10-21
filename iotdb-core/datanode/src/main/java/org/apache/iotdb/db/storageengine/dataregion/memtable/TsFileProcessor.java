@@ -451,16 +451,16 @@ public class TsFileProcessor {
 
   private long[] scheduleMemoryBlock(
       InsertTabletNode insertTabletNode,
-      List<Pair<Integer, Integer>> rangeList,
+      List<int[]> rangeList,
       TSStatus[] results,
       boolean noFailure,
       long[] costsForMetrics)
       throws WriteProcessException {
     long memControlStartTime = System.nanoTime();
     long[] totalMemIncrements = new long[NUM_MEM_TO_ESTIMATE];
-    for (Pair<Integer, Integer> range : rangeList) {
-      int start = range.left;
-      int end = range.right;
+    for (int[] range : rangeList) {
+      int start = range[0];
+      int end = range[1];
       try {
         long[] memIncrements = checkMemCost(insertTabletNode, start, end, noFailure, results);
         for (int i = 0; i < memIncrements.length; i++) {
@@ -537,7 +537,7 @@ public class TsFileProcessor {
    */
   public void insertTablet(
       InsertTabletNode insertTabletNode,
-      List<Pair<Integer, Integer>> rangeList,
+      List<int[]> rangeList,
       TSStatus[] results,
       boolean noFailure,
       long[] costsForMetrics)
@@ -556,9 +556,9 @@ public class TsFileProcessor {
         throw walFlushListener.getCause();
       }
     } catch (Exception e) {
-      for (Pair<Integer, Integer> rangePair : rangeList) {
-        int start = rangePair.getLeft();
-        int end = rangePair.getRight();
+      for (int[] rangePair : rangeList) {
+        int start = rangePair[0];
+        int end = rangePair[1];
         for (int i = start; i < end; i++) {
           results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
         }
@@ -584,9 +584,9 @@ public class TsFileProcessor {
             insertTabletNode,
             tsFileResource);
 
-    for (Pair<Integer, Integer> rangePair : rangeList) {
-      int start = rangePair.getLeft();
-      int end = rangePair.getRight();
+    for (int[] rangePair : rangeList) {
+      int start = rangePair[0];
+      int end = rangePair[1];
       try {
         if (insertTabletNode.isAligned()) {
           workMemTable.insertAlignedTablet(

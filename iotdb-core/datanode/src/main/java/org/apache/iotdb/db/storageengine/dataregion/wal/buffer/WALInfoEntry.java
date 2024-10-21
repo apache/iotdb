@@ -24,8 +24,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 
-import org.apache.tsfile.utils.Pair;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -49,12 +47,11 @@ public class WALInfoEntry extends WALEntry {
     if (value instanceof InsertTabletNode) {
       tabletInfo =
           new TabletInfo(
-              Collections.singletonList(new Pair<>(0, ((InsertTabletNode) value).getRowCount())));
+              Collections.singletonList(new int[] {0, ((InsertTabletNode) value).getRowCount()}));
     }
   }
 
-  public WALInfoEntry(
-      long memTableId, InsertTabletNode value, List<Pair<Integer, Integer>> tabletRangeList) {
+  public WALInfoEntry(long memTableId, InsertTabletNode value, List<int[]> tabletRangeList) {
     this(memTableId, value, config.getWalMode() == WALMode.SYNC);
     tabletInfo = new TabletInfo(tabletRangeList);
   }
@@ -64,7 +61,7 @@ public class WALInfoEntry extends WALEntry {
     if (value instanceof InsertTabletNode) {
       tabletInfo =
           new TabletInfo(
-              Collections.singletonList(new Pair<>(0, ((InsertTabletNode) value).getRowCount())));
+              Collections.singletonList(new int[] {0, ((InsertTabletNode) value).getRowCount()}));
     }
   }
 
@@ -77,10 +74,10 @@ public class WALInfoEntry extends WALEntry {
   public void serialize(IWALByteBufferView buffer) {
     switch (type) {
       case INSERT_TABLET_NODE:
-        for (Pair<Integer, Integer> range : tabletInfo.tabletRangeList) {
+        for (int[] range : tabletInfo.tabletRangeList) {
           buffer.put(type.getCode());
           buffer.putLong(memTableId);
-          ((InsertTabletNode) value).serializeToWAL(buffer, range.left, range.right);
+          ((InsertTabletNode) value).serializeToWAL(buffer, range[0], range[1]);
         }
         break;
       case INSERT_ROW_NODE:
@@ -101,9 +98,9 @@ public class WALInfoEntry extends WALEntry {
 
   private static class TabletInfo {
     // ranges of insert tablet
-    private final List<Pair<Integer, Integer>> tabletRangeList;
+    private final List<int[]> tabletRangeList;
 
-    public TabletInfo(List<Pair<Integer, Integer>> tabletRangeList) {
+    public TabletInfo(List<int[]> tabletRangeList) {
       this.tabletRangeList = new ArrayList<>(tabletRangeList);
     }
 

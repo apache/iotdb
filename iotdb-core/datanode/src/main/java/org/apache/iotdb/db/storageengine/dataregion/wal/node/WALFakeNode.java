@@ -29,8 +29,6 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.AbstractResultListener.Status;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 
-import org.apache.tsfile.utils.Pair;
-
 import java.util.List;
 
 /** This class provides fake wal node when wal is disabled or exception happens. */
@@ -63,7 +61,7 @@ public class WALFakeNode implements IWALNode {
 
   @Override
   public WALFlushListener log(
-      long memTableId, InsertTabletNode insertTabletNode, List<Pair<Integer, Integer>> rangeList) {
+      long memTableId, InsertTabletNode insertTabletNode, List<int[]> rangeList) {
     return getResult();
   }
 
