@@ -1122,14 +1122,16 @@ public class DataRegion implements IDataRegionForQuery {
 
   private void updateSplitInfo(
       Map<Long, List<int[]>[]> splitInfo, long partitionId, boolean isSequence, int[] newRange) {
-    List<int[]>[] rangeLists = splitInfo.computeIfAbsent(partitionId, k -> new List[2]);
+    if (newRange[0] >= newRange[1]) {
+      return;
+    }
 
+    List<int[]>[] rangeLists = splitInfo.computeIfAbsent(partitionId, k -> new List[2]);
     List<int[]> rangeList = rangeLists[isSequence ? 1 : 0];
     if (rangeList == null) {
       rangeList = new ArrayList<>();
       rangeLists[isSequence ? 1 : 0] = rangeList;
     }
-
     if (!rangeList.isEmpty()) {
       int[] lastRange = rangeList.get(rangeList.size() - 1);
       if (lastRange[1] == newRange[0]) {
@@ -1137,12 +1139,10 @@ public class DataRegion implements IDataRegionForQuery {
         return;
       }
     }
-    if (newRange[0] < newRange[1]) {
-      rangeList.add(newRange);
-    }
+    rangeList.add(newRange);
   }
 
-  private boolean doInsertTablet(
+  private boolean doInsert(
       InsertTabletNode insertTabletNode,
       Map<Long, List<int[]>[]> splitMap,
       TSStatus[] results,
@@ -1232,7 +1232,7 @@ public class DataRegion implements IDataRegionForQuery {
       split(insertTabletNode, start, end, splitInfo);
       start = end;
     }
-    noFailure = noFailure && doInsertTablet(insertTabletNode, splitInfo, results, costsForMetrics);
+    noFailure = noFailure && doInsert(insertTabletNode, splitInfo, results, costsForMetrics);
 
     if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
         && !insertTabletNode.isGeneratedByRemoteConsensusLeader()) {
