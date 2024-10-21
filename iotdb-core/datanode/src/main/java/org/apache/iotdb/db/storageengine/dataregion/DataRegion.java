@@ -1151,26 +1151,26 @@ public class DataRegion implements IDataRegionForQuery {
     for (Entry<Long, List<int[]>[]> entry : splitMap.entrySet()) {
       long timePartitionId = entry.getKey();
       List<int[]>[] rangeLists = entry.getValue();
-      List<int[]> unSequenceRangeList = rangeLists[0];
       List<int[]> sequenceRangeList = rangeLists[1];
-      if (unSequenceRangeList != null) {
-        noFailure =
-            insertTabletToTsFileProcessor(
-                    insertTabletNode,
-                    unSequenceRangeList,
-                    false,
-                    results,
-                    timePartitionId,
-                    noFailure,
-                    costsForMetrics)
-                && noFailure;
-      }
       if (sequenceRangeList != null) {
         noFailure =
             insertTabletToTsFileProcessor(
                     insertTabletNode,
                     sequenceRangeList,
                     true,
+                    results,
+                    timePartitionId,
+                    noFailure,
+                    costsForMetrics)
+                && noFailure;
+      }
+      List<int[]> unSequenceRangeList = rangeLists[0];
+      if (unSequenceRangeList != null) {
+        noFailure =
+            insertTabletToTsFileProcessor(
+                    insertTabletNode,
+                    unSequenceRangeList,
+                    false,
                     results,
                     timePartitionId,
                     noFailure,
