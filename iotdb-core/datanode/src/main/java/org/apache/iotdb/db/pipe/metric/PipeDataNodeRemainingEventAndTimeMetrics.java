@@ -165,18 +165,6 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
         .decreaseHeartbeatEventCount();
   }
 
-  public void increaseSchemaRegionEventCount(final String pipeID) {
-    if (remainingEventAndTimeOperatorMap.containsKey(pipeID)) {
-      remainingEventAndTimeOperatorMap.get(pipeID).increaseSchemaRegionEventCount();
-    }
-  }
-
-  public void decreaseSchemaRegionEventCount(final String pipeID) {
-    if (remainingEventAndTimeOperatorMap.containsKey(pipeID)) {
-      remainingEventAndTimeOperatorMap.get(pipeID).decreaseSchemaRegionEventCount();
-    }
-  }
-
   public void thawRate(final String pipeID) {
     if (!remainingEventAndTimeOperatorMap.containsKey(pipeID)) {
       // In dataNode, the "thawRate" may be called when there are no subtasks, and we call
