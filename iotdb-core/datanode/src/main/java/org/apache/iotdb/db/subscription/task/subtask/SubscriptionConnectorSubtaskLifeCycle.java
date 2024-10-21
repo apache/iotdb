@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.subscription.task.subtask;
 
-import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
-import org.apache.iotdb.db.pipe.execution.PipeConnectorSubtaskExecutor;
-import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask;
-import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtaskLifeCycle;
+import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.db.pipe.agent.task.execution.PipeConnectorSubtaskExecutor;
+import org.apache.iotdb.db.pipe.agent.task.subtask.connector.PipeConnectorSubtask;
+import org.apache.iotdb.db.pipe.agent.task.subtask.connector.PipeConnectorSubtaskLifeCycle;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -69,7 +69,7 @@ public class SubscriptionConnectorSubtaskLifeCycle extends PipeConnectorSubtaskL
   }
 
   @Override
-  public synchronized boolean deregister(final String ignored) {
+  public synchronized boolean deregister(final String ignored, int regionId) {
     if (registeredTaskCount <= 0) {
       throw new IllegalStateException("registeredTaskCount <= 0");
     }
@@ -103,6 +103,6 @@ public class SubscriptionConnectorSubtaskLifeCycle extends PipeConnectorSubtaskL
     // when dropping the subscription.
     final String consumerGroupId = ((SubscriptionConnectorSubtask) subtask).getConsumerGroupId();
     final String topicName = ((SubscriptionConnectorSubtask) subtask).getTopicName();
-    SubscriptionAgent.broker().unbindPrefetchingQueue(consumerGroupId, topicName, false);
+    SubscriptionAgent.broker().unbindPrefetchingQueue(consumerGroupId, topicName);
   }
 }

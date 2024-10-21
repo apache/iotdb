@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.RepairUnsortedFileCompactionWriter;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 
 import java.io.File;
@@ -33,11 +35,8 @@ import java.util.List;
 /** Used for fixing files which contains internal unsorted data */
 public class RepairUnsortedFileCompactionPerformer extends ReadPointCompactionPerformer {
 
-  private final boolean rewriteFile;
-
-  public RepairUnsortedFileCompactionPerformer(boolean rewriteFile) {
+  public RepairUnsortedFileCompactionPerformer() {
     super();
-    this.rewriteFile = rewriteFile;
   }
 
   @Override
@@ -51,7 +50,8 @@ public class RepairUnsortedFileCompactionPerformer extends ReadPointCompactionPe
 
   @Override
   public void perform() throws Exception {
-    if (rewriteFile) {
+    TsFileResource resource = !seqFiles.isEmpty() ? seqFiles.get(0) : unseqFiles.get(0);
+    if (resource.getTsFileRepairStatus() == TsFileRepairStatus.NEED_TO_REPAIR_BY_REWRITE) {
       super.perform();
     } else {
       prepareTargetFile();
@@ -63,10 +63,10 @@ public class RepairUnsortedFileCompactionPerformer extends ReadPointCompactionPe
     TsFileResource targetFile = targetFiles.get(0);
     Files.createLink(targetFile.getTsFile().toPath(), seqSourceFile.getTsFile().toPath());
     ITimeIndex timeIndex = seqSourceFile.getTimeIndex();
-    if (timeIndex instanceof DeviceTimeIndex) {
+    if (timeIndex instanceof ArrayDeviceTimeIndex) {
       targetFile.setTimeIndex(timeIndex);
     } else {
-      targetFile.setTimeIndex(seqSourceFile.buildDeviceTimeIndex());
+      targetFile.setTimeIndex(CompactionUtils.buildDeviceTimeIndex(seqSourceFile));
     }
     if (seqSourceFile.modFileExists()) {
       Files.createLink(

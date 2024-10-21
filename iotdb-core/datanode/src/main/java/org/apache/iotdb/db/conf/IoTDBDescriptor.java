@@ -102,6 +102,10 @@ public class IoTDBDescriptor {
 
   private static final double MIN_DIR_USE_PROPORTION = 0.5;
 
+  private static final String[] DEFAULT_WAL_THRESHOLD_NAME = {
+    "iot_consensus_throttle_threshold_in_byte", "wal_throttle_threshold_in_byte"
+  };
+
   static {
     URL systemConfigUrl = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
     URL configNodeUrl = getPropsUrl(CommonConfig.OLD_CONFIG_NODE_CONFIG_NAME);
@@ -111,6 +115,9 @@ public class IoTDBDescriptor {
       ConfigurationFileUtils.checkAndMayUpdate(
           systemConfigUrl, configNodeUrl, dataNodeUrl, commonConfigUrl);
     } catch (Exception e) {
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
       LOGGER.error("Failed to update config file", e);
     }
   }
@@ -428,6 +435,12 @@ public class IoTDBDescriptor {
                 "compaction_schedule_interval_in_ms",
                 Long.toString(conf.getCompactionScheduleIntervalInMs()))));
 
+    conf.setEnableAutoRepairCompaction(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_auto_repair_compaction",
+                Boolean.toString(conf.isEnableAutoRepairCompaction()))));
+
     conf.setEnableCrossSpaceCompaction(
         Boolean.parseBoolean(
             properties.getProperty(
@@ -604,6 +617,15 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "compaction_thread_count", Integer.toString(conf.getCompactionThreadCount()))));
+    int maxConcurrentAlignedSeriesInCompaction =
+        Integer.parseInt(
+            properties.getProperty(
+                "compaction_max_aligned_series_num_in_one_batch",
+                Integer.toString(conf.getCompactionMaxAlignedSeriesNumInOneBatch())));
+    conf.setCompactionMaxAlignedSeriesNumInOneBatch(
+        maxConcurrentAlignedSeriesInCompaction <= 0
+            ? Integer.MAX_VALUE
+            : maxConcurrentAlignedSeriesInCompaction);
     conf.setChunkMetadataSizeProportion(
         Double.parseDouble(
             properties.getProperty(
@@ -613,6 +635,22 @@ public class IoTDBDescriptor {
         Long.parseLong(
             properties.getProperty(
                 "target_compaction_file_size", Long.toString(conf.getTargetCompactionFileSize()))));
+    conf.setInnerCompactionTotalFileSizeThresholdInByte(
+        Long.parseLong(
+            properties.getProperty(
+                "inner_compaction_total_file_size_threshold",
+                Long.toString(conf.getInnerCompactionTotalFileSizeThresholdInByte()))));
+    conf.setInnerCompactionTotalFileNumThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "inner_compaction_total_file_num_threshold",
+                Integer.toString(conf.getInnerCompactionTotalFileNumThreshold()))));
+    conf.setMaxLevelGapInInnerCompaction(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_level_gap_in_inner_compaction",
+                Integer.toString(conf.getMaxLevelGapInInnerCompaction()))));
+
     conf.setTargetChunkSize(
         Long.parseLong(
             properties.getProperty("target_chunk_size", Long.toString(conf.getTargetChunkSize()))));
@@ -630,11 +668,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "chunk_size_lower_bound_in_compaction",
                 Long.toString(conf.getChunkSizeLowerBoundInCompaction()))));
-    conf.setFileLimitPerInnerTask(
+    conf.setInnerCompactionCandidateFileNum(
         Integer.parseInt(
             properties.getProperty(
-                "max_inner_compaction_candidate_file_num",
-                Integer.toString(conf.getFileLimitPerInnerTask()))));
+                "inner_compaction_candidate_file_num",
+                Integer.toString(conf.getInnerCompactionCandidateFileNum()))));
     conf.setFileLimitPerCrossTask(
         Integer.parseInt(
             properties.getProperty(
@@ -1032,13 +1070,52 @@ public class IoTDBDescriptor {
         properties.getProperty(
             "datanode_schema_cache_eviction_policy", conf.getDataNodeSchemaCacheEvictionPolicy()));
 
+    conf.setDataNodeTableCacheSemaphorePermitNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "datanode_table_cache_semaphore_permit_num",
+                String.valueOf(conf.getDataNodeTableCacheSemaphorePermitNum()))));
+
+    conf.setGeneralRegionAttributeSecurityServiceIntervalSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "general_region_attribute_security_service_interval_seconds",
+                String.valueOf(conf.getGeneralRegionAttributeSecurityServiceIntervalSeconds()))));
+
+    conf.setGeneralRegionAttributeSecurityServiceTimeoutSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "general_region_attribute_security_service_timeout_seconds",
+                String.valueOf(conf.getGeneralRegionAttributeSecurityServiceTimeoutSeconds()))));
+
+    conf.setGeneralRegionAttributeSecurityServiceFailureDurationSecondsToFetch(
+        Long.parseLong(
+            properties.getProperty(
+                "general_region_attribute_security_service_failure_duration_seconds_to_fetch",
+                String.valueOf(
+                    conf
+                        .getGeneralRegionAttributeSecurityServiceFailureDurationSecondsToFetch()))));
+
+    conf.setGeneralRegionAttributeSecurityServiceFailureTimesToFetch(
+        Integer.parseInt(
+            properties.getProperty(
+                "general_region_attribute_security_service_failure_times_to_fetch",
+                String.valueOf(
+                    conf.getGeneralRegionAttributeSecurityServiceFailureTimesToFetch()))));
+
+    conf.setDetailContainerMinDegradeMemoryInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "detail_container_min_degrade_memory_in_bytes",
+                String.valueOf(conf.getDetailContainerMinDegradeMemoryInBytes()))));
+
     loadIoTConsensusProps(properties);
-    loadPipeConsensusProps(properties);
+    loadIoTConsensusV2Props(properties);
   }
 
   private void reloadConsensusProps(Properties properties) throws IOException {
     loadIoTConsensusProps(properties);
-    loadPipeConsensusProps(properties);
+    loadIoTConsensusV2Props(properties);
     DataRegionConsensusImpl.reloadConsensusConfig();
   }
 
@@ -1085,16 +1162,20 @@ public class IoTDBDescriptor {
                 .trim()));
   }
 
-  private void loadPipeConsensusProps(Properties properties) throws IOException {
-    conf.setPipeConsensusPipelineSize(
+  private void loadIoTConsensusV2Props(Properties properties) throws IOException {
+    conf.setIotConsensusV2PipelineSize(
         Integer.parseInt(
             properties.getProperty(
-                "fast_iot_consensus_pipeline_size",
+                "iot_consensus_v2_pipeline_size",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
-                    "fast_iot_consensus_pipeline_size"))));
-    if (conf.getPipeConsensusPipelineSize() <= 0) {
-      conf.setPipeConsensusPipelineSize(5);
+                    "iot_consensus_v2_pipeline_size"))));
+    if (conf.getIotConsensusV2PipelineSize() <= 0) {
+      conf.setIotConsensusV2PipelineSize(5);
     }
+    conf.setIotConsensusV2Mode(
+        properties.getProperty(
+            "iot_consensus_v2_mode",
+            ConfigurationFileUtils.getConfigurationDefaultValue("iot_consensus_v2_mode")));
   }
 
   private void loadAuthorCache(Properties properties) {
@@ -1136,6 +1217,15 @@ public class IoTDBDescriptor {
       conf.setWalBufferQueueCapacity(walBufferQueueCapacity);
     }
 
+    boolean WALInsertNodeCacheShrinkClearEnabled =
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "wal_cache_shrink_clear_enabled",
+                Boolean.toString(conf.getWALCacheShrinkClearEnabled())));
+    if (conf.getWALCacheShrinkClearEnabled() != WALInsertNodeCacheShrinkClearEnabled) {
+      conf.setWALCacheShrinkClearEnabled(WALInsertNodeCacheShrinkClearEnabled);
+    }
+
     loadWALHotModifiedProps(properties);
   }
 
@@ -1172,6 +1262,12 @@ public class IoTDBDescriptor {
         .setCompactionReadThroughputRate(conf.getCompactionReadThroughputMbPerSec());
     CompactionTaskManager.getInstance()
         .setWriteMergeRate(conf.getCompactionWriteThroughputMbPerSec());
+
+    conf.setEnableAutoRepairCompaction(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_auto_repair_compaction",
+                Boolean.toString(conf.isEnableAutoRepairCompaction()))));
   }
 
   private boolean loadCompactionTaskHotModifiedProps(Properties properties) throws IOException {
@@ -1206,15 +1302,16 @@ public class IoTDBDescriptor {
                     "compaction_read_throughput_mb_per_sec"))));
     configModified |= compactionReadThroughput != conf.getCompactionReadThroughputMbPerSec();
 
-    // update max_inner_compaction_candidate_file_num
-    int maxInnerCompactionCandidateFileNum = conf.getFileLimitPerInnerTask();
-    conf.setFileLimitPerInnerTask(
+    // update inner_compaction_candidate_file_num
+    int maxInnerCompactionCandidateFileNum = conf.getInnerCompactionCandidateFileNum();
+    conf.setInnerCompactionCandidateFileNum(
         Integer.parseInt(
             properties.getProperty(
-                "max_inner_compaction_candidate_file_num",
+                "inner_compaction_candidate_file_num",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
-                    "max_inner_compaction_candidate_file_num"))));
-    configModified |= maxInnerCompactionCandidateFileNum != conf.getFileLimitPerInnerTask();
+                    "inner_compaction_candidate_file_num"))));
+    configModified |=
+        maxInnerCompactionCandidateFileNum != conf.getInnerCompactionCandidateFileNum();
 
     // update target_compaction_file_size
     long targetCompactionFilesize = conf.getTargetCompactionFileSize();
@@ -1286,6 +1383,76 @@ public class IoTDBDescriptor {
         innerCompactionTaskSelectionModsFileThreshold
             != conf.getInnerCompactionTaskSelectionModsFileThreshold();
 
+    // update inner_seq_selector
+    InnerSequenceCompactionSelector innerSequenceCompactionSelector =
+        conf.getInnerSequenceCompactionSelector();
+    conf.setInnerSequenceCompactionSelector(
+        InnerSequenceCompactionSelector.getInnerSequenceCompactionSelector(
+            properties.getProperty(
+                "inner_seq_selector",
+                ConfigurationFileUtils.getConfigurationDefaultValue("inner_seq_selector"))));
+    configModified |= innerSequenceCompactionSelector != conf.getInnerSequenceCompactionSelector();
+
+    // update inner_unseq_selector
+    InnerUnsequenceCompactionSelector innerUnsequenceCompactionSelector =
+        conf.getInnerUnsequenceCompactionSelector();
+    conf.setInnerUnsequenceCompactionSelector(
+        InnerUnsequenceCompactionSelector.getInnerUnsequenceCompactionSelector(
+            properties.getProperty(
+                "inner_unseq_selector",
+                ConfigurationFileUtils.getConfigurationDefaultValue("inner_unseq_selector"))));
+    configModified |=
+        innerUnsequenceCompactionSelector != conf.getInnerUnsequenceCompactionSelector();
+
+    // update inner_compaction_total_file_size_threshold
+    long innerCompactionFileSizeThresholdInByte =
+        conf.getInnerCompactionTotalFileSizeThresholdInByte();
+    conf.setInnerCompactionTotalFileSizeThresholdInByte(
+        Long.parseLong(
+            properties.getProperty(
+                "inner_compaction_total_file_size_threshold",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "inner_compaction_total_file_size_threshold"))));
+    configModified |=
+        innerCompactionFileSizeThresholdInByte
+            != conf.getInnerCompactionTotalFileSizeThresholdInByte();
+
+    // update inner_compaction_total_file_num_threshold
+    int innerCompactionTotalFileNumThreshold = conf.getInnerCompactionTotalFileNumThreshold();
+    conf.setInnerCompactionTotalFileNumThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "inner_compaction_total_file_num_threshold",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "inner_compaction_total_file_num_threshold"))));
+    configModified |=
+        innerCompactionTotalFileNumThreshold != conf.getInnerCompactionTotalFileNumThreshold();
+
+    // update max_level_gap_in_inner_compaction
+    int maxLevelGapInInnerCompaction = conf.getMaxLevelGapInInnerCompaction();
+    conf.setMaxLevelGapInInnerCompaction(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_level_gap_in_inner_compaction",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "max_level_gap_in_inner_compaction"))));
+    configModified |= maxLevelGapInInnerCompaction != conf.getMaxLevelGapInInnerCompaction();
+
+    // update compaction_max_aligned_series_num_in_one_batch
+    int compactionMaxAlignedSeriesNumInOneBatch = conf.getCompactionMaxAlignedSeriesNumInOneBatch();
+    int newCompactionMaxAlignedSeriesNumInOneBatch =
+        Integer.parseInt(
+            properties.getProperty(
+                "compaction_max_aligned_series_num_in_one_batch",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "compaction_max_aligned_series_num_in_one_batch")));
+    conf.setCompactionMaxAlignedSeriesNumInOneBatch(
+        newCompactionMaxAlignedSeriesNumInOneBatch > 0
+            ? newCompactionMaxAlignedSeriesNumInOneBatch
+            : Integer.MAX_VALUE);
+    configModified |=
+        compactionMaxAlignedSeriesNumInOneBatch
+            != conf.getCompactionMaxAlignedSeriesNumInOneBatch();
     return configModified;
   }
 
@@ -1439,12 +1606,7 @@ public class IoTDBDescriptor {
       conf.setDeleteWalFilesPeriodInMs(deleteWalFilesPeriod);
     }
 
-    long throttleDownThresholdInByte =
-        Long.parseLong(
-            properties.getProperty(
-                "iot_consensus_throttle_threshold_in_byte",
-                ConfigurationFileUtils.getConfigurationDefaultValue(
-                    "iot_consensus_throttle_threshold_in_byte")));
+    long throttleDownThresholdInByte = Long.parseLong(getWalThrottleThreshold(properties));
     if (throttleDownThresholdInByte > 0) {
       conf.setThrottleThreshold(throttleDownThresholdInByte);
     }
@@ -1458,6 +1620,20 @@ public class IoTDBDescriptor {
     if (cacheWindowInMs > 0) {
       conf.setCacheWindowTimeInMs(cacheWindowInMs);
     }
+  }
+
+  private String getWalThrottleThreshold(Properties prop) throws IOException {
+    String old_throttleThreshold = prop.getProperty(DEFAULT_WAL_THRESHOLD_NAME[0], null);
+    if (old_throttleThreshold != null) {
+      LOGGER.warn(
+          "The throttle threshold params: {} is deprecated, please use {}",
+          DEFAULT_WAL_THRESHOLD_NAME[0],
+          DEFAULT_WAL_THRESHOLD_NAME[1]);
+      return old_throttleThreshold;
+    }
+    return prop.getProperty(
+        DEFAULT_WAL_THRESHOLD_NAME[1],
+        ConfigurationFileUtils.getConfigurationDefaultValue(DEFAULT_WAL_THRESHOLD_NAME[1]));
   }
 
   public long getThrottleThresholdWithDirs() {
@@ -1815,19 +1991,7 @@ public class IoTDBDescriptor {
       loadCompactionHotModifiedProps(properties);
 
       // update load config
-      conf.setLoadCleanupTaskExecutionDelayTimeSeconds(
-          Long.parseLong(
-              properties.getProperty(
-                  "load_clean_up_task_execution_delay_time_seconds",
-                  ConfigurationFileUtils.getConfigurationDefaultValue(
-                      "load_clean_up_task_execution_delay_time_seconds"))));
-
-      conf.setLoadWriteThroughputBytesPerSecond(
-          Double.parseDouble(
-              properties.getProperty(
-                  "load_write_throughput_bytes_per_second",
-                  ConfigurationFileUtils.getConfigurationDefaultValue(
-                      "load_write_throughput_bytes_per_second"))));
+      loadLoadTsFileHotModifiedProp(properties);
 
       // update pipe config
       commonDescriptor
@@ -1860,6 +2024,9 @@ public class IoTDBDescriptor {
       // update retry config
       commonDescriptor.loadRetryProperties(properties);
     } catch (Exception e) {
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
     }
   }
@@ -2015,6 +2182,7 @@ public class IoTDBDescriptor {
     }
   }
 
+  @SuppressWarnings("java:S3518")
   private void initStorageEngineAllocate(Properties properties) {
     long storageMemoryTotal = conf.getAllocateMemoryForStorageEngine();
     String valueOfStorageEngineMemoryProportion =
@@ -2069,6 +2237,7 @@ public class IoTDBDescriptor {
     }
   }
 
+  @SuppressWarnings("squid:S3518")
   private void initSchemaMemoryAllocate(Properties properties) {
     long schemaMemoryTotal = conf.getAllocateMemoryForSchema();
 
@@ -2143,6 +2312,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_tsfile_analyze_schema_memory_size_in_bytes",
                 String.valueOf(conf.getLoadTsFileAnalyzeSchemaMemorySizeInBytes()))));
+    conf.setLoadTsFileMaxDeviceCountToUseDeviceTimeIndex(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_max_device_count_to_use_device_index",
+                String.valueOf(conf.getLoadTsFileMaxDeviceCountToUseDeviceTimeIndex()))));
     conf.setLoadCleanupTaskExecutionDelayTimeSeconds(
         Long.parseLong(
             properties.getProperty(
@@ -2153,6 +2327,89 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_write_throughput_bytes_per_second",
                 String.valueOf(conf.getLoadWriteThroughputBytesPerSecond()))));
+
+    conf.setLoadActiveListeningEnable(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "load_active_listening_enable",
+                Boolean.toString(conf.getLoadActiveListeningEnable()))));
+    conf.setLoadActiveListeningDirs(
+        Arrays.stream(
+                properties
+                    .getProperty(
+                        "load_active_listening_dirs",
+                        String.join(",", conf.getLoadActiveListeningDirs()))
+                    .trim()
+                    .split(","))
+            .filter(dir -> !dir.isEmpty())
+            .toArray(String[]::new));
+    conf.setLoadActiveListeningFailDir(
+        properties.getProperty(
+            "load_active_listening_fail_dir", conf.getLoadActiveListeningFailDir()));
+
+    final long loadActiveListeningCheckIntervalSeconds =
+        Long.parseLong(
+            properties.getProperty(
+                "load_active_listening_check_interval_seconds",
+                Long.toString(conf.getLoadActiveListeningCheckIntervalSeconds())));
+    conf.setLoadActiveListeningCheckIntervalSeconds(
+        loadActiveListeningCheckIntervalSeconds <= 0
+            ? conf.getLoadActiveListeningCheckIntervalSeconds()
+            : loadActiveListeningCheckIntervalSeconds);
+
+    final int defaultLoadActiveListeningMaxThreadNum =
+        Math.min(
+            conf.getLoadActiveListeningMaxThreadNum(),
+            Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
+    final int loadActiveListeningMaxThreadNum =
+        Integer.parseInt(
+            properties.getProperty(
+                "load_active_listening_max_thread_num",
+                Integer.toString(defaultLoadActiveListeningMaxThreadNum)));
+    conf.setLoadActiveListeningMaxThreadNum(
+        loadActiveListeningMaxThreadNum <= 0
+            ? defaultLoadActiveListeningMaxThreadNum
+            : loadActiveListeningMaxThreadNum);
+  }
+
+  private void loadLoadTsFileHotModifiedProp(Properties properties) throws IOException {
+    conf.setLoadCleanupTaskExecutionDelayTimeSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "load_clean_up_task_execution_delay_time_seconds",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "load_clean_up_task_execution_delay_time_seconds"))));
+
+    conf.setLoadWriteThroughputBytesPerSecond(
+        Double.parseDouble(
+            properties.getProperty(
+                "load_write_throughput_bytes_per_second",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "load_write_throughput_bytes_per_second"))));
+
+    conf.setLoadActiveListeningEnable(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "load_active_listening_enable",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "load_active_listening_enable"))));
+    conf.setLoadActiveListeningDirs(
+        Arrays.stream(
+                properties
+                    .getProperty(
+                        "load_active_listening_dirs",
+                        String.join(
+                            ",",
+                            ConfigurationFileUtils.getConfigurationDefaultValue(
+                                "load_active_listening_dirs")))
+                    .trim()
+                    .split(","))
+            .filter(dir -> !dir.isEmpty())
+            .toArray(String[]::new));
+    conf.setLoadActiveListeningFailDir(
+        properties.getProperty(
+            "load_active_listening_fail_dir",
+            ConfigurationFileUtils.getConfigurationDefaultValue("load_active_listening_fail_dir")));
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero
@@ -2269,16 +2526,20 @@ public class IoTDBDescriptor {
             .filter(dir -> !dir.isEmpty())
             .toArray(String[]::new));
 
-    conf.setPipeConsensusReceiverFileDirs(
+    conf.setIotConsensusV2ReceiverFileDirs(
         Arrays.stream(
                 properties
                     .getProperty(
-                        "pipe_consensus_receiver_file_dirs",
-                        String.join(",", conf.getPipeConsensusReceiverFileDirs()))
+                        "iot_consensus_v2_receiver_file_dirs",
+                        String.join(",", conf.getIotConsensusV2ReceiverFileDirs()))
                     .trim()
                     .split(","))
             .filter(dir -> !dir.isEmpty())
             .toArray(String[]::new));
+
+    conf.setIotConsensusV2DeletionFileDir(
+        properties.getProperty(
+            "iot_consensus_v2_deletion_file_dir", conf.getIotConsensusV2DeletionFileDir()));
   }
 
   private void loadCQProps(Properties properties) {
@@ -2401,6 +2662,9 @@ public class IoTDBDescriptor {
         return conf.getDefaultFloatEncoding();
       case DOUBLE:
         return conf.getDefaultDoubleEncoding();
+      case STRING:
+      case BLOB:
+      case TEXT:
       default:
         return conf.getDefaultTextEncoding();
     }

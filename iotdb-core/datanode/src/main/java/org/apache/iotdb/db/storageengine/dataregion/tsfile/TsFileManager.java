@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -39,7 +40,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class TsFileManager {
   private final String storageGroupName;
   private String dataRegionId;
-  private final String storageGroupDir;
+  private final String dataRegionSysDir;
 
   /** Serialize queries, delete resource files, compaction cleanup files */
   private final ReadWriteLock resourceListLock = new ReentrantReadWriteLock();
@@ -52,9 +53,9 @@ public class TsFileManager {
   private volatile boolean allowCompaction = true;
   private final AtomicLong currentCompactionTaskSerialId = new AtomicLong(0);
 
-  public TsFileManager(String storageGroupName, String dataRegionId, String storageGroupDir) {
+  public TsFileManager(String storageGroupName, String dataRegionId, String dataRegionSysDir) {
     this.storageGroupName = storageGroupName;
-    this.storageGroupDir = storageGroupDir;
+    this.dataRegionSysDir = dataRegionSysDir;
     this.dataRegionId = dataRegionId;
   }
 
@@ -260,6 +261,7 @@ public class TsFileManager {
                 .computeIfAbsent(timePartition, t -> new TsFileResourceList())
                 .keepOrderInsert(resource);
           }
+          FileTimeIndexCacheRecorder.getInstance().logFileTimeIndex(resource);
         }
       }
     } finally {
@@ -339,8 +341,8 @@ public class TsFileManager {
     return storageGroupName;
   }
 
-  public String getStorageGroupDir() {
-    return storageGroupDir;
+  public String getDataRegionSysDir() {
+    return dataRegionSysDir;
   }
 
   public Set<Long> getTimePartitions() {
@@ -388,5 +390,35 @@ public class TsFileManager {
   public boolean isLatestTimePartition(long timePartitionId) {
     return (sequenceFiles.higherKey(timePartitionId) == null
         && unsequenceFiles.higherKey(timePartitionId) == null);
+  }
+
+  public void compactFileTimeIndexCache() {
+    int currentResourceSize = size(true) + size(false);
+    readLock();
+    try {
+      FileTimeIndexCacheRecorder.getInstance()
+          .compactFileTimeIndexIfNeeded(
+              storageGroupName,
+              Integer.parseInt(dataRegionId),
+              currentResourceSize,
+              sequenceFiles,
+              unsequenceFiles);
+    } finally {
+      readUnlock();
+    }
+  }
+
+  public long getMaxFileTimestampOfUnSequenceFile() {
+    long maxFileTimestamp = -1;
+    resourceListLock.readLock().lock();
+    try {
+      for (TsFileResourceList resourceList : unsequenceFiles.values()) {
+        TsFileResource lastResource = resourceList.get(resourceList.size() - 1);
+        maxFileTimestamp = Math.max(maxFileTimestamp, lastResource.getTimePartition());
+      }
+    } finally {
+      resourceListLock.readLock().unlock();
+    }
+    return maxFileTimestamp;
   }
 }

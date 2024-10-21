@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.consensus.index.impl;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 
+import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -31,30 +32,38 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
+/**
+ * NOTE: Currently, {@link TimeWindowStateProgressIndex} does not perform deep copies of the {@link
+ * ByteBuffer} and {@link Pair} during construction or when exposed through accessors, which may
+ * lead to unintended shared state or modifications. This behavior should be reviewed and adjusted
+ * as necessary to ensure the integrity and independence of the progress index instances.
+ */
 public class TimeWindowStateProgressIndex extends ProgressIndex {
 
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
   // Only the byteBuffer is nullable, the timeSeries, pair and timestamp must not be null
-  private Map<String, Pair<Long, ByteBuffer>> timeSeries2TimestampWindowBufferPairMap;
+  private final Map<String, Pair<Long, ByteBuffer>> timeSeries2TimestampWindowBufferPairMap;
 
   public TimeWindowStateProgressIndex(
       @Nonnull Map<String, Pair<Long, ByteBuffer>> timeSeries2TimestampWindowBufferPairMap) {
-    this.timeSeries2TimestampWindowBufferPairMap = timeSeries2TimestampWindowBufferPairMap;
+    this.timeSeries2TimestampWindowBufferPairMap =
+        new HashMap<>(timeSeries2TimestampWindowBufferPairMap);
   }
 
   private TimeWindowStateProgressIndex() {
-    // Empty constructor
+    this(Collections.emptyMap());
   }
 
   public Map<String, Pair<Long, ByteBuffer>> getTimeSeries2TimestampWindowBufferPairMap() {
-    return timeSeries2TimestampWindowBufferPairMap;
+    return ImmutableMap.copyOf(timeSeries2TimestampWindowBufferPairMap);
   }
 
   public long getMinTime() {
@@ -194,18 +203,23 @@ public class TimeWindowStateProgressIndex extends ProgressIndex {
         return this;
       }
 
-      this.timeSeries2TimestampWindowBufferPairMap.putAll(
-          ((TimeWindowStateProgressIndex) progressIndex)
-              .timeSeries2TimestampWindowBufferPairMap.entrySet().stream()
-                  .filter(
-                      entry ->
-                          !this.timeSeries2TimestampWindowBufferPairMap.containsKey(entry.getKey())
-                              || this.timeSeries2TimestampWindowBufferPairMap
-                                      .get(entry.getKey())
-                                      .getLeft()
-                                  <= entry.getValue().getLeft())
-                  .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
-      return this;
+      final TimeWindowStateProgressIndex thisTimeWindowStateProgressIndex = this;
+      final TimeWindowStateProgressIndex thatTimeWindowStateProgressIndex =
+          (TimeWindowStateProgressIndex) progressIndex;
+      final Map<String, Pair<Long, ByteBuffer>> timeSeries2TimestampWindowBufferPairMap =
+          new HashMap<>(thisTimeWindowStateProgressIndex.timeSeries2TimestampWindowBufferPairMap);
+      timeSeries2TimestampWindowBufferPairMap.putAll(
+          thatTimeWindowStateProgressIndex
+              .timeSeries2TimestampWindowBufferPairMap
+              .entrySet()
+              .stream()
+              .filter(
+                  entry ->
+                      !timeSeries2TimestampWindowBufferPairMap.containsKey(entry.getKey())
+                          || timeSeries2TimestampWindowBufferPairMap.get(entry.getKey()).getLeft()
+                              <= entry.getValue().getLeft())
+              .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
+      return new TimeWindowStateProgressIndex(timeSeries2TimestampWindowBufferPairMap);
     } finally {
       lock.writeLock().unlock();
     }
@@ -225,7 +239,6 @@ public class TimeWindowStateProgressIndex extends ProgressIndex {
   public static TimeWindowStateProgressIndex deserializeFrom(ByteBuffer byteBuffer) {
     final TimeWindowStateProgressIndex timeWindowStateProgressIndex =
         new TimeWindowStateProgressIndex();
-    timeWindowStateProgressIndex.timeSeries2TimestampWindowBufferPairMap = new HashMap<>();
 
     final int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
@@ -248,7 +261,6 @@ public class TimeWindowStateProgressIndex extends ProgressIndex {
       throws IOException {
     final TimeWindowStateProgressIndex timeWindowStateProgressIndex =
         new TimeWindowStateProgressIndex();
-    timeWindowStateProgressIndex.timeSeries2TimestampWindowBufferPairMap = new HashMap<>();
 
     final int size = ReadWriteIOUtils.readInt(stream);
     for (int i = 0; i < size; ++i) {

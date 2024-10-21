@@ -23,6 +23,7 @@ import org.apache.iotdb.db.pipe.connector.util.PipeTabletEventSorter;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
@@ -46,7 +47,7 @@ public class PipeTabletEventSorterTest {
 
   @Test
   public void testDeduplicateAndSort() {
-    List<MeasurementSchema> schemaList = new ArrayList<>();
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
@@ -103,7 +104,7 @@ public class PipeTabletEventSorterTest {
 
   @Test
   public void testDeduplicate() {
-    List<MeasurementSchema> schemaList = new ArrayList<>();
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
@@ -148,7 +149,7 @@ public class PipeTabletEventSorterTest {
 
   @Test
   public void testSort() {
-    List<MeasurementSchema> schemaList = new ArrayList<>();
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));

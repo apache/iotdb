@@ -36,6 +36,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -470,7 +471,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute(sql);
-    } catch (SQLException e) {
+    } catch (final SQLException e) {
       fail(e.getMessage());
     }
 
@@ -491,12 +492,13 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv, "select * from root.db.**", "Time,root.db.d1.at1,", expectedResSet);
 
-    // Alter pipe (modify 'source.path' and 'processor.tumbling-time.interval-seconds')
+    // Alter pipe (modify 'source.path', 'source.inclusion' and
+    // 'processor.tumbling-time.interval-seconds')
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute(
-          "alter pipe a2b modify source('source' = 'iotdb-source','source.path'='root.db.d2.**') modify processor ('processor.tumbling-time.interval-seconds'='2')");
-    } catch (SQLException e) {
+          "alter pipe a2b modify source('source' = 'iotdb-source','source.path'='root.db.d2.**', 'source.inclusion'='all') modify processor ('processor.tumbling-time.interval-seconds'='2')");
+    } catch (final SQLException e) {
       fail(e.getMessage());
     }
 
@@ -527,5 +529,15 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
         "select * from root.db.** where time > 10000",
         "Time,root.db.d1.at1,root.db.d2.at1,",
         expectedResSet);
+
+    // Create database on sender
+    if (!TestUtils.tryExecuteNonQueryWithRetry(
+        senderEnv, "create timeSeries root.db.d2.at2 int32")) {
+      fail();
+    }
+
+    // Check database on receiver
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv, "count timeSeries", "count(timeseries),", Collections.singleton("3,"));
   }
 }

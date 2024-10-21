@@ -158,7 +158,7 @@ public abstract class AbstractCompactionTask {
       // these exceptions generally caused by unsorted data, mark all source files as NEED_TO_REPAIR
       for (TsFileResource resource : unsortedTsFileResources) {
         if (resource.getTsFileRepairStatus() != TsFileRepairStatus.CAN_NOT_REPAIR) {
-          resource.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_REPAIR);
+          resource.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_CHECK);
         }
       }
     } else if (e instanceof InterruptedException
@@ -474,7 +474,7 @@ public abstract class AbstractCompactionTask {
                 : timeDiff;
           });
       List<TsFileResource> overlapFilesInTimePartition =
-          RepairDataFileScanUtil.checkTimePartitionHasOverlap(timePartitionSeqFiles);
+          RepairDataFileScanUtil.checkTimePartitionHasOverlap(timePartitionSeqFiles, true);
       if (!overlapFilesInTimePartition.isEmpty()) {
         LOGGER.error(
             "Failed to pass compaction validation, source seq files: {}, source unseq files: {}, target files: {}",
@@ -501,4 +501,6 @@ public abstract class AbstractCompactionTask {
   public void setRecoverMemoryStatus(boolean recoverMemoryStatus) {
     this.recoverMemoryStatus = recoverMemoryStatus;
   }
+
+  public abstract long getSelectedFileSize();
 }

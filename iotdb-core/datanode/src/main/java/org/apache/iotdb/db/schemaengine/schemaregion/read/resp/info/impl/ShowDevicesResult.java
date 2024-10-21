@@ -16,20 +16,40 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl;
 
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchemaInfo {
   private Boolean isAligned;
   private int templateId;
 
-  public ShowDevicesResult(String name, Boolean isAligned, int templateId) {
+  private Function<String, String> attributeProvider;
+
+  private String[] rawNodes = null;
+
+  public ShowDevicesResult(final String name, final Boolean isAligned, final int templateId) {
     super(name);
     this.isAligned = isAligned;
     this.templateId = templateId;
+  }
+
+  public ShowDevicesResult(
+      final String name, final Boolean isAligned, final int templateId, final String[] rawNodes) {
+    super(name);
+    this.isAligned = isAligned;
+    this.templateId = templateId;
+    this.rawNodes = rawNodes;
   }
 
   public Boolean isAligned() {
@@ -40,29 +60,59 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
     return templateId;
   }
 
+  public void setAttributeProvider(final UnaryOperator<String> attributeProvider) {
+    this.attributeProvider = attributeProvider;
+  }
+
+  @Override
+  public String getAttributeValue(final String attributeKey) {
+    return attributeProvider.apply(attributeKey);
+  }
+
+  public String[] getRawNodes() {
+    return rawNodes;
+  }
+
+  @Override
+  public PartialPath getPartialPath() {
+    return rawNodes == null ? super.getPartialPath() : new PartialPath(rawNodes);
+  }
+
+  public static ShowDevicesResult convertDeviceEntry2ShowDeviceResult(
+      final DeviceEntry entry, final List<String> attributeColumns) {
+    final ShowDevicesResult result =
+        new ShowDevicesResult(
+            entry.getDeviceID().toString(), null, -1, (String[]) entry.getDeviceID().getSegments());
+    final Map<String, String> attributeProviderMap = new HashMap<>();
+    for (int i = 0; i < attributeColumns.size(); ++i) {
+      attributeProviderMap.put(attributeColumns.get(i), entry.getAttributeColumnValues().get(i));
+    }
+    result.setAttributeProvider(attributeProviderMap::get);
+    return result;
+  }
+
   @Override
   public String toString() {
     return "ShowDevicesResult{"
-        + " name='"
+        + "name='"
         + path
         + '\''
         + ", isAligned = "
         + isAligned
-        + '\''
         + ", templateId = "
         + templateId
         + "}";
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    ShowDevicesResult result = (ShowDevicesResult) o;
+    final ShowDevicesResult result = (ShowDevicesResult) o;
     return Objects.equals(path, result.path)
         && isAligned == result.isAligned
         && templateId == result.templateId;

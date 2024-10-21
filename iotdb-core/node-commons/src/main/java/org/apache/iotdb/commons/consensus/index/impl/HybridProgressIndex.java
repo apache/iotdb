@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.consensus.index.impl;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 
+import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nonnull;
@@ -30,8 +31,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
@@ -42,21 +45,19 @@ public class HybridProgressIndex extends ProgressIndex {
   private final Map<Short, ProgressIndex> type2Index;
 
   private HybridProgressIndex() {
-    this.type2Index = new HashMap<>();
+    this(Collections.emptyMap());
   }
 
   public HybridProgressIndex(ProgressIndex progressIndex) {
-    short type = progressIndex.getType().getType();
-    if (ProgressIndexType.HYBRID_PROGRESS_INDEX.getType() != type) {
-      this.type2Index = new HashMap<>();
-      type2Index.put(type, progressIndex);
-    } else {
-      this.type2Index = ((HybridProgressIndex) progressIndex).type2Index;
-    }
+    this(Collections.singletonMap(progressIndex.getType().getType(), progressIndex));
+  }
+
+  private HybridProgressIndex(Map<Short, ProgressIndex> type2Index) {
+    this.type2Index = new HashMap<>(type2Index);
   }
 
   public Map<Short, ProgressIndex> getType2Index() {
-    return type2Index;
+    return ImmutableMap.copyOf(type2Index);
   }
 
   @Override
@@ -166,7 +167,7 @@ public class HybridProgressIndex extends ProgressIndex {
 
   @Override
   public int hashCode() {
-    return 0;
+    return Objects.hash(type2Index);
   }
 
   @Override
@@ -182,26 +183,29 @@ public class HybridProgressIndex extends ProgressIndex {
       }
 
       if (!(progressIndex instanceof HybridProgressIndex)) {
+        final Map<Short, ProgressIndex> type2Index = new HashMap<>(this.type2Index);
         type2Index.compute(
             progressIndex.getType().getType(),
             (thisK, thisV) ->
                 (thisV == null
                     ? progressIndex
                     : thisV.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex)));
-        return this;
+        return new HybridProgressIndex(type2Index);
       }
 
       final HybridProgressIndex thisHybridProgressIndex = this;
       final HybridProgressIndex thatHybridProgressIndex = (HybridProgressIndex) progressIndex;
+      final Map<Short, ProgressIndex> type2Index =
+          new HashMap<>(thisHybridProgressIndex.type2Index);
       thatHybridProgressIndex.type2Index.forEach(
           (thatK, thatV) ->
-              thisHybridProgressIndex.type2Index.compute(
+              type2Index.compute(
                   thatK,
                   (thisK, thisV) ->
                       (thisV == null
                           ? thatV
                           : thisV.updateToMinimumEqualOrIsAfterProgressIndex(thatV))));
-      return this;
+      return new HybridProgressIndex(type2Index);
     } finally {
       lock.writeLock().unlock();
     }

@@ -30,7 +30,6 @@ import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransfe
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -43,8 +42,10 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -60,30 +61,46 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
 
   private final Set<TEndPoint> endPointSet;
 
-  private static final AtomicReference<
-          IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>>
-      ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER = new AtomicReference<>();
+  private static final Map<String, Integer> RECEIVER_ATTRIBUTES_REF_COUNT =
+      new ConcurrentHashMap<>();
+  private final String receiverAttributes;
+
+  // receiverAttributes -> IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>
+  private static final Map<String, IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>>
+      ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER = new ConcurrentHashMap<>();
   private final IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> endPoint2Client;
 
   private final LoadBalancer loadBalancer;
 
+  private final boolean shouldReceiverConvertOnTypeMismatch;
+
+  private final String loadTsFileStrategy;
+
   public IoTDBDataNodeAsyncClientManager(
-      List<TEndPoint> endPoints, boolean useLeaderCache, String loadBalanceStrategy) {
+      List<TEndPoint> endPoints,
+      boolean useLeaderCache,
+      String loadBalanceStrategy,
+      boolean shouldReceiverConvertOnTypeMismatch,
+      String loadTsFileStrategy) {
     super(endPoints, useLeaderCache);
 
     endPointSet = new HashSet<>(endPoints);
 
-    if (ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get() == null) {
-      synchronized (IoTDBDataRegionAsyncConnector.class) {
-        if (ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get() == null) {
-          ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.set(
-              new IClientManager.Factory<TEndPoint, AsyncPipeDataTransferServiceClient>()
-                  .createClientManager(
-                      new ClientPoolFactory.AsyncPipeDataTransferServiceClientPoolFactory()));
-        }
+    receiverAttributes =
+        String.format("%s-%s", shouldReceiverConvertOnTypeMismatch, loadTsFileStrategy);
+    synchronized (IoTDBDataNodeAsyncClientManager.class) {
+      if (!ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.containsKey(receiverAttributes)) {
+        ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.putIfAbsent(
+            receiverAttributes,
+            new IClientManager.Factory<TEndPoint, AsyncPipeDataTransferServiceClient>()
+                .createClientManager(
+                    new ClientPoolFactory.AsyncPipeDataTransferServiceClientPoolFactory()));
       }
+      endPoint2Client = ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get(receiverAttributes);
+
+      RECEIVER_ATTRIBUTES_REF_COUNT.compute(
+          receiverAttributes, (attributes, refCount) -> refCount == null ? 1 : refCount + 1);
     }
-    endPoint2Client = ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get();
 
     switch (loadBalanceStrategy) {
       case CONNECTOR_LOAD_BALANCE_ROUND_ROBIN_STRATEGY:
@@ -101,6 +118,9 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
             loadBalanceStrategy);
         loadBalancer = new RoundRobinLoadBalancer();
     }
+
+    this.shouldReceiverConvertOnTypeMismatch = shouldReceiverConvertOnTypeMismatch;
+    this.loadTsFileStrategy = loadTsFileStrategy;
   }
 
   public AsyncPipeDataTransferServiceClient borrowClient() throws Exception {
@@ -209,6 +229,11 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       params.put(
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION,
           CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+      params.put(
+          PipeTransferHandshakeConstant.HANDSHAKE_KEY_CONVERT_ON_TYPE_MISMATCH,
+          Boolean.toString(shouldReceiverConvertOnTypeMismatch));
+      params.put(
+          PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY, loadTsFileStrategy);
 
       client.setTimeoutDynamically(PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs());
       client.pipeTransfer(PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(params), callback);
@@ -268,6 +293,28 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     }
 
     LEADER_CACHE_MANAGER.updateLeaderEndPoint(deviceId, endPoint);
+  }
+
+  public void close() {
+    synchronized (IoTDBDataNodeAsyncClientManager.class) {
+      RECEIVER_ATTRIBUTES_REF_COUNT.computeIfPresent(
+          receiverAttributes,
+          (attributes, refCount) -> {
+            if (refCount <= 1) {
+              final IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> clientManager =
+                  ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.remove(receiverAttributes);
+              if (clientManager != null) {
+                try {
+                  clientManager.close();
+                } catch (Exception e) {
+                  LOGGER.warn("Failed to close client manager.", e);
+                }
+              }
+              return null;
+            }
+            return refCount - 1;
+          });
+    }
   }
 
   /////////////////////// Strategies for load balance //////////////////////////

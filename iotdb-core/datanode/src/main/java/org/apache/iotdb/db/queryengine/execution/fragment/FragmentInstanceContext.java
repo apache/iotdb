@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
@@ -42,6 +45,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.filter.factory.FilterFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,8 +75,9 @@ public class FragmentInstanceContext extends QueryContext {
   private Filter globalTimeFilter;
 
   // it will only be used once, after sharedQueryDataSource being inited, it will be set to null
-  private List<PartialPath> sourcePaths;
-  // Used for region scan.
+  private List<IFullPath> sourcePaths;
+
+  // Used for region scan, relating methods are to be added.
   private Map<IDeviceID, DeviceContext> devicePathsToContext;
 
   // Shared by all scan operators in this fragment instance to avoid memory problem
@@ -129,6 +134,7 @@ public class FragmentInstanceContext extends QueryContext {
     return instanceContext;
   }
 
+  // This method is only used in groupby
   public static FragmentInstanceContext createFragmentInstanceContext(
       FragmentInstanceId id,
       FragmentInstanceStateMachine stateMachine,
@@ -310,6 +316,23 @@ public class FragmentInstanceContext extends QueryContext {
         .collect(Collectors.toList());
   }
 
+  public Optional<TSStatus> getErrorCode() {
+    return stateMachine.getFailureCauses().stream()
+        .filter(e -> e instanceof IoTDBException || e instanceof IoTDBRuntimeException)
+        .findFirst()
+        .flatMap(
+            t -> {
+              TSStatus status;
+              if (t instanceof IoTDBException) {
+                status = new TSStatus(((IoTDBException) t).getErrorCode());
+              } else {
+                status = new TSStatus(((IoTDBRuntimeException) t).getErrorCode());
+              }
+              status.setMessage(t.getMessage());
+              return Optional.of(status);
+            });
+  }
+
   public void finished() {
     stateMachine.finished();
   }
@@ -348,8 +371,19 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   public FragmentInstanceInfo getInstanceInfo() {
-    return new FragmentInstanceInfo(
-        stateMachine.getState(), getEndTime(), getFailedCause(), getFailureInfoList());
+    return getErrorCode()
+        .map(
+            s ->
+                new FragmentInstanceInfo(
+                    stateMachine.getState(),
+                    getEndTime(),
+                    getFailedCause(),
+                    getFailureInfoList(),
+                    s))
+        .orElseGet(
+            () ->
+                new FragmentInstanceInfo(
+                    stateMachine.getState(), getEndTime(), getFailedCause(), getFailureInfoList()));
   }
 
   public FragmentInstanceStateMachine getStateMachine() {
@@ -368,11 +402,22 @@ public class FragmentInstanceContext extends QueryContext {
     return globalTimeFilter;
   }
 
+  public void setTimeFilterForTableModel(Filter timeFilter) {
+    if (globalTimeFilter == null) {
+      globalTimeFilter = timeFilter;
+    } else {
+      // In join case, there may exist more than one table and time filter
+      globalTimeFilter = FilterFactory.or(globalTimeFilter, timeFilter);
+      // throw new IllegalStateException(
+      //    "globalTimeFilter in FragmentInstanceContext should only be set once in Table Model!");
+    }
+  }
+
   public IDataRegionForQuery getDataRegion() {
     return dataRegion;
   }
 
-  public void setSourcePaths(List<PartialPath> sourcePaths) {
+  public void setSourcePaths(List<IFullPath> sourcePaths) {
     this.sourcePaths = sourcePaths;
   }
 
@@ -388,18 +433,18 @@ public class FragmentInstanceContext extends QueryContext {
     memoryReservationManager.releaseAllReservedMemory();
   }
 
-  public void initQueryDataSource(List<PartialPath> sourcePaths) throws QueryProcessException {
+  public void initQueryDataSource(List<IFullPath> sourcePaths) throws QueryProcessException {
     long startTime = System.nanoTime();
     if (sourcePaths == null) {
       return;
     }
     dataRegion.readLock();
     try {
-      List<PartialPath> pathList = new ArrayList<>();
-      Set<String> selectedDeviceIdSet = new HashSet<>();
-      for (PartialPath path : sourcePaths) {
+      List<IFullPath> pathList = new ArrayList<>();
+      Set<IDeviceID> selectedDeviceIdSet = new HashSet<>();
+      for (IFullPath path : sourcePaths) {
         pathList.add(path);
-        selectedDeviceIdSet.add(path.getDevice());
+        selectedDeviceIdSet.add(path.getDeviceId());
       }
 
       this.sharedQueryDataSource =
@@ -453,8 +498,7 @@ public class FragmentInstanceContext extends QueryContext {
     }
   }
 
-  public void initRegionScanQueryDataSource(List<PartialPath> pathList)
-      throws QueryProcessException {
+  public void initRegionScanQueryDataSource(List<IFullPath> pathList) throws QueryProcessException {
     long startTime = System.nanoTime();
     if (pathList == null) {
       return;

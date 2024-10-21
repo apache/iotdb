@@ -29,8 +29,16 @@ import org.apache.ratis.client.RaftClient;
 import org.apache.ratis.client.RaftClientRpc;
 import org.apache.ratis.conf.RaftProperties;
 import org.apache.ratis.protocol.RaftGroup;
+import org.apache.ratis.protocol.exceptions.LeaderNotReadyException;
+import org.apache.ratis.protocol.exceptions.LeaderSteppingDownException;
+import org.apache.ratis.protocol.exceptions.NotLeaderException;
 import org.apache.ratis.protocol.exceptions.RaftException;
+import org.apache.ratis.protocol.exceptions.ReconfigurationInProgressException;
+import org.apache.ratis.protocol.exceptions.ReconfigurationTimeoutException;
+import org.apache.ratis.protocol.exceptions.ServerNotReadyException;
+import org.apache.ratis.protocol.exceptions.TimeoutIOException;
 import org.apache.ratis.retry.ExponentialBackoffRetry;
+import org.apache.ratis.retry.RetryPolicies;
 import org.apache.ratis.retry.RetryPolicy;
 import org.apache.ratis.thirdparty.io.grpc.StatusRuntimeException;
 import org.apache.ratis.util.TimeDuration;
@@ -120,6 +128,48 @@ class RatisClient implements AutoCloseable {
     }
   }
 
+  static class EndlessRetryFactory extends BaseClientFactory<RaftGroup, RatisClient> {
+
+    private final RaftProperties raftProperties;
+    private final RaftClientRpc clientRpc;
+    private final RatisConfig.Client config;
+
+    public EndlessRetryFactory(
+        ClientManager<RaftGroup, RatisClient> clientManager,
+        RaftProperties raftProperties,
+        RaftClientRpc clientRpc,
+        RatisConfig.Client config) {
+      super(clientManager);
+      this.raftProperties = raftProperties;
+      this.clientRpc = clientRpc;
+      this.config = config;
+    }
+
+    @Override
+    public void destroyObject(RaftGroup key, PooledObject<RatisClient> pooledObject) {
+      pooledObject.getObject().invalidate();
+    }
+
+    @Override
+    public PooledObject<RatisClient> makeObject(RaftGroup group) {
+      return new DefaultPooledObject<>(
+          new RatisClient(
+              group,
+              RaftClient.newBuilder()
+                  .setProperties(raftProperties)
+                  .setRaftGroup(group)
+                  .setRetryPolicy(new RatisEndlessRetryPolicy(config))
+                  .setClientRpc(clientRpc)
+                  .build(),
+              clientManager));
+    }
+
+    @Override
+    public boolean validateObject(RaftGroup key, PooledObject<RatisClient> pooledObject) {
+      return true;
+    }
+  }
+
   /**
    * RatisRetryPolicy is similar to ExceptionDependentRetry 1. By default, use
    * ExponentialBackoffRetry to handle request failure 2. If unexpected IOException is caught,
@@ -162,6 +212,38 @@ class RatisClient implements AutoCloseable {
         logger.info(
             "{}: raft client request failed and caught exception: ", this, unexpectedCause.get());
         return NO_RETRY_ACTION;
+      }
+
+      return defaultPolicy.handleAttemptFailure(event);
+    }
+  }
+
+  /** This policy is used to raft configuration change */
+  private static class RatisEndlessRetryPolicy implements RetryPolicy {
+
+    private static final Logger logger = LoggerFactory.getLogger(RatisEndlessRetryPolicy.class);
+    // for reconfiguration request, we use different retry policy
+    private final RetryPolicy endlessPolicy;
+    private final RetryPolicy defaultPolicy;
+
+    RatisEndlessRetryPolicy(RatisConfig.Client config) {
+      endlessPolicy =
+          RetryPolicies.retryForeverWithSleep(TimeDuration.valueOf(2, TimeUnit.SECONDS));
+      defaultPolicy = new RatisRetryPolicy(config);
+    }
+
+    @Override
+    public Action handleAttemptFailure(Event event) {
+      Throwable cause = event.getCause();
+      if (cause == null
+          || cause instanceof ReconfigurationInProgressException
+          || cause instanceof TimeoutIOException
+          || cause instanceof LeaderSteppingDownException
+          || cause instanceof ReconfigurationTimeoutException
+          || cause instanceof ServerNotReadyException
+          || cause instanceof NotLeaderException
+          || cause instanceof LeaderNotReadyException) {
+        return endlessPolicy.handleAttemptFailure(event);
       }
 
       return defaultPolicy.handleAttemptFailure(event);

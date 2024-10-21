@@ -21,6 +21,8 @@ package org.apache.iotdb.db.queryengine.transformation.dag.column.ternary;
 
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 
 public abstract class TernaryColumnTransformer extends ColumnTransformer {
@@ -43,6 +45,52 @@ public abstract class TernaryColumnTransformer extends ColumnTransformer {
     checkType();
   }
 
+  @Override
+  protected void evaluate() {
+    firstColumnTransformer.tryEvaluate();
+    secondColumnTransformer.tryEvaluate();
+    thirdColumnTransformer.tryEvaluate();
+    int positionCount = firstColumnTransformer.getColumnCachePositionCount();
+    Column firstColumn = firstColumnTransformer.getColumn();
+    Column secondColumn = secondColumnTransformer.getColumn();
+    Column thirdColumn = thirdColumnTransformer.getColumn();
+    ColumnBuilder columnBuilder = returnType.createColumnBuilder(positionCount);
+    doTransform(firstColumn, secondColumn, thirdColumn, columnBuilder, positionCount);
+    initializeColumnCache(columnBuilder.build());
+  }
+
+  @Override
+  public void evaluateWithSelection(boolean[] selection) {
+    firstColumnTransformer.evaluateWithSelection(selection);
+    secondColumnTransformer.evaluateWithSelection(selection);
+    thirdColumnTransformer.evaluateWithSelection(selection);
+    int positionCount = firstColumnTransformer.getColumnCachePositionCount();
+    Column firstColumn = firstColumnTransformer.getColumn();
+    Column secondColumn = secondColumnTransformer.getColumn();
+    Column thirdColumn = thirdColumnTransformer.getColumn();
+    ColumnBuilder columnBuilder = returnType.createColumnBuilder(positionCount);
+    doTransform(firstColumn, secondColumn, thirdColumn, columnBuilder, positionCount, selection);
+    initializeColumnCache(columnBuilder.build());
+    firstColumnTransformer.clearCache();
+    secondColumnTransformer.clearCache();
+    thirdColumnTransformer.clearCache();
+  }
+
+  protected abstract void doTransform(
+      Column firstColumn,
+      Column secondColumn,
+      Column thirdColumn,
+      ColumnBuilder builder,
+      int positionCount);
+
+  protected abstract void doTransform(
+      Column firstColumn,
+      Column secondColumn,
+      Column thirdColumn,
+      ColumnBuilder builder,
+      int positionCount,
+      boolean[] selection);
+
   public ColumnTransformer getFirstColumnTransformer() {
     return firstColumnTransformer;
   }
@@ -53,5 +101,13 @@ public abstract class TernaryColumnTransformer extends ColumnTransformer {
 
   public ColumnTransformer getThirdColumnTransformer() {
     return thirdColumnTransformer;
+  }
+
+  @Override
+  public void clearCache() {
+    super.clearCache();
+    firstColumnTransformer.clearCache();
+    secondColumnTransformer.clearCache();
+    thirdColumnTransformer.clearCache();
   }
 }

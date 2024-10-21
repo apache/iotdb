@@ -33,10 +33,11 @@ import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
 import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.time.ZoneId;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * This class is used to record the context of a query including QueryId, query statement, session
@@ -71,7 +72,7 @@ public class MPPQueryContext {
 
   private Filter globalTimeFilter;
 
-  private Map<SchemaLockType, Integer> acquiredLockNumMap = new HashMap<>();
+  private final Set<SchemaLockType> acquiredLocks = new HashSet<>();
 
   private boolean isExplainAnalyze = false;
 
@@ -80,6 +81,8 @@ public class MPPQueryContext {
   // To avoid query front-end from consuming too much memory, it needs to reserve memory when
   // constructing some Expression and PlanNode.
   private final MemoryReservationManager memoryReservationManager;
+
+  private boolean isTableQuery = false;
 
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
@@ -200,21 +203,23 @@ public class MPPQueryContext {
     return sql;
   }
 
-  public Map<SchemaLockType, Integer> getAcquiredLockNumMap() {
-    return acquiredLockNumMap;
+  public Set<SchemaLockType> getAcquiredLocks() {
+    return acquiredLocks;
   }
 
-  public void addAcquiredLockNum(SchemaLockType lockType) {
-    if (acquiredLockNumMap.containsKey(lockType)) {
-      acquiredLockNumMap.put(lockType, acquiredLockNumMap.get(lockType) + 1);
-    } else {
-      acquiredLockNumMap.put(lockType, 1);
-    }
+  public boolean addAcquiredLock(final SchemaLockType lockType) {
+    return acquiredLocks.add(lockType);
   }
 
+  // used for tree model
   public void generateGlobalTimeFilter(Analysis analysis) {
     this.globalTimeFilter =
         PredicateUtils.convertPredicateToTimeFilter(analysis.getGlobalTimePredicate());
+  }
+
+  // used for table model
+  public void setGlobalTimeFilter(Filter globalTimeFilter) {
+    this.globalTimeFilter = globalTimeFilter;
   }
 
   public Filter getGlobalTimeFilter() {
@@ -334,4 +339,16 @@ public class MPPQueryContext {
   }
 
   // endregion
+
+  public boolean isTableQuery() {
+    return isTableQuery;
+  }
+
+  public void setTableQuery(boolean tableQuery) {
+    isTableQuery = tableQuery;
+  }
+
+  public Optional<String> getDatabaseName() {
+    return session.getDatabaseName();
+  }
 }

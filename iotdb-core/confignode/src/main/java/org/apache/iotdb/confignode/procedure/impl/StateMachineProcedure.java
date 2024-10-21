@@ -24,6 +24,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 
+import org.apache.thrift.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,7 +74,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
     this(false);
   }
 
-  protected StateMachineProcedure(boolean isGeneratedByPipe) {
+  protected StateMachineProcedure(final boolean isGeneratedByPipe) {
     this.isGeneratedByPipe = isGeneratedByPipe;
   }
 
@@ -275,8 +276,15 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
     return stateFlow != Flow.NO_MORE_STATE;
   }
 
+  @Nullable
   protected TState getCurrentState() {
-    return stateCount > 0 ? getState(states[stateCount - 1]) : getInitialState();
+    if (stateCount > 0) {
+      if (states[stateCount - 1] == EOF_STATE) {
+        return null;
+      }
+      return getState(states[stateCount - 1]);
+    }
+    return getInitialState();
   }
 
   /**

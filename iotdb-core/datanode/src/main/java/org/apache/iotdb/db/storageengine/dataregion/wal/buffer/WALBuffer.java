@@ -197,8 +197,9 @@ public class WALBuffer extends AbstractWALBuffer {
   @Override
   public void write(WALEntry walEntry) {
     if (isClosed) {
-      logger.error(
-          "Fail to write WALEntry into wal node-{} because this node is closed.", identifier);
+      logger.warn(
+          "Fail to write WALEntry into wal node-{} because this node is closed. It's ok to see this log during data region deletion.",
+          identifier);
       walEntry.getWalFlushListener().fail(new WALNodeClosedException(identifier));
       return;
     }
@@ -383,8 +384,18 @@ public class WALBuffer extends AbstractWALBuffer {
    * This view uses workingBuffer lock-freely because workingBuffer is only updated by
    * serializeThread and this class is only used by serializeThread.
    */
-  private class ByteBufferView implements IWALByteBufferView {
+  private class ByteBufferView extends IWALByteBufferView {
     private int flushedBytesNum = 0;
+
+    @Override
+    public void write(int b) {
+      put((byte) b);
+    }
+
+    @Override
+    public void write(byte[] b) {
+      put(b);
+    }
 
     private void ensureEnoughSpace(int bytesNum) {
       if (workingBuffer.remaining() < bytesNum) {
@@ -669,6 +680,7 @@ public class WALBuffer extends AbstractWALBuffer {
   @Override
   public void close() {
     // first waiting serialize and sync tasks finished, then release all resources
+    isClosed = true;
     if (serializeThread != null) {
       // add close signal WALEntry to notify serializeThread
       try {
@@ -677,7 +689,6 @@ public class WALBuffer extends AbstractWALBuffer {
         logger.error("Fail to put CLOSE_SIGNAL to walEntries.", e);
         Thread.currentThread().interrupt();
       }
-      isClosed = true;
       shutdownThread(serializeThread, ThreadName.WAL_SERIALIZE);
     }
     if (syncBufferThread != null) {

@@ -89,7 +89,7 @@ public class DistributionPlanner {
   public PlanNode addExchangeNode(PlanNode root) {
     ExchangeNodeAdder adder = new ExchangeNodeAdder(this.analysis);
     NodeGroupContext nodeGroupContext =
-        new NodeGroupContext(context, analysis.getStatement(), root);
+        new NodeGroupContext(context, analysis.getTreeStatement(), root);
     PlanNode newRoot = adder.visit(root, nodeGroupContext);
     adjustUpStream(newRoot, nodeGroupContext);
     return newRoot;
@@ -112,8 +112,8 @@ public class DistributionPlanner {
     }
 
     final boolean needShuffleSinkNode =
-        analysis.getStatement() instanceof QueryStatement
-            && needShuffleSinkNode((QueryStatement) analysis.getStatement(), context);
+        analysis.getTreeStatement() instanceof QueryStatement
+            && needShuffleSinkNode((QueryStatement) analysis.getTreeStatement(), context);
 
     adjustUpStreamHelper(root, new HashMap<>(), needShuffleSinkNode, context);
   }
@@ -183,7 +183,7 @@ public class DistributionPlanner {
   }
 
   public PlanNode optimize(PlanNode rootWithExchange) {
-    if (analysis.getStatement() != null && analysis.getStatement().isQuery()) {
+    if (analysis.getTreeStatement() != null && analysis.getTreeStatement().isQuery()) {
       for (PlanOptimizer optimizer : optimizers) {
         rootWithExchange = optimizer.optimize(rootWithExchange, analysis, context);
       }
@@ -201,22 +201,24 @@ public class DistributionPlanner {
 
     PlanNode rootWithExchange = addExchangeNode(rootAfterRewrite);
     PlanNode optimizedRootWithExchange = optimize(rootWithExchange);
-    if (analysis.getStatement() != null && analysis.getStatement().isQuery()) {
+    if (analysis.getTreeStatement() != null && analysis.getTreeStatement().isQuery()) {
       analysis
           .getRespDatasetHeader()
-          .setColumnToTsBlockIndexMap(optimizedRootWithExchange.getOutputColumnNames());
+          .setTreeColumnToTsBlockIndexMap(optimizedRootWithExchange.getOutputColumnNames());
     }
+
     SubPlan subPlan = splitFragment(optimizedRootWithExchange);
     // Mark the root Fragment of root SubPlan as `root`
     subPlan.getPlanFragment().setRoot(true);
+
     List<FragmentInstance> fragmentInstances = planFragmentInstances(subPlan);
 
     // Only execute this step for READ operation
     if (context.getQueryType() == QueryType.READ) {
       setSinkForRootInstance(subPlan, fragmentInstances);
     }
-    return new DistributedQueryPlan(
-        logicalPlan.getContext(), subPlan, subPlan.getPlanFragmentList(), fragmentInstances);
+
+    return new DistributedQueryPlan(subPlan, fragmentInstances);
   }
 
   // Convert fragment to detailed instance

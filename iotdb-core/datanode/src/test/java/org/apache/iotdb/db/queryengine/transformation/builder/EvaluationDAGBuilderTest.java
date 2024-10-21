@@ -23,10 +23,12 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.protocol.session.IClientSession.SqlDialect;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
@@ -54,6 +56,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -88,11 +91,13 @@ public class EvaluationDAGBuilderTest {
       Statement statement =
           StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
       QueryId queryId = new QueryId("test");
+      SessionInfo sessionInfo =
+          new SessionInfo(0, "root", ZoneId.systemDefault(), "root.db", SqlDialect.TREE);
       MPPQueryContext context =
           new MPPQueryContext(
               sql,
               queryId,
-              null,
+              sessionInfo,
               new TEndPoint("127.0.0.1", 6667),
               new TEndPoint("127.0.0.1", 6667));
       Analyzer analyzer =

@@ -126,6 +126,7 @@ public class IoTDBJDBCResultSetTest {
 
     execResp.queryResult = FakedFirstFetchTsBlockResult();
 
+    when(connection.getTimeFactor()).thenReturn(1000);
     when(connection.isClosed()).thenReturn(false);
     when(client.executeStatementV2(any(TSExecuteStatementReq.class))).thenReturn(execResp);
     when(execResp.getQueryId()).thenReturn(queryId);
@@ -172,6 +173,16 @@ public class IoTDBJDBCResultSetTest {
     when(execResp.getOperationType()).thenReturn("QUERY");
     when(execResp.isSetQueryId()).thenReturn(true);
     when(execResp.getQueryId()).thenReturn(queryId);
+    when(execResp.isSetTableModel()).thenReturn(false);
+    when(execResp.isIgnoreTimeStamp()).thenReturn(false);
+    List<Integer> columnIndex2TsBlockColumnIndexList = new ArrayList<>(columns.size());
+    columnIndex2TsBlockColumnIndexList.add(0);
+    columnIndex2TsBlockColumnIndexList.add(1);
+    columnIndex2TsBlockColumnIndexList.add(2);
+    columnIndex2TsBlockColumnIndexList.add(0);
+
+    when(execResp.getColumnIndex2TsBlockColumnIndexList())
+        .thenReturn(columnIndex2TsBlockColumnIndexList);
     doReturn("FLOAT")
         .doReturn("INT64")
         .doReturn("INT32")

@@ -110,6 +110,9 @@ public abstract class WALEntry implements SerializedSize {
       case MEMORY_TABLE_SNAPSHOT:
         value = AbstractMemTable.Factory.create(stream);
         break;
+      case OLD_MEMORY_TABLE_SNAPSHOT:
+        value = AbstractMemTable.Factory.createFromOldMemTableSnapshot(stream);
+        break;
       case INSERT_ROW_NODE:
         value = (InsertRowNode) PlanNodeType.deserializeFromWAL(stream);
         break;
@@ -121,6 +124,9 @@ public abstract class WALEntry implements SerializedSize {
         break;
       case DELETE_DATA_NODE:
         value = (DeleteDataNode) PlanNodeType.deserializeFromWAL(stream);
+        break;
+      case CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE:
+        value = (ContinuousSameSearchIndexSeparatorNode) PlanNodeType.deserializeFromWAL(stream);
         break;
       default:
         throw new RuntimeException("Unknown WALEntry type " + type);

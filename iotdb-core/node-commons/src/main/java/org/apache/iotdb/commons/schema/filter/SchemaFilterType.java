@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.schema.filter;
 
 public enum SchemaFilterType {
@@ -26,6 +27,15 @@ public enum SchemaFilterType {
   VIEW_TYPE((short) 4),
   AND((short) 5),
   TEMPLATE_FILTER((short) 6),
+  ID((short) 7),
+  ATTRIBUTE((short) 8),
+
+  OR((short) 9),
+  NOT((short) 10),
+  PRECISE((short) 11),
+  IN((short) 12),
+  LIKE((short) 13),
+  COMPARISON((short) 14),
   ;
 
   private final short code;
@@ -54,6 +64,22 @@ public enum SchemaFilterType {
         return AND;
       case 6:
         return TEMPLATE_FILTER;
+      case 7:
+        return ID;
+      case 8:
+        return ATTRIBUTE;
+      case 9:
+        return OR;
+      case 10:
+        return NOT;
+      case 11:
+        return PRECISE;
+      case 12:
+        return IN;
+      case 13:
+        return LIKE;
+      case 14:
+        return COMPARISON;
       default:
         throw new IllegalArgumentException("Invalid input: " + code);
     }

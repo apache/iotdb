@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.MemMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.TableDeviceInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -59,6 +60,7 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.LOGICAL_VIEW_MNODE_
 import static org.apache.iotdb.commons.schema.SchemaConstant.MEASUREMENT_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_ENTITY_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_MNODE_TYPE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.isStorageGroupType;
 
 public class MemMTreeSnapshotUtil {
@@ -72,14 +74,15 @@ public class MemMTreeSnapshotUtil {
   private static final IMNodeFactory<IMemMNode> nodeFactory =
       MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory();
 
-  public static boolean createSnapshot(File snapshotDir, MemMTreeStore store) {
-    File snapshotTmp =
+  public static boolean createSnapshot(final File snapshotDir, final MemMTreeStore store) {
+    final File snapshotTmp =
         SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.MTREE_SNAPSHOT_TMP);
-    File snapshot = SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.MTREE_SNAPSHOT);
+    final File snapshot =
+        SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.MTREE_SNAPSHOT);
 
     try {
-      FileOutputStream fileOutputStream = new FileOutputStream(snapshotTmp);
-      BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream);
+      final FileOutputStream fileOutputStream = new FileOutputStream(snapshotTmp);
+      final BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream);
       try {
         serializeTo(store, outputStream);
       } finally {
@@ -89,12 +92,12 @@ public class MemMTreeSnapshotUtil {
       }
       if (snapshot.exists() && !FileUtils.deleteFileIfExist(snapshot)) {
         logger.error(
-            "Failed to delete old snapshot {} while creating mtree snapshot.", snapshot.getName());
+            "Failed to delete old snapshot {} while creating mTree snapshot.", snapshot.getName());
         return false;
       }
       if (!snapshotTmp.renameTo(snapshot)) {
         logger.error(
-            "Failed to rename {} to {} while creating mtree snapshot.",
+            "Failed to rename {} to {} while creating mTree snapshot.",
             snapshotTmp.getName(),
             snapshot.getName());
         FileUtils.deleteFileIfExist(snapshot);
@@ -102,8 +105,8 @@ public class MemMTreeSnapshotUtil {
       }
 
       return true;
-    } catch (IOException e) {
-      logger.error("Failed to create mtree snapshot due to {}", e.getMessage(), e);
+    } catch (final IOException e) {
+      logger.error("Failed to create mTree snapshot due to {}", e.getMessage(), e);
       FileUtils.deleteFileIfExist(snapshot);
       return false;
     } finally {
@@ -250,6 +253,11 @@ public class MemMTreeSnapshotUtil {
         node = deserializer.deserializeLogicalViewMNode(inputStream);
         measurementProcess.accept(node.getAsMeasurementMNode());
         break;
+      case TABLE_MNODE_TYPE:
+        childrenNum = ReadWriteIOUtils.readInt(inputStream);
+        node = deserializer.deserializeTableDeviceMNode(inputStream);
+        deviceProcess.accept(node.getAsDeviceMNode());
+        break;
       default:
         throw new IOException("Unrecognized MNode type " + type);
     }
@@ -280,12 +288,20 @@ public class MemMTreeSnapshotUtil {
     public Boolean visitBasicMNode(IMNode<?> node, OutputStream outputStream) {
       try {
         if (node.isDevice()) {
-          ReadWriteIOUtils.write(ENTITY_MNODE_TYPE, outputStream);
-          serializeBasicMNode(node, outputStream);
-          IDeviceMNode<?> deviceMNode = node.getAsDeviceMNode();
-          ReadWriteIOUtils.write(deviceMNode.getSchemaTemplateIdWithState(), outputStream);
-          ReadWriteIOUtils.write(deviceMNode.isUseTemplate(), outputStream);
-          ReadWriteIOUtils.write(deviceMNode.isAlignedNullable(), outputStream);
+          if (node.getAsDeviceMNode().getDeviceInfo() instanceof TableDeviceInfo) {
+            ReadWriteIOUtils.write(TABLE_MNODE_TYPE, outputStream);
+            TableDeviceInfo<IMemMNode> tableDeviceInfo =
+                (TableDeviceInfo<IMemMNode>) (node.getAsDeviceMNode().getDeviceInfo());
+            serializeBasicMNode(node, outputStream);
+            ReadWriteIOUtils.write(tableDeviceInfo.getAttributePointer(), outputStream);
+          } else {
+            ReadWriteIOUtils.write(ENTITY_MNODE_TYPE, outputStream);
+            serializeBasicMNode(node, outputStream);
+            IDeviceMNode<?> deviceMNode = node.getAsDeviceMNode();
+            ReadWriteIOUtils.write(deviceMNode.getSchemaTemplateIdWithState(), outputStream);
+            ReadWriteIOUtils.write(deviceMNode.isUseTemplate(), outputStream);
+            ReadWriteIOUtils.write(deviceMNode.isAlignedNullable(), outputStream);
+          }
         } else {
           ReadWriteIOUtils.write(INTERNAL_MNODE_TYPE, outputStream);
           serializeBasicMNode(node, outputStream);
@@ -391,6 +407,15 @@ public class MemMTreeSnapshotUtil {
       node.setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
       node.setUseTemplate(ReadWriteIOUtils.readBool(inputStream));
       node.setAligned(ReadWriteIOUtils.readBoolObject(inputStream));
+      return node.getAsMNode();
+    }
+
+    public IMemMNode deserializeTableDeviceMNode(InputStream inputStream) throws IOException {
+      String name = ReadWriteIOUtils.readString(inputStream);
+      IDeviceMNode<IMemMNode> node = nodeFactory.createDeviceMNode(null, name);
+      TableDeviceInfo<IMemMNode> tableDeviceInfo = new TableDeviceInfo<>();
+      tableDeviceInfo.setAttributePointer(ReadWriteIOUtils.readInt(inputStream));
+      node.getAsInternalMNode().setDeviceInfo(tableDeviceInfo);
       return node.getAsMNode();
     }
 

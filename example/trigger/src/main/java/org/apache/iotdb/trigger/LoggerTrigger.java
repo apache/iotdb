@@ -24,7 +24,7 @@ import org.apache.iotdb.trigger.api.Trigger;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,7 +36,7 @@ public class LoggerTrigger implements Trigger {
 
   @Override
   public boolean fire(Tablet tablet) throws Exception {
-    List<MeasurementSchema> measurementSchemaList = tablet.getSchemas();
+    List<IMeasurementSchema> measurementSchemaList = tablet.getSchemas();
     for (int i = 0, n = measurementSchemaList.size(); i < n; i++) {
       if (measurementSchemaList.get(i).getType().equals(TSDataType.DOUBLE)) {
         logDouble((double[]) tablet.values[i]);

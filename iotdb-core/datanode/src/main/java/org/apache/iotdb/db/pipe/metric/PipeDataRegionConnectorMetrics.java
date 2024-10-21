@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.metric;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask;
+import org.apache.iotdb.db.pipe.agent.task.subtask.connector.PipeConnectorSubtask;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.type.Rate;
@@ -43,6 +43,7 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeDataRegionConnectorMetrics.class);
 
+  @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;
 
   private final Map<String, PipeConnectorSubtask> connectorMap = new HashMap<>();

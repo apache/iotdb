@@ -21,11 +21,14 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.cross;
 import org.apache.iotdb.commons.concurrent.ExceptionalCountDownLatch;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
@@ -46,6 +49,7 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsFileGeneratorUtils;
@@ -160,9 +164,10 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
       for (int j = 0; j < 5; j++) {
         List<IMeasurementSchema> schemas = new ArrayList<>();
         schemas.add(new MeasurementSchema("s" + j, TSDataType.INT64));
-        AlignedPath path =
-            new AlignedPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+        IFullPath path =
+            new AlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
                 Collections.singletonList("s" + j),
                 schemas);
         IDataBlockReader tsFilesReader =
@@ -260,9 +265,10 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
       for (int j = 0; j < 5; j++) {
         List<IMeasurementSchema> schemas = new ArrayList<>();
         schemas.add(new MeasurementSchema("s" + j, TSDataType.INT64));
-        AlignedPath path =
-            new AlignedPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+        IFullPath path =
+            new AlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
                 Collections.singletonList("s" + j),
                 schemas);
         IDataBlockReader tsFilesReader =
@@ -387,9 +393,10 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
       for (int j = 0; j < 5; j++) {
         List<IMeasurementSchema> schemas = new ArrayList<>();
         schemas.add(new MeasurementSchema("s" + j, TSDataType.INT64));
-        AlignedPath path =
-            new AlignedPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+        IFullPath path =
+            new AlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
                 Collections.singletonList("s" + j),
                 schemas);
         IDataBlockReader tsFilesReader =
@@ -488,9 +495,10 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
       for (int j = 0; j < 5; j++) {
         List<IMeasurementSchema> schemas = new ArrayList<>();
         schemas.add(new MeasurementSchema("s" + j, TSDataType.INT64));
-        AlignedPath path =
-            new AlignedPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+        IFullPath path =
+            new AlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
                 Collections.singletonList("s" + j),
                 schemas);
         IDataBlockReader tsFilesReader =
@@ -580,17 +588,26 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
     createFiles(2, 1, 5, 100, 450, 20450, 0, 0, true, false);
     vsgp.getTsFileResourceManager().addAll(seqResources, true);
     vsgp.getTsFileResourceManager().addAll(unseqResources, false);
+    MeasurementPath path =
+        new MeasurementPath(
+            COMPACTION_TEST_SG
+                + PATH_SEPARATOR
+                + "d"
+                + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3)
+                + PATH_SEPARATOR
+                + "s0");
+    DeleteDataNode deleteDataNode =
+        new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 0, 1000);
+    deleteDataNode.setSearchIndex(0);
     vsgp.deleteByDevice(
-        new PartialPath(
+        new MeasurementPath(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
                 + "d"
                 + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3)
                 + PATH_SEPARATOR
                 + "s0"),
-        0,
-        1000,
-        0);
+        deleteDataNode);
 
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
@@ -605,17 +622,18 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
     seqResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
     unseqResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
     // delete data in source file during compaction
+    DeleteDataNode deleteDataNode2 =
+        new DeleteDataNode(new PlanNodeId("2"), Collections.singletonList(path), 0, 1200);
+    deleteDataNode2.setSearchIndex(0);
     vsgp.deleteByDevice(
-        new PartialPath(
+        new MeasurementPath(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
                 + "d"
                 + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3)
                 + PATH_SEPARATOR
                 + "s0"),
-        0,
-        1200,
-        0);
+        deleteDataNode2);
     for (int i = 0; i < seqResources.size(); i++) {
       TsFileResource resource = seqResources.get(i);
       resource.resetModFile();
@@ -699,17 +717,27 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
     createFiles(2, 1, 5, 100, 450, 20450, 0, 0, true, false);
     vsgp.getTsFileResourceManager().addAll(seqResources, true);
     vsgp.getTsFileResourceManager().addAll(unseqResources, false);
+
+    MeasurementPath path =
+        new MeasurementPath(
+            COMPACTION_TEST_SG
+                + PATH_SEPARATOR
+                + "d"
+                + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3)
+                + PATH_SEPARATOR
+                + "s0");
+    DeleteDataNode deleteDataNode =
+        new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 0, 1000);
+    deleteDataNode.setSearchIndex(0);
     vsgp.deleteByDevice(
-        new PartialPath(
+        new MeasurementPath(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
                 + "d"
                 + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3)
                 + PATH_SEPARATOR
                 + "s0"),
-        0,
-        1000,
-        0);
+        deleteDataNode);
 
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
@@ -724,28 +752,31 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
     seqResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
     unseqResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
     // delete data in source file during compaction
+    DeleteDataNode deleteDataNode2 =
+        new DeleteDataNode(new PlanNodeId("2"), Collections.singletonList(path), 0, 1200);
+    deleteDataNode2.setSearchIndex(0);
     vsgp.deleteByDevice(
-        new PartialPath(
+        new MeasurementPath(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
                 + "d"
                 + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3)
                 + PATH_SEPARATOR
                 + "s0"),
-        0,
-        1200,
-        0);
+        deleteDataNode2);
+
+    DeleteDataNode deleteDataNode3 =
+        new DeleteDataNode(new PlanNodeId("3"), Collections.singletonList(path), 0, 1800);
+    deleteDataNode3.setSearchIndex(0);
     vsgp.deleteByDevice(
-        new PartialPath(
+        new MeasurementPath(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
                 + "d"
                 + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3)
                 + PATH_SEPARATOR
                 + "s0"),
-        0,
-        1800,
-        0);
+        deleteDataNode3);
     for (int i = 0; i < seqResources.size(); i++) {
       TsFileResource resource = seqResources.get(i);
       resource.resetModFile();

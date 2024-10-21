@@ -48,7 +48,7 @@ public interface CommonConfig {
 
   CommonConfig setEnableCrossSpaceCompaction(boolean enableCrossSpaceCompaction);
 
-  CommonConfig setMaxInnerCompactionCandidateFileNum(int maxInnerCompactionCandidateFileNum);
+  CommonConfig setInnerCompactionCandidateFileNum(int maxInnerCompactionCandidateFileNum);
 
   CommonConfig setAutoCreateSchemaEnabled(boolean enableAutoCreateSchema);
 
@@ -150,4 +150,7 @@ public interface CommonConfig {
   CommonConfig setPipeMetaSyncerInitialSyncDelayMinutes(long pipeMetaSyncerInitialSyncDelayMinutes);
 
   CommonConfig setPipeMetaSyncerSyncIntervalMinutes(long pipeMetaSyncerSyncIntervalMinutes);
+
+  CommonConfig setPipeConnectorRequestSliceThresholdBytes(
+      int pipeConnectorRequestSliceThresholdBytes);
 }

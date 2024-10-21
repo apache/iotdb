@@ -30,20 +30,17 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class MetaProgressIndex extends ProgressIndex {
 
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
-  private long index;
+  private final long index;
 
   public MetaProgressIndex(long index) {
     this.index = index;
-  }
-
-  private MetaProgressIndex() {
-    // Empty constructor
   }
 
   public long getIndex() {
@@ -130,7 +127,7 @@ public class MetaProgressIndex extends ProgressIndex {
 
   @Override
   public int hashCode() {
-    return 0;
+    return Objects.hash(index);
   }
 
   @Override
@@ -141,8 +138,10 @@ public class MetaProgressIndex extends ProgressIndex {
         return ProgressIndex.blendProgressIndex(this, progressIndex);
       }
 
-      this.index = Math.max(this.index, ((MetaProgressIndex) progressIndex).index);
-      return this;
+      final MetaProgressIndex thisMetaProgressIndex = this;
+      final MetaProgressIndex thatMetaProgressIndex = (MetaProgressIndex) progressIndex;
+      return new MetaProgressIndex(
+          Math.max(thisMetaProgressIndex.index, thatMetaProgressIndex.index));
     } finally {
       lock.writeLock().unlock();
     }
@@ -163,15 +162,11 @@ public class MetaProgressIndex extends ProgressIndex {
   }
 
   public static MetaProgressIndex deserializeFrom(ByteBuffer byteBuffer) {
-    final MetaProgressIndex metaProgressIndex = new MetaProgressIndex();
-    metaProgressIndex.index = ReadWriteIOUtils.readLong(byteBuffer);
-    return metaProgressIndex;
+    return new MetaProgressIndex(ReadWriteIOUtils.readLong(byteBuffer));
   }
 
   public static MetaProgressIndex deserializeFrom(InputStream stream) throws IOException {
-    final MetaProgressIndex metaProgressIndex = new MetaProgressIndex();
-    metaProgressIndex.index = ReadWriteIOUtils.readLong(stream);
-    return metaProgressIndex;
+    return new MetaProgressIndex(ReadWriteIOUtils.readLong(stream));
   }
 
   @Override

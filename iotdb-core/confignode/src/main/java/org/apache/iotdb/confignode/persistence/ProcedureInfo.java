@@ -171,7 +171,7 @@ public class ProcedureInfo implements SnapshotProcessor {
         }
         return Optional.ofNullable(procedure);
       }
-    } catch (IOException e) {
+    } catch (Exception e) {
       LOGGER.error("Load {} failed, it will be deleted.", procedureFilePath, e);
       if (!procedureFilePath.toFile().delete()) {
         LOGGER.error("{} deleted failed; take appropriate action.", procedureFilePath, e);
@@ -278,5 +278,10 @@ public class ProcedureInfo implements SnapshotProcessor {
     ProcedureInfo procedureInfo = (ProcedureInfo) o;
     return lastProcId.get() == procedureInfo.lastProcId.get()
         && procedureMap.equals(procedureInfo.procedureMap);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(lastProcId, procedureMap);
   }
 }

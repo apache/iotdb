@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -80,6 +81,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -415,7 +417,7 @@ public class MTreeBelowSGCachedImpl {
                     node.getAsMeasurementMNode();
                 if (node.getAsMeasurementMNode().isPreDeleted()) {
                   throw new MeasurementInBlackListException(
-                      devicePath.concatNode(measurements.get(i)));
+                      devicePath.concatAsMeasurementPath(measurements.get(i)));
                 } else if (!withMerge || measurementNode.getDataType() != dataTypes.get(i)) {
                   throw new MeasurementAlreadyExistException(
                       devicePath.getFullPath() + "." + measurements.get(i),
@@ -505,7 +507,12 @@ public class MTreeBelowSGCachedImpl {
           if (cachedMNode != null) {
             unPinMNode(cachedMNode);
             throw new MetadataException(
-                "The alias is duplicated with the name or alias of other measurement.");
+                "The alias is duplicated with the name or alias of other measurement, alias: "
+                    + alias
+                    + ", fullPath: "
+                    + fullPath
+                    + ", otherMeasurement: "
+                    + cachedMNode.getFullPath());
           }
           if (measurementMNode.getAlias() != null) {
             device.deleteAliasChild(measurementMNode.getAlias());
@@ -1024,7 +1031,8 @@ public class MTreeBelowSGCachedImpl {
       throw new IllegalPathException(path.getFullPath());
     }
     MetaFormatUtils.checkTimeseries(path);
-    PartialPath devicePath = path.getDevicePath();
+    PartialPath devicePath =
+        new PartialPath(Arrays.copyOf(path.getNodes(), path.getNodeLength() - 1));
     ICachedMNode deviceParent = checkAndAutoCreateInternalPath(devicePath);
 
     try {

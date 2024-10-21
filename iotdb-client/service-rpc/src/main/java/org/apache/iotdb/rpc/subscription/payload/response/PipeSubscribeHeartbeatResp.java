@@ -20,11 +20,27 @@
 package org.apache.iotdb.rpc.subscription.payload.response;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 
+import org.apache.tsfile.utils.PublicBAOS;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 public class PipeSubscribeHeartbeatResp extends TPipeSubscribeResp {
+
+  private transient Map<String, TopicConfig> topics = new HashMap<>(); // subscribed topics
+
+  public Map<String, TopicConfig> getTopics() {
+    return topics;
+  }
 
   /////////////////////////////// Thrift ///////////////////////////////
 
@@ -42,10 +58,49 @@ public class PipeSubscribeHeartbeatResp extends TPipeSubscribeResp {
     return resp;
   }
 
+  /**
+   * Serialize the incoming parameters into `PipeSubscribeHeartbeatResp`, called by the subscription
+   * server.
+   */
+  public static PipeSubscribeHeartbeatResp toTPipeSubscribeResp(
+      final TSStatus status, final Map<String, TopicConfig> topics) throws IOException {
+    final PipeSubscribeHeartbeatResp resp = toTPipeSubscribeResp(status);
+
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(topics.size(), outputStream);
+      for (final Map.Entry<String, TopicConfig> entry : topics.entrySet()) {
+        ReadWriteIOUtils.write(entry.getKey(), outputStream);
+        entry.getValue().serialize(outputStream);
+      }
+      resp.body =
+          Collections.singletonList(
+              ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
+    }
+
+    return resp;
+  }
+
   /** Deserialize `TPipeSubscribeResp` to obtain parameters, called by the subscription client. */
   public static PipeSubscribeHeartbeatResp fromTPipeSubscribeResp(
       final TPipeSubscribeResp heartbeatResp) {
     final PipeSubscribeHeartbeatResp resp = new PipeSubscribeHeartbeatResp();
+
+    if (Objects.nonNull(heartbeatResp.body)) {
+      for (final ByteBuffer byteBuffer : heartbeatResp.body) {
+        if (Objects.nonNull(byteBuffer) && byteBuffer.hasRemaining()) {
+          final int size = ReadWriteIOUtils.readInt(byteBuffer);
+          final Map<String, TopicConfig> topics = new HashMap<>();
+          for (int i = 0; i < size; i++) {
+            final String topicName = ReadWriteIOUtils.readString(byteBuffer);
+            final TopicConfig topicConfig = TopicConfig.deserialize(byteBuffer);
+            topics.put(topicName, topicConfig);
+          }
+          resp.topics = topics;
+          break;
+        }
+      }
+    }
 
     resp.status = heartbeatResp.status;
     resp.version = heartbeatResp.version;
@@ -66,7 +121,8 @@ public class PipeSubscribeHeartbeatResp extends TPipeSubscribeResp {
       return false;
     }
     final PipeSubscribeHeartbeatResp that = (PipeSubscribeHeartbeatResp) obj;
-    return Objects.equals(this.status, that.status)
+    return Objects.equals(this.topics, that.topics)
+        && Objects.equals(this.status, that.status)
         && this.version == that.version
         && this.type == that.type
         && Objects.equals(this.body, that.body);
@@ -74,6 +130,6 @@ public class PipeSubscribeHeartbeatResp extends TPipeSubscribeResp {
 
   @Override
   public int hashCode() {
-    return Objects.hash(status, version, type, body);
+    return Objects.hash(topics, status, version, type, body);
   }
 }

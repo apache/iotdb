@@ -262,8 +262,12 @@ public class LoadManager {
         loadCache.cacheConfigNodeHeartbeatSample(nodeId, heartbeatSample);
         break;
       case DataNode:
-      default:
         loadCache.cacheDataNodeHeartbeatSample(nodeId, heartbeatSample);
+        break;
+      case AINode:
+        loadCache.cacheAINodeHeartbeatSample(nodeId, heartbeatSample);
+        break;
+      default:
         break;
     }
     loadCache.updateNodeStatistics();

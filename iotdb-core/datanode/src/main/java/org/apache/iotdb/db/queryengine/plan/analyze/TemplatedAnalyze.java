@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.plan.analyze;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -40,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
@@ -58,6 +58,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PARTITION_FETCHER;
+import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TREE_TYPE;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.CONFIG;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.DEVICE_EXPRESSION;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.END_TIME_EXPRESSION;
@@ -129,10 +130,9 @@ public class TemplatedAnalyze {
             paginationController.consumeOffset();
           } else if (paginationController.hasCurLimit()) {
             String measurementName = entry.getKey();
-            IMeasurementSchema measurementSchema = entry.getValue();
             TimeSeriesOperand measurementPath =
                 new TimeSeriesOperand(
-                    new MeasurementPath(new String[] {measurementName}, measurementSchema));
+                    new PartialPath(new String[] {measurementName}), entry.getValue().getType());
             // reserve memory for this expression
             context.reserveMemoryForFrontEnd(measurementPath.ramBytesUsed());
             outputExpressions.add(new Pair<>(measurementPath, null));
@@ -152,10 +152,10 @@ public class TemplatedAnalyze {
           if (paginationController.hasCurOffset()) {
             paginationController.consumeOffset();
           } else if (paginationController.hasCurLimit()) {
-            IMeasurementSchema measurementSchema = template.getSchemaMap().get(measurementName);
             TimeSeriesOperand measurementPath =
                 new TimeSeriesOperand(
-                    new MeasurementPath(new String[] {measurementName}, measurementSchema));
+                    new PartialPath(new String[] {measurementName}),
+                    template.getSchemaMap().get(measurementName).getType());
             // reserve memory for this expression
             context.reserveMemoryForFrontEnd(measurementPath.ramBytesUsed());
             outputExpressions.add(new Pair<>(measurementPath, resultColumn.getAlias()));
@@ -283,8 +283,8 @@ public class TemplatedAnalyze {
       return;
     }
 
-    Map<String, Set<Expression>> deviceToOrderByExpressions = new LinkedHashMap<>();
-    Map<String, List<SortItem>> deviceToSortItems = new LinkedHashMap<>();
+    Map<IDeviceID, Set<Expression>> deviceToOrderByExpressions = new LinkedHashMap<>();
+    Map<IDeviceID, List<SortItem>> deviceToSortItems = new LinkedHashMap<>();
     // build the device-view outputColumn for the sortNode above the deviceViewNode
     Set<Expression> deviceViewOrderByExpression = new LinkedHashSet<>();
     for (PartialPath device : deviceSet) {
@@ -318,8 +318,9 @@ public class TemplatedAnalyze {
         orderByExpressionsForOneDevice.add(expressionForItem);
       }
       deviceToSortItems.put(
-          device.getFullPath(), queryStatement.getUpdatedSortItems(orderByExpressionsForOneDevice));
-      deviceToOrderByExpressions.put(device.getFullPath(), orderByExpressionsForOneDevice);
+          device.getIDeviceIDAsFullDevice(),
+          queryStatement.getUpdatedSortItems(orderByExpressionsForOneDevice));
+      deviceToOrderByExpressions.put(device.getIDeviceID(), orderByExpressionsForOneDevice);
     }
 
     analysis.setOrderByExpressions(deviceViewOrderByExpression);
@@ -377,15 +378,17 @@ public class TemplatedAnalyze {
       IPartitionFetcher partitionFetcher,
       MPPQueryContext context) {
     // TemplatedDevice has no views, so there is no need to use outputDeviceToQueriedDevicesMap
-    Set<String> deviceSet =
-        analysis.getDeviceList().stream().map(PartialPath::getFullPath).collect(Collectors.toSet());
+    Set<IDeviceID> deviceSet =
+        analysis.getDeviceList().stream()
+            .map(PartialPath::getIDeviceIDAsFullDevice)
+            .collect(Collectors.toSet());
     DataPartition dataPartition =
         fetchDataPartitionByDevices(deviceSet, schemaTree, context, partitionFetcher);
     analysis.setDataPartitionInfo(dataPartition);
   }
 
   private static DataPartition fetchDataPartitionByDevices(
-      Set<String> deviceSet,
+      Set<IDeviceID> deviceSet,
       ISchemaTree schemaTree,
       MPPQueryContext context,
       IPartitionFetcher partitionFetcher) {
@@ -401,11 +404,11 @@ public class TemplatedAnalyze {
             CONFIG.getSeriesPartitionSlotNum());
       }
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
-      for (String devicePath : deviceSet) {
+      for (IDeviceID deviceID : deviceSet) {
         DataPartitionQueryParam queryParam =
-            new DataPartitionQueryParam(devicePath, res.left, res.right.left, res.right.right);
+            new DataPartitionQueryParam(deviceID, res.left, res.right.left, res.right.right);
         sgNameToQueryParamsMap
-            .computeIfAbsent(schemaTree.getBelongedDatabase(devicePath), key -> new ArrayList<>())
+            .computeIfAbsent(schemaTree.getBelongedDatabase(deviceID), key -> new ArrayList<>())
             .add(queryParam);
       }
 
@@ -416,7 +419,7 @@ public class TemplatedAnalyze {
       }
     } finally {
       QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(PARTITION_FETCHER, System.nanoTime() - startTime);
+          .recordPlanCost(TREE_TYPE, PARTITION_FETCHER, System.nanoTime() - startTime);
     }
   }
 }

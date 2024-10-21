@@ -35,9 +35,9 @@ import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
-import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.QueryResourceManager;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
@@ -224,6 +224,7 @@ public class EnvironmentUtils {
     for (String path : tierManager.getAllLocalUnSequenceFileFolders()) {
       cleanDir(path);
     }
+    FileTimeIndexCacheRecorder.getInstance().close();
     // delete system info
     cleanDir(config.getSystemDir());
     // delete query
@@ -276,9 +277,6 @@ public class EnvironmentUtils {
     } catch (StartupException e) {
       throw new RuntimeException(e);
     }
-
-    // reset id method
-    DeviceIDFactory.getInstance().reset();
 
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId();
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);

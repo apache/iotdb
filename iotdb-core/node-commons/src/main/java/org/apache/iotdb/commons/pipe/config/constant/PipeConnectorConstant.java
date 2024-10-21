@@ -81,6 +81,13 @@ public class PipeConnectorConstant {
   public static final String SINK_IOTDB_PASSWORD_KEY = "sink.password";
   public static final String CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE = "root";
 
+  public static final String CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_KEY =
+      "connector.exception.data.convert-on-type-mismatch";
+  public static final String SINK_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_KEY =
+      "sink.exception.data.convert-on-type-mismatch";
+  public static final boolean CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE =
+      true;
+
   public static final String CONNECTOR_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY =
       "connector.exception.conflict.resolve-strategy";
   public static final String SINK_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY =
@@ -130,6 +137,13 @@ public class PipeConnectorConstant {
   public static final String SINK_WEBSOCKET_PORT_KEY = "sink.websocket.port";
   public static final int CONNECTOR_WEBSOCKET_PORT_DEFAULT_VALUE = 8080;
 
+  public static final String CONNECTOR_OPC_UA_MODEL_KEY = "connector.opcua.model";
+  public static final String SINK_OPC_UA_MODEL_KEY = "sink.opcua.model";
+  public static final String CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE = "client-server";
+  public static final String CONNECTOR_OPC_UA_MODEL_PUB_SUB_VALUE = "pub-sub";
+  public static final String CONNECTOR_OPC_UA_MODEL_DEFAULT_VALUE =
+      CONNECTOR_OPC_UA_MODEL_PUB_SUB_VALUE;
+
   public static final String CONNECTOR_OPC_UA_TCP_BIND_PORT_KEY = "connector.opcua.tcp.port";
   public static final String SINK_OPC_UA_TCP_BIND_PORT_KEY = "sink.opcua.tcp.port";
   public static final int CONNECTOR_OPC_UA_TCP_BIND_PORT_DEFAULT_VALUE = 12686;
@@ -144,6 +158,12 @@ public class PipeConnectorConstant {
       CommonDescriptor.getInstance().getConfDir() != null
           ? CommonDescriptor.getInstance().getConfDir() + File.separatorChar + "opc_security"
           : System.getProperty("user.home") + File.separatorChar + "iotdb_opc_security";
+
+  public static final String CONNECTOR_OPC_UA_ENABLE_ANONYMOUS_ACCESS_KEY =
+      "connector.opcua.enable-anonymous-access";
+  public static final String SINK_OPC_UA_ENABLE_ANONYMOUS_ACCESS_KEY =
+      "sink.opcua.enable-anonymous-access";
+  public static final boolean CONNECTOR_OPC_UA_ENABLE_ANONYMOUS_ACCESS_DEFAULT_VALUE = true;
 
   public static final String CONNECTOR_LEADER_CACHE_ENABLE_KEY = "connector.leader-cache.enable";
   public static final String SINK_LEADER_CACHE_ENABLE_KEY = "sink.leader-cache.enable";
@@ -204,6 +224,17 @@ public class PipeConnectorConstant {
 
   public static final String CONNECTOR_CONSENSUS_GROUP_ID_KEY = "connector.consensus.group-id";
   public static final String CONNECTOR_CONSENSUS_PIPE_NAME = "connector.consensus.pipe-name";
+
+  public static final String CONNECTOR_LOAD_TSFILE_STRATEGY_KEY = "connector.load-tsfile-strategy";
+  public static final String SINK_LOAD_TSFILE_STRATEGY_KEY = "sink.load-tsfile-strategy";
+  public static final String CONNECTOR_LOAD_TSFILE_STRATEGY_ASYNC_VALUE = "async";
+  public static final String CONNECTOR_LOAD_TSFILE_STRATEGY_SYNC_VALUE = "sync";
+  public static final Set<String> CONNECTOR_LOAD_TSFILE_STRATEGY_SET =
+      Collections.unmodifiableSet(
+          new HashSet<>(
+              Arrays.asList(
+                  CONNECTOR_LOAD_TSFILE_STRATEGY_ASYNC_VALUE,
+                  CONNECTOR_LOAD_TSFILE_STRATEGY_SYNC_VALUE)));
 
   private PipeConnectorConstant() {
     throw new IllegalStateException("Utility class");

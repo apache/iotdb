@@ -67,7 +67,7 @@ public class LimitOffsetPushDown implements PlanOptimizer {
 
   @Override
   public PlanNode optimize(PlanNode plan, Analysis analysis, MPPQueryContext context) {
-    if (analysis.getStatement().getType() != StatementType.QUERY) {
+    if (analysis.getTreeStatement().getType() != StatementType.QUERY) {
       return plan;
     }
     QueryStatement queryStatement = analysis.getQueryStatement();
@@ -118,7 +118,7 @@ public class LimitOffsetPushDown implements PlanOptimizer {
     @Override
     public PlanNode visitFill(FillNode node, RewriterContext context) {
       FillPolicy fillPolicy = node.getFillDescriptor().getFillPolicy();
-      if (fillPolicy == FillPolicy.VALUE) {
+      if (fillPolicy == FillPolicy.CONSTANT) {
         node.setChild(node.getChild().accept(this, context));
       } else {
         context.setEnablePushDown(false);

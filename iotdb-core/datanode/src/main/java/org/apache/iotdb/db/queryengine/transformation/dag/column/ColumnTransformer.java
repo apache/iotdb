@@ -25,6 +25,8 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
 
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isNumericType;
+
 public abstract class ColumnTransformer {
 
   protected final Type returnType;
@@ -69,11 +71,7 @@ public abstract class ColumnTransformer {
     if (returnType == null) {
       return true;
     }
-    TypeEnum typeEnum = returnType.getTypeEnum();
-    return typeEnum.equals(TypeEnum.INT32)
-        || typeEnum.equals(TypeEnum.INT64)
-        || typeEnum.equals(TypeEnum.FLOAT)
-        || typeEnum.equals(TypeEnum.DOUBLE);
+    return isNumericType(returnType);
   }
 
   /**
@@ -106,9 +104,15 @@ public abstract class ColumnTransformer {
   /** Responsible for the calculation. */
   protected abstract void evaluate();
 
+  public abstract void evaluateWithSelection(boolean[] selection);
+
   protected abstract void checkType();
 
   public void close() {
     // do nothing
+  }
+
+  public void clearCache() {
+    this.columnCache.clear();
   }
 }

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.cross;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.MergeException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionConfigRestorer;
@@ -32,7 +33,7 @@ import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
@@ -87,7 +88,8 @@ public class MergeUpgradeTest {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, true);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "", "", 0, tsFileManager, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
     assertEquals(0, selected.size());
@@ -191,8 +193,8 @@ public class MergeUpgradeTest {
                 String.valueOf(i + valueOffset)));
       }
       fileWriter.write(record);
-      tsFileResource.updateStartTime(new PlainDeviceID(deviceName), i);
-      tsFileResource.updateEndTime(new PlainDeviceID(deviceName), i);
+      tsFileResource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceName), i);
+      tsFileResource.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceName), i);
     }
   }
 }

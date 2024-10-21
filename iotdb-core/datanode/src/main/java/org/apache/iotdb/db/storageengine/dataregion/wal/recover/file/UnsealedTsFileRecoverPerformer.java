@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -34,6 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALRecoverException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALRecoverListener;
@@ -189,12 +191,13 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
     try {
       switch (walEntry.getType()) {
         case MEMORY_TABLE_SNAPSHOT:
+        case OLD_MEMORY_TABLE_SNAPSHOT:
           IMemTable memTable = (IMemTable) walEntry.getValue();
           if (!memTable.isSignalMemTable()) {
             if (tsFileResource != null) {
               for (IDeviceID device : tsFileResource.getDevices()) {
                 memTable.delete(
-                    new PartialPath(device, "*"),
+                    new MeasurementPath(device, "*"),
                     new PartialPath(device),
                     tsFileResource.getStartTime(device),
                     tsFileResource.getEndTime(device));
@@ -215,11 +218,16 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
         case DELETE_DATA_NODE:
           walRedoer.redoDelete((DeleteDataNode) walEntry.getValue());
           break;
+        case CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE:
+          // The CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE doesn't need redo
+          break;
         default:
           throw new RuntimeException("Unsupported type " + walEntry.getType());
       }
     } catch (Exception e) {
-      logger.warn("meet error when redo wal of {}", tsFileResource.getTsFile(), e);
+      if (tsFileResource != null) {
+        logger.warn("meet error when redo wal of {}", tsFileResource.getTsFile(), e);
+      }
     }
   }
 
@@ -283,6 +291,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
         // currently, we close this file anyway
         writer.endFile();
         tsFileResource.serialize();
+        FileTimeIndexCacheRecorder.getInstance().logFileTimeIndex(tsFileResource);
       } catch (IOException | ExecutionException e) {
         throw new WALRecoverException(e);
       } catch (InterruptedException e) {

@@ -37,7 +37,7 @@ import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,6 +53,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -77,6 +78,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   private final List<Tablet> tabletList = new ArrayList<>();
   private final List<Boolean> isTabletAlignedList = new ArrayList<>();
 
+  @SuppressWarnings("java:S3077")
   private volatile TsFileWriter fileWriter;
 
   public PipeTabletEventTsFileBatch(final int maxDelayInMs, final long requestMaxBatchSizeInBytes) {
@@ -132,6 +134,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     if (event instanceof PipeInsertNodeTabletInsertionEvent) {
       final PipeInsertNodeTabletInsertionEvent insertNodeTabletInsertionEvent =
           (PipeInsertNodeTabletInsertionEvent) event;
+      // TODO: for table model insertion, we need to get the database name
       final List<Tablet> tablets = insertNodeTabletInsertionEvent.convertToTablets();
       for (int i = 0; i < tablets.size(); ++i) {
         final Tablet tablet = tablets.get(i);
@@ -203,7 +206,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     // Sort the tablets by device id
     for (int i = 0, size = tabletList.size(); i < size; ++i) {
       final Tablet tablet = tabletList.get(i);
-      final String deviceId = tablet.deviceId;
+      final String deviceId = tablet.getDeviceId();
       device2Tablets.computeIfAbsent(deviceId, k -> new ArrayList<>()).add(tablet);
       device2Aligned.put(deviceId, isTabletAlignedList.get(i));
     }
@@ -216,7 +219,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     }
 
     // Sort the devices by device id
-    List<String> devices = new ArrayList<>(device2Tablets.keySet());
+    final List<String> devices = new ArrayList<>(device2Tablets.keySet());
     devices.sort(Comparator.naturalOrder());
 
     // Replace ArrayList with LinkedList to improve performance
@@ -311,8 +314,8 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   }
 
   private void tryBestToWriteTabletsIntoOneFile(
-      LinkedHashMap<String, LinkedList<Tablet>> device2TabletsLinkedList,
-      Map<String, Boolean> device2Aligned)
+      final LinkedHashMap<String, LinkedList<Tablet>> device2TabletsLinkedList,
+      final Map<String, Boolean> device2Aligned)
       throws IOException, WriteProcessException {
     final Iterator<Map.Entry<String, LinkedList<Tablet>>> iterator =
         device2TabletsLinkedList.entrySet().iterator();
@@ -343,19 +346,33 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       }
 
       final boolean isAligned = device2Aligned.get(deviceId);
-      for (final Tablet tablet : tabletsToWrite) {
-        if (isAligned) {
-          try {
-            fileWriter.registerAlignedTimeseries(new Path(tablet.deviceId), tablet.getSchemas());
-          } catch (final WriteProcessException ignore) {
-            // Do nothing if the timeSeries has been registered
-          }
-
+      if (isAligned) {
+        final Map<String, List<IMeasurementSchema>> deviceId2MeasurementSchemas = new HashMap<>();
+        tabletsToWrite.forEach(
+            tablet ->
+                deviceId2MeasurementSchemas.compute(
+                    tablet.getDeviceId(),
+                    (k, v) -> {
+                      if (Objects.isNull(v)) {
+                        return new ArrayList<>(tablet.getSchemas());
+                      }
+                      v.addAll(tablet.getSchemas());
+                      return v;
+                    }));
+        for (final Entry<String, List<IMeasurementSchema>> deviceIdWithMeasurementSchemas :
+            deviceId2MeasurementSchemas.entrySet()) {
+          fileWriter.registerAlignedTimeseries(
+              new Path(deviceIdWithMeasurementSchemas.getKey()),
+              deviceIdWithMeasurementSchemas.getValue());
+        }
+        for (final Tablet tablet : tabletsToWrite) {
           fileWriter.writeAligned(tablet);
-        } else {
-          for (final MeasurementSchema schema : tablet.getSchemas()) {
+        }
+      } else {
+        for (final Tablet tablet : tabletsToWrite) {
+          for (final IMeasurementSchema schema : tablet.getSchemas()) {
             try {
-              fileWriter.registerTimeseries(new Path(tablet.deviceId), schema);
+              fileWriter.registerTimeseries(new Path(tablet.getDeviceId()), schema);
             } catch (final WriteProcessException ignore) {
               // Do nothing if the timeSeries has been registered
             }

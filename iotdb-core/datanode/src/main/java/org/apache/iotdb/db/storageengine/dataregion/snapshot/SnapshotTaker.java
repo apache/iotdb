@@ -34,8 +34,10 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 /**
  * SnapshotTaker takes data snapshot for a DataRegion in one time. It does so by creating hard link
@@ -147,7 +149,10 @@ public class SnapshotTaker {
       pathBuilder.append(File.separator).append(dataRegion.getDatabaseName());
       pathBuilder.append(IoTDBConstant.FILE_NAME_SEPARATOR).append(dataRegion.getDataRegionId());
       try {
-        FileUtils.recursivelyDeleteFolder(pathBuilder.toString());
+        String path = pathBuilder.toString();
+        if (new File(path).exists()) {
+          FileUtils.recursivelyDeleteFolder(path);
+        }
       } catch (IOException e) {
         allSuccess = false;
         LOGGER.warn(
@@ -218,12 +223,40 @@ public class SnapshotTaker {
     if (!target.getParentFile().exists()) {
       LOGGER.error("Hard link target dir {} doesn't exist", target.getParentFile());
     }
-    if (!source.exists()) {
-      LOGGER.error("Hard link source file {} doesn't exist", source);
+    if (!checkHardLinkSourceFile(source)) {
+      return;
     }
     Files.deleteIfExists(target.toPath());
     Files.createLink(target.toPath(), source.toPath());
     snapshotLogger.logFile(source);
+  }
+
+  /** For "source file not exists" problem (jira787) debugging */
+  private boolean checkHardLinkSourceFile(File source) {
+    int retry = 10;
+    while (!source.exists() && retry > 0) {
+      LOGGER.warn(
+          "Hard link source file {} doesn't exist, will retry for {} times...", source, retry);
+      try {
+        Thread.sleep(TimeUnit.SECONDS.toMillis(1));
+      } catch (InterruptedException ignore) {
+        Thread.currentThread().interrupt();
+      }
+      retry--;
+    }
+    if (!source.exists()) {
+      File parent = source.getParentFile();
+      LOGGER.error("Hard link source file {} doesn't exist, this file will be ignored.", source);
+      String tryMsg = "Try to show all files in parent dir...";
+      if (parent == null) {
+        tryMsg += "Cannot show files because parent dir is null";
+      } else {
+        tryMsg += Arrays.toString(parent.listFiles());
+      }
+      LOGGER.error(tryMsg);
+      return false;
+    }
+    return true;
   }
 
   private void copyFile(File target, File source) throws IOException {

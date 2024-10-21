@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator;
 
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.SingleTimeWindowIterator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.TimeRangeIteratorFactory;
@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDe
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.statistics.StatisticsManager;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
@@ -95,7 +96,7 @@ public class AggregationUtil {
    */
   public static Pair<Boolean, TsBlock> calculateAggregationFromRawData(
       TsBlock inputTsBlock,
-      List<Aggregator> aggregators,
+      List<TreeAggregator> aggregators,
       TimeRange curTimeRange,
       boolean ascending) {
     if (inputTsBlock == null || inputTsBlock.isEmpty()) {
@@ -123,11 +124,11 @@ public class AggregationUtil {
         isAllAggregatorsHasFinalResult(aggregators) || isTsBlockOutOfBound, inputTsBlock);
   }
 
-  private static TsBlock process(
-      TsBlock inputTsBlock, TimeRange curTimeRange, List<Aggregator> aggregators) {
+  public static TsBlock process(
+      TsBlock inputTsBlock, TimeRange curTimeRange, List<TreeAggregator> aggregators) {
     // Get the row which need to be processed by aggregator
     IWindow curWindow = new TimeWindow(curTimeRange);
-    TimeColumn timeColumn = inputTsBlock.getTimeColumn();
+    Column timeColumn = inputTsBlock.getTimeColumn();
     int lastIndexToProcess = 0;
     for (int i = 0; i < inputTsBlock.getPositionCount(); i++) {
       if (!curWindow.satisfy(timeColumn, i)) {
@@ -137,7 +138,7 @@ public class AggregationUtil {
     }
 
     TsBlock inputRegion = inputTsBlock.getRegion(0, lastIndexToProcess + 1);
-    for (Aggregator aggregator : aggregators) {
+    for (TreeAggregator aggregator : aggregators) {
       // current agg method has been calculated
       if (aggregator.hasFinalResult()) {
         continue;
@@ -155,7 +156,7 @@ public class AggregationUtil {
   /** Append a row of aggregation results to the result tsBlock. */
   public static void appendAggregationResult(
       TsBlockBuilder tsBlockBuilder,
-      List<? extends Aggregator> aggregators,
+      List<? extends TreeAggregator> aggregators,
       long outputTime,
       long endTime) {
     TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
@@ -167,7 +168,7 @@ public class AggregationUtil {
       columnBuilders[columnIndex].writeLong(endTime);
       columnIndex++;
     }
-    for (Aggregator aggregator : aggregators) {
+    for (TreeAggregator aggregator : aggregators) {
       ColumnBuilder[] columnBuilder = new ColumnBuilder[aggregator.getOutputType().length];
       columnBuilder[0] = columnBuilders[columnIndex++];
       if (columnBuilder.length > 1) {
@@ -179,7 +180,7 @@ public class AggregationUtil {
   }
 
   public static void appendAggregationResult(
-      TsBlockBuilder tsBlockBuilder, List<? extends Aggregator> aggregators, long outputTime) {
+      TsBlockBuilder tsBlockBuilder, List<? extends TreeAggregator> aggregators, long outputTime) {
     appendAggregationResult(tsBlockBuilder, aggregators, outputTime, INVALID_END_TIME);
   }
 
@@ -197,8 +198,8 @@ public class AggregationUtil {
             && tsBlock.getStartTime() >= curTimeRange.getMin());
   }
 
-  public static boolean isAllAggregatorsHasFinalResult(List<Aggregator> aggregators) {
-    for (Aggregator aggregator : aggregators) {
+  public static boolean isAllAggregatorsHasFinalResult(List<TreeAggregator> aggregators) {
+    for (TreeAggregator aggregator : aggregators) {
       if (!aggregator.hasFinalResult()) {
         return false;
       }
@@ -214,7 +215,7 @@ public class AggregationUtil {
     for (AggregationDescriptor descriptor : aggregationDescriptors) {
       List<TSDataType> outPutDataTypes =
           descriptor.getOutputColumnNames().stream()
-              .map(typeProvider::getType)
+              .map(typeProvider::getTreeModelType)
               .collect(Collectors.toList());
       for (TSDataType tsDataType : outPutDataTypes) {
         timeValueColumnsSizePerLine += getOutputColumnSizePerLine(tsDataType);
@@ -229,7 +230,8 @@ public class AggregationUtil {
             * timeValueColumnsSizePerLine);
   }
 
-  public static long calculateMaxAggregationResultSizeForLastQuery(List<Aggregator> aggregators) {
+  public static long calculateMaxAggregationResultSizeForLastQuery(
+      List<TreeAggregator> aggregators) {
     long timeValueColumnsSizePerLine = TimeColumn.SIZE_IN_BYTES_PER_POSITION;
     List<TSDataType> outPutDataTypes =
         aggregators.stream()

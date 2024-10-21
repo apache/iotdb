@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.write.req;
 
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
@@ -42,9 +42,9 @@ public interface ICreateTimeSeriesPlan extends ISchemaRegionPlan {
     return visitor.visitCreateTimeSeries(this, context);
   }
 
-  PartialPath getPath();
+  MeasurementPath getPath();
 
-  void setPath(PartialPath path);
+  void setPath(MeasurementPath path);
 
   TSDataType getDataType();
 

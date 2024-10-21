@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
@@ -191,7 +192,8 @@ public abstract class TVList implements WALEntryValue {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putAlignedValues(long[] time, Object[] value, BitMap[] bitMaps, int start, int end) {
+  public void putAlignedValues(
+      long[] time, Object[] value, BitMap[] bitMaps, int start, int end, TSStatus[] results) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
@@ -224,7 +226,7 @@ public abstract class TVList implements WALEntryValue {
   }
 
   public TVList getTvListByColumnIndex(
-      List<Integer> columnIndexList, List<TSDataType> dataTypeList) {
+      List<Integer> columnIndexList, List<TSDataType> dataTypeList, boolean ignoreAllNullRows) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 

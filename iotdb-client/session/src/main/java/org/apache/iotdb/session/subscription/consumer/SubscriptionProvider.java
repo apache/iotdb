@@ -27,10 +27,15 @@ import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionPipeTimeoutException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeNonCriticalException;
+import org.apache.iotdb.rpc.subscription.payload.poll.PollFilePayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.PollPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.PollTabletsPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequest;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequestType;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
@@ -40,6 +45,7 @@ import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribePollReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeUnsubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHandshakeResp;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHeartbeatResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribePollResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeSubscribeResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeUnsubscribeResp;
@@ -62,6 +68,14 @@ final class SubscriptionProvider extends SubscriptionSession {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionProvider.class);
 
+  private static final String STATUS_FORMATTER = "Status code is [%s], status message is [%s].";
+  private static final String INTERNAL_ERROR_FORMATTER =
+      "Internal error occurred. " + STATUS_FORMATTER;
+  private static final String SUBSCRIPTION_PIPE_TIMEOUT_FORMATTER =
+      "A timeout has occurred in procedures related to the pipe within the subscription procedure. "
+          + "Please manually check the subscription correctness later. "
+          + STATUS_FORMATTER;
+
   private String consumerId;
   private String consumerGroupId;
 
@@ -76,8 +90,9 @@ final class SubscriptionProvider extends SubscriptionSession {
       final String username,
       final String password,
       final String consumerId,
-      final String consumerGroupId) {
-    super(endPoint.ip, endPoint.port, username, password);
+      final String consumerGroupId,
+      final int thriftMaxFrameSize) {
+    super(endPoint.ip, endPoint.port, username, password, thriftMaxFrameSize);
 
     this.endPoint = endPoint;
     this.consumerId = consumerId;
@@ -203,7 +218,7 @@ final class SubscriptionProvider extends SubscriptionSession {
 
   /////////////////////////////// subscription APIs ///////////////////////////////
 
-  void heartbeat() throws SubscriptionException {
+  Map<String, TopicConfig> heartbeat() throws SubscriptionException {
     final TPipeSubscribeResp resp;
     try {
       resp = getSessionConnection().pipeSubscribe(PipeSubscribeHeartbeatReq.toTPipeSubscribeReq());
@@ -217,6 +232,9 @@ final class SubscriptionProvider extends SubscriptionSession {
       throw new SubscriptionConnectionException(e.getMessage(), e);
     }
     verifyPipeSubscribeSuccess(resp.status);
+    final PipeSubscribeHeartbeatResp heartbeatResp =
+        PipeSubscribeHeartbeatResp.fromTPipeSubscribeResp(resp);
+    return heartbeatResp.getTopics();
   }
 
   Map<String, TopicConfig> subscribe(final Set<String> topicNames) throws SubscriptionException {
@@ -279,6 +297,37 @@ final class SubscriptionProvider extends SubscriptionSession {
     final PipeSubscribeUnsubscribeResp unsubscribeResp =
         PipeSubscribeUnsubscribeResp.fromTPipeSubscribeResp(resp);
     return unsubscribeResp.getTopics();
+  }
+
+  List<SubscriptionPollResponse> poll(final Set<String> topicNames) throws SubscriptionException {
+    return poll(
+        new SubscriptionPollRequest(
+            SubscriptionPollRequestType.POLL.getType(),
+            new PollPayload(topicNames),
+            0L,
+            thriftMaxFrameSize));
+  }
+
+  List<SubscriptionPollResponse> pollFile(
+      final SubscriptionCommitContext commitContext, final long writingOffset)
+      throws SubscriptionException {
+    return poll(
+        new SubscriptionPollRequest(
+            SubscriptionPollRequestType.POLL_FILE.getType(),
+            new PollFilePayload(commitContext, writingOffset),
+            0L,
+            thriftMaxFrameSize));
+  }
+
+  List<SubscriptionPollResponse> pollTablets(
+      final SubscriptionCommitContext commitContext, final int offset)
+      throws SubscriptionException {
+    return poll(
+        new SubscriptionPollRequest(
+            SubscriptionPollRequestType.POLL_TABLETS.getType(),
+            new PollTabletsPayload(commitContext, offset),
+            0L,
+            thriftMaxFrameSize));
   }
 
   List<SubscriptionPollResponse> poll(final SubscriptionPollRequest pollMessage)
@@ -353,20 +402,25 @@ final class SubscriptionProvider extends SubscriptionSession {
       case 1906: // SUBSCRIPTION_CLOSE_ERROR
       case 1907: // SUBSCRIPTION_SUBSCRIBE_ERROR
       case 1908: // SUBSCRIPTION_UNSUBSCRIBE_ERROR
-        LOGGER.warn(
-            "Internal error occurred, status code {}, status message {}",
-            status.code,
-            status.message);
-        throw new SubscriptionRuntimeNonCriticalException(status.message);
+        {
+          final String errorMessage =
+              String.format(INTERNAL_ERROR_FORMATTER, status.code, status.message);
+          LOGGER.warn(errorMessage);
+          throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+        }
+      case 1911: // SUBSCRIPTION_PIPE_TIMEOUT_ERROR
+        throw new SubscriptionPipeTimeoutException(
+            String.format(SUBSCRIPTION_PIPE_TIMEOUT_FORMATTER, status.code, status.message));
       case 1900: // SUBSCRIPTION_VERSION_ERROR
       case 1901: // SUBSCRIPTION_TYPE_ERROR
       case 1909: // SUBSCRIPTION_MISSING_CUSTOMER
       default:
-        LOGGER.warn(
-            "Internal error occurred, status code {}, status message {}",
-            status.code,
-            status.message);
-        throw new SubscriptionRuntimeCriticalException(status.message);
+        {
+          final String errorMessage =
+              String.format(INTERNAL_ERROR_FORMATTER, status.code, status.message);
+          LOGGER.warn(errorMessage);
+          throw new SubscriptionRuntimeCriticalException(status.message);
+        }
     }
   }
 

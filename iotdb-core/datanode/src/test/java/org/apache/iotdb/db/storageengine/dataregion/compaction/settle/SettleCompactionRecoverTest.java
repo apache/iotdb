@@ -68,7 +68,7 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
   @After
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
-    DataNodeTTLCache.getInstance().clearAllTTL();
+    DataNodeTTLCache.getInstance().clearAllTTLForTree();
   }
 
   // region Handle exception
@@ -529,7 +529,7 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
     // handle exception, delete all_deleted files
     task.recoverFullyDirtyFiles();
     try {
-      task.recoverTaskInfoFromLogFile();
+      task.recoverSettleTaskInfoFromLogFile();
       Assert.fail();
     } catch (Exception e) {
       // do nothing
@@ -1102,7 +1102,7 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
     task.recoverFullyDirtyFiles();
 
     try {
-      task.recoverTaskInfoFromLogFile();
+      task.recoverSettleTaskInfoFromLogFile();
       Assert.fail();
     } catch (Exception e) {
       // do nothing

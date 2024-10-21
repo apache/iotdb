@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata;
 
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
@@ -39,22 +39,27 @@ import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.LOA
 public class MemAlignedChunkMetadataLoader implements IChunkMetadataLoader {
 
   private final TsFileResource resource;
-  private final PartialPath seriesPath;
+  private final AlignedFullPath seriesPath;
   private final QueryContext context;
   private final Filter globalTimeFilter;
+  // for table model, it will be false
+  // for tree model, it will be true
+  private final boolean ignoreAllNullRows;
 
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
 
   public MemAlignedChunkMetadataLoader(
       TsFileResource resource,
-      PartialPath seriesPath,
+      AlignedFullPath seriesPath,
       QueryContext context,
-      Filter globalTimeFilter) {
+      Filter globalTimeFilter,
+      boolean ignoreAllNullRows) {
     this.resource = resource;
     this.seriesPath = seriesPath;
     this.context = context;
     this.globalTimeFilter = globalTimeFilter;
+    this.ignoreAllNullRows = ignoreAllNullRows;
   }
 
   @Override
@@ -70,7 +75,8 @@ public class MemAlignedChunkMetadataLoader implements IChunkMetadataLoader {
             if (chunkMetadata.needSetChunkLoader()) {
               chunkMetadata.setVersion(resource.getVersion());
               chunkMetadata.setClosed(resource.isClosed());
-              chunkMetadata.setChunkLoader(new DiskAlignedChunkLoader(context, resource));
+              chunkMetadata.setChunkLoader(
+                  new DiskAlignedChunkLoader(context, resource, ignoreAllNullRows));
             }
           });
 

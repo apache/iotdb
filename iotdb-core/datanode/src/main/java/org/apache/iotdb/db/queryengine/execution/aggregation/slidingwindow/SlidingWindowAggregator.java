@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.aggregation.slidingwindow;
 
 import org.apache.iotdb.db.queryengine.execution.aggregation.Accumulator;
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 
@@ -28,7 +28,6 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 
 import java.util.Arrays;
 import java.util.Deque;
@@ -38,7 +37,7 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public abstract class SlidingWindowAggregator extends Aggregator {
+public abstract class SlidingWindowAggregator extends TreeAggregator {
 
   // cached partial aggregation result of pre-aggregate windows
   protected Deque<PartialAggregationResult> deque;
@@ -55,7 +54,7 @@ public abstract class SlidingWindowAggregator extends Aggregator {
     checkArgument(
         step.isInputPartial(),
         "Step in SlidingWindowAggregationOperator can only process partial result");
-    TimeColumn timeColumn = tsBlock.getTimeColumn();
+    Column timeColumn = tsBlock.getTimeColumn();
     Column[] valueColumn = new Column[inputLocationList.get(0).length];
     for (int i = 0; i < inputLocationList.get(0).length; i++) {
       InputLocation inputLocation = inputLocationList.get(0)[i];
@@ -80,10 +79,10 @@ public abstract class SlidingWindowAggregator extends Aggregator {
 
   protected static class PartialAggregationResult {
 
-    private final TimeColumn timeColumn;
+    private final Column timeColumn;
     private final Column[] partialResultColumns;
 
-    public PartialAggregationResult(TimeColumn timeColumn, Column[] partialResultColumns) {
+    public PartialAggregationResult(Column timeColumn, Column[] partialResultColumns) {
       this.timeColumn = timeColumn;
       this.partialResultColumns = partialResultColumns;
     }

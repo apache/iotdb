@@ -34,7 +34,7 @@ import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
@@ -90,10 +90,13 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Deserializer;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -323,15 +326,17 @@ public class PartitionManager {
   /**
    * Get DataPartition and create a new one if it does not exist.
    *
-   * @param req DataPartitionPlan with Map<StorageGroupName, Map<SeriesPartitionSlot,
-   *     List<TimePartitionSlot>>>
-   * @return DataPartitionResp with DataPartition and TSStatus. SUCCESS_STATUS if all process
-   *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions.
-   *     STORAGE_GROUP_NOT_EXIST if some StorageGroup don't exist.
+   * @param req DataPartitionPlan with Map{@literal <}StorageGroupName, Map{@literal
+   *     <}SeriesPartitionSlot, List{@literal <}TimePartitionSlot{@literal >}{@literal >}{@literal
+   *     >}
+   * @return DataPartitionResp with DataPartition and {@link TSStatus}. {@link
+   *     TSStatusCode#SUCCESS_STATUS} if all process finish. {@link TSStatusCode#NO_ENOUGH_DATANODE}
+   *     if the DataNodes is not enough to create new Regions. {@link
+   *     TSStatusCode#DATABASE_NOT_EXIST} if some database does not exist.
    */
-  public DataPartitionResp getOrCreateDataPartition(GetOrCreateDataPartitionPlan req) {
+  public DataPartitionResp getOrCreateDataPartition(final GetOrCreateDataPartitionPlan req) {
     // Check if the related Databases exist
-    for (String database : req.getPartitionSlotsMap().keySet()) {
+    for (final String database : req.getPartitionSlotsMap().keySet()) {
       if (!isDatabaseExist(database)) {
         return new DataPartitionResp(
             new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
@@ -1004,11 +1009,11 @@ public class PartitionManager {
   /**
    * Get TSeriesPartitionSlot.
    *
-   * @param devicePath Full path ending with device name
+   * @param deviceID IDeviceID
    * @return SeriesPartitionSlot
    */
-  public TSeriesPartitionSlot getSeriesPartitionSlot(String devicePath) {
-    return executor.getSeriesPartitionSlot(devicePath);
+  public TSeriesPartitionSlot getSeriesPartitionSlot(IDeviceID deviceID) {
+    return executor.getSeriesPartitionSlot(deviceID);
   }
 
   public RegionInfoListResp getRegionInfoList(GetRegionInfoListPlan req) {
@@ -1083,8 +1088,10 @@ public class PartitionManager {
     if (req.isSetDatabase()) {
       plan.setDatabase(req.getDatabase());
     } else {
-      plan.setDatabase(getClusterSchemaManager().getDatabaseNameByDevice(req.getDevice()));
-      plan.setSeriesSlotId(executor.getSeriesPartitionSlot(req.getDevice()));
+      IDeviceID deviceID =
+          Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(ByteBuffer.wrap(req.getDevice()));
+      plan.setDatabase(getClusterSchemaManager().getDatabaseNameByDevice(deviceID));
+      plan.setSeriesSlotId(executor.getSeriesPartitionSlot(deviceID));
     }
     if (Objects.equals(plan.getDatabase(), "")) {
       // Return empty result if Database not specified
@@ -1118,8 +1125,10 @@ public class PartitionManager {
     if (req.isSetDatabase()) {
       plan.setDatabase(req.getDatabase());
     } else if (req.isSetDevice()) {
-      plan.setDatabase(getClusterSchemaManager().getDatabaseNameByDevice(req.getDevice()));
-      plan.setSeriesSlotId(executor.getSeriesPartitionSlot(req.getDevice()));
+      IDeviceID deviceID =
+          Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(ByteBuffer.wrap(req.getDevice()));
+      plan.setDatabase(getClusterSchemaManager().getDatabaseNameByDevice(deviceID));
+      plan.setSeriesSlotId(executor.getSeriesPartitionSlot(deviceID));
       if (Objects.equals(plan.getDatabase(), "")) {
         // Return empty result if Database not specified
         return new GetTimeSlotListResp(RpcUtils.SUCCESS_STATUS, new ArrayList<>());
@@ -1145,8 +1154,10 @@ public class PartitionManager {
     if (req.isSetDatabase()) {
       plan.setDatabase(req.getDatabase());
     } else if (req.isSetDevice()) {
-      plan.setDatabase(getClusterSchemaManager().getDatabaseNameByDevice(req.getDevice()));
-      plan.setSeriesSlotId(executor.getSeriesPartitionSlot(req.getDevice()));
+      IDeviceID deviceID =
+          Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(ByteBuffer.wrap(req.getDevice()));
+      plan.setDatabase(getClusterSchemaManager().getDatabaseNameByDevice(deviceID));
+      plan.setSeriesSlotId(executor.getSeriesPartitionSlot(deviceID));
       if (Objects.equals(plan.getDatabase(), "")) {
         // Return empty result if Database not specified
         return new CountTimeSlotListResp(RpcUtils.SUCCESS_STATUS, 0);
@@ -1258,7 +1269,7 @@ public class PartitionManager {
                           DataNodeAsyncRequestContext<TCreateSchemaRegionReq, TSStatus>
                               createSchemaRegionHandler =
                                   new DataNodeAsyncRequestContext<>(
-                                      CnToDnRequestType.CREATE_SCHEMA_REGION);
+                                      CnToDnAsyncRequestType.CREATE_SCHEMA_REGION);
                           for (RegionMaintainTask regionMaintainTask : selectedRegionMaintainTask) {
                             RegionCreateTask schemaRegionCreateTask =
                                 (RegionCreateTask) regionMaintainTask;
@@ -1294,7 +1305,7 @@ public class PartitionManager {
                           DataNodeAsyncRequestContext<TCreateDataRegionReq, TSStatus>
                               createDataRegionHandler =
                                   new DataNodeAsyncRequestContext<>(
-                                      CnToDnRequestType.CREATE_DATA_REGION);
+                                      CnToDnAsyncRequestType.CREATE_DATA_REGION);
                           for (RegionMaintainTask regionMaintainTask : selectedRegionMaintainTask) {
                             RegionCreateTask dataRegionCreateTask =
                                 (RegionCreateTask) regionMaintainTask;
@@ -1330,7 +1341,7 @@ public class PartitionManager {
                     case DELETE:
                       // delete region
                       DataNodeAsyncRequestContext<TConsensusGroupId, TSStatus> deleteRegionHandler =
-                          new DataNodeAsyncRequestContext<>(CnToDnRequestType.DELETE_REGION);
+                          new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.DELETE_REGION);
                       Map<Integer, TConsensusGroupId> regionIdMap = new HashMap<>();
                       for (RegionMaintainTask regionMaintainTask : selectedRegionMaintainTask) {
                         RegionDeleteTask regionDeleteTask = (RegionDeleteTask) regionMaintainTask;

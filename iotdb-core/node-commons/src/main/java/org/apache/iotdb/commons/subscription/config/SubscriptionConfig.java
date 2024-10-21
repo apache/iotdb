@@ -31,6 +31,10 @@ public class SubscriptionConfig {
 
   /////////////////////////////// Subtask Executor ///////////////////////////////
 
+  public float getSubscriptionCacheMemoryUsagePercentage() {
+    return COMMON_CONFIG.getSubscriptionCacheMemoryUsagePercentage();
+  }
+
   public int getSubscriptionSubtaskExecutorMaxThreadNum() {
     return COMMON_CONFIG.getSubscriptionSubtaskExecutorMaxThreadNum();
   }
@@ -71,6 +75,10 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionReadFileBufferSize();
   }
 
+  public long getSubscriptionReadTabletBufferSize() {
+    return COMMON_CONFIG.getSubscriptionReadTabletBufferSize();
+  }
+
   public long getSubscriptionTsFileDeduplicationWindowSeconds() {
     return COMMON_CONFIG.getSubscriptionTsFileDeduplicationWindowSeconds();
   }
@@ -80,6 +88,8 @@ public class SubscriptionConfig {
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConfig.class);
 
   public void printAllConfigs() {
+    LOGGER.info(
+        "SubscriptionCacheMemoryUsagePercentage: {}", getSubscriptionCacheMemoryUsagePercentage());
     LOGGER.info(
         "SubscriptionSubtaskExecutorMaxThreadNum: {}",
         getSubscriptionSubtaskExecutorMaxThreadNum());
@@ -103,6 +113,7 @@ public class SubscriptionConfig {
         "SubscriptionRecycleUncommittedEventIntervalMs: {}",
         getSubscriptionRecycleUncommittedEventIntervalMs());
     LOGGER.info("SubscriptionReadFileBufferSize: {}", getSubscriptionReadFileBufferSize());
+    LOGGER.info("SubscriptionReadTabletBufferSize: {}", getSubscriptionReadTabletBufferSize());
     LOGGER.info(
         "SubscriptionTsFileDeduplicationWindowSeconds: {}",
         getSubscriptionTsFileDeduplicationWindowSeconds());

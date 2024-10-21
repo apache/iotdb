@@ -20,9 +20,11 @@
 package org.apache.iotdb.db.pipe.resource;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.resource.PipeSnapshotResourceManager;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogManager;
+import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager;
+import org.apache.iotdb.commons.pipe.resource.snapshot.PipeSnapshotResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
+import org.apache.iotdb.db.pipe.resource.ref.PipeDataNodePhantomReferenceManager;
 import org.apache.iotdb.db.pipe.resource.snapshot.PipeDataNodeSnapshotResourceManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.pipe.resource.wal.PipeWALResourceManager;
@@ -38,6 +40,7 @@ public class PipeDataNodeResourceManager {
   private final PipeSnapshotResourceManager pipeSnapshotResourceManager;
   private final PipeMemoryManager pipeMemoryManager;
   private final PipeLogManager pipeLogManager;
+  private final PipePhantomReferenceManager pipePhantomReferenceManager;
 
   public static PipeTsFileResourceManager tsfile() {
     return PipeResourceManagerHolder.INSTANCE.pipeTsFileResourceManager;
@@ -69,6 +72,10 @@ public class PipeDataNodeResourceManager {
     return PipeResourceManagerHolder.INSTANCE.pipeLogManager;
   }
 
+  public static PipePhantomReferenceManager ref() {
+    return PipeResourceManagerHolder.INSTANCE.pipePhantomReferenceManager;
+  }
+
   ///////////////////////////// SINGLETON /////////////////////////////
 
   private PipeDataNodeResourceManager() {
@@ -77,6 +84,7 @@ public class PipeDataNodeResourceManager {
     pipeSnapshotResourceManager = new PipeDataNodeSnapshotResourceManager();
     pipeMemoryManager = new PipeMemoryManager();
     pipeLogManager = new PipeLogManager();
+    pipePhantomReferenceManager = new PipeDataNodePhantomReferenceManager();
   }
 
   private static class PipeResourceManagerHolder {

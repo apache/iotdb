@@ -31,6 +31,7 @@ import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
@@ -139,10 +140,10 @@ public class IoTDBLoadTsFileIT {
     return sql;
   }
 
-  private String convert2AlignedSQL(final String device, final List<MeasurementSchema> schemas) {
+  private String convert2AlignedSQL(final String device, final List<IMeasurementSchema> schemas) {
     String sql = String.format("create aligned timeseries %s(", device);
     for (int i = 0; i < schemas.size(); i++) {
-      final MeasurementSchema schema = schemas.get(i);
+      final IMeasurementSchema schema = schemas.get(i);
       sql += (String.format("%s %s", schema.getMeasurementId(), schema.getType().name()));
       sql += (i == schemas.size() - 1 ? ")" : ",");
     }
@@ -542,7 +543,9 @@ public class IoTDBLoadTsFileIT {
         final Statement statement = connection.createStatement()) {
 
       statement.execute(
-          String.format("load \"%s\" sglevel=2 onSuccess=none", file1.getAbsolutePath()));
+          String.format(
+              "load \"%s\" with ('database-level'='2', 'on-success'='none')",
+              file1.getAbsolutePath()));
 
       try (final ResultSet resultSet =
           statement.executeQuery("select count(*) from root.** group by level=1,2")) {
@@ -560,7 +563,9 @@ public class IoTDBLoadTsFileIT {
         final Statement statement = connection.createStatement()) {
 
       statement.execute(
-          String.format("load \"%s\" sglevel=2 onSuccess=delete", file2.getAbsolutePath()));
+          String.format(
+              "load \"%s\" with ('database-level'='2', 'on-success'='delete')",
+              file2.getAbsolutePath()));
 
       try (final ResultSet resultSet =
           statement.executeQuery("select count(*) from root.** group by level=1,2")) {
@@ -760,7 +765,6 @@ public class IoTDBLoadTsFileIT {
       generator.generateData(SchemaConfig.DEVICE_0, 100000, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_1, 100000, PARTITION_INTERVAL / 10_000, true);
       generator.generateDeletion(SchemaConfig.DEVICE_0, 10);
-      generator.generateDeletion(SchemaConfig.DEVICE_1, 10);
       writtenPoint1 = generator.getTotalNumber();
     }
 

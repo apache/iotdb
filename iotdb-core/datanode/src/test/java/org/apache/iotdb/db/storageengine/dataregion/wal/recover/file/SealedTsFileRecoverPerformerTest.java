@@ -26,7 +26,6 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Chunk;
@@ -58,8 +57,10 @@ import static org.junit.Assert.assertTrue;
 
 public class SealedTsFileRecoverPerformerTest {
   private static final String SG_NAME = "root.recover_sg";
-  private static final IDeviceID DEVICE1_NAME = new PlainDeviceID(SG_NAME.concat(".d1"));
-  private static final IDeviceID DEVICE2_NAME = new PlainDeviceID(SG_NAME.concat(".d2"));
+  private static final IDeviceID DEVICE1_NAME =
+      IDeviceID.Factory.DEFAULT_FACTORY.create(SG_NAME.concat(".d1"));
+  private static final IDeviceID DEVICE2_NAME =
+      IDeviceID.Factory.DEFAULT_FACTORY.create(SG_NAME.concat(".d2"));
   private static final String FILE_NAME =
       TsFileUtilsForRecoverTest.getTestTsFilePath(SG_NAME, 0, 0, 1);
   private TsFileResource tsFileResource;
@@ -192,6 +193,7 @@ public class SealedTsFileRecoverPerformerTest {
     reader.close();
     // check .resource file in memory
     assertEquals(1, tsFileResource.getStartTime(DEVICE1_NAME));
+
     assertEquals(2, tsFileResource.getEndTime(DEVICE1_NAME));
     assertEquals(3, tsFileResource.getStartTime(DEVICE2_NAME));
     assertEquals(4, tsFileResource.getEndTime(DEVICE2_NAME));

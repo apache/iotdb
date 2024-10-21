@@ -27,7 +27,7 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.BitMap;
-import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.time.LocalDate;
 import java.util.Arrays;
@@ -39,7 +39,7 @@ public class PipeRow implements Row {
 
   protected final String deviceId;
   protected final boolean isAligned;
-  protected final MeasurementSchema[] measurementSchemaList;
+  protected final IMeasurementSchema[] measurementSchemaList;
 
   protected final long[] timestampColumn;
   protected final TSDataType[] valueColumnTypes;
@@ -52,7 +52,7 @@ public class PipeRow implements Row {
       final int rowIndex,
       final String deviceId,
       final boolean isAligned,
-      final MeasurementSchema[] measurementSchemaList,
+      final IMeasurementSchema[] measurementSchemaList,
       final long[] timestampColumn,
       final TSDataType[] valueColumnTypes,
       final Object[] valueColumns,
@@ -190,7 +190,22 @@ public class PipeRow implements Row {
     return isAligned;
   }
 
-  public MeasurementSchema[] getMeasurementSchemaList() {
+  public int getCurrentRowSize() {
+    int rowSize = 0;
+    rowSize += 8; // timestamp
+    for (int i = 0; i < valueColumnTypes.length; i++) {
+      if (valueColumnTypes[i] != null) {
+        if (valueColumnTypes[i].isBinary()) {
+          rowSize += getBinary(i) != null ? getBinary(i).getLength() : 0;
+        } else {
+          rowSize += valueColumnTypes[i].getDataTypeSize();
+        }
+      }
+    }
+    return rowSize;
+  }
+
+  public IMeasurementSchema[] getMeasurementSchemaList() {
     return measurementSchemaList;
   }
 }

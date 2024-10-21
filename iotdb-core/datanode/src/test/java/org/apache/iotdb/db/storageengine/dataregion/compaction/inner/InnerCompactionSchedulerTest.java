@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
@@ -48,7 +48,7 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
   int oldConcurrentCompactionThread =
       IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount();
   int oldMaxCompactionCandidateFileNum =
-      IoTDBDescriptor.getInstance().getConfig().getFileLimitPerInnerTask();
+      IoTDBDescriptor.getInstance().getConfig().getInnerCompactionCandidateFileNum();
 
   @Before
   public void setUp()
@@ -74,7 +74,7 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
         .setCompactionThreadCount(oldConcurrentCompactionThread);
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setFileLimitPerInnerTask(oldMaxCompactionCandidateFileNum);
+        .setInnerCompactionCandidateFileNum(oldMaxCompactionCandidateFileNum);
     super.tearDown();
   }
 
@@ -84,7 +84,7 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(50);
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(4);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(4);
     IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(1000000);
     createFiles(2, 2, 3, 100, 0, 0, 50, 50, false, true);
     registerTimeseriesInMManger(2, 3, false);
@@ -96,7 +96,7 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
 
     CompactionScheduler.tryToSubmitInnerSpaceCompactionTask(
-        tsFileManager, 0L, true, new CompactionScheduleSummary());
+        tsFileManager, 0L, true, new CompactionScheduleContext());
     try {
       Thread.sleep(5000);
     } catch (Exception e) {
@@ -109,7 +109,7 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
   public void testFileSelector2()
       throws IOException, MetadataException, WriteProcessException, InterruptedException {
     IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(50);
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(50);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(50);
     TsFileResourceList tsFileResources = new TsFileResourceList();
     createFiles(2, 2, 3, 100, 0, 0, 50, 50, false, true);
     createFiles(2, 3, 5, 50, 250, 250, 50, 50, false, true);
@@ -118,7 +118,7 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
     TsFileManager tsFileManager = new TsFileManager("testSG", "0", "tmp");
     tsFileManager.addAll(seqResources, true);
     CompactionScheduler.tryToSubmitInnerSpaceCompactionTask(
-        tsFileManager, 0L, true, new CompactionScheduleSummary());
+        tsFileManager, 0L, true, new CompactionScheduleContext());
 
     long waitingTime = 0;
     while (CompactionTaskManager.getInstance().getExecutingTaskCount() != 0) {
@@ -140,7 +140,7 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
   public void testFileSelectorWithUnclosedFile()
       throws IOException, MetadataException, WriteProcessException, InterruptedException {
     IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(50);
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(50);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(50);
     TsFileResourceList tsFileResources = new TsFileResourceList();
     createFiles(2, 2, 3, 100, 0, 0, 50, 50, false, true);
     createFiles(2, 3, 5, 50, 250, 250, 50, 50, false, true);
@@ -148,7 +148,7 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
     TsFileManager tsFileManager = new TsFileManager("testSG", "0", "tmp");
     tsFileManager.addAll(seqResources, true);
     CompactionScheduler.tryToSubmitInnerSpaceCompactionTask(
-        tsFileManager, 0L, true, new CompactionScheduleSummary());
+        tsFileManager, 0L, true, new CompactionScheduleContext());
     long waitingTime = 0;
     while (CompactionTaskManager.getInstance().getExecutingTaskCount() != 0) {
       try {

@@ -18,50 +18,107 @@
  */
 package org.apache.iotdb.commons;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.iotdb.commons.exception.IoTDBException;
+
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.OptionGroup;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+
+import java.io.PrintWriter;
+import java.util.HashSet;
+import java.util.Set;
 
 public abstract class ServerCommandLine {
-  private static final Logger LOG = LoggerFactory.getLogger(ServerCommandLine.class);
 
-  /**
-   * Implementing subclasses should return a usage string to print out
-   *
-   * @return usage
-   */
-  protected abstract String getUsage();
+  private static final Option OPTION_START =
+      Option.builder("s").longOpt("start").desc("start a new node").build();
+  private static final Option OPTION_REMOVE =
+      Option.builder("r")
+          .longOpt("remove")
+          .desc(
+              "Remove node(with the given nodeIds or the node started on the current machine, if omitted). Note that the DataNode allows for the removal of multiple nodes at once, the ConfigNode can only remove one node at a time.")
+          .hasArgs()
+          .type(Number.class)
+          .argName("nodeIds")
+          .optionalArg(true)
+          .build();
 
-  /**
-   * run command
-   *
-   * @param args system args
-   * @return return 0 if exec success
-   */
-  protected abstract int run(String[] args) throws Exception;
+  private final String cliName;
+  private final PrintWriter output;
+  private final Options options;
 
-  protected void usage(String message) {
-    if (message != null) {
-      System.err.println(message);
-      System.err.println();
-    }
-
-    System.err.println(getUsage());
+  public ServerCommandLine(String cliName) {
+    this(cliName, new PrintWriter(System.out));
   }
 
-  /**
-   * Parse and run the given command line.
-   *
-   * @param args system args
-   */
-  public void doMain(String[] args) {
+  public ServerCommandLine(String cliName, PrintWriter output) {
+    this.cliName = cliName;
+    this.output = output;
+    OptionGroup commands = new OptionGroup();
+    commands.addOption(OPTION_START);
+    commands.addOption(OPTION_REMOVE);
+    // Require one option of the group.
+    commands.setRequired(true);
+    options = new Options();
+    options.addOptionGroup(commands);
+  }
+
+  public int run(String[] args) {
+    CommandLineParser parser = new DefaultParser();
     try {
-      int result = run(args);
-      if (result != 0) {
-        System.exit(result);
+      CommandLine cmd = parser.parse(options, args);
+      // When starting there is no additional argument.
+      if (cmd.hasOption(OPTION_START)) {
+        start();
       }
-    } catch (Exception e) {
-      LOG.error("Failed to execute system command", e);
-      System.exit(-1);
+      // As we only support start and remove and one has to be selected,
+      // no need to check if OPTION_REMOVE is set.
+      else {
+        // Support for removing one or more nodes
+        String[] nodeIdsStr = cmd.getOptionValues(OPTION_REMOVE.getOpt());
+        if (nodeIdsStr != null && nodeIdsStr.length > 0) {
+          Set<Integer> nodeIds = new HashSet<>();
+          for (String nodeIdStr : nodeIdsStr) {
+            int nodeId = Integer.parseInt(nodeIdStr);
+            nodeIds.add(nodeId);
+          }
+          remove(nodeIds);
+        } else {
+          remove(null);
+        }
+      }
+      // Make sure we exit with the 0 error code
+      return 0;
+    } catch (ParseException | NumberFormatException e) {
+      output.println(e.getMessage());
+      HelpFormatter formatter = new HelpFormatter();
+      formatter.printHelp(
+          output,
+          formatter.getWidth(),
+          cliName,
+          null,
+          options,
+          formatter.getLeftPadding(),
+          formatter.getDescPadding(),
+          null,
+          false);
+      // Forward a generic error code to the calling process
+      return 1;
+    } catch (IoTDBException e) {
+      output.println("An error occurred while running the command: " + e.getMessage());
+      // Forward the exit code from the exception to the calling process
+      return e.getErrorCode();
+    } finally {
+      output.flush();
     }
   }
+
+  protected abstract void start() throws IoTDBException;
+
+  protected abstract void remove(Set<Integer> nodeIds) throws IoTDBException;
 }

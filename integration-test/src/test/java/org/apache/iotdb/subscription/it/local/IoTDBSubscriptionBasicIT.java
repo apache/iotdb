@@ -39,6 +39,7 @@ import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -64,6 +65,12 @@ import static org.junit.Assert.fail;
 public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionBasicIT.class);
+
+  @Override
+  @Before
+  public void setUp() throws Exception {
+    super.setUp();
+  }
 
   @Test
   public void testBasicPullConsumerWithCommitAsync() throws Exception {
@@ -162,7 +169,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
                 LOGGER.info("consumer exiting...");
               }
             },
-            String.format("%s - consumer", testName.getMethodName()));
+            String.format("%s - consumer", testName.getDisplayName()));
     thread.start();
 
     // Check row count
@@ -391,7 +398,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
                 LOGGER.info("consumer exiting...");
               }
             },
-            String.format("%s - consumer", testName.getMethodName()));
+            String.format("%s - consumer", testName.getDisplayName()));
     thread.start();
 
     // Check row count
@@ -477,6 +484,69 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
             Assert.assertEquals(100, rowCount.get());
             Assert.assertEquals(1, onReceiveCount.get()); // exactly one tsfile
           });
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testDataSetDeduplication() {
+    // Insert some historical data
+    try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.createDatabase("root.db");
+      for (int i = 0; i < 100; ++i) {
+        session.executeNonQueryStatement(
+            String.format("insert into root.db.d1(time, s1, s2) values (%s, 1, 2)", i));
+        session.executeNonQueryStatement(
+            String.format("insert into root.db.d2(time, s1, s2) values (%s, 3, 4)", i));
+      }
+      // DO NOT FLUSH HERE
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    // Create topic
+    final String topicName = "topic6";
+    final String host = EnvFactory.getEnv().getIP();
+    final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
+    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+      session.open();
+      final Properties config = new Properties();
+      config.put(TopicConstant.PATTERN_KEY, "root.db.d1.s1");
+      session.createTopic(topicName, config);
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    // Subscription
+    final AtomicInteger rowCount = new AtomicInteger();
+    try (final SubscriptionPushConsumer consumer =
+        new SubscriptionPushConsumer.Builder()
+            .host(host)
+            .port(port)
+            .consumerId("c1")
+            .consumerGroupId("cg1")
+            .ackStrategy(AckStrategy.AFTER_CONSUME)
+            .consumeListener(
+                message -> {
+                  for (final SubscriptionSessionDataSet dataSet :
+                      message.getSessionDataSetsHandler()) {
+                    while (dataSet.hasNext()) {
+                      dataSet.next();
+                      rowCount.addAndGet(1);
+                    }
+                  }
+                  return ConsumeResult.SUCCESS;
+                })
+            .buildPushConsumer()) {
+
+      consumer.open();
+      consumer.subscribe(topicName);
+
+      AWAIT.untilAsserted(() -> Assert.assertEquals(100, rowCount.get()));
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

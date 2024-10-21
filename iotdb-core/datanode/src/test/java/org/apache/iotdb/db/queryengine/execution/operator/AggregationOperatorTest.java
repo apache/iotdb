@@ -23,13 +23,13 @@ import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.aggregation.Accumulator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
@@ -50,8 +50,10 @@ import io.airlift.units.Duration;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.TimeDuration;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -74,7 +76,7 @@ public class AggregationOperatorTest {
 
   private static final String AGGREGATION_OPERATOR_TEST_SG = "root.AggregationOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();
-  private final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+  private final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private final List<TsFileResource> seqResources = new ArrayList<>();
   private final List<TsFileResource> unSeqResources = new ArrayList<>();
@@ -319,16 +321,18 @@ public class AggregationOperatorTest {
         .getOperatorContexts()
         .forEach(operatorContext -> OperatorContext.setMaxRunTime(TEST_TIME_SLICE));
 
-    MeasurementPath measurementPath1 =
-        new MeasurementPath(AGGREGATION_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
-    List<Aggregator> aggregators = new ArrayList<>();
+    NonAlignedFullPath measurementPath1 =
+        new NonAlignedFullPath(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(AGGREGATION_OPERATOR_TEST_SG + ".device0"),
+            new MeasurementSchema("sensor0", TSDataType.INT32));
+    List<TreeAggregator> aggregators = new ArrayList<>();
     AccumulatorFactory.createBuiltinAccumulators(
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
             Collections.emptyMap(),
             true)
-        .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.PARTIAL)));
+        .forEach(o -> aggregators.add(new TreeAggregator(o, AggregationStep.PARTIAL)));
 
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
     scanOptionsBuilder.withAllSensors(Collections.singleton("sensor0"));
@@ -383,7 +387,7 @@ public class AggregationOperatorTest {
     children.add(seriesAggregationScanOperator1);
     children.add(seriesAggregationScanOperator2);
 
-    List<Aggregator> finalAggregators = new ArrayList<>();
+    List<TreeAggregator> finalAggregators = new ArrayList<>();
     List<Accumulator> accumulators =
         AccumulatorFactory.createBuiltinAccumulators(
             aggregationTypes,
@@ -393,7 +397,7 @@ public class AggregationOperatorTest {
             true);
     for (int i = 0; i < accumulators.size(); i++) {
       finalAggregators.add(
-          new Aggregator(accumulators.get(i), AggregationStep.FINAL, inputLocations.get(i)));
+          new TreeAggregator(accumulators.get(i), AggregationStep.FINAL, inputLocations.get(i)));
     }
 
     return new AggregationOperator(

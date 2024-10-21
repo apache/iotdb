@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.RatisReadUnavailableException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
@@ -40,6 +41,8 @@ import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableSchemaQuerySuccessfulCallbackVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableSchemaQueryWriteVisitor;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
@@ -59,6 +62,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -308,7 +312,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       throws FragmentInstanceDispatchException,
           TException,
           ClientManagerException,
-          RatisReadUnavailableException {
+          RatisReadUnavailableException,
+          ConsensusGroupNotExistException {
     try (final SyncDataNodeInternalServiceClient client =
         syncInternalServiceClientManager.borrowClient(endPoint)) {
       switch (instance.getType()) {
@@ -324,13 +329,31 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           if (!sendFragmentInstanceResp.accepted) {
             LOGGER.warn(sendFragmentInstanceResp.message);
             if (sendFragmentInstanceResp.isSetNeedRetry()
-                && sendFragmentInstanceResp.isNeedRetry()) {
-              throw new RatisReadUnavailableException(sendFragmentInstanceResp.message);
-            } else {
-              throw new FragmentInstanceDispatchException(
-                  RpcUtils.getStatus(
-                      TSStatusCode.EXECUTE_STATEMENT_ERROR, sendFragmentInstanceResp.message));
+                && sendFragmentInstanceResp.isNeedRetry()
+                && sendFragmentInstanceResp.status != null) {
+              if (sendFragmentInstanceResp.status.getCode()
+                  == TSStatusCode.RATIS_READ_UNAVAILABLE.getStatusCode()) {
+                throw new RatisReadUnavailableException(sendFragmentInstanceResp.message);
+              } else if (sendFragmentInstanceResp.status.getCode()
+                  == TSStatusCode.CONSENSUS_GROUP_NOT_EXIST.getStatusCode()) {
+                throw new ConsensusGroupNotExistException(sendFragmentInstanceResp.message);
+              } else if (sendFragmentInstanceResp.status.getCode()
+                  == TSStatusCode.TOO_MANY_CONCURRENT_QUERIES_ERROR.getStatusCode()) {
+                throw new FragmentInstanceDispatchException(sendFragmentInstanceResp.status);
+              }
+            } else if (sendFragmentInstanceResp.status != null) {
+              throw new FragmentInstanceDispatchException(sendFragmentInstanceResp.status);
             }
+            throw new FragmentInstanceDispatchException(
+                RpcUtils.getStatus(
+                    TSStatusCode.EXECUTE_STATEMENT_ERROR, sendFragmentInstanceResp.message));
+          } else if (Objects.nonNull(sendFragmentInstanceReq.getConsensusGroupId())) {
+            // Assume the consensus group casting will not generate any exceptions
+            new TableSchemaQuerySuccessfulCallbackVisitor()
+                .processFragment(
+                    instance,
+                    ConsensusGroupId.Factory.createFromTConsensusGroupId(
+                        sendFragmentInstanceReq.getConsensusGroupId()));
           }
           break;
         case WRITE:
@@ -378,6 +401,21 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     }
   }
 
+  private void dispatchRemoteFailed(TEndPoint endPoint, Exception e)
+      throws FragmentInstanceDispatchException {
+    LOGGER.warn(
+        "can't execute request on node  {} in second try, error msg is {}.",
+        endPoint,
+        ExceptionUtils.getRootCause(e).toString());
+    TSStatus status = new TSStatus();
+    status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
+    status.setMessage("can't connect to node " + endPoint);
+    // If the DataNode cannot be connected, its endPoint will be put into black list
+    // so that the following retry will avoid dispatching instance towards this DataNode.
+    queryContext.addFailedEndPoint(endPoint);
+    throw new FragmentInstanceDispatchException(status);
+  }
+
   private void dispatchRemote(FragmentInstance instance, TEndPoint endPoint)
       throws FragmentInstanceDispatchException {
 
@@ -391,19 +429,14 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       // we just retry once to clear stale connection for a restart node.
       try {
         dispatchRemoteHelper(instance, endPoint);
-      } catch (ClientManagerException | TException | RatisReadUnavailableException e1) {
-        LOGGER.warn(
-            "can't execute request on node  {} in second try, error msg is {}.",
-            endPoint,
-            ExceptionUtils.getRootCause(e1).toString());
-        TSStatus status = new TSStatus();
-        status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
-        status.setMessage("can't connect to node " + endPoint);
-        // If the DataNode cannot be connected, its endPoint will be put into black list
-        // so that the following retry will avoid dispatching instance towards this DataNode.
-        queryContext.addFailedEndPoint(endPoint);
-        throw new FragmentInstanceDispatchException(status);
+      } catch (ClientManagerException
+          | TException
+          | RatisReadUnavailableException
+          | ConsensusGroupNotExistException e1) {
+        dispatchRemoteFailed(endPoint, e1);
       }
+    } catch (ConsensusGroupNotExistException e) {
+      dispatchRemoteFailed(endPoint, e);
     }
   }
 
@@ -427,15 +460,39 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
     switch (instance.getType()) {
       case READ:
-        final RegionReadExecutor readExecutor = new RegionReadExecutor();
-        final RegionExecutionResult readResult =
-            groupId == null
-                ? readExecutor.execute(instance)
-                : readExecutor.execute(groupId, instance);
-        if (!readResult.isAccepted()) {
-          LOGGER.warn(readResult.getMessage());
-          throw new FragmentInstanceDispatchException(
-              RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, readResult.getMessage()));
+        RegionExecutionResult executionResult = null;
+        if (Objects.nonNull(groupId)) {
+          // For schema query, there may be a "write" before "read"
+          // the result is not null iff the "write" has failed
+          executionResult = new TableSchemaQueryWriteVisitor().processFragment(instance, groupId);
+        }
+        if (Objects.isNull(executionResult)) {
+          final RegionReadExecutor readExecutor = new RegionReadExecutor();
+          executionResult =
+              groupId == null
+                  ? readExecutor.execute(instance)
+                  : readExecutor.execute(groupId, instance);
+        }
+        if (!executionResult.isAccepted()) {
+          LOGGER.warn(executionResult.getMessage());
+          if (executionResult.isReadNeedRetry()) {
+            if (executionResult.getStatus() != null
+                && executionResult.getStatus().getCode()
+                    == TSStatusCode.TOO_MANY_CONCURRENT_QUERIES_ERROR.getStatusCode()) {
+              throw new FragmentInstanceDispatchException(executionResult.getStatus());
+            }
+            throw new FragmentInstanceDispatchException(
+                RpcUtils.getStatus(TSStatusCode.DISPATCH_ERROR, executionResult.getMessage()));
+          } else if (executionResult.getStatus() != null) {
+            throw new FragmentInstanceDispatchException(executionResult.getStatus());
+          } else {
+            throw new FragmentInstanceDispatchException(
+                RpcUtils.getStatus(
+                    TSStatusCode.EXECUTE_STATEMENT_ERROR, executionResult.getMessage()));
+          }
+        } else if (Objects.nonNull(groupId)) {
+          // Assume the consensus group casting will not generate any exceptions
+          new TableSchemaQuerySuccessfulCallbackVisitor().processFragment(instance, groupId);
         }
         break;
       case WRITE:

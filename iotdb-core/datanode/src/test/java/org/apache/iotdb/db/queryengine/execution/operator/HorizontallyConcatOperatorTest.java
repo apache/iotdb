@@ -22,12 +22,12 @@ import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
@@ -46,8 +46,10 @@ import io.airlift.units.Duration;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.TimeDuration;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -72,7 +74,7 @@ public class HorizontallyConcatOperatorTest {
   private static final String HORIZONTALLY_CONCAT_OPERATOR_TEST_SG =
       "root.HorizontallyConcatOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();
-  private final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+  private final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private final List<TsFileResource> seqResources = new ArrayList<>();
   private final List<TsFileResource> unSeqResources = new ArrayList<>();
@@ -121,21 +123,23 @@ public class HorizontallyConcatOperatorTest {
       driverContext.addOperatorContext(
           3, new PlanNodeId("3"), HorizontallyConcatOperator.class.getSimpleName());
 
-      MeasurementPath measurementPath1 =
-          new MeasurementPath(
-              HORIZONTALLY_CONCAT_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
+      NonAlignedFullPath measurementPath1 =
+          new NonAlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(
+                  HORIZONTALLY_CONCAT_OPERATOR_TEST_SG + ".device0"),
+              new MeasurementSchema("sensor0", TSDataType.INT32));
       List<TAggregationType> aggregationTypes =
           Arrays.asList(TAggregationType.COUNT, TAggregationType.SUM, TAggregationType.FIRST_VALUE);
       GroupByTimeParameter groupByTimeParameter =
           new GroupByTimeParameter(0, 10, new TimeDuration(0, 1), new TimeDuration(0, 1), true);
-      List<Aggregator> aggregators = new ArrayList<>();
+      List<TreeAggregator> aggregators = new ArrayList<>();
       AccumulatorFactory.createBuiltinAccumulators(
               aggregationTypes,
               TSDataType.INT32,
               Collections.emptyList(),
               Collections.emptyMap(),
               true)
-          .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE)));
+          .forEach(o -> aggregators.add(new TreeAggregator(o, AggregationStep.SINGLE)));
 
       SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
       scanOptionsBuilder.withAllSensors(allSensors);
@@ -157,9 +161,11 @@ public class HorizontallyConcatOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      MeasurementPath measurementPath2 =
-          new MeasurementPath(
-              HORIZONTALLY_CONCAT_OPERATOR_TEST_SG + ".device0.sensor1", TSDataType.INT32);
+      NonAlignedFullPath measurementPath2 =
+          new NonAlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(
+                  HORIZONTALLY_CONCAT_OPERATOR_TEST_SG + ".device0"),
+              new MeasurementSchema("sensor1", TSDataType.INT32));
       SeriesAggregationScanOperator seriesAggregationScanOperator2 =
           new SeriesAggregationScanOperator(
               planNodeId2,

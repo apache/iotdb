@@ -39,8 +39,8 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.UnaryExpression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.CaseWhenThenColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.TreeCaseWhenThenColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticAdditionColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticDivisionColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticModuloColumnTransformer;
@@ -64,12 +64,14 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.ternary.Between
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.ArithmeticNegationColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.InColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.IsNullColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.LikeColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.LogicNotColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.RegularColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.TransformUtils;
 
+import org.apache.tsfile.common.regexp.LikePattern;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.LongType;
 import org.apache.tsfile.read.common.type.Type;
@@ -389,7 +391,7 @@ public class ColumnTransformerVisitor
             this.process(caseWhenThenExpression.getElseExpression(), context);
         context.cache.put(
             caseWhenThenExpression,
-            new CaseWhenThenColumnTransformer(
+            new TreeCaseWhenThenColumnTransformer(
                 TypeFactory.getType(context.getType(caseWhenThenExpression)),
                 whenList,
                 thenList,
@@ -442,8 +444,9 @@ public class ColumnTransformerVisitor
         return new ArithmeticNegationColumnTransformer(returnType, childColumnTransformer);
       case LIKE:
         LikeExpression likeExpression = (LikeExpression) expression;
-        return new RegularColumnTransformer(
-            returnType, childColumnTransformer, likeExpression.getPattern());
+        LikePattern pattern =
+            LikePattern.compile(likeExpression.getPattern(), likeExpression.getEscape());
+        return new LikeColumnTransformer(returnType, childColumnTransformer, pattern);
       case REGEXP:
         RegularExpression regularExpression = (RegularExpression) expression;
         return new RegularColumnTransformer(
@@ -579,7 +582,7 @@ public class ColumnTransformerVisitor
 
     public TSDataType getType(Expression expression) {
       if (typeProvider != null) {
-        return typeProvider.getType(expression.getOutputSymbol());
+        return typeProvider.getTreeModelType(expression.getOutputSymbol());
       }
       return expressionTypes.get(NodeRef.of(expression));
     }

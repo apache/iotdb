@@ -243,6 +243,8 @@ public class IoTDBConstant {
   public static final String SYSTEM_FOLDER_NAME = "system";
   public static final String SCHEMA_FOLDER_NAME = "schema";
   public static final String LOAD_TSFILE_FOLDER_NAME = "load";
+  public static final String LOAD_TSFILE_ACTIVE_LISTENING_PENDING_FOLDER_NAME = "pending";
+  public static final String LOAD_TSFILE_ACTIVE_LISTENING_FAILED_FOLDER_NAME = "failed";
   public static final String SYNC_FOLDER_NAME = "sync";
   public static final String QUERY_FOLDER_NAME = "query";
   public static final String EXT_FOLDER_NAME = "ext";
@@ -250,6 +252,7 @@ public class IoTDBConstant {
   public static final String TRIGGER_FOLDER_NAME = "trigger";
   public static final String PIPE_FOLDER_NAME = "pipe";
   public static final String TMP_FOLDER_NAME = "tmp";
+  public static final String DELETION_FOLDER_NAME = "deletion";
 
   public static final String MQTT_FOLDER_NAME = "mqtt";
   public static final String WAL_FOLDER_NAME = "wal";

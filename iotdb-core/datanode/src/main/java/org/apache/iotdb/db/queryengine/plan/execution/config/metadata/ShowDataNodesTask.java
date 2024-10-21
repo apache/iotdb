@@ -53,7 +53,7 @@ public class ShowDataNodesTask implements IConfigTask {
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.showDataNodes(showDataNodesStatement);
+    return configTaskExecutor.showDataNodes();
   }
 
   public static void buildTSBlock(

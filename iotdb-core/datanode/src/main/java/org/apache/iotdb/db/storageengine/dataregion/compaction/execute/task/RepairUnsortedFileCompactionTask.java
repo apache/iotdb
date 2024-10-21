@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.RepairUnsortedFileCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairDataFileScanUtil;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.RepairUnsortedFileCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
@@ -34,8 +36,10 @@ import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Repair the internal unsorted file by compaction and move it to unSequence space after compaction
@@ -43,8 +47,19 @@ import java.util.concurrent.CountDownLatch;
  */
 public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
 
+  private static final AtomicLong lastAllocatedFileTimestamp = new AtomicLong(Long.MAX_VALUE / 2);
+
+  public static void recoverAllocatedFileTimestamp(long timestamp) {
+    if (timestamp > lastAllocatedFileTimestamp.get()) {
+      lastAllocatedFileTimestamp.set(timestamp);
+    }
+  }
+
+  public static long getInitialAllocatedFileTimestamp() {
+    return Long.MAX_VALUE / 2;
+  }
+
   private final TsFileResource sourceFile;
-  private final boolean rewriteFile;
   private CountDownLatch latch;
 
   public RepairUnsortedFileCompactionTask(
@@ -58,34 +73,15 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
         tsFileManager,
         Collections.singletonList(sourceFile),
         sequence,
-        new RepairUnsortedFileCompactionPerformer(true),
+        new RepairUnsortedFileCompactionPerformer(),
         serialId);
     this.sourceFile = sourceFile;
-    this.innerSpaceEstimator = new RepairUnsortedFileCompactionEstimator();
-    this.rewriteFile = false;
-  }
-
-  public RepairUnsortedFileCompactionTask(
-      long timePartition,
-      TsFileManager tsFileManager,
-      TsFileResource sourceFile,
-      boolean sequence,
-      boolean rewriteFile,
-      long serialId) {
-    super(
-        timePartition,
-        tsFileManager,
-        Collections.singletonList(sourceFile),
-        sequence,
-        new RepairUnsortedFileCompactionPerformer(rewriteFile),
-        serialId);
-    this.sourceFile = sourceFile;
-    if (rewriteFile) {
+    if (this.sourceFile.getTsFileRepairStatus() != TsFileRepairStatus.NEED_TO_REPAIR_BY_MOVE) {
       this.innerSpaceEstimator = new RepairUnsortedFileCompactionEstimator();
     }
-    this.rewriteFile = rewriteFile;
   }
 
+  // used for 'start repair data'
   public RepairUnsortedFileCompactionTask(
       long timePartition,
       TsFileManager tsFileManager,
@@ -98,91 +94,83 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
         tsFileManager,
         Collections.singletonList(sourceFile),
         sequence,
-        new RepairUnsortedFileCompactionPerformer(true),
+        new RepairUnsortedFileCompactionPerformer(),
         serialId);
     this.sourceFile = sourceFile;
-    this.innerSpaceEstimator = new RepairUnsortedFileCompactionEstimator();
-    this.latch = latch;
-    this.rewriteFile = false;
-  }
-
-  public RepairUnsortedFileCompactionTask(
-      long timePartition,
-      TsFileManager tsFileManager,
-      TsFileResource sourceFile,
-      CountDownLatch latch,
-      boolean sequence,
-      boolean rewriteFile,
-      long serialId) {
-    super(
-        timePartition,
-        tsFileManager,
-        Collections.singletonList(sourceFile),
-        sequence,
-        new RepairUnsortedFileCompactionPerformer(rewriteFile),
-        serialId);
-    this.sourceFile = sourceFile;
-    if (rewriteFile) {
+    if (this.sourceFile.getTsFileRepairStatus() != TsFileRepairStatus.NEED_TO_REPAIR_BY_MOVE) {
       this.innerSpaceEstimator = new RepairUnsortedFileCompactionEstimator();
     }
-    this.rewriteFile = rewriteFile;
     this.latch = latch;
   }
 
   @Override
   protected void prepare() throws IOException {
-    targetTsFileResource =
-        new TsFileResource(generateTargetFile(), TsFileResourceStatus.COMPACTING);
-    String dataDirectory = sourceFile.getTsFile().getParent();
+    calculateSourceFilesAndTargetFiles();
+    isHoldingWriteLock = new boolean[this.filesView.sourceFilesInLog.size()];
+    Arrays.fill(isHoldingWriteLock, false);
     logFile =
         new File(
-            dataDirectory
-                + File.separator
-                + targetTsFileResource.getTsFile().getName()
+            filesView.targetFilesInLog.get(0).getTsFilePath()
                 + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
   }
 
-  private File generateTargetFile() throws IOException {
-    String path = sourceFile.getTsFile().getParentFile().getPath();
-    // if source file is sequence, the sequence data path should be replaced to unsequence
-    if (sourceFile.isSeq()) {
-      int pos = path.lastIndexOf("sequence");
-      path = path.substring(0, pos) + "unsequence" + path.substring(pos + "sequence".length());
-    }
+  @Override
+  protected void calculateSourceFilesAndTargetFiles() throws IOException {
+    filesView.sourceFilesInLog = filesView.sourceFilesInCompactionPerformer;
+    filesView.targetFilesInLog =
+        Collections.singletonList(
+            new TsFileResource(generateTargetFile(), TsFileResourceStatus.COMPACTING));
+    filesView.targetFilesInPerformer = filesView.targetFilesInLog;
+  }
 
-    TsFileNameGenerator.TsFileName tsFileName =
+  private File generateTargetFile() throws IOException {
+    String targetFileDir = sourceFile.getTsFile().getParentFile().getPath();
+    TsFileNameGenerator.TsFileName sourceFileName =
         TsFileNameGenerator.getTsFileName(sourceFile.getTsFile().getName());
-    tsFileName.setInnerCompactionCnt(tsFileName.getInnerCompactionCnt() + 1);
     String fileNameStr =
         String.format(
-            "%d-%d-%d-%d.tsfile",
-            tsFileName.getTime(), tsFileName.getVersion(), tsFileName.getInnerCompactionCnt(), 0);
-    File targetTsFile = new File(path + File.separator + fileNameStr);
-    if (!targetTsFile.getParentFile().exists()) {
-      targetTsFile.getParentFile().mkdirs();
+            "%d-%d-%d-%d" + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX,
+            sourceFile.isSeq()
+                ? lastAllocatedFileTimestamp.incrementAndGet()
+                : sourceFileName.getTime(),
+            sourceFile.isSeq() ? 0 : sourceFileName.getVersion(),
+            sourceFileName.getInnerCompactionCnt() + 1,
+            sourceFileName.getCrossCompactionCnt());
+    // if source file is sequence, the sequence data targetFileDir should be replaced to unsequence
+    if (sourceFile.isSeq()) {
+      int pos = targetFileDir.lastIndexOf("sequence");
+      targetFileDir =
+          targetFileDir.substring(0, pos)
+              + "unsequence"
+              + targetFileDir.substring(pos + "sequence".length());
     }
-    return targetTsFile;
+    File targetFile = new File(targetFileDir + File.separator + fileNameStr);
+    return targetFile;
   }
 
   @Override
   protected void prepareTargetFiles() throws IOException {
     CompactionUtils.updateProgressIndex(
-        targetTsFileList, selectedTsFileResourceList, Collections.emptyList());
+        filesView.targetFilesInPerformer,
+        filesView.sourceFilesInCompactionPerformer,
+        Collections.emptyList());
     CompactionUtils.moveTargetFile(
-        targetTsFileList, CompactionTaskType.REPAIR, storageGroupName + "-" + dataRegionId);
+        filesView.targetFilesInPerformer,
+        CompactionTaskType.REPAIR,
+        storageGroupName + "-" + dataRegionId);
 
     LOGGER.info(
         "{}-{} [InnerSpaceCompactionTask] start to rename mods file",
         storageGroupName,
         dataRegionId);
 
-    if (rewriteFile) {
+    if (sourceFile.getTsFileRepairStatus() == TsFileRepairStatus.NEED_TO_REPAIR_BY_REWRITE) {
       CompactionUtils.combineModsInInnerCompaction(
-          selectedTsFileResourceList, targetTsFileResource);
+          filesView.sourceFilesInCompactionPerformer, filesView.targetFilesInPerformer);
     } else {
       if (sourceFile.modFileExists()) {
         Files.createLink(
-            new File(targetTsFileResource.getModFile().getFilePath()).toPath(),
+            new File(filesView.targetFilesInPerformer.get(0).getModFile().getFilePath()).toPath(),
             new File(sourceFile.getModFile().getFilePath()).toPath());
       }
     }
@@ -190,6 +178,10 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
 
   @Override
   protected boolean doCompaction() {
+    calculateRepairMethod();
+    if (!sourceFile.getTsFileRepairStatus().isRepairCompactionCandidate()) {
+      return true;
+    }
     boolean isSuccess = super.doCompaction();
     if (!isSuccess) {
       LOGGER.info("Failed to repair file {}", sourceFile.getTsFile().getAbsolutePath());
@@ -198,11 +190,34 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
     return isSuccess;
   }
 
+  private void calculateRepairMethod() {
+    if (this.sourceFile.getTsFileRepairStatus() != TsFileRepairStatus.NEED_TO_CHECK) {
+      return;
+    }
+    RepairDataFileScanUtil repairDataFileScanUtil = new RepairDataFileScanUtil(sourceFile, true);
+    repairDataFileScanUtil.scanTsFile();
+    if (repairDataFileScanUtil.isBrokenFile()) {
+      sourceFile.setTsFileRepairStatus(TsFileRepairStatus.CAN_NOT_REPAIR);
+      return;
+    }
+    if (repairDataFileScanUtil.hasUnsortedData()) {
+      sourceFile.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_REPAIR_BY_REWRITE);
+      return;
+    }
+    if (sourceFile.isSeq()) {
+      sourceFile.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_REPAIR_BY_MOVE);
+      return;
+    }
+    sourceFile.setTsFileRepairStatus(TsFileRepairStatus.NORMAL);
+  }
+
   @Override
   public long getEstimatedMemoryCost() {
     if (innerSpaceEstimator != null && memoryCost == 0L) {
       try {
-        memoryCost = innerSpaceEstimator.estimateInnerCompactionMemory(selectedTsFileResourceList);
+        memoryCost =
+            innerSpaceEstimator.estimateInnerCompactionMemory(
+                filesView.sourceFilesInCompactionPerformer);
       } catch (IOException e) {
         innerSpaceEstimator.cleanup();
       }
@@ -221,7 +236,7 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
 
   @Override
   public boolean isDiskSpaceCheckPassed() {
-    if (!rewriteFile) {
+    if (sourceFile.getTsFileRepairStatus() == TsFileRepairStatus.NEED_TO_REPAIR_BY_MOVE) {
       return true;
     }
     return super.isDiskSpaceCheckPassed();

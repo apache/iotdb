@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
@@ -155,8 +156,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public boolean putAlignedValuesWithFlushCheck(
-      long[] t, Object[] v, BitMap[] bitMaps, int start, int end) {
-    list.putAlignedValues(t, v, bitMaps, start, end);
+      long[] t, Object[] v, BitMap[] bitMaps, int start, int end, TSStatus[] results) {
+    list.putAlignedValues(t, v, bitMaps, start, end, results);
     return list.reachChunkSizeOrPointNumThreshold();
   }
 
@@ -186,13 +187,14 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       BitMap[] bitMaps,
       List<IMeasurementSchema> schemaList,
       int start,
-      int end) {
+      int end,
+      TSStatus[] results) {
     Pair<Object[], BitMap[]> pair =
         checkAndReorderColumnValuesInInsertPlan(schemaList, valueList, bitMaps);
     Object[] reorderedColumnValues = pair.left;
     BitMap[] reorderedBitMaps = pair.right;
     return putAlignedValuesWithFlushCheck(
-        times, reorderedColumnValues, reorderedBitMaps, start, end);
+        times, reorderedColumnValues, reorderedBitMaps, start, end, results);
   }
 
   /**
@@ -244,7 +246,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     return (long) list.rowCount() * measurementIndexMap.size();
   }
 
-  public long alignedListSize() {
+  public int alignedListSize() {
     return list.rowCount();
   }
 
@@ -267,7 +269,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public synchronized TVList getSortedTvListForQuery(List<IMeasurementSchema> schemaList) {
+  public synchronized TVList getSortedTvListForQuery(
+      List<IMeasurementSchema> schemaList, boolean ignoreAllNullRows) {
     sortTVList();
     // increase reference count
     list.increaseReferenceCount();
@@ -278,7 +281,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
           measurementIndexMap.getOrDefault(measurementSchema.getMeasurementId(), -1));
       dataTypeList.add(measurementSchema.getType());
     }
-    return list.getTvListByColumnIndex(columnIndexList, dataTypeList);
+    return list.getTvListByColumnIndex(columnIndexList, dataTypeList, ignoreAllNullRows);
   }
 
   private void sortTVList() {
