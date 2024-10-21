@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.AsyncThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.commons.client.util.IoTDBConnectorPortBinder;
 import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 
@@ -36,6 +37,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.channels.SocketChannel;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -50,8 +54,8 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
 
   private final boolean printLogWhenEncounterException;
 
-  private final TEndPoint endpoint;
-  private final ClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> clientManager;
+  private final AsyncTEndPoint endpoint;
+  private final ClientManager<AsyncTEndPoint, AsyncPipeDataTransferServiceClient> clientManager;
 
   private final AtomicBoolean shouldReturnSelf = new AtomicBoolean(true);
 
@@ -59,15 +63,28 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
 
   public AsyncPipeDataTransferServiceClient(
       ThriftClientProperty property,
-      TEndPoint endpoint,
+      AsyncTEndPoint endpoint,
       TAsyncClientManager tClientManager,
-      ClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> clientManager)
+      ClientManager<AsyncTEndPoint, AsyncPipeDataTransferServiceClient> clientManager,
+      String customSendPortStrategy,
+      int minSendPortRange,
+      int maxSendPortRange,
+      List<Integer> candidatePorts)
       throws IOException {
     super(
         property.getProtocolFactory(),
         tClientManager,
         TNonblockingSocketWrapper.wrap(
             endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs()));
+    SocketChannel socketChannel = ((TNonblockingSocket) ___transport).getSocketChannel();
+    IoTDBConnectorPortBinder.bindPort(
+        customSendPortStrategy,
+        minSendPortRange,
+        maxSendPortRange,
+        candidatePorts,
+        (sendPort) -> {
+          socketChannel.bind(new InetSocketAddress(sendPort));
+        });
     setTimeout(property.getConnectionTimeoutMs());
     this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endpoint;
@@ -175,10 +192,10 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
   }
 
   public static class Factory
-      extends AsyncThriftClientFactory<TEndPoint, AsyncPipeDataTransferServiceClient> {
+      extends AsyncThriftClientFactory<AsyncTEndPoint, AsyncPipeDataTransferServiceClient> {
 
     public Factory(
-        ClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> clientManager,
+        ClientManager<AsyncTEndPoint, AsyncPipeDataTransferServiceClient> clientManager,
         ThriftClientProperty thriftClientProperty,
         String threadName) {
       super(clientManager, thriftClientProperty, threadName);
@@ -186,24 +203,28 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
 
     @Override
     public void destroyObject(
-        TEndPoint endPoint, PooledObject<AsyncPipeDataTransferServiceClient> pooledObject) {
+        AsyncTEndPoint endPoint, PooledObject<AsyncPipeDataTransferServiceClient> pooledObject) {
       pooledObject.getObject().close();
     }
 
     @Override
-    public PooledObject<AsyncPipeDataTransferServiceClient> makeObject(TEndPoint endPoint)
+    public PooledObject<AsyncPipeDataTransferServiceClient> makeObject(AsyncTEndPoint endPoint)
         throws Exception {
       return new DefaultPooledObject<>(
           new AsyncPipeDataTransferServiceClient(
               thriftClientProperty,
               endPoint,
               tManagers[clientCnt.incrementAndGet() % tManagers.length],
-              clientManager));
+              clientManager,
+              endPoint.getCustomSendPortStrategy(),
+              endPoint.getMinSendPortRange(),
+              endPoint.getMaxSendPortRange(),
+              endPoint.getCandidatePorts()));
     }
 
     @Override
     public boolean validateObject(
-        TEndPoint endPoint, PooledObject<AsyncPipeDataTransferServiceClient> pooledObject) {
+        AsyncTEndPoint endPoint, PooledObject<AsyncPipeDataTransferServiceClient> pooledObject) {
       return pooledObject.getObject().isReady();
     }
   }
