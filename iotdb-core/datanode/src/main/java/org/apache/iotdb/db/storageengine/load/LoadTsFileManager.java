@@ -220,12 +220,17 @@ public class LoadTsFileManager {
       }
 
       for (TsFileData tsFileData : pieceNode.getAllTsFileData()) {
-        if (!tsFileData.isModification()) {
-          ChunkData chunkData = (ChunkData) tsFileData;
-          writerManager.write(
-              new DataPartitionInfo(dataRegion, chunkData.getTimePartitionSlot()), chunkData);
-        } else {
-          writerManager.writeDeletion(dataRegion, (DeletionData) tsFileData);
+        switch (tsFileData.getType()) {
+          case CHUNK:
+            ChunkData chunkData = (ChunkData) tsFileData;
+            writerManager.write(
+                new DataPartitionInfo(dataRegion, chunkData.getTimePartitionSlot()), chunkData);
+            break;
+          case DELETION:
+            writerManager.writeDeletion(dataRegion, (DeletionData) tsFileData);
+            break;
+          default:
+            throw new IOException("Unsupported TsFileData type: " + tsFileData.getType());
         }
       }
     } finally {
@@ -398,7 +403,9 @@ public class LoadTsFileManager {
           return;
         }
 
-        dataPartition2Writer.put(partitionInfo, new TsFileIOWriter(newTsFile));
+        final TsFileIOWriter writer = new TsFileIOWriter(newTsFile);
+        writer.setGenerateTableSchema(true);
+        dataPartition2Writer.put(partitionInfo, writer);
       }
       TsFileIOWriter writer = dataPartition2Writer.get(partitionInfo);
       if (!chunkData.getDevice().equals(dataPartition2LastDevice.getOrDefault(partitionInfo, ""))) {

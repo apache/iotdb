@@ -43,6 +43,7 @@ import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.schemaengine.schemaregion.impl.SchemaRegionMemoryImpl;
 import org.apache.iotdb.mpp.rpc.thrift.TAttributeUpdateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaRegionAttributeInfo;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -92,9 +93,11 @@ public class GeneralRegionAttributeSecurityService implements IService {
   private volatile boolean allowSubmitListen = false;
 
   public void startBroadcast(final ISchemaRegion schemaRegion) {
-    regionLeaders.add(schemaRegion);
-    regionId2DatabaseMap.put(
-        schemaRegion.getSchemaRegionId(), schemaRegion.getDatabaseFullPath().substring(5));
+    if (schemaRegion instanceof SchemaRegionMemoryImpl) {
+      regionLeaders.add(schemaRegion);
+      regionId2DatabaseMap.put(
+          schemaRegion.getSchemaRegionId(), schemaRegion.getDatabaseFullPath().substring(5));
+    }
   }
 
   public void stopBroadcast(final ISchemaRegion schemaRegion) {

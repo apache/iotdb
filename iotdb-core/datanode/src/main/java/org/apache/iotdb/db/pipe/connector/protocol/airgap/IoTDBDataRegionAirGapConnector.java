@@ -21,14 +21,15 @@ package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReqV2;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReqV2;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReqV2;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
+import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
-import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
@@ -127,8 +128,8 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
     final AirGapSocket socket = sockets.get(socketIndex);
 
     try {
-      if (event instanceof PipeSchemaRegionWritePlanEvent) {
-        doTransferWrapper(socket, (PipeSchemaRegionWritePlanEvent) event);
+      if (event instanceof PipeDeleteDataNodeEvent) {
+        doTransferWrapper(socket, (PipeDeleteDataNodeEvent) event);
       } else if (!(event instanceof PipeHeartbeatEvent || event instanceof PipeTerminateEvent)) {
         LOGGER.warn(
             "IoTDBDataRegionAirGapConnector does not support transferring generic event: {}.",
@@ -140,8 +141,45 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
       throw new PipeConnectionException(
           String.format(
               "Network error when transfer tsfile event %s, because %s.",
-              ((PipeSchemaRegionWritePlanEvent) event).coreReportMessage(), e.getMessage()),
+              ((PipeDeleteDataNodeEvent) event).coreReportMessage(), e.getMessage()),
           e);
+    }
+  }
+
+  private void doTransferWrapper(
+      final AirGapSocket socket, final PipeDeleteDataNodeEvent pipeDeleteDataNodeEvent)
+      throws PipeException, IOException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeDeleteDataNodeEvent.increaseReferenceCount(
+        IoTDBDataNodeAirGapConnector.class.getName())) {
+      return;
+    }
+    try {
+      doTransfer(socket, pipeDeleteDataNodeEvent);
+    } finally {
+      pipeDeleteDataNodeEvent.decreaseReferenceCount(
+          IoTDBDataNodeAirGapConnector.class.getName(), false);
+    }
+  }
+
+  private void doTransfer(
+      final AirGapSocket socket, final PipeDeleteDataNodeEvent pipeDeleteDataNodeEvent)
+      throws PipeException, IOException {
+    if (!send(
+        pipeDeleteDataNodeEvent.getPipeName(),
+        pipeDeleteDataNodeEvent.getCreationTime(),
+        socket,
+        PipeTransferPlanNodeReq.toTPipeTransferBytes(
+            pipeDeleteDataNodeEvent.getDeleteDataNode()))) {
+      final String errorMessage =
+          String.format(
+              "Transfer deletion %s error. Socket: %s.",
+              pipeDeleteDataNodeEvent.getDeleteDataNode().getType(), socket);
+      receiverStatusHandler.handle(
+          new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+              .setMessage(errorMessage),
+          errorMessage,
+          pipeDeleteDataNodeEvent.toString());
     }
   }
 

@@ -149,7 +149,6 @@ public class GapFillNode extends SingleChildProcessNode {
     ReadWriteIOUtils.write(monthDuration, stream);
     ReadWriteIOUtils.write(nonMonthDuration, stream);
     Symbol.serialize(gapFillColumn, stream);
-    ReadWriteIOUtils.write(true, stream);
     ReadWriteIOUtils.write(gapFillGroupingKeys.size(), stream);
     for (Symbol symbol : gapFillGroupingKeys) {
       Symbol.serialize(symbol, stream);

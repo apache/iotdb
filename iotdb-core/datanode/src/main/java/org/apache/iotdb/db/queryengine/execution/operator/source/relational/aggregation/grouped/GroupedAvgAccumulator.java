@@ -92,12 +92,11 @@ public class GroupedAvgAccumulator implements GroupedAccumulator {
     checkArgument(
         argument instanceof BinaryColumn,
         "intermediate input and output of Avg should be BinaryColumn");
-    if (argument.isNull(0)) {
-      return;
-    }
 
     for (int i = 0; i < groupIds.length; i++) {
-      deserialize(groupIds[i], argument.getBinary(i).getValues());
+      if (!argument.isNull(i)) {
+        deserialize(groupIds[i], argument.getBinary(i).getValues());
+      }
     }
   }
 

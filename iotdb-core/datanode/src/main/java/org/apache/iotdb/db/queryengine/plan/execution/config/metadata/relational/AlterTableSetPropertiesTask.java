@@ -19,45 +19,31 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational;
 
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
-import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.Map;
 
-public class AlterTableSetPropertiesTask implements IConfigTask {
-
-  private final String database;
-
-  private final String tableName;
+public class AlterTableSetPropertiesTask extends AbstractAlterOrDropTableTask {
 
   private final Map<String, String> properties;
 
-  private final String queryId;
-
-  private final boolean ifExists;
-
   public AlterTableSetPropertiesTask(
-      String database,
+      final String database,
       final String tableName,
       final Map<String, String> properties,
       final String queryId,
       final boolean ifExists) {
-    database = PathUtils.qualifyDatabaseName(database);
-    this.database = database;
-    this.tableName = tableName;
+    super(database, tableName, queryId, ifExists);
     this.properties = properties;
-    this.queryId = queryId;
-    this.ifExists = ifExists;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.alterTableSetProperties(
-        database, tableName, properties, queryId, ifExists);
+        database, tableName, properties, queryId, tableIfExists);
   }
 }

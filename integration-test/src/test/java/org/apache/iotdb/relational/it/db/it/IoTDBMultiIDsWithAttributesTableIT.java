@@ -664,6 +664,59 @@ public class IoTDBMultiIDsWithAttributesTableIT {
             + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num "
             + "from table0 where device='d1' and level='l1' group by device order by device";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = new String[] {"device", "level"};
+    retArray =
+        new String[] {
+          "d1,l1,", "d1,l2,", "d1,l3,", "d1,l4,", "d1,l5,", "d2,l1,", "d2,l2,", "d2,l3,", "d2,l4,",
+          "d2,l5,",
+        };
+    sql = "select device,level from table0 group by device,level order by device,level";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = new String[] {"device", "level", "attr1", "bin"};
+    retArray =
+        new String[] {
+          "d1,l1,c,1970-01-01T00:00:00.000Z,",
+          "d1,l1,c,1971-01-01T00:00:00.000Z,",
+          "d1,l2,yy,1970-01-01T00:00:00.000Z,",
+          "d1,l2,yy,1971-01-01T00:00:00.000Z,",
+          "d1,l2,yy,1971-04-26T00:00:00.000Z,",
+          "d1,l3,t,1970-01-01T00:00:00.000Z,",
+          "d1,l3,t,1971-01-01T00:00:00.000Z,",
+          "d1,l3,t,1971-04-26T00:00:00.000Z,",
+          "d1,l4,null,1970-01-01T00:00:00.000Z,",
+          "d1,l4,null,1971-01-01T00:00:00.000Z,",
+          "d1,l4,null,1971-04-26T00:00:00.000Z,",
+          "d1,l5,null,1970-01-01T00:00:00.000Z,",
+          "d1,l5,null,1971-01-01T00:00:00.000Z,",
+          "d1,l5,null,1971-08-20T00:00:00.000Z,",
+          "d2,l1,d,1970-01-01T00:00:00.000Z,",
+          "d2,l1,d,1971-01-01T00:00:00.000Z,",
+          "d2,l2,vv,1970-01-01T00:00:00.000Z,",
+          "d2,l2,vv,1971-01-01T00:00:00.000Z,",
+          "d2,l2,vv,1971-04-26T00:00:00.000Z,",
+          "d2,l3,null,1970-01-01T00:00:00.000Z,",
+          "d2,l3,null,1971-01-01T00:00:00.000Z,",
+          "d2,l3,null,1971-04-26T00:00:00.000Z,",
+          "d2,l4,null,1970-01-01T00:00:00.000Z,",
+          "d2,l4,null,1971-01-01T00:00:00.000Z,",
+          "d2,l4,null,1971-04-26T00:00:00.000Z,",
+          "d2,l5,null,1970-01-01T00:00:00.000Z,",
+          "d2,l5,null,1971-01-01T00:00:00.000Z,",
+          "d2,l5,null,1971-08-20T00:00:00.000Z,",
+        };
+    sql =
+        "select device,level,attr1,date_bin(1d,time) as bin from table0 group by 4,device,level,attr1 order by device,level,attr1,bin";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = new String[] {"attr1", "attr2"};
+    retArray =
+        new String[] {
+          "c,d,", "d,c,", "t,a,", "vv,null,", "yy,zz,", "null,null,",
+        };
+    sql = "select attr1,attr2 from table0 group by attr1,attr2 order by attr1,attr2";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
   @Test
@@ -989,6 +1042,84 @@ public class IoTDBMultiIDsWithAttributesTableIT {
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
+  @Test
+  public void lastByFirstByTest() {
+    String[] expectedHeader1 = buildHeaders(13);
+    String[] expectedHeader2 = buildHeaders(14);
+
+    sql =
+        "select last_by(time,time),last_by(device,time),last_by(level,time),last_by(attr1,time),last_by(attr2,time),last_by(num,time),last_by(bignum,time),last_by(floatnum,time),last_by(str,time),last_by(bool,time),last_by(date,time),last_by(ts,time),last_by(stringv,time) from table0 where device='d2'";
+    retArray =
+        new String[] {
+          "1971-08-20T11:33:20.000Z,d2,l5,null,null,15,3147483648,235.213,watermelon,true,2023-01-01,null,null,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader1, retArray, DATABASE_NAME);
+    sql =
+        "select last_by(time,time),last_by(device,time),last_by(level,time),last_by(attr1,time),last_by(attr2,time),last_by(num,time),last_by(bignum,time),last_by(floatnum,time),last_by(str,time),last_by(bool,time),last_by(date,time),last_by(ts,time),last_by(stringv,time),last_by(blob,time) from table0 where device='d2'";
+    retArray =
+        new String[] {
+          "1971-08-20T11:33:20.000Z,d2,l5,null,null,15,3147483648,235.213,watermelon,true,2023-01-01,null,null,null,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader2, retArray, DATABASE_NAME);
+
+    sql =
+        "select last_by(time,time),last_by(time,device),last_by(time,level),last_by(time,attr1),last_by(time,attr2),last_by(time,num),last_by(time,bignum),last_by(time,floatnum),last_by(time,str),last_by(time,bool),last_by(time,date),last_by(time,ts),last_by(time,stringv) from table0 where device='d2'";
+    retArray =
+        new String[] {
+          "1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-04-26T17:46:40.000Z,1971-01-01T00:01:40.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-01-01T00:01:40.000Z,1971-01-01T00:01:40.000Z,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader1, retArray, DATABASE_NAME);
+    sql =
+        "select last_by(time,time),last_by(time,device),last_by(time,level),last_by(time,attr1),last_by(time,attr2),last_by(time,num),last_by(time,bignum),last_by(time,floatnum),last_by(time,str),last_by(time,bool),last_by(time,date),last_by(time,ts),last_by(time,stringv),last_by(time,blob) from table0 where device='d2'";
+    retArray =
+        new String[] {
+          "1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-04-26T17:46:40.000Z,1971-01-01T00:01:40.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-01-01T00:01:40.000Z,1971-01-01T00:01:40.000Z,1970-01-01T00:00:00.080Z,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader2, retArray, DATABASE_NAME);
+
+    String[] expectedHeader11 = buildHeaders(expectedHeader1.length * 2);
+    sql =
+        "select last_by(time,time),last_by(device,time),last_by(level,time),last_by(attr1,time),last_by(attr2,time),last_by(num,time),last_by(bignum,time),last_by(floatnum,time),last_by(str,time),last_by(bool,time),last_by(date,time),last_by(ts,time),last_by(stringv,time),last_by(time,time),last_by(time,device),last_by(time,level),last_by(time,attr1),last_by(time,attr2),last_by(time,num),last_by(time,bignum),last_by(time,floatnum),last_by(time,str),last_by(time,bool),last_by(time,date),last_by(time,ts),last_by(time,stringv) from table0 where device='d2'";
+    retArray =
+        new String[] {
+          "1971-08-20T11:33:20.000Z,d2,l5,null,null,15,3147483648,235.213,watermelon,true,2023-01-01,null,null,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-04-26T17:46:40.000Z,1971-01-01T00:01:40.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-01-01T00:01:40.000Z,1971-01-01T00:01:40.000Z,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader11, retArray, DATABASE_NAME);
+
+    sql =
+        "select first_by(time,time),first_by(device,time),first_by(level,time),first_by(attr1,time),first_by(attr2,time),first_by(num,time),first_by(bignum,time),first_by(floatnum,time),first_by(str,time),first_by(bool,time),first_by(date,time),first_by(ts,time),first_by(stringv,time) from table0 where device='d2' and time>80";
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.100Z,d2,l5,null,null,8,2147483964,4654.231,papaya,true,null,null,null,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader1, retArray, DATABASE_NAME);
+
+    sql =
+        "select first_by(time,time),first_by(time,device),first_by(time,level),first_by(time,attr1),first_by(time,attr2),first_by(time,num),first_by(time,bignum),first_by(time,floatnum),first_by(time,str),first_by(time,bool),first_by(time,date),first_by(time,ts),first_by(time,stringv) from table0 where device='d2' and time>80";
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.100Z,1970-01-01T00:00:00.100Z,1970-01-01T00:00:00.100Z,1971-01-01T00:00:00.000Z,1971-01-01T00:00:00.000Z,1970-01-01T00:00:00.100Z,1970-01-01T00:00:00.100Z,1970-01-01T00:00:00.100Z,1970-01-01T00:00:00.100Z,1970-01-01T00:00:00.100Z,1971-08-20T11:33:20.000Z,1971-01-01T00:01:40.000Z,1971-01-01T00:01:40.000Z,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader1, retArray, DATABASE_NAME);
+  }
+
+  @Test
+  public void maxByMinByExtremeTest() {
+    expectedHeader = buildHeaders(10);
+    sql =
+        "select max_by(time,floatnum),min_by(time,floatnum),max_by(time,date),min_by(time,date),max_by(time,floatnum),min_by(time,floatnum),max_by(time,ts),min_by(time,ts),max_by(time,stringv),min_by(time,stringv) from table0";
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.100Z,1970-01-01T00:00:00.040Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1970-01-01T00:00:00.100Z,1970-01-01T00:00:00.040Z,1971-01-01T00:00:10.000Z,1971-01-01T00:01:40.000Z,1971-01-01T00:01:40.000Z,1971-01-01T00:00:01.000Z,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = buildHeaders(3);
+    sql = "select extreme(num),extreme(bignum),extreme(floatnum) from table0";
+    retArray = new String[] {"15,3147483648,4654.231,"};
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+  }
+
   // ==================================================================
   // ============================ Join Test ===========================
   // ==================================================================
@@ -1273,5 +1404,13 @@ public class IoTDBMultiIDsWithAttributesTableIT {
             + "ON t1.time = t2.time \n"
             + "ORDER BY time, t1.device, t2.device";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+  }
+
+  public static String[] buildHeaders(int length) {
+    String[] expectedHeader = new String[length];
+    for (int i = 0; i < length; i++) {
+      expectedHeader[i] = "_col" + i;
+    }
+    return expectedHeader;
   }
 }

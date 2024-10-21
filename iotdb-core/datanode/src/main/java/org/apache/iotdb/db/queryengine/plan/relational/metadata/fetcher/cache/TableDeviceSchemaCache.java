@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.im
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCachePolicy;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegion;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
@@ -134,6 +135,11 @@ public class TableDeviceSchemaCache {
       final String database, final IDeviceID deviceId, final Map<String, String> attributeMap) {
     readWriteLock.readLock().lock();
     try {
+      // Avoid stale table
+      if (Objects.isNull(
+          DataNodeTableCache.getInstance().getTable(database, deviceId.getTableName()))) {
+        return;
+      }
       dualKeyCache.update(
           new TableId(database, deviceId.getTableName()),
           deviceId,
@@ -214,6 +220,11 @@ public class TableDeviceSchemaCache {
       final boolean isInvalidate) {
     readWriteLock.readLock().lock();
     try {
+      // Avoid stale table
+      if (Objects.isNull(
+          DataNodeTableCache.getInstance().getTable(database, deviceId.getTableName()))) {
+        return;
+      }
       dualKeyCache.update(
           new TableId(database, deviceId.getTableName()),
           deviceId,
@@ -252,7 +263,7 @@ public class TableDeviceSchemaCache {
   }
 
   /**
-   * Get the last entry of a measurement, the measurement shall never be "time".
+   * Get the last {@link TimeValuePair} of a measurement, the measurement shall never be "time".
    *
    * @param database the device's database, without "root", {@code null} for tree model
    * @param deviceId {@link IDeviceID}
@@ -518,6 +529,8 @@ public class TableDeviceSchemaCache {
   public void invalidate(final String database, final String tableName) {
     readWriteLock.writeLock().lock();
     try {
+      // Table cache's invalidate must be guarded by this lock
+      DataNodeTableCache.getInstance().invalid(database, tableName);
       dualKeyCache.invalidate(new TableId(database, tableName));
     } finally {
       readWriteLock.writeLock().unlock();

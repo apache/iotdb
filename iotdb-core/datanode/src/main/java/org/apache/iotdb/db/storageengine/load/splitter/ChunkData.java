@@ -50,8 +50,8 @@ public interface ChunkData extends TsFileData {
   void writeToFileWriter(TsFileIOWriter writer) throws IOException;
 
   @Override
-  default boolean isModification() {
-    return false;
+  default TsFileDataType getType() {
+    return TsFileDataType.CHUNK;
   }
 
   static ChunkData deserialize(InputStream stream) throws PageException, IOException {

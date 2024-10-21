@@ -21,9 +21,11 @@ package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ISchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
 
+import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
 import java.util.List;
@@ -31,25 +33,26 @@ import java.util.List;
 public interface ISchemaSource<T extends ISchemaInfo> {
 
   /**
-   * Get the SchemaReader for iterating target SchemaInfo from given SchemaRegion.
+   * Get the {@link ISchemaReader} for iterating target SchemaInfo from given {@link SchemaRegion}.
    *
-   * @return the SchemaReader for SchemaInfo T
+   * @return the {@link ISchemaReader} for SchemaInfo T
    */
-  ISchemaReader<T> getSchemaReader(ISchemaRegion schemaRegion);
+  ISchemaReader<T> getSchemaReader(final ISchemaRegion schemaRegion);
 
-  /** Get the column headers of the result TsBlock for SchemaInfo query. */
+  /** Get the column headers of the result {@link TsBlock} for SchemaInfo query. */
   List<ColumnHeader> getInfoQueryColumnHeaders();
 
   /**
-   * Transform the SchemaInfo T to fill the TsBlock.
+   * Transform the SchemaInfo T to fill the {@link TsBlock}.
    *
    * @param schemaInfo the SchemaInfo need to be processed
-   * @param tsBlockBuilder the target TsBlockBuilder using for generating TsBlock
+   * @param tsBlockBuilder the target {@link TsBlockBuilder} using for generating TsBlock
    * @param database the belonged databased of given SchemaInfo
    */
-  void transformToTsBlockColumns(T schemaInfo, TsBlockBuilder tsBlockBuilder, String database);
+  void transformToTsBlockColumns(
+      final T schemaInfo, final TsBlockBuilder tsBlockBuilder, final String database);
 
-  boolean hasSchemaStatistic(ISchemaRegion schemaRegion);
+  boolean hasSchemaStatistic(final ISchemaRegion schemaRegion);
 
-  long getSchemaStatistic(ISchemaRegion schemaRegion);
+  long getSchemaStatistic(final ISchemaRegion schemaRegion);
 }

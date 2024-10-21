@@ -120,7 +120,7 @@ public class NonAlignedChunkData implements ChunkData {
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(isModification(), stream);
+    ReadWriteIOUtils.write(getType().ordinal(), stream);
     ReadWriteIOUtils.write(isAligned(), stream);
     serializeAttr(stream);
     byteStream.writeTo(stream);

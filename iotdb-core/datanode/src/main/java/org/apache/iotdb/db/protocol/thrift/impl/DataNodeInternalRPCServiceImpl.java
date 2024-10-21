@@ -69,6 +69,7 @@ import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -140,6 +141,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNo
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableSchemaQueryWriteVisitor;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
@@ -195,6 +197,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TDeactivateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataOrDevicesForDropTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteViewSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
@@ -213,6 +216,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TInvalidateTableCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
@@ -694,8 +698,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) throws TException {
-    PathPatternTree patternTree =
+  public TSStatus deleteTimeSeries(final TDeleteTimeSeriesReq req) throws TException {
+    final PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
     return executeInternalSchemaTask(
         req.getSchemaRegionIdList(),
@@ -1510,7 +1514,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus updateTable(TUpdateTableReq req) {
+  public TSStatus updateTable(final TUpdateTableReq req) {
     switch (TsTableInternalRPCType.getType(req.type)) {
       case PRE_CREATE_OR_ADD_COLUMN:
         DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.TIMESERIES_VS_TABLE);
@@ -1542,8 +1546,40 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
-  public TTestConnectionResp submitTestConnectionTask(TNodeLocations nodeLocations)
-      throws TException {
+  @Override
+  public TSStatus invalidateTableCache(final TInvalidateTableCacheReq req) {
+    DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
+    try {
+      TableDeviceSchemaCache.getInstance().invalidate(req.getDatabase(), req.getTableName());
+      return StatusUtils.OK;
+    } finally {
+      DataNodeSchemaLockManager.getInstance().releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
+    }
+  }
+
+  @Override
+  public TSStatus deleteDataForDropTable(final TDeleteDataOrDevicesForDropTableReq req) {
+    return executeInternalSchemaTask(
+        req.getRegionIdList(),
+        consensusGroupId -> {
+          // TODO
+          return StatusUtils.OK;
+        });
+  }
+
+  @Override
+  public TSStatus deleteDevicesForDropTable(final TDeleteDataOrDevicesForDropTableReq req) {
+    return executeInternalSchemaTask(
+        req.getRegionIdList(),
+        consensusGroupId ->
+            new RegionWriteExecutor()
+                .execute(
+                    new SchemaRegionId(consensusGroupId.getId()),
+                    new DeleteTableDeviceNode(new PlanNodeId(""), req.getTableName()))
+                .getStatus());
+  }
+
+  public TTestConnectionResp submitTestConnectionTask(TNodeLocations nodeLocations) {
     return new TTestConnectionResp(
         new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
         Stream.of(

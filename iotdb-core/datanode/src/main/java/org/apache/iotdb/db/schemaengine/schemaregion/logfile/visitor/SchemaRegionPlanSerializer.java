@@ -21,7 +21,9 @@ package org.apache.iotdb.db.schemaengine.schemaregion.logfile.visitor;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
@@ -482,43 +484,39 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
     public SchemaRegionPlanSerializationResult visitCreateOrUpdateTableDevice(
         final CreateOrUpdateTableDeviceNode createOrUpdateTableDeviceNode,
         final DataOutputStream outputStream) {
-      try {
-        createOrUpdateTableDeviceNode.serialize(outputStream);
-        return SchemaRegionPlanSerializationResult.SUCCESS;
-      } catch (final IOException e) {
-        return new SchemaRegionPlanSerializationResult(e);
-      }
+      return visitPlanNode(createOrUpdateTableDeviceNode, outputStream);
     }
 
     @Override
     public SchemaRegionPlanSerializationResult visitUpdateTableDeviceAttribute(
         final TableDeviceAttributeUpdateNode updateTableDeviceAttributePlan,
         final DataOutputStream outputStream) {
-      try {
-        updateTableDeviceAttributePlan.serialize(outputStream);
-        return SchemaRegionPlanSerializationResult.SUCCESS;
-      } catch (final IOException e) {
-        return new SchemaRegionPlanSerializationResult(e);
-      }
+      return visitPlanNode(updateTableDeviceAttributePlan, outputStream);
     }
 
     @Override
     public SchemaRegionPlanSerializationResult visitCommitUpdateTableDeviceAttribute(
         final TableDeviceAttributeCommitUpdateNode commitUpdateTableDeviceAttributePlan,
         final DataOutputStream outputStream) {
-      try {
-        commitUpdateTableDeviceAttributePlan.serialize(outputStream);
-        return SchemaRegionPlanSerializationResult.SUCCESS;
-      } catch (final IOException e) {
-        return new SchemaRegionPlanSerializationResult(e);
-      }
+      return visitPlanNode(commitUpdateTableDeviceAttributePlan, outputStream);
     }
 
     @Override
     public SchemaRegionPlanSerializationResult visitAddNodeLocation(
         final TableNodeLocationAddNode addNodeLocationPlan, final DataOutputStream outputStream) {
+      return visitPlanNode(addNodeLocationPlan, outputStream);
+    }
+
+    @Override
+    public SchemaRegionPlanSerializationResult visitDeleteTableDevice(
+        final DeleteTableDeviceNode deleteTableDevicePlan, final DataOutputStream outputStream) {
+      return visitPlanNode(deleteTableDevicePlan, outputStream);
+    }
+
+    private SchemaRegionPlanSerializationResult visitPlanNode(
+        final PlanNode planNode, final DataOutputStream outputStream) {
       try {
-        addNodeLocationPlan.serialize(outputStream);
+        planNode.serialize(outputStream);
         return SchemaRegionPlanSerializationResult.SUCCESS;
       } catch (final IOException e) {
         return new SchemaRegionPlanSerializationResult(e);

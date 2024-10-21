@@ -151,7 +151,8 @@ public class LastAccumulator implements TableAccumulator {
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of Avg should be BinaryColumn");
+        "intermediate input and output of Last should be BinaryColumn");
+
     if (!initResult) {
       columnBuilder.appendNull();
     } else {
@@ -201,9 +202,10 @@ public class LastAccumulator implements TableAccumulator {
 
   @Override
   public void addStatistics(Statistics[] statistics) {
-    if (statistics[0] == null) {
+    if (statistics == null || statistics[0] == null) {
       return;
     }
+
     switch (seriesDataType) {
       case INT32:
       case DATE:
@@ -273,7 +275,7 @@ public class LastAccumulator implements TableAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in Extreme: %s", seriesDataType));
+              String.format("Unsupported data type in Last: %s", seriesDataType));
       }
     } catch (IOException e) {
       throw new UnsupportedOperationException(

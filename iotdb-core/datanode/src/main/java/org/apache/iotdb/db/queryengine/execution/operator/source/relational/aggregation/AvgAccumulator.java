@@ -138,7 +138,7 @@ public class AvgAccumulator implements TableAccumulator {
 
   @Override
   public void addStatistics(Statistics[] statistics) {
-    if (statistics == null) {
+    if (statistics == null || statistics[0] == null) {
       return;
     }
     initResult = true;

@@ -27,7 +27,6 @@ import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
@@ -252,18 +251,12 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
               "now try to delete directly, databasePath: {}, deletePath:{}",
               databaseToDelete.getFullPath(),
               path.getFullPath());
-          dataRegion.deleteDataDirectly(
-              databaseToDelete,
-              node.getDeleteStartTime(),
-              node.getDeleteEndTime(),
-              node.getSearchIndex());
+          dataRegion.deleteDataDirectly(databaseToDelete, node);
         } else {
-          dataRegion.deleteByDevice(
-              path, node.getDeleteStartTime(), node.getDeleteEndTime(), node.getSearchIndex());
+          dataRegion.deleteByDevice(path, node);
         }
       }
       dataRegion.insertSeparatorToWAL();
-      PipeInsertionDataNodeListener.getInstance().listenToDeleteData(node);
       return StatusUtils.OK;
     } catch (IOException | IllegalPathException e) {
       LOGGER.error("Error in executing plan node: {}", node, e);

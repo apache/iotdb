@@ -264,15 +264,7 @@ public class UpdateDetailContainer implements UpdateContainer {
                               .mapToLong(
                                   entry ->
                                       sizeOfList(entry.getKey())
-                                          + entry.getValue().size()
-                                              * RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
-                                          + entry.getValue().entrySet().stream()
-                                              .mapToLong(
-                                                  attributeKV ->
-                                                      RamUsageEstimator.sizeOf(attributeKV.getKey())
-                                                          + RamUsageEstimator.sizeOf(
-                                                              attributeKV.getValue()))
-                                              .reduce(0, Long::sum))
+                                          + sizeOfMapEntries(entry.getValue()))
                               .reduce(0, Long::sum));
                 }
               });
@@ -280,8 +272,18 @@ public class UpdateDetailContainer implements UpdateContainer {
     return new Pair<>(result.get(), updateMap.isEmpty());
   }
 
-  private static long sizeOfList(final List<String> input) {
+  private static long sizeOfList(final @Nonnull List<String> input) {
     return input.stream().map(RamUsageEstimator::sizeOf).reduce(LIST_SIZE, Long::sum);
+  }
+
+  public static long sizeOfMapEntries(final @Nonnull Map<String, String> map) {
+    return map.size() * RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+        + map.entrySet().stream()
+            .mapToLong(
+                innerEntry ->
+                    RamUsageEstimator.sizeOf(innerEntry.getKey())
+                        + RamUsageEstimator.sizeOf(innerEntry.getValue()))
+            .reduce(0, Long::sum);
   }
 
   @Override

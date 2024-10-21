@@ -49,7 +49,7 @@ public class CompactionTableSchema extends TableSchema {
     for (int i = 0; i < otherSchemaColumnTypes.size(); i++) {
       ColumnType columnType = otherSchemaColumnTypes.get(i);
       if (columnType != ColumnType.ID) {
-        break;
+        continue;
       }
       idColumnSchemasToMerge.add(otherSchemaColumnSchemas.get(i));
     }

@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.commons.consensus.index.ComparableConsensusRequest;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -52,7 +51,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public abstract class InsertNode extends SearchNode implements ComparableConsensusRequest {
+public abstract class InsertNode extends SearchNode {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 

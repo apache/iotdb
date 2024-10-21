@@ -96,7 +96,10 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessag
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.DropTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
@@ -342,6 +345,15 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case SetTableProperties:
           plan = new SetTablePropertiesPlan();
+          break;
+        case RenameTableColumn:
+          plan = new RenameTableColumnPlan();
+          break;
+        case PreDeleteTable:
+          plan = new PreDeleteTablePlan();
+          break;
+        case DropTable:
+          plan = new DropTablePlan();
           break;
         case CreatePipeSinkV1:
           plan = new CreatePipeSinkPlanV1();

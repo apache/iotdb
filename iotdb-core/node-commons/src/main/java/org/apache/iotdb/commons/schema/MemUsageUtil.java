@@ -41,7 +41,7 @@ public class MemUsageUtil {
    *       </ol>
    * </ol>
    */
-  public static long computeKVMemUsageInMap(String key, String value) {
+  public static long computeKVMemUsageInMap(final String key, final String value) {
     return 40L + estimateStringSize(key) + estimateStringSize(value);
   }
 

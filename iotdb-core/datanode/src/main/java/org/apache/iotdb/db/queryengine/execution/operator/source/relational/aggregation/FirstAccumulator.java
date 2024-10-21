@@ -196,12 +196,12 @@ public class FirstAccumulator implements TableAccumulator {
 
   @Override
   public boolean hasFinalResult() {
-    return initResult;
+    return false;
   }
 
   @Override
   public void addStatistics(Statistics[] statistics) {
-    if (statistics[0] == null) {
+    if (statistics == null || statistics[0] == null) {
       return;
     }
     switch (seriesDataType) {
