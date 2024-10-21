@@ -26,7 +26,6 @@ import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -1047,7 +1046,6 @@ public class IoTDBTableAggregationIT {
         "select min(time),min(s3) from table1", expectedHeader, retArray, DATABASE_NAME);
   }
 
-  @Ignore
   @Test
   public void minByTest() {
     String[] expectedHeader = new String[] {"device_id", "color", "type", "_col3", "_col4"};
@@ -1527,7 +1525,6 @@ public class IoTDBTableAggregationIT {
         "select max(time),max(s3) from table1", expectedHeader, retArray, DATABASE_NAME);
   }
 
-  @Ignore
   @Test
   public void maxByTest() {
     String[] expectedHeader = new String[] {"device_id", "color", "type", "_col3", "_col4"};
@@ -2716,7 +2713,6 @@ public class IoTDBTableAggregationIT {
         DATABASE_NAME);
   }
 
-  @Ignore
   @Test
   public void groupByValueTest() {
 
@@ -3256,7 +3252,6 @@ public class IoTDBTableAggregationIT {
         DATABASE_NAME);
   }
 
-  @Ignore
   @Test
   public void lastQueryTest() {
 
@@ -3540,7 +3535,6 @@ public class IoTDBTableAggregationIT {
         DATABASE_NAME);
   }
 
-  @Ignore
   @Test
   public void subQueryTest() {
 

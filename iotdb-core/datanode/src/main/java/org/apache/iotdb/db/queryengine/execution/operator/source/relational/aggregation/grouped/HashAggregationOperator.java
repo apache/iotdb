@@ -107,6 +107,10 @@ public class HashAggregationOperator extends AbstractOperator {
 
   @Override
   public TsBlock next() throws Exception {
+    if (retainedTsBlock != null) {
+      return getResultFromRetainedTsBlock();
+    }
+
     if (aggregationBuilder == null) {
       if (spillEnabled) {
         throw new UnsupportedOperationException();
