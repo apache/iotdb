@@ -46,6 +46,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.DatabaseModelException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
@@ -100,7 +101,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   @Override
   public SchemaPartition getSchemaPartition(final PathPatternTree patternTree) {
-    try (ConfigNodeClient client =
+    try (final ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       patternTree.constructTree();
       final List<IDeviceID> deviceIDs = patternTree.getAllDevicePatterns();
@@ -123,7 +124,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         }
       }
       return schemaPartition;
-    } catch (final ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException | DatabaseModelException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getSchemaPartition():" + e.getMessage());
     }
@@ -136,11 +137,11 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       patternTree.constructTree();
       final List<IDeviceID> deviceIDs = patternTree.getAllDevicePatterns();
-      Map<String, List<IDeviceID>> storageGroupToDeviceMap =
+      final Map<String, List<IDeviceID>> storageGroupToDeviceMap =
           partitionCache.getDatabaseToDevice(deviceIDs, true, true, userName);
       SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
       if (null == schemaPartition) {
-        TSchemaPartitionTableResp schemaPartitionTableResp =
+        final TSchemaPartitionTableResp schemaPartitionTableResp =
             client.getOrCreateSchemaPartitionTable(constructSchemaPartitionReq(patternTree));
         if (schemaPartitionTableResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -155,7 +156,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         }
       }
       return schemaPartition;
-    } catch (final ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException | DatabaseModelException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getOrCreateSchemaPartition():" + e.getMessage());
     }
