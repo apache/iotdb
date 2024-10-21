@@ -47,7 +47,6 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.reader.IPointReader;
-import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -306,7 +305,7 @@ public class TsFileProcessorTest {
     // Test Tablet
     processor.insertTablet(
         genInsertTableNode(0, true),
-        Collections.singletonList(new Pair<>(0, 10)),
+        Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[4]);
@@ -314,14 +313,14 @@ public class TsFileProcessorTest {
     Assert.assertEquals(1596808, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNode(100, true),
-        Collections.singletonList(new Pair<>(0, 10)),
+        Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[4]);
     Assert.assertEquals(1596808, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNode(200, true),
-        Collections.singletonList(new Pair<>(0, 10)),
+        Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[4]);
@@ -357,7 +356,7 @@ public class TsFileProcessorTest {
     // Test Tablet
     processor.insertTablet(
         genInsertTableNode(0, true),
-        Collections.singletonList(new Pair<>(0, 10)),
+        Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[4]);
@@ -365,49 +364,49 @@ public class TsFileProcessorTest {
     Assert.assertEquals(1596808, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNodeFors3000ToS6000(0, true),
-        Collections.singletonList(new Pair<>(0, 10)),
+        Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[4]);
     Assert.assertEquals(3192808, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNode(100, true),
-        Collections.singletonList(new Pair<>(0, 10)),
+        Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[4]);
     Assert.assertEquals(3192808, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNodeFors3000ToS6000(100, true),
-        Collections.singletonList(new Pair<>(0, 10)),
+        Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[4]);
     Assert.assertEquals(3192808, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNode(200, true),
-        Collections.singletonList(new Pair<>(0, 10)),
+        Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[4]);
     Assert.assertEquals(3192808, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNodeFors3000ToS6000(200, true),
-        Collections.singletonList(new Pair<>(0, 10)),
+        Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[4]);
     Assert.assertEquals(3192808, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNode(300, true),
-        Collections.singletonList(new Pair<>(0, 10)),
+        Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[4]);
     Assert.assertEquals(6385616, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNodeFors3000ToS6000(300, true),
-        Collections.singletonList(new Pair<>(0, 10)),
+        Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[4]);
@@ -451,7 +450,7 @@ public class TsFileProcessorTest {
     // Test tablet
     processor.insertTablet(
         genInsertTableNode(0, false),
-        Collections.singletonList(new Pair<>(0, 10)),
+        Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[4]);
@@ -459,14 +458,14 @@ public class TsFileProcessorTest {
     Assert.assertEquals(3192000, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNode(100, false),
-        Collections.singletonList(new Pair<>(0, 10)),
+        Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[4]);
     Assert.assertEquals(3192000, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNode(200, false),
-        Collections.singletonList(new Pair<>(0, 10)),
+        Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[4]);
