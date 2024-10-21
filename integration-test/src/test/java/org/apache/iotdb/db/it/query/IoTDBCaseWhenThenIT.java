@@ -889,6 +889,18 @@ public class IoTDBCaseWhenThenIT {
   }
 
   @Test
+  public void testKind1Logic() {
+    String sql =
+        "select case when s3 >= 0 and s3 < 20 and s4 >= 50 and s4 < 60 then 'just so so~~~' when s3 >= 20 and s3 < 40 and s4 >= 70 and s4 < 80 then 'very well~~~' end as result from root.sg.d2";
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, "result"};
+    String[] retArray =
+        new String[] {
+          "0,null,", "1000000,just so so~~~,", "20000000,null,", "210000000,very well~~~,",
+        };
+    resultSetEqualTest(sql, expectedHeader, retArray);
+  }
+
+  @Test
   public void testMultipleSatisfyCase() {
     // Test the result when two when clause are satisfied
     String sql =
