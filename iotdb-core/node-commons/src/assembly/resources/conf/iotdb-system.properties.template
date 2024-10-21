@@ -347,7 +347,7 @@ cn_metric_reporter_list=
 # Options: [OFF, CORE, IMPORTANT, NORMAL, ALL]
 # effectiveMode: restart
 # Datatype: String
-cn_metric_level=CORE
+cn_metric_level=IMPORTANT
 
 # The period of async collection of some metrics in second
 # effectiveMode: restart
@@ -370,7 +370,7 @@ dn_metric_reporter_list=
 # Options: [OFF, CORE, IMPORTANT, NORMAL, ALL]
 # effectiveMode: restart
 # Datatype: String
-dn_metric_level=CORE
+dn_metric_level=IMPORTANT
 
 # The period of async collection of some metrics in second
 # effectiveMode: restart
@@ -1187,7 +1187,7 @@ cross_selector=rewrite
 cross_performer=fast
 
 # the selector of inner sequence space compaction task
-# effectiveMode: hod_reload
+# effectiveMode: hot_reload
 # Options: size_tiered_single_target,size_tiered_multi_target
 inner_seq_selector=size_tiered_multi_target
 
