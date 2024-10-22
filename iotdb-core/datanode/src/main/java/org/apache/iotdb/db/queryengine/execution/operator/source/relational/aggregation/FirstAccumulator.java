@@ -128,7 +128,9 @@ public class FirstAccumulator implements TableAccumulator {
         case TEXT:
         case BLOB:
         case STRING:
-          Binary binaryVal = new Binary(BytesUtils.subBytes(bytes, offset, bytes.length - offset));
+          int length = BytesUtils.bytesToInt(bytes, offset);
+          offset += Integer.BYTES;
+          Binary binaryVal = new Binary(BytesUtils.subBytes(bytes, offset, length));
           updateBinaryFirstValue(binaryVal, time);
           break;
         case BOOLEAN:

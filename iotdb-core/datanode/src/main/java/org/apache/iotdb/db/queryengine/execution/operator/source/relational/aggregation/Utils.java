@@ -53,6 +53,8 @@ public class Utils {
       case TEXT:
       case STRING:
       case BLOB:
+        BytesUtils.intToBytes(value.getBinary().getValues().length, valueBytes, offset);
+        offset += 4;
         System.arraycopy(
             value.getBinary().getValues(),
             0,
@@ -108,7 +110,7 @@ public class Utils {
       case TEXT:
       case BLOB:
       case STRING:
-        return value.getBinary().getValues().length;
+        return 4 + value.getBinary().getValues().length;
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type : %s", dataType));
