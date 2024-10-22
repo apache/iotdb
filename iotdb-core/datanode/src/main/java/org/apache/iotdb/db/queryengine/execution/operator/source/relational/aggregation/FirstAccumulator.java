@@ -32,10 +32,6 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class FirstAccumulator implements TableAccumulator {
@@ -246,43 +242,48 @@ public class FirstAccumulator implements TableAccumulator {
   }
 
   private byte[] serializeTimeWithValue() {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    try {
-      dataOutputStream.writeLong(minTime);
-      switch (seriesDataType) {
-        case INT32:
-        case DATE:
-          dataOutputStream.writeInt(firstValue.getInt());
-          break;
-        case INT64:
-        case TIMESTAMP:
-          dataOutputStream.writeLong(firstValue.getLong());
-          break;
-        case FLOAT:
-          dataOutputStream.writeFloat(firstValue.getFloat());
-          break;
-        case DOUBLE:
-          dataOutputStream.writeDouble(firstValue.getDouble());
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-          dataOutputStream.writeInt(firstValue.getBinary().getValues().length);
-          dataOutputStream.write(firstValue.getBinary().getValues());
-          break;
-        case BOOLEAN:
-          dataOutputStream.writeBoolean(firstValue.getBoolean());
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in Extreme: %s", seriesDataType));
-      }
-    } catch (IOException e) {
-      throw new UnsupportedOperationException(
-          "Failed to serialize intermediate result for AvgAccumulator.", e);
+    byte[] valueBytes;
+    switch (seriesDataType) {
+      case INT32:
+      case DATE:
+        valueBytes = new byte[12];
+        BytesUtils.longToBytes(minTime, valueBytes, 0);
+        BytesUtils.intToBytes(firstValue.getInt(), valueBytes, 8);
+        return valueBytes;
+      case INT64:
+      case TIMESTAMP:
+        valueBytes = new byte[16];
+        BytesUtils.longToBytes(minTime, valueBytes, 0);
+        BytesUtils.longToBytes(firstValue.getLong(), valueBytes, 8);
+        return valueBytes;
+      case FLOAT:
+        valueBytes = new byte[12];
+        BytesUtils.longToBytes(minTime, valueBytes, 0);
+        BytesUtils.floatToBytes(firstValue.getFloat(), valueBytes, 8);
+        return valueBytes;
+      case DOUBLE:
+        valueBytes = new byte[16];
+        BytesUtils.longToBytes(minTime, valueBytes, 0);
+        BytesUtils.doubleToBytes(firstValue.getDouble(), valueBytes, 8);
+        return valueBytes;
+      case BOOLEAN:
+        valueBytes = new byte[9];
+        BytesUtils.longToBytes(minTime, valueBytes, 0);
+        BytesUtils.boolToBytes(firstValue.getBoolean(), valueBytes, 8);
+        return valueBytes;
+      case TEXT:
+      case BLOB:
+      case STRING:
+        int length = firstValue.getBinary().getValues().length;
+        valueBytes = new byte[8 + 4 + length];
+        BytesUtils.longToBytes(minTime, valueBytes, 0);
+        BytesUtils.intToBytes(length, valueBytes, 8);
+        System.arraycopy(firstValue.getBinary().getValues(), 0, valueBytes, 12, length);
+        return valueBytes;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type in Extreme: %s", seriesDataType));
     }
-    return byteArrayOutputStream.toByteArray();
   }
 
   private void addIntInput(Column valueColumn, Column timeColumn) {

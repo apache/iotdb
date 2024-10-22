@@ -111,6 +111,15 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         "insert into table1(time, device, level, attr1, attr2, num,bigNum,floatNum,str,bool) values(40, 'd11', 'l11', 'c', 'd', 3, 2947483648, 231.2121, 'coconut', FALSE)"
       };
 
+  public static void main(String[] args) {
+    for (String s : sql1) {
+      System.out.println(s + ";");
+    }
+    for (String s : sql2) {
+      System.out.println(s + ";");
+    }
+  }
+
   String[] expectedHeader;
   String[] retArray;
   String sql;
