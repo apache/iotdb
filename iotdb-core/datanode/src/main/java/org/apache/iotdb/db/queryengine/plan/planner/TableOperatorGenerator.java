@@ -1678,22 +1678,22 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       AggregationNode.Aggregation aggregation = entry.getValue();
       String funcName = aggregation.getResolvedFunction().getSignature().getName();
 
-      if (FIRST_AGGREGATION.equals(funcName) || FIRST_BY_AGGREGATION.equals(funcName)) {
-        ascendingCount++;
-      }
-      if (LAST_AGGREGATION.equals(funcName) || LAST_BY_AGGREGATION.equals(funcName)) {
-        descendingCount++;
-      }
-
-      // first/last/first_by/last_by aggregation with BLOB type can not use statistics
       if (FIRST_AGGREGATION.equals(funcName)
           || LAST_AGGREGATION.equals(funcName)
           || LAST_BY_AGGREGATION.equals(funcName)
           || FIRST_BY_AGGREGATION.equals(funcName)) {
+
+        if (FIRST_AGGREGATION.equals(funcName) || FIRST_BY_AGGREGATION.equals(funcName)) {
+          ascendingCount++;
+        } else {
+          descendingCount++;
+        }
+
+        // first/last/first_by/last_by aggregation with BLOB type can not use statistics
         Symbol argument = Symbol.from(aggregation.getArguments().get(0));
-        if (!node.getAssignments().containsKey(argument)
-            || BlobType.BLOB.equals(node.getAssignments().get(argument).getType())) {
+        if (BlobType.BLOB.equals(node.getAssignments().get(argument).getType())) {
           canUseStatistic = false;
+          continue;
         }
 
         // only last_by(time, x) or last_by(x,time) can use statistic
