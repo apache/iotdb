@@ -1174,7 +1174,7 @@ public class IoTDBConfig {
 
   private long loadActiveListeningCheckIntervalSeconds = 5L;
 
-  private int loadActiveListeningMaxThreadNum = 8;
+  private int loadActiveListeningMaxThreadNum = Runtime.getRuntime().availableProcessors();
 
   /** Pipe related */
   /** initialized as empty, updated based on the latest `systemDir` during querying */
