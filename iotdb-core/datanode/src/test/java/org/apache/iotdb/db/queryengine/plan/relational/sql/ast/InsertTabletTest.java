@@ -63,14 +63,14 @@ public class InsertTabletTest {
         new Object[] {
           new Binary[] {
             new Binary("id1_1", StandardCharsets.UTF_8),
-            new Binary("id2_1", StandardCharsets.UTF_8),
             Binary.EMPTY_VALUE,
+            new Binary("id3_1", StandardCharsets.UTF_8),
             Binary.EMPTY_VALUE,
           },
           new Binary[] {
             new Binary("id1_2", StandardCharsets.UTF_8),
+            new Binary("id2_2", StandardCharsets.UTF_8),
             Binary.EMPTY_VALUE,
-            new Binary("id3_2", StandardCharsets.UTF_8),
             Binary.EMPTY_VALUE,
           },
           new Binary[] {
@@ -94,8 +94,8 @@ public class InsertTabletTest {
         });
     innerStmt.setBitMaps(
         new BitMap[] {
-          new BitMap(4, new byte[] {1 << 2 | 1 << 3}),
           new BitMap(4, new byte[] {1 << 1 | 1 << 3}),
+          new BitMap(4, new byte[] {1 << 2 | 1 << 3}),
           new BitMap(4, new byte[] {1 << 2 | 1 << 3}),
           new BitMap(4, new byte[] {1 << 1 | 1 << 3}),
           new BitMap(4, new byte[] {0x00}),
@@ -123,8 +123,8 @@ public class InsertTabletTest {
     assertEquals(4, deviceIdList.size());
     assertArrayEquals(new Object[] {"id1_1", "id1_2"}, deviceIdList.get(0));
     // notice: trailing nulls are removed
-    assertArrayEquals(new Object[] {"id2_1"}, deviceIdList.get(1));
-    assertArrayEquals(new Object[] {null, "id3_2"}, deviceIdList.get(2));
+    assertArrayEquals(new Object[] {null, "id2_2"}, deviceIdList.get(1));
+    assertArrayEquals(new Object[] {"id3_1"}, deviceIdList.get(2));
     assertArrayEquals(new Object[] {}, deviceIdList.get(3));
   }
 }
