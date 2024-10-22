@@ -155,7 +155,7 @@ public class QueryExecution implements IQueryExecution {
 
   @Override
   public void start() {
-    long startTime = System.nanoTime();
+    final long startTime = System.nanoTime();
     if (skipExecute()) {
       LOGGER.debug("[SkipExecute]");
       if (analysis.isFailed()) {
