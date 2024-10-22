@@ -93,7 +93,7 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
     // this can reduce write amplification
     double avgCompactionCount1 = o1.getAvgCompactionCount();
     double avgCompactionCount2 = o2.getAvgCompactionCount();
-    if (Math.abs(avgCompactionCount1 - avgCompactionCount2) < 1e-2) {
+    if (Math.abs(avgCompactionCount1 - avgCompactionCount2) > 1e-2) {
       return Double.compare(avgCompactionCount1, avgCompactionCount2);
     }
 
