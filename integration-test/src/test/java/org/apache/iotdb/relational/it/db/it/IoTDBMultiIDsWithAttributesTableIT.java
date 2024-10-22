@@ -1040,6 +1040,29 @@ public class IoTDBMultiIDsWithAttributesTableIT {
     sql =
         "select device,level,max(num),max(bignum),max(floatnum),min(num),min(bignum),min(floatnum) from table0 group by device,level order by device,level";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    // no push-down, test GroupedAccumulator
+    expectedHeader =
+        new String[] {
+          "device", "level", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9",
+          "_col10", "_col11", "_col12"
+        };
+    retArray =
+        new String[] {
+          "d1,l1,11,2947483648,1231.21,3,2147468648,54.121,pitaya,banana,true,false,3,",
+          "d1,l2,12,3147483648,434.12,2,2146483648,45.231,strawberry,pineapple,true,false,3,",
+          "d1,l3,14,2907483648,231.34,1,2147493648,12.123,peach,apricot,true,false,3,",
+          "d1,l4,13,2149783648,56.32,5,2107483648,43.12,orange,apple,true,false,3,",
+          "d1,l5,15,3147483648,4654.231,7,2147483964,213.112,watermelon,lemon,true,true,3,",
+          "d2,l1,11,2947483648,1231.21,3,2147468648,54.121,pitaya,banana,true,false,3,",
+          "d2,l2,12,3147483648,434.12,2,2146483648,45.231,strawberry,pineapple,true,false,3,",
+          "d2,l3,14,2907483648,231.34,1,2147493648,12.123,peach,apricot,true,false,3,",
+          "d2,l4,13,2149783648,56.32,5,2107483648,43.12,orange,apple,true,false,3,",
+          "d2,l5,15,3147483648,4654.231,7,2147483964,213.112,watermelon,lemon,true,true,3,",
+        };
+    sql =
+        "select device,level,max(num),max(bignum),max(floatnum),min(num),min(bignum),min(floatnum),max(str),min(str),max(bool),min(bool),count(num+1) from table0 group by device,level order by device,level";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
   @Test
@@ -1117,6 +1140,25 @@ public class IoTDBMultiIDsWithAttributesTableIT {
     expectedHeader = buildHeaders(3);
     sql = "select extreme(num),extreme(bignum),extreme(floatnum) from table0";
     retArray = new String[] {"15,3147483648,4654.231,"};
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    // no push-down, test GroupedAccumulator
+    expectedHeader = buildHeaders(5);
+    retArray =
+        new String[] {
+          "1971-01-01T00:01:40.000Z,1971-01-01T00:00:00.000Z,1971-01-01T00:00:00.000Z,1971-01-01T00:01:40.000Z,3,",
+          "1971-04-26T17:46:40.000Z,1970-01-01T00:00:00.020Z,1970-01-01T00:00:00.020Z,1971-04-26T17:46:40.000Z,3,",
+          "1971-01-01T00:00:00.500Z,1970-01-01T00:00:00.040Z,1970-01-01T00:00:00.040Z,1971-04-26T17:46:40.020Z,3,",
+          "1971-01-01T00:00:01.000Z,1970-01-01T00:00:00.080Z,1971-04-26T18:01:40.000Z,1971-01-01T00:00:01.000Z,3,",
+          "1971-08-20T11:33:20.000Z,1971-01-01T00:00:10.000Z,1971-08-20T11:33:20.000Z,1970-01-01T00:00:00.100Z,3,",
+          "1971-01-01T00:01:40.000Z,1971-01-01T00:00:00.000Z,1971-01-01T00:00:00.000Z,1971-01-01T00:01:40.000Z,3,",
+          "1971-04-26T17:46:40.000Z,1970-01-01T00:00:00.020Z,1970-01-01T00:00:00.020Z,1971-04-26T17:46:40.000Z,3,",
+          "1971-01-01T00:00:00.500Z,1970-01-01T00:00:00.040Z,1970-01-01T00:00:00.040Z,1971-04-26T17:46:40.020Z,3,",
+          "1971-01-01T00:00:01.000Z,1970-01-01T00:00:00.080Z,1971-04-26T18:01:40.000Z,1971-01-01T00:00:01.000Z,3,",
+          "1971-08-20T11:33:20.000Z,1971-01-01T00:00:10.000Z,1971-08-20T11:33:20.000Z,1970-01-01T00:00:00.100Z,3,",
+        };
+    sql =
+        "select max_by(time,str),min_by(time,str),max_by(time,bool),min_by(time,bool),count(num+1) from table0 group by device,level order by device,level";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
