@@ -196,7 +196,7 @@ public class FirstAccumulator implements TableAccumulator {
 
   @Override
   public boolean hasFinalResult() {
-    return false;
+    return initResult;
   }
 
   @Override
