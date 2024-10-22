@@ -135,7 +135,8 @@ public class FileReaderManager {
             && versionNumber != TSFileConfig.VERSION_NUMBER_V3) {
           tsFileReader.close();
           throw new IOException(
-              String.format("The version of TsFile %s is not correct.", filePath));
+              String.format(
+                  "The version of TsFile %s is not correct: %s", filePath, versionNumber));
         }
       }
       readerMap.put(filePath, tsFileReader);
