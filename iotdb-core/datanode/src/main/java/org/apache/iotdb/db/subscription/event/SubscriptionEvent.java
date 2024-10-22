@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.subscription.event;
 
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeEvents;
@@ -47,6 +48,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext.INVALID_COMMIT_ID;
@@ -417,8 +419,8 @@ public class SubscriptionEvent {
 
   /////////////////////////////// APIs provided for metric framework ///////////////////////////////
 
-  public int getPipeEventCount() {
-    return pipeEvents.getPipeEventCount();
+  public int getPipeEventCount(final Predicate<EnrichedEvent> predicate) {
+    return pipeEvents.getPipeEventCount(predicate);
   }
 
   /////////////////////////////// object ///////////////////////////////

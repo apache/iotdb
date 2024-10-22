@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.subscription.event.pipe;
 
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTsFileEventBatch;
 
 import java.io.File;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Predicate;
 
 public class SubscriptionPipeTsFileBatchEvents implements SubscriptionPipeEvents {
 
@@ -76,9 +78,9 @@ public class SubscriptionPipeTsFileBatchEvents implements SubscriptionPipeEvents
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 
   @Override
-  public int getPipeEventCount() {
+  public int getPipeEventCount(final Predicate<EnrichedEvent> predicate) {
     // Since multiple events will share the same batch, equal division is performed here.
     // If it is not exact, round up to remain pessimistic.
-    return (batch.getPipeEventCount() + count - 1) / count;
+    return (batch.getPipeEventCount(predicate) + count - 1) / count;
   }
 }

@@ -17,37 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.subscription.event.pipe;
+package org.apache.iotdb.commons.pipe.agent.task.progress;
 
-import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-
-import java.io.File;
-import java.util.function.Predicate;
-
-public class SubscriptionPipeEmptyEvent implements SubscriptionPipeEvents {
-
-  @Override
-  public File getTsFile() {
-    return null;
-  }
-
-  @Override
-  public void ack() {}
-
-  @Override
-  public void cleanUp() {}
-
-  /////////////////////////////// stringify ///////////////////////////////
-
-  @Override
-  public String toString() {
-    return "SubscriptionEmptyPipeEvent";
-  }
-
-  //////////////////////////// APIs provided for metric framework ////////////////////////////
-
-  @Override
-  public int getPipeEventCount(final Predicate<EnrichedEvent> predicate) {
-    return 0;
-  }
+@FunctionalInterface
+public interface CommitRateMarker {
+  void accept(
+      final String pipeID, final boolean isDataRegion, final boolean isDataRegionRealtimeEvent);
 }
