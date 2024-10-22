@@ -47,6 +47,8 @@ public class TopicMeta {
 
   private TopicMeta() {
     this.config = new TopicConfig(new HashMap<>());
+
+    this.subscribedConsumerGroupIds = new HashSet<>();
   }
 
   public TopicMeta(
