@@ -98,6 +98,8 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
       final String pipeName =
           PipeStaticMeta.generateSubscriptionPipeName(topicName, consumerGroupId);
       if (!subscriptionInfo.get().isTopicSubscribedByConsumerGroup(topicName, consumerGroupId)
+          // even if there existed subscription meta, if there is no corresponding pipe meta, it
+          // will try to create the pipe
           || !pipeTaskInfo.get().isPipeExisted(pipeName)) {
         final TopicMeta topicMeta = subscriptionInfo.get().deepCopyTopicMeta(topicName);
         createPipeProcedures.add(
