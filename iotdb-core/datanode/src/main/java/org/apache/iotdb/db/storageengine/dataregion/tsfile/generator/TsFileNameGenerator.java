@@ -341,7 +341,7 @@ public class TsFileNameGenerator {
                       tsFileResources.get(0).getTimePartition(),
                       tsFileName.time,
                       tsFileName.version,
-                      (int) maxInnerCompactionCount,
+                      (int) maxInnerCompactionCount + 1,
                       (int) maxCrossMergeCount,
                       maxTierLevel,
                       IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)),
