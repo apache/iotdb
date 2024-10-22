@@ -151,7 +151,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
 
   @Override
   protected void executeFromOperateOnDataNodes(final ConfigNodeProcedureEnv env)
-      throws IOException {
+      throws SubscriptionException, IOException {
     LOGGER.info("DropSubscriptionProcedure: executeFromOperateOnDataNodes");
 
     // Push pipe meta to data nodes
