@@ -47,7 +47,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         "CREATE DATABASE db",
         "USE db",
         "CREATE TABLE table0 (device string id, level string id, attr1 string attribute, attr2 string attribute, num int32 measurement, bigNum int64 measurement, "
-            + "floatNum double measurement, str TEXT measurement, bool BOOLEAN measurement, date DATE measurement, blob BLOB measurement, ts TIMESTAMP measurement, stringV STRING measurement)",
+            + "floatNum double measurement, str TEXT measurement, bool BOOLEAN measurement, date DATE measurement, blob BLOB measurement, ts TIMESTAMP measurement, stringV STRING measurement, doubleNum DOUBLE measurement)",
         "insert into table0(device, level, attr1, attr2, time,num,bigNum,floatNum,str,bool) values('d1', 'l1', 'c', 'd', 0,3,2947483648,231.2121,'coconut',FALSE)",
         "insert into table0(device, level, attr1, attr2, time,num,bigNum,floatNum,str,bool,blob,ts) values('d1', 'l2', 'y', 'z', 20,2,2147483648,434.12,'pineapple',TRUE,X'108DCD62',2024-09-24T06:15:35.000+00:00)",
         "insert into table0(device, level, attr1, attr2, time,num,bigNum,floatNum,str,bool) values('d1', 'l3', 't', 'a', 40,1,2247483648,12.123,'apricot',TRUE)",
@@ -89,24 +89,26 @@ public class IoTDBMultiIDsWithAttributesTableIT {
   private static final String[] sql3 =
       new String[] {
         "CREATE TABLE table1 (device string id, level string id, attr1 string attribute, attr2 string attribute, num int32 measurement, bigNum int64 measurement, "
-            + "floatNum double measurement, str TEXT measurement, bool BOOLEAN measurement, date DATE measurement, blob BLOB measurement)",
-        "insert into table1(device, level, attr1, attr2, time, num, bigNum, floatNum, str, bool, date, blob) "
-            + "values('d1', 'l1', 'c', 'd', 0, 3, 2947483648,231.2121, 'coconut', FALSE, '2023-01-01', X'100DCD62')",
-        "insert into table1(device, level, attr1, attr2, time, num, bigNum, floatNum, str, bool, blob) "
-            + "values('d1', 'l2', 'y', 'z', 20, 2, 2147483648,434.12, 'pineapple', TRUE, X'101DCD62')",
-        "insert into table1(device, level, attr1, attr2, time, num, bigNum, floatNum, str, bool, blob) "
-            + "values('d1', 'l3', 't', 'a', 40, 1, 2247483648,12.123, 'apricot', TRUE, null)",
-        "insert into table1(device, level, time, num, bigNum, floatNum, str, bool, blob) "
-            + "values('d1', 'l4', 80, 9, 2147483646, 43.12, 'apple', FALSE, X'104DCD62')",
-        "insert into table1(device, level, time, num, bigNum, floatNum, str, bool, date, blob) "
-            + "values('d1', 'l5', 100, 8, 2147483964, 4654.231, 'papaya', TRUE, '2023-05-01', null)",
+            + "floatNum double measurement, str TEXT measurement, bool BOOLEAN measurement, date DATE measurement, blob BLOB measurement, doubleNum DOUBLE measurement)",
+        "insert into table1(device, level, attr1, attr2, time, num, bigNum, floatNum, str, bool, date, blob) values('d1', 'l1', 'c', 'd', 0, 3, 2947483648,231.2121, 'coconut', FALSE, '2023-01-01', X'100DCD62')",
+        "insert into table1(device, level, attr1, attr2, time, num, bigNum, floatNum, str, bool, blob) values('d1', 'l2', 'y', 'z', 20, 2, 2147483648,434.12, 'pineapple', TRUE, X'101DCD62')",
+        "insert into table1(device, level, attr1, attr2, time, num, bigNum, floatNum, str, bool, blob) values('d1', 'l3', 't', 'a', 40, 1, 2247483648,12.123, 'apricot', TRUE, null)",
+        "insert into table1(device, level, time, num, bigNum, floatNum, str, bool, blob) values('d1', 'l4', 80, 9, 2147483646, 43.12, 'apple', FALSE, X'104DCD62')",
+        "insert into table1(device, level, time, num, bigNum, floatNum, str, bool, date, blob) values('d1', 'l5', 100, 8, 2147483964, 4654.231, 'papaya', TRUE, '2023-05-01', null)",
         "flush",
-        "insert into table1(device, level, time, num, bigNum, floatNum, str, bool, blob) "
-            + "values('d1', 'l1', 31536000000, 6, 2147483650, 1231.21, 'banana', TRUE, X'106DCD62')",
-        "insert into table1(device, time, num, bigNum, floatNum, str, bool, blob) "
-            + "values('d999', 31536000000, 6, 2147483650, 1231.21, 'banana', TRUE, X'107DCD62')",
-        "insert into table1(level, time, num, bigNum, floatNum, str, bool, date, blob) "
-            + "values('l999', 31536000000, 6, 2147483650, 1231.21, 'banana', TRUE, '2023-10-01', X'108DCD62')",
+        "insert into table1(device, level, time, num, bigNum, floatNum, str, bool, blob) values('d1', 'l1', 31536000000, 6, 2147483650, 1231.21, 'banana', TRUE, X'106DCD62')",
+        "insert into table1(device, time, num, bigNum, floatNum, str, bool, blob) values('d999', 31536000000, 6, 2147483650, 1231.21, 'banana', TRUE, X'107DCD62')",
+        "insert into table1(level, time, num, bigNum, floatNum, str, bool, date, blob) values('l999', 31536000000, 6, 2147483650, 1231.21, 'banana', TRUE, '2023-10-01', X'108DCD62')",
+        "flush",
+        "insert into table1(time, device, level, attr1, attr2, num,bigNum,floatNum,str,bool) values(0, 'd11', 'l11', 'c', 'd', 3, 2947483648, 231.2121, 'coconut', FALSE)",
+        "flush",
+        "insert into table1(time, device, level, attr1, attr2, num,bigNum,floatNum,str,bool) values(10, 'd11', 'l11', 'c', 'd', 3, 2947483648, 231.2121, 'coconut', FALSE)",
+        "flush",
+        "insert into table1(time, device, level, attr1, attr2, num,bigNum,floatNum,str,bool) values(20, 'd11', 'l11', 'c', 'd', 3, 2947483648, 231.2121, 'coconut', FALSE)",
+        "flush",
+        "insert into table1(time, device, level, attr1, attr2, num,bigNum,floatNum,str,bool) values(30, 'd11', 'l11', 'c', 'd', 3, 2947483648, 231.2121, 'coconut', FALSE)",
+        "flush",
+        "insert into table1(time, device, level, attr1, attr2, num,bigNum,floatNum,str,bool) values(40, 'd11', 'l11', 'c', 'd', 3, 2947483648, 231.2121, 'coconut', FALSE)"
       };
 
   String[] expectedHeader;
@@ -540,7 +542,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
             + "count(attr1) as count_attr1, count(device) as count_device, \n"
             + "round(avg(floatnum)) as avg_floatnum, count(date) as count_date, count(level) as count_level,"
             + "count(time) as count_time, count(*) as count_star "
-            + "from table1",
+            + "from table1 where device != 'd11' or device is null",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -877,6 +879,15 @@ public class IoTDBMultiIDsWithAttributesTableIT {
           "1971-04-26T17:46:40.000Z,1,1,1,0,1,1,1,12.0,"
         };
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    // flush multi times, generated multi tsfile
+    expectedHeader = buildHeaders(1);
+    sql = "select date_bin(40ms,time), first(time) from table1 where device='d11' group by 1";
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.000Z,",
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.000Z,"
+        };
 
     // TODO(beyyes) test below
     //    sql = "select count(*) from (\n" +
