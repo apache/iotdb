@@ -36,9 +36,11 @@ import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -58,6 +60,9 @@ public abstract class AbstractOperateSubscriptionProcedure
       "Skip subscription-related operations and do nothing";
 
   private static final int RETRY_THRESHOLD = 1;
+
+  // Only used in rollback to reduce the number of network calls
+  protected boolean isRollbackFromOperateOnDataNodesSuccessful = false;
 
   protected AtomicReference<SubscriptionInfo> subscriptionInfo;
 
@@ -263,7 +268,9 @@ public abstract class AbstractOperateSubscriptionProcedure
         break;
       case OPERATE_ON_CONFIG_NODES:
         try {
-          rollbackFromOperateOnConfigNodes(env);
+          if (!isRollbackFromOperateOnDataNodesSuccessful) {
+            rollbackFromOperateOnConfigNodes(env);
+          }
         } catch (Exception e) {
           LOGGER.warn(
               "ProcedureId {}: Failed to rollback from state [{}], because {}",
@@ -275,7 +282,9 @@ public abstract class AbstractOperateSubscriptionProcedure
         break;
       case OPERATE_ON_DATA_NODES:
         try {
+          rollbackFromOperateOnConfigNodes(env);
           rollbackFromOperateOnDataNodes(env);
+          isRollbackFromOperateOnDataNodesSuccessful = true;
         } catch (Exception e) {
           LOGGER.warn(
               "ProcedureId {}: Failed to rollback from state [{}], because {}",
@@ -293,10 +302,11 @@ public abstract class AbstractOperateSubscriptionProcedure
 
   protected abstract void rollbackFromValidate(ConfigNodeProcedureEnv env);
 
-  protected abstract void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env);
+  protected abstract void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env)
+      throws SubscriptionException;
 
   protected abstract void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
-      throws IOException;
+      throws SubscriptionException, IOException;
 
   /**
    * Pushing all the topicMeta's to all the dataNodes.
@@ -364,5 +374,17 @@ public abstract class AbstractOperateSubscriptionProcedure
   @Override
   protected OperateSubscriptionState getInitialState() {
     return OperateSubscriptionState.VALIDATE;
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    super.serialize(stream);
+    ReadWriteIOUtils.write(isRollbackFromOperateOnDataNodesSuccessful, stream);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer byteBuffer) {
+    super.deserialize(byteBuffer);
+    isRollbackFromOperateOnDataNodesSuccessful = ReadWriteIOUtils.readBool(byteBuffer);
   }
 }

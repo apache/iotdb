@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -43,9 +43,9 @@ public class SubscriptionMetaSyncer {
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
           ThreadName.SUBSCRIPTION_RUNTIME_META_SYNCER.getName());
   private static final long INITIAL_SYNC_DELAY_MINUTES =
-      PipeConfig.getInstance().getPipeMetaSyncerInitialSyncDelayMinutes();
+      SubscriptionConfig.getInstance().getSubscriptionMetaSyncerInitialSyncDelayMinutes();
   private static final long SYNC_INTERVAL_MINUTES =
-      PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes();
+      SubscriptionConfig.getInstance().getSubscriptionMetaSyncerSyncIntervalMinutes();
 
   private final ConfigManager configManager;
 

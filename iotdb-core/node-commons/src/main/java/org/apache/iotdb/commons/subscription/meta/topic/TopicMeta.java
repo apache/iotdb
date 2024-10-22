@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.subscription.meta.topic;
 
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 
 import org.apache.tsfile.utils.PublicBAOS;
@@ -42,12 +43,10 @@ public class TopicMeta {
   private long creationTime; // unit in ms
   private TopicConfig config;
 
-  private Set<String> subscribedConsumerGroupIds;
+  private Set<String> subscribedConsumerGroupIds; // unused now, always empty
 
   private TopicMeta() {
     this.config = new TopicConfig(new HashMap<>());
-
-    this.subscribedConsumerGroupIds = new HashSet<>();
   }
 
   public TopicMeta(
@@ -84,22 +83,27 @@ public class TopicMeta {
   /**
    * @return true if the consumer group did not already subscribe this topic
    */
+  @TestOnly
   public boolean addSubscribedConsumerGroup(final String consumerGroupId) {
     return subscribedConsumerGroupIds.add(consumerGroupId);
   }
 
+  @TestOnly
   public void removeSubscribedConsumerGroup(final String consumerGroupId) {
     subscribedConsumerGroupIds.remove(consumerGroupId);
   }
 
+  @TestOnly
   public Set<String> getSubscribedConsumerGroupIds() {
     return subscribedConsumerGroupIds;
   }
 
+  @TestOnly
   public boolean isSubscribedByConsumerGroup(final String consumerGroupId) {
     return subscribedConsumerGroupIds.contains(consumerGroupId);
   }
 
+  @TestOnly
   public boolean hasSubscribedConsumerGroup() {
     return !subscribedConsumerGroupIds.isEmpty();
   }
@@ -218,13 +222,12 @@ public class TopicMeta {
     final TopicMeta that = (TopicMeta) obj;
     return creationTime == that.creationTime
         && Objects.equals(topicName, that.topicName)
-        && Objects.equals(config, that.config)
-        && Objects.equals(subscribedConsumerGroupIds, that.subscribedConsumerGroupIds);
+        && Objects.equals(config, that.config);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(topicName, creationTime, subscribedConsumerGroupIds, config);
+    return Objects.hash(topicName, creationTime, config);
   }
 
   @Override
@@ -232,13 +235,10 @@ public class TopicMeta {
     return "TopicMeta{"
         + "topicName='"
         + topicName
-        + '\''
-        + ", creationTime="
+        + "', creationTime="
         + creationTime
         + ", config="
         + config
-        + ", subscribedConsumerGroupIds="
-        + subscribedConsumerGroupIds
         + '}';
   }
 }

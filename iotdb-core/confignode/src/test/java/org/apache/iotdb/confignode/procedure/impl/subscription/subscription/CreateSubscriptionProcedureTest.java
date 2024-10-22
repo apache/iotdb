@@ -21,10 +21,8 @@ package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
-import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.CreatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.AlterConsumerGroupProcedure;
-import org.apache.iotdb.confignode.procedure.impl.subscription.topic.AlterTopicProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
@@ -74,11 +72,6 @@ public class CreateSubscriptionProcedureTest {
     AlterConsumerGroupProcedure alterConsumerGroupProcedure =
         new AlterConsumerGroupProcedure(newConsumerGroupMeta);
 
-    List<AlterTopicProcedure> topicProcedures = new ArrayList<>();
-    TopicMeta newTopicMeta = new TopicMeta("t1", 1, topicAttributes);
-    newTopicMeta.addSubscribedConsumerGroup("cg1");
-    topicProcedures.add(new AlterTopicProcedure(newTopicMeta));
-
     List<CreatePipeProcedureV2> pipeProcedures = new ArrayList<>();
     pipeProcedures.add(
         new CreatePipeProcedureV2(
@@ -92,7 +85,6 @@ public class CreateSubscriptionProcedureTest {
                 .setProcessorAttributes(Collections.singletonMap("processor", "pro"))));
 
     proc.setAlterConsumerGroupProcedure(alterConsumerGroupProcedure);
-    proc.setAlterTopicProcedures(topicProcedures);
     proc.setCreatePipeProcedures(pipeProcedures);
 
     try {
@@ -104,7 +96,6 @@ public class CreateSubscriptionProcedureTest {
 
       assertEquals(proc, proc2);
       assertEquals(alterConsumerGroupProcedure, proc2.getAlterConsumerGroupProcedure());
-      assertEquals(topicProcedures, proc2.getAlterTopicProcedures());
       assertEquals(pipeProcedures, proc2.getCreatePipeProcedures());
     } catch (Exception e) {
       e.printStackTrace();
