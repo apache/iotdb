@@ -517,13 +517,16 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
           tsFileManager.getTsFileList(true).stream()
               .filter(
                   resource ->
-                      // Some resource may not be closed due to the control of
-                      // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
-                      !resource.isClosed()
-                          || mayTsFileContainUnprocessedData(resource)
-                              && isTsFileResourceOverlappedWithTimeRange(resource)
-                              && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
-                              && mayTsFileResourceOverlappedWithPattern(resource))
+                      // Some resource is marked as deleted but not removed from the list.
+                      !resource.isDeleted()
+                          && (
+                          // Some resource may not be closed due to the control of
+                          // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
+                          !resource.isClosed()
+                              || mayTsFileContainUnprocessedData(resource)
+                                  && isTsFileResourceOverlappedWithTimeRange(resource)
+                                  && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
+                                  && mayTsFileResourceOverlappedWithPattern(resource)))
               .collect(Collectors.toList());
       resourceList.addAll(sequenceTsFileResources);
 
@@ -531,13 +534,16 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
           tsFileManager.getTsFileList(false).stream()
               .filter(
                   resource ->
-                      // Some resource may not be closed due to the control of
-                      // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
-                      !resource.isClosed()
-                          || mayTsFileContainUnprocessedData(resource)
-                              && isTsFileResourceOverlappedWithTimeRange(resource)
-                              && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
-                              && mayTsFileResourceOverlappedWithPattern(resource))
+                      // Some resource is marked as deleted but not removed from the list.
+                      !resource.isDeleted()
+                          && (
+                          // Some resource may not be closed due to the control of
+                          // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
+                          !resource.isClosed()
+                              || mayTsFileContainUnprocessedData(resource)
+                                  && isTsFileResourceOverlappedWithTimeRange(resource)
+                                  && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
+                                  && mayTsFileResourceOverlappedWithPattern(resource)))
               .collect(Collectors.toList());
       resourceList.addAll(unsequenceTsFileResources);
 
