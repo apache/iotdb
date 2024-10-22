@@ -179,6 +179,7 @@ public class SubscriptionBrokerAgent {
                 LOGGER.warn(
                     "Subscription: broker bound to consumer group [{}] does not exist, create new for binding prefetching queue",
                     consumerGroupId);
+                // TODO: consider more robust metadata semantics
                 return new SubscriptionBroker(consumerGroupId);
               }
               return broker;
