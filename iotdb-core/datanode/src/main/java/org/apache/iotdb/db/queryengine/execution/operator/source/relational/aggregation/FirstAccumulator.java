@@ -33,6 +33,7 @@ import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Utils.serializeTimeValue;
 
 public class FirstAccumulator implements TableAccumulator {
 
@@ -103,7 +104,7 @@ public class FirstAccumulator implements TableAccumulator {
 
       byte[] bytes = argument.getBinary(i).getValues();
       long time = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, 0);
-      int offset = Long.BYTES;
+      int offset = 8;
 
       switch (seriesDataType) {
         case INT32:
@@ -127,9 +128,7 @@ public class FirstAccumulator implements TableAccumulator {
         case TEXT:
         case BLOB:
         case STRING:
-          int length = BytesUtils.bytesToInt(bytes, offset);
-          offset += Integer.BYTES;
-          Binary binaryVal = new Binary(BytesUtils.subBytes(bytes, offset, length));
+          Binary binaryVal = new Binary(BytesUtils.subBytes(bytes, offset, bytes.length - offset));
           updateBinaryFirstValue(binaryVal, time);
           break;
         case BOOLEAN:
@@ -151,7 +150,8 @@ public class FirstAccumulator implements TableAccumulator {
     if (!initResult) {
       columnBuilder.appendNull();
     } else {
-      columnBuilder.writeBinary(new Binary(serializeTimeWithValue()));
+      columnBuilder.writeBinary(
+          new Binary(serializeTimeValue(seriesDataType, minTime, firstValue)));
     }
   }
 
@@ -185,7 +185,7 @@ public class FirstAccumulator implements TableAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in Extreme: %s", seriesDataType));
+              String.format("Unsupported data type in First aggregation: %s", seriesDataType));
       }
     }
   }
@@ -239,51 +239,6 @@ public class FirstAccumulator implements TableAccumulator {
     initResult = false;
     this.minTime = Long.MAX_VALUE;
     this.firstValue.reset();
-  }
-
-  private byte[] serializeTimeWithValue() {
-    byte[] valueBytes;
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        valueBytes = new byte[12];
-        BytesUtils.longToBytes(minTime, valueBytes, 0);
-        BytesUtils.intToBytes(firstValue.getInt(), valueBytes, 8);
-        return valueBytes;
-      case INT64:
-      case TIMESTAMP:
-        valueBytes = new byte[16];
-        BytesUtils.longToBytes(minTime, valueBytes, 0);
-        BytesUtils.longToBytes(firstValue.getLong(), valueBytes, 8);
-        return valueBytes;
-      case FLOAT:
-        valueBytes = new byte[12];
-        BytesUtils.longToBytes(minTime, valueBytes, 0);
-        BytesUtils.floatToBytes(firstValue.getFloat(), valueBytes, 8);
-        return valueBytes;
-      case DOUBLE:
-        valueBytes = new byte[16];
-        BytesUtils.longToBytes(minTime, valueBytes, 0);
-        BytesUtils.doubleToBytes(firstValue.getDouble(), valueBytes, 8);
-        return valueBytes;
-      case BOOLEAN:
-        valueBytes = new byte[9];
-        BytesUtils.longToBytes(minTime, valueBytes, 0);
-        BytesUtils.boolToBytes(firstValue.getBoolean(), valueBytes, 8);
-        return valueBytes;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        int length = firstValue.getBinary().getValues().length;
-        valueBytes = new byte[8 + 4 + length];
-        BytesUtils.longToBytes(minTime, valueBytes, 0);
-        BytesUtils.intToBytes(length, valueBytes, 8);
-        System.arraycopy(firstValue.getBinary().getValues(), 0, valueBytes, 12, length);
-        return valueBytes;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Extreme: %s", seriesDataType));
-    }
   }
 
   private void addIntInput(Column valueColumn, Column timeColumn) {

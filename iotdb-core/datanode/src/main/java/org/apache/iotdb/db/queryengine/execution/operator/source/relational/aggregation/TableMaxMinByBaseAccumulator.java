@@ -32,12 +32,12 @@ import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
 import java.util.Collections;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Utils.calcTypeSize;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Utils.isBinaryType;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Utils.serializeValue;
 
 /** max(x,y) returns the value of x associated with the maximum value of y over all input values. */
 public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
@@ -54,9 +54,7 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
 
   private boolean initResult;
 
-  // private long yTimeStamp = Long.MAX_VALUE;
-
-  private static final String UNSUPPORTED_TYPE_MESSAGE = "Unsupported data type in MaxBy/MinBy: %s";
+  public static final String UNSUPPORTED_TYPE_MESSAGE = "Unsupported data type in MaxBy/MinBy: %s";
 
   protected TableMaxMinByBaseAccumulator(TSDataType xDataType, TSDataType yDataType) {
     this.xDataType = xDataType;
@@ -146,7 +144,6 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
     xNull = true;
     this.xResult.reset();
     this.yExtremeValue.reset();
-    // yTimeStamp = Long.MAX_VALUE;
   }
 
   @Override
@@ -325,57 +322,33 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
   }
 
   private byte[] serialize() {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    try {
-      // dataOutputStream.writeLong(yTimeStamp);
-      writeIntermediateToStream(yDataType, yExtremeValue, dataOutputStream);
-      dataOutputStream.writeBoolean(xNull);
-      if (!xNull) {
-        writeIntermediateToStream(xDataType, xResult, dataOutputStream);
+    byte[] valueBytes;
+    if (xNull) {
+      valueBytes = new byte[calcTypeSize(yDataType, yExtremeValue) + 1];
+      serializeValue(yDataType, yExtremeValue, valueBytes, 0);
+      BytesUtils.boolToBytes(true, valueBytes, 8);
+    } else {
+      valueBytes =
+          new byte
+              [calcTypeSize(yDataType, yExtremeValue)
+                  + (isBinaryType(yDataType) ? yExtremeValue.getBinary().getValues().length : 0)
+                  + 1
+                  + calcTypeSize(xDataType, xResult)
+                  + (isBinaryType(xDataType) ? xResult.getBinary().getValues().length : 0)];
+      int offset = 0;
+      if (isBinaryType(yDataType)) {
+        BytesUtils.intToBytes(yExtremeValue.getBinary().getValues().length, valueBytes, offset);
+        offset += 4;
       }
-    } catch (IOException e) {
-      throw new UnsupportedOperationException(
-          "Failed to serialize intermediate result for MaxByAccumulator.", e);
+      serializeValue(yDataType, yExtremeValue, valueBytes, offset);
+      offset += calcTypeSize(yDataType, yExtremeValue);
+      BytesUtils.boolToBytes(false, valueBytes, offset);
+      serializeValue(xDataType, xResult, valueBytes, offset);
     }
-    return byteArrayOutputStream.toByteArray();
-  }
-
-  private void writeIntermediateToStream(
-      TSDataType dataType, TsPrimitiveType value, DataOutputStream dataOutputStream)
-      throws IOException {
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        dataOutputStream.writeInt(value.getInt());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        dataOutputStream.writeLong(value.getLong());
-        break;
-      case FLOAT:
-        dataOutputStream.writeFloat(value.getFloat());
-        break;
-      case DOUBLE:
-        dataOutputStream.writeDouble(value.getDouble());
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-        String content = value.getBinary().toString();
-        dataOutputStream.writeInt(content.length());
-        dataOutputStream.writeBytes(content);
-        break;
-      case BOOLEAN:
-        dataOutputStream.writeBoolean(value.getBoolean());
-        break;
-      default:
-        throw new UnSupportedDataTypeException(String.format(UNSUPPORTED_TYPE_MESSAGE, dataType));
-    }
+    return valueBytes;
   }
 
   private void updateFromBytesIntermediateInput(byte[] bytes) {
-    // long time = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, 0);
     int offset = 0;
     // Use Column to store x value
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(xDataType));
@@ -453,9 +426,8 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
         case TEXT:
         case STRING:
         case BLOB:
-          int length = BytesUtils.bytesToInt(bytes, offset);
-          offset += Integer.BYTES;
-          columnBuilder.writeBinary(new Binary(BytesUtils.subBytes(bytes, offset, length)));
+          columnBuilder.writeBinary(
+              new Binary(BytesUtils.subBytes(bytes, offset, bytes.length - offset)));
           break;
         case BOOLEAN:
           columnBuilder.writeBoolean(BytesUtils.bytesToBool(bytes, offset));
