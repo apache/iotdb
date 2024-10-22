@@ -183,7 +183,6 @@ public class TableDeviceLastCache {
         (s, timeValuePair) -> {
           if (timeValuePair.getTimestamp() <= time.get()) {
             diff.addAndGet(getTVPairEntrySize(timeValuePair));
-            time.set(timeValuePair.getTimestamp());
             return null;
           }
           return timeValuePair;
