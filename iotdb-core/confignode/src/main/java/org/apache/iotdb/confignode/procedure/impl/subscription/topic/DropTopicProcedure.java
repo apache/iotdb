@@ -95,7 +95,9 @@ public class DropTopicProcedure extends AbstractOperateSubscriptionProcedure {
     final List<TSStatus> statuses = env.dropSingleTopicOnDataNode(topicName);
     if (RpcUtils.squashResponseStatusList(statuses).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to drop topic {} on data nodes, because {}", topicName, statuses);
+      // throw exception instead of logging warn, do not rely on metadata synchronization
+      throw new SubscriptionException(
+          String.format("Failed to drop topic %s on data nodes, because %s", topicName, statuses));
     }
   }
 

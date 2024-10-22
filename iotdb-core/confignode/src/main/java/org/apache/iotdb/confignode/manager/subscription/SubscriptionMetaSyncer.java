@@ -89,22 +89,26 @@ public class SubscriptionMetaSyncer {
     }
 
     final ProcedureManager procedureManager = configManager.getProcedureManager();
-    final TSStatus consumerGroupMetaSyncStatus = procedureManager.consumerGroupMetaSync();
+
+    // sync topic meta firstly
+    // TODO: consider drop the topic which is subscribed by consumers
     final TSStatus topicMetaSyncStatus = procedureManager.topicMetaSync();
-    if (consumerGroupMetaSyncStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && topicMetaSyncStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.info(
-          "After this successful sync, if SubscriptionInfo is empty during this sync and has not been modified afterwards, all subsequent syncs will be skipped");
-      isLastSubscriptionSyncSuccessful = true;
-    } else {
-      if (consumerGroupMetaSyncStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn(
-            "Failed to sync consumer group meta. Result status: {}.", consumerGroupMetaSyncStatus);
-      }
-      if (topicMetaSyncStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn("Failed to sync topic meta. Result status: {}.", topicMetaSyncStatus);
-      }
+    if (topicMetaSyncStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn("Failed to sync topic meta. Result status: {}.", topicMetaSyncStatus);
+      return;
     }
+
+    // sync consumer meta if syncing topic meta successfully
+    final TSStatus consumerGroupMetaSyncStatus = procedureManager.consumerGroupMetaSync();
+    if (consumerGroupMetaSyncStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn(
+          "Failed to sync consumer group meta. Result status: {}.", consumerGroupMetaSyncStatus);
+      return;
+    }
+
+    LOGGER.info(
+        "After this successful sync, if SubscriptionInfo is empty during this sync and has not been modified afterwards, all subsequent syncs will be skipped");
+    isLastSubscriptionSyncSuccessful = true;
   }
 
   public synchronized void stop() {

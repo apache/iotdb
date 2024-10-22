@@ -127,7 +127,7 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
         env.pushSingleConsumerGroupOnDataNode(updatedConsumerGroupMeta.serialize());
     if (RpcUtils.squashResponseStatusList(statuses).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      // throw exception instead of logging warn
+      // throw exception instead of logging warn, do not rely on metadata synchronization
       throw new SubscriptionException(
           String.format(
               "Failed to alter consumer group (%s -> %s) on data nodes, because %s",
@@ -176,7 +176,7 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
         env.pushSingleConsumerGroupOnDataNode(existingConsumerGroupMeta.serialize());
     if (RpcUtils.squashResponseStatusList(statuses).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      // throw exception instead of logging warn
+      // throw exception instead of logging warn, do not rely on metadata synchronization
       throw new SubscriptionException(
           String.format(
               "Failed to rollback from altering consumer group (%s -> %s) on data nodes, because %s",

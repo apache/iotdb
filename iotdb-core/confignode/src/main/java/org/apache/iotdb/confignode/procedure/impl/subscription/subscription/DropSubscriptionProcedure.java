@@ -163,7 +163,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
         AbstractOperatePipeProcedureV2.parsePushPipeMetaExceptionForPipe(
             null, dropMultiPipeOnDataNodes(pipeNames, env));
     if (!exceptionMessage.isEmpty()) {
-      // throw exception instead of logging warn
+      // throw exception instead of logging warn, do not rely on metadata synchronization
       throw new SubscriptionException(
           String.format(
               "Failed to drop pipes %s when dropping subscription with request %s, because %s",

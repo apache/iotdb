@@ -95,13 +95,15 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
 
     // Construct CreatePipeProcedureV2s
     for (final String topicName : subscribeReq.getTopicNames()) {
-      if (!subscriptionInfo.get().isTopicSubscribedByConsumerGroup(topicName, consumerGroupId)) {
+      final String pipeName =
+          PipeStaticMeta.generateSubscriptionPipeName(topicName, consumerGroupId);
+      if (!subscriptionInfo.get().isTopicSubscribedByConsumerGroup(topicName, consumerGroupId)
+          || !pipeTaskInfo.get().isPipeExisted(pipeName)) {
         final TopicMeta topicMeta = subscriptionInfo.get().deepCopyTopicMeta(topicName);
         createPipeProcedures.add(
             new CreatePipeProcedureV2(
                 new TCreatePipeReq()
-                    .setPipeName(
-                        PipeStaticMeta.generateSubscriptionPipeName(topicName, consumerGroupId))
+                    .setPipeName(pipeName)
                     .setExtractorAttributes(topicMeta.generateExtractorAttributes())
                     .setProcessorAttributes(topicMeta.generateProcessorAttributes())
                     .setConnectorAttributes(topicMeta.generateConnectorAttributes(consumerGroupId)),
@@ -171,12 +173,11 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
         AbstractOperatePipeProcedureV2.parsePushPipeMetaExceptionForPipe(
             null, pushMultiPipeMetaToDataNodes(pipeNames, env));
     if (!exceptionMessage.isEmpty()) {
-      // If not all pipe meta are pushed successfully, the meta can be pushed during meta sync.
-      LOGGER.warn(
-          "Failed to create pipes {} when creating subscription with request {}, details: {}, metadata will be synchronized later.",
-          pipeNames,
-          subscribeReq,
-          exceptionMessage);
+      // throw exception instead of logging warn, do not rely on metadata synchronization
+      throw new SubscriptionException(
+          String.format(
+              "Failed to create pipes %s when creating subscription with request %s, details: %s, metadata will be synchronized later.",
+              pipeNames, subscribeReq, exceptionMessage));
     }
   }
 
@@ -227,7 +228,7 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
         AbstractOperatePipeProcedureV2.parsePushPipeMetaExceptionForPipe(
             null, AbstractOperatePipeProcedureV2.pushPipeMetaToDataNodes(env, pipeTaskInfo));
     if (!exceptionMessage.isEmpty()) {
-      // throw exception instead of logging warn
+      // throw exception instead of logging warn, do not rely on metadata synchronization
       throw new SubscriptionException(
           String.format(
               "Failed to rollback create pipes when creating subscription with request %s, because %s",

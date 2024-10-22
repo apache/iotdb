@@ -125,7 +125,7 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
     final List<TSStatus> statuses = env.pushSingleTopicOnDataNode(updatedTopicMeta.serialize());
     if (RpcUtils.squashResponseStatusList(statuses).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      // throw exception instead of logging warn
+      // throw exception instead of logging warn, do not rely on metadata synchronization
       throw new SubscriptionException(
           String.format(
               "Failed to alter topic (%s -> %s) on data nodes, because %s",
@@ -171,7 +171,7 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
     final List<TSStatus> statuses = env.pushSingleTopicOnDataNode(existedTopicMeta.serialize());
     if (RpcUtils.squashResponseStatusList(statuses).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      // throw exception instead of logging warn
+      // throw exception instead of logging warn, do not rely on metadata synchronization
       throw new SubscriptionException(
           String.format(
               "Failed to rollback from altering topic (%s -> %s) on data nodes, because %s",

@@ -111,7 +111,7 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
     final List<TSStatus> statuses = env.pushSingleTopicOnDataNode(topicMeta.serialize());
     if (RpcUtils.squashResponseStatusList(statuses).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      // throw exception instead of logging warn
+      // throw exception instead of logging warn, do not rely on metadata synchronization
       throw new SubscriptionException(
           String.format(
               "Failed to create topic %s on data nodes, because %s", topicMeta, statuses));
@@ -155,7 +155,7 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
     final List<TSStatus> statuses = env.dropSingleTopicOnDataNode(topicMeta.getTopicName());
     if (RpcUtils.squashResponseStatusList(statuses).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      // throw exception instead of logging warn
+      // throw exception instead of logging warn, do not rely on metadata synchronization
       throw new SubscriptionException(
           String.format(
               "Failed to rollback creating topic %s on data nodes, because %s",
