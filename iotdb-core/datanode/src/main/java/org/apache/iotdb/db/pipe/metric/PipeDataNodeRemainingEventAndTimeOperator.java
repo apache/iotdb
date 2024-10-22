@@ -59,11 +59,11 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
   //////////////////////////// Remaining event & time calculation ////////////////////////////
 
   void increaseInsertionEventCount() {
-    tsfileEventCount.incrementAndGet();
+    insertionEventCount.incrementAndGet();
   }
 
   void decreaseInsertionEventCount() {
-    tsfileEventCount.decrementAndGet();
+    insertionEventCount.decrementAndGet();
   }
 
   void increaseTsFileEventCount() {
@@ -84,6 +84,7 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
 
   long getRemainingEvents() {
     return tsfileEventCount.get()
+        + insertionEventCount.get()
         + heartbeatEventCount.get()
         + schemaRegionExtractors.stream()
             .map(IoTDBSchemaRegionExtractor::getUnTransferredEventCount)
