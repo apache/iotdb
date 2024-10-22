@@ -78,6 +78,15 @@ public class ElasticStrategy extends AbstractNodeAllocationStrategy {
     }
   }
 
+  public void removeUniqueIdInfo(String applicantUniqueId) {
+    nodesLock.lock();
+    try {
+      uniqueId2Nodes.remove(applicantUniqueId);
+    } finally {
+      nodesLock.unlock();
+    }
+  }
+
   @Override
   public List<WALNode> getNodesSnapshot() {
     List<WALNode> snapshot;

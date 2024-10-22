@@ -79,13 +79,13 @@ public class WALManager implements IService {
     }
   }
 
-  public static String getApplicantUniqueId(String storageGroupName, boolean sequence) {
+  public static String getApplicantUniqueId(String dataRegionName, boolean sequence) {
     return config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
             || config
                 .getDataRegionConsensusProtocolClass()
                 .equals(ConsensusFactory.IOT_CONSENSUS_V2)
-        ? storageGroupName
-        : storageGroupName
+        ? dataRegionName
+        : dataRegionName
             + IoTDBConstant.FILE_NAME_SEPARATOR
             + (sequence ? "sequence" : "unsequence");
   }
@@ -127,6 +127,15 @@ public class WALManager implements IService {
 
     ((FirstCreateStrategy) walNodesManager).deleteWALNode(applicantUniqueId);
     WritingMetrics.getInstance().removeWALNodeInfoMetrics(applicantUniqueId);
+  }
+
+  /** UniqueId will be removed only when using ElasticStrategy. */
+  public void removeUniqueIdInfo(String applicantUniqueId) {
+    if (config.getWalMode() == WALMode.DISABLE || !(walNodesManager instanceof ElasticStrategy)) {
+      return;
+    }
+
+    ((ElasticStrategy) walNodesManager).removeUniqueIdInfo(applicantUniqueId);
   }
 
   @Override
