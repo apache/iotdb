@@ -60,6 +60,7 @@ public abstract class AbstractOperateSubscriptionProcedure
   private static final int RETRY_THRESHOLD = 1;
 
   // Only used in rollback to avoid executing rollbackFromValidate multiple times
+  // Pure in-memory object, not involved in snapshot serialization and deserialization.
   protected boolean isRollbackFromValidateSuccessful = false;
 
   protected AtomicReference<SubscriptionInfo> subscriptionInfo;

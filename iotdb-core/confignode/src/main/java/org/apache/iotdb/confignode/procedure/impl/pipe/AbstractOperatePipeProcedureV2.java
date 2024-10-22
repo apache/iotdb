@@ -84,6 +84,7 @@ public abstract class AbstractOperatePipeProcedureV2
   protected boolean isRollbackFromOperateOnDataNodesSuccessful = false;
 
   // Only used in rollback to avoid executing rollbackFromValidateTask multiple times
+  // Pure in-memory object, not involved in snapshot serialization and deserialization.
   protected boolean isRollbackFromValidateTaskSuccessful = false;
 
   // This variable should not be serialized into procedure store,
