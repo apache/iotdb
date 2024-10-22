@@ -84,6 +84,7 @@ public class CompactionTaskQueue extends FixedPriorityBlockingQueue<AbstractComp
     return task.isCompactionAllowed()
         && task.getCompactionConfigVersion()
             >= CompactionTaskManager.getInstance().getCurrentCompactionConfigVersion()
+        && task.getEstimatedMemoryCost() >= 0
         && task.getEstimatedMemoryCost() <= SystemInfo.getInstance().getMemorySizeForCompaction()
         && task.getProcessedFileNum() <= SystemInfo.getInstance().getTotalFileLimitForCompaction();
   }
