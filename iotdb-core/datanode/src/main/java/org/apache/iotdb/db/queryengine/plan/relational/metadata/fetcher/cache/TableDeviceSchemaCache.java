@@ -435,9 +435,8 @@ public class TableDeviceSchemaCache {
   }
 
   // WARNING: This is not guaranteed to affect table model's cache
-  void invalidateCache(final @Nonnull PartialPath devicePath) {
-    final boolean isMultiLevel =
-        PathPatternUtil.isMultiLevelMatchWildcard(devicePath.getMeasurement());
+  void invalidateCache(
+      final @Nonnull PartialPath devicePath, final boolean isMultiLevelWildcardMeasurement) {
     if (!devicePath.hasWildcard()) {
       final IDeviceID deviceID = devicePath.getIDeviceID();
       dualKeyCache.invalidate(new TableId(null, deviceID.getTableName()), deviceID);
@@ -460,7 +459,7 @@ public class TableDeviceSchemaCache {
           },
           cachedDeviceID -> {
             try {
-              return isMultiLevel
+              return isMultiLevelWildcardMeasurement
                   ? devicePath.matchPrefixPath(new PartialPath(cachedDeviceID))
                   : devicePath.matchFullPath(new PartialPath(cachedDeviceID));
             } catch (final IllegalPathException e) {

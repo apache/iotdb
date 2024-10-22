@@ -434,11 +434,13 @@ public class TreeDeviceSchemaCacheManager {
   public void invalidate(final List<MeasurementPath> partialPathList) {
     // Currently invalidate by device
     partialPathList.forEach(
-        measurementPath ->
-            tableDeviceSchemaCache.invalidateCache(
-                PathPatternUtil.isMultiLevelMatchWildcard(measurementPath.getMeasurement())
-                    ? measurementPath
-                    : measurementPath.getDevicePath()));
+        measurementPath -> {
+          final boolean isMultiLevelWildcardMeasurement =
+              PathPatternUtil.isMultiLevelMatchWildcard(measurementPath.getMeasurement());
+          tableDeviceSchemaCache.invalidateCache(
+              isMultiLevelWildcardMeasurement ? measurementPath : measurementPath.getDevicePath(),
+              isMultiLevelWildcardMeasurement);
+        });
   }
 
   public void cleanUp() {
