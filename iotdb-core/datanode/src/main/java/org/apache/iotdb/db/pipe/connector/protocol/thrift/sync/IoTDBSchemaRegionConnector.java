@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFilePieceReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -72,6 +74,63 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
     }
   }
 
+  private void doTransferWrapper(
+      final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent) throws PipeException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeSchemaRegionWritePlanEvent.increaseReferenceCount(
+        IoTDBDataNodeSyncConnector.class.getName())) {
+      return;
+    }
+    try {
+      doTransfer(pipeSchemaRegionWritePlanEvent);
+    } finally {
+      pipeSchemaRegionWritePlanEvent.decreaseReferenceCount(
+          IoTDBDataNodeSyncConnector.class.getName(), false);
+    }
+  }
+
+  private void doTransfer(final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
+      throws PipeException {
+    final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
+
+    final TPipeTransferResp resp;
+    try {
+      final TPipeTransferReq req =
+          compressIfNeeded(
+              PipeTransferPlanNodeReq.toTPipeTransferReq(
+                  pipeSchemaRegionWritePlanEvent.getPlanNode()));
+      rateLimitIfNeeded(
+          pipeSchemaRegionWritePlanEvent.getPipeName(),
+          pipeSchemaRegionWritePlanEvent.getCreationTime(),
+          clientAndStatus.getLeft().getEndPoint(),
+          req.getBody().length);
+      resp = clientAndStatus.getLeft().pipeTransfer(req);
+    } catch (final Exception e) {
+      clientAndStatus.setRight(false);
+      throw new PipeConnectionException(
+          String.format(
+              "Network error when transfer schema region write plan %s, because %s.",
+              pipeSchemaRegionWritePlanEvent.getPlanNode().getType(), e.getMessage()),
+          e);
+    }
+
+    final TSStatus status = resp.getStatus();
+    // Only handle the failed statuses to avoid string format performance overhead
+    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && resp.getStatus().getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+      receiverStatusHandler.handle(
+          status,
+          String.format(
+              "Transfer data node write plan %s error, result status %s.",
+              pipeSchemaRegionWritePlanEvent.getPlanNode().getType(), status),
+          pipeSchemaRegionWritePlanEvent.getPlanNode().toString());
+    }
+
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("Successfully transferred schema event {}.", pipeSchemaRegionWritePlanEvent);
+    }
+  }
+
   private void doTransferWrapper(final PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)
       throws PipeException, IOException {
     // We increase the reference count for this event to determine if the event may be released.
@@ -115,7 +174,7 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
           compressIfNeeded(
               PipeTransferSchemaSnapshotSealReq.toTPipeTransferReq(
                   // The pattern is surely Non-null
-                  snapshotEvent.getPatternString(),
+                  snapshotEvent.getTreePatternString(),
                   mTreeSnapshotFile.getName(),
                   mTreeSnapshotFile.length(),
                   Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.getName() : null,

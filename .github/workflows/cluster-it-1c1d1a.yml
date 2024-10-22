@@ -1,0 +1,62 @@
+name: Cluster IT - 1C1D1A
+
+on:
+  push:
+    branches:
+      - master
+      - 'rel/1.*'
+      - 'rc/1.*'
+    paths-ignore:
+      - 'docs/**'
+      - 'site/**'
+  pull_request:
+    branches:
+      - master
+      - 'rel/1.*'
+      - 'rc/1.*'
+    paths-ignore:
+      - 'docs/**'
+      - 'site/**'
+  # allow manually run the action:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
+  MAVEN_ARGS: --batch-mode --no-transfer-progress
+  DEVELOCITY_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
+
+jobs:
+  AINode:
+    strategy:
+      fail-fast: false
+      max-parallel: 15
+      matrix:
+        os: [ ubuntu-latest ]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build AINode
+        shell: bash
+        run: mvn clean package -DskipTests -P with-ainode
+      - name: IT Test
+        shell: bash
+        run: |
+          mvn clean verify \
+          -P with-integration-tests \
+          -DskipUTs \
+          -DintegrationTest.forkCount=2 \
+          -pl integration-test \
+          -am \
+          -PAIClusterIT
+      - name: Upload Artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cluster-log-ainode-${{ matrix.os }}
+          path: integration-test/target/ainode-logs
+          retention-days: 30

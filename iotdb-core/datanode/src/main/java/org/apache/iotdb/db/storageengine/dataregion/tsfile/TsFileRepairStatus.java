@@ -21,6 +21,18 @@ package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
 public enum TsFileRepairStatus {
   NORMAL,
-  NEED_TO_REPAIR,
-  CAN_NOT_REPAIR
+  NEED_TO_CHECK,
+  NEED_TO_REPAIR_BY_REWRITE,
+  NEED_TO_REPAIR_BY_MOVE,
+  CAN_NOT_REPAIR;
+
+  public boolean isNormalCompactionCandidate() {
+    return this == NORMAL;
+  }
+
+  public boolean isRepairCompactionCandidate() {
+    return this == NEED_TO_CHECK
+        || this == NEED_TO_REPAIR_BY_REWRITE
+        || this == NEED_TO_REPAIR_BY_MOVE;
+  }
 }

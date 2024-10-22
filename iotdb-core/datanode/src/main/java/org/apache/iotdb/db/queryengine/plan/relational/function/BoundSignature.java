@@ -19,8 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.function;
 
-import org.apache.tsfile.read.common.type.Type;
+import org.apache.iotdb.db.queryengine.plan.relational.utils.TypeUtil;
 
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -46,10 +53,6 @@ public class BoundSignature {
 
   public Type getReturnType() {
     return returnType;
-  }
-
-  public int getArity() {
-    return argumentTypes.size();
   }
 
   public Type getArgumentType(int index) {
@@ -93,5 +96,34 @@ public class BoundSignature {
     return functionName
         + argumentTypes.stream().map(Type::toString).collect(joining(", ", "(", "):"))
         + returnType;
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(functionName, byteBuffer);
+    TypeUtil.serialize(returnType, byteBuffer);
+    ReadWriteIOUtils.write(argumentTypes.size(), byteBuffer);
+    for (Type type : argumentTypes) {
+      TypeUtil.serialize(type, byteBuffer);
+    }
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(functionName, stream);
+    TypeUtil.serialize(returnType, stream);
+    ReadWriteIOUtils.write(argumentTypes.size(), stream);
+    for (Type type : argumentTypes) {
+      TypeUtil.serialize(type, stream);
+    }
+  }
+
+  public static BoundSignature deserialize(ByteBuffer byteBuffer) {
+    String functionName = ReadWriteIOUtils.readString(byteBuffer);
+    Type returnType = TypeUtil.deserialize(byteBuffer);
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    List<Type> argumentTypes = new ArrayList<>(size);
+    while (size-- > 0) {
+      argumentTypes.add(TypeUtil.deserialize(byteBuffer));
+    }
+    return new BoundSignature(functionName, returnType, argumentTypes);
   }
 }

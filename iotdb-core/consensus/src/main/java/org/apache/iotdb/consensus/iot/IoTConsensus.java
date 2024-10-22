@@ -70,6 +70,7 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -435,6 +436,9 @@ public class IoTConsensus implements IConsensus {
   }
 
   public static List<ConsensusGroupId> getConsensusGroupIdsFromDir(File storageDir, Logger logger) {
+    if (!storageDir.exists()) {
+      return Collections.emptyList();
+    }
     List<ConsensusGroupId> consensusGroupIds = new ArrayList<>();
     try (DirectoryStream<Path> stream = Files.newDirectoryStream(storageDir.toPath())) {
       for (Path path : stream) {

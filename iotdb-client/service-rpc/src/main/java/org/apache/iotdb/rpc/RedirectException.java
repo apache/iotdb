@@ -22,6 +22,7 @@ package org.apache.iotdb.rpc;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 public class RedirectException extends IOException {
@@ -29,17 +30,27 @@ public class RedirectException extends IOException {
   private final TEndPoint endPoint;
 
   private final Map<String, TEndPoint> deviceEndPointMap;
+  private final List<TEndPoint> endPointList;
 
   public RedirectException(TEndPoint endPoint) {
     super("later request in same group will be redirected to " + endPoint.toString());
     this.endPoint = endPoint;
     this.deviceEndPointMap = null;
+    this.endPointList = null;
   }
 
   public RedirectException(Map<String, TEndPoint> deviceEndPointMap) {
     super("later request in same group will be redirected to " + deviceEndPointMap);
     this.endPoint = null;
     this.deviceEndPointMap = deviceEndPointMap;
+    this.endPointList = null;
+  }
+
+  public RedirectException(List<TEndPoint> endPointList) {
+    super("later request in same group will be redirected to " + endPointList);
+    this.endPoint = null;
+    this.deviceEndPointMap = null;
+    this.endPointList = endPointList;
   }
 
   public TEndPoint getEndPoint() {
@@ -48,5 +59,9 @@ public class RedirectException extends IOException {
 
   public Map<String, TEndPoint> getDeviceEndPointMap() {
     return deviceEndPointMap;
+  }
+
+  public List<TEndPoint> getEndPointList() {
+    return endPointList;
   }
 }

@@ -34,21 +34,21 @@ public class CreateDB extends Statement {
   private final String dbName;
   private final List<Property> properties;
 
-  public CreateDB(boolean ifNotExists, String dbName) {
+  public CreateDB(final boolean ifNotExists, final String dbName) {
     super(null);
     this.ifNotExists = ifNotExists;
     this.dbName = requireNonNull(dbName, "dbName is null").toLowerCase(Locale.ENGLISH);
     this.properties = null;
   }
 
-  public CreateDB(NodeLocation location, boolean ifNotExists, String dbName) {
+  public CreateDB(final NodeLocation location, final boolean ifNotExists, final String dbName) {
     super(requireNonNull(location, "location is null"));
     this.ifNotExists = ifNotExists;
     this.dbName = requireNonNull(dbName, "dbName is null").toLowerCase(Locale.ENGLISH);
     this.properties = null;
   }
 
-  public CreateDB(boolean ifNotExists, String dbName, List<Property> properties) {
+  public CreateDB(final boolean ifNotExists, final String dbName, final List<Property> properties) {
     super(null);
     this.ifNotExists = ifNotExists;
     this.dbName = requireNonNull(dbName, "dbName is null").toLowerCase(Locale.ENGLISH);
@@ -56,7 +56,10 @@ public class CreateDB extends Statement {
   }
 
   public CreateDB(
-      NodeLocation location, boolean ifNotExists, String dbName, List<Property> properties) {
+      final NodeLocation location,
+      final boolean ifNotExists,
+      final String dbName,
+      final List<Property> properties) {
     super(requireNonNull(location, "location is null"));
     this.ifNotExists = ifNotExists;
     this.dbName = requireNonNull(dbName, "dbName is null").toLowerCase(Locale.ENGLISH);
@@ -76,7 +79,7 @@ public class CreateDB extends Statement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitCreateDB(this, context);
   }
 
@@ -91,14 +94,14 @@ public class CreateDB extends Statement {
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if ((obj == null) || (getClass() != obj.getClass())) {
       return false;
     }
-    CreateDB o = (CreateDB) obj;
+    final CreateDB o = (CreateDB) obj;
     return Objects.equals(dbName, o.dbName)
         && Objects.equals(ifNotExists, o.ifNotExists)
         && Objects.equals(properties, o.properties);

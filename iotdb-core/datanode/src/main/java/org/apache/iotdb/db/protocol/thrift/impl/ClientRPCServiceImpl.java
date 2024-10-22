@@ -63,7 +63,7 @@ import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
@@ -76,7 +76,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOpera
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
@@ -90,6 +89,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimePa
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.ParsingException;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
@@ -250,7 +250,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private final TsBlockSerde serde = new TsBlockSerde();
 
-  private final DataNodeSchemaCache DATA_NODE_SCHEMA_CACHE = DataNodeSchemaCache.getInstance();
+  private final TreeDeviceSchemaCacheManager DATA_NODE_SCHEMA_CACHE =
+      TreeDeviceSchemaCacheManager.getInstance();
 
   public static Duration DEFAULT_TIME_SLICE = new Duration(60_000, TimeUnit.MILLISECONDS);
 
@@ -752,8 +753,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     scanOptionsBuilder.withGlobalTimeFilter(timeFilter);
 
     String aggregationName = SchemaUtils.getBuiltinAggregationName(aggregationType);
-    Aggregator aggregator =
-        new Aggregator(
+    TreeAggregator aggregator =
+        new TreeAggregator(
             AccumulatorFactory.createAccumulator(
                 aggregationName,
                 aggregationType,
@@ -1123,7 +1124,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       List<ColumnHeader> columnHeaders =
           Collections.singletonList(new ColumnHeader(outputColumnName, dataType));
       DatasetHeader header = new DatasetHeader(columnHeaders, false);
-      header.setColumnToTsBlockIndexMap(Collections.singletonList(outputColumnName));
+      header.setTreeColumnToTsBlockIndexMap(Collections.singletonList(outputColumnName));
 
       TSExecuteStatementResp resp = createResponse(header, 1);
       TSQueryDataSet queryDataSet = convertTsBlockByFetchSize(blockResult);
@@ -2937,6 +2938,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     resp.setDataTypeList(header.getRespDataTypeList());
     resp.setAliasColumns(header.getRespAliasColumns());
     resp.setIgnoreTimeStamp(header.isIgnoreTimestamp());
+    resp.setColumnIndex2TsBlockColumnIndexList(header.getColumnIndex2TsBlockColumnIndexList());
     resp.setQueryId(queryId);
     resp.setTableModel(
         SESSION_MANAGER.getCurrSessionAndUpdateIdleTime().getSqlDialect()

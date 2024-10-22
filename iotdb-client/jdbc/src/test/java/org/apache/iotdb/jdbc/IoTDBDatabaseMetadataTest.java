@@ -41,6 +41,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -143,10 +144,11 @@ public class IoTDBDatabaseMetadataTest {
     when(execStatementResp.isSetTableModel()).thenReturn(false);
 
     execStatementResp.moreData = false;
-    execStatementResp.ignoreTimeStamp = true;
+    when(execStatementResp.isIgnoreTimeStamp()).thenReturn(true);
+    when(execStatementResp.getColumnIndex2TsBlockColumnIndexList()).thenReturn(Arrays.asList(0));
     execStatementResp.columnNameIndexMap = columnNameIndexMap;
     ResultSet rs = databaseMetaData.getCatalogs();
-    assertEquals(2, rs.findColumn("TYPE_CAT"));
+    assertEquals(1, rs.findColumn("TYPE_CAT"));
   }
 
   @Test

@@ -60,6 +60,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeDataStructureTabletRowSize();
   }
 
+  public int getPipeDataStructureTabletSizeInBytes() {
+    return COMMON_CONFIG.getPipeDataStructureTabletSizeInBytes();
+  }
+
   public double getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold() {
     return COMMON_CONFIG.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold();
   }
@@ -304,10 +308,14 @@ public class PipeConfig {
     return COMMON_CONFIG.getTwoStageAggregateSenderEndPointsCacheInMs();
   }
 
-  /////////////////////////////// Subscription ///////////////////////////////
+  /////////////////////////////// Ref ///////////////////////////////
 
-  public float getSubscriptionCacheMemoryUsagePercentage() {
-    return COMMON_CONFIG.getSubscriptionCacheMemoryUsagePercentage();
+  public boolean getPipeEventReferenceTrackingEnabled() {
+    return COMMON_CONFIG.getPipeEventReferenceTrackingEnabled();
+  }
+
+  public long getPipeEventReferenceEliminateIntervalSeconds() {
+    return COMMON_CONFIG.getPipeEventReferenceEliminateIntervalSeconds();
   }
 
   /////////////////////////////// Utils ///////////////////////////////
@@ -325,6 +333,7 @@ public class PipeConfig {
     LOGGER.info("PipeHardLinkWALEnabled: {}", getPipeHardLinkWALEnabled());
 
     LOGGER.info("PipeDataStructureTabletRowSize: {}", getPipeDataStructureTabletRowSize());
+    LOGGER.info("PipeDataStructureTabletSizeInBytes: {}", getPipeDataStructureTabletSizeInBytes());
     LOGGER.info(
         "PipeDataStructureTabletMemoryBlockAllocationRejectThreshold: {}",
         getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold());
@@ -445,8 +454,10 @@ public class PipeConfig {
         "TwoStageAggregateSenderEndPointsCacheInMs: {}",
         getTwoStageAggregateSenderEndPointsCacheInMs());
 
+    LOGGER.info("PipeEventReferenceTrackingEnabled: {}", getPipeEventReferenceTrackingEnabled());
     LOGGER.info(
-        "SubscriptionCacheMemoryUsagePercentage: {}", getSubscriptionCacheMemoryUsagePercentage());
+        "PipeEventReferenceEliminateIntervalSeconds: {}",
+        getPipeEventReferenceEliminateIntervalSeconds());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

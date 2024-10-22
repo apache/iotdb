@@ -65,16 +65,19 @@ public class FileUtils {
     deleteFileOrDirectory(file, false);
   }
 
-  public static void deleteFileOrDirectory(File file, boolean quiteForNoSuchFile) {
+  public static void deleteFileOrDirectory(File file, boolean quietForNoSuchFile) {
     if (file.isDirectory()) {
-      for (File subfile : file.listFiles()) {
-        deleteFileOrDirectory(subfile);
+      File[] files = file.listFiles();
+      if (files != null) {
+        for (File subfile : files) {
+          deleteFileOrDirectory(subfile, quietForNoSuchFile);
+        }
       }
     }
     try {
       Files.delete(file.toPath());
     } catch (NoSuchFileException e) {
-      if (!quiteForNoSuchFile) {
+      if (!quietForNoSuchFile) {
         LOGGER.warn("{}: {}", e.getMessage(), Arrays.toString(file.list()), e);
       }
     } catch (DirectoryNotEmptyException e) {
@@ -326,13 +329,13 @@ public class FileUtils {
       if (haveSameMD5(sourceFile, targetFile)) {
         org.apache.commons.io.FileUtils.forceDelete(sourceFile);
         LOGGER.info(
-            "Deleted the file {} because it already exists in the fail directory: {}",
+            "Deleted the file {} because it already exists in the target directory: {}",
             sourceFile.getName(),
             targetDir.getAbsolutePath());
       } else {
         renameWithMD5(sourceFile, targetDir);
         LOGGER.info(
-            "Renamed file {} to {} because it already exists in the fail directory: {}",
+            "Renamed file {} to {} because it already exists in the target directory: {}",
             sourceFile.getName(),
             targetFile.getName(),
             targetDir.getAbsolutePath());

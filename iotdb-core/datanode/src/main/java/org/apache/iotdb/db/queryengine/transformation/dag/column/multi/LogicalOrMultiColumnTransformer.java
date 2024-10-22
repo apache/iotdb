@@ -25,12 +25,62 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class LogicalOrMultiColumnTransformer extends LogicalMultiColumnTransformer {
   public LogicalOrMultiColumnTransformer(
       Type returnType, List<ColumnTransformer> columnTransformerList) {
     super(returnType, columnTransformerList);
+  }
+
+  @Override
+  public void evaluateWithSelection(boolean[] selection) {
+    boolean[] selectionCopy = selection.clone();
+    boolean[] hasNull = new boolean[selection.length];
+
+    List<Column> childColumns = new ArrayList<>();
+    for (ColumnTransformer child : columnTransformerList) {
+      child.evaluateWithSelection(selectionCopy);
+      Column childColumn = child.getColumn();
+      childColumns.add(childColumn);
+
+      for (int i = 0; i < childColumn.getPositionCount(); i++) {
+        if (childColumn.isNull(i)) {
+          hasNull[i] = true;
+        } else if (childColumn.getBoolean(i)) {
+          selectionCopy[i] = false;
+        }
+      }
+    }
+
+    int positionCount = childColumns.get(0).getPositionCount();
+    ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
+
+    for (int i = 0; i < positionCount; i++) {
+      if (selection[i]) {
+        // have any true, result will be true
+        // have no true, and have both false and null, result will be null
+        // have all false, result will be false
+        if (!selectionCopy[i]) {
+          returnType.writeBoolean(builder, true);
+        } else {
+          if (hasNull[i]) {
+            builder.appendNull();
+          } else {
+            returnType.writeBoolean(builder, false);
+          }
+        }
+      } else {
+        builder.appendNull();
+      }
+    }
+
+    initializeColumnCache(builder.build());
+
+    for (ColumnTransformer child : columnTransformerList) {
+      child.clearCache();
+    }
   }
 
   @Override
@@ -60,5 +110,13 @@ public class LogicalOrMultiColumnTransformer extends LogicalMultiColumnTransform
         }
       }
     }
+  }
+
+  @Override
+  protected void doTransform(
+      List<Column> childrenColumns, ColumnBuilder builder, int positionCount, boolean[] selection) {
+    // do nothing
+    throw new UnsupportedOperationException(
+        "LogicalOrMultiColumnTransformer do not support doTransform with selection");
   }
 }

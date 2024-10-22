@@ -183,6 +183,7 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
     commitId =
         new TCommitId(
             pipeInsertNodeTabletInsertionEvent.getCommitId(),
+            pipeInsertNodeTabletInsertionEvent.getCommitterKey().getRestartTimes(),
             pipeInsertNodeTabletInsertionEvent.getRebootTimes());
 
     // Read the bytebuffer from the wal file and transfer it directly without serializing or

@@ -91,6 +91,10 @@ public class ConstantInputReader implements LayerReader {
         Column booleanColumn = new BooleanColumn(1, Optional.empty(), booleanArray);
         cachedColumns[0] = new RunLengthEncodedColumn(booleanColumn, count);
         break;
+      case BLOB:
+      case STRING:
+      case TIMESTAMP:
+      case DATE:
       default:
         throw new QueryProcessException("Unsupported type: " + expression.getDataType());
     }

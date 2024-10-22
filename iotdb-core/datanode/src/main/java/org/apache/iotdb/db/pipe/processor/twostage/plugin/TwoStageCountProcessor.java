@@ -24,10 +24,9 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.StateProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -71,6 +70,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_OUTPUT_SERIES_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant._PROCESSOR_OUTPUT_SERIES_KEY;
+
 public class TwoStageCountProcessor implements PipeProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TwoStageCountProcessor.class);
@@ -98,14 +100,31 @@ public class TwoStageCountProcessor implements PipeProcessor {
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
-    validator.validateRequiredAttribute(PipeProcessorConstant.PROCESSOR_OUTPUT_SERIES_KEY);
+    checkInvalidParameters(validator.getParameters());
 
-    final String rawOutputSeries =
-        validator.getParameters().getString(PipeProcessorConstant.PROCESSOR_OUTPUT_SERIES_KEY);
+    final String rawOutputSeries;
+    if (!validator.getParameters().hasAttribute(PROCESSOR_OUTPUT_SERIES_KEY)) {
+      validator.validateRequiredAttribute(_PROCESSOR_OUTPUT_SERIES_KEY);
+      rawOutputSeries = validator.getParameters().getString(_PROCESSOR_OUTPUT_SERIES_KEY);
+    } else {
+      rawOutputSeries = validator.getParameters().getString(PROCESSOR_OUTPUT_SERIES_KEY);
+    }
+
     try {
       PathUtils.isLegalPath(rawOutputSeries);
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException("Illegal output series path: " + rawOutputSeries);
+    }
+  }
+
+  private void checkInvalidParameters(final PipeParameters parameters) {
+    // Check coexistence of output.series and output-series
+    if (parameters.hasAttribute(PROCESSOR_OUTPUT_SERIES_KEY)
+        && parameters.hasAttribute(_PROCESSOR_OUTPUT_SERIES_KEY)) {
+      LOGGER.warn(
+          "When {} is specified, specifying {} is invalid.",
+          PROCESSOR_OUTPUT_SERIES_KEY,
+          _PROCESSOR_OUTPUT_SERIES_KEY);
     }
   }
 
@@ -119,8 +138,7 @@ public class TwoStageCountProcessor implements PipeProcessor {
     regionId = runtimeEnvironment.getRegionId();
     pipeTaskMeta = runtimeEnvironment.getPipeTaskMeta();
 
-    outputSeries =
-        new PartialPath(parameters.getString(PipeProcessorConstant.PROCESSOR_OUTPUT_SERIES_KEY));
+    outputSeries = new PartialPath(parameters.getString(_PROCESSOR_OUTPUT_SERIES_KEY));
 
     if (Objects.nonNull(pipeTaskMeta) && Objects.nonNull(pipeTaskMeta.getProgressIndex())) {
       if (pipeTaskMeta.getProgressIndex() instanceof MinimumProgressIndex) {
@@ -172,10 +190,8 @@ public class TwoStageCountProcessor implements PipeProcessor {
             : ((PipeRawTabletInsertionEvent) event).count();
     localCount.accumulateAndGet(count, Long::sum);
 
-    localCommitProgressIndex.set(
-        localCommitProgressIndex
-            .get()
-            .updateToMinimumEqualOrIsAfterProgressIndex(event.getProgressIndex()));
+    localCommitProgressIndex.updateAndGet(
+        index -> index.updateToMinimumEqualOrIsAfterProgressIndex(event.getProgressIndex()));
   }
 
   @Override
@@ -199,10 +215,8 @@ public class TwoStageCountProcessor implements PipeProcessor {
     final long count = event.count(true);
     localCount.accumulateAndGet(count, Long::sum);
 
-    localCommitProgressIndex.set(
-        localCommitProgressIndex
-            .get()
-            .updateToMinimumEqualOrIsAfterProgressIndex(event.getProgressIndex()));
+    localCommitProgressIndex.updateAndGet(
+        index -> index.updateToMinimumEqualOrIsAfterProgressIndex(event.getProgressIndex()));
   }
 
   @Override
@@ -244,7 +258,7 @@ public class TwoStageCountProcessor implements PipeProcessor {
 
       final Tablet tablet =
           new Tablet(
-              outputSeries.getDeviceString(),
+              outputSeries.getIDeviceID().toString(),
               Collections.singletonList(
                   new MeasurementSchema(outputSeries.getMeasurement(), TSDataType.INT64)),
               1);
@@ -252,8 +266,9 @@ public class TwoStageCountProcessor implements PipeProcessor {
       tablet.addTimestamp(0, timestampCountPair.left);
       tablet.addValue(outputSeries.getMeasurement(), 0, timestampCountPair.right);
 
+      // TODO: table model database name is not supported
       eventCollector.collect(
-          new PipeRawTabletInsertionEvent(tablet, false, null, 0, null, null, false));
+          new PipeRawTabletInsertionEvent(null, null, tablet, false, null, 0, null, null, false));
 
       PipeCombineHandlerManager.getInstance()
           .updateLastCombinedValue(pipeName, creationTime, timestampCountPair);

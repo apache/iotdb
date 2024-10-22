@@ -115,6 +115,10 @@ public abstract class AstVisitor<R, C> {
     return visitRelation(node, context);
   }
 
+  protected R visitFill(Fill node, C context) {
+    return visitNode(node, context);
+  }
+
   protected R visitOrderBy(OrderBy node, C context) {
     return visitNode(node, context);
   }
@@ -347,6 +351,14 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  protected R visitShowAINodes(ShowAINodes node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitClearCache(ClearCache node, C context) {
+    return visitStatement(node, context);
+  }
+
   protected R visitRenameTable(RenameTable node, C context) {
     return visitStatement(node, context);
   }
@@ -496,6 +508,50 @@ public abstract class AstVisitor<R, C> {
   }
 
   protected R visitCountDevice(CountDevice node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitCreatePipe(CreatePipe node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitAlterPipe(AlterPipe node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitDropPipe(DropPipe node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitStartPipe(StartPipe node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitStopPipe(StopPipe node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitShowPipes(ShowPipes node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitCreatePipePlugin(CreatePipePlugin node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitDropPipePlugin(DropPipePlugin node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitShowPipePlugins(ShowPipePlugins node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitLoadTsFile(LoadTsFile node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitPipeEnriched(PipeEnriched node, C context) {
     return visitStatement(node, context);
   }
 }

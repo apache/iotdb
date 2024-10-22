@@ -28,9 +28,9 @@ import org.apache.iotdb.commons.client.container.PipeConsensusClientMgrContainer
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorRetryTimesConfigurableException;
+import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeConnector;
 import org.apache.iotdb.consensus.pipe.metric.PipeConsensusSyncLagManager;
@@ -45,7 +45,8 @@ import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.handler.PipeCon
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.builder.PipeConsensusAsyncBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletInsertNodeReq;
-import org.apache.iotdb.db.pipe.consensus.PipeConsensusConnectorMetrics;
+import org.apache.iotdb.db.pipe.consensus.metric.PipeConsensusConnectorMetrics;
+import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -92,7 +93,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
   private final BlockingQueue<Event> retryEventQueue = new LinkedBlockingQueue<>();
   // We use enrichedEvent here to make use of EnrichedEvent.equalsInPipeConsensus
   private final BlockingQueue<EnrichedEvent> transferBuffer =
-      new LinkedBlockingDeque<>(IOTDB_CONFIG.getPipeConsensusPipelineSize());
+      new LinkedBlockingDeque<>(IOTDB_CONFIG.getIotConsensusV2PipelineSize());
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
   private final int thisDataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
   private PipeConsensusConnectorMetrics pipeConsensusConnectorMetrics;
@@ -206,7 +207,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
           consensusGroupId,
           event,
           transferBuffer.size(),
-          IOTDB_CONFIG.getPipeConsensusPipelineSize());
+          IOTDB_CONFIG.getIotConsensusV2PipelineSize());
     }
     if (transferBuffer.isEmpty()) {
       LOGGER.info(
@@ -269,6 +270,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
       tCommitId =
           new TCommitId(
               pipeInsertNodeTabletInsertionEvent.getCommitId(),
+              pipeInsertNodeTabletInsertionEvent.getCommitterKey().getRestartTimes(),
               pipeInsertNodeTabletInsertionEvent.getRebootTimes());
 
       // We increase the reference count for this event to determine if the event may be released.
@@ -346,7 +348,9 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
         (PipeTsFileInsertionEvent) tsFileInsertionEvent;
     TCommitId tCommitId =
         new TCommitId(
-            pipeTsFileInsertionEvent.getCommitId(), pipeTsFileInsertionEvent.getRebootTimes());
+            pipeTsFileInsertionEvent.getCommitId(),
+            pipeTsFileInsertionEvent.getCommitterKey().getRestartTimes(),
+            pipeTsFileInsertionEvent.getRebootTimes());
     TConsensusGroupId tConsensusGroupId =
         new TConsensusGroupId(TConsensusGroupType.DataRegion, consensusGroupId);
     // We increase the reference count for this event to determine if the event may be released.
@@ -400,13 +404,16 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
     syncTransferQueuedEventsIfNecessary();
     transferBatchedEventsIfNecessary();
 
-    if (!(event instanceof PipeHeartbeatEvent)) {
-      LOGGER.warn(
-          "PipeConsensusAsyncConnector does not support transferring generic event: {}.", event);
+    // Transfer deletion
+    if (event instanceof PipeDeleteDataNodeEvent) {
+      retryConnector.transfer(event);
       return;
     }
 
-    retryConnector.transfer(event);
+    if (!(event instanceof PipeHeartbeatEvent)) {
+      LOGGER.warn(
+          "PipeConsensusAsyncConnector does not support transferring generic event: {}.", event);
+    }
   }
 
   /** Try its best to commit data in order. Flush can also be a trigger to transfer batched data. */
@@ -584,10 +591,11 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
 
   @Override
   public long getConsensusPipeCommitProgress() {
-    long creationTime = PipeDataNodeAgent.task().getPipeCreationTime(consensusPipeName);
-    String committerKey =
-        String.format("%s_%s_%s", consensusPipeName, consensusGroupId, creationTime);
-    return PipeEventCommitManager.getInstance().getGivenConsensusPipeCommitId(committerKey);
+    return PipeEventCommitManager.getInstance()
+        .getGivenConsensusPipeCommitId(
+            consensusPipeName,
+            PipeDataNodeAgent.task().getPipeCreationTime(consensusPipeName),
+            consensusGroupId);
   }
 
   @Override

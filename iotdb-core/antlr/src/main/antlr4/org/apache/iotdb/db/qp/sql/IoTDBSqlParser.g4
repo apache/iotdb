@@ -543,9 +543,10 @@ verifyConnection
 // Pipe Task =========================================================================================
 createPipe
     : CREATE PIPE  (IF NOT EXISTS)? pipeName=identifier
-        extractorAttributesClause?
+        ((extractorAttributesClause?
         processorAttributesClause?
-        connectorAttributesClause
+        connectorAttributesClause)
+        |connectorAttributesWithoutWithSinkClause)
     ;
 
 extractorAttributesClause
@@ -575,6 +576,10 @@ connectorAttributesClause
         LR_BRACKET
         (connectorAttributeClause COMMA)* connectorAttributeClause?
         RR_BRACKET
+    ;
+
+connectorAttributesWithoutWithSinkClause
+    : LR_BRACKET (connectorAttributeClause COMMA)* connectorAttributeClause? RR_BRACKET
     ;
 
 connectorAttributeClause
@@ -1030,7 +1035,7 @@ flush
 
 // Clear Cache
 clearCache
-    : CLEAR CACHE (ON (LOCAL | CLUSTER))?
+    : CLEAR (SCHEMA | QUERY | ALL)? CACHE (ON (LOCAL | CLUSTER))?
     ;
 
 // Set Configuration
@@ -1128,7 +1133,7 @@ loadTimeseries
 
 // Load TsFile
 loadFile
-    : LOAD fileName=STRING_LITERAL loadFileAttributeClauses?
+    : LOAD fileName=STRING_LITERAL ((loadFileAttributeClauses?) | (loadFileWithAttributeClauses))
     ;
 
 loadFileAttributeClauses
@@ -1139,6 +1144,17 @@ loadFileAttributeClause
     : SGLEVEL operator_eq INTEGER_LITERAL
     | VERIFY operator_eq boolean_literal
     | ONSUCCESS operator_eq (DELETE|NONE)
+    ;
+
+loadFileWithAttributeClauses
+    : WITH
+        LR_BRACKET
+        (loadFileWithAttributeClause COMMA)* loadFileWithAttributeClause?
+        RR_BRACKET
+    ;
+
+loadFileWithAttributeClause
+    : loadFileWithKey=STRING_LITERAL OPERATOR_SEQ loadFileWithValue=STRING_LITERAL
     ;
 
 // Remove TsFile
@@ -1258,7 +1274,8 @@ expression
     | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
     | leftExpression=expression (PLUS | MINUS) rightExpression=expression
     | leftExpression=expression (OPERATOR_GT | OPERATOR_GTE | OPERATOR_LT | OPERATOR_LTE | OPERATOR_SEQ | OPERATOR_DEQ | OPERATOR_NEQ) rightExpression=expression
-    | unaryBeforeRegularOrLikeExpression=expression operator_not? (REGEXP | LIKE) STRING_LITERAL
+    | unaryBeforeRegularOrLikeExpression=expression operator_not? REGEXP pattern=STRING_LITERAL
+    | unaryBeforeRegularOrLikeExpression=expression operator_not? LIKE pattern=STRING_LITERAL (ESCAPE escapeSet=STRING_LITERAL)?
     | firstExpression=expression operator_not? operator_between secondExpression=expression operator_and thirdExpression=expression
     | unaryBeforeIsNullExpression=expression operator_is operator_not? null_literal
     | unaryBeforeInExpression=expression operator_not? (operator_in | operator_contains) LR_BRACKET constant (COMMA constant)* RR_BRACKET

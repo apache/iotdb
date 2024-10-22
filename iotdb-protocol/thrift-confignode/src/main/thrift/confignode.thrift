@@ -1031,7 +1031,7 @@ enum TTestOperation {
 // Table
 // ====================================================
 
-struct TAlterTableReq {
+struct TAlterOrDropTableReq {
     1: required string database
     2: required string tableName
     3: required string queryId
@@ -1044,10 +1044,16 @@ struct TShowTableResp {
    2: optional list<TTableInfo> tableInfoList
 }
 
+struct TFetchTableResp {
+   1: required common.TSStatus status
+   2: optional binary tableInfoMap
+}
+
 struct TTableInfo {
    1: required string tableName
    // TTL is stored as string in table props
    2: required string TTL
+   3: optional i32 state
 }
 
 service IConfigNodeRPCService {
@@ -1478,8 +1484,8 @@ service IConfigNodeRPCService {
   /** Persist all the data points in the memory table of the database to the disk, and seal the data file on all DataNodes */
   common.TSStatus flush(common.TFlushReq req)
 
-  /** Clear the cache of chunk, chunk metadata and timeseries metadata to release the memory footprint on all DataNodes */
-  common.TSStatus clearCache()
+  /** Clear the specific caches of all DataNodes */
+  common.TSStatus clearCache(set<i32> cacheClearOptions)
 
   /** Set configuration on specified node */
   common.TSStatus setConfiguration(common.TSetConfigurationReq req)
@@ -1782,8 +1788,10 @@ service IConfigNodeRPCService {
 
   common.TSStatus createTable(binary tableInfo)
 
-  common.TSStatus alterTable(TAlterTableReq req)
+  common.TSStatus alterOrDropTable(TAlterOrDropTableReq req)
 
-  TShowTableResp showTables(string database)
+  TShowTableResp showTables(string database, bool isDetails)
+
+  TFetchTableResp fetchTables(map<string, set<string>> fetchTableMap)
 }
 

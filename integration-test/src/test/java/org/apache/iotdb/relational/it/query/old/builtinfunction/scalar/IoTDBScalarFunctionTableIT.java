@@ -384,12 +384,27 @@ public class IoTDBScalarFunctionTableIT {
   }
 
   @Test
+  public void testINT64NotIn() {
+    // case 1: support INT32, INT64, FLOAT, DOUBLE
+    String[] expectedHeader = new String[] {"time", "s3"};
+    String[] expectedAns =
+        new String[] {
+          "1970-01-01T00:00:00.002Z,-1,", "1970-01-01T00:00:00.003Z,-2,",
+        };
+    tableResultSetEqualTest(
+        "select time,s3 from absTable where s3 not in (1)",
+        expectedHeader,
+        expectedAns,
+        DATABASE_NAME);
+  }
+
+  @Test
   public void testBlobCompare() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE
     String[] expectedHeader = new String[] {"s10", "res1", "res2", "res3"};
     String[] expectedAns =
         new String[] {
-          "0xabcd,true,true,true,",
+          "0xabcd,true,true,true,", "null,null,null,null,", "null,null,null,null,",
         };
     tableResultSetEqualTest(
         "select s10, s10 > x'2d' as res1, s10 <> x'2d' as res2, s10 = X'abcd' as res3 from absTable",
@@ -404,7 +419,7 @@ public class IoTDBScalarFunctionTableIT {
     String[] expectedHeader = new String[] {"s7", "res1", "res2", "res3"};
     String[] expectedAns =
         new String[] {
-          "2021-10-01,true,true,true,",
+          "2021-10-01,true,true,true,", "null,null,null,null,", "null,null,null,null,",
         };
     // add it back while supporting Implicit conversion
     //    tableResultSetEqualTest(
@@ -415,6 +430,46 @@ public class IoTDBScalarFunctionTableIT {
     //        DATABASE_NAME);
     tableResultSetEqualTest(
         "select s7, s7 < CAST('2022-12-12' AS DATE) as res1, s7 <> CAST('2022-12-12' AS DATE) AS res2, s7 = CAST('2021-10-01' AS DATE) as res3 from absTable",
+        expectedHeader,
+        expectedAns,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"s3", "s7"};
+    expectedAns =
+        new String[] {
+          "1,2021-10-01,",
+        };
+
+    tableResultSetEqualTest(
+        "select s3, s7 from absTable where s7 in (CAST('2021-10-01' AS DATE), CAST('2021-10-02' AS DATE))",
+        expectedHeader,
+        expectedAns,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testTimestampCompare() {
+    // case 1: support INT32, INT64, FLOAT, DOUBLE
+    String[] expectedHeader = new String[] {"s2", "s8"};
+    String[] expectedAns =
+        new String[] {
+          "1,2021-10-01T00:00:00.000Z,",
+        };
+
+    tableResultSetEqualTest(
+        "select s2, s8 from absTable where s8 IN (CAST('2021-10-01T08:00:00.000+08:00' AS TIMESTAMP), CAST('2021-10-01T00:00:00.000Z' AS TIMESTAMP))",
+        expectedHeader,
+        expectedAns,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select s2, s8 from absTable where s8=CAST('2021-10-01T08:00:00.000+08:00' AS TIMESTAMP)",
+        expectedHeader,
+        expectedAns,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select s2, s8 from absTable where s8=2021-10-01T08:00:00.000+08:00",
         expectedHeader,
         expectedAns,
         DATABASE_NAME);

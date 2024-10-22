@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.StartupChecks;
+import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.AbstractLeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -73,6 +75,7 @@ public class ConfigNodeStartupCheck extends StartupChecks {
     verify();
     checkGlobalConfig();
     createDirsIfNecessary();
+    checkRequestManager();
     if (SystemPropertiesUtils.isRestarted()) {
       /* Always restore ConfigNodeId first */
       CONF.setConfigNodeId(SystemPropertiesUtils.loadConfigNodeIdWhenRestarted());
@@ -142,10 +145,9 @@ public class ConfigNodeStartupCheck extends StartupChecks {
           "the SchemaRegion doesn't support org.apache.iotdb.consensus.iot.IoTConsensus");
     }
 
-    // When the schemaengine region consensus protocol is set to PipeConsensus,
+    // When the schemaengine region consensus protocol is set to IoTConsensusV2,
     // we should report an error
-    if (CONF.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.FAST_IOT_CONSENSUS)
-        || CONF.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
+    if (CONF.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
       throw new ConfigurationException(
           "schema_region_consensus_protocol_class",
           String.valueOf(CONF.getSchemaRegionConsensusProtocolClass()),
@@ -222,5 +224,11 @@ public class ConfigNodeStartupCheck extends StartupChecks {
                 dir.getAbsolutePath()));
       }
     }
+  }
+
+  // The checks are in the initialization process of the RequestManager object.
+  private void checkRequestManager() {
+    SyncDataNodeClientPool.getInstance();
+    CnToDnInternalServiceAsyncRequestManager.getInstance();
   }
 }

@@ -73,6 +73,7 @@ struct TSExecuteStatementResp {
   // only be set while executing use XXX successfully
   15: optional string database
   16: optional bool tableModel
+  17: optional list<i32> columnIndex2TsBlockColumnIndexList
 }
 
 enum TSProtocolVersion {

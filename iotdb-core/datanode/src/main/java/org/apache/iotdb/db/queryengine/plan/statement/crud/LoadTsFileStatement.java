@@ -22,10 +22,14 @@ package org.apache.iotdb.db.queryengine.plan.statement.crud;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
+import org.apache.iotdb.db.utils.annotations.TableModel;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
@@ -35,15 +39,26 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.DATABASE_LEVEL_KEY;
+import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.DATABASE_NAME_KEY;
+import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.MODEL_KEY;
+import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_KEY;
 
 public class LoadTsFileStatement extends Statement {
 
   private final File file;
-  private int databaseLevel;
+  private int databaseLevel; // For loading to tree-model only
+  private String database; // For loading to table-model only
   private boolean verifySchema;
   private boolean deleteAfterLoad;
   private boolean autoCreateDatabase;
+  private String model = LoadTsFileConfigurator.MODEL_TREE_VALUE;
+
+  private Map<String, String> loadAttributes;
 
   private final List<File> tsFiles;
   private final List<TsFileResource> resources;
@@ -55,11 +70,15 @@ public class LoadTsFileStatement extends Statement {
     this.verifySchema = true;
     this.deleteAfterLoad = false;
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
-    this.tsFiles = new ArrayList<>();
     this.resources = new ArrayList<>();
     this.writePointCountList = new ArrayList<>();
     this.statementType = StatementType.MULTI_BATCH_INSERT;
 
+    this.tsFiles = processTsFile(file);
+  }
+
+  public static List<File> processTsFile(final File file) throws FileNotFoundException {
+    final List<File> tsFiles = new ArrayList<>();
     if (file.isFile()) {
       tsFiles.add(file);
     } else {
@@ -67,11 +86,12 @@ public class LoadTsFileStatement extends Statement {
         throw new FileNotFoundException(
             String.format(
                 "Can not find %s on this machine, notice that load can only handle files on this machine.",
-                filePath));
+                file.getPath()));
       }
-      findAllTsFile(file);
+      tsFiles.addAll(findAllTsFile(file));
     }
     sortTsFiles(tsFiles);
+    return tsFiles;
   }
 
   protected LoadTsFileStatement() {
@@ -86,21 +106,24 @@ public class LoadTsFileStatement extends Statement {
     this.statementType = StatementType.MULTI_BATCH_INSERT;
   }
 
-  private void findAllTsFile(File file) {
+  private static List<File> findAllTsFile(File file) {
     final File[] files = file.listFiles();
     if (files == null) {
-      return;
+      return Collections.emptyList();
     }
+
+    final List<File> tsFiles = new ArrayList<>();
     for (File nowFile : files) {
       if (nowFile.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
         tsFiles.add(nowFile);
       } else if (nowFile.isDirectory()) {
-        findAllTsFile(nowFile);
+        tsFiles.addAll(findAllTsFile(nowFile));
       }
     }
+    return tsFiles;
   }
 
-  private void sortTsFiles(List<File> files) {
+  private static void sortTsFiles(List<File> files) {
     files.sort(
         (o1, o2) -> {
           String file1Name = o1.getName();
@@ -119,6 +142,14 @@ public class LoadTsFileStatement extends Statement {
 
   public void setDatabaseLevel(int databaseLevel) {
     this.databaseLevel = databaseLevel;
+  }
+
+  public void setDatabase(String database) {
+    this.database = database;
+  }
+
+  public void setModel(String model) {
+    this.model = model;
   }
 
   public void setVerifySchema(boolean verifySchema) {
@@ -145,6 +176,14 @@ public class LoadTsFileStatement extends Statement {
     return databaseLevel;
   }
 
+  public String getDatabase() {
+    return database;
+  }
+
+  public String getModel() {
+    return model;
+  }
+
   public List<File> getTsFiles() {
     return tsFiles;
   }
@@ -165,6 +204,20 @@ public class LoadTsFileStatement extends Statement {
     return writePointCountList.get(resourceIndex);
   }
 
+  public void setLoadAttributes(final Map<String, String> loadAttributes) {
+    this.loadAttributes = loadAttributes;
+    initAttributes();
+  }
+
+  private void initAttributes() {
+    this.databaseLevel = LoadTsFileConfigurator.parseOrGetDefaultDatabaseLevel(loadAttributes);
+    this.database = LoadTsFileConfigurator.parseDatabaseName(loadAttributes);
+    this.deleteAfterLoad = LoadTsFileConfigurator.parseOrGetDefaultOnSuccess(loadAttributes);
+    this.model =
+        LoadTsFileConfigurator.parseOrGetDefaultModel(
+            loadAttributes, LoadTsFileConfigurator.MODEL_TREE_VALUE);
+  }
+
   @Override
   public List<PartialPath> getPaths() {
     return Collections.emptyList();
@@ -174,6 +227,22 @@ public class LoadTsFileStatement extends Statement {
   public TSStatus checkPermissionBeforeProcess(String userName) {
     // no need to check here, it will be checked in process phase
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  @TableModel
+  @Override
+  public org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement toRelationalStatement(
+      MPPQueryContext context) {
+    loadAttributes = new HashMap<>();
+    loadAttributes.put(DATABASE_LEVEL_KEY, String.valueOf(databaseLevel));
+    if (database != null) {
+      loadAttributes.put(DATABASE_NAME_KEY, database);
+    }
+    loadAttributes.put(ON_SUCCESS_KEY, String.valueOf(deleteAfterLoad));
+    if (model != null) {
+      loadAttributes.put(MODEL_KEY, model);
+    }
+    return new LoadTsFile(null, file.getAbsolutePath(), loadAttributes);
   }
 
   @Override

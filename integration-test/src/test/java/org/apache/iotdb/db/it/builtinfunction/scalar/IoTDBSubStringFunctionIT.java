@@ -254,19 +254,19 @@ public class IoTDBSubStringFunctionIT {
     // Negative characters length
     assertTestFail(
         "select SUBSTRING(s1,1,-10) from root.**",
-        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
             + ": Argument exception,the scalar function [SUBSTRING] beginPosition and length must be greater than 0");
 
     // Negative characters begin
     assertTestFail(
         "select SUBSTRING(s1,-1,10) from root.**",
-        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
             + ": Argument exception,the scalar function [SUBSTRING] beginPosition and length must be greater than 0");
 
     // Negative characters begin
     assertTestFail(
         "select SUBSTRING(s1 from -1 for 10) from root.**",
-        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
             + ": Argument exception,the scalar function [SUBSTRING] beginPosition and length must be greater than 0");
 
     // Negative characters begin

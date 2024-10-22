@@ -25,10 +25,10 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
-import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.sync.CnToDnSyncRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
-import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -112,7 +112,7 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
                         .sendSyncRequestToDataNodeWithRetry(
                             pair.getLeft().getLocation().getInternalEndPoint(),
                             req,
-                            CnToDnRequestType.INVALIDATE_PERMISSION_CACHE);
+                            CnToDnSyncRequestType.INVALIDATE_PERMISSION_CACHE);
             if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               it.remove();
             }

@@ -24,6 +24,11 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_KEY = "extractor";
   public static final String SOURCE_KEY = "source";
 
+  public static final String EXTRACTOR_CAPTURE_TREE_KEY = "extractor.capture.tree";
+  public static final String SOURCE_CAPTURE_TREE_KEY = "source.capture.tree";
+  public static final String EXTRACTOR_CAPTURE_TABLE_KEY = "extractor.capture.table";
+  public static final String SOURCE_CAPTURE_TABLE_KEY = "source.capture.table";
+
   public static final String EXTRACTOR_INCLUSION_KEY = "extractor.inclusion";
   public static final String SOURCE_INCLUSION_KEY = "source.inclusion";
   public static final String EXTRACTOR_INCLUSION_DEFAULT_VALUE = "data.insert";
@@ -50,6 +55,10 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE = "iotdb";
   public static final String EXTRACTOR_PATTERN_PREFIX_DEFAULT_VALUE = "root";
   public static final String EXTRACTOR_PATTERN_IOTDB_DEFAULT_VALUE = "root.**";
+  public static final String EXTRACTOR_DATABASE_NAME_KEY = "extractor.database-name";
+  public static final String SOURCE_DATABASE_NAME_KEY = "source.database-name";
+  public static final String EXTRACTOR_TABLE_NAME_KEY = "extractor.table-name";
+  public static final String SOURCE_TABLE_NAME_KEY = "source.table-name";
 
   public static final String EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY =
       "extractor.forwarding-pipe-requests";
@@ -73,6 +82,9 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_MODS_ENABLE_KEY = "extractor.mods.enable";
   public static final String SOURCE_MODS_ENABLE_KEY = "source.mods.enable";
   public static final boolean EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE = false;
+  public static final String EXTRACTOR_MODS_KEY = "extractor.mods";
+  public static final String SOURCE_MODS_KEY = "source.mods";
+  public static final boolean EXTRACTOR_MODS_DEFAULT_VALUE = EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE;
 
   public static final String EXTRACTOR_REALTIME_ENABLE_KEY = "extractor.realtime.enable";
   public static final String SOURCE_REALTIME_ENABLE_KEY = "source.realtime.enable";
@@ -92,16 +104,29 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_REALTIME_LOOSE_RANGE_ALL_VALUE = "all";
   public static final String EXTRACTOR_REALTIME_LOOSE_RANGE_DEFAULT_VALUE = "";
 
+  public static final String EXTRACTOR_MODE_STREAMING_KEY = "extractor.mode.streaming";
+  public static final String SOURCE_MODE_STREAMING_KEY = "source.mode.streaming";
+  public static final boolean EXTRACTOR_MODE_STREAMING_DEFAULT_VALUE = true;
+  public static final String EXTRACTOR_MODE_STRICT_KEY = "extractor.mode.strict";
+  public static final String SOURCE_MODE_STRICT_KEY = "source.mode.strict";
+  public static final boolean EXTRACTOR_MODE_STRICT_DEFAULT_VALUE = true;
+  public static final String EXTRACTOR_MODE_SNAPSHOT_KEY = "extractor.mode.snapshot";
+  public static final String SOURCE_MODE_SNAPSHOT_KEY = "source.mode.snapshot";
+  public static final boolean EXTRACTOR_MODE_SNAPSHOT_DEFAULT_VALUE = false;
+
   public static final String EXTRACTOR_START_TIME_KEY = "extractor.start-time";
   public static final String SOURCE_START_TIME_KEY = "source.start-time";
   public static final String EXTRACTOR_END_TIME_KEY = "extractor.end-time";
   public static final String SOURCE_END_TIME_KEY = "source.end-time";
 
-  public static final String EXTRACTOR_WATERMARK_INTERVAL_KEY = "extractor.watermark-interval-ms";
-  public static final String SOURCE_WATERMARK_INTERVAL_KEY = "source.watermark-interval-ms";
+  public static final String _EXTRACTOR_WATERMARK_INTERVAL_KEY = "extractor.watermark-interval-ms";
+  public static final String _SOURCE_WATERMARK_INTERVAL_KEY = "source.watermark-interval-ms";
   public static final long EXTRACTOR_WATERMARK_INTERVAL_DEFAULT_VALUE = -1; // -1 means no watermark
+  public static final String EXTRACTOR_WATERMARK_INTERVAL_KEY = "extractor.watermark.interval-ms";
+  public static final String SOURCE_WATERMARK_INTERVAL_KEY = "source.watermark.interval-ms";
 
   ///////////////////// pipe consensus /////////////////////
+
   public static final String EXTRACTOR_CONSENSUS_GROUP_ID_KEY = "extractor.consensus.group-id";
   public static final String EXTRACTOR_CONSENSUS_SENDER_DATANODE_ID_KEY =
       "extractor.consensus.sender-dn-id";

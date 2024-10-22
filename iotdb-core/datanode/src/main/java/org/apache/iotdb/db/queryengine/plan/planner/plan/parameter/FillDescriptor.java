@@ -50,7 +50,7 @@ public class FillDescriptor {
 
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(fillPolicy.ordinal(), byteBuffer);
-    if (fillPolicy == FillPolicy.VALUE) {
+    if (fillPolicy == FillPolicy.CONSTANT) {
       fillValue.serialize(byteBuffer);
     }
     ReadWriteIOUtils.write(timeDurationThreshold != null, byteBuffer);
@@ -61,7 +61,7 @@ public class FillDescriptor {
 
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(fillPolicy.ordinal(), stream);
-    if (fillPolicy == FillPolicy.VALUE) {
+    if (fillPolicy == FillPolicy.CONSTANT) {
       fillValue.serialize(stream);
     }
     ReadWriteIOUtils.write(timeDurationThreshold != null, stream);
@@ -73,7 +73,7 @@ public class FillDescriptor {
   public static FillDescriptor deserialize(ByteBuffer byteBuffer) {
     FillPolicy fillPolicy = FillPolicy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     Literal fillValue = null;
-    if (fillPolicy == FillPolicy.VALUE) {
+    if (fillPolicy == FillPolicy.CONSTANT) {
       fillValue = Literal.deserialize(byteBuffer);
     }
     boolean hasTimeDurationThreshold = ReadWriteIOUtils.readBool(byteBuffer);

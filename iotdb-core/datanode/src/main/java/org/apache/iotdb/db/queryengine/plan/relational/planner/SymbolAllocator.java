@@ -25,14 +25,29 @@ import org.apache.tsfile.read.common.type.Type;
 import java.util.HashMap;
 import java.util.Map;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
 public class SymbolAllocator {
+
+  public static final String GROUP_KEY_SUFFIX = "gid";
+
+  public static final String SEPARATOR = "$";
+
   private final Map<Symbol, Type> symbolMap;
   private int nextId;
 
   public SymbolAllocator() {
     symbolMap = new HashMap<>();
+  }
+
+  public Symbol newSymbol(Symbol symbolHint) {
+    return newSymbol(symbolHint, null);
+  }
+
+  public Symbol newSymbol(Symbol symbolHint, String suffix) {
+    checkArgument(symbolMap.containsKey(symbolHint), "symbolHint not in symbols map");
+    return newSymbol(symbolHint.getName(), symbolMap.get(symbolHint), suffix);
   }
 
   public Symbol newSymbol(String symbolHint, Type type) {
@@ -44,7 +59,7 @@ public class SymbolAllocator {
     requireNonNull(symbolType, "type is null");
 
     if (suffix != null) {
-      symbolHint = symbolHint + "$" + suffix;
+      symbolHint = symbolHint + SEPARATOR + suffix;
     }
 
     Symbol symbol = new Symbol(symbolHint);

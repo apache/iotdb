@@ -69,11 +69,17 @@ public class RepairDataFileScanUtil {
   private boolean hasUnsortedData;
   private boolean isBrokenFile;
   private long previousTime;
+  private boolean printLog;
 
   public RepairDataFileScanUtil(TsFileResource resource) {
+    this(resource, false);
+  }
+
+  public RepairDataFileScanUtil(TsFileResource resource, boolean printLog) {
     this.resource = resource;
     this.hasUnsortedData = false;
     this.previousTime = Long.MIN_VALUE;
+    this.printLog = printLog;
   }
 
   public void scanTsFile() {
@@ -99,6 +105,12 @@ public class RepairDataFileScanUtil {
       }
     } catch (CompactionLastTimeCheckFailedException lastTimeCheckFailedException) {
       this.hasUnsortedData = true;
+      if (printLog) {
+        logger.error(
+            "File {} has unsorted data: ",
+            resource.getTsFile().getPath(),
+            lastTimeCheckFailedException);
+      }
     } catch (Exception e) {
       // ignored the exception caused by thread interrupt
       if (Thread.currentThread().isInterrupted()) {
@@ -117,7 +129,7 @@ public class RepairDataFileScanUtil {
       TsFileSequenceReader reader, IDeviceID device, MetadataIndexNode metadataIndexNode)
       throws IOException {
     List<AlignedChunkMetadata> chunkMetadataList =
-        reader.getAlignedChunkMetadataByMetadataIndexNode(device, metadataIndexNode);
+        reader.getAlignedChunkMetadataByMetadataIndexNode(device, metadataIndexNode, false);
     for (AlignedChunkMetadata alignedChunkMetadata : chunkMetadataList) {
       IChunkMetadata timeChunkMetadata = alignedChunkMetadata.getTimeChunkMetadata();
       Chunk timeChunk = reader.readMemChunk((ChunkMetadata) timeChunkMetadata);
@@ -244,7 +256,8 @@ public class RepairDataFileScanUtil {
     return isBrokenFile;
   }
 
-  public static List<TsFileResource> checkTimePartitionHasOverlap(List<TsFileResource> resources) {
+  public static List<TsFileResource> checkTimePartitionHasOverlap(
+      List<TsFileResource> resources, boolean printOverlappedDevices) {
     List<TsFileResource> overlapResources = new ArrayList<>();
     Map<IDeviceID, Long> deviceEndTimeMap = new HashMap<>();
     for (TsFileResource resource : resources) {
@@ -272,6 +285,13 @@ public class RepairDataFileScanUtil {
         }
         long deviceEndTimeInPreviousFile = deviceEndTimeMap.get(device);
         if (deviceStartTimeInCurrentFile <= deviceEndTimeInPreviousFile) {
+          if (printOverlappedDevices) {
+            logger.error(
+                "Device {} has overlapped data, start time in current file is {}, end time in previous file is {}",
+                device,
+                deviceStartTimeInCurrentFile,
+                deviceEndTimeInPreviousFile);
+          }
           fileHasOverlap = true;
           overlapResources.add(resource);
           break;

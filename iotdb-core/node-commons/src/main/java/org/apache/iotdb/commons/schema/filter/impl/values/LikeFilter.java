@@ -23,27 +23,32 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 
+import org.apache.tsfile.common.regexp.LikePattern;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
-import java.util.regex.Pattern;
+import java.util.Optional;
 
-// Does not support escape now
 public class LikeFilter extends SchemaFilter {
-  private final Pattern pattern;
+  private final LikePattern pattern;
 
-  public LikeFilter(final String regex) {
-    this.pattern = Pattern.compile(regex);
+  public LikeFilter(final String regex, Optional<Character> escape) {
+    this.pattern = LikePattern.compile(regex, escape);
   }
 
   public LikeFilter(final ByteBuffer byteBuffer) {
-    this.pattern = Pattern.compile(ReadWriteIOUtils.readString(byteBuffer));
+    this.pattern =
+        LikePattern.compile(
+            ReadWriteIOUtils.readString(byteBuffer),
+            ReadWriteIOUtils.readBool(byteBuffer)
+                ? Optional.of(ReadWriteIOUtils.readString(byteBuffer).charAt(0))
+                : Optional.empty());
   }
 
-  public Pattern getPattern() {
+  public LikePattern getPattern() {
     return pattern;
   }
 
@@ -59,12 +64,24 @@ public class LikeFilter extends SchemaFilter {
 
   @Override
   protected void serialize(final ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(pattern.pattern(), byteBuffer);
+    ReadWriteIOUtils.write(pattern.getPattern(), byteBuffer);
+    if (pattern.getEscape().isPresent()) {
+      ReadWriteIOUtils.write(true, byteBuffer);
+      ReadWriteIOUtils.write(pattern.getEscape().get().toString(), byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(false, byteBuffer);
+    }
   }
 
   @Override
   protected void serialize(final DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(pattern.pattern(), stream);
+    ReadWriteIOUtils.write(pattern.getPattern(), stream);
+    if (pattern.getEscape().isPresent()) {
+      ReadWriteIOUtils.write(true, stream);
+      ReadWriteIOUtils.write(pattern.getEscape().get().toString(), stream);
+    } else {
+      ReadWriteIOUtils.write(false, stream);
+    }
   }
 
   @Override
@@ -76,7 +93,7 @@ public class LikeFilter extends SchemaFilter {
       return false;
     }
     final LikeFilter that = (LikeFilter) o;
-    return Objects.equals(pattern.pattern(), that.pattern.pattern());
+    return Objects.equals(pattern, that.pattern);
   }
 
   @Override

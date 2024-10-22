@@ -53,9 +53,15 @@ public class FileTimeIndexCacheWriter implements ILogWriter {
   public void write(ByteBuffer logBuffer) throws IOException {
 
     try {
-      channel.write(logBuffer);
-      if (this.forceEachWrite) {
-        channel.force(true);
+      if (!this.logFile.exists()) {
+        // For UT env, logFile may not be created
+        return;
+      }
+      if (channel != null && channel.isOpen()) {
+        channel.write(logBuffer);
+        if (this.forceEachWrite) {
+          channel.force(true);
+        }
       }
     } catch (ClosedChannelException ignored) {
       logger.warn("someone interrupt current thread, so no need to do write for io safety");

@@ -51,12 +51,13 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -722,21 +723,24 @@ public class NodeInfo implements SnapshotProcessor {
     aiNodeInfoReadWriteLock.writeLock().lock();
     versionInfoReadWriteLock.writeLock().lock();
 
-    try (FileInputStream fileInputStream = new FileInputStream(snapshotFile);
-        TIOStreamTransport tioStreamTransport = new TIOStreamTransport(fileInputStream)) {
+    try (ByteArrayInputStream inputStream =
+            new ByteArrayInputStream(Files.readAllBytes(snapshotFile.toPath()));
+        TIOStreamTransport tioStreamTransport = new TIOStreamTransport(inputStream)) {
       TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
 
       clear();
 
-      nextNodeId.set(ReadWriteIOUtils.readInt(fileInputStream));
+      nextNodeId.set(ReadWriteIOUtils.readInt(inputStream));
 
-      deserializeRegisteredConfigNode(fileInputStream, protocol);
+      deserializeRegisteredConfigNode(inputStream, protocol);
 
-      deserializeRegisteredDataNode(fileInputStream, protocol);
+      deserializeRegisteredDataNode(inputStream, protocol);
 
-      deserializeRegisteredAINode(fileInputStream, protocol);
+      // TODO: Compatibility design. Should replace this function to actual deserialization method
+      // in IoTDB 2.2 / 1.5
+      tryDeserializeRegisteredAINode(inputStream, protocol);
 
-      deserializeBuildInfo(fileInputStream);
+      deserializeBuildInfo(inputStream);
 
     } finally {
       versionInfoReadWriteLock.writeLock().unlock();
@@ -767,6 +771,18 @@ public class NodeInfo implements SnapshotProcessor {
       dataNodeInfo.read(protocol);
       registeredDataNodes.put(dataNodeId, dataNodeInfo);
       size--;
+    }
+  }
+
+  private void tryDeserializeRegisteredAINode(ByteArrayInputStream inputStream, TProtocol protocol)
+      throws IOException {
+    try {
+      // 0 has no meaning here
+      inputStream.mark(0);
+      deserializeRegisteredAINode(inputStream, protocol);
+    } catch (IOException | TException ignore) {
+      // Exception happens here means that the data is upgraded from the old version
+      inputStream.reset();
     }
   }
 
@@ -805,6 +821,7 @@ public class NodeInfo implements SnapshotProcessor {
     nextNodeId.set(-1);
     registeredDataNodes.clear();
     registeredConfigNodes.clear();
+    registeredAINodes.clear();
     nodeVersionInfo.clear();
   }
 

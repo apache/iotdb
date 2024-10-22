@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.subscription.broker;
 
-import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
@@ -367,5 +367,25 @@ public class SubscriptionBroker {
       return;
     }
     prefetchingQueue.executePrefetch();
+  }
+
+  public int getPipeEventCount(final String topicName) {
+    final SubscriptionPrefetchingQueue prefetchingQueue =
+        topicNameToPrefetchingQueue.get(topicName);
+    if (Objects.isNull(prefetchingQueue)) {
+      LOGGER.warn(
+          "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] does not exist",
+          topicName,
+          brokerId);
+      return 0;
+    }
+    if (prefetchingQueue.isClosed()) {
+      LOGGER.warn(
+          "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] is closed",
+          topicName,
+          brokerId);
+      return 0;
+    }
+    return prefetchingQueue.getPipeEventCount();
   }
 }

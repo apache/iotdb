@@ -190,6 +190,11 @@ public class SubscriptionEvent {
     } while (!lastPolledTimestamp.compareAndSet(currentTimestamp, newTimestamp));
   }
 
+  /**
+   * @return {@code true} if this event is pollable, including eagerly pollable (by active nack) and
+   *     lazily pollable (by inactive recycle); For events that have already been committed, they
+   *     are not pollable.
+   */
   public boolean pollable() {
     if (isCommitted()) {
       return false;
@@ -198,6 +203,17 @@ public class SubscriptionEvent {
       return true;
     }
     return canRecycle();
+  }
+
+  /**
+   * @return {@code true} if this event is eagerly pollable; For events that have already been
+   *     committed, they are not pollable.
+   */
+  public boolean eagerlyPollable() {
+    if (isCommitted()) {
+      return false;
+    }
+    return lastPolledTimestamp.get() == INVALID_TIMESTAMP;
   }
 
   private boolean canRecycle() {
@@ -399,13 +415,17 @@ public class SubscriptionEvent {
     return pipeEvents.getTsFile().getName();
   }
 
+  /////////////////////////////// APIs provided for metric framework ///////////////////////////////
+
+  public int getPipeEventCount() {
+    return pipeEvents.getPipeEventCount();
+  }
+
   /////////////////////////////// object ///////////////////////////////
 
   @Override
   public String toString() {
-    return "SubscriptionEvent{pipeEvents="
-        + pipeEvents.toString()
-        + ", responses="
+    return "SubscriptionEvent{responses="
         + Arrays.toString(responses)
         + ", responses' byte buffer size="
         + Arrays.stream(byteBuffers)
@@ -423,6 +443,8 @@ public class SubscriptionEvent {
         + lastPolledTimestamp
         + ", committedTimestamp="
         + committedTimestamp
+        + ", pipeEvents="
+        + pipeEvents
         + "}";
   }
 }

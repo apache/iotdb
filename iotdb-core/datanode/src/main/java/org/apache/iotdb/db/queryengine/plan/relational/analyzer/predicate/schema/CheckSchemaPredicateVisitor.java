@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableExpressionType;
 
 import org.slf4j.Logger;
@@ -136,7 +137,10 @@ public class CheckSchemaPredicateVisitor
 
   @Override
   protected Boolean visitBetweenPredicate(final BetweenPredicate node, final Context context) {
-    return visitExpression(node, context);
+    return node.getValue() instanceof SymbolReference
+            && (node.getMin() instanceof SymbolReference
+                || node.getMax() instanceof SymbolReference)
+        || processColumn(node, context);
   }
 
   private boolean processColumn(final Expression node, final Context context) {

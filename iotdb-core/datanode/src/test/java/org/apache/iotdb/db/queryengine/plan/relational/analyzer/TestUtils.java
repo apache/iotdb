@@ -28,10 +28,15 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+
+import org.junit.Assert;
 
 import java.time.ZoneId;
 import java.util.Arrays;
@@ -39,6 +44,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AnalyzerTest.analyzeStatementWithException;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_1;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_2;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_3;
@@ -47,6 +53,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTable
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_6;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class TestUtils {
   public static final WarningCollector DEFAULT_WARNING = WarningCollector.NOOP;
@@ -112,17 +119,17 @@ public class TestUtils {
     assertTrue(mergeSortNode.getChildren().get(2) instanceof ExchangeNode);
   }
 
-  //  public static void assertJoinNodeEquals(
-  //      JoinNode joinNode,
-  //      JoinNode.JoinType joinType,
-  //      List<JoinNode.EquiJoinClause> joinCriteria,
-  //      List<Symbol> leftOutputSymbols,
-  //      List<Symbol> rightOutputSymbols) {
-  //    assertEquals(joinType, joinNode.getJoinType());
-  //    assertEquals(joinCriteria, joinNode.getCriteria());
-  //    assertEquals(leftOutputSymbols, joinNode.getLeftOutputSymbols());
-  //    assertEquals(rightOutputSymbols, joinNode.getRightOutputSymbols());
-  //  }
+  public static void assertJoinNodeEquals(
+      JoinNode joinNode,
+      JoinNode.JoinType joinType,
+      List<JoinNode.EquiJoinClause> joinCriteria,
+      List<Symbol> leftOutputSymbols,
+      List<Symbol> rightOutputSymbols) {
+    assertEquals(joinType, joinNode.getJoinType());
+    assertEquals(joinCriteria, joinNode.getCriteria());
+    assertEquals(leftOutputSymbols, joinNode.getLeftOutputSymbols());
+    assertEquals(rightOutputSymbols, joinNode.getRightOutputSymbols());
+  }
 
   public static void assertNodeMatches(PlanNode node, Class... classes) {
     int idx = 0;
@@ -131,20 +138,19 @@ public class TestUtils {
     }
   }
 
-  //  public static void assertAnalyzeSemanticException(String sql, String message) {
-  //    try {
-  //      SqlParser sqlParser = new SqlParser();
-  //      Statement statement = sqlParser.createStatement(sql, ZoneId.systemDefault());
-  //      SessionInfo session =
-  //          new SessionInfo(
-  //              0, "test", ZoneId.systemDefault(), "testdb", IClientSession.SqlDialect.TABLE);
-  //      analyzeStatementWithException(statement, TEST_MATADATA, QUERY_CONTEXT, sqlParser,
-  // session);
-  //      fail("Fail test sql: " + sql);
-  //    } catch (Exception e) {
-  //      Assert.assertTrue(e.getMessage(), e.getMessage().contains(message));
-  //    }
-  //  }
+  public static void assertAnalyzeSemanticException(String sql, String message) {
+    try {
+      SqlParser sqlParser = new SqlParser();
+      Statement statement = sqlParser.createStatement(sql, ZoneId.systemDefault());
+      SessionInfo session =
+          new SessionInfo(
+              0, "test", ZoneId.systemDefault(), "testdb", IClientSession.SqlDialect.TABLE);
+      analyzeStatementWithException(statement, TEST_MATADATA, QUERY_CONTEXT, sqlParser, session);
+      fail("Expect test sql throws exception: " + sql);
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage(), e.getMessage().contains(message));
+    }
+  }
 
   public static List<Symbol> buildSymbols(String... names) {
     return Arrays.stream(names).map(Symbol::of).collect(Collectors.toList());

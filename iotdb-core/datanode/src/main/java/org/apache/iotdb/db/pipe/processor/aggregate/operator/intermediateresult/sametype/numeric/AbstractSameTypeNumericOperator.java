@@ -128,6 +128,12 @@ public abstract class AbstractSameTypeNumericOperator implements IntermediateRes
         return new Pair<>(TSDataType.FLOAT, floatValue);
       case DOUBLE:
         return new Pair<>(TSDataType.DOUBLE, doubleValue);
+      case BLOB:
+      case TEXT:
+      case BOOLEAN:
+      case STRING:
+      case TIMESTAMP:
+      case DATE:
       default:
         return null;
     }
@@ -149,6 +155,12 @@ public abstract class AbstractSameTypeNumericOperator implements IntermediateRes
       case DOUBLE:
         ReadWriteIOUtils.write(doubleValue, outputStream);
         break;
+      case TIMESTAMP:
+      case DATE:
+      case BOOLEAN:
+      case STRING:
+      case TEXT:
+      case BLOB:
       default:
         throw new IOException(String.format("Unsupported output datatype %s", outPutDataType));
     }
@@ -170,6 +182,12 @@ public abstract class AbstractSameTypeNumericOperator implements IntermediateRes
       case DOUBLE:
         doubleValue = ReadWriteIOUtils.readDouble(byteBuffer);
         break;
+      case TEXT:
+      case BLOB:
+      case BOOLEAN:
+      case STRING:
+      case DATE:
+      case TIMESTAMP:
       default:
         throw new IOException(String.format("Unsupported output datatype %s", outPutDataType));
     }

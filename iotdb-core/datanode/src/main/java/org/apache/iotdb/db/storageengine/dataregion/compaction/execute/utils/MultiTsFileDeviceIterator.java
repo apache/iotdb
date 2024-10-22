@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
@@ -70,7 +71,10 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   private final Map<TsFileResource, TsFileDeviceIterator> deviceIteratorMap = new HashMap<>();
   private final Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
   private Pair<IDeviceID, Boolean> currentDevice = null;
+  private boolean ignoreAllNullRows;
+  private long ttlForCurrentDevice;
   private long timeLowerBoundForCurrentDevice;
+  private final String databaseName;
 
   /**
    * Used for compaction with read chunk performer.
@@ -78,6 +82,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    * @throws IOException if io error occurred
    */
   public MultiTsFileDeviceIterator(List<TsFileResource> tsFileResources) throws IOException {
+    this.databaseName = tsFileResources.get(0).getDatabaseName();
     this.tsFileResourcesSortedByDesc = new ArrayList<>(tsFileResources);
     this.tsFileResourcesSortedByAsc = new ArrayList<>(tsFileResources);
     // sort the files from the oldest to the newest
@@ -112,6 +117,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       List<TsFileResource> seqResources, List<TsFileResource> unseqResources) throws IOException {
     this.tsFileResourcesSortedByDesc = new ArrayList<>(seqResources);
     tsFileResourcesSortedByDesc.addAll(unseqResources);
+    this.databaseName = tsFileResourcesSortedByDesc.get(0).getDatabaseName();
     // sort the files from the newest to the oldest
     Collections.sort(
         this.tsFileResourcesSortedByDesc, TsFileResource::compareFileCreationOrderByDesc);
@@ -135,6 +141,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       throws IOException {
     this.tsFileResourcesSortedByDesc = new ArrayList<>(seqResources);
     tsFileResourcesSortedByDesc.addAll(unseqResources);
+    this.databaseName = tsFileResourcesSortedByDesc.get(0).getDatabaseName();
     // sort tsfiles from the newest to the oldest
     Collections.sort(
         this.tsFileResourcesSortedByDesc, TsFileResource::compareFileCreationOrderByDesc);
@@ -207,10 +214,25 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       deviceIteratorMap.remove(resource);
     }
 
-    timeLowerBoundForCurrentDevice =
-        CommonDateTimeUtils.currentTime()
-            - DataNodeTTLCache.getInstance().getTTL(currentDevice.getLeft());
+    IDeviceID deviceID = currentDevice.left;
+    boolean isAligned = currentDevice.right;
+    ignoreAllNullRows = !isAligned || deviceID.getTableName().startsWith("root.");
+    if (!ignoreAllNullRows) {
+      ttlForCurrentDevice =
+          DataNodeTTLCache.getInstance().getTTLForTable(databaseName, deviceID.getTableName());
+    } else {
+      ttlForCurrentDevice = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
+    }
+    timeLowerBoundForCurrentDevice = CommonDateTimeUtils.currentTime() - ttlForCurrentDevice;
     return currentDevice;
+  }
+
+  public long getTTLForCurrentDevice() {
+    return ttlForCurrentDevice;
+  }
+
+  public long getTimeLowerBoundForCurrentDevice() {
+    return timeLowerBoundForCurrentDevice;
   }
 
   /**
@@ -382,7 +404,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       TsFileSequenceReader reader = readerMap.get(tsFileResource);
       List<AlignedChunkMetadata> alignedChunkMetadataList =
           reader.getAlignedChunkMetadataByMetadataIndexNode(
-              currentDevice.left, firstMeasurementNodeOfCurrentDevice);
+              currentDevice.left, firstMeasurementNodeOfCurrentDevice, ignoreAllNullRows);
       applyModificationForAlignedChunkMetadataList(tsFileResource, alignedChunkMetadataList);
       readerAndChunkMetadataList.add(new Pair<>(reader, alignedChunkMetadataList));
     }
@@ -422,10 +444,23 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     // construct the input params List<List<Modification>> for QueryUtils.modifyAlignedChunkMetaData
     AlignedChunkMetadata alignedChunkMetadata = alignedChunkMetadataList.get(0);
     List<IChunkMetadata> valueChunkMetadataList = alignedChunkMetadata.getValueChunkMetadataList();
-    List<List<Modification>> modificationForCurDevice = new ArrayList<>();
+
+    // match time column modifications
+    List<Modification> modificationForTimeColumn = new ArrayList<>();
+    for (Modification modification : modifications) {
+      if (modification.getPath().matchFullPath(device, AlignedPath.VECTOR_PLACEHOLDER)) {
+        modificationForTimeColumn.add(modification);
+      }
+    }
+    if (ttlDeletion != null) {
+      modificationForTimeColumn.add(ttlDeletion);
+    }
+
+    // match value column modifications
+    List<List<Modification>> modificationForValueColumns = new ArrayList<>();
     for (IChunkMetadata valueChunkMetadata : valueChunkMetadataList) {
       if (valueChunkMetadata == null) {
-        modificationForCurDevice.add(Collections.emptyList());
+        modificationForValueColumns.add(Collections.emptyList());
         continue;
       }
       List<Modification> modificationList = new ArrayList<>();
@@ -440,12 +475,15 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       if (ttlDeletion != null) {
         modificationList.add(ttlDeletion);
       }
-      modificationForCurDevice.add(
+      modificationForValueColumns.add(
           modificationList.isEmpty() ? Collections.emptyList() : modificationList);
     }
 
     ModificationUtils.modifyAlignedChunkMetaData(
-        alignedChunkMetadataList, modificationForCurDevice);
+        alignedChunkMetadataList,
+        modificationForTimeColumn,
+        modificationForValueColumns,
+        ignoreAllNullRows);
   }
 
   public Map<TsFileResource, TsFileSequenceReader> getReaderMap() {

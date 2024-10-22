@@ -117,7 +117,6 @@ public class ExampleTest {
     // Verify DistributionPlan
 
     /*
-     * IdentitySinkNode-33
      *   └──OutputNode-8
      *           └──OffsetNode-6
      *             └──ProjectNode
@@ -137,8 +136,7 @@ public class ExampleTest {
                     exchange(), sort(project(filter(filterPredicate, tableScan))), exchange()))));
 
     /*
-     * IdentitySinkNode-31
-     *   └──SortNode-26
+     *    SortNode-26
      *       └──ProjectNode-22
      *               └──FilterNode-16
      *                   └──TableScanNode-13
@@ -146,15 +144,14 @@ public class ExampleTest {
     assertPlan(
         planTester.getFragmentPlan(1),
         any( // use any() to match any one node
-            sort(project(filter(filterPredicate, tableScan)))));
+            project(filter(filterPredicate, tableScan))));
 
-    /* IdentitySinkNode-31
-     *   └──SortNode-26
+    /*
+     *    SortNode-26
      *           └──ProjectNode-19
      *               └──FilterNode-16
      *                   └──TableScanNode-13
      */
-    assertPlan(
-        planTester.getFragmentPlan(2), any(sort(project(filter(filterPredicate, tableScan)))));
+    assertPlan(planTester.getFragmentPlan(2), any(project(filter(filterPredicate, tableScan))));
   }
 }

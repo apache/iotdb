@@ -43,14 +43,14 @@ public class ShowTablesTask implements IConfigTask {
 
   private final String database;
 
-  public ShowTablesTask(String database) {
+  public ShowTablesTask(final String database) {
     this.database = database;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.showTables(database);
+    return configTaskExecutor.showTables(database, false);
   }
 
   public static void buildTsBlock(

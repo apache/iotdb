@@ -208,7 +208,7 @@ public class IoTDBSubStringFunctionTableIT {
     // Negative characters length
     tableAssertTestFail(
         "select SUBSTRING(s1 FROM 1 FOR -10) from table1",
-        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
             + ": Argument exception,the scalar function substring length must not be less than 0",
         DATABASE_NAME);
 

@@ -20,9 +20,11 @@
 package org.apache.iotdb.db.pipe.event.realtime;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.pattern.PipePattern;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpoch;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -45,8 +47,17 @@ public class PipeRealtimeEvent extends EnrichedEvent {
       final EnrichedEvent event,
       final TsFileEpoch tsFileEpoch,
       final Map<IDeviceID, String[]> device2Measurements,
-      final PipePattern pattern) {
-    this(event, tsFileEpoch, device2Measurements, null, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
+      final TreePattern treePattern,
+      final TablePattern tablePattern) {
+    this(
+        event,
+        tsFileEpoch,
+        device2Measurements,
+        null,
+        treePattern,
+        tablePattern,
+        Long.MIN_VALUE,
+        Long.MAX_VALUE);
   }
 
   public PipeRealtimeEvent(
@@ -54,7 +65,8 @@ public class PipeRealtimeEvent extends EnrichedEvent {
       final TsFileEpoch tsFileEpoch,
       final Map<IDeviceID, String[]> device2Measurements,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pattern,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
       final long startTime,
       final long endTime) {
     // PipeTaskMeta is used to report the progress of the event, the PipeRealtimeEvent
@@ -64,7 +76,8 @@ public class PipeRealtimeEvent extends EnrichedEvent {
         event != null ? event.getPipeName() : null,
         event != null ? event.getCreationTime() : 0,
         pipeTaskMeta,
-        pattern,
+        treePattern,
+        tablePattern,
         startTime,
         endTime);
 
@@ -87,6 +100,18 @@ public class PipeRealtimeEvent extends EnrichedEvent {
 
   public void gcSchemaInfo() {
     device2Measurements = null;
+  }
+
+  public void markAsTableModelEvent() {
+    if (event instanceof PipeInsertionEvent) {
+      ((PipeInsertionEvent) event).markAsTableModelEvent();
+    }
+  }
+
+  public void markAsTreeModelEvent() {
+    if (event instanceof PipeInsertionEvent) {
+      ((PipeInsertionEvent) event).markAsTreeModelEvent();
+    }
   }
 
   @Override
@@ -166,16 +191,18 @@ public class PipeRealtimeEvent extends EnrichedEvent {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pattern,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
       final long startTime,
       final long endTime) {
     return new PipeRealtimeEvent(
         event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-            pipeName, creationTime, pipeTaskMeta, pattern, startTime, endTime),
+            pipeName, creationTime, pipeTaskMeta, treePattern, tablePattern, startTime, endTime),
         this.tsFileEpoch,
         this.device2Measurements,
         pipeTaskMeta,
-        pattern,
+        treePattern,
+        tablePattern,
         startTime,
         endTime);
   }

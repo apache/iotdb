@@ -29,44 +29,51 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.regex.Pattern;
+import java.util.Optional;
 
 public class LikeViewExpression extends UnaryViewExpression {
 
   // region member variables and init functions
-  private final String patternString;
-  private final Pattern pattern;
-
+  private final String pattern;
+  private final Optional<Character> escape;
   private final boolean isNot;
 
-  public LikeViewExpression(ViewExpression expression, String patternString, boolean isNot) {
+  public LikeViewExpression(
+      ViewExpression expression, String pattern, Optional<Character> escape, boolean isNot) {
     super(expression);
-    this.patternString = patternString;
+    this.pattern = pattern;
+    this.escape = escape;
     this.isNot = isNot;
-    pattern = this.compile();
   }
 
-  public LikeViewExpression(
-      ViewExpression expression, String patternString, Pattern pattern, boolean isNot) {
+  public LikeViewExpression(ViewExpression expression, String pattern, boolean isNot) {
     super(expression);
-    this.patternString = patternString;
     this.pattern = pattern;
+    this.escape = Optional.empty();
     this.isNot = isNot;
   }
 
   public LikeViewExpression(ByteBuffer byteBuffer) {
     super(ViewExpression.deserialize(byteBuffer));
-    patternString = ReadWriteIOUtils.readString(byteBuffer);
+    pattern = ReadWriteIOUtils.readString(byteBuffer);
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      escape = Optional.of(ReadWriteIOUtils.readString(byteBuffer).charAt(0));
+    } else {
+      escape = Optional.empty();
+    }
     isNot = ReadWriteIOUtils.readBool(byteBuffer);
-    pattern = compile();
   }
 
   public LikeViewExpression(InputStream inputStream) {
     super(ViewExpression.deserialize(inputStream));
     try {
-      patternString = ReadWriteIOUtils.readString(inputStream);
+      pattern = ReadWriteIOUtils.readString(inputStream);
+      if (ReadWriteIOUtils.readBool(inputStream)) {
+        escape = Optional.of(ReadWriteIOUtils.readString(inputStream).charAt(0));
+      } else {
+        escape = Optional.empty();
+      }
       isNot = ReadWriteIOUtils.readBool(inputStream);
-      pattern = compile();
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -88,7 +95,14 @@ public class LikeViewExpression extends UnaryViewExpression {
   @Override
   public String toString(boolean isRoot) {
     String basicString =
-        this.expression.toString(false) + (isNot ? "NOT LIKE " : "LIKE ") + this.patternString;
+        this.expression.toString(false)
+            + (isNot ? "NOT LIKE " : "LIKE ")
+            + "pattern = '"
+            + this.pattern
+            + "'";
+    if (escape.isPresent()) {
+      basicString += " escape = '" + escape.get() + "'";
+    }
     if (isRoot) {
       return basicString;
     }
@@ -98,83 +112,36 @@ public class LikeViewExpression extends UnaryViewExpression {
   @Override
   protected void serialize(ByteBuffer byteBuffer) {
     super.serialize(byteBuffer);
-    ReadWriteIOUtils.write(patternString, byteBuffer);
+    ReadWriteIOUtils.write(pattern, byteBuffer);
+    ReadWriteIOUtils.write(escape.isPresent(), byteBuffer);
+    if (escape.isPresent()) {
+      ReadWriteIOUtils.write(escape.get().toString(), byteBuffer);
+    }
     ReadWriteIOUtils.write(isNot, byteBuffer);
   }
 
   @Override
   protected void serialize(OutputStream stream) throws IOException {
     super.serialize(stream);
-    ReadWriteIOUtils.write(patternString, stream);
+    ReadWriteIOUtils.write(pattern, stream);
+    ReadWriteIOUtils.write(escape.isPresent(), stream);
+    if (escape.isPresent()) {
+      ReadWriteIOUtils.write(escape.get().toString(), stream);
+    }
     ReadWriteIOUtils.write(isNot, stream);
   }
 
   // endregion
 
-  public String getPatternString() {
-    return patternString;
+  public String getPattern() {
+    return pattern;
   }
 
-  public Pattern getPattern() {
-    return pattern;
+  public Optional<Character> getEscape() {
+    return escape;
   }
 
   public boolean isNot() {
     return isNot;
-  }
-
-  /**
-   * This Method is for un-escaping strings except '\' before special string '%', '_', '\', because
-   * we need to use '\' to judge whether to replace this to regexp string
-   */
-  private String unescapeString(String value) {
-    StringBuilder stringBuilder = new StringBuilder();
-    for (int i = 0; i < value.length(); i++) {
-      String ch = String.valueOf(value.charAt(i));
-      if ("\\".equals(ch)) {
-        if (i < value.length() - 1) {
-          String nextChar = String.valueOf(value.charAt(i + 1));
-          if ("%".equals(nextChar) || "_".equals(nextChar) || "\\".equals(nextChar)) {
-            stringBuilder.append(ch);
-          }
-          if ("\\".equals(nextChar)) {
-            i++;
-          }
-        }
-      } else {
-        stringBuilder.append(ch);
-      }
-    }
-    return stringBuilder.toString();
-  }
-
-  /**
-   * The main idea of this part comes from
-   * https://codereview.stackexchange.com/questions/36861/convert-sql-like-to-regex/36864
-   */
-  private Pattern compile() {
-    String unescapeValue = unescapeString(patternString);
-    String specialRegexString = ".^$*+?{}[]|()";
-    StringBuilder patternBuilder = new StringBuilder();
-    patternBuilder.append("^");
-    for (int i = 0; i < unescapeValue.length(); i++) {
-      String ch = String.valueOf(unescapeValue.charAt(i));
-      if (specialRegexString.contains(ch)) {
-        ch = "\\" + unescapeValue.charAt(i);
-      }
-      if (i == 0
-          || !"\\".equals(String.valueOf(unescapeValue.charAt(i - 1)))
-          || i >= 2
-              && "\\\\"
-                  .equals(
-                      patternBuilder.substring(
-                          patternBuilder.length() - 2, patternBuilder.length()))) {
-        patternBuilder.append(ch.replace("%", ".*?").replace("_", "."));
-      } else {
-        patternBuilder.append(ch);
-      }
-    }
-    patternBuilder.append("$");
-    return Pattern.compile(patternBuilder.toString());
   }
 }

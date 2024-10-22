@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -506,7 +507,12 @@ public class MTreeBelowSGCachedImpl {
           if (cachedMNode != null) {
             unPinMNode(cachedMNode);
             throw new MetadataException(
-                "The alias is duplicated with the name or alias of other measurement.");
+                "The alias is duplicated with the name or alias of other measurement, alias: "
+                    + alias
+                    + ", fullPath: "
+                    + fullPath
+                    + ", otherMeasurement: "
+                    + cachedMNode.getFullPath());
           }
           if (measurementMNode.getAlias() != null) {
             device.deleteAliasChild(measurementMNode.getAlias());

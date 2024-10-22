@@ -81,6 +81,12 @@ public class UDTFTwoSidedFilter implements UDTF {
           collector.putLong(time[i], Math.round(repaired[i]));
         }
         break;
+      case BOOLEAN:
+      case BLOB:
+      case STRING:
+      case TEXT:
+      case TIMESTAMP:
+      case DATE:
       default:
         throw new UDFException("No such kind of data type.");
     }

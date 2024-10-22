@@ -181,7 +181,8 @@ public class ThriftConnection {
         fetchSize,
         zoneId,
         timeFactor,
-        execResp.isSetTableModel() && execResp.isTableModel());
+        execResp.isSetTableModel() && execResp.isTableModel(),
+        execResp.getColumnIndex2TsBlockColumnIndexList());
   }
 
   public void close() {

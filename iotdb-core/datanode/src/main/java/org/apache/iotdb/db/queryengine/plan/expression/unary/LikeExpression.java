@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.unary;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
@@ -30,49 +31,50 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.regex.Pattern;
-
-import static org.apache.tsfile.utils.RegexUtils.compileRegex;
-import static org.apache.tsfile.utils.RegexUtils.parseLikePatternToRegex;
+import java.util.Optional;
 
 public class LikeExpression extends UnaryExpression {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(LikeExpression.class);
 
-  private final String patternString;
-  private final Pattern pattern;
+  private final String pattern;
+  private final Optional<Character> escape;
 
   private final boolean isNot;
 
-  public LikeExpression(Expression expression, String patternString, boolean isNot) {
+  public LikeExpression(
+      Expression expression, String pattern, Optional<Character> escape, boolean isNot) {
     super(expression);
-    this.patternString = patternString;
+    this.pattern = pattern;
+    this.escape = escape;
     this.isNot = isNot;
-    pattern = compileRegex(parseLikePatternToRegex(patternString));
   }
 
-  public LikeExpression(
-      Expression expression, String patternString, Pattern pattern, boolean isNot) {
+  public LikeExpression(Expression expression, String pattern, boolean isNot) {
     super(expression);
-    this.patternString = patternString;
     this.pattern = pattern;
+    this.escape = Optional.empty();
     this.isNot = isNot;
   }
 
   public LikeExpression(ByteBuffer byteBuffer) {
     super(Expression.deserialize(byteBuffer));
-    patternString = ReadWriteIOUtils.readString(byteBuffer);
+    pattern = ReadWriteIOUtils.readString(byteBuffer);
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      escape = Optional.of(ReadWriteIOUtils.readString(byteBuffer).charAt(0));
+    } else {
+      escape = Optional.empty();
+    }
     isNot = ReadWriteIOUtils.readBool(byteBuffer);
-    pattern = compileRegex(parseLikePatternToRegex(patternString));
   }
 
-  public String getPatternString() {
-    return patternString;
-  }
-
-  public Pattern getPattern() {
+  public String getPattern() {
     return pattern;
+  }
+
+  public Optional<Character> getEscape() {
+    return escape;
   }
 
   public boolean isNot() {
@@ -81,7 +83,17 @@ public class LikeExpression extends UnaryExpression {
 
   @Override
   protected String getExpressionStringInternal() {
-    return expression.getExpressionString() + (isNot ? " NOT" : "") + " LIKE '" + pattern + "'";
+    String res =
+        expression.getExpressionString()
+            + (isNot ? " NOT" : "")
+            + " LIKE "
+            + "pattern = '"
+            + pattern
+            + "'";
+    if (escape.isPresent()) {
+      res = res + " escape = '" + escape.get() + "'";
+    }
+    return res;
   }
 
   @Override
@@ -92,20 +104,38 @@ public class LikeExpression extends UnaryExpression {
   @Override
   protected void serialize(ByteBuffer byteBuffer) {
     super.serialize(byteBuffer);
-    ReadWriteIOUtils.write(patternString, byteBuffer);
+    ReadWriteIOUtils.write(pattern, byteBuffer);
+    ReadWriteIOUtils.write(escape.isPresent(), byteBuffer);
+    if (escape.isPresent()) {
+      ReadWriteIOUtils.write(escape.get().toString(), byteBuffer);
+    }
     ReadWriteIOUtils.write(isNot, byteBuffer);
   }
 
   @Override
   protected void serialize(DataOutputStream stream) throws IOException {
     super.serialize(stream);
-    ReadWriteIOUtils.write(patternString, stream);
+    ReadWriteIOUtils.write(pattern, stream);
+    ReadWriteIOUtils.write(escape.isPresent(), stream);
+    if (escape.isPresent()) {
+      ReadWriteIOUtils.write(escape.get().toString(), stream);
+    }
     ReadWriteIOUtils.write(isNot, stream);
   }
 
   @Override
   public String getOutputSymbolInternal() {
-    return expression.getOutputSymbol() + (isNot ? " NOT" : "") + " LIKE '" + pattern + "'";
+    String res =
+        expression.getOutputSymbol()
+            + (isNot ? " NOT" : "")
+            + " LIKE "
+            + "pattern = '"
+            + pattern
+            + "'";
+    if (escape.isPresent()) {
+      res = res + " escape = '" + escape.get() + "'";
+    }
+    return res;
   }
 
   @Override
@@ -117,6 +147,14 @@ public class LikeExpression extends UnaryExpression {
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(expression)
-        + RamUsageEstimator.sizeOf(patternString);
+        + RamUsageEstimator.sizeOf(pattern);
+  }
+
+  public static Optional<Character> getEscapeCharacter(String escape) {
+    if (escape.length() == 1) {
+      return Optional.of(escape.charAt(0));
+    } else {
+      throw new SemanticException("Escape string must be a single character");
+    }
   }
 }

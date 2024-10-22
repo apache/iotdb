@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -34,7 +35,8 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
-import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesMetricsSet;
+import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesNumberMetricsSet;
+import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesSizeMetricsSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.io.FileUtils;
@@ -76,6 +78,10 @@ public class ActiveLoadTsFileLoader {
   }
 
   public void tryTriggerTsFileLoad(String absolutePath, boolean isGeneratedByPipe) {
+    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+      return;
+    }
+
     if (pendingQueue.enqueue(absolutePath, isGeneratedByPipe)) {
       initFailDirIfNecessary();
       adjustExecutorIfNecessary();
@@ -96,6 +102,9 @@ public class ActiveLoadTsFileLoader {
                 e);
           }
           failDir.set(IOTDB_CONFIG.getLoadActiveListeningFailDir());
+
+          ActiveLoadingFilesSizeMetricsSet.getInstance().updateFailedDir(failDir.get());
+          ActiveLoadingFilesNumberMetricsSet.getInstance().updateFailedDir(failDir.get());
         }
       }
     }
@@ -202,12 +211,25 @@ public class ActiveLoadTsFileLoader {
   }
 
   private void handleLoadFailure(final Pair<String, Boolean> filePair, final TSStatus status) {
-    LOGGER.warn(
-        "Failed to auto load tsfile {} (isGeneratedByPipe = {}), status: {}. File will be moved to fail directory.",
-        filePair.getLeft(),
-        filePair.getRight(),
-        status);
-    removeFileAndResourceAndModsToFailDir(filePair.getLeft());
+    if (status.getMessage() != null && status.getMessage().contains("memory")) {
+      LOGGER.info(
+          "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to memory constraints, will retry later.",
+          filePair.getLeft(),
+          filePair.getRight());
+    } else if (CommonDescriptor.getInstance().getConfig().isReadOnly()
+        || (status.getMessage() != null && status.getMessage().contains("read only"))) {
+      LOGGER.info(
+          "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to the system is read only, will retry later.",
+          filePair.getLeft(),
+          filePair.getRight());
+    } else {
+      LOGGER.warn(
+          "Failed to auto load tsfile {} (isGeneratedByPipe = {}), status: {}. File will be moved to fail directory.",
+          filePair.getLeft(),
+          filePair.getRight(),
+          status);
+      removeFileAndResourceAndModsToFailDir(filePair.getLeft());
+    }
   }
 
   private void handleFileNotFoundException(final Pair<String, Boolean> filePair) {
@@ -222,6 +244,12 @@ public class ActiveLoadTsFileLoader {
     if (e.getMessage() != null && e.getMessage().contains("memory")) {
       LOGGER.info(
           "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to memory constraints, will retry later.",
+          filePair.getLeft(),
+          filePair.getRight());
+    } else if (CommonDescriptor.getInstance().getConfig().isReadOnly()
+        || (e.getMessage() != null && e.getMessage().contains("read only"))) {
+      LOGGER.info(
+          "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to the system is read only, will retry later.",
           filePair.getLeft(),
           filePair.getRight());
     } else {
@@ -255,13 +283,15 @@ public class ActiveLoadTsFileLoader {
     }
   }
 
-  public boolean isFilePendingOrLoading(final String filePath) {
-    return pendingQueue.isFilePendingOrLoading(filePath);
+  public boolean isFilePendingOrLoading(final File file) {
+    return pendingQueue.isFilePendingOrLoading(file.getAbsolutePath());
   }
 
   // Metrics
   public long countAndReportFailedFileNumber() {
     final long[] fileCount = {0};
+    final long[] fileSize = {0};
+
     try {
       initFailDirIfNecessary();
       Files.walkFileTree(
@@ -270,13 +300,21 @@ public class ActiveLoadTsFileLoader {
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
               fileCount[0]++;
+              try {
+                fileSize[0] += file.toFile().length();
+              } catch (Exception e) {
+                LOGGER.debug("Failed to count failed files in fail directory.", e);
+              }
               return FileVisitResult.CONTINUE;
             }
           });
-      ActiveLoadingFilesMetricsSet.getInstance().recordFailedFileCounter(fileCount[0]);
+
+      ActiveLoadingFilesNumberMetricsSet.getInstance().updateTotalFailedFileCounter(fileCount[0]);
+      ActiveLoadingFilesSizeMetricsSet.getInstance().updateTotalFailedFileCounter(fileSize[0]);
     } catch (final IOException e) {
-      LOGGER.warn("Failed to count failed files in fail directory.", e);
+      LOGGER.debug("Failed to count failed files in fail directory.", e);
     }
+
     return fileCount[0];
   }
 }

@@ -133,68 +133,84 @@ public class SchemaEngine {
     }
   }
 
+  public static Map<String, List<SchemaRegionId>> getLocalSchemaRegionInfo() {
+    final File schemaDir = new File(config.getSchemaDir());
+    final File[] sgDirList = schemaDir.listFiles();
+    final Map<String, List<SchemaRegionId>> localSchemaPartitionTable = new HashMap<>();
+    if (sgDirList == null) {
+      return localSchemaPartitionTable;
+    }
+    for (File file : sgDirList) {
+      if (!file.isDirectory()) {
+        continue;
+      }
+
+      final PartialPath database;
+      try {
+        database = PartialPath.getDatabasePath(file.getName());
+      } catch (IllegalPathException illegalPathException) {
+        // not a legal sg dir
+        continue;
+      }
+
+      final File sgDir = new File(config.getSchemaDir(), database.getFullPath());
+
+      if (!sgDir.exists()) {
+        continue;
+      }
+
+      final File[] schemaRegionDirs = sgDir.listFiles();
+      if (schemaRegionDirs == null) {
+        continue;
+      }
+      List<SchemaRegionId> schemaRegionIds = new ArrayList<>();
+      for (final File schemaRegionDir : schemaRegionDirs) {
+        final SchemaRegionId schemaRegionId;
+        try {
+          schemaRegionId = new SchemaRegionId(Integer.parseInt(schemaRegionDir.getName()));
+        } catch (final NumberFormatException e) {
+          // the dir/file is not schemaRegionDir, ignore this.
+          continue;
+        }
+        schemaRegionIds.add(schemaRegionId);
+      }
+      localSchemaPartitionTable.put(database.getFullPath(), schemaRegionIds);
+    }
+    return localSchemaPartitionTable;
+  }
+
   /**
    * Scan the database and schema region directories to recover schema regions and return the
    * collected local schema partition info for localSchemaPartitionTable recovery.
    */
   @SuppressWarnings("java:S2142")
   private void initSchemaRegion() {
-    File schemaDir = new File(config.getSchemaDir());
-    File[] sgDirList = schemaDir.listFiles();
-
-    if (sgDirList == null) {
-      return;
-    }
-
     // recover SchemaRegion concurrently
-    ExecutorService schemaRegionRecoverPools =
+    Map<String, List<SchemaRegionId>> localSchemaRegionInfo = getLocalSchemaRegionInfo();
+    final ExecutorService schemaRegionRecoverPools =
         IoTDBThreadPoolFactory.newFixedThreadPool(
             Runtime.getRuntime().availableProcessors(),
             ThreadName.SCHEMA_REGION_RECOVER_TASK.getName());
-    List<Future<ISchemaRegion>> futures = new ArrayList<>();
-
-    for (File file : sgDirList) {
-      if (!file.isDirectory()) {
-        continue;
-      }
-
-      PartialPath storageGroup;
+    final List<Future<ISchemaRegion>> futures = new ArrayList<>();
+    localSchemaRegionInfo.forEach(
+        (k, v) -> {
+          for (SchemaRegionId schemaRegionId : v) {
+            PartialPath database;
+            try {
+              database = PartialPath.getDatabasePath(k);
+            } catch (IllegalPathException e) {
+              logger.warn("Illegal database path: {}", k);
+              continue;
+            }
+            futures.add(
+                schemaRegionRecoverPools.submit(recoverSchemaRegionTask(database, schemaRegionId)));
+          }
+        });
+    for (final Future<ISchemaRegion> future : futures) {
       try {
-        storageGroup = new PartialPath(file.getName());
-      } catch (IllegalPathException illegalPathException) {
-        // not a legal sg dir
-        continue;
-      }
-
-      File sgDir = new File(config.getSchemaDir(), storageGroup.getFullPath());
-
-      if (!sgDir.exists()) {
-        continue;
-      }
-
-      File[] schemaRegionDirs = sgDir.listFiles();
-      if (schemaRegionDirs == null) {
-        continue;
-      }
-
-      for (File schemaRegionDir : schemaRegionDirs) {
-        SchemaRegionId schemaRegionId;
-        try {
-          schemaRegionId = new SchemaRegionId(Integer.parseInt(schemaRegionDir.getName()));
-        } catch (NumberFormatException e) {
-          // the dir/file is not schemaRegionDir, ignore this.
-          continue;
-        }
-        futures.add(
-            schemaRegionRecoverPools.submit(recoverSchemaRegionTask(storageGroup, schemaRegionId)));
-      }
-    }
-
-    for (Future<ISchemaRegion> future : futures) {
-      try {
-        ISchemaRegion schemaRegion = future.get();
+        final ISchemaRegion schemaRegion = future.get();
         schemaRegionMap.put(schemaRegion.getSchemaRegionId(), schemaRegion);
-      } catch (ExecutionException | InterruptedException | RuntimeException e) {
+      } catch (final ExecutionException | InterruptedException | RuntimeException e) {
         logger.error("Something wrong happened during SchemaRegion recovery", e);
       }
     }

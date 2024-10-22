@@ -44,9 +44,11 @@ import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -55,19 +57,17 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 public class BatchedFastAlignedSeriesCompactionExecutor
     extends FastAlignedSeriesCompactionExecutor {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
-  private final Set<String> compactedMeasurements;
+  private AlignedSeriesBatchCompactionUtils.BatchColumnSelection batchColumnSelection;
   private final IMeasurementSchema timeSchema;
   private final List<IMeasurementSchema> valueMeasurementSchemas;
   private final List<TsFileResource> sortedSourceFiles;
@@ -87,7 +87,8 @@ public class BatchedFastAlignedSeriesCompactionExecutor
       IDeviceID deviceId,
       int subTaskId,
       List<IMeasurementSchema> measurementSchemas,
-      FastCompactionTaskSummary summary) {
+      FastCompactionTaskSummary summary,
+      boolean ignoreAllNullRows) {
     super(
         compactionWriter,
         timeseriesMetadataOffsetMap,
@@ -97,10 +98,13 @@ public class BatchedFastAlignedSeriesCompactionExecutor
         deviceId,
         subTaskId,
         measurementSchemas,
-        summary);
+        summary,
+        ignoreAllNullRows);
     timeSchema = measurementSchemas.remove(0);
     valueMeasurementSchemas = measurementSchemas;
-    this.compactedMeasurements = new HashSet<>();
+    this.batchColumnSelection =
+        new AlignedSeriesBatchCompactionUtils.BatchColumnSelection(
+            valueMeasurementSchemas, batchSize);
     this.sortedSourceFiles = sortedSourceFiles;
     this.alignedChunkMetadataCache = new HashMap<>();
     this.batchCompactionPlan = new BatchCompactionPlan();
@@ -108,7 +112,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
 
   private List<AlignedChunkMetadata> getAlignedChunkMetadataListBySelectedValueColumn(
       TsFileResource tsFileResource, List<IMeasurementSchema> selectedValueMeasurementSchemas)
-      throws IOException {
+      throws IOException, IllegalPathException {
     // 1. get Full AlignedChunkMetadata from cache
     List<AlignedChunkMetadata> alignedChunkMetadataList = null;
     if (alignedChunkMetadataCache.containsKey(tsFileResource)) {
@@ -122,13 +126,9 @@ public class BatchedFastAlignedSeriesCompactionExecutor
 
     List<AlignedChunkMetadata> filteredAlignedChunkMetadataList = new ArrayList<>();
     for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
-      List<String> selectedMeasurements =
-          selectedValueMeasurementSchemas.stream()
-              .map(IMeasurementSchema::getMeasurementId)
-              .collect(Collectors.toList());
       filteredAlignedChunkMetadataList.add(
-          AlignedSeriesBatchCompactionUtils.filterAlignedChunkMetadata(
-              alignedChunkMetadata, selectedMeasurements));
+          AlignedSeriesBatchCompactionUtils.filterAlignedChunkMetadataByIndex(
+              alignedChunkMetadata, batchColumnSelection.getSelectedColumnIndexList()));
     }
     return filteredAlignedChunkMetadataList;
   }
@@ -145,25 +145,32 @@ public class BatchedFastAlignedSeriesCompactionExecutor
 
   private void compactFirstBatch()
       throws PageException, IllegalPathException, IOException, WriteProcessException {
-    List<IMeasurementSchema> firstGroupMeasurements =
-        AlignedSeriesBatchCompactionUtils.selectColumnBatchToCompact(
-            valueMeasurementSchemas, compactedMeasurements, batchSize);
-    List<IMeasurementSchema> currentBatchMeasurementSchemas =
-        new ArrayList<>(firstGroupMeasurements.size() + 1);
-    currentBatchMeasurementSchemas.add(timeSchema);
-    currentBatchMeasurementSchemas.addAll(firstGroupMeasurements);
+    List<IMeasurementSchema> selectedMeasurementSchemas;
+    if (!batchColumnSelection.hasNext()) {
+      if (ignoreAllNullRows) {
+        return;
+      }
+      selectedMeasurementSchemas = Collections.singletonList(timeSchema);
+    } else {
+      batchColumnSelection.next();
+      selectedMeasurementSchemas =
+          new ArrayList<>(batchColumnSelection.getCurrentSelectedColumnSchemaList().size() + 1);
+      selectedMeasurementSchemas.add(timeSchema);
+      selectedMeasurementSchemas.addAll(batchColumnSelection.getCurrentSelectedColumnSchemaList());
+    }
 
     FirstBatchFastAlignedSeriesCompactionExecutor executor =
         new FirstBatchFastAlignedSeriesCompactionExecutor(
             compactionWriter,
-            filterTimeseriesMetadataOffsetMap(currentBatchMeasurementSchemas),
+            filterTimeseriesMetadataOffsetMap(selectedMeasurementSchemas),
             readerCacheMap,
             modificationCacheMap,
             sortedSourceFiles,
             deviceId,
             subTaskId,
-            currentBatchMeasurementSchemas,
-            summary);
+            selectedMeasurementSchemas,
+            summary,
+            ignoreAllNullRows);
     executor.execute();
     LOGGER.debug(
         "[Batch Compaction] current device is {}, first batch compacted time chunk is {}",
@@ -173,14 +180,13 @@ public class BatchedFastAlignedSeriesCompactionExecutor
 
   private void compactLeftBatches()
       throws PageException, IllegalPathException, IOException, WriteProcessException {
-    while (compactedMeasurements.size() < valueMeasurementSchemas.size()) {
-      List<IMeasurementSchema> selectedValueColumnGroup =
-          AlignedSeriesBatchCompactionUtils.selectColumnBatchToCompact(
-              valueMeasurementSchemas, compactedMeasurements, batchSize);
+    while (batchColumnSelection.hasNext()) {
+      batchColumnSelection.next();
       List<IMeasurementSchema> currentBatchMeasurementSchemas =
-          new ArrayList<>(selectedValueColumnGroup.size() + 1);
+          new ArrayList<>(batchColumnSelection.getCurrentSelectedColumnSchemaList().size() + 1);
       currentBatchMeasurementSchemas.add(timeSchema);
-      currentBatchMeasurementSchemas.addAll(selectedValueColumnGroup);
+      currentBatchMeasurementSchemas.addAll(
+          batchColumnSelection.getCurrentSelectedColumnSchemaList());
       FollowingBatchFastAlignedSeriesCompactionExecutor executor =
           new FollowingBatchFastAlignedSeriesCompactionExecutor(
               compactionWriter,
@@ -191,7 +197,8 @@ public class BatchedFastAlignedSeriesCompactionExecutor
               deviceId,
               subTaskId,
               currentBatchMeasurementSchemas,
-              summary);
+              summary,
+              ignoreAllNullRows);
       executor.execute();
     }
   }
@@ -221,7 +228,8 @@ public class BatchedFastAlignedSeriesCompactionExecutor
         IDeviceID deviceId,
         int subTaskId,
         List<IMeasurementSchema> measurementSchemas,
-        FastCompactionTaskSummary summary) {
+        FastCompactionTaskSummary summary,
+        boolean ignoreAllNullRows) {
       super(
           compactionWriter,
           timeseriesMetadataOffsetMap,
@@ -231,7 +239,8 @@ public class BatchedFastAlignedSeriesCompactionExecutor
           deviceId,
           subTaskId,
           measurementSchemas,
-          summary);
+          summary,
+          ignoreAllNullRows);
       isBatchedCompaction = true;
     }
 
@@ -256,8 +265,19 @@ public class BatchedFastAlignedSeriesCompactionExecutor
 
     @Override
     protected List<AlignedChunkMetadata> getAlignedChunkMetadataList(TsFileResource resource)
-        throws IOException {
+        throws IOException, IllegalPathException {
       return getAlignedChunkMetadataListBySelectedValueColumn(resource, measurementSchemas);
+    }
+
+    @Override
+    protected Chunk readChunk(TsFileSequenceReader reader, ChunkMetadata chunkMetadata)
+        throws IOException {
+      Chunk chunk = super.readChunk(reader, chunkMetadata);
+      if (AlignedSeriesBatchCompactionUtils.isTimeChunk(chunkMetadata)) {
+        batchCompactionPlan.addTimeChunkToCache(
+            reader.getFileName(), chunkMetadata.getOffsetOfChunkHeader(), chunk);
+      }
+      return chunk;
     }
 
     @Override
@@ -294,7 +314,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
 
       ModifiedStatus modifiedStatus =
           AlignedSeriesBatchCompactionUtils.calculateAlignedPageModifiedStatus(
-              startTime, endTime, originAlignedChunkMetadata);
+              startTime, endTime, originAlignedChunkMetadata, ignoreAllNullRows);
       batchCompactionPlan.recordPageModifiedStatus(
           resource.getTsFile().getName(), new TimeRange(startTime, endTime), modifiedStatus);
       return modifiedStatus;
@@ -316,7 +336,8 @@ public class BatchedFastAlignedSeriesCompactionExecutor
         IDeviceID deviceId,
         int subTaskId,
         List<IMeasurementSchema> measurementSchemas,
-        FastCompactionTaskSummary summary) {
+        FastCompactionTaskSummary summary,
+        boolean ignoreAllNullRows) {
       super(
           compactionWriter,
           timeseriesMetadataOffsetMap,
@@ -326,7 +347,8 @@ public class BatchedFastAlignedSeriesCompactionExecutor
           deviceId,
           subTaskId,
           measurementSchemas,
-          summary);
+          summary,
+          ignoreAllNullRows);
       isBatchedCompaction = true;
     }
 
@@ -362,8 +384,17 @@ public class BatchedFastAlignedSeriesCompactionExecutor
 
     @Override
     protected List<AlignedChunkMetadata> getAlignedChunkMetadataList(TsFileResource resource)
-        throws IOException {
+        throws IOException, IllegalPathException {
       return getAlignedChunkMetadataListBySelectedValueColumn(resource, measurementSchemas);
+    }
+
+    @Override
+    protected Chunk readChunk(TsFileSequenceReader reader, ChunkMetadata chunkMetadata)
+        throws IOException {
+      if (AlignedSeriesBatchCompactionUtils.isTimeChunk(chunkMetadata)) {
+        return batchCompactionPlan.getTimeChunkFromCache(reader, chunkMetadata);
+      }
+      return super.readChunk(reader, chunkMetadata);
     }
 
     @Override

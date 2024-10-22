@@ -157,9 +157,11 @@ public class LocalExecutionPlanner {
             : instanceContext.getSessionInfo().getSqlDialect();
     switch (sqlDialect) {
       case TREE:
+        instanceContext.setIgnoreAllNullRows(true);
         root = node.accept(new OperatorTreeGenerator(), context);
         break;
       case TABLE:
+        instanceContext.setIgnoreAllNullRows(false);
         root = node.accept(new TableOperatorGenerator(metadata), context);
         break;
       default:

@@ -863,9 +863,181 @@ public class IoTDBInsertTableIT {
 
       rs1 = st1.executeQuery("select time, ss1, ss2 from sg21 order by time");
       assertTrue(rs1.next());
+      rs1.getString("ss1");
+      assertTrue(rs1.wasNull());
+      rs1.getInt("ss2");
+      assertTrue(rs1.wasNull());
+
+      assertTrue(rs1.next());
+      assertEquals("1", rs1.getString("ss1"));
+      rs1.getInt("ss2");
+      assertTrue(rs1.wasNull());
+      assertTrue(rs1.next());
       assertEquals("1", rs1.getString("ss1"));
       assertEquals(1, rs1.getInt("ss2"));
       assertFalse(rs1.next());
+    }
+  }
+
+  @Test
+  public void testInsertWithTTL() {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use \"test\"");
+      statement.execute("create table sg22 (id1 string id, s1 int64 measurement)");
+      statement.execute("alter table sg22 set properties TTL=1");
+      statement.execute(
+          String.format(
+              "insert into sg22(id1,time,s1) values('d1',%s,2)",
+              System.currentTimeMillis() - 10000));
+      fail();
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage().contains("less than ttl time bound"));
+    }
+  }
+
+  @Test
+  public void testInsertTabletWithTTL()
+      throws IoTDBConnectionException, StatementExecutionException {
+    long ttl = 1;
+    try (ISession session = EnvFactory.getEnv().getSessionConnection(BaseEnv.TABLE_SQL_DIALECT)) {
+      session.executeNonQueryStatement("use \"test\"");
+      session.executeNonQueryStatement("create table sg23 (id1 string id, s1 int64 measurement)");
+      session.executeNonQueryStatement("alter table sg23 set properties TTL=" + ttl);
+
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
+      final List<ColumnType> columnTypes = Arrays.asList(ColumnType.ID, ColumnType.MEASUREMENT);
+
+      // all expired
+      long timestamp = 0;
+      Tablet tablet = new Tablet("sg23", schemaList, columnTypes, 15);
+
+      for (long row = 0; row < 3; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, timestamp + row);
+        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("s1", rowIndex, row);
+      }
+      try {
+        session.insertRelationalTablet(tablet, true);
+        fail();
+      } catch (Exception e) {
+        Assert.assertTrue(e.getMessage().contains("less than ttl time bound"));
+      }
+
+      // partial expired
+      tablet.reset();
+      timestamp = System.currentTimeMillis() - 10000;
+      for (long row = 0; row < 4; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, timestamp);
+        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("s1", rowIndex, row);
+        timestamp += 10000;
+      }
+
+      try {
+        session.insertRelationalTablet(tablet, true);
+        fail();
+      } catch (Exception e) {
+        Assert.assertTrue(e.getMessage().contains("less than ttl time bound"));
+      }
+
+      // part of data is indeed inserted
+      long timeLowerBound = System.currentTimeMillis() - ttl;
+      SessionDataSet dataSet = session.executeQueryStatement("select time, s1 from sg23");
+      int count = 0;
+      while (dataSet.hasNext()) {
+        RowRecord record = dataSet.next();
+        Assert.assertTrue(record.getFields().get(0).getLongV() > timeLowerBound);
+        count++;
+      }
+      Assert.assertTrue(count > 0 && count < 4);
+    }
+  }
+
+  @Test
+  public void testInsertUnsequenceData()
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection(BaseEnv.TABLE_SQL_DIALECT)) {
+      session.executeNonQueryStatement("USE \"test\"");
+      // the table is missing column "m2"
+      session.executeNonQueryStatement(
+          "CREATE TABLE table4 (id1 string id, attr1 string attribute, "
+              + "m1 double "
+              + "measurement)");
+
+      // the insertion contains "m2"
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
+      schemaList.add(new MeasurementSchema("m2", TSDataType.DOUBLE));
+      final List<Tablet.ColumnType> columnTypes =
+          Arrays.asList(
+              Tablet.ColumnType.ID,
+              Tablet.ColumnType.ATTRIBUTE,
+              Tablet.ColumnType.MEASUREMENT,
+              Tablet.ColumnType.MEASUREMENT);
+
+      long timestamp = 0;
+      Tablet tablet = new Tablet("table4", schemaList, columnTypes, 15);
+
+      for (long row = 0; row < 15; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, timestamp + row);
+        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("attr1", rowIndex, "attr:" + row);
+        tablet.addValue("m1", rowIndex, row * 1.0);
+        tablet.addValue("m2", rowIndex, row * 1.0);
+        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+          try {
+            session.insertRelationalTablet(tablet, true);
+          } catch (StatementExecutionException e) {
+            // a partial insertion should be reported
+            if (!e.getMessage()
+                .equals(
+                    "507: Fail to insert measurements [m2] caused by [Column m2 does not exists or fails to be created]")) {
+              throw e;
+            }
+          }
+          tablet.reset();
+        }
+      }
+
+      session.executeNonQueryStatement("FLush");
+
+      for (long row = 0; row < 15; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, 14 - row);
+        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("attr1", rowIndex, "attr:" + row);
+        tablet.addValue("m1", rowIndex, row * 1.0);
+        tablet.addValue("m2", rowIndex, row * 1.0);
+        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+          try {
+            session.insertRelationalTablet(tablet, true);
+          } catch (StatementExecutionException e) {
+            if (!e.getMessage()
+                .equals(
+                    "507: Fail to insert measurements [m2] caused by [Column m2 does not exists or fails to be created]")) {
+              throw e;
+            }
+          }
+          tablet.reset();
+        }
+      }
+      session.executeNonQueryStatement("FLush");
+
+      int cnt = 0;
+      SessionDataSet dataSet = session.executeQueryStatement("select * from table4");
+      while (dataSet.hasNext()) {
+        dataSet.next();
+        cnt++;
+      }
+      assertEquals(29, cnt);
     }
   }
 

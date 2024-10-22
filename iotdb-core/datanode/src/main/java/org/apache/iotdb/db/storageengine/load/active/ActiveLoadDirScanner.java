@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.storageengine.load.active;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesMetricsSet;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesNumberMetricsSet;
+import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesSizeMetricsSet;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -38,7 +40,9 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Stream;
 
 public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
 
@@ -49,6 +53,10 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
 
   private final AtomicReference<String[]> listeningDirsConfig = new AtomicReference<>();
   private final Set<String> listeningDirs = new CopyOnWriteArraySet<>();
+
+  private final Set<String> noPermissionDirs = new CopyOnWriteArraySet<>();
+
+  private final AtomicBoolean isReadOnlyLogPrinted = new AtomicBoolean(false);
 
   private final ActiveLoadTsFileLoader activeLoadTsFileLoader;
 
@@ -69,9 +77,22 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
   }
 
   private void scan() throws IOException {
+    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+      if (!isReadOnlyLogPrinted.get()) {
+        LOGGER.warn("Current system is read-only mode. Skip active load dir scanning.");
+        isReadOnlyLogPrinted.set(true);
+      }
+      return;
+    }
+    isReadOnlyLogPrinted.set(false);
+
     hotReloadActiveLoadDirs();
 
     for (final String listeningDir : listeningDirs) {
+      if (!checkPermission(listeningDir)) {
+        continue;
+      }
+
       final int currentAllowedPendingSize = activeLoadTsFileLoader.getCurrentAllowedPendingSize();
       if (currentAllowedPendingSize <= 0) {
         return;
@@ -79,16 +100,57 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
 
       final boolean isGeneratedByPipe =
           listeningDir.equals(IOTDB_CONFIG.getLoadActiveListeningPipeDir());
-      FileUtils.streamFiles(new File(listeningDir), true, (String[]) null)
-          .map(
-              file ->
-                  (file.getName().endsWith(RESOURCE) || file.getName().endsWith(MODS))
-                      ? getTsFilePath(file.getAbsolutePath())
-                      : file.getAbsolutePath())
-          .filter(file -> !activeLoadTsFileLoader.isFilePendingOrLoading(file))
-          .filter(this::isTsFileCompleted)
-          .limit(currentAllowedPendingSize)
-          .forEach(file -> activeLoadTsFileLoader.tryTriggerTsFileLoad(file, isGeneratedByPipe));
+      try (final Stream<File> fileStream =
+          FileUtils.streamFiles(new File(listeningDir), true, (String[]) null)) {
+        fileStream
+            .filter(file -> !activeLoadTsFileLoader.isFilePendingOrLoading(file))
+            .filter(File::exists)
+            .map(
+                file ->
+                    (file.getName().endsWith(RESOURCE) || file.getName().endsWith(MODS))
+                        ? getTsFilePath(file.getAbsolutePath())
+                        : file.getAbsolutePath())
+            .filter(this::isTsFileCompleted)
+            .limit(currentAllowedPendingSize)
+            .forEach(file -> activeLoadTsFileLoader.tryTriggerTsFileLoad(file, isGeneratedByPipe));
+      }
+    }
+  }
+
+  private boolean checkPermission(final String listeningDir) {
+    try {
+      final Path listeningDirPath = new File(listeningDir).toPath();
+
+      if (!Files.isReadable(listeningDirPath)) {
+        if (!noPermissionDirs.contains(listeningDir)) {
+          LOGGER.error(
+              "Current dir path is not readable: {}."
+                  + "Skip scanning this dir. Please check the permission.",
+              listeningDirPath);
+          noPermissionDirs.add(listeningDir);
+        }
+        return false;
+      }
+
+      if (!Files.isWritable(listeningDirPath)) {
+        if (!noPermissionDirs.contains(listeningDir)) {
+          LOGGER.error(
+              "Current dir path is not writable: {}."
+                  + "Skip scanning this dir. Please check the permission.",
+              listeningDirPath);
+          noPermissionDirs.add(listeningDir);
+        }
+        return false;
+      }
+
+      noPermissionDirs.remove(listeningDir);
+      return true;
+    } catch (final Exception e) {
+      LOGGER.error(
+          "Error occurred during checking r/w permission of dir: {}. Skip scanning this dir.",
+          listeningDir,
+          e);
+      return false;
     }
   }
 
@@ -107,19 +169,25 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
         if (IOTDB_CONFIG.getLoadActiveListeningDirs() != listeningDirsConfig.get()) {
           synchronized (this) {
             if (IOTDB_CONFIG.getLoadActiveListeningDirs() != listeningDirsConfig.get()) {
+              listeningDirs.clear();
+
               listeningDirsConfig.set(IOTDB_CONFIG.getLoadActiveListeningDirs());
               listeningDirs.addAll(Arrays.asList(IOTDB_CONFIG.getLoadActiveListeningDirs()));
             }
           }
         }
+      } else {
+        listeningDirs.clear();
       }
-
       // Hot reload active load listening dir for pipe data sync
       // Active load is always enabled for pipe data sync
       listeningDirs.add(IOTDB_CONFIG.getLoadActiveListeningPipeDir());
 
       // Create directories if not exists
       listeningDirs.forEach(this::createDirectoriesIfNotExists);
+
+      ActiveLoadingFilesNumberMetricsSet.getInstance().updatePendingDirList(listeningDirs);
+      ActiveLoadingFilesSizeMetricsSet.getInstance().updatePendingDirList(listeningDirs);
     } catch (final Exception e) {
       LOGGER.warn(
           "Error occurred during hot reload active load dirs. "
@@ -147,23 +215,45 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
 
   // Metrics
   public long countAndReportActiveListeningDirsFileNumber() {
-    final long[] fileCount = {0};
+    long totalFileCount = 0;
+    long totalFileSize = 0;
+
     try {
-      for (String dir : listeningDirs) {
+      for (final String dir : listeningDirs) {
+        final long[] fileCountInDir = {0};
+        final long[] fileSizeInDir = {0};
+
         Files.walkFileTree(
             new File(dir).toPath(),
             new SimpleFileVisitor<Path>() {
               @Override
               public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-                fileCount[0]++;
+                fileCountInDir[0]++;
+                try {
+                  fileSizeInDir[0] += file.toFile().length();
+                } catch (Exception e) {
+                  LOGGER.debug("Failed to count active listening dirs file number.", e);
+                }
                 return FileVisitResult.CONTINUE;
               }
             });
+
+        ActiveLoadingFilesNumberMetricsSet.getInstance()
+            .updatePendingFileCounterInDir(dir, fileCountInDir[0]);
+        ActiveLoadingFilesSizeMetricsSet.getInstance()
+            .updatePendingFileCounterInDir(dir, fileSizeInDir[0]);
+
+        totalFileCount += fileCountInDir[0];
+        totalFileSize += fileSizeInDir[0];
       }
-      ActiveLoadingFilesMetricsSet.getInstance().recordPendingFileCounter(fileCount[0]);
+
+      ActiveLoadingFilesNumberMetricsSet.getInstance()
+          .updateTotalPendingFileCounter(totalFileCount);
+      ActiveLoadingFilesSizeMetricsSet.getInstance().updateTotalPendingFileCounter(totalFileSize);
     } catch (final IOException e) {
       LOGGER.debug("Failed to count active listening dirs file number.", e);
     }
-    return fileCount[0];
+
+    return totalFileCount;
   }
 }

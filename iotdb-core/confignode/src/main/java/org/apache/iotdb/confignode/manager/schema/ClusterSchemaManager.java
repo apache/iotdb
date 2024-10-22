@@ -28,17 +28,20 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
-import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.read.table.FetchTablePlan;
+import org.apache.iotdb.confignode.consensus.request.read.table.ShowTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
@@ -52,6 +55,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaRep
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
@@ -62,6 +66,8 @@ import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaT
 import org.apache.iotdb.confignode.consensus.response.database.CountDatabaseResp;
 import org.apache.iotdb.confignode.consensus.response.database.DatabaseSchemaResp;
 import org.apache.iotdb.confignode.consensus.response.partition.PathInfoResp;
+import org.apache.iotdb.confignode.consensus.response.table.FetchTableResp;
+import org.apache.iotdb.confignode.consensus.response.table.ShowTableResp;
 import org.apache.iotdb.confignode.consensus.response.template.AllTemplateSetInfoResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
@@ -74,6 +80,7 @@ import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
@@ -612,8 +619,9 @@ public class ClusterSchemaManager {
    * @param rawPathList List<DatabaseName>
    * @return the matched DatabaseSchemas
    */
-  public Map<String, TDatabaseSchema> getMatchedDatabaseSchemasByName(List<String> rawPathList) {
-    Map<String, TDatabaseSchema> result = new ConcurrentHashMap<>();
+  public Map<String, TDatabaseSchema> getMatchedDatabaseSchemasByName(
+      final List<String> rawPathList) {
+    final Map<String, TDatabaseSchema> result = new ConcurrentHashMap<>();
     clusterSchemaInfo
         .getMatchedDatabaseSchemasByName(rawPathList)
         .forEach(
@@ -1028,7 +1036,7 @@ public class ClusterSchemaManager {
 
     DataNodeAsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            CnToDnRequestType.UPDATE_TEMPLATE, updateTemplateReq, dataNodeLocationMap);
+            CnToDnAsyncRequestType.UPDATE_TEMPLATE, updateTemplateReq, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
@@ -1058,8 +1066,30 @@ public class ClusterSchemaManager {
 
   // region table management
 
-  public TShowTableResp showTables(final String database) {
-    return clusterSchemaInfo.showTables(database);
+  public TShowTableResp showTables(final String database, final boolean isDetails) {
+    try {
+      return ((ShowTableResp)
+              configManager.getConsensusManager().read(new ShowTablePlan(database, isDetails)))
+          .convertToTShowTableResp();
+    } catch (final ConsensusException e) {
+      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return new TShowTableResp(res);
+    }
+  }
+
+  public TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap) {
+    try {
+      return ((FetchTableResp)
+              configManager.getConsensusManager().read(new FetchTablePlan(fetchTableMap)))
+          .convertToTFetchTableResp();
+    } catch (final ConsensusException e) {
+      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return new TFetchTableResp(res);
+    }
   }
 
   public byte[] getAllTableInfoForDataNodeActivation() {
@@ -1143,6 +1173,44 @@ public class ClusterSchemaManager {
     return new Pair<>(RpcUtils.SUCCESS_STATUS, expandedTable);
   }
 
+  public synchronized Pair<TSStatus, TsTable> tableColumnCheckForColumnRenaming(
+      final String database, final String tableName, final String oldName, final String newName) {
+    final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
+
+    if (Objects.isNull(originalTable)) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.TABLE_NOT_EXISTS,
+              String.format(
+                  "Table '%s.%s' does not exist",
+                  database.substring(ROOT.length() + 1), tableName)),
+          null);
+    }
+
+    final TsTable expandedTable = TsTable.deserialize(ByteBuffer.wrap(originalTable.serialize()));
+
+    final TsTableColumnSchema schema = originalTable.getColumnSchema(oldName);
+    if (Objects.isNull(schema)) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.COLUMN_NOT_EXISTS, String.format("Column '%s' does not exist", oldName)),
+          null);
+    }
+
+    if (schema.getColumnCategory() != TsTableColumnCategory.ATTRIBUTE) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.COLUMN_CATEGORY_MISMATCH,
+              "Currently we only support renaming for attribute columns, current category is "
+                  + schema.getColumnCategory()),
+          null);
+    }
+
+    expandedTable.renameColumnSchema(oldName, newName);
+
+    return new Pair<>(RpcUtils.SUCCESS_STATUS, expandedTable);
+  }
+
   public synchronized TSStatus addTableColumn(
       final String database,
       final String tableName,
@@ -1165,6 +1233,18 @@ public class ClusterSchemaManager {
         new AddTableColumnPlan(database, tableName, columnSchemaList, true);
     try {
       return getConsensusManager().write(addTableColumnPlan);
+    } catch (final ConsensusException e) {
+      LOGGER.warn(e.getMessage(), e);
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+  }
+
+  public synchronized TSStatus renameTableColumn(
+      final String database, final String tableName, final String oldName, final String newName) {
+    final RenameTableColumnPlan renameTableColumnPlan =
+        new RenameTableColumnPlan(database, tableName, oldName, newName);
+    try {
+      return getConsensusManager().write(renameTableColumnPlan);
     } catch (final ConsensusException e) {
       LOGGER.warn(e.getMessage(), e);
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());

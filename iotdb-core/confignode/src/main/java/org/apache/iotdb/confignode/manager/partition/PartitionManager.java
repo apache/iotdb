@@ -34,7 +34,7 @@ import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
@@ -326,15 +326,17 @@ public class PartitionManager {
   /**
    * Get DataPartition and create a new one if it does not exist.
    *
-   * @param req DataPartitionPlan with Map<StorageGroupName, Map<SeriesPartitionSlot,
-   *     List<TimePartitionSlot>>>
-   * @return DataPartitionResp with DataPartition and TSStatus. SUCCESS_STATUS if all process
-   *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions.
-   *     STORAGE_GROUP_NOT_EXIST if some StorageGroup don't exist.
+   * @param req DataPartitionPlan with Map{@literal <}StorageGroupName, Map{@literal
+   *     <}SeriesPartitionSlot, List{@literal <}TimePartitionSlot{@literal >}{@literal >}{@literal
+   *     >}
+   * @return DataPartitionResp with DataPartition and {@link TSStatus}. {@link
+   *     TSStatusCode#SUCCESS_STATUS} if all process finish. {@link TSStatusCode#NO_ENOUGH_DATANODE}
+   *     if the DataNodes is not enough to create new Regions. {@link
+   *     TSStatusCode#DATABASE_NOT_EXIST} if some database does not exist.
    */
-  public DataPartitionResp getOrCreateDataPartition(GetOrCreateDataPartitionPlan req) {
+  public DataPartitionResp getOrCreateDataPartition(final GetOrCreateDataPartitionPlan req) {
     // Check if the related Databases exist
-    for (String database : req.getPartitionSlotsMap().keySet()) {
+    for (final String database : req.getPartitionSlotsMap().keySet()) {
       if (!isDatabaseExist(database)) {
         return new DataPartitionResp(
             new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
@@ -1007,7 +1009,7 @@ public class PartitionManager {
   /**
    * Get TSeriesPartitionSlot.
    *
-   * @param deviceID
+   * @param deviceID IDeviceID
    * @return SeriesPartitionSlot
    */
   public TSeriesPartitionSlot getSeriesPartitionSlot(IDeviceID deviceID) {
@@ -1267,7 +1269,7 @@ public class PartitionManager {
                           DataNodeAsyncRequestContext<TCreateSchemaRegionReq, TSStatus>
                               createSchemaRegionHandler =
                                   new DataNodeAsyncRequestContext<>(
-                                      CnToDnRequestType.CREATE_SCHEMA_REGION);
+                                      CnToDnAsyncRequestType.CREATE_SCHEMA_REGION);
                           for (RegionMaintainTask regionMaintainTask : selectedRegionMaintainTask) {
                             RegionCreateTask schemaRegionCreateTask =
                                 (RegionCreateTask) regionMaintainTask;
@@ -1303,7 +1305,7 @@ public class PartitionManager {
                           DataNodeAsyncRequestContext<TCreateDataRegionReq, TSStatus>
                               createDataRegionHandler =
                                   new DataNodeAsyncRequestContext<>(
-                                      CnToDnRequestType.CREATE_DATA_REGION);
+                                      CnToDnAsyncRequestType.CREATE_DATA_REGION);
                           for (RegionMaintainTask regionMaintainTask : selectedRegionMaintainTask) {
                             RegionCreateTask dataRegionCreateTask =
                                 (RegionCreateTask) regionMaintainTask;
@@ -1339,7 +1341,7 @@ public class PartitionManager {
                     case DELETE:
                       // delete region
                       DataNodeAsyncRequestContext<TConsensusGroupId, TSStatus> deleteRegionHandler =
-                          new DataNodeAsyncRequestContext<>(CnToDnRequestType.DELETE_REGION);
+                          new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.DELETE_REGION);
                       Map<Integer, TConsensusGroupId> regionIdMap = new HashMap<>();
                       for (RegionMaintainTask regionMaintainTask : selectedRegionMaintainTask) {
                         RegionDeleteTask regionDeleteTask = (RegionDeleteTask) regionMaintainTask;

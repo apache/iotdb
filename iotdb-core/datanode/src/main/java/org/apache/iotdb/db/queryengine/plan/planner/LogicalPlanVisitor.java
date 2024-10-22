@@ -87,6 +87,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
+import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -145,15 +146,16 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
 
     if (queryStatement.isLastQuery()) {
-      planBuilder =
-          planBuilder
-              .planLast(analysis, analysis.getTimeseriesOrderingForLastQuery())
-              .planOffset(queryStatement.getRowOffset())
-              .planLimit(queryStatement.getRowLimit());
+      planBuilder = planBuilder.planLast(analysis, analysis.getTimeseriesOrderingForLastQuery());
 
       if (queryStatement.hasOrderBy() && !queryStatement.onlyOrderByTimeseries()) {
         planBuilder = planBuilder.planOrderBy(queryStatement.getSortItemList());
       }
+
+      planBuilder =
+          planBuilder
+              .planOffset(queryStatement.getRowOffset())
+              .planLimit(queryStatement.getRowLimit());
       return planBuilder.getRoot();
     }
 
@@ -512,8 +514,16 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
 
   @Override
   public PlanNode visitLoadFile(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
+    final List<Boolean> isTableModel = new ArrayList<>();
+    for (int i = 0; i < loadTsFileStatement.getResources().size(); i++) {
+      isTableModel.add(
+          loadTsFileStatement.getModel().equals(LoadTsFileConfigurator.MODEL_TABLE_VALUE));
+    }
     return new LoadTsFileNode(
-        context.getQueryId().genPlanNodeId(), loadTsFileStatement.getResources());
+        context.getQueryId().genPlanNodeId(),
+        loadTsFileStatement.getResources(),
+        isTableModel,
+        loadTsFileStatement.getDatabase());
   }
 
   @Override

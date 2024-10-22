@@ -36,6 +36,11 @@ public class DoubleLiteral extends Literal {
     this.value = Double.parseDouble(requireNonNull(value, "value is null"));
   }
 
+  public DoubleLiteral(double value) {
+    super(null);
+    this.value = value;
+  }
+
   public DoubleLiteral(NodeLocation location, String value) {
     super(requireNonNull(location, "location is null"));
     this.value = Double.parseDouble(requireNonNull(value, "value is null"));

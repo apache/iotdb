@@ -28,7 +28,6 @@ import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -42,27 +41,21 @@ import java.util.stream.Collectors;
 
 public class ShowDataNodesTask implements IConfigTask {
 
-  private final ShowDataNodes showDataNodes;
-
-  public ShowDataNodesTask(ShowDataNodes showDataNodes) {
-    this.showDataNodes = showDataNodes;
-  }
-
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+  public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.showDataNodes(showDataNodes);
+    return configTaskExecutor.showDataNodes();
   }
 
   public static void buildTSBlock(
-      TShowDataNodesResp showDataNodesResp, SettableFuture<ConfigTaskResult> future) {
-    List<TSDataType> outputDataTypes =
+      final TShowDataNodesResp showDataNodesResp, final SettableFuture<ConfigTaskResult> future) {
+    final List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showDataNodesColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
-    TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
+    final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     if (showDataNodesResp.getDataNodesInfoList() != null) {
-      for (TDataNodeInfo dataNodeInfo : showDataNodesResp.getDataNodesInfoList()) {
+      for (final TDataNodeInfo dataNodeInfo : showDataNodesResp.getDataNodesInfoList()) {
         builder.getTimeColumnBuilder().writeLong(0L);
         builder.getColumnBuilder(0).writeInt(dataNodeInfo.getDataNodeId());
         builder
@@ -79,7 +72,7 @@ public class ShowDataNodesTask implements IConfigTask {
         builder.declarePosition();
       }
     }
-    DatasetHeader datasetHeader = DatasetHeaderFactory.getShowDataNodesHeader();
+    final DatasetHeader datasetHeader = DatasetHeaderFactory.getShowDataNodesHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }

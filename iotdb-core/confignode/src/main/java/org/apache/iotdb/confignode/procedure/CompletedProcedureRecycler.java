@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit;
 /** Internal cleaner that removes the completed procedure results after a TTL. */
 public class CompletedProcedureRecycler<Env> extends InternalProcedure<Env> {
   private static final Logger LOG = LoggerFactory.getLogger(CompletedProcedureRecycler.class);
-  private static final int DEFAULT_BATCH_SIZE = 32;
+  private static final int DEFAULT_BATCH_SIZE = 8;
   private final long evictTTL;
   private final Map<Long, CompletedProcedureContainer<Env>> completed;
   private final IProcedureStore<Env> store;

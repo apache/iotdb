@@ -47,6 +47,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -80,6 +81,12 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         serialId);
     this.selectedSequenceFiles = selectedSequenceFiles;
     this.selectedUnsequenceFiles = selectedUnsequenceFiles;
+    for (TsFileResource resource : selectedSequenceFiles) {
+      selectedSeqFileSize += resource.getTsFileSize();
+    }
+    for (TsFileResource resource : selectedUnsequenceFiles) {
+      selectedUnseqFileSize += resource.getTsFileSize();
+    }
     this.emptyTargetTsFileResourceList = new ArrayList<>();
     this.performer = performer;
     this.hashCode = this.toString().hashCode();
@@ -143,13 +150,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
           storageGroupName,
           dataRegionId);
       return true;
-    }
-
-    for (TsFileResource resource : selectedSequenceFiles) {
-      selectedSeqFileSize += resource.getTsFileSize();
-    }
-    for (TsFileResource resource : selectedUnsequenceFiles) {
-      selectedUnseqFileSize += resource.getTsFileSize();
     }
     LOGGER.info(
         "{}-{} [Compaction] CrossSpaceCompaction task starts with {} seq files "
@@ -301,6 +301,8 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
   private void rollback() throws IOException {
     // if the task has started,
+    targetTsfileResourceList =
+        targetTsfileResourceList == null ? Collections.emptyList() : targetTsfileResourceList;
     if (recoverMemoryStatus) {
       replaceTsFileInMemory(
           targetTsfileResourceList,
@@ -444,5 +446,10 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   @Override
   public void setCompactionConfigVersion(long compactionConfigVersion) {
     this.compactionConfigVersion = Math.min(this.compactionConfigVersion, compactionConfigVersion);
+  }
+
+  @Override
+  public long getSelectedFileSize() {
+    return (long) (selectedSeqFileSize + selectedUnseqFileSize);
   }
 }

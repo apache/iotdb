@@ -38,6 +38,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SettleSelectorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -136,7 +137,7 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
   @After
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
-    DataNodeTTLCache.getInstance().clearAllTTL();
+    DataNodeTTLCache.getInstance().clearAllTTLForTree();
     TsFileGeneratorUtils.useMultiType = originUseMultiType;
     IoTDBDescriptor.getInstance().getConfig().setInnerSeqCompactionPerformer(originSeqPerformer);
     IoTDBDescriptor.getInstance()
@@ -152,13 +153,14 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
     createFiles(5, 2, 3, 50, 0, 10000, 50, 50, isAligned, false);
 
     // set ttl
-    DataNodeTTLCache.getInstance().setTTL("root.**", 1);
+    DataNodeTTLCache.getInstance().setTTLForTree("root.**", 1);
 
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
     SettleSelectorImpl settleSelector =
-        new SettleSelectorImpl(true, COMPACTION_TEST_SG, "0", 0, tsFileManager);
+        new SettleSelectorImpl(
+            true, COMPACTION_TEST_SG, "0", 0, tsFileManager, new CompactionScheduleContext());
     List<SettleCompactionTask> seqTasks = settleSelector.selectSettleTask(seqResources);
     List<SettleCompactionTask> unseqTasks = settleSelector.selectSettleTask(unseqResources);
     Assert.assertEquals(1, seqTasks.size());
@@ -186,7 +188,7 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
     Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
     Assert.assertEquals(0, tsFileManager.getTsFileList(false).size());
 
-    DataNodeTTLCache.getInstance().clearAllTTL();
+    DataNodeTTLCache.getInstance().clearAllTTLForTree();
     validateTargetDatas(sourceDatas, Collections.emptyList());
   }
 
@@ -225,7 +227,7 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
     Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
     Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
 
-    DataNodeTTLCache.getInstance().clearAllTTL();
+    DataNodeTTLCache.getInstance().clearAllTTLForTree();
     validateTargetDatas(sourceDatas, Collections.emptyList());
   }
 
@@ -257,7 +259,7 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
 
     Assert.assertEquals(6, tsFileManager.getTsFileList(true).size());
     Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
-    DataNodeTTLCache.getInstance().clearAllTTL();
+    DataNodeTTLCache.getInstance().clearAllTTLForTree();
     validateTargetDatas(sourceDatas, Collections.emptyList());
 
     partialDeletedFiles.clear();
@@ -276,7 +278,7 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
       Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
     }
 
-    DataNodeTTLCache.getInstance().clearAllTTL();
+    DataNodeTTLCache.getInstance().clearAllTTLForTree();
     validateTargetDatas(sourceDatas, Collections.emptyList());
   }
 
@@ -312,7 +314,7 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
     Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
     Assert.assertEquals(0, tsFileManager.getTsFileList(false).size());
 
-    DataNodeTTLCache.getInstance().clearAllTTL();
+    DataNodeTTLCache.getInstance().clearAllTTLForTree();
     validateTargetDatas(sourceDatas, Collections.emptyList());
   }
 
@@ -354,7 +356,7 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
     Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
     Assert.assertEquals(0, tsFileManager.getTsFileList(false).size());
 
-    DataNodeTTLCache.getInstance().clearAllTTL();
+    DataNodeTTLCache.getInstance().clearAllTTLForTree();
     validateTargetDatas(sourceDatas, Collections.emptyList());
   }
 
@@ -401,7 +403,7 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
     Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
     Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
 
-    DataNodeTTLCache.getInstance().clearAllTTL();
+    DataNodeTTLCache.getInstance().clearAllTTLForTree();
     validateTargetDatas(sourceDatas, Collections.emptyList());
   }
 
@@ -445,8 +447,39 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
     Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
     Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
 
-    DataNodeTTLCache.getInstance().clearAllTTL();
+    DataNodeTTLCache.getInstance().clearAllTTLForTree();
     validateTargetDatas(sourceDatas, Collections.emptyList());
+  }
+
+  @Test
+  public void testTaskEstimateMemory()
+      throws IOException, MetadataException, WriteProcessException {
+    ICompactionPerformer performer = getPerformer();
+    if (performer instanceof ReadPointCompactionPerformer) {
+      // not implemented
+      return;
+    }
+    createFiles(3, 3, 10, 100, 0, 0, 0, 0, isAligned, true);
+    SettleCompactionTask task1 =
+        new SettleCompactionTask(
+            0,
+            tsFileManager,
+            Collections.singletonList(seqResources.get(0)),
+            Arrays.asList(seqResources.get(1), seqResources.get(2)),
+            true,
+            performer,
+            0);
+
+    SettleCompactionTask task2 =
+        new SettleCompactionTask(
+            0, tsFileManager, seqResources, Collections.emptyList(), true, performer, 0);
+
+    SettleCompactionTask task3 =
+        new SettleCompactionTask(
+            0, tsFileManager, Collections.emptyList(), seqResources, true, performer, 0);
+    Assert.assertTrue(task1.getEstimatedMemoryCost() > 0);
+    Assert.assertEquals(0, task2.getEstimatedMemoryCost());
+    Assert.assertTrue(task3.getEstimatedMemoryCost() > 0);
   }
 
   public static List<IFullPath> createTimeseries(
@@ -478,7 +511,7 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
   protected void generateTTL(int deviceNum, long ttl) throws IllegalPathException {
     for (int dIndex = 0; dIndex < deviceNum; dIndex++) {
       DataNodeTTLCache.getInstance()
-          .setTTL(
+          .setTTLForTree(
               COMPACTION_TEST_SG
                   + IoTDBConstant.PATH_SEPARATOR
                   + "d"

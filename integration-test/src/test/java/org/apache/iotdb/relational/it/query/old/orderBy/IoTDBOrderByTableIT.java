@@ -277,7 +277,7 @@ public class IoTDBOrderByTableIT {
         while (resultSet.next()) {
 
           long actualTime = resultSet.getLong(1);
-          double actualNum = resultSet.getDouble(2);
+          double actualNum = resultSet.getLong(2);
           double actualFloat = resultSet.getDouble(3);
 
           assertEquals(Long.parseLong(RES[ans[i]][0]), actualTime);
@@ -351,7 +351,7 @@ public class IoTDBOrderByTableIT {
         while (resultSet.next()) {
 
           long actualTime = resultSet.getLong(1);
-          double actualNum = resultSet.getDouble(2);
+          double actualNum = resultSet.getLong(2);
 
           assertEquals(Long.parseLong(RES[ans[i]][0]), actualTime);
           assertEquals(
@@ -744,7 +744,7 @@ public class IoTDBOrderByTableIT {
         while (resultSet.next()) {
           long actualTime = resultSet.getLong(1);
           String actualDevice = resultSet.getString(2);
-          double actualNum = resultSet.getDouble(3);
+          double actualNum = resultSet.getLong(3);
 
           assertEquals(device, actualDevice);
           assertEquals(Long.parseLong(RES[ans[i]][0]), actualTime);
