@@ -90,7 +90,6 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     // Only register dataRegions
     if (StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))) {
       PipeProcessorMetrics.getInstance().register(this);
-      PipeDataNodeRemainingEventAndTimeMetrics.getInstance().register(this);
     }
   }
 
@@ -138,14 +137,11 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
         if (event instanceof TabletInsertionEvent) {
           pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
           PipeProcessorMetrics.getInstance().markTabletEvent(taskID);
-          PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-              .markCollectInvocationCount(
-                  pipeNameWithCreationTime, outputEventCollector.getCollectInvocationCount());
         } else if (event instanceof TsFileInsertionEvent) {
           pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
           PipeProcessorMetrics.getInstance().markTsFileEvent(taskID);
           PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-              .markCollectInvocationCount(
+              .markTsFileCollectInvocationCount(
                   pipeNameWithCreationTime, outputEventCollector.getCollectInvocationCount());
         } else if (event instanceof PipeHeartbeatEvent) {
           pipeProcessor.process(event, outputEventCollector);
