@@ -63,6 +63,7 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
   private FloatBigArray yFloatValues;
   private DoubleBigArray yDoubleValues;
   private BinaryBigArray yBinaryValues;
+  private BooleanBigArray yBooleanValues;
 
   private final BooleanBigArray xNulls = new BooleanBigArray(true);
 
@@ -113,12 +114,14 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
       case DOUBLE:
         yDoubleValues = new DoubleBigArray();
         break;
+      case TEXT:
+      case BLOB:
       case STRING:
         yBinaryValues = new BinaryBigArray();
         break;
-      case TEXT:
-      case BLOB:
       case BOOLEAN:
+        yBooleanValues = new BooleanBigArray();
+        break;
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type : %s", yDataType));
@@ -171,12 +174,14 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
       case DOUBLE:
         valuesSize += yDoubleValues.sizeOf();
         break;
+      case TEXT:
       case STRING:
+      case BLOB:
         valuesSize += yBinaryValues.sizeOf();
         break;
-      case TEXT:
-      case BLOB:
       case BOOLEAN:
+        valuesSize += yBooleanValues.sizeOf();
+        break;
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in : %s", xDataType));
@@ -231,12 +236,14 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
       case DOUBLE:
         yDoubleValues.ensureCapacity(groupCount);
         break;
+      case TEXT:
       case STRING:
+      case BLOB:
         yBinaryValues.ensureCapacity(groupCount);
         break;
-      case TEXT:
-      case BLOB:
       case BOOLEAN:
+        yBooleanValues.ensureCapacity(groupCount);
+        break;
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in : %s", xDataType));
@@ -263,12 +270,14 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
       case DOUBLE:
         addDoubleInput(groupIds, arguments);
         return;
+      case TEXT:
+      case BLOB:
       case STRING:
         addBinaryInput(groupIds, arguments);
         return;
-      case TEXT:
-      case BLOB:
       case BOOLEAN:
+        addBooleanInput(groupIds, arguments);
+        return;
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type : %s", yDataType));
@@ -386,6 +395,22 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
     }
   }
 
+  private void addBooleanInput(int[] groupIds, Column[] arguments) {
+    for (int i = 0; i < groupIds.length; i++) {
+      if (!arguments[1].isNull(i)) {
+        updateBooleanResult(groupIds[i], arguments[1].getBoolean(i), arguments[0], i);
+      }
+    }
+  }
+
+  private void updateBooleanResult(int groupId, boolean yValue, Column xColumn, int xIndex) {
+    if (!inits.get(groupId) || check(yValue, yBooleanValues.get(groupId))) {
+      inits.set(groupId, true);
+      yBooleanValues.set(groupId, yValue);
+      updateX(groupId, xColumn, xIndex);
+    }
+  }
+
   private void writeX(int groupId, ColumnBuilder columnBuilder) {
     if (xNulls.get(groupId)) {
       columnBuilder.appendNull();
@@ -498,10 +523,10 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
         dataOutputStream.write(content);
         break;
       case BOOLEAN:
-        if (isX) {
-          dataOutputStream.writeBoolean(xBooleanValues.get(groupId));
-          break;
-        }
+        dataOutputStream.writeBoolean(
+            isX ? xBooleanValues.get(groupId) : yBooleanValues.get(groupId));
+        break;
+
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type : %s", dataType));
@@ -541,6 +566,8 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
         readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
         updateDoubleResult(groupId, doubleMaxVal, columnBuilder.build(), 0);
         break;
+      case STRING:
+      case TEXT:
       case BLOB:
         int length = BytesUtils.bytesToInt(bytes, offset);
         offset += Integer.BYTES;
@@ -549,9 +576,12 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
         readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
         updateBinaryResult(groupId, binaryMaxVal, columnBuilder.build(), 0);
         break;
-      case STRING:
-      case TEXT:
       case BOOLEAN:
+        boolean booleanVal = BytesUtils.bytesToBool(bytes, offset);
+        offset += 1;
+        readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
+        updateBooleanResult(groupId, booleanVal, columnBuilder.build(), 0);
+        break;
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type : %s", yDataType));
@@ -611,4 +641,6 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
   protected abstract boolean check(double yValue, double yExtremeValue);
 
   protected abstract boolean check(Binary yValue, Binary yExtremeValue);
+
+  protected abstract boolean check(boolean yValue, boolean yExtremeValue);
 }
