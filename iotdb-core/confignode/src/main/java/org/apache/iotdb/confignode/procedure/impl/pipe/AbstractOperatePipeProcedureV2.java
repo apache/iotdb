@@ -84,7 +84,6 @@ public abstract class AbstractOperatePipeProcedureV2
   protected boolean isRollbackFromOperateOnDataNodesSuccessful = false;
 
   // Only used in rollback to avoid executing rollbackFromValidateTask multiple times
-  // Pure in-memory object, not involved in snapshot serialization and deserialization.
   protected boolean isRollbackFromValidateTaskSuccessful = false;
 
   // This variable should not be serialized into procedure store,
@@ -505,11 +504,13 @@ public abstract class AbstractOperatePipeProcedureV2
   public void serialize(DataOutputStream stream) throws IOException {
     super.serialize(stream);
     ReadWriteIOUtils.write(isRollbackFromOperateOnDataNodesSuccessful, stream);
+    ReadWriteIOUtils.write(isRollbackFromValidateTaskSuccessful, stream);
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     isRollbackFromOperateOnDataNodesSuccessful = ReadWriteIOUtils.readBool(byteBuffer);
+    isRollbackFromValidateTaskSuccessful = ReadWriteIOUtils.readBool(byteBuffer);
   }
 }
