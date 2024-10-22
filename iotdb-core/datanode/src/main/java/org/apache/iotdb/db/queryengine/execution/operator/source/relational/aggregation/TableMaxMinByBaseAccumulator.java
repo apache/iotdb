@@ -330,11 +330,10 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
     } else {
       valueBytes =
           new byte
-              [calcTypeSize(yDataType, yExtremeValue)
-                  + (isBinaryType(yDataType) ? yExtremeValue.getBinary().getValues().length : 0)
+              [(isBinaryType(yDataType) ? 4 : 0)
+                  + calcTypeSize(yDataType, yExtremeValue)
                   + 1
-                  + calcTypeSize(xDataType, xResult)
-                  + (isBinaryType(xDataType) ? xResult.getBinary().getValues().length : 0)];
+                  + calcTypeSize(xDataType, xResult)];
       int offset = 0;
       if (isBinaryType(yDataType)) {
         BytesUtils.intToBytes(yExtremeValue.getBinary().getValues().length, valueBytes, offset);
@@ -343,6 +342,7 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
       serializeValue(yDataType, yExtremeValue, valueBytes, offset);
       offset += calcTypeSize(yDataType, yExtremeValue);
       BytesUtils.boolToBytes(false, valueBytes, offset);
+      offset += 1;
       serializeValue(xDataType, xResult, valueBytes, offset);
     }
     return valueBytes;
