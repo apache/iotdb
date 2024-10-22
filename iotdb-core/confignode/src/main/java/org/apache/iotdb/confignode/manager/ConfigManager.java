@@ -49,7 +49,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.schema.SchemaConstant;
-import org.apache.iotdb.commons.schema.table.AlterTableOperationType;
+import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
@@ -132,9 +132,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TAlterTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
@@ -2567,14 +2567,20 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus alterTable(final TAlterTableReq req) {
+  public TSStatus alterOrDropTable(final TAlterOrDropTableReq req) {
     final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      switch (AlterTableOperationType.getType(req.operationType)) {
+      switch (AlterOrDropTableOperationType.getType(req.operationType)) {
         case ADD_COLUMN:
           return procedureManager.alterTableAddColumn(req);
         case SET_PROPERTIES:
           return procedureManager.alterTableSetProperties(req);
+        case RENAME_COLUMN:
+          return procedureManager.alterTableRenameColumn(req);
+        case DROP_COLUMN:
+          return procedureManager.alterTableDropColumn(req);
+        case DROP_TABLE:
+          return procedureManager.dropTable(req);
         default:
           throw new IllegalArgumentException();
       }
@@ -2584,10 +2590,10 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TShowTableResp showTables(final String database) {
+  public TShowTableResp showTables(final String database, final boolean isDetails) {
     final TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? clusterSchemaManager.showTables(database)
+        ? clusterSchemaManager.showTables(database, isDetails)
         : new TShowTableResp(status);
   }
 

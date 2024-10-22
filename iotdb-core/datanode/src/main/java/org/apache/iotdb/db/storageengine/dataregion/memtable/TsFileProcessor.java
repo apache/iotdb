@@ -451,26 +451,32 @@ public class TsFileProcessor {
 
   private long[] scheduleMemoryBlock(
       InsertTabletNode insertTabletNode,
-      int start,
-      int end,
+      List<int[]> rangeList,
       TSStatus[] results,
       boolean noFailure,
       long[] costsForMetrics)
       throws WriteProcessException {
-    long[] memIncrements;
-    try {
-      long memControlStartTime = System.nanoTime();
-      memIncrements = checkMemCost(insertTabletNode, start, end, noFailure, results);
-      // recordScheduleMemoryBlockCost
-      costsForMetrics[1] += System.nanoTime() - memControlStartTime;
-    } catch (WriteProcessException e) {
-      for (int i = start; i < end; i++) {
-        results[i] = RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT, e.getMessage());
+    long memControlStartTime = System.nanoTime();
+    long[] totalMemIncrements = new long[NUM_MEM_TO_ESTIMATE];
+    for (int[] range : rangeList) {
+      int start = range[0];
+      int end = range[1];
+      try {
+        long[] memIncrements = checkMemCost(insertTabletNode, start, end, noFailure, results);
+        for (int i = 0; i < memIncrements.length; i++) {
+          totalMemIncrements[i] += memIncrements[i];
+        }
+      } catch (WriteProcessException e) {
+        for (int i = start; i < end; i++) {
+          results[i] = RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT, e.getMessage());
+        }
+        throw new WriteProcessException(e);
       }
-      throw new WriteProcessException(e);
     }
+    // recordScheduleMemoryBlockCost
+    costsForMetrics[1] += System.nanoTime() - memControlStartTime;
 
-    return memIncrements;
+    return totalMemIncrements;
   }
 
   private long[] checkMemCost(
@@ -526,14 +532,12 @@ public class TsFileProcessor {
    * non-null value, e.g., {1, null, 3, null, 5} will be {1, 3, 5, null, 5}
    *
    * @param insertTabletNode insert a tablet of a device
-   * @param start start index of rows to be inserted in insertTabletPlan
-   * @param end end index of rows to be inserted in insertTabletPlan
+   * @param rangeList start and end index list of rows to be inserted in insertTabletPlan
    * @param results result array
    */
   public void insertTablet(
       InsertTabletNode insertTabletNode,
-      int start,
-      int end,
+      List<int[]> rangeList,
       TSStatus[] results,
       boolean noFailure,
       long[] costsForMetrics)
@@ -542,18 +546,22 @@ public class TsFileProcessor {
     ensureMemTable(costsForMetrics);
 
     long[] memIncrements =
-        scheduleMemoryBlock(insertTabletNode, start, end, results, noFailure, costsForMetrics);
+        scheduleMemoryBlock(insertTabletNode, rangeList, results, noFailure, costsForMetrics);
 
     long startTime = System.nanoTime();
     WALFlushListener walFlushListener;
     try {
-      walFlushListener = walNode.log(workMemTable.getMemTableId(), insertTabletNode, start, end);
+      walFlushListener = walNode.log(workMemTable.getMemTableId(), insertTabletNode, rangeList);
       if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
         throw walFlushListener.getCause();
       }
     } catch (Exception e) {
-      for (int i = start; i < end; i++) {
-        results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+      for (int[] rangePair : rangeList) {
+        int start = rangePair[0];
+        int end = rangePair[1];
+        for (int i = start; i < end; i++) {
+          results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
       }
       rollbackMemoryInfo(memIncrements);
       throw new WriteProcessException(e);
@@ -576,42 +584,47 @@ public class TsFileProcessor {
             insertTabletNode,
             tsFileResource);
 
-    try {
-      if (insertTabletNode.isAligned()) {
-        workMemTable.insertAlignedTablet(insertTabletNode, start, end, noFailure ? null : results);
-      } else {
-        workMemTable.insertTablet(insertTabletNode, start, end);
+    for (int[] rangePair : rangeList) {
+      int start = rangePair[0];
+      int end = rangePair[1];
+      try {
+        if (insertTabletNode.isAligned()) {
+          workMemTable.insertAlignedTablet(
+              insertTabletNode, start, end, noFailure ? null : results);
+        } else {
+          workMemTable.insertTablet(insertTabletNode, start, end);
+        }
+      } catch (WriteProcessException e) {
+        for (int i = start; i < end; i++) {
+          results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
+        throw new WriteProcessException(e);
       }
-    } catch (WriteProcessException e) {
       for (int i = start; i < end; i++) {
-        results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+        results[i] = RpcUtils.SUCCESS_STATUS;
       }
-      throw new WriteProcessException(e);
-    }
-    for (int i = start; i < end; i++) {
-      results[i] = RpcUtils.SUCCESS_STATUS;
-    }
 
-    final List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs =
-        insertTabletNode.splitByDevice(start, end);
-    tsFileResource.updateStartTime(
-        deviceEndOffsetPairs.get(0).left, insertTabletNode.getTimes()[start]);
-    if (!sequence) {
-      // For sequence tsfile, we update the endTime only when the file is prepared to be closed.
-      // For unsequence tsfile, we have to update the endTime for each insertion.
-      tsFileResource.updateEndTime(
-          deviceEndOffsetPairs.get(0).left,
-          insertTabletNode.getTimes()[deviceEndOffsetPairs.get(0).right - 1]);
-    }
-    for (int i = 1; i < deviceEndOffsetPairs.size(); i++) {
-      // the end offset of i - 1 is the start offset of i
+      final List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs =
+          insertTabletNode.splitByDevice(start, end);
       tsFileResource.updateStartTime(
-          deviceEndOffsetPairs.get(i).left,
-          insertTabletNode.getTimes()[deviceEndOffsetPairs.get(i - 1).right]);
+          deviceEndOffsetPairs.get(0).left, insertTabletNode.getTimes()[start]);
       if (!sequence) {
+        // For sequence tsfile, we update the endTime only when the file is prepared to be closed.
+        // For unsequence tsfile, we have to update the endTime for each insertion.
         tsFileResource.updateEndTime(
+            deviceEndOffsetPairs.get(0).left,
+            insertTabletNode.getTimes()[deviceEndOffsetPairs.get(0).right - 1]);
+      }
+      for (int i = 1; i < deviceEndOffsetPairs.size(); i++) {
+        // the end offset of i - 1 is the start offset of i
+        tsFileResource.updateStartTime(
             deviceEndOffsetPairs.get(i).left,
-            insertTabletNode.getTimes()[deviceEndOffsetPairs.get(i).right - 1]);
+            insertTabletNode.getTimes()[deviceEndOffsetPairs.get(i - 1).right]);
+        if (!sequence) {
+          tsFileResource.updateEndTime(
+              deviceEndOffsetPairs.get(i).left,
+              insertTabletNode.getTimes()[deviceEndOffsetPairs.get(i).right - 1]);
+        }
       }
     }
 

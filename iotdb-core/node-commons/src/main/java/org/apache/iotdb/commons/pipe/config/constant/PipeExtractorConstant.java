@@ -82,6 +82,9 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_MODS_ENABLE_KEY = "extractor.mods.enable";
   public static final String SOURCE_MODS_ENABLE_KEY = "source.mods.enable";
   public static final boolean EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE = false;
+  public static final String EXTRACTOR_MODS_KEY = "extractor.mods";
+  public static final String SOURCE_MODS_KEY = "source.mods";
+  public static final boolean EXTRACTOR_MODS_DEFAULT_VALUE = EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE;
 
   public static final String EXTRACTOR_REALTIME_ENABLE_KEY = "extractor.realtime.enable";
   public static final String SOURCE_REALTIME_ENABLE_KEY = "source.realtime.enable";
@@ -101,16 +104,29 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_REALTIME_LOOSE_RANGE_ALL_VALUE = "all";
   public static final String EXTRACTOR_REALTIME_LOOSE_RANGE_DEFAULT_VALUE = "";
 
+  public static final String EXTRACTOR_MODE_STREAMING_KEY = "extractor.mode.streaming";
+  public static final String SOURCE_MODE_STREAMING_KEY = "source.mode.streaming";
+  public static final boolean EXTRACTOR_MODE_STREAMING_DEFAULT_VALUE = true;
+  public static final String EXTRACTOR_MODE_STRICT_KEY = "extractor.mode.strict";
+  public static final String SOURCE_MODE_STRICT_KEY = "source.mode.strict";
+  public static final boolean EXTRACTOR_MODE_STRICT_DEFAULT_VALUE = true;
+  public static final String EXTRACTOR_MODE_SNAPSHOT_KEY = "extractor.mode.snapshot";
+  public static final String SOURCE_MODE_SNAPSHOT_KEY = "source.mode.snapshot";
+  public static final boolean EXTRACTOR_MODE_SNAPSHOT_DEFAULT_VALUE = false;
+
   public static final String EXTRACTOR_START_TIME_KEY = "extractor.start-time";
   public static final String SOURCE_START_TIME_KEY = "source.start-time";
   public static final String EXTRACTOR_END_TIME_KEY = "extractor.end-time";
   public static final String SOURCE_END_TIME_KEY = "source.end-time";
 
-  public static final String EXTRACTOR_WATERMARK_INTERVAL_KEY = "extractor.watermark-interval-ms";
-  public static final String SOURCE_WATERMARK_INTERVAL_KEY = "source.watermark-interval-ms";
+  public static final String _EXTRACTOR_WATERMARK_INTERVAL_KEY = "extractor.watermark-interval-ms";
+  public static final String _SOURCE_WATERMARK_INTERVAL_KEY = "source.watermark-interval-ms";
   public static final long EXTRACTOR_WATERMARK_INTERVAL_DEFAULT_VALUE = -1; // -1 means no watermark
+  public static final String EXTRACTOR_WATERMARK_INTERVAL_KEY = "extractor.watermark.interval-ms";
+  public static final String SOURCE_WATERMARK_INTERVAL_KEY = "source.watermark.interval-ms";
 
   ///////////////////// pipe consensus /////////////////////
+
   public static final String EXTRACTOR_CONSENSUS_GROUP_ID_KEY = "extractor.consensus.group-id";
   public static final String EXTRACTOR_CONSENSUS_SENDER_DATANODE_ID_KEY =
       "extractor.consensus.sender-dn-id";

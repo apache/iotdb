@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.relational.it.schema;
 
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
@@ -36,6 +37,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Collections;
 
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.describeTableColumnHeaders;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.showTablesColumnHeaders;
@@ -367,6 +369,22 @@ public class IoTDBTableIT {
         }
         assertEquals(columnNames.length, cnt);
       }
+
+      statement.execute(
+          "insert into table2(region_id, plant_id, color, temperature, speed) values(1, 1, 1, 1, 1)");
+      statement.execute("drop table table2");
+      try {
+        statement.executeQuery("describe table2");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("550: Table 'test2.table2' does not exist.", e.getMessage());
+      }
+      statement.execute(
+          "create table table2(region_id STRING ID, plant_id STRING ID, color STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, speed DOUBLE MEASUREMENT)");
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("count devices from table2"),
+          "count(devices),",
+          Collections.singleton("0,"));
 
       try {
         statement.executeQuery("describe test3.table3");

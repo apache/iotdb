@@ -126,6 +126,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFill
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
@@ -539,6 +540,10 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
+  public R visitDeleteTableDevice(final DeleteTableDeviceNode node, final C context) {
+    return visitPlan(node, context);
+  }
+
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Data Write Node
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -548,11 +553,11 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitRelationalInsertRow(RelationalInsertRowNode node, C context) {
-    return visitPlan(node, context);
+    return visitInsertRow(node, context);
   }
 
   public R visitRelationalInsertRows(RelationalInsertRowsNode node, C context) {
-    return visitPlan(node, context);
+    return visitInsertRows(node, context);
   }
 
   public R visitInsertTablet(InsertTabletNode node, C context) {
