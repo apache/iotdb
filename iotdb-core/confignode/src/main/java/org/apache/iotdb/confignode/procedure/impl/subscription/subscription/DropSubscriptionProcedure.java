@@ -63,11 +63,6 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
   private List<DropPipeProcedureV2> dropPipeProcedures = new ArrayList<>();
   private AlterConsumerGroupProcedure alterConsumerGroupProcedure;
 
-  // Record failed index of procedures to rollback properly.
-  // We only record fail index when executing on config nodes, because when executing on data nodes
-  // fails, we just push all meta to data nodes.
-  private int dropPipeProcedureFailIndexOnCN = -1;
-
   public DropSubscriptionProcedure() {
     super();
   }
@@ -144,8 +139,6 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
     }
     if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && response.getSubStatusSize() > 0) {
-      // Record the failed index for rollback
-      dropPipeProcedureFailIndexOnCN = response.getSubStatusSize() - 1;
       throw new SubscriptionException(
           String.format(
               "Failed to drop subscription with request %s on config nodes, because %s",

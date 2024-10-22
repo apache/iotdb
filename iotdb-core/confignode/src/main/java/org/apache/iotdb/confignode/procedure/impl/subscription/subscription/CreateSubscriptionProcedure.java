@@ -64,11 +64,6 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
   private AlterConsumerGroupProcedure alterConsumerGroupProcedure;
   private List<CreatePipeProcedureV2> createPipeProcedures = new ArrayList<>();
 
-  // Record failed index of procedures to rollback properly.
-  // We only record fail index when executing on config nodes, because when executing on data nodes
-  // fails, we just push all meta to data nodes.
-  private int createPipeProcedureFailIndexOnCN = -1;
-
   public CreateSubscriptionProcedure() {
     super();
   }
@@ -152,8 +147,6 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
     }
     if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && response.getSubStatusSize() > 0) {
-      // Record the failed index for rollback
-      createPipeProcedureFailIndexOnCN = response.getSubStatusSize() - 1;
       throw new SubscriptionException(
           String.format(
               "Failed to create subscription with request %s on config nodes, because %s",
@@ -198,12 +191,10 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
     LOGGER.info("CreateSubscriptionProcedure: rollbackFromOperateOnConfigNodes");
 
     // Rollback CreatePipeProcedureV2s
-    final List<ConfigPhysicalPlan> dropPipePlans = new ArrayList<>();
-    for (int i = 0;
-        i <= Math.min(createPipeProcedureFailIndexOnCN, createPipeProcedures.size());
-        i++) {
-      dropPipePlans.add(new DropPipePlanV2(createPipeProcedures.get(i).getPipeName()));
-    }
+    final List<ConfigPhysicalPlan> dropPipePlans =
+        createPipeProcedures.stream()
+            .map(procedure -> new DropPipePlanV2(procedure.getPipeName()))
+            .collect(Collectors.toList());
     TSStatus response;
     try {
       response =
