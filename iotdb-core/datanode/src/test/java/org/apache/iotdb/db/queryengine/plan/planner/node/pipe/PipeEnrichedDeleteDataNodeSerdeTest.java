@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.node.pipe;
 
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -43,7 +44,8 @@ public class PipeEnrichedDeleteDataNodeSerdeTest {
     List<MeasurementPath> pathList = new ArrayList<>();
     pathList.add(new MeasurementPath("root.sg.d1.s1"));
     pathList.add(new MeasurementPath("root.sg.d2.*"));
-    DeleteDataNode deleteDataNode = new DeleteDataNode(planNodeId, pathList, startTime, endTime);
+    DeleteDataNode deleteDataNode =
+        new DeleteDataNode(planNodeId, pathList, startTime, endTime, MinimumProgressIndex.INSTANCE);
     PipeEnrichedDeleteDataNode pipeEnrichedDeleteDataNode =
         new PipeEnrichedDeleteDataNode(deleteDataNode);
 

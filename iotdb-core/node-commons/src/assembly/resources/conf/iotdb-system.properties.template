@@ -333,6 +333,19 @@ dn_pipe_receiver_file_dirs=data/datanode/system/pipe/receiver
 # If its prefix is "/", then the path is absolute. Otherwise, it is relative.
 iot_consensus_v2_receiver_file_dirs=data/datanode/system/pipe/consensus/receiver
 
+# iot_consensus_v2_deletion_file_dir
+# If this property is unset, system will save the data in the default relative path directory under the IoTDB folder(i.e., %IOTDB_HOME%/${dn_system_dir}/pipe/consensus/deletion).
+# If it is absolute, system will save the data in the exact location it points to.
+# If it is relative, system will save the data in the relative path directory it indicates under the IoTDB folder.
+# Note: If iot_consensus_v2_deletion_file_dir is assigned an empty string(i.e.,zero-size), it will be handled as a relative path.
+# effectiveMode: restart
+# For windows platform
+# If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is absolute. Otherwise, it is relative.
+# iot_consensus_v2_deletion_file_dir=data\\datanode\\system\\pipe\\consensus\\deletion
+# For Linux platform
+# If its prefix is "/", then the path is absolute. Otherwise, it is relative.
+iot_consensus_v2_deletion_file_dir=data/datanode/system/pipe/consensus/deletion
+
 ####################
 ### Metric Configuration
 ####################
@@ -1936,10 +1949,10 @@ load_active_listening_dirs=ext/load/pending
 load_active_listening_fail_dir=ext/load/failed
 
 # The maximum number of threads that can be used to load tsfile actively.
-# The default value, when this parameter is commented out, is the minimum of 8 or the number of CPU cores.
+# The default value, when this parameter is commented out or <= 0, use CPU core number.
 # effectiveMode: restart
 # Datatype: int
-load_active_listening_max_thread_num=8
+load_active_listening_max_thread_num=0
 
 # The interval specified in seconds for the active listening mode to check the directory specified in load_active_listening_dirs.
 # The active listening mode will check the directory every load_active_listening_check_interval_seconds seconds.

@@ -25,12 +25,13 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
-import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
+import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventParser;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTablePatternParser;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTreePatternParser;
+import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -160,6 +161,10 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     try {
       PipeDataNodeResourceManager.wal().pin(walEntryHandler);
+      if (Objects.nonNull(pipeName)) {
+        PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+            .increaseInsertionEventCount(pipeName + "_" + creationTime);
+      }
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
@@ -188,6 +193,11 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
               walEntryHandler.getMemTableId(), holderMessage),
           e);
       return false;
+    } finally {
+      if (Objects.nonNull(pipeName)) {
+        PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+            .decreaseInsertionEventCount(pipeName + "_" + creationTime);
+      }
     }
   }
 

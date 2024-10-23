@@ -758,28 +758,44 @@ public class StorageEngine implements IService {
         region.abortCompaction();
         region.syncDeleteDataFiles();
         region.deleteFolder(systemDir);
-        if (CONFIG.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
-            || CONFIG
-                .getDataRegionConsensusProtocolClass()
-                .equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
-          // delete wal
-          WALManager.getInstance()
-              .deleteWALNode(
-                  region.getDatabaseName() + FILE_NAME_SEPARATOR + region.getDataRegionId());
-          // delete snapshot
-          for (String dataDir : CONFIG.getLocalDataDirs()) {
-            File regionSnapshotDir =
-                new File(
-                    dataDir + File.separator + IoTDBConstant.SNAPSHOT_FOLDER_NAME,
-                    region.getDatabaseName() + FILE_NAME_SEPARATOR + regionId.getId());
-            if (regionSnapshotDir.exists()) {
-              try {
-                FileUtils.deleteDirectory(regionSnapshotDir);
-              } catch (IOException e) {
-                LOGGER.error("Failed to delete snapshot dir {}", regionSnapshotDir, e);
+        switch (CONFIG.getDataRegionConsensusProtocolClass()) {
+          case ConsensusFactory.IOT_CONSENSUS:
+          case ConsensusFactory.IOT_CONSENSUS_V2:
+            // delete wal
+            WALManager.getInstance()
+                .deleteWALNode(
+                    region.getDatabaseName() + FILE_NAME_SEPARATOR + region.getDataRegionId());
+            // delete snapshot
+            for (String dataDir : CONFIG.getLocalDataDirs()) {
+              File regionSnapshotDir =
+                  new File(
+                      dataDir + File.separator + IoTDBConstant.SNAPSHOT_FOLDER_NAME,
+                      region.getDatabaseName() + FILE_NAME_SEPARATOR + regionId.getId());
+              if (regionSnapshotDir.exists()) {
+                try {
+                  FileUtils.deleteDirectory(regionSnapshotDir);
+                } catch (IOException e) {
+                  LOGGER.error("Failed to delete snapshot dir {}", regionSnapshotDir, e);
+                }
               }
             }
-          }
+            break;
+          case ConsensusFactory.SIMPLE_CONSENSUS:
+            // remove UniqueId Information
+            WALManager.getInstance()
+                .removeUniqueIdInfo(
+                    WALManager.getApplicantUniqueId(
+                        region.getDatabaseName() + FILE_NAME_SEPARATOR + region.getDataRegionId(),
+                        true));
+            WALManager.getInstance()
+                .removeUniqueIdInfo(
+                    WALManager.getApplicantUniqueId(
+                        region.getDatabaseName() + FILE_NAME_SEPARATOR + region.getDataRegionId(),
+                        false));
+            break;
+          case ConsensusFactory.RATIS_CONSENSUS:
+          default:
+            break;
         }
       } catch (Exception e) {
         LOGGER.error(

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.parser;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -38,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
@@ -182,12 +184,14 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
@@ -204,6 +208,10 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSe
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.ROLLUP;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName.mapIdentifier;
 import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction.DATE_BIN;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_AGGREGATION;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_AGGREGATION;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_BY_AGGREGATION;
 
 public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
@@ -303,29 +311,33 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitDropTableStatement(RelationalSqlParser.DropTableStatementContext ctx) {
+  public Node visitDropTableStatement(final RelationalSqlParser.DropTableStatementContext ctx) {
     return new DropTable(
         getLocation(ctx), getQualifiedName(ctx.qualifiedName()), ctx.EXISTS() != null);
   }
 
   @Override
-  public Node visitShowTableStatement(RelationalSqlParser.ShowTableStatementContext ctx) {
-    if (ctx.database == null) {
-      return new ShowTables(getLocation(ctx));
-    } else {
-      return new ShowTables(getLocation(ctx), lowerIdentifier((Identifier) visit(ctx.database)));
-    }
+  public Node visitShowTableStatement(final RelationalSqlParser.ShowTableStatementContext ctx) {
+    return Objects.nonNull(ctx.database)
+        ? new ShowTables(
+            getLocation(ctx),
+            lowerIdentifier((Identifier) visit(ctx.database)),
+            Objects.nonNull(ctx.DETAILS()))
+        : new ShowTables(getLocation(ctx), Objects.nonNull(ctx.DETAILS()));
   }
 
   @Override
-  public Node visitDescTableStatement(RelationalSqlParser.DescTableStatementContext ctx) {
+  public Node visitDescTableStatement(final RelationalSqlParser.DescTableStatementContext ctx) {
     return new DescribeTable(getLocation(ctx), getQualifiedName(ctx.table));
   }
 
   @Override
-  public Node visitRenameTable(RelationalSqlParser.RenameTableContext ctx) {
+  public Node visitRenameTable(final RelationalSqlParser.RenameTableContext ctx) {
     return new RenameTable(
-        getLocation(ctx), getQualifiedName(ctx.from), lowerIdentifier((Identifier) visit(ctx.to)));
+        getLocation(ctx),
+        getQualifiedName(ctx.from),
+        lowerIdentifier((Identifier) visit(ctx.to)),
+        Objects.nonNull(ctx.EXISTS()));
   }
 
   @Override
@@ -339,20 +351,36 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitRenameColumn(RelationalSqlParser.RenameColumnContext ctx) {
+  public Node visitRenameColumn(final RelationalSqlParser.RenameColumnContext ctx) {
     return new RenameColumn(
         getLocation(ctx),
         getQualifiedName(ctx.tableName),
         (Identifier) visit(ctx.from),
-        (Identifier) visit(ctx.to));
+        (Identifier) visit(ctx.to),
+        ctx.EXISTS().stream()
+            .anyMatch(
+                node ->
+                    node.getSymbol().getTokenIndex() < ctx.COLUMN().getSymbol().getTokenIndex()),
+        ctx.EXISTS().stream()
+            .anyMatch(
+                node ->
+                    node.getSymbol().getTokenIndex() > ctx.COLUMN().getSymbol().getTokenIndex()));
   }
 
   @Override
-  public Node visitDropColumn(RelationalSqlParser.DropColumnContext ctx) {
+  public Node visitDropColumn(final RelationalSqlParser.DropColumnContext ctx) {
     return new DropColumn(
         getLocation(ctx),
         getQualifiedName(ctx.tableName),
-        lowerIdentifier((Identifier) visit(ctx.column)));
+        lowerIdentifier((Identifier) visit(ctx.column)),
+        ctx.EXISTS().stream()
+            .anyMatch(
+                node ->
+                    node.getSymbol().getTokenIndex() < ctx.COLUMN().getSymbol().getTokenIndex()),
+        ctx.EXISTS().stream()
+            .anyMatch(
+                node ->
+                    node.getSymbol().getTokenIndex() > ctx.COLUMN().getSymbol().getTokenIndex()));
   }
 
   @Override
@@ -893,8 +921,28 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitClearCacheStatement(RelationalSqlParser.ClearCacheStatementContext ctx) {
-    return super.visitClearCacheStatement(ctx);
+  public Node visitClearCacheStatement(final RelationalSqlParser.ClearCacheStatementContext ctx) {
+    final Set<CacheClearOptions> options;
+    final RelationalSqlParser.ClearCacheOptionsContext context = ctx.clearCacheOptions();
+
+    if (Objects.isNull(context)) {
+      options = Collections.singleton(CacheClearOptions.DEFAULT);
+    } else if (context.ATTRIBUTE() != null) {
+      options = Collections.singleton(CacheClearOptions.TABLE_ATTRIBUTE);
+    } else if (context.QUERY() != null) {
+      options = Collections.singleton(CacheClearOptions.QUERY);
+    } else {
+      options =
+          new HashSet<>(
+              Arrays.asList(
+                  CacheClearOptions.TABLE_ATTRIBUTE,
+                  CacheClearOptions.TREE_SCHEMA,
+                  CacheClearOptions.QUERY));
+    }
+    return new ClearCache(
+        Objects.isNull(ctx.localOrClusterMode())
+            || Objects.nonNull(ctx.localOrClusterMode().CLUSTER()),
+        options);
   }
 
   @Override
@@ -1837,7 +1885,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
               new DereferenceExpression(getLocation(ctx.label), (Identifier) visit(ctx.label)));
     }
 
-    if (name.toString().equalsIgnoreCase("first") || name.toString().equalsIgnoreCase("last")) {
+    if (name.toString().equalsIgnoreCase(FIRST_AGGREGATION)
+        || name.toString().equalsIgnoreCase(LAST_AGGREGATION)) {
       if (arguments.size() == 1) {
         arguments.add(
             new Identifier(
@@ -1852,6 +1901,23 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             ctx);
       } else {
         throw parseError("Invalid number of arguments for 'first' or 'last' function", ctx);
+      }
+    } else if (name.toString().equalsIgnoreCase(FIRST_BY_AGGREGATION)
+        || name.toString().equalsIgnoreCase(LAST_BY_AGGREGATION)) {
+      if (arguments.size() == 2) {
+        arguments.add(
+            new Identifier(
+                TimestampOperand.TIMESTAMP_EXPRESSION_STRING.toLowerCase(Locale.ENGLISH)));
+      } else if (arguments.size() == 3) {
+        check(
+            arguments
+                .get(2)
+                .toString()
+                .equalsIgnoreCase(TimestampOperand.TIMESTAMP_EXPRESSION_STRING),
+            "The third argument of 'first_by' or 'last_by' function must be 'time'",
+            ctx);
+      } else {
+        throw parseError("Invalid number of arguments for 'first_by' or 'last_by' function", ctx);
       }
     }
 

@@ -62,6 +62,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeactivateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataOrDevicesForDropTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteViewSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
@@ -71,6 +72,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TInvalidateTableCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushMultiPipeMetaReq;
@@ -95,6 +97,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /** Asynchronously send RPC requests to DataNodes. See queryengine.thrift for more details. */
@@ -104,6 +107,7 @@ public class CnToDnInternalServiceAsyncRequestManager
   private static final Logger LOGGER =
       LoggerFactory.getLogger(CnToDnInternalServiceAsyncRequestManager.class);
 
+  @SuppressWarnings("unchecked")
   @Override
   protected void initActionMapBuilder() {
     actionMapBuilder.put(
@@ -223,7 +227,8 @@ public class CnToDnInternalServiceAsyncRequestManager
             client.flush((TFlushReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.CLEAR_CACHE,
-        (req, client, handler) -> client.clearCache((DataNodeTSStatusRPCHandler) handler));
+        (req, client, handler) ->
+            client.clearCache((Set<Integer>) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.START_REPAIR_DATA,
         (req, client, handler) -> client.startRepairData((DataNodeTSStatusRPCHandler) handler));
@@ -372,6 +377,21 @@ public class CnToDnInternalServiceAsyncRequestManager
         CnToDnAsyncRequestType.UPDATE_TABLE,
         (req, client, handler) ->
             client.updateTable((TUpdateTableReq) req, (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.INVALIDATE_TABLE_CACHE,
+        (req, client, handler) ->
+            client.invalidateTableCache(
+                (TInvalidateTableCacheReq) req, (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.DELETE_DATA_FOR_DROP_TABLE,
+        (req, client, handler) ->
+            client.deleteDataForDropTable(
+                (TDeleteDataOrDevicesForDropTableReq) req, (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.DELETE_DEVICES_FOR_DROP_TABLE,
+        (req, client, handler) ->
+            client.deleteDevicesForDropTable(
+                (TDeleteDataOrDevicesForDropTableReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.CLEAN_DATA_NODE_CACHE,
         (req, client, handler) ->

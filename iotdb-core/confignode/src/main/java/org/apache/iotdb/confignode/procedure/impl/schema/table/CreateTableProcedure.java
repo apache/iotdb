@@ -41,7 +41,6 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecu
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.state.schema.CreateTableState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -146,15 +145,8 @@ public class CreateTableProcedure
   }
 
   private void preCreateTable(final ConfigNodeProcedureEnv env) {
-    final PreCreateTablePlan plan = new PreCreateTablePlan(database, table);
-    TSStatus status;
-    try {
-      status = env.getConfigManager().getConsensusManager().write(plan);
-    } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
-      status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      status.setMessage(e.getMessage());
-    }
+    final TSStatus status =
+        SchemaUtils.executeInConsensusLayer(new PreCreateTablePlan(database, table), env, LOGGER);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(CreateTableState.PRE_RELEASE);
     } else {
@@ -186,7 +178,7 @@ public class CreateTableProcedure
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     final PartialPath path;
     try {
-      path = new PartialPath(new String[] {ROOT, database, table.getTableName()});
+      path = new PartialPath(new String[] {ROOT, database.substring(5), table.getTableName()});
       patternTree.appendPathPattern(path);
       patternTree.appendPathPattern(path.concatAsMeasurementPath(MULTI_LEVEL_PATH_WILDCARD));
       patternTree.serialize(dataOutputStream);
@@ -197,6 +189,11 @@ public class CreateTableProcedure
 
     final Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
         env.getConfigManager().getRelatedSchemaRegionGroup(patternTree);
+
+    if (relatedSchemaRegionGroup.isEmpty()) {
+      setNextState(CreateTableState.COMMIT_CREATE);
+      return;
+    }
 
     final List<TCheckTimeSeriesExistenceResp> respList = new ArrayList<>();
     DataNodeRegionTaskExecutor<TCheckTimeSeriesExistenceReq, TCheckTimeSeriesExistenceResp>
@@ -271,15 +268,9 @@ public class CreateTableProcedure
   }
 
   private void commitCreateTable(final ConfigNodeProcedureEnv env) {
-    final CommitCreateTablePlan plan = new CommitCreateTablePlan(database, table.getTableName());
-    TSStatus status;
-    try {
-      status = env.getConfigManager().getConsensusManager().write(plan);
-    } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
-      status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      status.setMessage(e.getMessage());
-    }
+    final TSStatus status =
+        SchemaUtils.executeInConsensusLayer(
+            new CommitCreateTablePlan(database, table.getTableName()), env, LOGGER);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(CreateTableState.COMMIT_RELEASE);
     } else {
@@ -298,6 +289,11 @@ public class CreateTableProcedure
           table.getTableName(),
           failedResults);
     }
+  }
+
+  @Override
+  protected boolean isRollbackSupported(final CreateTableState state) {
+    return true;
   }
 
   @Override
@@ -322,16 +318,9 @@ public class CreateTableProcedure
   }
 
   private void rollbackCreate(final ConfigNodeProcedureEnv env) {
-    final RollbackCreateTablePlan plan =
-        new RollbackCreateTablePlan(database, table.getTableName());
-    TSStatus status;
-    try {
-      status = env.getConfigManager().getConsensusManager().write(plan);
-    } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
-      status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      status.setMessage(e.getMessage());
-    }
+    final TSStatus status =
+        SchemaUtils.executeInConsensusLayer(
+            new RollbackCreateTablePlan(database, table.getTableName()), env, LOGGER);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn("Failed to rollback table creation {}.{}", database, table.getTableName());
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));

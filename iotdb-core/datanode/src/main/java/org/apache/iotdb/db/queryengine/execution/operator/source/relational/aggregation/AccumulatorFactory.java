@@ -20,9 +20,21 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
-import org.apache.iotdb.db.queryengine.plan.expression.Expression;
-import org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAvgAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCountAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedExtremeAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedFirstAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedFirstByAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedLastAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedLastByAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedMaxAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedMaxByAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedMinAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedMinByAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedSumAccumulator;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import org.apache.tsfile.enums.TSDataType;
 
@@ -30,6 +42,9 @@ import java.util.List;
 import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkState;
+import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableBuiltinAggregationFunction.FIRST_BY;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableBuiltinAggregationFunction.LAST_BY;
 
 public class AccumulatorFactory {
 
@@ -43,9 +58,84 @@ public class AccumulatorFactory {
     if (aggregationType == TAggregationType.UDAF) {
       // If UDAF accumulator receives raw input, it needs to check input's attribute
       throw new UnsupportedOperationException();
+    } else if ((LAST_BY.getFunctionName().equals(functionName)
+            || FIRST_BY.getFunctionName().equals(functionName))
+        && inputExpressions.size() > 1) {
+      boolean xIsTimeColumn = false;
+      boolean yIsTimeColumn = false;
+      if (isTimeColumn(inputExpressions.get(1))) {
+        yIsTimeColumn = true;
+      } else if (isTimeColumn(inputExpressions.get(0))) {
+        xIsTimeColumn = true;
+      }
+      if (LAST_BY.getFunctionName().equals(functionName)) {
+        return ascending
+            ? new LastByAccumulator(
+                inputDataTypes.get(0), inputDataTypes.get(1), xIsTimeColumn, yIsTimeColumn)
+            : new LastByDescAccumulator(
+                inputDataTypes.get(0), inputDataTypes.get(1), xIsTimeColumn, yIsTimeColumn);
+      } else {
+        return ascending
+            ? new FirstByAccumulator(
+                inputDataTypes.get(0), inputDataTypes.get(1), xIsTimeColumn, yIsTimeColumn)
+            : new FirstByDescAccumulator(
+                inputDataTypes.get(0), inputDataTypes.get(1), xIsTimeColumn, yIsTimeColumn);
+      }
     } else {
       return createBuiltinAccumulator(
           aggregationType, inputDataTypes, inputExpressions, inputAttributes, ascending);
+    }
+  }
+
+  public static GroupedAccumulator createGroupedAccumulator(
+      String functionName,
+      TAggregationType aggregationType,
+      List<TSDataType> inputDataTypes,
+      List<Expression> inputExpressions,
+      Map<String, String> inputAttributes,
+      boolean ascending) {
+    if (aggregationType == TAggregationType.UDAF) {
+      // If UDAF accumulator receives raw input, it needs to check input's attribute
+      throw new UnsupportedOperationException();
+    } else {
+      return createBuiltinGroupedAccumulator(
+          aggregationType, inputDataTypes, inputExpressions, inputAttributes, ascending);
+    }
+  }
+
+  private static GroupedAccumulator createBuiltinGroupedAccumulator(
+      TAggregationType aggregationType,
+      List<TSDataType> inputDataTypes,
+      List<Expression> inputExpressions,
+      Map<String, String> inputAttributes,
+      boolean ascending) {
+    switch (aggregationType) {
+      case COUNT:
+        return new GroupedCountAccumulator();
+      case AVG:
+        return new GroupedAvgAccumulator(inputDataTypes.get(0));
+      case SUM:
+        return new GroupedSumAccumulator(inputDataTypes.get(0));
+      case LAST:
+        return new GroupedLastAccumulator(inputDataTypes.get(0));
+      case FIRST:
+        return new GroupedFirstAccumulator(inputDataTypes.get(0));
+      case MAX:
+        return new GroupedMaxAccumulator(inputDataTypes.get(0));
+      case MIN:
+        return new GroupedMinAccumulator(inputDataTypes.get(0));
+      case EXTREME:
+        return new GroupedExtremeAccumulator(inputDataTypes.get(0));
+      case LAST_BY:
+        return new GroupedLastByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
+      case FIRST_BY:
+        return new GroupedFirstByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
+      case MAX_BY:
+        return new GroupedMaxByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
+      case MIN_BY:
+        return new GroupedMinByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
+      default:
+        throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }
   }
 
@@ -62,6 +152,33 @@ public class AccumulatorFactory {
         return new AvgAccumulator(inputDataTypes.get(0));
       case SUM:
         return new SumAccumulator(inputDataTypes.get(0));
+      case LAST:
+        return ascending
+            ? new LastAccumulator(inputDataTypes.get(0))
+            : new LastDescAccumulator(inputDataTypes.get(0));
+      case FIRST:
+        return ascending
+            ? new FirstAccumulator(inputDataTypes.get(0))
+            : new FirstDescAccumulator(inputDataTypes.get(0));
+      case MAX:
+        return new MaxAccumulator(inputDataTypes.get(0));
+      case MIN:
+        return new MinAccumulator(inputDataTypes.get(0));
+      case LAST_BY:
+        return ascending
+            ? new LastByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1), false, false)
+            : new LastByDescAccumulator(inputDataTypes.get(0), inputDataTypes.get(1), false, false);
+      case FIRST_BY:
+        return ascending
+            ? new FirstByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1), false, false)
+            : new FirstByDescAccumulator(
+                inputDataTypes.get(0), inputDataTypes.get(1), false, false);
+      case MAX_BY:
+        return new TableMaxByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
+      case MIN_BY:
+        return new TableMinByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
+      case EXTREME:
+        return new ExtremeAccumulator(inputDataTypes.get(0));
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }
@@ -175,34 +292,8 @@ public class AccumulatorFactory {
     boolean apply(long keep);
   }
 
-  public static KeepEvaluator initKeepEvaluator(Expression keepExpression) {
-    // We have checked semantic in FE,
-    // keep expression must be ConstantOperand or CompareBinaryExpression here
-    if (keepExpression instanceof ConstantOperand) {
-      return keep -> keep >= Long.parseLong(keepExpression.getExpressionString());
-    } else {
-      long constant =
-          Long.parseLong(
-              ((CompareBinaryExpression) keepExpression)
-                  .getRightExpression()
-                  .getExpressionString());
-      switch (keepExpression.getExpressionType()) {
-        case LESS_THAN:
-          return keep -> keep < constant;
-        case LESS_EQUAL:
-          return keep -> keep <= constant;
-        case GREATER_THAN:
-          return keep -> keep > constant;
-        case GREATER_EQUAL:
-          return keep -> keep >= constant;
-        case EQUAL_TO:
-          return keep -> keep == constant;
-        case NON_EQUAL:
-          return keep -> keep != constant;
-        default:
-          throw new IllegalArgumentException(
-              "unsupported expression type: " + keepExpression.getExpressionType());
-      }
-    }
+  public static boolean isTimeColumn(Expression expression) {
+    return expression instanceof SymbolReference
+        && TIME_COLUMN_NAME.equals(((SymbolReference) expression).getName());
   }
 }

@@ -32,6 +32,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.FollowingBatchCompactionAlignedChunkWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.ReadChunkAlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.loader.ChunkLoader;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.loader.InstantChunkLoader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.loader.PageLoader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -42,6 +43,7 @@ import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.read.reader.page.TimePageReader;
@@ -250,6 +252,17 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
     }
 
     @Override
+    protected ChunkLoader getChunkLoader(TsFileSequenceReader reader, ChunkMetadata chunkMetadata)
+        throws IOException {
+      ChunkLoader chunkLoader = super.getChunkLoader(reader, chunkMetadata);
+      if (!chunkLoader.isEmpty() && AlignedSeriesBatchCompactionUtils.isTimeChunk(chunkMetadata)) {
+        batchCompactionPlan.addTimeChunkToCache(
+            reader.getFileName(), chunkMetadata.getOffsetOfChunkHeader(), chunkLoader.getChunk());
+      }
+      return chunkLoader;
+    }
+
+    @Override
     protected void flushCurrentChunkWriter() throws IOException {
       chunkWriter.sealCurrentPage();
       if (!chunkWriter.isEmpty()) {
@@ -310,6 +323,16 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       this.chunkWriter =
           new FollowingBatchCompactionAlignedChunkWriter(
               timeSchema, schemaList, batchCompactionPlan.getCompactChunkPlan(0));
+    }
+
+    @Override
+    protected ChunkLoader getChunkLoader(TsFileSequenceReader reader, ChunkMetadata chunkMetadata)
+        throws IOException {
+      if (chunkMetadata != null && AlignedSeriesBatchCompactionUtils.isTimeChunk(chunkMetadata)) {
+        Chunk timeChunk = batchCompactionPlan.getTimeChunkFromCache(reader, chunkMetadata);
+        return new InstantChunkLoader(reader.getFileName(), chunkMetadata, timeChunk);
+      }
+      return super.getChunkLoader(reader, chunkMetadata);
     }
 
     @Override
