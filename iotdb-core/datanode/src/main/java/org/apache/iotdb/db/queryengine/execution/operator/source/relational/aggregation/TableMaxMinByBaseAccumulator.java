@@ -36,7 +36,6 @@ import java.util.Collections;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Utils.calcTypeSize;
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Utils.isBinaryType;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Utils.serializeValue;
 
 /** max(x,y) returns the value of x associated with the maximum value of y over all input values. */
@@ -331,20 +330,12 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
       valueBytes =
           new byte[calcTypeSize(yDataType, yExtremeValue) + 1 + calcTypeSize(xDataType, xResult)];
       int offset = 0;
-      if (isBinaryType(yDataType)) {
-        BytesUtils.intToBytes(yExtremeValue.getBinary().getValues().length, valueBytes, offset);
-        offset += 4;
-      }
       serializeValue(yDataType, yExtremeValue, valueBytes, offset);
       offset = calcTypeSize(yDataType, yExtremeValue);
 
       BytesUtils.boolToBytes(false, valueBytes, offset);
       offset += 1;
 
-      if (isBinaryType(xDataType)) {
-        BytesUtils.intToBytes(xResult.getBinary().getValues().length, valueBytes, offset);
-        offset += 4;
-      }
       serializeValue(xDataType, xResult, valueBytes, offset);
     }
     return valueBytes;
