@@ -62,13 +62,13 @@ public class TableVarianceAccumulator implements TableAccumulator {
         addIntInput(arguments[0]);
         return;
       case INT64:
-        // addLongInput(arguments[0]);
+        addLongInput(arguments[0]);
         return;
       case FLOAT:
-        // addFloatInput(arguments[0]);
+        addFloatInput(arguments[0]);
         return;
       case DOUBLE:
-        // addDoubleInput(arguments[0]);
+        addDoubleInput(arguments[0]);
         return;
       case TEXT:
       case BLOB:
@@ -178,6 +178,48 @@ public class TableVarianceAccumulator implements TableAccumulator {
       }
 
       int value = column.getInt(i);
+      count++;
+      double delta = value - mean;
+      mean += delta / count;
+      m2 += delta * (value - mean);
+    }
+  }
+
+  private void addLongInput(Column column) {
+    for (int i = 0; i < column.getPositionCount(); i++) {
+      if (column.isNull(i)) {
+        continue;
+      }
+
+      long value = column.getLong(i);
+      count++;
+      double delta = value - mean;
+      mean += delta / count;
+      m2 += delta * (value - mean);
+    }
+  }
+
+  private void addFloatInput(Column column) {
+    for (int i = 0; i < column.getPositionCount(); i++) {
+      if (column.isNull(i)) {
+        continue;
+      }
+
+      float value = column.getFloat(i);
+      count++;
+      double delta = value - mean;
+      mean += delta / count;
+      m2 += delta * (value - mean);
+    }
+  }
+
+  private void addDoubleInput(Column column) {
+    for (int i = 0; i < column.getPositionCount(); i++) {
+      if (column.isNull(i)) {
+        continue;
+      }
+
+      double value = column.getDouble(i);
       count++;
       double delta = value - mean;
       mean += delta / count;
