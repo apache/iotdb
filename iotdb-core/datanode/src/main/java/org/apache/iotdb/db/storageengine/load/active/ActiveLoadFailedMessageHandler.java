@@ -79,6 +79,16 @@ public class ActiveLoadFailedMessageHandler {
                           "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to fail to connect to any config node, will retry later.",
                           filePair.getLeft(),
                           filePair.getRight()));
+              // Current query is time out, query start time is 1729653161797, ddl is
+              // -3046040214706, current time is 1729653184210, please check your statement or
+              // modify timeout parameter
+              put(
+                  "query is time out",
+                  filePair ->
+                      LOGGER.info(
+                          "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to current query is time out, will retry later.",
+                          filePair.getLeft(),
+                          filePair.getRight()));
             }
           });
 
