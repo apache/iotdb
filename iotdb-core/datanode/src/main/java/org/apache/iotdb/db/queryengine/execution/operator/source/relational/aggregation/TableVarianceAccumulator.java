@@ -27,12 +27,14 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 public class TableVarianceAccumulator implements TableAccumulator {
 
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(TableVarianceAccumulator.class);
   private final TSDataType seriesDataType;
-
   private final VarianceAccumulator.VarianceType varianceType;
 
   private long count;
@@ -47,12 +49,12 @@ public class TableVarianceAccumulator implements TableAccumulator {
 
   @Override
   public long getEstimatedSize() {
-    return 0;
+    return INSTANCE_SIZE;
   }
 
   @Override
   public TableAccumulator copy() {
-    return null;
+    return new TableVarianceAccumulator(seriesDataType, varianceType);
   }
 
   @Override

@@ -151,7 +151,7 @@ public class AggregationOperator implements ProcessOperator {
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
-        + aggregators.stream().mapToLong(TableAggregator::getEstimatedSize).count()
+        + aggregators.size()
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + resultBuilder.getRetainedSizeInBytes();
   }
