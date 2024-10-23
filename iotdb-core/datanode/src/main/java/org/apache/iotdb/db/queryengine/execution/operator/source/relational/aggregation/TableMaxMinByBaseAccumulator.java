@@ -419,8 +419,9 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
         case TEXT:
         case STRING:
         case BLOB:
-          columnBuilder.writeBinary(
-              new Binary(BytesUtils.subBytes(bytes, offset, bytes.length - offset)));
+          int length = BytesUtils.bytesToInt(bytes, offset);
+          offset += Integer.BYTES;
+          columnBuilder.writeBinary(new Binary(BytesUtils.subBytes(bytes, offset, length)));
           break;
         case BOOLEAN:
           columnBuilder.writeBoolean(BytesUtils.bytesToBool(bytes, offset));

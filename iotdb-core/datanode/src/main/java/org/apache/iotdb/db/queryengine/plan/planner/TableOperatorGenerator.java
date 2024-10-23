@@ -193,7 +193,9 @@ import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_BY_AGGREGATIO
 import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_BY_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.MAX;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.MAX_BY;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.MIN;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.MIN_BY;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
 /** This Visitor is responsible for transferring Table PlanNode Tree to Table Operator Tree. */
@@ -1684,7 +1686,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       Symbol argument = Symbol.from(aggregation.getArguments().get(0));
       Type argumentType = node.getAssignments().get(argument).getType();
 
-      if (MAX.equals(funcName) || MIN.equals(funcName)) {
+      if (MAX_BY.equals(funcName) || MIN_BY.equals(funcName)) {
+        canUseStatistic = false;
+      } else if (MAX.equals(funcName) || MIN.equals(funcName)) {
         if (BlobType.BLOB.equals(argumentType)
             || BinaryType.TEXT.equals(argumentType)
             || BooleanType.BOOLEAN.equals(argumentType)) {
