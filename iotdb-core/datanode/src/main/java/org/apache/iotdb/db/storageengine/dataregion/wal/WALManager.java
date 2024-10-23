@@ -131,8 +131,8 @@ public class WALManager implements IService {
     WritingMetrics.getInstance().removeWALNodeInfoMetrics(applicantUniqueId);
   }
 
-  /** Region information will be removed only when using ElasticStrategy. */
-  public void removeRegionAndCleanWalNode(String databaseName, String dataRegionId) {
+  /** Region information and WAL node will be removed when using ElasticStrategy. */
+  public void deleteRegionAndMayDeleteWALNode(String databaseName, String dataRegionId) {
     if (config.getWalMode() == WALMode.DISABLE || !(walNodesManager instanceof ElasticStrategy)) {
       return;
     }

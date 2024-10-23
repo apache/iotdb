@@ -781,9 +781,10 @@ public class StorageEngine implements IService {
             }
             break;
           case ConsensusFactory.SIMPLE_CONSENSUS:
-            // remove region information in wal and may clean wal node
+            // delete region information in wal and may delete wal
             WALManager.getInstance()
-                .removeRegionAndCleanWalNode(region.getDatabaseName(), region.getDataRegionId());
+                .deleteRegionAndMayDeleteWALNode(
+                    region.getDatabaseName(), region.getDataRegionId());
             break;
           case ConsensusFactory.RATIS_CONSENSUS:
           default:
