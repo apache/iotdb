@@ -32,7 +32,7 @@ import java.util.Map;
 public class ActiveLoadFailedMessageHandler {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(ActiveLoadFailedMessageHandler.class.getName());
+      LoggerFactory.getLogger(ActiveLoadFailedMessageHandler.class);
 
   private static final Map<String, ExceptionMessageHandler> EXCEPTION_MESSAGE_HANDLER_MAP =
       Collections.unmodifiableMap(
