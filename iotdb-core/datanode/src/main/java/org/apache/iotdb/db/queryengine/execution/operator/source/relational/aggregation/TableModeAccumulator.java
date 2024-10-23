@@ -252,7 +252,7 @@ public class TableModeAccumulator implements TableAccumulator {
   }
 
   private byte[] serializeCountMap() {
-    byte[] bytes = null;
+    byte[] bytes;
     int offset = 0;
 
     switch (seriesDataType) {
@@ -303,7 +303,7 @@ public class TableModeAccumulator implements TableAccumulator {
         }
         break;
       case DOUBLE:
-        bytes = new byte[4 + (8 + 8) * longCountMap.size()];
+        bytes = new byte[4 + (8 + 8) * doubleCountMap.size()];
         BytesUtils.intToBytes(doubleCountMap.size(), bytes, offset);
         offset += 4;
         for (Map.Entry<Double, Long> entry : doubleCountMap.entrySet()) {
