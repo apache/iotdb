@@ -34,6 +34,7 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
   protected PipeInsertionEvent(
       final String pipeName,
       final long creationTime,
+      final int regionId,
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
@@ -42,7 +43,15 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
       final Boolean isTableModelEvent,
       final String treeModelDatabaseName,
       final String tableModelDatabaseName) {
-    super(pipeName, creationTime, pipeTaskMeta, treePattern, tablePattern, startTime, endTime);
+    super(
+        pipeName,
+        creationTime,
+        regionId,
+        pipeTaskMeta,
+        treePattern,
+        tablePattern,
+        startTime,
+        endTime);
     this.isTableModelEvent = isTableModelEvent;
     this.treeModelDatabaseName = treeModelDatabaseName;
     this.tableModelDatabaseName = tableModelDatabaseName;
@@ -51,6 +60,7 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
   protected PipeInsertionEvent(
       final String pipeName,
       final long creationTime,
+      final int regionId,
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
@@ -61,6 +71,7 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
     this(
         pipeName,
         creationTime,
+        regionId,
         pipeTaskMeta,
         treePattern,
         tablePattern,

@@ -45,6 +45,7 @@ public class UserDefinedEnrichedEvent extends EnrichedEvent {
     super(
         enrichedEvent.getPipeName(),
         enrichedEvent.getCreationTime(),
+        enrichedEvent.getRegionId(),
         enrichedEvent.getPipeTaskMeta(),
         enrichedEvent.getTreePattern(),
         enrichedEvent.getTablePattern(),

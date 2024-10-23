@@ -41,8 +41,6 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeHeartbeatEvent.class);
 
-  private final String dataRegionId;
-
   private long timePublished;
   private long timeAssigned;
   private long timeProcessed;
@@ -62,21 +60,20 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
 
   private final boolean shouldPrintMessage;
 
-  public PipeHeartbeatEvent(final String dataRegionId, final boolean shouldPrintMessage) {
-    super(null, 0, null, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
-    this.dataRegionId = dataRegionId;
+  public PipeHeartbeatEvent(final int dataRegionId, final boolean shouldPrintMessage) {
+    super(null, 0, dataRegionId, null, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
     this.shouldPrintMessage = shouldPrintMessage;
   }
 
   public PipeHeartbeatEvent(
       final String pipeName,
       final long creationTime,
+      final int regionId,
       final PipeTaskMeta pipeTaskMeta,
-      final String dataRegionId,
       final long timePublished,
       final boolean shouldPrintMessage) {
-    super(pipeName, creationTime, pipeTaskMeta, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
-    this.dataRegionId = dataRegionId;
+    super(
+        pipeName, creationTime, regionId, pipeTaskMeta, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
     this.timePublished = timePublished;
     this.shouldPrintMessage = shouldPrintMessage;
   }
@@ -121,7 +118,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
     // Should record PipeTaskMeta, for sometimes HeartbeatEvents should report exceptions.
     // Here we ignore parameters `pattern`, `startTime`, and `endTime`.
     return new PipeHeartbeatEvent(
-        pipeName, creationTime, pipeTaskMeta, dataRegionId, timePublished, shouldPrintMessage);
+        pipeName, creationTime, regionId, pipeTaskMeta, timePublished, shouldPrintMessage);
   }
 
   @Override
@@ -262,7 +259,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
         + "pipeName='"
         + pipeName
         + "', dataRegionId="
-        + dataRegionId
+        + regionId
         + ", startTime="
         + startTimeMessage
         + ", publishedToAssigned="

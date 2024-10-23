@@ -241,7 +241,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private boolean mayTsFileLinkedCountReachDangerousThreshold() {
-    return PipeDataNodeResourceManager.tsfile().getLinkedTsfileCount()
+    return PipeDataNodeResourceManager.tsfile().getLinkedTsFileCount()
         >= PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileCount();
   }
 

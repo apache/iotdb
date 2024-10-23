@@ -81,6 +81,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   public PipeInsertNodeTabletInsertionEvent(
       final String databaseName,
       final WALEntryHandler walEntryHandler,
+      final int regionId,
       final PartialPath devicePath,
       final ProgressIndex progressIndex,
       final boolean isAligned,
@@ -95,6 +96,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         isGeneratedByPipe,
         null,
         0,
+        regionId,
         null,
         null,
         null,
@@ -112,6 +114,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       final boolean isGeneratedByPipe,
       final String pipeName,
       final long creationTime,
+      final int regionId,
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
@@ -120,6 +123,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     super(
         pipeName,
         creationTime,
+        regionId,
         pipeTaskMeta,
         treePattern,
         tablePattern,
@@ -230,6 +234,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         isGeneratedByPipe,
         pipeName,
         creationTime,
+        regionId,
         pipeTaskMeta,
         treePattern,
         tablePattern,
@@ -434,6 +439,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
                         container.isAligned(),
                         pipeName,
                         creationTime,
+                        regionId,
                         pipeTaskMeta,
                         this,
                         false))

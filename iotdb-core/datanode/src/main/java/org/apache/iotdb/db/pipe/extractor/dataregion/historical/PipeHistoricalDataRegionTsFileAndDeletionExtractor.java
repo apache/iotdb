@@ -38,7 +38,7 @@ import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
-import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
+import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileDataRegionResourceManager;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
@@ -553,7 +553,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
             // Will unpin it after the PipeTsFileInsertionEvent is created and pinned.
             try {
               PipeDataNodeResourceManager.tsfile()
-                  .pinTsFileResource((TsFileResource) resource, shouldTransferModFile);
+                  .pinTsFileResource(
+                      (TsFileResource) resource, shouldTransferModFile, dataRegionId);
             } catch (final IOException e) {
               LOGGER.warn(
                   "Pipe: failed to pin TsFileResource {}",
@@ -608,8 +609,10 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
       final Map<IDeviceID, Boolean> deviceIsAlignedMap =
           PipeDataNodeResourceManager.tsfile()
               .getDeviceIsAlignedMapFromCache(
-                  PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(resource.getTsFile()),
-                  false);
+                  PipeTsFileDataRegionResourceManager.getHardlinkOrCopiedFileInPipeDir(
+                      resource.getTsFile()),
+                  false,
+                  dataRegionId);
       deviceSet =
           Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
     } catch (final IOException e) {
@@ -753,6 +756,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
             true,
             pipeName,
             creationTime,
+            dataRegionId,
             pipeTaskMeta,
             treePattern,
             tablePattern,
@@ -780,7 +784,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
       return isReferenceCountIncreased ? event : null;
     } finally {
       try {
-        PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource);
+        PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource, dataRegionId);
       } catch (final IOException e) {
         LOGGER.warn(
             "Pipe {}@{}: failed to unpin TsFileResource after creating event, original path: {}",
@@ -797,6 +801,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
             deletionResource.getDeleteDataNode(),
             pipeName,
             creationTime,
+            dataRegionId,
             pipeTaskMeta,
             treePattern,
             tablePattern,
@@ -852,7 +857,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
           resource -> {
             if (resource instanceof TsFileResource) {
               try {
-                PipeDataNodeResourceManager.tsfile().unpinTsFileResource((TsFileResource) resource);
+                PipeDataNodeResourceManager.tsfile()
+                    .unpinTsFileResource((TsFileResource) resource, dataRegionId);
               } catch (final IOException e) {
                 LOGGER.warn(
                     "Pipe {}@{}: failed to unpin TsFileResource after dropping pipe, original path: {}",

@@ -37,9 +37,11 @@ public abstract class PipeWritePlanEvent extends EnrichedEvent implements Serial
       final TreePattern treePattern,
       final TablePattern tablePattern,
       final boolean isGeneratedByPipe) {
+    // Bind regionId later
     super(
         pipeName,
         creationTime,
+        -1,
         pipeTaskMeta,
         treePattern,
         tablePattern,

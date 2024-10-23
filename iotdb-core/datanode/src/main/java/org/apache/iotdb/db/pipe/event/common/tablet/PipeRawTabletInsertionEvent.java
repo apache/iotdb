@@ -73,6 +73,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
       final boolean needToReport,
       final String pipeName,
       final long creationTime,
+      final int regionId,
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
@@ -81,6 +82,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     super(
         pipeName,
         creationTime,
+        regionId,
         pipeTaskMeta,
         treePattern,
         tablePattern,
@@ -101,6 +103,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
       final boolean isAligned,
       final String pipeName,
       final long creationTime,
+      final int regionId,
       final PipeTaskMeta pipeTaskMeta,
       final EnrichedEvent sourceEvent,
       final boolean needToReport) {
@@ -113,6 +116,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         needToReport,
         pipeName,
         creationTime,
+        regionId,
         pipeTaskMeta,
         null,
         null,
@@ -131,6 +135,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         false,
         null,
         0,
+        -1,
         null,
         null,
         null,
@@ -150,6 +155,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         false,
         null,
         0,
+        -1,
         null,
         treePattern,
         null,
@@ -160,7 +166,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   @TestOnly
   public PipeRawTabletInsertionEvent(
       final Tablet tablet, final long startTime, final long endTime) {
-    this(null, null, tablet, false, null, false, null, 0, null, null, null, startTime, endTime);
+    this(null, null, tablet, false, null, false, null, 0, -1, null, null, null, startTime, endTime);
   }
 
   @Override
@@ -243,6 +249,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         needToReport,
         pipeName,
         creationTime,
+        regionId,
         pipeTaskMeta,
         treePattern,
         tablePattern,
@@ -339,6 +346,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         isAligned,
         pipeName,
         creationTime,
+        regionId,
         pipeTaskMeta,
         this,
         needToReport);

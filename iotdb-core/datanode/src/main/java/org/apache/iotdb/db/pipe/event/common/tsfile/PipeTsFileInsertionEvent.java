@@ -34,7 +34,7 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventP
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTimePartitionProgressIndexKeeper;
 import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
-import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
+import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileDataRegionResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -92,7 +92,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final TsFileResource resource,
       final boolean isLoaded,
       final boolean isGeneratedByPipe,
-      final boolean isGeneratedByHistoricalExtractor) {
+      final boolean isGeneratedByHistoricalExtractor,
+      final int regionId) {
     // The modFile must be copied before the event is assigned to the listening pipes
     this(
         null,
@@ -104,6 +105,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         isGeneratedByHistoricalExtractor,
         null,
         0,
+        regionId,
         null,
         null,
         null,
@@ -121,6 +123,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final boolean isGeneratedByHistoricalExtractor,
       final String pipeName,
       final long creationTime,
+      final int regionId,
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
@@ -129,6 +132,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     super(
         pipeName,
         creationTime,
+        regionId,
         pipeTaskMeta,
         treePattern,
         tablePattern,
@@ -268,9 +272,13 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   @Override
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     try {
-      tsFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(tsFile, true, resource);
+      tsFile =
+          PipeDataNodeResourceManager.tsfile()
+              .increaseFileReference(tsFile, true, resource, regionId);
       if (isWithMod) {
-        modFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(modFile, false, null);
+        modFile =
+            PipeDataNodeResourceManager.tsfile()
+                .increaseFileReference(modFile, false, null, regionId);
       }
       if (Objects.nonNull(pipeName)) {
         PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
@@ -290,9 +298,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   @Override
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     try {
-      PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile);
+      PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile, regionId);
       if (isWithMod) {
-        PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile);
+        PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile, regionId);
       }
       return true;
     } catch (final Exception e) {
@@ -372,6 +380,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         isGeneratedByHistoricalExtractor,
         pipeName,
         creationTime,
+        regionId,
         pipeTaskMeta,
         treePattern,
         tablePattern,
@@ -403,8 +412,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final Map<IDeviceID, Boolean> deviceIsAlignedMap =
           PipeDataNodeResourceManager.tsfile()
               .getDeviceIsAlignedMapFromCache(
-                  PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(resource.getTsFile()),
-                  false);
+                  PipeTsFileDataRegionResourceManager.getHardlinkOrCopiedFileInPipeDir(
+                      resource.getTsFile()),
+                  false,
+                  regionId);
       final Set<IDeviceID> deviceSet =
           Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
       return deviceSet.stream()
@@ -441,9 +452,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         final Map<IDeviceID, Boolean> deviceIsAlignedMap =
             PipeDataNodeResourceManager.tsfile()
                 .getDeviceIsAlignedMapFromCache(
-                    PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+                    PipeTsFileDataRegionResourceManager.getHardlinkOrCopiedFileInPipeDir(
                         resource.getTsFile()),
-                    false);
+                    false,
+                    regionId);
         final Set<IDeviceID> deviceSet =
             Objects.nonNull(deviceIsAlignedMap)
                 ? deviceIsAlignedMap.keySet()
@@ -583,7 +595,12 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   @Override
   public PipeEventResource eventResourceBuilder() {
     return new PipeTsFileInsertionEventResource(
-        this.isReleased, this.referenceCount, this.tsFile, this.isWithMod, this.modFile);
+        this.isReleased,
+        this.referenceCount,
+        this.tsFile,
+        this.isWithMod,
+        this.modFile,
+        this.regionId);
   }
 
   private static class PipeTsFileInsertionEventResource extends PipeEventResource {
@@ -591,25 +608,28 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     private final File tsFile;
     private final boolean isWithMod;
     private final File modFile;
+    private final int regionId;
 
     private PipeTsFileInsertionEventResource(
         final AtomicBoolean isReleased,
         final AtomicInteger referenceCount,
         final File tsFile,
         final boolean isWithMod,
-        final File modFile) {
+        final File modFile,
+        final int regionId) {
       super(isReleased, referenceCount);
       this.tsFile = tsFile;
       this.isWithMod = isWithMod;
       this.modFile = modFile;
+      this.regionId = regionId;
     }
 
     @Override
     protected void finalizeResource() {
       try {
-        PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile);
+        PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile, regionId);
         if (isWithMod) {
-          PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile);
+          PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile, regionId);
         }
       } catch (final Exception e) {
         LOGGER.warn(
