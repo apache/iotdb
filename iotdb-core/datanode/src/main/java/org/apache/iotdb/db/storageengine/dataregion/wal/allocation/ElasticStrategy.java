@@ -80,7 +80,7 @@ public class ElasticStrategy extends AbstractNodeAllocationStrategy {
     }
   }
 
-  public void removeUniqueIdAndCleanWalNode(String applicantUniqueId) {
+  public void deleteUniqueIdAndMayDeleteWALNode(String applicantUniqueId) {
     nodesLock.lock();
     try {
       WALNode walNode = uniqueId2Nodes.remove(applicantUniqueId);

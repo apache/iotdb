@@ -139,9 +139,9 @@ public class WALManager implements IService {
 
     String dataRegionName = databaseName + FILE_NAME_SEPARATOR + dataRegionId;
     ((ElasticStrategy) walNodesManager)
-        .removeUniqueIdAndCleanWalNode(getApplicantUniqueId(dataRegionName, true));
+        .deleteUniqueIdAndMayDeleteWALNode(getApplicantUniqueId(dataRegionName, true));
     ((ElasticStrategy) walNodesManager)
-        .removeUniqueIdAndCleanWalNode(getApplicantUniqueId(dataRegionName, false));
+        .deleteUniqueIdAndMayDeleteWALNode(getApplicantUniqueId(dataRegionName, false));
   }
 
   @Override
