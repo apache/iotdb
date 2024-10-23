@@ -132,6 +132,7 @@ public class PipeTsFileResourceManager {
   public File increaseFileReference(
       final File file, final boolean isTsFile, final TsFileResource tsFileResource)
       throws IOException {
+    final File hardlinkOrCopiedFile;
     lock.lock();
     try {
       // If the file is already a hardlink or copied file,
@@ -142,19 +143,26 @@ public class PipeTsFileResourceManager {
 
       // If the file is not a hardlink or copied file, check if there is a related hardlink or
       // copied file in pipe dir. if so, increase reference count and return it
-      final File hardlinkOrCopiedFile = getHardlinkOrCopiedFileInPipeDir(file);
+      hardlinkOrCopiedFile = getHardlinkOrCopiedFileInPipeDir(file);
       if (increaseReferenceIfExists(hardlinkOrCopiedFile.getPath())) {
         return hardlinkOrCopiedFileToPipeTsFileResourceMap
             .get(hardlinkOrCopiedFile.getPath())
             .getFile();
       }
+    } finally {
+      lock.unlock();
+    }
 
-      // If the file is a tsfile, create a hardlink in pipe dir and will return it.
-      // otherwise, copy the file (.mod or .resource) to pipe dir and will return it.
-      final File resultFile =
-          isTsFile
-              ? FileUtils.createHardLink(file, hardlinkOrCopiedFile)
-              : FileUtils.copyFile(file, hardlinkOrCopiedFile);
+    // If the file is a tsfile, create a hardlink in pipe dir and will return it.
+    // otherwise, copy the file (.mod or .resource) to pipe dir and will return it.
+    // We shall not lock the "hardlink" because it may be time-consuming in some systems
+    final File resultFile =
+        isTsFile
+            ? FileUtils.createHardLink(file, hardlinkOrCopiedFile)
+            : FileUtils.copyFile(file, hardlinkOrCopiedFile);
+
+    lock.lock();
+    try {
       // If the file is not a hardlink or copied file, and there is no related hardlink or copied
       // file in pipe dir, create a hardlink or copy it to pipe dir, maintain a reference count for
       // the hardlink or copied file, and return the hardlink or copied file.
