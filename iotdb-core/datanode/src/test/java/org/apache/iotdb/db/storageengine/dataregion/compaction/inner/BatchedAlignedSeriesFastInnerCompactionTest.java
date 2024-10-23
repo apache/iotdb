@@ -30,7 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionCheckerUtils;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
@@ -252,11 +252,9 @@ public class BatchedAlignedSeriesFastInnerCompactionTest extends AbstractCompact
             Arrays.asList(false, false, false),
             false);
     unseqResource2
-        .getOldModFile()
-        .write(
-            new Deletion(
-                new MeasurementPath("root.testsg.d0", "s2"), Long.MAX_VALUE, Long.MAX_VALUE));
-    unseqResource2.getOldModFile().close();
+        .getNewModFile()
+        .write(new TreeDeletionEntry(new MeasurementPath("root.testsg.d0", "s2"), Long.MAX_VALUE));
+    unseqResource2.getNewModFile().close();
     unseqResources.add(unseqResource2);
 
     TsFileResource targetResource = performCompaction();
@@ -359,9 +357,9 @@ public class BatchedAlignedSeriesFastInnerCompactionTest extends AbstractCompact
             Arrays.asList(false, false, false),
             false);
     unseqResource1
-        .getOldModFile()
-        .write(new Deletion(new MeasurementPath("root.testsg.d0", "s2"), Long.MAX_VALUE, 150));
-    unseqResource1.getOldModFile().close();
+        .getNewModFile()
+        .write(new TreeDeletionEntry(new MeasurementPath("root.testsg.d0", "s2"), 150));
+    unseqResource1.getNewModFile().close();
     unseqResources.add(unseqResource1);
 
     TsFileResource unseqResource2 =
@@ -374,9 +372,9 @@ public class BatchedAlignedSeriesFastInnerCompactionTest extends AbstractCompact
             Arrays.asList(false, false, false),
             false);
     unseqResource2
-        .getOldModFile()
-        .write(new Deletion(new MeasurementPath("root.testsg.d0", "s2"), Long.MAX_VALUE, 400));
-    unseqResource2.getOldModFile().close();
+        .getNewModFile()
+        .write(new TreeDeletionEntry(new MeasurementPath("root.testsg.d0", "s2"), 400));
+    unseqResource2.getNewModFile().close();
     unseqResources.add(unseqResource2);
 
     TsFileResource targetResource = performCompaction();

@@ -19,14 +19,10 @@
 
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SettleSelectorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
 
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
@@ -39,8 +35,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
-
 public class ModificationUtils {
 
   private ModificationUtils() {
@@ -49,8 +43,9 @@ public class ModificationUtils {
 
   /**
    * modifyChunkMetaData iterates the chunkMetaData and applies all available modifications on it to
-   * generate a ModifiedChunkMetadata. <br> the caller should guarantee that chunkMetaData and
-   * modifications refer to the same time series paths.
+   * generate a ModifiedChunkMetadata. <br>
+   * the caller should guarantee that chunkMetaData and modifications refer to the same time series
+   * paths.
    *
    * @param chunkMetaData the original chunkMetaData.
    * @param modifications all possible modifications.
@@ -244,8 +239,8 @@ public class ModificationUtils {
   public static boolean isAllDeletedByMods(
       Collection<ModEntry> modifications, IDeviceID device, long startTime, long endTime) {
     for (ModEntry modification : modifications) {
-      if (modification.affectsAll(device) && modification.getTimeRange()
-          .contains(startTime, endTime)) {
+      if (modification.affectsAll(device)
+          && modification.getTimeRange().contains(startTime, endTime)) {
         return true;
       }
     }
@@ -272,7 +267,8 @@ public class ModificationUtils {
       long startTime,
       long endTime) {
     for (ModEntry modification : modifications) {
-      if (modification.affects(device) && modification.affects(timeseriesId)
+      if (modification.affects(device)
+          && modification.affects(timeseriesId)
           && modification.getTimeRange().contains(startTime, endTime)) {
         return true;
       }
@@ -284,9 +280,7 @@ public class ModificationUtils {
     metaData.insertIntoSortedDeletions(modification.getTimeRange());
   }
 
-  /**
-   * Methods for modification in memory table
-   */
+  /** Methods for modification in memory table */
   public static List<List<TimeRange>> constructDeletionList(
       IDeviceID deviceID,
       List<String> measurementList,
@@ -318,7 +312,7 @@ public class ModificationUtils {
   /**
    * construct a deletion list from a memtable.
    *
-   * @param memTable       memtable
+   * @param memTable memtable
    * @param timeLowerBound time watermark
    */
   public static List<TimeRange> constructDeletionList(

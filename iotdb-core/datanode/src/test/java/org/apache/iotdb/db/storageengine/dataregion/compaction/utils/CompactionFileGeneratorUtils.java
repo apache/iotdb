@@ -24,8 +24,9 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator.TsFileName;
@@ -277,22 +278,19 @@ public class CompactionFileGeneratorUtils {
       TsFileResource targetTsFileResource,
       boolean isCompactionMods)
       throws IllegalPathException, IOException {
-    ModificationFileV1 modificationFile;
+    ModificationFile modificationFile;
     if (isCompactionMods) {
-      modificationFile = ModificationFileV1.getCompactionMods(targetTsFileResource);
+      modificationFile = targetTsFileResource.getCompactionModFile();
     } else {
-      modificationFile = ModificationFileV1.getNormalMods(targetTsFileResource);
+      modificationFile = targetTsFileResource.getNewModFile();
     }
     for (Entry<String, Pair<Long, Long>> toDeleteTimeseriesAndTimeEntry :
         toDeleteTimeseriesAndTime.entrySet()) {
       String fullPath = toDeleteTimeseriesAndTimeEntry.getKey();
       Pair<Long, Long> startTimeEndTime = toDeleteTimeseriesAndTimeEntry.getValue();
-      Deletion deletion =
-          new Deletion(
-              new MeasurementPath(fullPath),
-              Long.MAX_VALUE,
-              startTimeEndTime.left,
-              startTimeEndTime.right);
+      ModEntry deletion =
+          new TreeDeletionEntry(
+              new MeasurementPath(fullPath), startTimeEndTime.left, startTimeEndTime.right);
       modificationFile.write(deletion);
     }
     modificationFile.close();

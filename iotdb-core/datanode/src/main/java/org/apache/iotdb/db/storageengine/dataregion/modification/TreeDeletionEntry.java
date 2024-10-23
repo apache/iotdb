@@ -76,7 +76,9 @@ public class TreeDeletionEntry extends ModEntry {
   public int serializedSize() {
     String patternFullPath = pathPattern.getFullPath();
     int length = patternFullPath.length();
-    return super.serializedSize() + ReadWriteForEncodingUtils.varIntSize(length) + length * Character.BYTES;
+    return super.serializedSize()
+        + ReadWriteForEncodingUtils.varIntSize(length)
+        + length * Character.BYTES;
   }
 
   @Override

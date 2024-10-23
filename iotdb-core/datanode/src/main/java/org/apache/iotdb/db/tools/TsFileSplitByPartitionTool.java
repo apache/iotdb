@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.tools;
 
-import java.util.Collection;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
@@ -60,6 +59,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -182,8 +182,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
               // a new Page
               PageHeader pageHeader =
                   reader.readPageHeader(dataType, header.getChunkType() == MetaMarker.CHUNK_HEADER);
-              boolean needToDecode =
-                  checkIfNeedToDecode(measurementSchema, deviceId, pageHeader);
+              boolean needToDecode = checkIfNeedToDecode(measurementSchema, deviceId, pageHeader);
               needToDecodeInfo.add(needToDecode);
               ByteBuffer pageData =
                   !needToDecode
@@ -260,8 +259,11 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
       ModEntry currentDeletion;
       while (modsIterator.hasNext()) {
         currentDeletion = modsIterator.next();
-        if (currentDeletion.affects(deviceId) && currentDeletion.affects(schema.getMeasurementId())
-        && currentDeletion.getTimeRange().contains(pageHeader.getStartTime(), pageHeader.getEndTime())){
+        if (currentDeletion.affects(deviceId)
+            && currentDeletion.affects(schema.getMeasurementId())
+            && currentDeletion
+                .getTimeRange()
+                .contains(pageHeader.getStartTime(), pageHeader.getEndTime())) {
           return true;
         }
       }
@@ -371,8 +373,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
     PageReader pageReader =
         new PageReader(pageData, schema.getType(), valueDecoder, defaultTimeDecoder);
     // read delete time range from old modification file
-    List<TimeRange> deleteIntervalList =
-        getOldSortedDeleteIntervals(deviceId, schema);
+    List<TimeRange> deleteIntervalList = getOldSortedDeleteIntervals(deviceId, schema);
     pageReader.setDeleteIntervalList(deleteIntervalList);
     BatchData batchData = pageReader.getAllSatisfiedPageData();
     rewritePageIntoFiles(batchData, schema, partitionChunkWriterMap);
@@ -387,7 +388,8 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
       while (modsIterator.hasNext()) {
         currentDeletion = modsIterator.next();
         // if deletion path match the chunkPath, then add the deletion to the list
-        if (currentDeletion.affects(deviceId) && currentDeletion.affects(schema.getMeasurementId())) {
+        if (currentDeletion.affects(deviceId)
+            && currentDeletion.affects(schema.getMeasurementId())) {
           chunkMetadata.insertIntoSortedDeletions(currentDeletion.getTimeRange());
         }
       }

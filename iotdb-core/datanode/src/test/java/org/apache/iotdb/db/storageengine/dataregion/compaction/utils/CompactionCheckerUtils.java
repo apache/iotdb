@@ -33,6 +33,7 @@ import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.IDataBlockReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.SeriesDataBlockReader;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
@@ -132,11 +133,11 @@ public class CompactionCheckerUtils {
           Map<Long, TimeValuePair> timeValuePairMap =
               mapResult.computeIfAbsent(path.getFullPath(), k -> new TreeMap<>());
           List<ChunkMetadata> chunkMetadataList = reader.getChunkMetadataList(path);
-          List<Modification> seriesModifications = new LinkedList<>();
+          List<ModEntry> seriesModifications = new LinkedList<>();
 
           if (!"".equals(path.getMeasurement())) {
-            for (Modification modification : tsFileResource.getOldModFile().getModifications()) {
-              if (modification.getPath().matchFullPath(new PartialPath(path.getFullPath()))) {
+            for (ModEntry modification : tsFileResource.getAllModEntries()) {
+              if (modification.matches(new PartialPath(path.getFullPath()))) {
                 seriesModifications.add(modification);
               }
             }
