@@ -31,11 +31,9 @@ import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.tsfile.utils.BytesUtils.doubleToBytes;
+import static org.apache.tsfile.utils.BytesUtils.longToBytes;
 
 public class GroupedAvgAccumulator implements GroupedAccumulator {
   private static final long INSTANCE_SIZE =
@@ -118,16 +116,10 @@ public class GroupedAvgAccumulator implements GroupedAccumulator {
   }
 
   private byte[] serializeState(int groupId) {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    try {
-      dataOutputStream.writeLong(countValues.get(groupId));
-      dataOutputStream.writeDouble(sumValues.get(groupId));
-    } catch (IOException e) {
-      throw new UnsupportedOperationException(
-          "Failed to serialize intermediate result for AvgAccumulator.", e);
-    }
-    return byteArrayOutputStream.toByteArray();
+    byte[] bytes = new byte[Long.BYTES + Double.BYTES];
+    longToBytes(countValues.get(groupId), bytes, 0);
+    doubleToBytes(sumValues.get(groupId), bytes, Long.BYTES);
+    return bytes;
   }
 
   private void addIntInput(int[] groupIds, Column column) {
