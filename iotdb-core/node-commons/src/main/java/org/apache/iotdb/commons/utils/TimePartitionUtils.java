@@ -50,23 +50,23 @@ public class TimePartitionUtils {
     long maxPartition = getTimePartitionIdWithoutOverflow(Long.MAX_VALUE);
     BigInteger minPartitionStartTime =
         BigInteger.valueOf(minPartition)
-            .multiply(BigInteger.valueOf(timePartitionInterval))
-            .add(BigInteger.valueOf(timePartitionOrigin));
+            .multiply(bigTimePartitionInterval)
+            .add(bigTimePartitionOrigin);
     BigInteger maxPartitionEndTime =
         BigInteger.valueOf(maxPartition)
-            .multiply(BigInteger.valueOf(timePartitionInterval))
-            .add(BigInteger.valueOf(timePartitionInterval))
-            .add(BigInteger.valueOf(timePartitionOrigin))
+            .multiply(bigTimePartitionInterval)
+            .add(bigTimePartitionInterval)
+            .add(bigTimePartitionOrigin)
             .subtract(BigInteger.ONE);
     if (minPartitionStartTime.compareTo(BigInteger.valueOf(Long.MIN_VALUE)) < 0) {
       timePartitionLowerBoundWithoutOverflow =
-          minPartitionStartTime.add(BigInteger.valueOf(timePartitionInterval)).longValue();
+          minPartitionStartTime.add(bigTimePartitionInterval).longValue();
     } else {
       timePartitionLowerBoundWithoutOverflow = minPartitionStartTime.longValue();
     }
     if (maxPartitionEndTime.compareTo(BigInteger.valueOf(Long.MAX_VALUE)) > 0) {
       timePartitionUpperBoundWithoutOverflow =
-          maxPartitionEndTime.subtract(BigInteger.valueOf(timePartitionInterval)).longValue();
+          maxPartitionEndTime.subtract(bigTimePartitionInterval).longValue();
     } else {
       timePartitionUpperBoundWithoutOverflow = maxPartitionEndTime.longValue();
     }
