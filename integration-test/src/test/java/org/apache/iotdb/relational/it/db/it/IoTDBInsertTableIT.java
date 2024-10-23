@@ -1059,7 +1059,7 @@ public class IoTDBInsertTableIT {
       assertNull(rs1.getString("s2"));
       assertTrue(rs1.next());
       assertNull(rs1.getString("s1"));
-      assertNull(rs1.getString("s1"));
+      assertNull(rs1.getString("s2"));
       assertFalse(rs1.next());
 
       st1.execute("flush");
@@ -1070,7 +1070,7 @@ public class IoTDBInsertTableIT {
       assertNull(rs1.getString("s2"));
       assertTrue(rs1.next());
       assertNull(rs1.getString("s1"));
-      assertNull(rs1.getString("s1"));
+      assertNull(rs1.getString("s2"));
       assertFalse(rs1.next());
     }
   }
