@@ -336,8 +336,7 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
         offset += 4;
       }
       serializeValue(yDataType, yExtremeValue, valueBytes, offset);
-
-      offset += calcTypeSize(yDataType, yExtremeValue);
+      offset = calcTypeSize(yDataType, yExtremeValue);
 
       BytesUtils.boolToBytes(false, valueBytes, offset);
       offset += 1;
