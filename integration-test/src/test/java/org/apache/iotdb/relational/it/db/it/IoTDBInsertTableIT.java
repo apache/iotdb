@@ -65,6 +65,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -1038,6 +1039,39 @@ public class IoTDBInsertTableIT {
         cnt++;
       }
       assertEquals(29, cnt);
+    }
+  }
+
+  @Test
+  public void testInsertAllNullRow() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement st1 = connection.createStatement()) {
+      st1.execute("use \"test\"");
+      st1.execute("create table table5(d1 string id, s1 int32 measurement, s2 int32 measurement)");
+
+      st1.execute("insert into table5(time, d1,s1,s2) values(1,'a',1,null)");
+      // insert all null row
+      st1.execute("insert into table5(time, d1,s1,s2) values(2,'a',null,null)");
+
+      ResultSet rs1 = st1.executeQuery("select * from table5");
+      assertTrue(rs1.next());
+      assertEquals("1", rs1.getString("s1"));
+      assertNull(rs1.getString("s2"));
+      assertTrue(rs1.next());
+      assertNull(rs1.getString("s1"));
+      assertNull(rs1.getString("s2"));
+      assertFalse(rs1.next());
+
+      st1.execute("flush");
+
+      rs1 = st1.executeQuery("select * from table5");
+      assertTrue(rs1.next());
+      assertEquals("1", rs1.getString("s1"));
+      assertNull(rs1.getString("s2"));
+      assertTrue(rs1.next());
+      assertNull(rs1.getString("s1"));
+      assertNull(rs1.getString("s2"));
+      assertFalse(rs1.next());
     }
   }
 
