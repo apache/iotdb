@@ -351,7 +351,7 @@ public class TableModeAccumulator implements TableAccumulator {
         for (int i = 0; i < size; i++) {
           boolean key = BytesUtils.bytesToBool(bytes, offset);
           offset += 1;
-          long count = BytesUtils.bytesToLong(bytes, offset);
+          long count = BytesUtils.bytesToLongFromOffset(bytes, 8, offset);
           offset += 8;
           booleanCountMap.compute(key, (k, v) -> v == null ? count : v + count);
         }
@@ -361,7 +361,7 @@ public class TableModeAccumulator implements TableAccumulator {
         for (int i = 0; i < size; i++) {
           int key = BytesUtils.bytesToInt(bytes, offset);
           offset += 4;
-          long count = BytesUtils.bytesToLong(bytes, offset);
+          long count = BytesUtils.bytesToLongFromOffset(bytes, 8, offset);
           offset += 8;
           intCountMap.compute(key, (k, v) -> v == null ? count : v + count);
         }
@@ -370,7 +370,7 @@ public class TableModeAccumulator implements TableAccumulator {
         for (int i = 0; i < size; i++) {
           float key = BytesUtils.bytesToFloat(bytes, offset);
           offset += 4;
-          long count = BytesUtils.bytesToLong(bytes, offset);
+          long count = BytesUtils.bytesToLongFromOffset(bytes, 8, offset);
           offset += 8;
           floatCountMap.compute(key, (k, v) -> v == null ? count : v + count);
         }
@@ -380,7 +380,7 @@ public class TableModeAccumulator implements TableAccumulator {
         for (int i = 0; i < size; i++) {
           long key = BytesUtils.bytesToLong(bytes, offset);
           offset += 8;
-          long count = BytesUtils.bytesToLong(bytes, offset);
+          long count = BytesUtils.bytesToLongFromOffset(bytes, 8, offset);
           offset += 8;
           longCountMap.compute(key, (k, v) -> v == null ? count : v + count);
         }
@@ -388,8 +388,8 @@ public class TableModeAccumulator implements TableAccumulator {
       case DOUBLE:
         for (int i = 0; i < size; i++) {
           double key = BytesUtils.bytesToDouble(bytes, offset);
-          offset += 4;
-          long count = BytesUtils.bytesToLong(bytes, offset);
+          offset += 8;
+          long count = BytesUtils.bytesToLongFromOffset(bytes, 8, offset);
           offset += 8;
           doubleCountMap.compute(key, (k, v) -> v == null ? count : v + count);
         }
@@ -402,7 +402,7 @@ public class TableModeAccumulator implements TableAccumulator {
           offset += 4;
           Binary binaryVal = new Binary(BytesUtils.subBytes(bytes, offset, length));
           offset += length;
-          long count = BytesUtils.bytesToLong(bytes, offset);
+          long count = BytesUtils.bytesToLongFromOffset(bytes, 8, offset);
           offset += 8;
           binaryCountMap.compute(binaryVal, (k, v) -> v == null ? count : v + count);
         }
