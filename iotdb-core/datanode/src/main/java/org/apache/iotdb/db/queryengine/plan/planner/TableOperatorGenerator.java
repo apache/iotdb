@@ -188,14 +188,16 @@ import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableBuiltinAggregationFunction.getAggregationTypeByFuncName;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.AVG;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.EXTREME;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_BY_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.MAX;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.MAX_BY;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.MIN;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.MIN_BY;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.SUM;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
 /** This Visitor is responsible for transferring Table PlanNode Tree to Table Operator Tree. */
@@ -1686,37 +1688,45 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       Symbol argument = Symbol.from(aggregation.getArguments().get(0));
       Type argumentType = node.getAssignments().get(argument).getType();
 
-      if (MAX_BY.equals(funcName) || MIN_BY.equals(funcName)) {
-        canUseStatistic = false;
-      } else if (MAX.equals(funcName) || MIN.equals(funcName)) {
-        if (BlobType.BLOB.equals(argumentType)
-            || BinaryType.TEXT.equals(argumentType)
-            || BooleanType.BOOLEAN.equals(argumentType)) {
-          canUseStatistic = false;
-        }
-      } else if (FIRST_AGGREGATION.equals(funcName)
-          || LAST_AGGREGATION.equals(funcName)
-          || LAST_BY_AGGREGATION.equals(funcName)
-          || FIRST_BY_AGGREGATION.equals(funcName)) {
-        if (FIRST_AGGREGATION.equals(funcName) || FIRST_BY_AGGREGATION.equals(funcName)) {
-          ascendingCount++;
-        } else {
-          descendingCount++;
-        }
+      switch (funcName) {
+        case COUNT:
+        case AVG:
+        case SUM:
+        case EXTREME:
+          break;
+        case MAX:
+        case MIN:
+          if (BlobType.BLOB.equals(argumentType)
+              || BinaryType.TEXT.equals(argumentType)
+              || BooleanType.BOOLEAN.equals(argumentType)) {
+            canUseStatistic = false;
+          }
+          break;
+        case FIRST_AGGREGATION:
+        case LAST_AGGREGATION:
+        case LAST_BY_AGGREGATION:
+        case FIRST_BY_AGGREGATION:
+          if (FIRST_AGGREGATION.equals(funcName) || FIRST_BY_AGGREGATION.equals(funcName)) {
+            ascendingCount++;
+          } else {
+            descendingCount++;
+          }
 
-        // first/last/first_by/last_by aggregation with BLOB type can not use statistics
+          // first/last/first_by/last_by aggregation with BLOB type can not use statistics
+          if (BlobType.BLOB.equals(argumentType)) {
+            canUseStatistic = false;
+            break;
+          }
 
-        if (BlobType.BLOB.equals(argumentType)) {
+          // only last_by(time, x) or last_by(x,time) can use statistic
+          if ((LAST_BY_AGGREGATION.equals(funcName) || FIRST_BY_AGGREGATION.equals(funcName))
+              && !isTimeColumn(aggregation.getArguments().get(0))
+              && !isTimeColumn(aggregation.getArguments().get(1))) {
+            canUseStatistic = false;
+          }
+          break;
+        default:
           canUseStatistic = false;
-          continue;
-        }
-
-        // only last_by(time, x) or last_by(x,time) can use statistic
-        if ((LAST_BY_AGGREGATION.equals(funcName) || FIRST_BY_AGGREGATION.equals(funcName))
-            && !isTimeColumn(aggregation.getArguments().get(0))
-            && !isTimeColumn(aggregation.getArguments().get(1))) {
-          canUseStatistic = false;
-        }
       }
     }
 

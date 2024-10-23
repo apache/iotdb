@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
@@ -29,7 +30,7 @@ import static org.apache.tsfile.enums.TSDataType.STRING;
 import static org.apache.tsfile.enums.TSDataType.TEXT;
 
 public class Utils {
-  public static final String UNSUPPORTED_TYPE_MESSAGE = "Unsupported data type in serialize : %s";
+  public static final String UNSUPPORTED_TYPE_MESSAGE = "Unsupported data type : %s";
 
   private Utils() {}
 
@@ -68,6 +69,12 @@ public class Utils {
       default:
         throw new UnSupportedDataTypeException(String.format(UNSUPPORTED_TYPE_MESSAGE, dataType));
     }
+  }
+
+  public static void serializeBinaryValue(Binary binary, byte[] valueBytes, int offset) {
+    BytesUtils.intToBytes(binary.getValues().length, valueBytes, offset);
+    offset += 4;
+    System.arraycopy(binary.getValues(), 0, valueBytes, offset, binary.getValues().length);
   }
 
   public static byte[] serializeTimeValue(

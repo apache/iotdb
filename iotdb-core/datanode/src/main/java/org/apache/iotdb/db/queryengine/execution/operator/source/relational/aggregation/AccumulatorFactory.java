@@ -179,6 +179,8 @@ public class AccumulatorFactory {
         return new TableMinByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
       case EXTREME:
         return new ExtremeAccumulator(inputDataTypes.get(0));
+      case MODE:
+        return new TableModeAccumulator(inputDataTypes.get(0));
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }

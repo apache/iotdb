@@ -89,11 +89,11 @@ public enum TableBuiltinAggregationFunction {
       case "min":
       case "first":
       case "last":
+      case "mode":
         return true;
       case "first_by":
       case "last_by":
         return withTime;
-      case "mode":
       case "max_by":
       case "min_by":
       case "stddev":
