@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -132,34 +133,43 @@ public class PipeTsFileResourceManager {
   public File increaseFileReference(
       final File file, final boolean isTsFile, final TsFileResource tsFileResource)
       throws IOException {
-    final File hardlinkOrCopiedFile;
-    lock.lock();
-    try {
-      // If the file is already a hardlink or copied file,
-      // just increase reference count and return it
-      if (increaseReferenceIfExists(file.getPath())) {
-        return file;
+    boolean isCopiedOrLinked = false;
+    File resultFile = file;
+    while (!isCopiedOrLinked) {
+      final File hardlinkOrCopiedFile;
+      lock.lock();
+      try {
+        // If the file is already a hardlink or copied file,
+        // just increase reference count and return it
+        if (increaseReferenceIfExists(file.getPath())) {
+          return file;
+        }
+
+        // If the file is not a hardlink or copied file, check if there is a related hardlink or
+        // copied file in pipe dir. if so, increase reference count and return it
+        hardlinkOrCopiedFile = getHardlinkOrCopiedFileInPipeDir(file);
+        if (increaseReferenceIfExists(hardlinkOrCopiedFile.getPath())) {
+          return hardlinkOrCopiedFileToPipeTsFileResourceMap
+              .get(hardlinkOrCopiedFile.getPath())
+              .getFile();
+        }
+      } finally {
+        lock.unlock();
       }
 
-      // If the file is not a hardlink or copied file, check if there is a related hardlink or
-      // copied file in pipe dir. if so, increase reference count and return it
-      hardlinkOrCopiedFile = getHardlinkOrCopiedFileInPipeDir(file);
-      if (increaseReferenceIfExists(hardlinkOrCopiedFile.getPath())) {
-        return hardlinkOrCopiedFileToPipeTsFileResourceMap
-            .get(hardlinkOrCopiedFile.getPath())
-            .getFile();
+      // If the file is a tsfile, create a hardlink in pipe dir and will return it.
+      // otherwise, copy the file (.mod or .resource) to pipe dir and will return it.
+      // We shall not lock the "hardlink" because it may be time-consuming in some systems
+      try {
+        resultFile =
+            isTsFile
+                ? FileUtils.createHardLink(file, hardlinkOrCopiedFile)
+                : FileUtils.copyFile(file, hardlinkOrCopiedFile);
+        isCopiedOrLinked = true;
+      } catch (final FileAlreadyExistsException ignore) {
+        // Retry
       }
-    } finally {
-      lock.unlock();
     }
-
-    // If the file is a tsfile, create a hardlink in pipe dir and will return it.
-    // otherwise, copy the file (.mod or .resource) to pipe dir and will return it.
-    // We shall not lock the "hardlink" because it may be time-consuming in some systems
-    final File resultFile =
-        isTsFile
-            ? FileUtils.createHardLink(file, hardlinkOrCopiedFile)
-            : FileUtils.copyFile(file, hardlinkOrCopiedFile);
 
     lock.lock();
     try {
