@@ -22,7 +22,6 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SettleSelectorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
-import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
@@ -351,14 +350,14 @@ public class ModificationUtils {
     modifications.sort(null);
     List<ModEntry> result = new ArrayList<>();
     if (!modifications.isEmpty()) {
-      TreeDeletionEntry current = new TreeDeletionEntry((TreeDeletionEntry) modifications.get(0));
+      ModEntry current = modifications.get(0).clone();
       for (int i = 1; i < modifications.size(); i++) {
-        TreeDeletionEntry del = (TreeDeletionEntry) modifications.get(i);
-        if (current.intersects(del)) {
-          current.merge(del);
+        ModEntry del = modifications.get(i);
+        if (current.getTimeRange().intersects(del.getTimeRange())) {
+          current.getTimeRange().merge(del.getTimeRange());
         } else {
           result.add(current);
-          current = new TreeDeletionEntry(del);
+          current = del.clone();
         }
       }
       result.add(current);

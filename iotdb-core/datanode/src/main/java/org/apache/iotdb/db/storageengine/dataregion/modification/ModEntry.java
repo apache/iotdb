@@ -110,6 +110,8 @@ public abstract class ModEntry
 
   public abstract PartialPath keyOfPatternTree();
 
+  public abstract ModEntry clone();
+
   public static ModEntry createFrom(InputStream stream) throws IOException {
     ModType modType = ModType.deserialize(stream);
     ModEntry entry = modType.newEntry();

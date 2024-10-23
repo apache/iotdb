@@ -132,7 +132,7 @@ public class TreeDeletionEntry extends ModEntry {
   @Override
   public boolean affects(IDeviceID deviceID) {
     try {
-      return pathPattern.matchFullPath(new PartialPath(deviceID));
+      return pathPattern.matchPrefixPath(new PartialPath(deviceID));
     } catch (IllegalPathException e) {
       return false;
     }
@@ -151,6 +151,11 @@ public class TreeDeletionEntry extends ModEntry {
   @Override
   public PartialPath keyOfPatternTree() {
     return pathPattern;
+  }
+
+  @Override
+  public ModEntry clone() {
+    return new TreeDeletionEntry(this);
   }
 
   @Override
