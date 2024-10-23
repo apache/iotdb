@@ -591,11 +591,7 @@ public class LoadTsFileScheduler implements IScheduler {
       List<TRegionReplicaSet> replicaSets =
           scheduler.partitionFetcher.queryDataPartition(
               nonDirectionalChunkData.stream()
-                  .map(
-                      data ->
-                          new Pair<>(
-                              IDeviceID.Factory.DEFAULT_FACTORY.create(data.getDevice()),
-                              data.getTimePartitionSlot()))
+                  .map(data -> new Pair<>(data.getDevice(), data.getTimePartitionSlot()))
                   .collect(Collectors.toList()),
               scheduler.queryContext.getSession().getUserName());
       IntStream.range(0, nonDirectionalChunkData.size())
