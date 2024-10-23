@@ -711,11 +711,6 @@ public class TableMetadataImpl implements Metadata {
         Collections.singletonMap(database, sgNameToQueryParamsMap));
   }
 
-  @Override
-  public boolean canUseStatistics(String functionName, boolean withTime) {
-    return TableBuiltinAggregationFunction.canUseStatistics(functionName, withTime);
-  }
-
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {
     return argumentTypes.size() == 2
         && isNumericType(argumentTypes.get(0))

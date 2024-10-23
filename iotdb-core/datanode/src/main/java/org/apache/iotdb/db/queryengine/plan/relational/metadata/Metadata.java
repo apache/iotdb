@@ -183,10 +183,4 @@ public interface Metadata {
    */
   DataPartition getDataPartitionWithUnclosedTimeRange(
       final String database, final List<DataPartitionQueryParam> sgNameToQueryParamsMap);
-
-  /**
-   * @param withTime some function with time can also use Statistics, like first_by, last_by
-   * @return if the Aggregation can use statistics to optimize
-   */
-  boolean canUseStatistics(final String name, boolean withTime);
 }
