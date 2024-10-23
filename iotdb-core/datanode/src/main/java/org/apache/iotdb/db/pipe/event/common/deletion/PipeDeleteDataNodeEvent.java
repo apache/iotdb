@@ -43,18 +43,19 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
 
   public PipeDeleteDataNodeEvent() {
     // Used for deserialization
-    this(null, false);
+    this(null, -1, false);
   }
 
   public PipeDeleteDataNodeEvent(
-      final DeleteDataNode deleteDataNode, final boolean isGeneratedByPipe) {
-    this(deleteDataNode, null, 0, null, null, null, isGeneratedByPipe);
+      final DeleteDataNode deleteDataNode, final int regionId, final boolean isGeneratedByPipe) {
+    this(deleteDataNode, null, 0, regionId, null, null, null, isGeneratedByPipe);
   }
 
   public PipeDeleteDataNodeEvent(
       final DeleteDataNode deleteDataNode,
       final String pipeName,
       final long creationTime,
+      final int regionId,
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
@@ -62,6 +63,7 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
     super(
         pipeName,
         creationTime,
+        regionId,
         pipeTaskMeta,
         treePattern,
         tablePattern,
@@ -110,17 +112,18 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
 
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName,
-      long creationTime,
-      PipeTaskMeta pipeTaskMeta,
-      TreePattern treePattern,
-      TablePattern tablePattern,
-      long startTime,
-      long endTime) {
+      final String pipeName,
+      final long creationTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
+      final long startTime,
+      final long endTime) {
     return new PipeDeleteDataNodeEvent(
         deleteDataNode,
         pipeName,
         creationTime,
+        regionId,
         pipeTaskMeta,
         treePattern,
         tablePattern,

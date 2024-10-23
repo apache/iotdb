@@ -102,6 +102,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
 
     try {
       final PipeTsFileResourceManager tsFileResourceManager = PipeDataNodeResourceManager.tsfile();
+      final int regionId = sourceEvent.getRegionId();
       final Map<IDeviceID, List<String>> deviceMeasurementsMap;
 
       // TsFileReader is not thread-safe, so we need to create it here and close it later.
@@ -110,14 +111,16 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
       tsFileSequenceReader = new TsFileSequenceReader(tsFile.getPath(), true, true);
       tsFileReader = new TsFileReader(tsFileSequenceReader);
 
-      if (tsFileResourceManager.cacheObjectsIfAbsent(tsFile)) {
+      if (tsFileResourceManager.cacheObjectsIfAbsent(tsFile, regionId)) {
         // These read-only objects can be found in cache.
         this.deviceIsAlignedMap =
             Objects.nonNull(deviceIsAlignedMap)
                 ? deviceIsAlignedMap
-                : tsFileResourceManager.getDeviceIsAlignedMapFromCache(tsFile, true);
-        measurementDataTypeMap = tsFileResourceManager.getMeasurementDataTypeMapFromCache(tsFile);
-        deviceMeasurementsMap = tsFileResourceManager.getDeviceMeasurementsMapFromCache(tsFile);
+                : tsFileResourceManager.getDeviceIsAlignedMapFromCache(tsFile, true, regionId);
+        measurementDataTypeMap =
+            tsFileResourceManager.getMeasurementDataTypeMapFromCache(tsFile, regionId);
+        deviceMeasurementsMap =
+            tsFileResourceManager.getDeviceMeasurementsMapFromCache(tsFile, regionId);
       } else {
         // We need to create these objects here and remove them later.
         final Set<IDeviceID> devices;
@@ -319,6 +322,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
                       isAligned,
                       sourceEvent != null ? sourceEvent.getPipeName() : null,
                       sourceEvent != null ? sourceEvent.getCreationTime() : 0,
+                      sourceEvent != null ? sourceEvent.getRegionId() : 0,
                       pipeTaskMeta,
                       sourceEvent,
                       true);
@@ -332,6 +336,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
                       isAligned,
                       sourceEvent != null ? sourceEvent.getPipeName() : null,
                       sourceEvent != null ? sourceEvent.getCreationTime() : 0,
+                      sourceEvent != null ? sourceEvent.getRegionId() : 0,
                       pipeTaskMeta,
                       sourceEvent,
                       false);

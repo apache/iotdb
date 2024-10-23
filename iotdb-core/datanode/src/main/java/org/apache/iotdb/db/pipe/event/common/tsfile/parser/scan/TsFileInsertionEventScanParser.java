@@ -140,6 +140,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                   currentIsAligned,
                   sourceEvent != null ? sourceEvent.getPipeName() : null,
                   sourceEvent != null ? sourceEvent.getCreationTime() : 0,
+                  sourceEvent != null ? sourceEvent.getRegionId() : 0,
                   pipeTaskMeta,
                   sourceEvent,
                   !hasNext);

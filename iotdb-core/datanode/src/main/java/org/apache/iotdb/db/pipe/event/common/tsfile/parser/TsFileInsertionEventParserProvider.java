@@ -89,7 +89,8 @@ public class TsFileInsertionEventParserProvider {
     }
 
     final Map<IDeviceID, Boolean> deviceIsAlignedMap =
-        PipeDataNodeResourceManager.tsfile().getDeviceIsAlignedMapFromCache(tsFile, false);
+        PipeDataNodeResourceManager.tsfile()
+            .getDeviceIsAlignedMapFromCache(tsFile, false, sourceEvent.getRegionId());
     if (Objects.isNull(deviceIsAlignedMap)) {
       // If we failed to get from cache, it indicates that the memory usage is high.
       // We use scan data container because it requires less memory.

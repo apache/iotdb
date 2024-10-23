@@ -147,8 +147,7 @@ public class PipeEventCollector implements EventCollector {
       }
 
       // Assign a commit id for this event in order to report progress in order.
-      PipeEventCommitManager.getInstance()
-          .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, creationTime, regionId);
+      PipeEventCommitManager.getInstance().enrichWithCommitterKeyAndCommitId((EnrichedEvent) event);
 
       // Assign a rebootTime for pipeConsensus
       ((EnrichedEvent) event).setRebootTimes(PipeDataNodeAgent.runtime().getRebootTimes());

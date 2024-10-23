@@ -41,9 +41,11 @@ public abstract class PipeSnapshotEvent extends EnrichedEvent implements Seriali
       final TreePattern treePattern,
       final TablePattern tablePattern,
       final PipeSnapshotResourceManager resourceManager) {
+    // Bind regionId later
     super(
         pipeName,
         creationTime,
+        -1,
         pipeTaskMeta,
         treePattern,
         tablePattern,

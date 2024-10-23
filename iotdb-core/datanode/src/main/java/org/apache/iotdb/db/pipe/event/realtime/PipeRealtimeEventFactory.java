@@ -37,22 +37,26 @@ public class PipeRealtimeEventFactory {
   public static PipeRealtimeEvent createRealtimeEvent(
       final String databaseName,
       final TsFileResource resource,
+      final int regionId,
       final boolean isLoaded,
       final boolean isGeneratedByPipe) {
     return TS_FILE_EPOCH_MANAGER.bindPipeTsFileInsertionEvent(
-        new PipeTsFileInsertionEvent(databaseName, resource, isLoaded, isGeneratedByPipe, false),
+        new PipeTsFileInsertionEvent(
+            databaseName, resource, isLoaded, isGeneratedByPipe, false, regionId),
         resource);
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(
       final String databaseName,
       final WALEntryHandler walEntryHandler,
+      final int regionId,
       final InsertNode insertNode,
       final TsFileResource resource) {
     return TS_FILE_EPOCH_MANAGER.bindPipeInsertNodeTabletInsertionEvent(
         new PipeInsertNodeTabletInsertionEvent(
             databaseName,
             walEntryHandler,
+            regionId,
             insertNode.getTargetPath(),
             insertNode.getProgressIndex(),
             insertNode.isAligned(),
@@ -62,14 +66,19 @@ public class PipeRealtimeEventFactory {
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(
-      final String dataRegionId, final boolean shouldPrintMessage) {
+      final int dataRegionId, final boolean shouldPrintMessage) {
     return new PipeRealtimeEvent(
         new PipeHeartbeatEvent(dataRegionId, shouldPrintMessage), null, null, null, null);
   }
 
-  public static PipeRealtimeEvent createRealtimeEvent(final DeleteDataNode node) {
+  public static PipeRealtimeEvent createRealtimeEvent(
+      final DeleteDataNode node, final int regionId) {
     return new PipeRealtimeEvent(
-        new PipeDeleteDataNodeEvent(node, node.isGeneratedByPipe()), null, null, null, null);
+        new PipeDeleteDataNodeEvent(node, regionId, node.isGeneratedByPipe()),
+        null,
+        null,
+        null,
+        null);
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(final ProgressReportEvent event) {
