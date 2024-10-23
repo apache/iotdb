@@ -281,7 +281,7 @@ public class CommonConfig {
 
   private float subscriptionCacheMemoryUsagePercentage = 0.2F;
 
-  private boolean pipeEventReferenceTrackingEnabled = false; // TODO: enable later
+  private boolean pipeEventReferenceTrackingEnabled = true;
   private long pipeEventReferenceEliminateIntervalSeconds = 10;
 
   private int subscriptionSubtaskExecutorMaxThreadNum =
