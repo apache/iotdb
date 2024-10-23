@@ -37,11 +37,12 @@ import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.tsfile.utils.BytesUtils.boolToBytes;
+import static org.apache.tsfile.utils.BytesUtils.doubleToBytes;
+import static org.apache.tsfile.utils.BytesUtils.floatToBytes;
+import static org.apache.tsfile.utils.BytesUtils.intToBytes;
+import static org.apache.tsfile.utils.BytesUtils.longToBytes;
 
 public class GroupedFirstAccumulator implements GroupedAccumulator {
   private static final long INSTANCE_SIZE =
@@ -288,43 +289,54 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
   public void prepareFinal() {}
 
   private byte[] serializeTimeWithValue(int groupId) {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    try {
-      dataOutputStream.writeLong(minTimes.get(groupId));
-      switch (seriesDataType) {
-        case INT32:
-        case DATE:
-          dataOutputStream.writeInt(intValues.get(groupId));
-          break;
-        case INT64:
-        case TIMESTAMP:
-          dataOutputStream.writeLong(longValues.get(groupId));
-          break;
-        case FLOAT:
-          dataOutputStream.writeFloat(floatValues.get(groupId));
-          break;
-        case DOUBLE:
-          dataOutputStream.writeDouble(doubleValues.get(groupId));
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-          byte[] values = binaryValues.get(groupId).getValues();
-          dataOutputStream.writeInt(values.length);
-          dataOutputStream.write(values);
-          break;
-        case BOOLEAN:
-          dataOutputStream.writeBoolean(booleanValues.get(groupId));
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type: %s", seriesDataType));
-      }
-    } catch (IOException e) {
-      throw new UnsupportedOperationException("Failed to serialize intermediate result.", e);
+    byte[] bytes;
+    int length = Long.BYTES;
+    switch (seriesDataType) {
+      case INT32:
+      case DATE:
+        length += Integer.BYTES;
+        bytes = new byte[length];
+        longToBytes(minTimes.get(groupId), bytes, 0);
+        intToBytes(intValues.get(groupId), bytes, Long.BYTES);
+        return bytes;
+      case INT64:
+      case TIMESTAMP:
+        length += Long.BYTES;
+        bytes = new byte[length];
+        longToBytes(minTimes.get(groupId), bytes, 0);
+        longToBytes(longValues.get(groupId), bytes, Long.BYTES);
+        return bytes;
+      case FLOAT:
+        length += Float.BYTES;
+        bytes = new byte[length];
+        longToBytes(minTimes.get(groupId), bytes, 0);
+        floatToBytes(floatValues.get(groupId), bytes, Long.BYTES);
+        return bytes;
+      case DOUBLE:
+        length += Double.BYTES;
+        bytes = new byte[length];
+        longToBytes(minTimes.get(groupId), bytes, 0);
+        doubleToBytes(doubleValues.get(groupId), bytes, Long.BYTES);
+        return bytes;
+      case TEXT:
+      case BLOB:
+      case STRING:
+        byte[] values = binaryValues.get(groupId).getValues();
+        length += Integer.BYTES + values.length;
+        bytes = new byte[length];
+        longToBytes(minTimes.get(groupId), bytes, 0);
+        System.arraycopy(values, 0, bytes, length - values.length, values.length);
+        return bytes;
+      case BOOLEAN:
+        length++;
+        bytes = new byte[length];
+        longToBytes(minTimes.get(groupId), bytes, 0);
+        boolToBytes(booleanValues.get(groupId), bytes, Long.BYTES);
+        return bytes;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type: %s", seriesDataType));
     }
-    return byteArrayOutputStream.toByteArray();
   }
 
   private void addIntInput(int[] groupIds, Column valueColumn, Column timeColumn) {

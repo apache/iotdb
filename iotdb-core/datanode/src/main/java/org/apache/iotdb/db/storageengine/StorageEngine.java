@@ -781,17 +781,10 @@ public class StorageEngine implements IService {
             }
             break;
           case ConsensusFactory.SIMPLE_CONSENSUS:
-            // remove UniqueId Information
+            // delete region information in wal and may delete wal
             WALManager.getInstance()
-                .removeUniqueIdInfo(
-                    WALManager.getApplicantUniqueId(
-                        region.getDatabaseName() + FILE_NAME_SEPARATOR + region.getDataRegionId(),
-                        true));
-            WALManager.getInstance()
-                .removeUniqueIdInfo(
-                    WALManager.getApplicantUniqueId(
-                        region.getDatabaseName() + FILE_NAME_SEPARATOR + region.getDataRegionId(),
-                        false));
+                .deleteRegionAndMayDeleteWALNode(
+                    region.getDatabaseName(), region.getDataRegionId());
             break;
           case ConsensusFactory.RATIS_CONSENSUS:
           default:

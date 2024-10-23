@@ -32,11 +32,8 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Utils.serializeTimeValue;
 
 public class FirstAccumulator implements TableAccumulator {
 
@@ -107,7 +104,7 @@ public class FirstAccumulator implements TableAccumulator {
 
       byte[] bytes = argument.getBinary(i).getValues();
       long time = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, 0);
-      int offset = Long.BYTES;
+      int offset = 8;
 
       switch (seriesDataType) {
         case INT32:
@@ -155,7 +152,8 @@ public class FirstAccumulator implements TableAccumulator {
     if (!initResult) {
       columnBuilder.appendNull();
     } else {
-      columnBuilder.writeBinary(new Binary(serializeTimeWithValue()));
+      columnBuilder.writeBinary(
+          new Binary(serializeTimeValue(seriesDataType, minTime, firstValue)));
     }
   }
 
@@ -189,7 +187,7 @@ public class FirstAccumulator implements TableAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in Extreme: %s", seriesDataType));
+              String.format("Unsupported data type in First aggregation: %s", seriesDataType));
       }
     }
   }
@@ -243,46 +241,6 @@ public class FirstAccumulator implements TableAccumulator {
     initResult = false;
     this.minTime = Long.MAX_VALUE;
     this.firstValue.reset();
-  }
-
-  private byte[] serializeTimeWithValue() {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    try {
-      dataOutputStream.writeLong(minTime);
-      switch (seriesDataType) {
-        case INT32:
-        case DATE:
-          dataOutputStream.writeInt(firstValue.getInt());
-          break;
-        case INT64:
-        case TIMESTAMP:
-          dataOutputStream.writeLong(firstValue.getLong());
-          break;
-        case FLOAT:
-          dataOutputStream.writeFloat(firstValue.getFloat());
-          break;
-        case DOUBLE:
-          dataOutputStream.writeDouble(firstValue.getDouble());
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-          dataOutputStream.writeInt(firstValue.getBinary().getValues().length);
-          dataOutputStream.write(firstValue.getBinary().getValues());
-          break;
-        case BOOLEAN:
-          dataOutputStream.writeBoolean(firstValue.getBoolean());
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in Extreme: %s", seriesDataType));
-      }
-    } catch (IOException e) {
-      throw new UnsupportedOperationException(
-          "Failed to serialize intermediate result for AvgAccumulator.", e);
-    }
-    return byteArrayOutputStream.toByteArray();
   }
 
   private void addIntInput(Column valueColumn, Column timeColumn) {

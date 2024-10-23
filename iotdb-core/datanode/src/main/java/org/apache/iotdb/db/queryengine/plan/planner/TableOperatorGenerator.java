@@ -142,7 +142,9 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.common.type.BinaryType;
 import org.apache.tsfile.read.common.type.BlobType;
+import org.apache.tsfile.read.common.type.BooleanType;
 import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -190,6 +192,10 @@ import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_BY_AGGREGATION;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.MAX;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.MAX_BY;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.MIN;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.MIN_BY;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
 /** This Visitor is responsible for transferring Table PlanNode Tree to Table Operator Tree. */
@@ -1677,23 +1683,32 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
       AggregationNode.Aggregation aggregation = entry.getValue();
       String funcName = aggregation.getResolvedFunction().getSignature().getName();
+      Symbol argument = Symbol.from(aggregation.getArguments().get(0));
+      Type argumentType = node.getAssignments().get(argument).getType();
 
-      if (FIRST_AGGREGATION.equals(funcName) || FIRST_BY_AGGREGATION.equals(funcName)) {
-        ascendingCount++;
-      }
-      if (LAST_AGGREGATION.equals(funcName) || LAST_BY_AGGREGATION.equals(funcName)) {
-        descendingCount++;
-      }
-
-      // first/last/first_by/last_by aggregation with BLOB type can not use statistics
-      if (FIRST_AGGREGATION.equals(funcName)
+      if (MAX_BY.equals(funcName) || MIN_BY.equals(funcName)) {
+        canUseStatistic = false;
+      } else if (MAX.equals(funcName) || MIN.equals(funcName)) {
+        if (BlobType.BLOB.equals(argumentType)
+            || BinaryType.TEXT.equals(argumentType)
+            || BooleanType.BOOLEAN.equals(argumentType)) {
+          canUseStatistic = false;
+        }
+      } else if (FIRST_AGGREGATION.equals(funcName)
           || LAST_AGGREGATION.equals(funcName)
           || LAST_BY_AGGREGATION.equals(funcName)
           || FIRST_BY_AGGREGATION.equals(funcName)) {
-        Symbol argument = Symbol.from(aggregation.getArguments().get(0));
-        if (!node.getAssignments().containsKey(argument)
-            || BlobType.BLOB.equals(node.getAssignments().get(argument).getType())) {
+        if (FIRST_AGGREGATION.equals(funcName) || FIRST_BY_AGGREGATION.equals(funcName)) {
+          ascendingCount++;
+        } else {
+          descendingCount++;
+        }
+
+        // first/last/first_by/last_by aggregation with BLOB type can not use statistics
+
+        if (BlobType.BLOB.equals(argumentType)) {
           canUseStatistic = false;
+          continue;
         }
 
         // only last_by(time, x) or last_by(x,time) can use statistic
