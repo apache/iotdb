@@ -2357,19 +2357,15 @@ public class IoTDBDescriptor {
             ? conf.getLoadActiveListeningCheckIntervalSeconds()
             : loadActiveListeningCheckIntervalSeconds);
 
-    final int defaultLoadActiveListeningMaxThreadNum =
-        Math.min(
-            conf.getLoadActiveListeningMaxThreadNum(),
-            Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
-    final int loadActiveListeningMaxThreadNum =
+    conf.setLoadActiveListeningMaxThreadNum(
         Integer.parseInt(
             properties.getProperty(
                 "load_active_listening_max_thread_num",
-                Integer.toString(defaultLoadActiveListeningMaxThreadNum)));
-    conf.setLoadActiveListeningMaxThreadNum(
-        loadActiveListeningMaxThreadNum <= 0
-            ? defaultLoadActiveListeningMaxThreadNum
-            : loadActiveListeningMaxThreadNum);
+                Integer.toString(conf.getLoadActiveListeningMaxThreadNum()))));
+
+    if (conf.getLoadActiveListeningMaxThreadNum() <= 0) {
+      conf.setLoadActiveListeningMaxThreadNum(Runtime.getRuntime().availableProcessors());
+    }
   }
 
   private void loadLoadTsFileHotModifiedProp(Properties properties) throws IOException {
@@ -2536,6 +2532,10 @@ public class IoTDBDescriptor {
                     .split(","))
             .filter(dir -> !dir.isEmpty())
             .toArray(String[]::new));
+
+    conf.setIotConsensusV2DeletionFileDir(
+        properties.getProperty(
+            "iot_consensus_v2_deletion_file_dir", conf.getIotConsensusV2DeletionFileDir()));
   }
 
   private void loadCQProps(Properties properties) {

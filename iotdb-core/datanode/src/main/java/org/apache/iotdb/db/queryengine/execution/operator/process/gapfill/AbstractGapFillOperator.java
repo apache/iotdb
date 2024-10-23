@@ -116,6 +116,8 @@ abstract class AbstractGapFillOperator implements ProcessOperator {
         }
         resetTimeIterator();
         previousGroupKey = currentGroupKey;
+      } else if (previousGroupKey == null) {
+        previousGroupKey = currentGroupKey;
       }
 
       Column timeColumn = block.getColumn(timeColumnIndex);

@@ -61,6 +61,10 @@ public abstract class AbstractOperator implements Operator {
   public TsBlock checkTsBlockSizeAndGetResult() {
     if (resultTsBlock == null) {
       throw new IllegalArgumentException("Result tsBlock cannot be null");
+    } else if (resultTsBlock.isEmpty()) {
+      TsBlock res = resultTsBlock;
+      resultTsBlock = null;
+      return res;
     }
     if (maxTupleSizeOfTsBlock == -1) {
       initializeMaxTsBlockLength(resultTsBlock);

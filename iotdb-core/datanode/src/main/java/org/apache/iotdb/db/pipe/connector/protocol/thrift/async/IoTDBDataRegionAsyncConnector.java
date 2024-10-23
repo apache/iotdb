@@ -37,8 +37,8 @@ import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTran
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletRawEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTsFileHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBDataRegionSyncConnector;
+import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
-import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
@@ -86,15 +86,11 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       "Failed to borrow client from client pool when sending to receiver.";
   private static final String THRIFT_ERROR_FORMATTER_WITH_ENDPOINT =
       "Exception occurred while sending to receiver %s:%s.";
-
-  private IoTDBDataNodeAsyncClientManager clientManager;
-
   private final IoTDBDataRegionSyncConnector retryConnector = new IoTDBDataRegionSyncConnector();
   private final BlockingQueue<Event> retryEventQueue = new LinkedBlockingQueue<>();
-
-  private PipeTransferBatchReqBuilder tabletBatchBuilder;
-
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
+  private IoTDBDataNodeAsyncClientManager clientManager;
+  private PipeTransferBatchReqBuilder tabletBatchBuilder;
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
@@ -377,7 +373,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     transferBatchedEventsIfNecessary();
 
     if (!(event instanceof PipeHeartbeatEvent
-        || event instanceof PipeSchemaRegionWritePlanEvent
+        || event instanceof PipeDeleteDataNodeEvent
         || event instanceof PipeTerminateEvent)) {
       LOGGER.warn(
           "IoTDBThriftAsyncConnector does not support transferring generic event: {}.", event);

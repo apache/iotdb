@@ -510,8 +510,12 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitShowTables(ShowTables node, Integer indent) {
+    protected Void visitShowTables(final ShowTables node, final Integer indent) {
       builder.append("SHOW TABLES");
+
+      if (node.isDetails()) {
+        builder.append(" DETAILS");
+      }
 
       node.getDbName().ifPresent(db -> builder.append(" FROM ").append(formatName(db)));
 
@@ -630,7 +634,7 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitDropTable(DropTable node, Integer indent) {
+    protected Void visitDropTable(final DropTable node, final Integer indent) {
       builder.append("DROP TABLE ");
       if (node.isExists()) {
         builder.append("IF EXISTS ");
@@ -641,8 +645,12 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitRenameTable(RenameTable node, Integer indent) {
+    protected Void visitRenameTable(final RenameTable node, final Integer indent) {
       builder.append("ALTER TABLE ");
+      if (node.tableIfExists()) {
+        builder.append("IF EXISTS ");
+      }
+
       builder
           .append(formatName(node.getSource()))
           .append(" RENAME TO ")
@@ -688,7 +696,15 @@ public final class SqlFormatter {
     @Override
     protected Void visitRenameColumn(RenameColumn node, Integer indent) {
       builder.append("ALTER TABLE ");
+      if (node.tableIfExists()) {
+        builder.append("IF EXISTS ");
+      }
+
       builder.append(formatName(node.getTable())).append(" RENAME COLUMN ");
+      if (node.columnIfExists()) {
+        builder.append("IF EXISTS ");
+      }
+
       builder
           .append(formatName(node.getSource()))
           .append(" TO ")
@@ -698,9 +714,17 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitDropColumn(DropColumn node, Integer indent) {
+    protected Void visitDropColumn(final DropColumn node, final Integer indent) {
       builder.append("ALTER TABLE ");
+      if (node.tableIfExists()) {
+        builder.append("IF EXISTS ");
+      }
+
       builder.append(formatName(node.getTable())).append(" DROP COLUMN ");
+      if (node.columnIfExists()) {
+        builder.append("IF NOT EXISTS ");
+      }
+
       builder.append(formatName(node.getField()));
 
       return null;

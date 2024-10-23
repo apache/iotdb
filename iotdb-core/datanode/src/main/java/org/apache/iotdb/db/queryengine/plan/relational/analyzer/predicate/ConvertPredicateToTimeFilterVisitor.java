@@ -34,7 +34,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.factory.FilterFactory;
@@ -47,7 +46,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.isTimeColumn;
 
 public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter, Void> {
 
@@ -207,11 +206,6 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
       throw new IllegalStateException(
           "Three operand of between expression should have time column.");
     }
-  }
-
-  public static boolean isTimeColumn(Expression expression) {
-    return expression instanceof SymbolReference
-        && TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(((SymbolReference) expression).getName());
   }
 
   public static long getLongValue(Expression expression) {

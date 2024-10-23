@@ -54,6 +54,31 @@ public class TableSchema {
     return columns;
   }
 
+  /** Get the column with the specified name and category, return null if not found. */
+  public ColumnSchema getColumn(String columnName, TsTableColumnCategory columnCategory) {
+    for (final ColumnSchema column : columns) {
+      if (column.getName().equals(columnName) && column.getColumnCategory() == columnCategory) {
+        return column;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Given the name of an ID column, return the index of this column among all ID columns, return -1
+   * if not found.
+   */
+  public int getIndexAmongIdColumns(String idColumnName) {
+    int index = 0;
+    for (ColumnSchema column : getIdColumns()) {
+      if (column.getName().equals(idColumnName)) {
+        return index;
+      }
+      index++;
+    }
+    return -1;
+  }
+
   public static TableSchema of(TsTable tsTable) {
     String tableName = tsTable.getTableName();
     List<ColumnSchema> columns = new ArrayList<>();
@@ -81,6 +106,25 @@ public class TableSchema {
         tableName, measurementSchemas, columnTypes);
   }
 
+  public org.apache.tsfile.file.metadata.TableSchema toTsFileTableSchemaNoAttribute() {
+    // TODO-Table: unify redundant definitions
+    String tableName = this.getTableName();
+    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+    List<ColumnType> columnTypes = new ArrayList<>();
+    for (ColumnSchema column : columns) {
+      if (column.getColumnCategory() == TsTableColumnCategory.TIME
+          || column.getColumnCategory() == TsTableColumnCategory.ATTRIBUTE) {
+        continue;
+      }
+      measurementSchemas.add(
+          new MeasurementSchema(
+              column.getName(), InternalTypeManager.getTSDataType(column.getType())));
+      columnTypes.add(column.getColumnCategory().toTsFileColumnType());
+    }
+    return new org.apache.tsfile.file.metadata.TableSchema(
+        tableName, measurementSchemas, columnTypes);
+  }
+
   private static final Logger LOGGER = org.slf4j.LoggerFactory.getLogger(TableSchema.class);
 
   public static TableSchema fromTsFileTableSchema(
@@ -90,6 +134,12 @@ public class TableSchema {
       for (int i = 0; i < tsFileTableSchema.getColumnSchemas().size(); i++) {
         final String columnName = tsFileTableSchema.getColumnSchemas().get(i).getMeasurementId();
         if (columnName == null || columnName.isEmpty()) {
+          continue;
+        }
+
+        // TsFile should not contain attribute columns by design.
+        final ColumnType columnType = tsFileTableSchema.getColumnTypes().get(i);
+        if (columnType == ColumnType.ATTRIBUTE) {
           continue;
         }
 
@@ -103,8 +153,7 @@ public class TableSchema {
                 columnName,
                 InternalTypeManager.fromTSDataType(dataType),
                 false,
-                TsTableColumnCategory.fromTsFileColumnType(
-                    tsFileTableSchema.getColumnTypes().get(i))));
+                TsTableColumnCategory.fromTsFileColumnType(columnType)));
       }
       return new TableSchema(tableName, columns);
     } catch (Exception e) {

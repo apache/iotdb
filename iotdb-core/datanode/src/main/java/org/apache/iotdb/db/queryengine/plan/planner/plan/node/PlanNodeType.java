@@ -120,6 +120,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNo
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
@@ -542,6 +543,8 @@ public enum PlanNodeType {
         return TableDeviceQueryScanNode.deserialize(buffer);
       case 904:
         return TableDeviceFetchNode.deserialize(buffer);
+      case 905:
+        return DeleteTableDeviceNode.deserialize(buffer);
       case 906:
         return TableDeviceQueryCountNode.deserialize(buffer);
       case 907:
