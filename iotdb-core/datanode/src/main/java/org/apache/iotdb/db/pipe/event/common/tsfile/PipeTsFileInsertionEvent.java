@@ -30,7 +30,7 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDat
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTimePartitionProgressIndexKeeper;
 import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
-import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
+import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileDataRegionResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -80,7 +80,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       final TsFileResource resource,
       final boolean isLoaded,
       final boolean isGeneratedByPipe,
-      final boolean isGeneratedByHistoricalExtractor) {
+      final boolean isGeneratedByHistoricalExtractor,
+      final int regionId) {
     // The modFile must be copied before the event is assigned to the listening pipes
     this(
         resource,
@@ -90,6 +91,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
         isGeneratedByHistoricalExtractor,
         null,
         0,
+        regionId,
         null,
         null,
         Long.MIN_VALUE,
@@ -104,11 +106,12 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       final boolean isGeneratedByHistoricalExtractor,
       final String pipeName,
       final long creationTime,
+      final int regionId,
       final PipeTaskMeta pipeTaskMeta,
       final PipePattern pattern,
       final long startTime,
       final long endTime) {
-    super(pipeName, creationTime, pipeTaskMeta, pattern, startTime, endTime);
+    super(pipeName, creationTime, regionId, pipeTaskMeta, pattern, startTime, endTime);
 
     this.resource = resource;
     tsFile = resource.getTsFile();
@@ -241,9 +244,13 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   @Override
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     try {
-      tsFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(tsFile, true, resource);
+      tsFile =
+          PipeDataNodeResourceManager.tsfile()
+              .increaseFileReference(tsFile, true, resource, regionId);
       if (isWithMod) {
-        modFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(modFile, false, null);
+        modFile =
+            PipeDataNodeResourceManager.tsfile()
+                .increaseFileReference(modFile, false, null, regionId);
       }
       if (Objects.nonNull(pipeName)) {
         PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
@@ -263,9 +270,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   @Override
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     try {
-      PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile);
+      PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile, regionId);
       if (isWithMod) {
-        PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile);
+        PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile, regionId);
       }
       return true;
     } catch (final Exception e) {
@@ -342,6 +349,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
         isGeneratedByHistoricalExtractor,
         pipeName,
         creationTime,
+        regionId,
         pipeTaskMeta,
         pattern,
         startTime,
@@ -372,8 +380,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       final Map<IDeviceID, Boolean> deviceIsAlignedMap =
           PipeDataNodeResourceManager.tsfile()
               .getDeviceIsAlignedMapFromCache(
-                  PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(resource.getTsFile()),
-                  false);
+                  PipeTsFileDataRegionResourceManager.getHardlinkOrCopiedFileInPipeDir(
+                      resource.getTsFile()),
+                  false,
+                  regionId);
       final Set<IDeviceID> deviceSet =
           Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
       return deviceSet.stream()

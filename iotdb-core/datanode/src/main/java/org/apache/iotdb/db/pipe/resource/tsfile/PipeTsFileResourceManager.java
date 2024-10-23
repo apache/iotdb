@@ -19,37 +19,22 @@
 
 package org.apache.iotdb.db.pipe.resource.tsfile;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
-import org.apache.iotdb.db.pipe.agent.runtime.PipePeriodicalJobExecutor;
-import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantLock;
 
 public class PipeTsFileResourceManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileResourceManager.class);
-
-  private final Map<String, PipeTsFileResource> hardlinkOrCopiedFileToPipeTsFileResourceMap =
+  private final Map<Integer, PipeTsFileDataRegionResourceManager> dataRegion2ChildManagerMap =
       new ConcurrentHashMap<>();
-  private final ReentrantLock lock = new ReentrantLock();
 
   public PipeTsFileResourceManager() {
     PipeDataNodeAgent.runtime()
@@ -60,52 +45,7 @@ public class PipeTsFileResourceManager {
   }
 
   private void tryTtlCheck() {
-    try {
-      final long timeout = PipePeriodicalJobExecutor.getMinIntervalSeconds() >> 1;
-      if (lock.tryLock(timeout, TimeUnit.SECONDS)) {
-        try {
-          ttlCheck();
-        } finally {
-          lock.unlock();
-        }
-      } else {
-        LOGGER.warn("failed to try lock when checking TTL because of timeout ({}s)", timeout);
-      }
-    } catch (final InterruptedException e) {
-      Thread.currentThread().interrupt();
-      LOGGER.warn("failed to try lock when checking TTL because of interruption", e);
-    }
-  }
-
-  private void ttlCheck() {
-    final Iterator<Map.Entry<String, PipeTsFileResource>> iterator =
-        hardlinkOrCopiedFileToPipeTsFileResourceMap.entrySet().iterator();
-    final Optional<Logger> logger =
-        PipeDataNodeResourceManager.log()
-            .schedule(
-                PipeTsFileResourceManager.class,
-                PipeConfig.getInstance().getPipeTsFilePinMaxLogNumPerRound(),
-                PipeConfig.getInstance().getPipeTsFilePinMaxLogIntervalRounds(),
-                hardlinkOrCopiedFileToPipeTsFileResourceMap.size());
-
-    while (iterator.hasNext()) {
-      final Map.Entry<String, PipeTsFileResource> entry = iterator.next();
-
-      try {
-        if (entry.getValue().closeIfOutOfTimeToLive()) {
-          iterator.remove();
-        } else {
-          logger.ifPresent(
-              l ->
-                  l.info(
-                      "Pipe file (file name: {}) is still referenced {} times",
-                      entry.getKey(),
-                      entry.getValue().getReferenceCount()));
-        }
-      } catch (final IOException e) {
-        LOGGER.warn("failed to close PipeTsFileResource when checking TTL: ", e);
-      }
-    }
+    dataRegion2ChildManagerMap.values().forEach(PipeTsFileDataRegionResourceManager::tryTtlCheck);
   }
 
   /**
@@ -130,87 +70,14 @@ public class PipeTsFileResourceManager {
    * @throws IOException when create hardlink or copy file failed
    */
   public File increaseFileReference(
-      final File file, final boolean isTsFile, final TsFileResource tsFileResource)
+      final File file,
+      final boolean isTsFile,
+      final TsFileResource tsFileResource,
+      final int regionId)
       throws IOException {
-    lock.lock();
-    try {
-      // If the file is already a hardlink or copied file,
-      // just increase reference count and return it
-      if (increaseReferenceIfExists(file.getPath())) {
-        return file;
-      }
-
-      // If the file is not a hardlink or copied file, check if there is a related hardlink or
-      // copied file in pipe dir. if so, increase reference count and return it
-      final File hardlinkOrCopiedFile = getHardlinkOrCopiedFileInPipeDir(file);
-      if (increaseReferenceIfExists(hardlinkOrCopiedFile.getPath())) {
-        return hardlinkOrCopiedFileToPipeTsFileResourceMap
-            .get(hardlinkOrCopiedFile.getPath())
-            .getFile();
-      }
-
-      // If the file is a tsfile, create a hardlink in pipe dir and will return it.
-      // otherwise, copy the file (.mod or .resource) to pipe dir and will return it.
-      final File resultFile =
-          isTsFile
-              ? FileUtils.createHardLink(file, hardlinkOrCopiedFile)
-              : FileUtils.copyFile(file, hardlinkOrCopiedFile);
-      // If the file is not a hardlink or copied file, and there is no related hardlink or copied
-      // file in pipe dir, create a hardlink or copy it to pipe dir, maintain a reference count for
-      // the hardlink or copied file, and return the hardlink or copied file.
-      hardlinkOrCopiedFileToPipeTsFileResourceMap.put(
-          resultFile.getPath(), new PipeTsFileResource(resultFile, isTsFile, tsFileResource));
-      return resultFile;
-    } finally {
-      lock.unlock();
-    }
-  }
-
-  private boolean increaseReferenceIfExists(final String path) {
-    final PipeTsFileResource resource = hardlinkOrCopiedFileToPipeTsFileResourceMap.get(path);
-    if (resource != null) {
-      resource.increaseAndGetReference();
-      return true;
-    }
-    return false;
-  }
-
-  public static File getHardlinkOrCopiedFileInPipeDir(final File file) throws IOException {
-    try {
-      return new File(getPipeTsFileDirPath(file), getRelativeFilePath(file));
-    } catch (final Exception e) {
-      throw new IOException(
-          String.format(
-              "failed to get hardlink or copied file in pipe dir "
-                  + "for file %s, it is not a tsfile, mod file or resource file",
-              file.getPath()),
-          e);
-    }
-  }
-
-  private static String getPipeTsFileDirPath(File file) throws IOException {
-    while (!file.getName().equals(IoTDBConstant.SEQUENCE_FOLDER_NAME)
-        && !file.getName().equals(IoTDBConstant.UNSEQUENCE_FOLDER_NAME)) {
-      file = file.getParentFile();
-    }
-    return file.getParentFile().getCanonicalPath()
-        + File.separator
-        + PipeConfig.getInstance().getPipeHardlinkBaseDirName()
-        + File.separator
-        + PipeConfig.getInstance().getPipeHardlinkTsFileDirName();
-  }
-
-  private static String getRelativeFilePath(File file) {
-    StringBuilder builder = new StringBuilder(file.getName());
-    while (!file.getName().equals(IoTDBConstant.SEQUENCE_FOLDER_NAME)
-        && !file.getName().equals(IoTDBConstant.UNSEQUENCE_FOLDER_NAME)) {
-      file = file.getParentFile();
-      builder =
-          new StringBuilder(file.getName())
-              .append(IoTDBConstant.FILE_NAME_SEPARATOR)
-              .append(builder);
-    }
-    return builder.toString();
+    return dataRegion2ChildManagerMap
+        .computeIfAbsent(regionId, k -> new PipeTsFileDataRegionResourceManager())
+        .increaseFileReference(file, isTsFile, tsFileResource);
   }
 
   /**
@@ -219,17 +86,10 @@ public class PipeTsFileResourceManager {
    *
    * @param hardlinkOrCopiedFile the copied or hardlinked file
    */
-  public void decreaseFileReference(final File hardlinkOrCopiedFile) {
-    lock.lock();
-    try {
-      final String filePath = hardlinkOrCopiedFile.getPath();
-      final PipeTsFileResource resource = hardlinkOrCopiedFileToPipeTsFileResourceMap.get(filePath);
-      if (resource != null) {
-        resource.decreaseAndGetReference();
-      }
-    } finally {
-      lock.unlock();
-    }
+  public void decreaseFileReference(final File hardlinkOrCopiedFile, final int regionId) {
+    dataRegion2ChildManagerMap
+        .computeIfAbsent(regionId, k -> new PipeTsFileDataRegionResourceManager())
+        .decreaseFileReference(hardlinkOrCopiedFile);
   }
 
   /**
@@ -238,15 +98,10 @@ public class PipeTsFileResourceManager {
    * @param hardlinkOrCopiedFile the copied or hardlinked file
    * @return the reference count of the file
    */
-  public int getFileReferenceCount(final File hardlinkOrCopiedFile) {
-    lock.lock();
-    try {
-      final String filePath = hardlinkOrCopiedFile.getPath();
-      final PipeTsFileResource resource = hardlinkOrCopiedFileToPipeTsFileResourceMap.get(filePath);
-      return resource != null ? resource.getReferenceCount() : 0;
-    } finally {
-      lock.unlock();
-    }
+  public int getFileReferenceCount(final File hardlinkOrCopiedFile, final int regionId) {
+    return dataRegion2ChildManagerMap
+        .computeIfAbsent(regionId, k -> new PipeTsFileDataRegionResourceManager())
+        .getFileReferenceCount(hardlinkOrCopiedFile);
   }
 
   /**
@@ -255,111 +110,62 @@ public class PipeTsFileResourceManager {
    * @return {@code true} if the maps are successfully put into cache or already cached. {@code
    *     false} if they can not be cached.
    */
-  public boolean cacheObjectsIfAbsent(final File hardlinkOrCopiedTsFile) throws IOException {
-    lock.lock();
-    try {
-      final PipeTsFileResource resource =
-          hardlinkOrCopiedFileToPipeTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
-      return resource != null && resource.cacheObjectsIfAbsent();
-    } finally {
-      lock.unlock();
-    }
+  public boolean cacheObjectsIfAbsent(final File hardlinkOrCopiedTsFile, final int regionId)
+      throws IOException {
+    return dataRegion2ChildManagerMap
+        .computeIfAbsent(regionId, k -> new PipeTsFileDataRegionResourceManager())
+        .cacheObjectsIfAbsent(hardlinkOrCopiedTsFile);
   }
 
   public Map<IDeviceID, List<String>> getDeviceMeasurementsMapFromCache(
-      final File hardlinkOrCopiedTsFile) throws IOException {
-    lock.lock();
-    try {
-      final PipeTsFileResource resource =
-          hardlinkOrCopiedFileToPipeTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
-      return resource == null ? null : resource.tryGetDeviceMeasurementsMap();
-    } finally {
-      lock.unlock();
-    }
+      final File hardlinkOrCopiedTsFile, final int regionId) throws IOException {
+    return dataRegion2ChildManagerMap
+        .computeIfAbsent(regionId, k -> new PipeTsFileDataRegionResourceManager())
+        .getDeviceMeasurementsMapFromCache(hardlinkOrCopiedTsFile);
   }
 
   public Map<IDeviceID, Boolean> getDeviceIsAlignedMapFromCache(
-      final File hardlinkOrCopiedTsFile, final boolean cacheOtherMetadata) throws IOException {
-    lock.lock();
-    try {
-      final PipeTsFileResource resource =
-          hardlinkOrCopiedFileToPipeTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
-      return resource == null ? null : resource.tryGetDeviceIsAlignedMap(cacheOtherMetadata);
-    } finally {
-      lock.unlock();
-    }
+      final File hardlinkOrCopiedTsFile, final boolean cacheOtherMetadata, final int regionId)
+      throws IOException {
+    return dataRegion2ChildManagerMap
+        .computeIfAbsent(regionId, k -> new PipeTsFileDataRegionResourceManager())
+        .getDeviceIsAlignedMapFromCache(hardlinkOrCopiedTsFile, cacheOtherMetadata);
   }
 
   public Map<String, TSDataType> getMeasurementDataTypeMapFromCache(
-      final File hardlinkOrCopiedTsFile) throws IOException {
-    lock.lock();
-    try {
-      final PipeTsFileResource resource =
-          hardlinkOrCopiedFileToPipeTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
-      return resource == null ? null : resource.tryGetMeasurementDataTypeMap();
-    } finally {
-      lock.unlock();
-    }
+      final File hardlinkOrCopiedTsFile, final int regionId) throws IOException {
+    return dataRegion2ChildManagerMap
+        .computeIfAbsent(regionId, k -> new PipeTsFileDataRegionResourceManager())
+        .getMeasurementDataTypeMapFromCache(hardlinkOrCopiedTsFile);
   }
 
-  public void pinTsFileResource(final TsFileResource resource, final boolean withMods)
+  public void pinTsFileResource(
+      final TsFileResource resource, final boolean withMods, final int regionId)
       throws IOException {
-    lock.lock();
-    try {
-      increaseFileReference(resource.getTsFile(), true, resource);
-      if (withMods && resource.getModFile().exists()) {
-        increaseFileReference(new File(resource.getModFile().getFilePath()), false, null);
-      }
-    } finally {
-      lock.unlock();
-    }
+    dataRegion2ChildManagerMap
+        .computeIfAbsent(regionId, k -> new PipeTsFileDataRegionResourceManager())
+        .pinTsFileResource(resource, withMods);
   }
 
-  public void unpinTsFileResource(final TsFileResource resource) throws IOException {
-    lock.lock();
-    try {
-      final File pinnedFile = getHardlinkOrCopiedFileInPipeDir(resource.getTsFile());
-      decreaseFileReference(pinnedFile);
-
-      final File modFile = new File(pinnedFile + ModificationFile.FILE_SUFFIX);
-      if (modFile.exists()) {
-        decreaseFileReference(modFile);
-      }
-    } finally {
-      lock.unlock();
-    }
+  public void unpinTsFileResource(final TsFileResource resource, final int regionId)
+      throws IOException {
+    dataRegion2ChildManagerMap
+        .computeIfAbsent(regionId, k -> new PipeTsFileDataRegionResourceManager())
+        .unpinTsFileResource(resource);
   }
 
-  public int getLinkedTsfileCount() {
-    lock.lock();
-    try {
-      return hardlinkOrCopiedFileToPipeTsFileResourceMap.size();
-    } finally {
-      lock.unlock();
-    }
+  public int getLinkedTsFileCount() {
+    return dataRegion2ChildManagerMap.values().stream()
+        .map(PipeTsFileDataRegionResourceManager::getLinkedTsfileCount)
+        .reduce(0, Integer::sum);
   }
 
   /**
    * Get the total size of linked TsFiles whose original TsFile is deleted (by compaction or else)
    */
-  public long getTotalLinkedButDeletedTsfileSize() {
-    lock.lock();
-    try {
-      return hardlinkOrCopiedFileToPipeTsFileResourceMap.values().parallelStream()
-          .filter(PipeTsFileResource::isOriginalTsFileDeleted)
-          .mapToLong(
-              resource -> {
-                try {
-                  return resource.getFileSize();
-                } catch (Exception e) {
-                  LOGGER.warn(
-                      "failed to get file size of linked but deleted TsFile {}: ", resource, e);
-                  return 0;
-                }
-              })
-          .sum();
-    } finally {
-      lock.unlock();
-    }
+  public long getTotalLinkedButDeletedTsFileSize() {
+    return dataRegion2ChildManagerMap.values().stream()
+        .map(PipeTsFileDataRegionResourceManager::getTotalLinkedButDeletedTsfileSize)
+        .reduce(0L, Long::sum);
   }
 }

@@ -35,7 +35,8 @@ public abstract class PipeWritePlanEvent extends EnrichedEvent implements Serial
       final PipeTaskMeta pipeTaskMeta,
       final PipePattern pattern,
       final boolean isGeneratedByPipe) {
-    super(pipeName, creationTime, pipeTaskMeta, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
+    // Bind regionId later
+    super(pipeName, creationTime, -1, pipeTaskMeta, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
     this.isGeneratedByPipe = isGeneratedByPipe;
   }
 

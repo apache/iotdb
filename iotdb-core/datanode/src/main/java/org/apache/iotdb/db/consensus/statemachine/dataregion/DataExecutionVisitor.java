@@ -241,7 +241,8 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
         }
       }
       dataRegion.insertSeparatorToWAL();
-      PipeInsertionDataNodeListener.getInstance().listenToDeleteData(node);
+      PipeInsertionDataNodeListener.getInstance()
+          .listenToDeleteData(node, dataRegion.getDataRegionId());
       return StatusUtils.OK;
     } catch (IOException | IllegalPathException e) {
       LOGGER.error("Error in executing plan node: {}", node, e);

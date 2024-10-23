@@ -53,6 +53,7 @@ public abstract class EnrichedEvent implements Event {
 
   protected final String pipeName;
   protected final long creationTime;
+  protected int regionId;
   private final String pipeNameWithCreationTime; // cache for better performance
 
   protected final PipeTaskMeta pipeTaskMeta;
@@ -76,6 +77,7 @@ public abstract class EnrichedEvent implements Event {
   protected EnrichedEvent(
       final String pipeName,
       final long creationTime,
+      final int regionId,
       final PipeTaskMeta pipeTaskMeta,
       final PipePattern pipePattern,
       final long startTime,
@@ -84,6 +86,7 @@ public abstract class EnrichedEvent implements Event {
     isReleased = new AtomicBoolean(false);
     this.pipeName = pipeName;
     this.creationTime = creationTime;
+    this.regionId = regionId;
     this.pipeNameWithCreationTime = pipeName + "_" + creationTime;
     this.pipeTaskMeta = pipeTaskMeta;
     this.pipePattern = pipePattern;
@@ -299,9 +302,12 @@ public abstract class EnrichedEvent implements Event {
     return pipeNameWithCreationTime;
   }
 
+  public final void setRegionId(final int regionId) {
+    this.regionId = regionId;
+  }
+
   public final int getRegionId() {
-    // TODO: persist regionId in EnrichedEvent
-    return committerKey == null ? -1 : committerKey.getRegionId();
+    return regionId;
   }
 
   public final boolean isDataRegionEvent() {

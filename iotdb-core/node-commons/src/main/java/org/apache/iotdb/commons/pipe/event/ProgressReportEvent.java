@@ -35,11 +35,12 @@ public class ProgressReportEvent extends EnrichedEvent {
   public ProgressReportEvent(
       final String pipeName,
       final long creationTime,
+      final int regionId,
       final PipeTaskMeta pipeTaskMeta,
       final PipePattern pipePattern,
       final long startTime,
       final long endTime) {
-    super(pipeName, creationTime, pipeTaskMeta, pipePattern, startTime, endTime);
+    super(pipeName, creationTime, regionId, pipeTaskMeta, pipePattern, startTime, endTime);
   }
 
   @Override
@@ -71,7 +72,7 @@ public class ProgressReportEvent extends EnrichedEvent {
       final long startTime,
       final long endTime) {
     return new ProgressReportEvent(
-        pipeName, creationTime, pipeTaskMeta, pattern, startTime, endTime);
+        pipeName, creationTime, regionId, pipeTaskMeta, pattern, startTime, endTime);
   }
 
   @Override

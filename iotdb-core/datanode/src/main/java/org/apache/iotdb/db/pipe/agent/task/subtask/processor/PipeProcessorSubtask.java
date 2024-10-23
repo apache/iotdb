@@ -183,7 +183,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
         // new events, the collector stage is not triggered, so we need to enrich the commitKey and
         // commitId here.
         PipeEventCommitManager.getInstance()
-            .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, creationTime, regionId);
+            .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event);
       }
       decreaseReferenceCountAndReleaseLastEvent(event, shouldReport);
     } catch (final PipeRuntimeOutOfMemoryCriticalException e) {

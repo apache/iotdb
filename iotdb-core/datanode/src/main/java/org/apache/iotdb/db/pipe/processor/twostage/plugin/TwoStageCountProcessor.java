@@ -249,7 +249,7 @@ public class TwoStageCountProcessor implements PipeProcessor {
       tablet.addValue(outputSeries.getMeasurement(), 0, timestampCountPair.right);
 
       eventCollector.collect(
-          new PipeRawTabletInsertionEvent(tablet, false, null, 0, null, null, false));
+          new PipeRawTabletInsertionEvent(tablet, false, null, 0, regionId, null, null, false));
 
       PipeCombineHandlerManager.getInstance()
           .updateLastCombinedValue(pipeName, creationTime, timestampCountPair);
