@@ -99,7 +99,10 @@ public class TimePartitionUtils {
     if (time >= timePartitionUpperBoundWithoutOverflow) {
       return Long.MAX_VALUE;
     }
-    return getTimePartitionLowerBound(time) + timePartitionInterval;
+    long lowerBound = getTimePartitionLowerBound(time);
+    return lowerBound == Long.MIN_VALUE
+        ? timePartitionLowerBoundWithoutOverflow
+        : lowerBound + timePartitionInterval;
   }
 
   public static long getTimePartitionId(long time) {
