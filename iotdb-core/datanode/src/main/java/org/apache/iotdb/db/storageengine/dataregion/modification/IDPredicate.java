@@ -18,15 +18,17 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
+import org.apache.iotdb.db.utils.io.BufferSerializable;
+import org.apache.iotdb.db.utils.io.StreamSerializable;
+
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Deserializer;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Objects;
-import org.apache.iotdb.db.utils.io.BufferSerializable;
-import org.apache.iotdb.db.utils.io.StreamSerializable;
-import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.IDeviceID.Deserializer;
 
 public abstract class IDPredicate implements StreamSerializable, BufferSerializable {
 

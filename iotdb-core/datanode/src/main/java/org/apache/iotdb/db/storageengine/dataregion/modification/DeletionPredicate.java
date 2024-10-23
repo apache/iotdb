@@ -141,5 +141,4 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
     }
     return size;
   }
-
 }
