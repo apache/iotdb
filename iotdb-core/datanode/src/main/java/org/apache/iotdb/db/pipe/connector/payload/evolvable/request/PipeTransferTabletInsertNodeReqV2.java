@@ -37,6 +37,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Objects;
 
 public class PipeTransferTabletInsertNodeReqV2 extends PipeTransferTabletInsertNodeReq {
@@ -74,10 +75,13 @@ public class PipeTransferTabletInsertNodeReqV2 extends PipeTransferTabletInsertN
     // Table model
     statement.setWriteToTable(true);
     if (statement instanceof InsertRowsStatement) {
-      for (InsertRowStatement insertRowStatement :
-          ((InsertRowsStatement) statement).getInsertRowStatementList()) {
-        insertRowStatement.setWriteToTable(true);
-        insertRowStatement.setDatabaseName(dataBaseName);
+      List<InsertRowStatement> rowStatements =
+          ((InsertRowsStatement) statement).getInsertRowStatementList();
+      if (rowStatements != null && !rowStatements.isEmpty()) {
+        for (InsertRowStatement insertRowStatement : rowStatements) {
+          insertRowStatement.setWriteToTable(true);
+          insertRowStatement.setDatabaseName(dataBaseName);
+        }
       }
     }
     statement.setDatabaseName(dataBaseName);
