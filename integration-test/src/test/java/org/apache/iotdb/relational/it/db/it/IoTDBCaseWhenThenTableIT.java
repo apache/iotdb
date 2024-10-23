@@ -660,4 +660,12 @@ public class IoTDBCaseWhenThenTableIT {
         };
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE);
   }
+
+  @Test
+  public void testKind1Logic() {
+    String sql =
+        "select case when s3 >= 0 and s3 < 20 and s4 >= 50 and s4 < 60 then 'just so so~~~' when s3 >= 20 and s3 < 40 and s4 >= 70 and s4 < 80 then 'very well~~~' end from table2";
+    String[] retArray = new String[] {"null,", "just so so~~~,", "null,", "very well~~~,"};
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE);
+  }
 }

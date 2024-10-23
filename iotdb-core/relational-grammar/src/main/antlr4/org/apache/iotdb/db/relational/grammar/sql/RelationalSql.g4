@@ -166,7 +166,7 @@ dropTableStatement
     ;
 
 showTableStatement
-    : SHOW TABLES ((FROM | IN) database=identifier)?
+    : SHOW TABLES (DETAILS)? ((FROM | IN) database=identifier)?
           // ((LIKE pattern=string (ESCAPE escape=string)) | (WHERE expression))?
     ;
 

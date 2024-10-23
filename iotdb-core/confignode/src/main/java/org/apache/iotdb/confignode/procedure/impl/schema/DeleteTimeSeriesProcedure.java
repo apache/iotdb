@@ -185,14 +185,12 @@ public class DeleteTimeSeriesProcedure
         };
     constructBlackListTask.execute();
 
-    if (isFailed()) {
-      return 0;
-    }
-
-    return successResult.stream()
-        .mapToLong(resp -> Long.parseLong(resp.getMessage()))
-        .reduce(Long::sum)
-        .orElse(0L);
+    return !isFailed()
+        ? successResult.stream()
+            .mapToLong(resp -> Long.parseLong(resp.getMessage()))
+            .reduce(Long::sum)
+            .orElse(0L)
+        : 0;
   }
 
   private void invalidateCache(final ConfigNodeProcedureEnv env) {

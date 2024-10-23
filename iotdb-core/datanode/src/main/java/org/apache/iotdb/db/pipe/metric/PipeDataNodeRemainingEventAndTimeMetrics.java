@@ -22,9 +22,6 @@ package org.apache.iotdb.db.pipe.metric;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.db.pipe.agent.task.subtask.connector.PipeConnectorSubtask;
-import org.apache.iotdb.db.pipe.agent.task.subtask.processor.PipeProcessorSubtask;
-import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -121,40 +118,6 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  public void register(final IoTDBDataRegionExtractor extractor) {
-    // The metric is global thus the regionId is omitted
-    final String pipeID = extractor.getPipeName() + "_" + extractor.getCreationTime();
-    remainingEventAndTimeOperatorMap
-        .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
-        .register(extractor);
-    if (Objects.nonNull(metricService)) {
-      createMetrics(pipeID);
-    }
-  }
-
-  public void register(final PipeProcessorSubtask processorSubtask) {
-    // The metric is global thus the regionId is omitted
-    final String pipeID = processorSubtask.getPipeName() + "_" + processorSubtask.getCreationTime();
-    remainingEventAndTimeOperatorMap
-        .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
-        .register(processorSubtask);
-    if (Objects.nonNull(metricService)) {
-      createMetrics(pipeID);
-    }
-  }
-
-  public void register(
-      final PipeConnectorSubtask connectorSubtask, final String pipeName, final long creationTime) {
-    // The metric is global thus the regionId is omitted
-    final String pipeID = pipeName + "_" + creationTime;
-    remainingEventAndTimeOperatorMap
-        .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
-        .register(connectorSubtask, pipeName, creationTime);
-    if (Objects.nonNull(metricService)) {
-      createMetrics(pipeID);
-    }
-  }
-
   public void register(final IoTDBSchemaRegionExtractor extractor) {
     // The metric is global thus the regionId is omitted
     final String pipeID = extractor.getPipeName() + "_" + extractor.getCreationTime();
@@ -164,6 +127,42 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     if (Objects.nonNull(metricService)) {
       createMetrics(pipeID);
     }
+  }
+
+  public void increaseInsertionEventCount(final String pipeID) {
+    remainingEventAndTimeOperatorMap
+        .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
+        .increaseInsertionEventCount();
+  }
+
+  public void decreaseInsertionEventCount(final String pipeID) {
+    remainingEventAndTimeOperatorMap
+        .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
+        .decreaseInsertionEventCount();
+  }
+
+  public void increaseTsFileEventCount(final String pipeID) {
+    remainingEventAndTimeOperatorMap
+        .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
+        .increaseTsFileEventCount();
+  }
+
+  public void decreaseTsFileEventCount(final String pipeID) {
+    remainingEventAndTimeOperatorMap
+        .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
+        .decreaseTsFileEventCount();
+  }
+
+  public void increaseHeartbeatEventCount(final String pipeID) {
+    remainingEventAndTimeOperatorMap
+        .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
+        .increaseHeartbeatEventCount();
+  }
+
+  public void decreaseHeartbeatEventCount(final String pipeID) {
+    remainingEventAndTimeOperatorMap
+        .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
+        .decreaseHeartbeatEventCount();
   }
 
   public void thawRate(final String pipeID) {
@@ -218,7 +217,8 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     }
   }
 
-  public void markCollectInvocationCount(final String pipeID, final long collectInvocationCount) {
+  public void markTsFileCollectInvocationCount(
+      final String pipeID, final long collectInvocationCount) {
     if (Objects.isNull(metricService)) {
       return;
     }
@@ -228,7 +228,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
       return;
     }
 
-    operator.markCollectInvocationCount(collectInvocationCount);
+    operator.markTsFileCollectInvocationCount(collectInvocationCount);
   }
 
   //////////////////////////// Show pipes ////////////////////////////
