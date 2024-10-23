@@ -330,6 +330,16 @@ struct TUpdateTableReq {
   2: required binary tableInfo
 }
 
+struct TInvalidateTableCacheReq {
+  1: required string database,
+  2: required string tableName
+}
+
+struct TDeleteDataOrDevicesForDropTableReq {
+  1: required list<common.TConsensusGroupId> regionIdList
+  2: required string tableName
+}
+
 struct TTsFilePieceReq {
     1: required binary body
     2: required string uuid
@@ -341,6 +351,16 @@ struct TLoadCommandReq {
     2: required string uuid
     3: optional bool isGeneratedByPipe
     4: optional binary progressIndex
+}
+
+struct TAttributeUpdateReq {
+  1: required map<i32, TSchemaRegionAttributeInfo> attributeUpdateMap
+}
+
+struct TSchemaRegionAttributeInfo {
+  1: required i64 version
+  2: required string database
+  3: required binary body
 }
 
 struct TLoadResp {
@@ -683,6 +703,8 @@ service IDataNodeRPCService {
 
   TLoadResp sendLoadCommand(TLoadCommandReq req);
 
+  common.TSStatus updateAttribute(TAttributeUpdateReq req);
+
 
   // -----------------------------------For Config Node-----------------------------------------------
 
@@ -706,6 +728,13 @@ service IDataNodeRPCService {
    * @param bool:isStorageGroup, string:fullPath
    */
   common.TSStatus invalidatePartitionCache(TInvalidateCacheReq req)
+
+  /**
+   * Config node will invalidate last cache.
+   *
+   * @param string:database(without root)
+   */
+  common.TSStatus invalidateLastCache(string database)
 
   /**
    * Config node will invalidate Schema Info cache.
@@ -882,7 +911,7 @@ service IDataNodeRPCService {
 
   common.TSStatus stopRepairData()
 
-  common.TSStatus clearCache()
+  common.TSStatus clearCache(set<i32> cacheClearOptions)
 
   common.TShowConfigurationResp showConfiguration()
 
@@ -1037,6 +1066,21 @@ service IDataNodeRPCService {
   * Update Table Cache
   */
   common.TSStatus updateTable(TUpdateTableReq req)
+
+  /**
+  * Delete data for drop table, this database is without "root"
+  */
+  common.TSStatus invalidateTableCache(TInvalidateTableCacheReq req)
+
+  /**
+  * Delete data for drop table
+  */
+  common.TSStatus deleteDataForDropTable(TDeleteDataOrDevicesForDropTableReq req)
+
+  /**
+  * Delete devices for drop table
+  */
+  common.TSStatus deleteDevicesForDropTable(TDeleteDataOrDevicesForDropTableReq req)
 
   common.TTestConnectionResp submitTestConnectionTask(common.TNodeLocations nodeLocations)
 

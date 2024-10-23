@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 
 public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
     implements ICacheEntryGroup<FK, SK, V, T> {
@@ -32,7 +33,7 @@ public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
 
   private final Map<SK, T> cacheEntryMap = new ConcurrentHashMap<>();
 
-  CacheEntryGroupImpl(FK firstKey) {
+  CacheEntryGroupImpl(final FK firstKey) {
     this.firstKey = firstKey;
   }
 
@@ -42,7 +43,7 @@ public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   }
 
   @Override
-  public T getCacheEntry(SK secondKey) {
+  public T getCacheEntry(final SK secondKey) {
     return secondKey == null ? null : cacheEntryMap.get(secondKey);
   }
 
@@ -52,12 +53,17 @@ public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   }
 
   @Override
-  public T computeCacheEntry(SK secondKey, BiFunction<SK, T, T> computation) {
+  public T computeCacheEntry(final SK secondKey, final BiFunction<SK, T, T> computation) {
     return cacheEntryMap.compute(secondKey, computation);
   }
 
   @Override
-  public T removeCacheEntry(SK secondKey) {
+  public T computeCacheEntryIfAbsent(final SK secondKey, final Function<SK, T> computation) {
+    return cacheEntryMap.computeIfAbsent(secondKey, computation);
+  }
+
+  @Override
+  public T removeCacheEntry(final SK secondKey) {
     return cacheEntryMap.remove(secondKey);
   }
 
@@ -67,7 +73,7 @@ public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     CacheEntryGroupImpl<?, ?, ?, ?> that = (CacheEntryGroupImpl<?, ?, ?, ?>) o;

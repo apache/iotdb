@@ -355,6 +355,10 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  protected R visitClearCache(ClearCache node, C context) {
+    return visitStatement(node, context);
+  }
+
   protected R visitRenameTable(RenameTable node, C context) {
     return visitStatement(node, context);
   }
@@ -540,6 +544,14 @@ public abstract class AstVisitor<R, C> {
   }
 
   protected R visitShowPipePlugins(ShowPipePlugins node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitLoadTsFile(LoadTsFile node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitPipeEnriched(PipeEnriched node, C context) {
     return visitStatement(node, context);
   }
 }

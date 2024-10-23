@@ -383,6 +383,26 @@ public class SessionManager implements SessionManagerMBean {
         session.getSqlDialect());
   }
 
+  public SessionInfo getSessionInfoOfTableModel(IClientSession session) {
+    return new SessionInfo(
+        session.getId(),
+        session.getUsername(),
+        session.getZoneId(),
+        session.getClientVersion(),
+        session.getDatabaseName(),
+        IClientSession.SqlDialect.TABLE);
+  }
+
+  public SessionInfo getSessionInfoOfPipeReceiver(IClientSession session, String databaseName) {
+    return new SessionInfo(
+        session.getId(),
+        session.getUsername(),
+        session.getZoneId(),
+        session.getClientVersion(),
+        databaseName,
+        IClientSession.SqlDialect.TABLE);
+  }
+
   @Override
   public Set<String> getAllRpcClients() {
     return this.sessions.keySet().stream()
