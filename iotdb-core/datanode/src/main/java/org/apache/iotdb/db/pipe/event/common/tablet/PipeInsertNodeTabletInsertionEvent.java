@@ -136,7 +136,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       PipeDataNodeResourceManager.wal().pin(walEntryHandler);
       if (Objects.nonNull(pipeName)) {
         PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-            .increaseInsertionEventCount(pipeName + "_" + creationTime);
+            .increaseTabletEventCount(pipeName + "_" + creationTime);
       }
       return true;
     } catch (final Exception e) {
@@ -169,7 +169,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     } finally {
       if (Objects.nonNull(pipeName)) {
         PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-            .decreaseInsertionEventCount(pipeName + "_" + creationTime);
+            .decreaseTabletEventCount(pipeName + "_" + creationTime);
       }
     }
   }
