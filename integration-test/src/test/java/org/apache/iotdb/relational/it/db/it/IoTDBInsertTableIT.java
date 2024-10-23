@@ -955,7 +955,7 @@ public class IoTDBInsertTableIT {
         Assert.assertTrue(record.getFields().get(0).getLongV() > timeLowerBound);
         count++;
       }
-      Assert.assertTrue(count > 0 && count < 4);
+      Assert.assertEquals(2, count);
     }
   }
 
