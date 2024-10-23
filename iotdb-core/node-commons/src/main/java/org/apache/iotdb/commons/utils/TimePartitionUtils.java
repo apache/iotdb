@@ -56,8 +56,7 @@ public class TimePartitionUtils {
         BigInteger.valueOf(maxPartition)
             .multiply(bigTimePartitionInterval)
             .add(bigTimePartitionInterval)
-            .add(bigTimePartitionOrigin)
-            .subtract(BigInteger.ONE);
+            .add(bigTimePartitionOrigin);
     if (minPartitionStartTime.compareTo(BigInteger.valueOf(Long.MIN_VALUE)) < 0) {
       timePartitionLowerBoundWithoutOverflow =
           minPartitionStartTime.add(bigTimePartitionInterval).longValue();
