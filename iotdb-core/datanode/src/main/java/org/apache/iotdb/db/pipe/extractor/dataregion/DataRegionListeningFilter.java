@@ -23,8 +23,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTask;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -77,19 +76,8 @@ public class DataRegionListeningFilter {
       return true;
     }
 
-    final String databaseRawName = dataRegion.getDatabaseName();
-    final String databaseTreeModel =
-        databaseRawName.startsWith("root.") ? databaseRawName : "root." + databaseRawName;
-    final String databaseTableModel =
-        databaseRawName.startsWith("root.") ? databaseRawName.substring(5) : databaseRawName;
-
-    final TreePattern treePattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
-    final TablePattern tablePattern = TablePattern.parsePipePatternFromSourceParameters(parameters);
-
-    return treePattern.isTreeModelDataAllowedToBeCaptured()
-            && treePattern.mayOverlapWithDb(databaseTreeModel)
-        || tablePattern.isTableModelDataAllowedToBeCaptured()
-            && tablePattern.matchesDatabase(databaseTableModel);
+    return PipePattern.parsePipePatternFromSourceParameters(parameters)
+        .mayOverlapWithDb(dataRegion.getDatabaseName());
   }
 
   public static Pair<Boolean, Boolean> parseInsertionDeletionListeningOptionPair(
