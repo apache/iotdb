@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.client.async.AsyncPipeConsensusServiceClient;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
+import org.apache.iotdb.commons.client.async.AsyncTEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty;
 import org.apache.iotdb.commons.client.property.PipeConsensusClientProperty;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
@@ -269,12 +270,14 @@ public class ClientPoolFactory {
   }
 
   public static class AsyncPipeDataTransferServiceClientPoolFactory
-      implements IClientPoolFactory<TEndPoint, AsyncPipeDataTransferServiceClient> {
+      implements IClientPoolFactory<AsyncTEndPoint, AsyncPipeDataTransferServiceClient> {
+
+    public AsyncPipeDataTransferServiceClientPoolFactory() {}
 
     @Override
-    public KeyedObjectPool<TEndPoint, AsyncPipeDataTransferServiceClient> createClientPool(
-        ClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> manager) {
-      final GenericKeyedObjectPool<TEndPoint, AsyncPipeDataTransferServiceClient> clientPool =
+    public KeyedObjectPool<AsyncTEndPoint, AsyncPipeDataTransferServiceClient> createClientPool(
+        ClientManager<AsyncTEndPoint, AsyncPipeDataTransferServiceClient> manager) {
+      final GenericKeyedObjectPool<AsyncTEndPoint, AsyncPipeDataTransferServiceClient> clientPool =
           new GenericKeyedObjectPool<>(
               new AsyncPipeDataTransferServiceClient.Factory(
                   manager,
