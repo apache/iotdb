@@ -90,7 +90,7 @@ public class IoTDBRemoveDataNodeITFramework {
       final int dataNodeNum,
       final int removeDataNodeNum,
       final int dataRegionPerDataNode,
-      final boolean needRestartRemoveDataNode)
+      final boolean rejoinRemovedDataNode)
       throws Exception {
     testRemoveDataNode(
         dataReplicateFactor,
@@ -100,7 +100,7 @@ public class IoTDBRemoveDataNodeITFramework {
         removeDataNodeNum,
         dataRegionPerDataNode,
         true,
-        needRestartRemoveDataNode);
+        rejoinRemovedDataNode);
   }
 
   public void failTest(
@@ -110,7 +110,7 @@ public class IoTDBRemoveDataNodeITFramework {
       final int dataNodeNum,
       final int removeDataNodeNum,
       final int dataRegionPerDataNode,
-      final boolean needRestartRemoveDataNode)
+      final boolean rejoinRemovedDataNode)
       throws Exception {
     testRemoveDataNode(
         dataReplicateFactor,
@@ -120,7 +120,7 @@ public class IoTDBRemoveDataNodeITFramework {
         removeDataNodeNum,
         dataRegionPerDataNode,
         false,
-        needRestartRemoveDataNode);
+        rejoinRemovedDataNode);
   }
 
   public void testRemoveDataNode(
@@ -131,7 +131,7 @@ public class IoTDBRemoveDataNodeITFramework {
       final int removeDataNodeNum,
       final int dataRegionPerDataNode,
       final boolean expectRemoveSuccess,
-      final boolean needRestartRemoveDataNode)
+      final boolean rejoinRemovedDataNode)
       throws Exception {
     // Set up the environment
     EnvFactory.getEnv()
@@ -216,28 +216,28 @@ public class IoTDBRemoveDataNodeITFramework {
 
       LOGGER.info("Remove DataNodes success");
 
-      if (needRestartRemoveDataNode) {
+      if (rejoinRemovedDataNode) {
         removeDataNodeWrappers.parallelStream().forEach(DataNodeWrapper::start);
-        LOGGER.info("RemoveDataNodes restarted: {}", removeDataNodes);
+        LOGGER.info("RemoveDataNodes rejoin: {}", removeDataNodes);
 
         final Set<Integer> finalAllDataNodeId = new HashSet<>();
 
         try {
           // Get all data nodes
-          ResultSet restartResult = statement.executeQuery(SHOW_DATANODES);
-          while (restartResult.next()) {
-            finalAllDataNodeId.add(restartResult.getInt(ColumnHeaderConstant.NODE_ID));
+          ResultSet rejoinResult = statement.executeQuery(SHOW_DATANODES);
+          while (rejoinResult.next()) {
+            finalAllDataNodeId.add(rejoinResult.getInt(ColumnHeaderConstant.NODE_ID));
           }
         } catch (Exception e) {
-          LOGGER.info("Restarting DataNodes exception: {}", e.getMessage());
+          LOGGER.info("Rejoin DataNodes exception: {}", e.getMessage());
         }
 
         removeDataNodes.forEach(
             removeDataNodeId -> {
               if (finalAllDataNodeId.contains(removeDataNodeId)) {
-                LOGGER.info("DataNode {} restarted successfully", removeDataNodeId);
+                LOGGER.info("DataNode {} rejoin successfully", removeDataNodeId);
               } else {
-                LOGGER.error("DataNode {} not found after restart", removeDataNodeId);
+                LOGGER.error("DataNode {} not found after rejoin", removeDataNodeId);
                 Assert.fail();
               }
             });
