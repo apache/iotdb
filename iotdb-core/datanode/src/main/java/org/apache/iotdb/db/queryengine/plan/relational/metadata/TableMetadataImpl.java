@@ -213,7 +213,7 @@ public class TableMetadataImpl implements Metadata {
         throw new SemanticException(
             "Scalar function "
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only supports text or string data type.");
+                + " only accepts two or three arguments and they must be text or string data type.");
       }
       return STRING;
     } else if (TableBuiltinScalarFunction.SUBSTRING
@@ -709,11 +709,6 @@ public class TableMetadataImpl implements Metadata {
       String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
     return partitionFetcher.getDataPartitionWithUnclosedTimeRange(
         Collections.singletonMap(database, sgNameToQueryParamsMap));
-  }
-
-  @Override
-  public boolean canUseStatistics(String functionName, boolean withTime) {
-    return TableBuiltinAggregationFunction.canUseStatistics(functionName, withTime);
   }
 
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {

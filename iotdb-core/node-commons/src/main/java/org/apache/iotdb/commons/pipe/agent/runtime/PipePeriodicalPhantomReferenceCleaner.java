@@ -21,19 +21,14 @@ package org.apache.iotdb.commons.pipe.agent.runtime;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
-/**
- * The shortest scheduling cycle for these jobs is {@link
- * PipeConfig#getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds()}, suitable for jobs that are
- * NOT time-critical.
- */
-public class PipePeriodicalJobExecutor extends AbstractPipePeriodicalJobExecutor {
+/** The shortest scheduling cycle for these jobs is 1, suitable for jobs that are time-critical. */
+public class PipePeriodicalPhantomReferenceCleaner extends AbstractPipePeriodicalJobExecutor {
 
-  public PipePeriodicalJobExecutor() {
+  public PipePeriodicalPhantomReferenceCleaner() {
     super(
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-            ThreadName.PIPE_RUNTIME_PERIODICAL_JOB_EXECUTOR.getName()),
-        PipeConfig.getInstance().getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds());
+            ThreadName.PIPE_RUNTIME_PERIODICAL_PHANTOM_REFERENCE_CLEANER.getName()),
+        1L);
   }
 }

@@ -459,12 +459,14 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   private Column getIdOrAttrColumn(int positionCount, String columnName) {
     if (columnName == null) {
       return new RunLengthEncodedColumn(
-          new BinaryColumn(positionCount, Optional.of(new boolean[] {true}), new Binary[] {null}),
+          new BinaryColumn(1, Optional.of(new boolean[] {true}), new Binary[] {null}),
           positionCount);
     } else {
       return new RunLengthEncodedColumn(
           new BinaryColumn(
-              positionCount, Optional.empty(), new Binary[] {new Binary(columnName.getBytes())}),
+              1,
+              Optional.of(new boolean[] {false}),
+              new Binary[] {new Binary(columnName.getBytes())}),
           positionCount);
     }
   }
