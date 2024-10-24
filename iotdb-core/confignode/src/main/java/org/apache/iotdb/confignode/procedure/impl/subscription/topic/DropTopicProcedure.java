@@ -81,7 +81,6 @@ public class DropTopicProcedure extends AbstractOperateSubscriptionProcedure {
       response =
           new TSStatus(TSStatusCode.DROP_TOPIC_ERROR.getStatusCode()).setMessage(e.getMessage());
     }
-
     if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new SubscriptionException(
           String.format(
@@ -90,13 +89,13 @@ public class DropTopicProcedure extends AbstractOperateSubscriptionProcedure {
   }
 
   @Override
-  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
-      throws SubscriptionException {
+  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info("DropTopicProcedure: executeFromOperateOnDataNodes({})", topicName);
 
     final List<TSStatus> statuses = env.dropSingleTopicOnDataNode(topicName);
     if (RpcUtils.squashResponseStatusList(statuses).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // throw exception instead of logging warn, do not rely on metadata synchronization
       throw new SubscriptionException(
           String.format("Failed to drop topic %s on data nodes, because %s", topicName, statuses));
     }

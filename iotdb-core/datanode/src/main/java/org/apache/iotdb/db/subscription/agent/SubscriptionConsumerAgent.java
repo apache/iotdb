@@ -125,7 +125,7 @@ public class SubscriptionConsumerAgent {
     }
 
     // TODO: Currently we fully replace the entire ConsumerGroupMeta without carefully checking the
-    // changes in its fields.
+    //       changes in its fields.
     consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
     consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
   }
