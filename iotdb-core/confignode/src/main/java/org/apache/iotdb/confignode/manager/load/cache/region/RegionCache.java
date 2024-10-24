@@ -34,7 +34,7 @@ public class RegionCache extends AbstractLoadCache {
   }
 
   @Override
-  public synchronized void updateCurrentStatistics() {
+  public synchronized void updateCurrentStatistics(boolean forceUpdate) {
     RegionHeartbeatSample lastSample;
     synchronized (slidingWindow) {
       lastSample = (RegionHeartbeatSample) getLastSample();
@@ -65,7 +65,7 @@ public class RegionCache extends AbstractLoadCache {
       return;
     }
     RegionStatus lastStatus = ((RegionHeartbeatSample) getLastSample()).getStatus();
-    if (lastStatus.equals(RegionStatus.Adding)) {
+    if (lastStatus.equals(RegionStatus.Adding) || lastStatus.equals(RegionStatus.Removing)) {
       RegionHeartbeatSample fakeHeartbeatSample =
           new RegionHeartbeatSample(newHeartbeatSample.getSampleLogicalTimestamp(), lastStatus);
       super.cacheHeartbeatSample(fakeHeartbeatSample);

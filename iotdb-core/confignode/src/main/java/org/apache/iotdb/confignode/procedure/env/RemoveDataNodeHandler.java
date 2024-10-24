@@ -45,6 +45,7 @@ import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrationPlan;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TCleanDataNodeCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TStopDataNodeReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -264,11 +265,11 @@ public class RemoveDataNodeHandler {
         REMOVE_DATANODE_PROCESS,
         removedDataNodes);
 
-    DataNodeAsyncRequestContext<TDataNodeLocation, TSStatus> stopDataNodesContext =
+    DataNodeAsyncRequestContext<TStopDataNodeReq, TSStatus> stopDataNodesContext =
         new DataNodeAsyncRequestContext<>(CnToDnRequestType.STOP_DATA_NODE);
 
     for (TDataNodeLocation dataNode : removedDataNodes) {
-      stopDataNodesContext.putRequest(dataNode.getDataNodeId(), dataNode);
+      stopDataNodesContext.putRequest(dataNode.getDataNodeId(), new TStopDataNodeReq(true));
       stopDataNodesContext.putNodeLocation(dataNode.getDataNodeId(), dataNode);
     }
 

@@ -169,6 +169,7 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
     List<TRegionReplicaSet> replicaSets =
         env.getConfigManager().getPartitionManager().getAllReplicaSets();
     List<TDataNodeLocation> rollBackDataNodes = new ArrayList<>();
+    List<TDataNodeLocation> successDataNodes = new ArrayList<>();
     for (TDataNodeLocation dataNode : removedDataNodes) {
       List<TConsensusGroupId> migratedFailedRegions =
           replicaSets.stream()
@@ -188,9 +189,12 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
             "{}, Region all migrated successfully, start to stop DataNode: {}",
             REMOVE_DATANODE_PROCESS,
             dataNode);
-        env.getRemoveDataNodeHandler().removeDataNodePersistence(removedDataNodes);
-        env.getRemoveDataNodeHandler().stopDataNodes(removedDataNodes);
+        successDataNodes.add(dataNode);
       }
+    }
+    if (!successDataNodes.isEmpty()) {
+      env.getRemoveDataNodeHandler().removeDataNodePersistence(successDataNodes);
+      env.getRemoveDataNodeHandler().stopDataNodes(successDataNodes);
     }
     if (!rollBackDataNodes.isEmpty()) {
       LOG.info(

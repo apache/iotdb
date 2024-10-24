@@ -243,6 +243,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
+import org.apache.iotdb.mpp.rpc.thrift.TStopDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
@@ -2421,7 +2422,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @SuppressWarnings("squid:S2142") // ignore Either re-interrupt this method or rethrow
   @Override
-  public TSStatus stopDataNode() {
+  public TSStatus stopDataNode(TStopDataNodeReq req) {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     LOGGER.info("Execute stopDataNode RPC method");
 
@@ -2443,6 +2444,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     try {
       DataNode.getInstance().stop();
       status.setMessage("stop datanode succeed");
+      if (req.needCleanup) {
+        DataNode.getInstance().deleteDataNodeSystemProperties();
+      }
     } catch (Exception e) {
       LOGGER.warn("Stop Data Node error", e);
       status.setCode(TSStatusCode.DATANODE_STOP_ERROR.getStatusCode());

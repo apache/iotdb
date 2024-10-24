@@ -38,6 +38,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
+import org.apache.iotdb.mpp.rpc.thrift.TStopDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -122,7 +123,7 @@ public class SyncDataNodeClientPool {
       case CLEAN_DATA_NODE_CACHE:
         return client.cleanDataNodeCache((TCleanDataNodeCacheReq) req);
       case STOP_DATA_NODE:
-        return client.stopDataNode();
+        return client.stopDataNode((TStopDataNodeReq) req);
       case SET_SYSTEM_STATUS:
         return client.setSystemStatus((String) req);
       case KILL_QUERY_INSTANCE:

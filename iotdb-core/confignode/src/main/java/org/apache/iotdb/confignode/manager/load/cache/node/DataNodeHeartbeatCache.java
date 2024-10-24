@@ -37,7 +37,11 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
   }
 
   @Override
-  public synchronized void updateCurrentStatistics() {
+  public synchronized void updateCurrentStatistics(boolean forceUpdate) {
+    // The Removing status can not be updated
+    if (!forceUpdate && NodeStatus.Removing.equals(getNodeStatus())) {
+      return;
+    }
 
     NodeHeartbeatSample lastSample;
     synchronized (slidingWindow) {

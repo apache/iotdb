@@ -86,6 +86,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackViewSchemaBlackListReq;
+import org.apache.iotdb.mpp.rpc.thrift.TStopDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
@@ -371,7 +372,8 @@ public class CnToDnInternalServiceAsyncRequestManager
                 (TCleanDataNodeCacheReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnRequestType.STOP_DATA_NODE,
-        (req, client, handler) -> client.stopDataNode((DataNodeTSStatusRPCHandler) handler));
+        (req, client, handler) ->
+            client.stopDataNode((TStopDataNodeReq) req, (DataNodeTSStatusRPCHandler) handler));
   }
 
   @Override
