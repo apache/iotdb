@@ -55,18 +55,34 @@ public abstract class PipePhantomReferenceManager {
       return;
     }
 
+    final long startTime = System.currentTimeMillis();
+
+    // limit control to avoid infinite execution
+    final int maxCount = getPhantomReferenceCount();
+    int count = 0;
+
     Reference<? extends EnrichedEvent> reference;
     try {
-      while ((reference = REFERENCE_QUEUE.remove(500)) != null) {
+      while (count < maxCount && ((reference = REFERENCE_QUEUE.remove(500)) != null)) {
         finalizeResource((PipeEventPhantomReference) reference);
+        count++;
       }
     } catch (final InterruptedException e) {
       // Finalize remaining references.
-      while ((reference = REFERENCE_QUEUE.poll()) != null) {
+      while (count < maxCount && ((reference = REFERENCE_QUEUE.poll()) != null)) {
         finalizeResource((PipeEventPhantomReference) reference);
+        count++;
       }
     } catch (final Exception e) {
       // Nowhere to really log this.
+    }
+
+    if (maxCount != 0 || getPhantomReferenceCount() != 0) {
+      LOGGER.info(
+          "Clean {} pipe phantom reference(s) successfully within {} ms, remaining reference count: {}",
+          count,
+          System.currentTimeMillis() - startTime,
+          getPhantomReferenceCount());
     }
   }
 

@@ -1232,7 +1232,7 @@ public class DataRegion implements IDataRegionForQuery {
       split(insertTabletNode, start, end, splitInfo);
       start = end;
     }
-    noFailure = noFailure && doInsert(insertTabletNode, splitInfo, results, costsForMetrics);
+    noFailure = doInsert(insertTabletNode, splitInfo, results, costsForMetrics) && noFailure;
 
     if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
         && !insertTabletNode.isGeneratedByRemoteConsensusLeader()) {

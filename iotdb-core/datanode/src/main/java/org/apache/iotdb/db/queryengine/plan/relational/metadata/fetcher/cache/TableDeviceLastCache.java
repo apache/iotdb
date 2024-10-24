@@ -39,6 +39,7 @@ import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 @ThreadSafe
 public class TableDeviceLastCache {
@@ -112,12 +113,7 @@ public class TableDeviceLastCache {
             if (Objects.isNull(newPair)) {
               diff.addAndGet(
                   -((isTableModel ? 0 : (int) RamUsageEstimator.sizeOf(finalMeasurement))
-                      + (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
-                      + ((Objects.isNull(tvPair)
-                              || tvPair == PLACEHOLDER_TIME_VALUE_PAIR
-                              || tvPair == EMPTY_TIME_VALUE_PAIR)
-                          ? 0
-                          : tvPair.getSize())));
+                      + getTVPairEntrySize(tvPair)));
               return null;
             }
             if (Objects.isNull(tvPair)) {
@@ -165,11 +161,41 @@ public class TableDeviceLastCache {
     return diff.get();
   }
 
+  // TODO: Handle table model invalidation (MeasurementSize = 0)
   @GuardedBy("DataRegionInsertLock#writeLock")
   int invalidate(final String measurement) {
-    return 2 * (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
-        + measurement2CachedLastMap.remove(measurement).getSize()
-        + measurement2CachedLastMap.remove("").getSize();
+    final AtomicInteger diff = new AtomicInteger();
+    final AtomicLong time = new AtomicLong();
+    measurement2CachedLastMap.computeIfPresent(
+        measurement,
+        (s, timeValuePair) -> {
+          diff.set((int) RamUsageEstimator.sizeOf(s) + getTVPairEntrySize(timeValuePair));
+          time.set(timeValuePair.getTimestamp());
+          return null;
+        });
+    if (diff.get() == 0) {
+      return 0;
+    }
+    measurement2CachedLastMap.computeIfPresent(
+        "",
+        (s, timeValuePair) -> {
+          if (timeValuePair.getTimestamp() <= time.get()) {
+            diff.addAndGet(getTVPairEntrySize(timeValuePair));
+            return null;
+          }
+          return timeValuePair;
+        });
+
+    return diff.get();
+  }
+
+  private int getTVPairEntrySize(final TimeValuePair tvPair) {
+    return (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+        + ((Objects.isNull(tvPair)
+                || tvPair == PLACEHOLDER_TIME_VALUE_PAIR
+                || tvPair == EMPTY_TIME_VALUE_PAIR)
+            ? 0
+            : tvPair.getSize());
   }
 
   @Nullable
