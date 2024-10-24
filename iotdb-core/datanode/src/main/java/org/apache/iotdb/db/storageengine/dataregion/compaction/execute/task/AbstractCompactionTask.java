@@ -457,24 +457,30 @@ public abstract class AbstractCompactionTask {
 
     TsFileValidator validator = TsFileValidator.getInstance();
     if (needToValidatePartitionSeqSpaceOverlap) {
-      List<TsFileResource> timePartitionSeqFiles =
-          new ArrayList<>(tsFileManager.getOrCreateSequenceListByTimePartition(timePartition));
-      timePartitionSeqFiles.removeAll(sourceSeqFiles);
-      timePartitionSeqFiles.addAll(validTargetFiles);
-      timePartitionSeqFiles.sort(
-          (f1, f2) -> {
-            int timeDiff =
-                Long.compareUnsigned(
-                    Long.parseLong(f1.getTsFile().getName().split("-")[0]),
-                    Long.parseLong(f2.getTsFile().getName().split("-")[0]));
-            return timeDiff == 0
-                ? Long.compareUnsigned(
-                    Long.parseLong(f1.getTsFile().getName().split("-")[1]),
-                    Long.parseLong(f2.getTsFile().getName().split("-")[1]))
-                : timeDiff;
-          });
-      List<TsFileResource> overlapFilesInTimePartition =
-          RepairDataFileScanUtil.checkTimePartitionHasOverlap(timePartitionSeqFiles, true);
+      List<TsFileResource> overlapFilesInTimePartition;
+      if (this instanceof InnerSpaceCompactionTask) {
+        overlapFilesInTimePartition =
+            RepairDataFileScanUtil.checkTimePartitionHasOverlap(targetFiles, true);
+      } else {
+        List<TsFileResource> timePartitionSeqFiles =
+            new ArrayList<>(tsFileManager.getOrCreateSequenceListByTimePartition(timePartition));
+        timePartitionSeqFiles.removeAll(sourceSeqFiles);
+        timePartitionSeqFiles.addAll(validTargetFiles);
+        timePartitionSeqFiles.sort(
+            (f1, f2) -> {
+              int timeDiff =
+                  Long.compareUnsigned(
+                      Long.parseLong(f1.getTsFile().getName().split("-")[0]),
+                      Long.parseLong(f2.getTsFile().getName().split("-")[0]));
+              return timeDiff == 0
+                  ? Long.compareUnsigned(
+                      Long.parseLong(f1.getTsFile().getName().split("-")[1]),
+                      Long.parseLong(f2.getTsFile().getName().split("-")[1]))
+                  : timeDiff;
+            });
+        overlapFilesInTimePartition =
+            RepairDataFileScanUtil.checkTimePartitionHasOverlap(timePartitionSeqFiles, true);
+      }
       if (!overlapFilesInTimePartition.isEmpty()) {
         LOGGER.error(
             "Failed to pass compaction validation, source seq files: {}, source unseq files: {}, target files: {}",
