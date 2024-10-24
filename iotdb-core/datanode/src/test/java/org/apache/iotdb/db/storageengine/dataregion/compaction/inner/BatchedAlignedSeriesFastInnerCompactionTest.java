@@ -29,6 +29,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.BatchCompactionPlan;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -317,6 +318,42 @@ public class BatchedAlignedSeriesFastInnerCompactionTest extends AbstractCompact
 
     TsFileResource targetResource = performCompaction();
     validate(targetResource);
+  }
+
+  @Test
+  public void testCompactionByDeserializeWithLargeTimeChunk() throws Exception {
+    long defaultMaxCachedTimeChunkSize = BatchCompactionPlan.getMaxCachedTimeChunksSize();
+    try {
+      BatchCompactionPlan.setMaxCachedTimeChunksSize(1);
+      TsFileResource unseqResource1 =
+          generateSingleAlignedSeriesFile(
+              "d0",
+              Arrays.asList("s0", "s1", "s2"),
+              new TimeRange[][] {
+                new TimeRange[] {new TimeRange(100, 200), new TimeRange(500, 600)}
+              },
+              TSEncoding.PLAIN,
+              CompressionType.LZ4,
+              Arrays.asList(false, false, false),
+              false);
+      unseqResources.add(unseqResource1);
+
+      TsFileResource unseqResource2 =
+          generateSingleAlignedSeriesFile(
+              "d0",
+              Arrays.asList("s0", "s1", "s2"),
+              new TimeRange[] {new TimeRange(150, 550)},
+              TSEncoding.PLAIN,
+              CompressionType.LZ4,
+              Arrays.asList(false, false, false),
+              false);
+      unseqResources.add(unseqResource2);
+
+      TsFileResource targetResource = performCompaction();
+      validate(targetResource);
+    } finally {
+      BatchCompactionPlan.setMaxCachedTimeChunksSize(defaultMaxCachedTimeChunkSize);
+    }
   }
 
   @Test
