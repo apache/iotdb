@@ -19,9 +19,12 @@
 
 package org.apache.iotdb.db.pipe.extractor.dataregion;
 
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTask;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
@@ -57,12 +60,24 @@ public class DataRegionListeningFilter {
     }
   }
 
-  public static boolean shouldDataRegionBeListened(PipeParameters parameters)
-      throws IllegalPathException {
+  public static boolean shouldDataRegionBeListened(
+      PipeParameters parameters, DataRegionId dataRegionId) throws IllegalPathException {
     final Pair<Boolean, Boolean> insertionDeletionListeningOptionPair =
         parseInsertionDeletionListeningOptionPair(parameters);
-    return insertionDeletionListeningOptionPair.getLeft()
-        || insertionDeletionListeningOptionPair.getRight();
+    final boolean hasSpecificListeningOption =
+        insertionDeletionListeningOptionPair.getLeft()
+            || insertionDeletionListeningOptionPair.getRight();
+    if (!hasSpecificListeningOption) {
+      return false;
+    }
+
+    final DataRegion dataRegion = StorageEngine.getInstance().getDataRegion(dataRegionId);
+    if (dataRegion == null) {
+      return true;
+    }
+
+    return PipePattern.parsePipePatternFromSourceParameters(parameters)
+        .mayOverlapWithDb(dataRegion.getDatabaseName());
   }
 
   public static Pair<Boolean, Boolean> parseInsertionDeletionListeningOptionPair(

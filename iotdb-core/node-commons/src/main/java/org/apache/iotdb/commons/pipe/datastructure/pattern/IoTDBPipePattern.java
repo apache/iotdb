@@ -106,6 +106,15 @@ public class IoTDBPipePattern extends PipePattern {
   }
 
   @Override
+  public boolean mayOverlapWithDb(final String db) {
+    try {
+      return patternPartialPath.overlapWith(new PartialPath(db + ".**"));
+    } catch (final IllegalPathException e) {
+      return false;
+    }
+  }
+
+  @Override
   public boolean matchesMeasurement(final String device, final String measurement) {
     // For aligned timeseries, empty measurement is an alias of the time column.
     if (Objects.isNull(measurement) || measurement.isEmpty()) {
