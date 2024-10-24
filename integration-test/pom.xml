@@ -67,6 +67,13 @@
         <strongConsistencyClusterMode.dataRegionReplicaNumber>3</strongConsistencyClusterMode.dataRegionReplicaNumber>
         <strongConsistencyClusterMode.schemaRegionConsensus>Ratis</strongConsistencyClusterMode.schemaRegionConsensus>
         <strongConsistencyClusterMode.schemaRegionReplicaNumber>3</strongConsistencyClusterMode.schemaRegionReplicaNumber>
+        <pipeConsensusBatchMode.configNodeConsensus>Ratis</pipeConsensusBatchMode.configNodeConsensus>
+        <pipeConsensusBatchMode.configNodeNumber>1</pipeConsensusBatchMode.configNodeNumber>
+        <pipeConsensusBatchMode.dataNodeNumber>3</pipeConsensusBatchMode.dataNodeNumber>
+        <pipeConsensusBatchMode.dataRegionConsensus>IoTV2</pipeConsensusBatchMode.dataRegionConsensus>
+        <pipeConsensusBatchMode.dataRegionReplicaNumber>2</pipeConsensusBatchMode.dataRegionReplicaNumber>
+        <pipeConsensusBatchMode.schemaRegionConsensus>Ratis</pipeConsensusBatchMode.schemaRegionConsensus>
+        <pipeConsensusBatchMode.schemaRegionReplicaNumber>3</pipeConsensusBatchMode.schemaRegionReplicaNumber>
     </properties>
     <dependencies>
         <dependency>
@@ -314,6 +321,13 @@
                                 <strongConsistencyClusterMode.dataRegionConsensus>${strongConsistencyClusterMode.dataRegionConsensus}</strongConsistencyClusterMode.dataRegionConsensus>
                                 <strongConsistencyClusterMode.schemaRegionReplicaNumber>${strongConsistencyClusterMode.schemaRegionReplicaNumber}</strongConsistencyClusterMode.schemaRegionReplicaNumber>
                                 <strongConsistencyClusterMode.dataRegionReplicaNumber>${strongConsistencyClusterMode.dataRegionReplicaNumber}</strongConsistencyClusterMode.dataRegionReplicaNumber>
+                                <pipeConsensusBatchMode.configNodeNumber>${pipeConsensusBatchMode.configNodeNumber}</pipeConsensusBatchMode.configNodeNumber>
+                                <pipeConsensusBatchMode.dataNodeNumber>${pipeConsensusBatchMode.dataNodeNumber}</pipeConsensusBatchMode.dataNodeNumber>
+                                <pipeConsensusBatchMode.configNodeConsensus>${pipeConsensusBatchMode.configNodeConsensus}</pipeConsensusBatchMode.configNodeConsensus>
+                                <pipeConsensusBatchMode.schemaRegionConsensus>${pipeConsensusBatchMode.schemaRegionConsensus}</pipeConsensusBatchMode.schemaRegionConsensus>
+                                <pipeConsensusBatchMode.dataRegionConsensus>${pipeConsensusBatchMode.dataRegionConsensus}</pipeConsensusBatchMode.dataRegionConsensus>
+                                <pipeConsensusBatchMode.schemaRegionReplicaNumber>${pipeConsensusBatchMode.schemaRegionReplicaNumber}</pipeConsensusBatchMode.schemaRegionReplicaNumber>
+                                <pipeConsensusBatchMode.dataRegionReplicaNumber>${pipeConsensusBatchMode.dataRegionReplicaNumber}</pipeConsensusBatchMode.dataRegionReplicaNumber>
                             </systemPropertyVariables>
                             <summaryFile>target/failsafe-reports/failsafe-summary-IT.xml</summaryFile>
                         </configuration>
