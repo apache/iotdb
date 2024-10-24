@@ -483,7 +483,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           .recordPlanCost(TABLE_TYPE, SCHEMA_FETCHER, System.nanoTime() - startTime);
 
       if (deviceEntries.isEmpty()) {
-        if (!analysis.hasAggregates()) {
+        if (analysis.noAggregates()) {
           // no device entries, queries(except aggregation) can be finished
           analysis.setFinishQueryAfterAnalyze();
         }
@@ -509,7 +509,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         }
 
         if (dataPartition.getDataPartitionMap().isEmpty()) {
-          if (!analysis.hasAggregates()) {
+          if (analysis.noAggregates()) {
             // no data partitions, queries(except aggregation) can be finished
             analysis.setFinishQueryAfterAnalyze();
           }

@@ -335,8 +335,9 @@ public class Analysis implements IAnalysis {
     return aggregates.get(NodeRef.of(query));
   }
 
-  public boolean hasAggregates() {
-    return !aggregates.isEmpty();
+  public boolean noAggregates() {
+    return aggregates.isEmpty()
+        || (aggregates.size() == 1 && aggregates.entrySet().iterator().next().getValue().isEmpty());
   }
 
   public void setOrderByAggregates(OrderBy node, List<Expression> aggregates) {
