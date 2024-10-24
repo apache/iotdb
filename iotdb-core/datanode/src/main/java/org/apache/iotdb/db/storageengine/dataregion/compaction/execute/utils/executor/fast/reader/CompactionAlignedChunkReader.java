@@ -24,6 +24,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.compress.IUnCompressor;
 import org.apache.tsfile.encoding.decoder.Decoder;
+import org.apache.tsfile.encrypt.IDecryptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
@@ -39,7 +40,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.tsfile.read.reader.chunk.ChunkReader.uncompressPageData;
+import static org.apache.tsfile.read.reader.chunk.ChunkReader.decryptAndUncompressPageData;
 
 public class CompactionAlignedChunkReader {
 
@@ -47,6 +48,8 @@ public class CompactionAlignedChunkReader {
   private final List<ChunkHeader> valueChunkHeaderList = new ArrayList<>();
 
   private final IUnCompressor timeUnCompressor;
+
+  private final IDecryptor decryptor;
   private final boolean ignoreAllNullRows;
   private final Decoder timeDecoder =
       Decoder.getDecoderByType(
@@ -65,6 +68,7 @@ public class CompactionAlignedChunkReader {
       Chunk timeChunk, List<Chunk> valueChunkList, boolean ignoreAllNullRows) {
     ChunkHeader timeChunkHeader = timeChunk.getHeader();
     this.timeUnCompressor = IUnCompressor.getUnCompressor(timeChunkHeader.getCompressionType());
+    this.decryptor = timeChunk.getDecryptor();
     this.timeDeleteIntervalList = timeChunk.getDeleteIntervalList();
     this.valueDeleteIntervalList = new ArrayList<>(valueChunkList.size());
 
@@ -113,9 +117,10 @@ public class CompactionAlignedChunkReader {
       boolean ignoreAllNullRows)
       throws IOException {
 
-    // uncompress time page data
+    // decrypt and uncompress time page data
     ByteBuffer uncompressedTimePageData =
-        uncompressPageData(timePageHeader, timeUnCompressor, compressedTimePageData);
+        decryptAndUncompressPageData(
+            timePageHeader, timeUnCompressor, compressedTimePageData, decryptor);
     TimePageReader timePageReader =
         new TimePageReader(timePageHeader, uncompressedTimePageData, timeDecoder);
     timePageReader.setDeleteIntervalList(timeDeleteIntervalList);
@@ -128,10 +133,11 @@ public class CompactionAlignedChunkReader {
       } else {
         ChunkHeader valueChunkHeader = valueChunkHeaderList.get(i);
         ByteBuffer uncompressedPageData =
-            uncompressPageData(
+            decryptAndUncompressPageData(
                 valuePageHeaders.get(i),
                 IUnCompressor.getUnCompressor(valueChunkHeader.getCompressionType()),
-                compressedValuePageDatas.get(i));
+                compressedValuePageDatas.get(i),
+                decryptor);
         TSDataType valueType = valueChunkHeader.getDataType();
         ValuePageReader valuePageReader =
             new ValuePageReader(

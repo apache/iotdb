@@ -21,8 +21,10 @@ package org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan;
 
 import org.apache.tsfile.compress.IUnCompressor;
 import org.apache.tsfile.encoding.decoder.Decoder;
+import org.apache.tsfile.encrypt.IDecryptor;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
+import org.apache.tsfile.file.metadata.enums.EncryptionType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.reader.chunk.AbstractChunkReader;
@@ -32,16 +34,19 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 
+import static org.apache.tsfile.file.metadata.enums.CompressionType.UNCOMPRESSED;
+
 public class SinglePageWholeChunkReader extends AbstractChunkReader {
   private final ChunkHeader chunkHeader;
   private final ByteBuffer chunkDataBuffer;
+  private final IDecryptor decryptor;
 
   public SinglePageWholeChunkReader(Chunk chunk) throws IOException {
     super(Long.MIN_VALUE, null);
 
     this.chunkHeader = chunk.getHeader();
     this.chunkDataBuffer = chunk.getData();
-
+    this.decryptor = chunk.getDecryptor();
     initAllPageReaders();
   }
 
@@ -58,7 +63,7 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader {
   private PageReader constructPageReader(PageHeader pageHeader) throws IOException {
     return new PageReader(
         pageHeader,
-        deserializePageData(pageHeader, chunkDataBuffer, chunkHeader),
+        deserializePageData(pageHeader, chunkDataBuffer, chunkHeader, decryptor),
         chunkHeader.getDataType(),
         Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType()),
         defaultTimeDecoder,
@@ -88,11 +93,14 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader {
   public static ByteBuffer uncompressPageData(
       PageHeader pageHeader, IUnCompressor unCompressor, ByteBuffer compressedPageData)
       throws IOException {
+    if (unCompressor.getCodecName() == UNCOMPRESSED) {
+      return compressedPageData;
+    }
     int compressedPageBodyLength = pageHeader.getCompressedSize();
-    byte[] uncompressedPageData = new byte[pageHeader.getUncompressedSize()];
+    ByteBuffer uncompressedPageData = ByteBuffer.allocate(pageHeader.getUncompressedSize());
     try {
       unCompressor.uncompress(
-          compressedPageData.array(), 0, compressedPageBodyLength, uncompressedPageData, 0);
+          compressedPageData.array(), 0, compressedPageBodyLength, uncompressedPageData.array(), 0);
     } catch (Exception e) {
       throw new IOException(
           "Uncompress error! uncompress size: "
@@ -101,16 +109,42 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader {
               + pageHeader.getCompressedSize()
               + "page header: "
               + pageHeader
-              + e.getMessage());
+              + e.getMessage(),
+          e);
     }
 
-    return ByteBuffer.wrap(uncompressedPageData);
+    return uncompressedPageData;
+  }
+
+  public static ByteBuffer decrypt(IDecryptor decryptor, ByteBuffer buffer) {
+    if (decryptor == null || decryptor.getEncryptionType() == EncryptionType.UNENCRYPTED) {
+      return buffer;
+    }
+    return ByteBuffer.wrap(
+        decryptor.decrypt(
+            buffer.array(), buffer.arrayOffset() + buffer.position(), buffer.remaining()));
+  }
+
+  public static ByteBuffer decryptAndUncompressPageData(
+      PageHeader pageHeader,
+      IUnCompressor unCompressor,
+      ByteBuffer compressedPageData,
+      IDecryptor decryptor)
+      throws IOException {
+    ByteBuffer finalBuffer = decrypt(decryptor, compressedPageData);
+    finalBuffer = uncompressPageData(pageHeader, unCompressor, finalBuffer);
+    return finalBuffer;
   }
 
   public static ByteBuffer deserializePageData(
-      PageHeader pageHeader, ByteBuffer chunkBuffer, ChunkHeader chunkHeader) throws IOException {
+      PageHeader pageHeader, ByteBuffer chunkBuffer, ChunkHeader chunkHeader, IDecryptor decryptor)
+      throws IOException {
     IUnCompressor unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
     ByteBuffer compressedPageBody = readCompressedPageData(pageHeader, chunkBuffer);
-    return uncompressPageData(pageHeader, unCompressor, compressedPageBody);
+    if (decryptor == null || decryptor.getEncryptionType() == EncryptionType.UNENCRYPTED) {
+      return uncompressPageData(pageHeader, unCompressor, compressedPageBody);
+    } else {
+      return decryptAndUncompressPageData(pageHeader, unCompressor, compressedPageBody, decryptor);
+    }
   }
 }

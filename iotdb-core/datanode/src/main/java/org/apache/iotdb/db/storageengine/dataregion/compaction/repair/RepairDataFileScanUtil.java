@@ -61,7 +61,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.apache.tsfile.read.reader.chunk.ChunkReader.uncompressPageData;
+import static org.apache.tsfile.read.reader.chunk.ChunkReader.decryptAndUncompressPageData;
 
 public class RepairDataFileScanUtil {
   private static final Logger logger = LoggerFactory.getLogger(RepairDataFileScanUtil.class);
@@ -148,10 +148,11 @@ public class RepairDataFileScanUtil {
         ByteBuffer pageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
 
         ByteBuffer uncompressedPageData =
-            uncompressPageData(
+            decryptAndUncompressPageData(
                 pageHeader,
                 IUnCompressor.getUnCompressor(chunkHeader.getCompressionType()),
-                pageData);
+                pageData,
+                timeChunk.getDecryptor());
         Decoder decoder =
             Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
         while (decoder.hasNext(uncompressedPageData)) {
@@ -206,10 +207,11 @@ public class RepairDataFileScanUtil {
         ByteBuffer pageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
 
         ByteBuffer uncompressedPageData =
-            uncompressPageData(
+            decryptAndUncompressPageData(
                 pageHeader,
                 IUnCompressor.getUnCompressor(chunkHeader.getCompressionType()),
-                pageData);
+                pageData,
+                chunk.getDecryptor());
         ByteBuffer timeBuffer = getTimeBufferFromNonAlignedPage(uncompressedPageData);
         Decoder timeDecoder =
             Decoder.getDecoderByType(

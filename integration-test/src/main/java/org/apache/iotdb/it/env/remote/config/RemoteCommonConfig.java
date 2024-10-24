@@ -55,6 +55,21 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setEncryptFlag(boolean encryptFlag) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEncryptType(String encryptType) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEncryptKeyPath(String encryptKeyPath) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs) {
     return this;
   }
