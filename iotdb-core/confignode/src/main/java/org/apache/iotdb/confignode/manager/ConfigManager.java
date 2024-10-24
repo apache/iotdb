@@ -1944,17 +1944,18 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req) {
-    TSStatus status = confirmLeader();
+  public TSStatus deactivateSchemaTemplate(final TDeactivateSchemaTemplateReq req) {
+    final TSStatus status = confirmLeader();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return status;
     }
 
-    PathPatternTree patternTree =
+    final PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
 
-    List<PartialPath> patternList = patternTree.getAllPathPatterns();
-    TemplateSetInfoResp templateSetInfoResp = clusterSchemaManager.getTemplateSetInfo(patternList);
+    final List<PartialPath> patternList = patternTree.getAllPathPatterns();
+    final TemplateSetInfoResp templateSetInfoResp =
+        clusterSchemaManager.getTemplateSetInfo(patternList);
     if (templateSetInfoResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return templateSetInfoResp.getStatus();
     }
@@ -1969,9 +1970,9 @@ public class ConfigManager implements IManager {
     }
 
     if (!req.getTemplateName().equals(ONE_LEVEL_PATH_WILDCARD)) {
-      Map<PartialPath, List<Template>> filteredTemplateSetInfo = new HashMap<>();
-      for (Map.Entry<PartialPath, List<Template>> entry : templateSetInfo.entrySet()) {
-        for (Template template : entry.getValue()) {
+      final Map<PartialPath, List<Template>> filteredTemplateSetInfo = new HashMap<>();
+      for (final Map.Entry<PartialPath, List<Template>> entry : templateSetInfo.entrySet()) {
+        for (final Template template : entry.getValue()) {
           if (template.getName().equals(req.getTemplateName())) {
             filteredTemplateSetInfo.put(entry.getKey(), Collections.singletonList(template));
             break;

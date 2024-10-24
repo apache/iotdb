@@ -933,13 +933,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * into specified path pattern start with template set path. The result set is organized as
    * specified path pattern -> template id
    */
-  public TemplateSetInfoResp getTemplateSetInfo(GetTemplateSetInfoPlan plan) {
-    TemplateSetInfoResp resp = new TemplateSetInfoResp();
+  public TemplateSetInfoResp getTemplateSetInfo(final GetTemplateSetInfoPlan plan) {
+    final TemplateSetInfoResp resp = new TemplateSetInfoResp();
     try {
-
-      Map<PartialPath, Set<Integer>> allTemplateSetInfo = new HashMap<>();
-      for (PartialPath pattern : plan.getPatternList()) {
-        Map<Integer, Set<PartialPath>> templateSetInfo = mTree.getTemplateSetInfo(pattern);
+      final Map<PartialPath, Set<Integer>> allTemplateSetInfo = new HashMap<>();
+      for (final PartialPath pattern : plan.getPatternList()) {
+        final Map<Integer, Set<PartialPath>> templateSetInfo = mTree.getTemplateSetInfo(pattern);
         if (templateSetInfo.isEmpty()) {
           continue;
         }
