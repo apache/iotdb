@@ -571,17 +571,21 @@ public class TableDistributedPlanGenerator
     List<List<TRegionReplicaSet>> regionReplicaSetsList = new ArrayList<>();
     for (DeviceEntry deviceEntry : node.getDeviceEntries()) {
       List<TRegionReplicaSet> regionReplicaSets =
-          analysis
-              .getDataPartitionInfo()
-              .getDataRegionReplicaSetWithTimeFilter(
-                  node.getQualifiedObjectName().getDatabaseName(),
-                  deviceEntry.getDeviceID(),
-                  node.getTimeFilter());
+          analysis.getDataRegionReplicaSetWithTimeFilter(
+              node.getQualifiedObjectName().getDatabaseName(),
+              deviceEntry.getDeviceID(),
+              node.getTimeFilter());
       if (regionReplicaSets.size() > 1) {
         needSplit = true;
       }
       regionReplicaSetsList.add(regionReplicaSets);
     }
+
+    if (regionReplicaSetsList.isEmpty()) {
+      regionReplicaSetsList =
+          Collections.singletonList(Collections.singletonList(new TRegionReplicaSet()));
+    }
+
     // Step is SINGLE, has date_bin(time) and device data in more than one region, we need to split
     // this node into two-stage Aggregation
     needSplit = needSplit && node.getProjection() != null && node.getStep() == SINGLE;
@@ -620,7 +624,9 @@ public class TableDistributedPlanGenerator
                     scanNode.setRegionReplicaSet(regionReplicaSet);
                     return scanNode;
                   });
-          aggregationTableScanNode.appendDeviceEntry(node.getDeviceEntries().get(i));
+          if (node.getDeviceEntries().get(i) != null) {
+            aggregationTableScanNode.appendDeviceEntry(node.getDeviceEntries().get(i));
+          }
         }
       }
     } else {
@@ -653,7 +659,9 @@ public class TableDistributedPlanGenerator
                     scanNode.setRegionReplicaSet(regionReplicaSet);
                     return scanNode;
                   });
-          aggregationTableScanNode.appendDeviceEntry(node.getDeviceEntries().get(i));
+          if (node.getDeviceEntries().size() > i && node.getDeviceEntries().get(i) != null) {
+            aggregationTableScanNode.appendDeviceEntry(node.getDeviceEntries().get(i));
+          }
         }
       }
     }

@@ -483,7 +483,9 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           .recordPlanCost(TABLE_TYPE, SCHEMA_FETCHER, System.nanoTime() - startTime);
 
       if (deviceEntries.isEmpty()) {
-        analysis.setFinishQueryAfterAnalyze();
+        if (!analysis.hasAggregates()) {
+          analysis.setFinishQueryAfterAnalyze();
+        }
         analysis.setEmptyDataSource(true);
       } else {
         Filter timeFilter =
@@ -506,7 +508,9 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         }
 
         if (dataPartition.getDataPartitionMap().isEmpty()) {
-          analysis.setFinishQueryAfterAnalyze();
+          if (!analysis.hasAggregates()) {
+            analysis.setFinishQueryAfterAnalyze();
+          }
           analysis.setEmptyDataSource(true);
         } else {
           analysis.upsertDataPartition(dataPartition);
