@@ -94,9 +94,9 @@ public class GeneralRegionAttributeSecurityService implements IService {
 
   public void startBroadcast(final ISchemaRegion schemaRegion) {
     if (schemaRegion instanceof SchemaRegionMemoryImpl) {
-      regionLeaders.add(schemaRegion);
       regionId2DatabaseMap.put(
           schemaRegion.getSchemaRegionId(), schemaRegion.getDatabaseFullPath().substring(5));
+      regionLeaders.add(schemaRegion);
     }
   }
 
