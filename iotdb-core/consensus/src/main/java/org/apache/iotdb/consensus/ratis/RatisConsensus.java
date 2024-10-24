@@ -332,6 +332,8 @@ class RatisConsensus implements IConsensus {
         if (ex != null) {
           suggestedLeader = ex.getSuggestedLeader();
         }
+      } catch (GroupMismatchException e) {
+        throw new ConsensusGroupNotExistException(groupId);
       } catch (Exception e) {
         throw new RatisRequestFailedException(e);
       }
