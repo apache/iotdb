@@ -36,9 +36,11 @@ import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -58,6 +60,10 @@ public abstract class AbstractOperateSubscriptionProcedure
       "Skip subscription-related operations and do nothing";
 
   private static final int RETRY_THRESHOLD = 1;
+
+  // Only used in rollback to avoid executing rollbackFromValidate multiple times
+  // Pure in-memory object, not involved in snapshot serialization and deserialization.
+  protected boolean isRollbackFromValidateSuccessful = false;
 
   protected AtomicReference<SubscriptionInfo> subscriptionInfo;
 
@@ -250,15 +256,18 @@ public abstract class AbstractOperateSubscriptionProcedure
 
     switch (state) {
       case VALIDATE:
-        try {
-          rollbackFromValidate(env);
-        } catch (Exception e) {
-          LOGGER.warn(
-              "ProcedureId {}: Failed to rollback from state [{}], because {}",
-              getProcId(),
-              state,
-              e.getMessage(),
-              e);
+        if (!isRollbackFromValidateSuccessful) {
+          try {
+            rollbackFromValidate(env);
+            isRollbackFromValidateSuccessful = true;
+          } catch (Exception e) {
+            LOGGER.warn(
+                "ProcedureId {}: Failed to rollback from state [{}], because {}",
+                getProcId(),
+                state,
+                e.getMessage(),
+                e);
+          }
         }
         break;
       case OPERATE_ON_CONFIG_NODES:
@@ -364,5 +373,17 @@ public abstract class AbstractOperateSubscriptionProcedure
   @Override
   protected OperateSubscriptionState getInitialState() {
     return OperateSubscriptionState.VALIDATE;
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    super.serialize(stream);
+    ReadWriteIOUtils.write(isRollbackFromValidateSuccessful, stream);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer byteBuffer) {
+    super.deserialize(byteBuffer);
+    isRollbackFromValidateSuccessful = ReadWriteIOUtils.readBool(byteBuffer);
   }
 }
