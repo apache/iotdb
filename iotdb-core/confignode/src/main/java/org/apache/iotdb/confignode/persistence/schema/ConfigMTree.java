@@ -461,7 +461,7 @@ public class ConfigMTree {
    * check whether there is template on given path and the subTree has template return true,
    * otherwise false
    */
-  public void checkTemplateOnPath(PartialPath path) throws MetadataException {
+  public void checkTemplateOnPath(final PartialPath path) throws MetadataException {
     String[] nodeNames = path.getNodes();
     IConfigMNode cur = root;
     IConfigMNode child;
@@ -479,25 +479,23 @@ public class ConfigMTree {
       if (cur.getSchemaTemplateId() != NON_TEMPLATE) {
         throw new MetadataException("Template already exists on " + cur.getFullPath());
       }
-      if (cur.isMeasurement()) {
-        return;
+      if (cur.isDatabase() && cur.getDatabaseSchema().isIsTableModel()) {
+        throw new DatabaseModelException(cur.getFullPath(), true);
       }
     }
 
     checkTemplateOnSubtree(cur);
   }
 
-  // traverse  all the  descendant of the given path node
-  private void checkTemplateOnSubtree(IConfigMNode node) throws MetadataException {
-    if (node.isMeasurement()) {
-      return;
-    }
+  // traverse all the descendant of the given path node
+  private void checkTemplateOnSubtree(final IConfigMNode node) throws MetadataException {
     IConfigMNode child;
     IMNodeIterator<IConfigMNode> iterator = store.getChildrenIterator(node);
     while (iterator.hasNext()) {
       child = iterator.next();
 
-      if (child.isMeasurement()) {
+      // Skip table model databases
+      if (child.isDatabase() && child.getDatabaseSchema().isIsTableModel()) {
         continue;
       }
       if (child.getSchemaTemplateId() != NON_TEMPLATE) {

@@ -759,12 +759,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   public synchronized TemplateInfoResp checkTemplateSettable(
-      CheckTemplateSettablePlan checkTemplateSettablePlan) {
-    TemplateInfoResp resp = new TemplateInfoResp();
-    PartialPath path;
+      final CheckTemplateSettablePlan checkTemplateSettablePlan) {
+    final TemplateInfoResp resp = new TemplateInfoResp();
+    final PartialPath path;
     try {
       path = new PartialPath(checkTemplateSettablePlan.getPath());
-    } catch (IllegalPathException e) {
+    } catch (final IllegalPathException e) {
       LOGGER.error(e.getMessage());
       resp.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       return resp;
@@ -776,7 +776,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       resp.setTemplateList(
           Collections.singletonList(
               templateTable.getTemplate(checkTemplateSettablePlan.getName())));
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       LOGGER.error(e.getMessage(), e);
       resp.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
     }
