@@ -65,7 +65,7 @@ public class PipeResourceMetrics implements IMetricSet {
         Metric.PIPE_LINKED_TSFILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         PipeDataNodeResourceManager.tsfile(),
-        PipeTsFileResourceManager::getLinkedTsfileCount);
+        PipeTsFileResourceManager::getLinkedTsFileCount);
   }
 
   @Override

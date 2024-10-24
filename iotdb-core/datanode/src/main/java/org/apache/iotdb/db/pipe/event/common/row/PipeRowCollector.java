@@ -106,6 +106,7 @@ public class PipeRowCollector implements RowCollector {
               isAligned,
               sourceEvent == null ? null : sourceEvent.getPipeName(),
               sourceEvent == null ? 0 : sourceEvent.getCreationTime(),
+              sourceEvent == null ? 0 : sourceEvent.getRegionId(),
               pipeTaskMeta,
               sourceEvent,
               false));

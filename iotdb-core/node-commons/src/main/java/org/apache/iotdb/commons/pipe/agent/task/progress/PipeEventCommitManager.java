@@ -80,14 +80,13 @@ public class PipeEventCommitManager {
    * Assign a commit id and a key for commit. Make sure {@code EnrichedEvent.pipeName} is set before
    * calling this.
    */
-  public void enrichWithCommitterKeyAndCommitId(
-      final EnrichedEvent event, final long creationTime, final int regionId) {
+  public void enrichWithCommitterKeyAndCommitId(final EnrichedEvent event) {
     if (event == null || event.getPipeName() == null || !event.needToCommit()) {
       return;
     }
 
     final CommitterKey committerKey =
-        generateCommitterKey(event.getPipeName(), creationTime, regionId);
+        generateCommitterKey(event.getPipeName(), event.getCreationTime(), event.getRegionId());
     final PipeEventCommitter committer = eventCommitterMap.get(committerKey);
     if (committer == null) {
       return;

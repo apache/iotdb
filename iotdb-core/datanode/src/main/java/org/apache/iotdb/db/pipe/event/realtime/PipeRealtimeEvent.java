@@ -61,6 +61,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
     super(
         event != null ? event.getPipeName() : null,
         event != null ? event.getCreationTime() : 0,
+        event != null ? event.getRegionId() : 0,
         pipeTaskMeta,
         pattern,
         startTime,

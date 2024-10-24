@@ -69,6 +69,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   public PipeInsertNodeTabletInsertionEvent(
       final WALEntryHandler walEntryHandler,
+      final int regionId,
       final PartialPath devicePath,
       final ProgressIndex progressIndex,
       final boolean isAligned,
@@ -81,6 +82,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
         isGeneratedByPipe,
         null,
         0,
+        regionId,
         null,
         null,
         Long.MIN_VALUE,
@@ -95,11 +97,12 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       final boolean isGeneratedByPipe,
       final String pipeName,
       final long creationTime,
+      final int regionId,
       final PipeTaskMeta pipeTaskMeta,
       final PipePattern pattern,
       final long startTime,
       final long endTime) {
-    super(pipeName, creationTime, pipeTaskMeta, pattern, startTime, endTime);
+    super(pipeName, creationTime, regionId, pipeTaskMeta, pattern, startTime, endTime);
     this.walEntryHandler = walEntryHandler;
     // Record device path here so there's no need to get it from InsertNode cache later.
     this.devicePath = devicePath;
@@ -200,6 +203,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
         isGeneratedByPipe,
         pipeName,
         creationTime,
+        regionId,
         pipeTaskMeta,
         pattern,
         startTime,
@@ -380,6 +384,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
                         container.isAligned(),
                         pipeName,
                         creationTime,
+                        regionId,
                         pipeTaskMeta,
                         this,
                         false))

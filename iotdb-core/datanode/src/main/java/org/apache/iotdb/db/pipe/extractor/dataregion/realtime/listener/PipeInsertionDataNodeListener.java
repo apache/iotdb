@@ -55,7 +55,7 @@ public class PipeInsertionDataNodeListener {
   //////////////////////////// start & stop ////////////////////////////
 
   public synchronized void startListenAndAssign(
-      String dataRegionId, PipeRealtimeDataRegionExtractor extractor) {
+      final String dataRegionId, final PipeRealtimeDataRegionExtractor extractor) {
     dataRegionId2Assigner
         .computeIfAbsent(dataRegionId, o -> new PipeDataRegionAssigner(dataRegionId))
         .startAssignTo(extractor);
@@ -69,7 +69,7 @@ public class PipeInsertionDataNodeListener {
   }
 
   public synchronized void stopListenAndAssign(
-      String dataRegionId, PipeRealtimeDataRegionExtractor extractor) {
+      final String dataRegionId, final PipeRealtimeDataRegionExtractor extractor) {
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
     if (assigner == null) {
       return;
@@ -111,14 +111,15 @@ public class PipeInsertionDataNodeListener {
     }
 
     assigner.publishToAssign(
-        PipeRealtimeEventFactory.createRealtimeEvent(tsFileResource, isLoaded, isGeneratedByPipe));
+        PipeRealtimeEventFactory.createRealtimeEvent(
+            tsFileResource, Integer.parseInt(dataRegionId), isLoaded, isGeneratedByPipe));
   }
 
   public void listenToInsertNode(
-      String dataRegionId,
-      WALEntryHandler walEntryHandler,
-      InsertNode insertNode,
-      TsFileResource tsFileResource) {
+      final String dataRegionId,
+      final WALEntryHandler walEntryHandler,
+      final InsertNode insertNode,
+      final TsFileResource tsFileResource) {
     if (listenToInsertNodeExtractorCount.get() == 0) {
       return;
     }
@@ -131,19 +132,24 @@ public class PipeInsertionDataNodeListener {
     }
 
     assigner.publishToAssign(
-        PipeRealtimeEventFactory.createRealtimeEvent(walEntryHandler, insertNode, tsFileResource));
+        PipeRealtimeEventFactory.createRealtimeEvent(
+            walEntryHandler, Integer.parseInt(dataRegionId), insertNode, tsFileResource));
   }
 
-  public void listenToHeartbeat(boolean shouldPrintMessage) {
+  public void listenToHeartbeat(final boolean shouldPrintMessage) {
     dataRegionId2Assigner.forEach(
         (key, value) ->
             value.publishToAssign(
-                PipeRealtimeEventFactory.createRealtimeEvent(key, shouldPrintMessage)));
+                PipeRealtimeEventFactory.createRealtimeEvent(
+                    Integer.parseInt(key), shouldPrintMessage)));
   }
 
-  public void listenToDeleteData(DeleteDataNode node) {
+  public void listenToDeleteData(final DeleteDataNode node, final String dataRegionId) {
     dataRegionId2Assigner.forEach(
-        (key, value) -> value.publishToAssign(PipeRealtimeEventFactory.createRealtimeEvent(node)));
+        (key, value) ->
+            value.publishToAssign(
+                PipeRealtimeEventFactory.createRealtimeEvent(
+                    node, Integer.parseInt(dataRegionId))));
   }
 
   /////////////////////////////// singleton ///////////////////////////////

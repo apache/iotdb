@@ -39,7 +39,8 @@ public abstract class PipeSnapshotEvent extends EnrichedEvent implements Seriali
       final PipeTaskMeta pipeTaskMeta,
       final PipePattern pattern,
       final PipeSnapshotResourceManager resourceManager) {
-    super(pipeName, creationTime, pipeTaskMeta, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
+    // Bind regionId later
+    super(pipeName, creationTime, -1, pipeTaskMeta, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
     this.resourceManager = resourceManager;
   }
 

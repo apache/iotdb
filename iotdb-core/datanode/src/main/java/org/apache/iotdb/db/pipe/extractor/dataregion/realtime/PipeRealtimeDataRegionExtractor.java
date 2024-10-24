@@ -438,6 +438,10 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     return creationTime;
   }
 
+  public final String getDataRegionId() {
+    return dataRegionId;
+  }
+
   public final PipeTaskMeta getPipeTaskMeta() {
     return pipeTaskMeta;
   }

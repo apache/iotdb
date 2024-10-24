@@ -35,15 +35,13 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
  * be discarded.
  */
 public class PipeTerminateEvent extends EnrichedEvent {
-  private final int dataRegionId;
 
   public PipeTerminateEvent(
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
       final int dataRegionId) {
-    super(pipeName, creationTime, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
-    this.dataRegionId = dataRegionId;
+    super(pipeName, creationTime, dataRegionId, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @Override
@@ -71,7 +69,7 @@ public class PipeTerminateEvent extends EnrichedEvent {
       final long endTime) {
     // Should record PipeTaskMeta, for the terminateEvent shall report progress to
     // notify the pipeTask it's completed.
-    return new PipeTerminateEvent(pipeName, creationTime, pipeTaskMeta, dataRegionId);
+    return new PipeTerminateEvent(pipeName, creationTime, pipeTaskMeta, regionId);
   }
 
   @Override
@@ -91,13 +89,11 @@ public class PipeTerminateEvent extends EnrichedEvent {
 
   @Override
   public void reportProgress() {
-    PipeDataNodeAgent.task().markCompleted(pipeName, dataRegionId);
+    PipeDataNodeAgent.task().markCompleted(pipeName, regionId);
   }
 
   @Override
   public String toString() {
-    return String.format("PipeTerminateEvent{dataRegionId=%s}", dataRegionId)
-        + " - "
-        + super.toString();
+    return "PipeTerminateEvent{} - " + super.toString();
   }
 }

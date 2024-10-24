@@ -61,11 +61,12 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
       final boolean needToReport,
       final String pipeName,
       final long creationTime,
+      final int regionId,
       final PipeTaskMeta pipeTaskMeta,
       final PipePattern pattern,
       final long startTime,
       final long endTime) {
-    super(pipeName, creationTime, pipeTaskMeta, pattern, startTime, endTime);
+    super(pipeName, creationTime, regionId, pipeTaskMeta, pattern, startTime, endTime);
     this.tablet = Objects.requireNonNull(tablet);
     this.isAligned = isAligned;
     this.sourceEvent = sourceEvent;
@@ -77,6 +78,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
       final boolean isAligned,
       final String pipeName,
       final long creationTime,
+      final int regionId,
       final PipeTaskMeta pipeTaskMeta,
       final EnrichedEvent sourceEvent,
       final boolean needToReport) {
@@ -87,6 +89,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
         needToReport,
         pipeName,
         creationTime,
+        regionId,
         pipeTaskMeta,
         null,
         Long.MIN_VALUE,
@@ -95,19 +98,20 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   @TestOnly
   public PipeRawTabletInsertionEvent(final Tablet tablet, final boolean isAligned) {
-    this(tablet, isAligned, null, false, null, 0, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
+    this(tablet, isAligned, null, false, null, 0, -1, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @TestOnly
   public PipeRawTabletInsertionEvent(
       final Tablet tablet, final boolean isAligned, final PipePattern pattern) {
-    this(tablet, isAligned, null, false, null, 0, null, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
+    this(
+        tablet, isAligned, null, false, null, 0, -1, null, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @TestOnly
   public PipeRawTabletInsertionEvent(
       final Tablet tablet, final long startTime, final long endTime) {
-    this(tablet, false, null, false, null, 0, null, null, startTime, endTime);
+    this(tablet, false, null, false, null, 0, -1, null, null, startTime, endTime);
   }
 
   @Override
@@ -187,6 +191,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
         needToReport,
         pipeName,
         creationTime,
+        regionId,
         pipeTaskMeta,
         pattern,
         startTime,
@@ -277,7 +282,14 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   public PipeRawTabletInsertionEvent parseEventWithPatternOrTime() {
     return new PipeRawTabletInsertionEvent(
-        convertToTablet(), isAligned, pipeName, creationTime, pipeTaskMeta, this, needToReport);
+        convertToTablet(),
+        isAligned,
+        pipeName,
+        creationTime,
+        regionId,
+        pipeTaskMeta,
+        this,
+        needToReport);
   }
 
   public boolean hasNoNeedParsingAndIsEmpty() {

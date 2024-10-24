@@ -171,6 +171,7 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
         historicalEvent.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
       }
 
+      historicalEvent.setRegionId(regionId);
       historicalEvent.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
       // We allow to send the events with empty transferred types to make the last
       // event commit and report its progress
@@ -190,7 +191,13 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
         || (!isForwardingPipeRequests && realtimeEvent.isGeneratedByPipe())) {
       final ProgressReportEvent event =
           new ProgressReportEvent(
-              pipeName, creationTime, pipeTaskMeta, pipePattern, Long.MIN_VALUE, Long.MAX_VALUE);
+              pipeName,
+              creationTime,
+              regionId,
+              pipeTaskMeta,
+              pipePattern,
+              Long.MIN_VALUE,
+              Long.MAX_VALUE);
       event.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
       event.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
       return event;
@@ -200,6 +207,7 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
         (PipeWritePlanEvent)
             realtimeEvent.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
                 pipeName, creationTime, pipeTaskMeta, pipePattern, Long.MIN_VALUE, Long.MAX_VALUE);
+    realtimeEvent.setRegionId(regionId);
     realtimeEvent.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
     realtimeEvent.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
     return realtimeEvent;

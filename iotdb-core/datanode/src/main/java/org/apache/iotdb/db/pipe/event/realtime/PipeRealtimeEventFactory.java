@@ -35,18 +35,24 @@ public class PipeRealtimeEventFactory {
   private static final TsFileEpochManager TS_FILE_EPOCH_MANAGER = new TsFileEpochManager();
 
   public static PipeRealtimeEvent createRealtimeEvent(
-      final TsFileResource resource, final boolean isLoaded, final boolean isGeneratedByPipe) {
+      final TsFileResource resource,
+      final int regionId,
+      final boolean isLoaded,
+      final boolean isGeneratedByPipe) {
     return TS_FILE_EPOCH_MANAGER.bindPipeTsFileInsertionEvent(
-        new PipeTsFileInsertionEvent(resource, isLoaded, isGeneratedByPipe, false), resource);
+        new PipeTsFileInsertionEvent(resource, isLoaded, isGeneratedByPipe, false, regionId),
+        resource);
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(
       final WALEntryHandler walEntryHandler,
+      final int regionId,
       final InsertNode insertNode,
       final TsFileResource resource) {
     return TS_FILE_EPOCH_MANAGER.bindPipeInsertNodeTabletInsertionEvent(
         new PipeInsertNodeTabletInsertionEvent(
             walEntryHandler,
+            regionId,
             insertNode.getDevicePath(),
             insertNode.getProgressIndex(),
             insertNode.isAligned(),
@@ -56,14 +62,17 @@ public class PipeRealtimeEventFactory {
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(
-      final String dataRegionId, final boolean shouldPrintMessage) {
+      final int dataRegionId, final boolean shouldPrintMessage) {
     return new PipeRealtimeEvent(
         new PipeHeartbeatEvent(dataRegionId, shouldPrintMessage), null, null, null);
   }
 
-  public static PipeRealtimeEvent createRealtimeEvent(final DeleteDataNode node) {
-    return new PipeRealtimeEvent(
-        new PipeSchemaRegionWritePlanEvent(node, node.isGeneratedByPipe()), null, null, null);
+  public static PipeRealtimeEvent createRealtimeEvent(
+      final DeleteDataNode node, final int regionId) {
+    final PipeSchemaRegionWritePlanEvent event =
+        new PipeSchemaRegionWritePlanEvent(node, node.isGeneratedByPipe());
+    event.setRegionId(regionId);
+    return new PipeRealtimeEvent(event, null, null, null);
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(final ProgressReportEvent event) {
