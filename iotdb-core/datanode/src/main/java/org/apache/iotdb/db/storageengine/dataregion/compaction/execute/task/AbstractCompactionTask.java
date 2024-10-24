@@ -459,6 +459,8 @@ public abstract class AbstractCompactionTask {
     if (needToValidatePartitionSeqSpaceOverlap) {
       List<TsFileResource> overlapFilesInTimePartition;
       if (this instanceof InnerSpaceCompactionTask) {
+        // Sequence InnerSpaceCompactionTask doesn't introduce new data into sequence space.
+        // Therefore, there is no scanning of resources for the entire time partition here.
         overlapFilesInTimePartition =
             RepairDataFileScanUtil.checkTimePartitionHasOverlap(targetFiles, true);
       } else {
