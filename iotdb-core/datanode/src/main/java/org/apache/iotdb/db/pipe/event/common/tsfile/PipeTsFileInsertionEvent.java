@@ -140,9 +140,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     this.resource = resource;
     tsFile = resource.getTsFile();
 
-    final ModificationFile modFile = resource.getModFile();
+    final ModificationFile modFile = resource.getNewModFile();
     this.isWithMod = isWithMod && modFile.exists();
-    this.modFile = this.isWithMod ? new File(modFile.getFilePath()) : null;
+    this.modFile = this.isWithMod ? modFile.getFile() : null;
 
     this.isLoaded = isLoaded;
     this.isGeneratedByPipe = isGeneratedByPipe;

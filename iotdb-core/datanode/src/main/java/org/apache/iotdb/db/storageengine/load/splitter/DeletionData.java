@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.storageengine.load.splitter;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -42,7 +42,7 @@ public class DeletionData implements TsFileData {
     return deletion.getSerializedSize();
   }
 
-  public void writeToModificationFile(ModificationFile modificationFile, long fileOffset)
+  public void writeToModificationFile(ModificationFileV1 modificationFile, long fileOffset)
       throws IOException {
     deletion.setFileOffset(fileOffset);
     modificationFile.writeWithoutSync(deletion);

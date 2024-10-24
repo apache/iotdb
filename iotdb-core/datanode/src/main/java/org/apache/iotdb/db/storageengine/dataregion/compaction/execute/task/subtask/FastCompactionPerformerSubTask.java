@@ -27,7 +27,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.FastAlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.FastNonAlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
@@ -57,7 +57,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
 
   private final Map<TsFileResource, TsFileSequenceReader> readerCacheMap;
 
-  private final Map<String, PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer>>
+  private final Map<String, PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>>
       modificationCacheMap;
 
   // source files which are sorted by the start time of current device from old to new. Notice: If
@@ -81,7 +81,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
       AbstractCompactionWriter compactionWriter,
       Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
       Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
-      Map<String, PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer>>
+      Map<String, PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>>
           modificationCacheMap,
       List<TsFileResource> sortedSourceFiles,
       List<String> measurements,
@@ -106,7 +106,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
       AbstractCompactionWriter compactionWriter,
       Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
       Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
-      Map<String, PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer>>
+      Map<String, PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>>
           modificationCacheMap,
       List<TsFileResource> sortedSourceFiles,
       List<IMeasurementSchema> measurementSchemas,

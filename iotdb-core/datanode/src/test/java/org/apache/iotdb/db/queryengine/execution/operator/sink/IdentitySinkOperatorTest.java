@@ -219,22 +219,35 @@ public class IdentitySinkOperatorTest {
         }
       }
 
-      while (seriesScanOperator4.hasNext()
-          && identitySinkOperator.isBlocked().isDone()
-          && identitySinkOperator.hasNext()) {
-        TsBlock identityTsBlock = seriesScanOperator4.next();
-        TsBlock tsBlock = identitySinkOperator.next();
-        if (tsBlock == null) {
-          continue;
-        }
-        assertEquals(1, tsBlock.getValueColumnCount());
-        assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
-        assertNotNull(identityTsBlock);
-        assertEquals(identityTsBlock.getPositionCount(), tsBlock.getPositionCount());
-        for (int i = 0; i < identityTsBlock.getPositionCount(); i++) {
-          assertEquals(identityTsBlock.getColumn(0).getInt(i), tsBlock.getColumn(0).getInt(i));
+      List<Long> scanOp4Time = new ArrayList<>();
+      List<Integer> scanOp4Value = new ArrayList<>();
+      List<Long> identitySinkOpTime = new ArrayList<>();
+      List<Integer> identitySinkOpValue = new ArrayList<>();
+      while (seriesScanOperator4.hasNext()) {
+        TsBlock seriesScanBlock = seriesScanOperator4.next();
+        assertNotNull(seriesScanBlock);
+        for (int i = 0; i < seriesScanBlock.getPositionCount(); i++) {
+          scanOp4Time.add(seriesScanBlock.getTimeByIndex(i));
+          scanOp4Value.add(seriesScanBlock.getColumn(0).getInt(i));
         }
       }
+
+      while (identitySinkOperator.isBlocked().isDone() && identitySinkOperator.hasNext()) {
+        TsBlock identityTsBlock = identitySinkOperator.next();
+        if (identityTsBlock == null) {
+          continue;
+        }
+        assertEquals(1, identityTsBlock.getValueColumnCount());
+        assertTrue(identityTsBlock.getColumn(0) instanceof IntColumn);
+        for (int i = 0; i < identityTsBlock.getPositionCount(); i++) {
+          identitySinkOpValue.add(identityTsBlock.getColumn(0).getInt(i));
+          identitySinkOpTime.add(identityTsBlock.getTimeByIndex(i));
+        }
+      }
+
+      assertEquals(500, scanOp4Value.size());
+      assertEquals(scanOp4Value, identitySinkOpValue);
+      assertEquals(scanOp4Time, identitySinkOpTime);
 
     } catch (IllegalPathException e) {
       e.printStackTrace();

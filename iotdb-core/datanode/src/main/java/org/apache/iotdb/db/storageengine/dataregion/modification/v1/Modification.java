@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.modification;
+package org.apache.iotdb.db.storageengine.dataregion.modification.v1;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 
