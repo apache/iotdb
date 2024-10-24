@@ -137,17 +137,7 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
           hasProject ? projectNode.getAssignments().getMap() : null;
       // calculate Function part
       for (AggregationNode.Aggregation aggregation : values) {
-        // if the function cannot make use of Statistics, we don't push down
-        if (!metadata.canUseStatistics(
-            aggregation.getResolvedFunction().getSignature().getName(),
-            aggregation.getArguments().stream()
-                .anyMatch(
-                    v ->
-                        ((SymbolReference) v)
-                            .getName()
-                            .equalsIgnoreCase(TimestampOperand.TIMESTAMP_EXPRESSION_STRING)))) {
-          return PushDownLevel.NOOP;
-        }
+        // all the functions can be pre-agg in AggTableScanNode
 
         // if expr appears in arguments of Aggregation, we don't push down
         if (hasProject
@@ -160,13 +150,15 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
       }
 
       // calculate DataSet part
+      boolean singleDeviceEntry = tableScanNode.getDeviceEntries().size() < 2;
       if (groupingKeys.isEmpty()) {
         // GlobalAggregation
-        if (tableScanNode.getDeviceEntries().size() < 2) {
+        if (singleDeviceEntry) {
           return PushDownLevel.COMPLETE;
+        } else {
+          // We need to two-stage Aggregation to combine Aggregation result of different DeviceEntry
+          return PushDownLevel.PARTIAL;
         }
-        // We need to two-stage Aggregation to combine Aggregation result of different DeviceEntry
-        return PushDownLevel.PARTIAL;
       }
 
       List<FunctionCall> dateBinFunctionsOfTime = new ArrayList<>();
@@ -185,8 +177,9 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
         // appear in groupingKeys.
 
         return PushDownLevel.NOOP;
-      } else if (ImmutableSet.copyOf(groupingKeys)
-          .containsAll(tableScanNode.getIdColumnsInTableStore(metadata, session))) {
+      } else if (singleDeviceEntry
+          || ImmutableSet.copyOf(groupingKeys)
+              .containsAll(tableScanNode.getIdColumnsInTableStore(metadata, session))) {
         // If all ID columns appear in groupingKeys and no Measurement column appears, we can push
         // down completely.
         return PushDownLevel.COMPLETE;

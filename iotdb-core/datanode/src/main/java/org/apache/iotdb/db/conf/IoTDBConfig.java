@@ -68,7 +68,10 @@ import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.CONSENSUS_FOLDER_NAME;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.DELETION_FOLDER_NAME;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.OBJECT_STORAGE_DIR;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PIPE_FOLDER_NAME;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class IoTDBConfig {
@@ -1044,6 +1047,14 @@ public class IoTDBConfig {
 
   private int dataNodeTableCacheSemaphorePermitNum = 5;
 
+  /** GRASS Service */
+  private long generalRegionAttributeSecurityServiceIntervalSeconds = 30L;
+
+  private long generalRegionAttributeSecurityServiceTimeoutSeconds = 20L;
+  private long generalRegionAttributeSecurityServiceFailureDurationSecondsToFetch = 600L;
+  private int generalRegionAttributeSecurityServiceFailureTimesToFetch = 20;
+  private long detailContainerMinDegradeMemoryInBytes = 1024 * 1024L;
+
   private String readConsistencyLevel = "strong";
 
   /** Maximum execution time of a DriverTask */
@@ -1136,6 +1147,14 @@ public class IoTDBConfig {
   private int iotConsensusV2PipelineSize = 5;
   private String iotConsensusV2Mode = ConsensusFactory.IOT_CONSENSUS_V2_BATCH_MODE;
   private String[] iotConsensusV2ReceiverFileDirs = new String[0];
+  private String iotConsensusV2DeletionFileDir =
+      systemDir
+          + File.separator
+          + PIPE_FOLDER_NAME
+          + File.separator
+          + CONSENSUS_FOLDER_NAME
+          + File.separator
+          + DELETION_FOLDER_NAME;
 
   /** Load related */
   private double maxAllocateMemoryRatioForLoad = 0.8;
@@ -1180,7 +1199,7 @@ public class IoTDBConfig {
 
   private long loadActiveListeningCheckIntervalSeconds = 5L;
 
-  private int loadActiveListeningMaxThreadNum = 8;
+  private int loadActiveListeningMaxThreadNum = Runtime.getRuntime().availableProcessors();
 
   /** Pipe related */
   /** initialized as empty, updated based on the latest `systemDir` during querying */
@@ -1340,6 +1359,7 @@ public class IoTDBConfig {
     systemDir = addDataHomeDir(systemDir);
     schemaDir = addDataHomeDir(schemaDir);
     consensusDir = addDataHomeDir(consensusDir);
+    iotConsensusV2DeletionFileDir = addDataHomeDir(iotConsensusV2DeletionFileDir);
     dataRegionConsensusDir = addDataHomeDir(dataRegionConsensusDir);
     ratisDataRegionSnapshotDir = addDataHomeDir(ratisDataRegionSnapshotDir);
     schemaRegionConsensusDir = addDataHomeDir(schemaRegionConsensusDir);
@@ -1362,6 +1382,7 @@ public class IoTDBConfig {
     for (int i = 0; i < iotConsensusV2ReceiverFileDirs.length; i++) {
       iotConsensusV2ReceiverFileDirs[i] = addDataHomeDir(iotConsensusV2ReceiverFileDirs[i]);
     }
+    iotConsensusV2DeletionFileDir = addDataHomeDir(iotConsensusV2DeletionFileDir);
     mqttDir = addDataHomeDir(mqttDir);
     extPipeDir = addDataHomeDir(extPipeDir);
     queryDir = addDataHomeDir(queryDir);
@@ -1537,6 +1558,14 @@ public class IoTDBConfig {
 
   public void setSystemDir(String systemDir) {
     this.systemDir = systemDir;
+  }
+
+  public String getIotConsensusV2DeletionFileDir() {
+    return iotConsensusV2DeletionFileDir;
+  }
+
+  public void setIotConsensusV2DeletionFileDir(String iotConsensusV2DeletionFileDir) {
+    this.iotConsensusV2DeletionFileDir = iotConsensusV2DeletionFileDir;
   }
 
   public String[] getLoadTsFileDirs() {
@@ -3463,6 +3492,55 @@ public class IoTDBConfig {
 
   public void setDataNodeTableCacheSemaphorePermitNum(int dataNodeTableCacheSemaphorePermitNum) {
     this.dataNodeTableCacheSemaphorePermitNum = dataNodeTableCacheSemaphorePermitNum;
+  }
+
+  public long getGeneralRegionAttributeSecurityServiceIntervalSeconds() {
+    return generalRegionAttributeSecurityServiceIntervalSeconds;
+  }
+
+  public void setGeneralRegionAttributeSecurityServiceIntervalSeconds(
+      long generalRegionAttributeSecurityServiceIntervalSeconds) {
+    this.generalRegionAttributeSecurityServiceIntervalSeconds =
+        generalRegionAttributeSecurityServiceIntervalSeconds;
+  }
+
+  public long getGeneralRegionAttributeSecurityServiceTimeoutSeconds() {
+    return generalRegionAttributeSecurityServiceTimeoutSeconds;
+  }
+
+  public void setGeneralRegionAttributeSecurityServiceTimeoutSeconds(
+      long generalRegionAttributeSecurityServiceTimeoutSeconds) {
+    this.generalRegionAttributeSecurityServiceTimeoutSeconds =
+        generalRegionAttributeSecurityServiceTimeoutSeconds;
+  }
+
+  public long getGeneralRegionAttributeSecurityServiceFailureDurationSecondsToFetch() {
+    return generalRegionAttributeSecurityServiceFailureDurationSecondsToFetch;
+  }
+
+  public void setGeneralRegionAttributeSecurityServiceFailureDurationSecondsToFetch(
+      long generalRegionAttributeSecurityServiceFailureDurationSecondsToFetch) {
+    this.generalRegionAttributeSecurityServiceFailureDurationSecondsToFetch =
+        generalRegionAttributeSecurityServiceFailureDurationSecondsToFetch;
+  }
+
+  public int getGeneralRegionAttributeSecurityServiceFailureTimesToFetch() {
+    return generalRegionAttributeSecurityServiceFailureTimesToFetch;
+  }
+
+  public void setGeneralRegionAttributeSecurityServiceFailureTimesToFetch(
+      int generalRegionAttributeSecurityServiceFailureTimesToFetch) {
+    this.generalRegionAttributeSecurityServiceFailureTimesToFetch =
+        generalRegionAttributeSecurityServiceFailureTimesToFetch;
+  }
+
+  public long getDetailContainerMinDegradeMemoryInBytes() {
+    return detailContainerMinDegradeMemoryInBytes;
+  }
+
+  public void setDetailContainerMinDegradeMemoryInBytes(
+      long detailContainerMinDegradeMemoryInBytes) {
+    this.detailContainerMinDegradeMemoryInBytes = detailContainerMinDegradeMemoryInBytes;
   }
 
   public String getReadConsistencyLevel() {

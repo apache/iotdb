@@ -67,7 +67,7 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
       columns[i] = inputColumnTransformers[i].getColumn();
     }
     // construct input TsBlock with columns
-    int positionCount = inputColumnTransformers[0].getColumnCachePositionCount();
+    int positionCount = columns[0].getPositionCount();
     ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
     // executor UDF and cache result
     executor.execute(columns, builder);

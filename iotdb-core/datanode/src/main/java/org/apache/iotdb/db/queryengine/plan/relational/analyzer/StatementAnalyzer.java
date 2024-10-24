@@ -97,6 +97,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NaturalJoin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
@@ -196,6 +197,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.RIGHT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil.preOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction.DATE_BIN;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 
@@ -503,6 +505,14 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitDelete(Delete node, Optional<Scope> scope) {
       throw new SemanticException("Delete statement is not supported yet.");
+    }
+
+    @Override
+    protected Scope visitPipeEnriched(PipeEnriched node, Optional<Scope> scope) {
+      Scope ret = node.getInnerStatement().accept(this, scope);
+      createAndAssignScope(node, scope);
+      analysis.setScope(node, ret);
+      return ret;
     }
 
     @Override
@@ -1254,6 +1264,8 @@ public class StatementAnalyzer {
         ImmutableList.Builder<List<Set<FieldId>>> sets = ImmutableList.builder();
         ImmutableList.Builder<Expression> complexExpressions = ImmutableList.builder();
         ImmutableList.Builder<Expression> groupingExpressions = ImmutableList.builder();
+        FunctionCall gapFillColumn = null;
+        ImmutableList.Builder<Expression> gapFillGroupingExpressions = ImmutableList.builder();
 
         checkGroupingSetsCount(node.getGroupBy().get());
         for (GroupingElement groupingElement : node.getGroupBy().get().getGroupingElements()) {
@@ -1280,6 +1292,15 @@ public class StatementAnalyzer {
               } else {
                 analysis.recordSubqueries(node, analyzeExpression(column, scope));
                 complexExpressions.add(column);
+              }
+
+              if (isDateBinGapFill(column)) {
+                if (gapFillColumn != null) {
+                  throw new SemanticException("multiple date_bin_gapfill calls not allowed");
+                }
+                gapFillColumn = (FunctionCall) column;
+              } else {
+                gapFillGroupingExpressions.add(column);
               }
 
               groupingExpressions.add(column);
@@ -1339,7 +1360,10 @@ public class StatementAnalyzer {
                 sets.build(),
                 complexExpressions.build());
         analysis.setGroupingSets(node, groupingSets);
-
+        if (gapFillColumn != null) {
+          analysis.setGapFill(node, gapFillColumn);
+          analysis.setGapFillGroupingKeys(node, gapFillGroupingExpressions.build());
+        }
         return groupingSets;
       }
 
@@ -1356,6 +1380,14 @@ public class StatementAnalyzer {
       }
 
       return result;
+    }
+
+    private boolean isDateBinGapFill(Expression column) {
+      return column instanceof FunctionCall
+          && DATE_BIN
+              .getFunctionName()
+              .equalsIgnoreCase(((FunctionCall) column).getName().getSuffix())
+          && ((FunctionCall) column).getArguments().size() == 5;
     }
 
     private boolean hasAggregates(QuerySpecification node) {

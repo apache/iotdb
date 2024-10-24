@@ -52,6 +52,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   private final Map<String, Integer> measurementIndexMap;
   private final List<IMeasurementSchema> schemaList;
   private AlignedTVList list;
+  private boolean ignoreAllNullRows;
 
   private static final int MAX_NUMBER_OF_POINTS_IN_PAGE =
       TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
@@ -296,7 +297,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public synchronized void sortTvListForFlush() {
+  public synchronized void sortTvListForFlush(boolean ignoreAllNullRows) {
+    this.ignoreAllNullRows = ignoreAllNullRows;
     sortTVList();
   }
 
@@ -330,7 +332,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   public void encode(IChunkWriter chunkWriter) {
     AlignedChunkWriterImpl alignedChunkWriter = (AlignedChunkWriterImpl) chunkWriter;
 
-    BitMap rowBitMap = list.getRowBitMap();
+    BitMap rowBitMap = ignoreAllNullRows ? list.getRowBitMap() : null;
     boolean[] timeDuplicateInfo = null;
     List<Integer> pageRange = new ArrayList<>();
     int range = 0;

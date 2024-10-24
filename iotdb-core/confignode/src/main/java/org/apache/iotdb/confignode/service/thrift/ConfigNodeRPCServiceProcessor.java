@@ -86,9 +86,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TAlterTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
@@ -925,12 +925,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus clearCache() {
-    return configManager.clearCache();
+  public TSStatus clearCache(final Set<Integer> clearCacheOptions) {
+    return configManager.clearCache(clearCacheOptions);
   }
 
   @Override
-  public TSStatus setConfiguration(TSetConfigurationReq req) throws TException {
+  public TSStatus setConfiguration(TSetConfigurationReq req) {
     return configManager.setConfiguration(req);
   }
 
@@ -1299,13 +1299,13 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus alterTable(final TAlterTableReq req) {
-    return configManager.alterTable(req);
+  public TSStatus alterOrDropTable(final TAlterOrDropTableReq req) {
+    return configManager.alterOrDropTable(req);
   }
 
   @Override
-  public TShowTableResp showTables(final String database) {
-    return configManager.showTables(database);
+  public TShowTableResp showTables(final String database, final boolean isDetails) {
+    return configManager.showTables(database, isDetails);
   }
 
   @Override

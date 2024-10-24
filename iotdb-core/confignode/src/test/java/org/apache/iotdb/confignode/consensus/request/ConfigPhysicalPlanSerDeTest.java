@@ -120,7 +120,10 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessag
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.DropTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
@@ -1198,6 +1201,23 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
+  public void RenameTableColumnPlan() throws IOException {
+    final RenameTableColumnPlan renameTablePropertiesPlan0 =
+        new RenameTableColumnPlan("root.database1", "table1", "attr1", "att2");
+    final RenameTableColumnPlan renameTablePropertiesPlan1 =
+        (RenameTableColumnPlan)
+            ConfigPhysicalPlan.Factory.create(renameTablePropertiesPlan0.serializeToByteBuffer());
+    Assert.assertEquals(
+        renameTablePropertiesPlan0.getDatabase(), renameTablePropertiesPlan1.getDatabase());
+    Assert.assertEquals(
+        renameTablePropertiesPlan0.getTableName(), renameTablePropertiesPlan1.getTableName());
+    Assert.assertEquals(
+        renameTablePropertiesPlan0.getOldName(), renameTablePropertiesPlan1.getOldName());
+    Assert.assertEquals(
+        renameTablePropertiesPlan0.getNewName(), renameTablePropertiesPlan1.getNewName());
+  }
+
+  @Test
   public void SetTablePropertiesPlanTest() throws IOException {
     final SetTablePropertiesPlan setTablePropertiesPlan0 =
         new SetTablePropertiesPlan("root.database1", "table1", Collections.singletonMap("a", null));
@@ -1210,6 +1230,26 @@ public class ConfigPhysicalPlanSerDeTest {
         setTablePropertiesPlan0.getTableName(), setTablePropertiesPlan1.getTableName());
     Assert.assertEquals(
         setTablePropertiesPlan0.getProperties(), setTablePropertiesPlan1.getProperties());
+  }
+
+  @Test
+  public void PreDeleteTablePlanTest() throws IOException {
+    final PreDeleteTablePlan preDeleteTablePlan =
+        new PreDeleteTablePlan("root.database1", "table1");
+    final PreDeleteTablePlan preDeleteTablePlan1 =
+        (PreDeleteTablePlan)
+            ConfigPhysicalPlan.Factory.create(preDeleteTablePlan.serializeToByteBuffer());
+    Assert.assertEquals(preDeleteTablePlan.getDatabase(), preDeleteTablePlan1.getDatabase());
+    Assert.assertEquals(preDeleteTablePlan.getTableName(), preDeleteTablePlan1.getTableName());
+  }
+
+  @Test
+  public void DropTablePlanTest() throws IOException {
+    final DropTablePlan dropTablePlan = new DropTablePlan("root.database1", "table1");
+    final DropTablePlan dropTablePlan1 =
+        (DropTablePlan) ConfigPhysicalPlan.Factory.create(dropTablePlan.serializeToByteBuffer());
+    Assert.assertEquals(dropTablePlan.getDatabase(), dropTablePlan1.getDatabase());
+    Assert.assertEquals(dropTablePlan.getTableName(), dropTablePlan1.getTableName());
   }
 
   @Test

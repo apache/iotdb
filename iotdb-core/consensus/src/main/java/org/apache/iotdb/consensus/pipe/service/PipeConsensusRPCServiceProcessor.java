@@ -39,6 +39,8 @@ import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.consensus.pipe.thrift.TSetActiveReq;
 import org.apache.iotdb.consensus.pipe.thrift.TSetActiveResp;
+import org.apache.iotdb.consensus.pipe.thrift.TWaitReleaseAllRegionRelatedResourceReq;
+import org.apache.iotdb.consensus.pipe.thrift.TWaitReleaseAllRegionRelatedResourceResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -184,6 +186,24 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.I
           e);
     }
     return new TCheckConsensusPipeCompletedResp(responseStatus, isCompleted);
+  }
+
+  @Override
+  public TWaitReleaseAllRegionRelatedResourceResp waitReleaseAllRegionRelatedResource(
+      TWaitReleaseAllRegionRelatedResourceReq req) {
+    ConsensusGroupId groupId =
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
+    PipeConsensusServerImpl impl = pipeConsensus.getImpl(groupId);
+    if (impl == null) {
+      String message =
+          String.format(
+              "unexpected consensusGroupId %s for TWaitReleaseAllRegionRelatedResourceRes request",
+              groupId);
+      LOGGER.error(message);
+      return new TWaitReleaseAllRegionRelatedResourceResp(true);
+    }
+    return new TWaitReleaseAllRegionRelatedResourceResp(
+        impl.hasReleaseAllRegionRelatedResource(groupId));
   }
 
   public void handleExit() {}

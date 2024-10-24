@@ -90,6 +90,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.distribution.DistributionPla
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.SourceRewriter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.GeneralRegionAttributeSecurityService;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.service.metrics.DataNodeMetricsHelper;
@@ -813,6 +814,9 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     // Register subscription agent before pipe agent
     registerManager.register(SubscriptionAgent.runtime());
     registerManager.register(PipeDataNodeAgent.runtime());
+
+    // Start GRASS Service
+    registerManager.register(GeneralRegionAttributeSecurityService.getInstance());
   }
 
   /** Set up RPC and protocols after DataNode is available */

@@ -33,9 +33,10 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
-import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
+import org.apache.iotdb.confignode.client.sync.CnToDnSyncRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -66,6 +67,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REGION_MIGRATE_PROCESS;
 import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS;
+import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS_V2;
 import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
 
 public class RegionMaintainHandler {
@@ -145,7 +147,8 @@ public class RegionMaintainHandler {
 
     List<TDataNodeLocation> currentPeerNodes;
     if (TConsensusGroupType.DataRegion.equals(regionId.getType())
-        && IOT_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())) {
+        && (IOT_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())
+            || IOT_CONSENSUS_V2.equals(CONF.getDataRegionConsensusProtocolClass()))) {
       // parameter of createPeer for MultiLeader should be all peers
       currentPeerNodes = new ArrayList<>(regionReplicaNodes);
       currentPeerNodes.add(destDataNode);
@@ -163,7 +166,7 @@ public class RegionMaintainHandler {
                 .sendSyncRequestToDataNodeWithRetry(
                     destDataNode.getInternalEndPoint(),
                     req,
-                    CnToDnRequestType.CREATE_NEW_REGION_PEER);
+                    CnToDnSyncRequestType.CREATE_NEW_REGION_PEER);
 
     if (isSucceed(status)) {
       LOGGER.info(
@@ -209,7 +212,7 @@ public class RegionMaintainHandler {
                 .sendSyncRequestToDataNodeWithRetry(
                     coordinator.getInternalEndPoint(),
                     maintainPeerReq,
-                    CnToDnRequestType.ADD_REGION_PEER);
+                    CnToDnSyncRequestType.ADD_REGION_PEER);
     LOGGER.info(
         "{}, Send action addRegionPeer finished, regionId: {}, rpcDataNode: {},  destDataNode: {}, status: {}",
         REGION_MIGRATE_PROCESS,
@@ -246,7 +249,7 @@ public class RegionMaintainHandler {
                 .sendSyncRequestToDataNodeWithRetry(
                     coordinator.getInternalEndPoint(),
                     maintainPeerReq,
-                    CnToDnRequestType.REMOVE_REGION_PEER);
+                    CnToDnSyncRequestType.REMOVE_REGION_PEER);
     LOGGER.info(
         "{}, Send action removeRegionPeer finished, regionId: {}, rpcDataNode: {}",
         REGION_MIGRATE_PROCESS,
@@ -280,14 +283,14 @@ public class RegionMaintainHandler {
                     .sendSyncRequestToDataNodeWithGivenRetry(
                         originalDataNode.getInternalEndPoint(),
                         maintainPeerReq,
-                        CnToDnRequestType.DELETE_OLD_REGION_PEER,
+                        CnToDnSyncRequestType.DELETE_OLD_REGION_PEER,
                         1)
             : (TSStatus)
                 SyncDataNodeClientPool.getInstance()
                     .sendSyncRequestToDataNodeWithRetry(
                         originalDataNode.getInternalEndPoint(),
                         maintainPeerReq,
-                        CnToDnRequestType.DELETE_OLD_REGION_PEER);
+                        CnToDnSyncRequestType.DELETE_OLD_REGION_PEER);
     LOGGER.info(
         "{}, Send action deleteOldRegionPeer finished, regionId: {}, dataNodeId: {}",
         REGION_MIGRATE_PROCESS,
@@ -302,7 +305,7 @@ public class RegionMaintainHandler {
       Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
     DataNodeAsyncRequestContext<TResetPeerListReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            CnToDnRequestType.RESET_PEER_LIST,
+            CnToDnAsyncRequestType.RESET_PEER_LIST,
             new TResetPeerListReq(regionId, correctDataNodeLocations),
             dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
