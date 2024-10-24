@@ -286,7 +286,10 @@ public class CommonConfig {
   private int subscriptionPollMaxBlockingTimeMs = 500;
   private int subscriptionSerializeMaxBlockingTimeMs = 100;
   private long subscriptionLaunchRetryIntervalMs = 1000;
-  private int subscriptionRecycleUncommittedEventIntervalMs = 600000; // 600s
+
+  /** should be consistent with SubscriptionConsumer#DEFAULT_INVISIBLE_DURATION */
+  private int subscriptionRecycleUncommittedEventIntervalMs = 600_000; // 600s
+
   private long subscriptionReadFileBufferSize = 8 * MB;
   private long subscriptionReadTabletBufferSize = 8 * MB;
   private long subscriptionTsFileDeduplicationWindowSeconds = 120; // 120s
