@@ -1006,18 +1006,22 @@ public class IoTDBMultiIDsWithAttributesTableIT {
             + "avg(num) as avg_num from table0 where time=32 or time=1971-04-27T01:46:40.000+08:00 group by 3, device, level order by device, level";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
-    // not exist device test
+    // queried device is not exist
     expectedHeader = buildHeaders(3);
     sql = "select count(*), count(num), sum(num) from table0 where device='d_not_exist'";
     retArray = new String[] {"0,0,null,"};
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    sql =
+        "select count(*), count(num), sum(num) from table0 where device='d_not_exist1' or device='d_not_exist2'";
+    retArray = new String[] {"0,0,null,"};
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
-    // not exist time range test
+    // no data in given time range
     sql = "select count(*), count(num), sum(num) from table0 where time>2100-04-26T18:01:40.000";
     retArray = new String[] {"0,0,null,"};
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
-    // only one device in this time
+    // only one device has data in queried time
     expectedHeader = buildHeaders(2);
     sql = "select count(num),sum(num) from table1 where time=0";
     retArray = new String[] {"2,6.0,"};

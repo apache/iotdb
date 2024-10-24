@@ -258,9 +258,8 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   private void constructAlignedSeriesScanUtil() {
     DeviceEntry deviceEntry;
 
-    if (this.deviceEntries.size() <= this.currentDeviceIndex
-        || this.deviceEntries.get(this.currentDeviceIndex) == null) {
-      // for device which not exist
+    if (this.deviceEntries.isEmpty() || this.deviceEntries.get(this.currentDeviceIndex) == null) {
+      // for device which is not exist
       deviceEntry = new DeviceEntry(new StringArrayDeviceID(""), Collections.emptyList());
     } else {
       deviceEntry = this.deviceEntries.get(this.currentDeviceIndex);
