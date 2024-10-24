@@ -39,7 +39,6 @@ import java.util.List;
 
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.TVLIST_SORT_ALGORITHM;
-import static org.apache.iotdb.db.utils.MemUtils.getBinarySize;
 import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 
 public abstract class BinaryTVList extends TVList {
@@ -47,13 +46,9 @@ public abstract class BinaryTVList extends TVList {
   // index relation: arrayIndex -> elementIndex
   protected List<Binary[]> values;
 
-  // record total memory size of binary tvlist
-  long memoryBinaryChunkSize;
-
   BinaryTVList() {
     super();
     values = new ArrayList<>();
-    memoryBinaryChunkSize = 0;
   }
 
   public static BinaryTVList newList() {
@@ -71,7 +66,6 @@ public abstract class BinaryTVList extends TVList {
   public TimBinaryTVList clone() {
     TimBinaryTVList cloneList = new TimBinaryTVList();
     cloneAs(cloneList);
-    cloneList.memoryBinaryChunkSize = memoryBinaryChunkSize;
     for (Binary[] valueArray : values) {
       cloneList.values.add(cloneValue(valueArray));
     }
@@ -96,12 +90,6 @@ public abstract class BinaryTVList extends TVList {
     if (sorted && rowCount > 1 && timestamp < getTime(rowCount - 2)) {
       sorted = false;
     }
-    memoryBinaryChunkSize += getBinarySize(value);
-  }
-
-  @Override
-  public boolean reachChunkSizeOrPointNumThreshold() {
-    return memoryBinaryChunkSize >= TARGET_CHUNK_SIZE || rowCount >= MAX_SERIES_POINT_NUMBER;
   }
 
   @Override
@@ -113,8 +101,6 @@ public abstract class BinaryTVList extends TVList {
       if (time < lowerBound || time > upperBound) {
         set(i, newSize++);
         maxTime = Math.max(maxTime, time);
-      } else {
-        memoryBinaryChunkSize -= getBinarySize(getBinary(i));
       }
     }
     int deletedNumber = rowCount - newSize;
@@ -160,7 +146,6 @@ public abstract class BinaryTVList extends TVList {
       }
       values.clear();
     }
-    memoryBinaryChunkSize = 0;
   }
 
   @Override
@@ -221,11 +206,6 @@ public abstract class BinaryTVList extends TVList {
       end -= nullCnt;
     } else {
       updateMaxTimeAndSorted(time, start, end);
-    }
-
-    // update raw size
-    for (int i = idx; i < end; i++) {
-      memoryBinaryChunkSize += getBinarySize(value[i]);
     }
 
     while (idx < end) {

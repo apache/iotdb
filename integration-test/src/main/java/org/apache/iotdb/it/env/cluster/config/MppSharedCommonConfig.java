@@ -146,9 +146,9 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
-    cnConfig.setAvgSeriesPointNumberThreshold(avgSeriesPointNumberThreshold);
-    dnConfig.setAvgSeriesPointNumberThreshold(avgSeriesPointNumberThreshold);
+  public CommonConfig setTargetChunkPointNum(int targetChunkPointNum) {
+    cnConfig.setTargetChunkPointNum(targetChunkPointNum);
+    dnConfig.setTargetChunkPointNum(targetChunkPointNum);
     return this;
   }
 

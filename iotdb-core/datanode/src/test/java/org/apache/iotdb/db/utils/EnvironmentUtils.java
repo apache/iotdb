@@ -259,10 +259,6 @@ public class EnvironmentUtils {
   public static void envSetUp() {
     logger.debug("EnvironmentUtil setup...");
     config.setThriftServerAwaitTimeForStopService(60);
-    // we do not start 9091 port in test.
-    config.setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
-    // use async wal mode in test
-    config.setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
 
     createAllDir();
 
