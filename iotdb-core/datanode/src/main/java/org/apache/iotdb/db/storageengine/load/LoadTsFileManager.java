@@ -61,11 +61,8 @@ import java.io.IOException;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -455,47 +452,27 @@ public class LoadTsFileManager {
       if (isClosed) {
         throw new IOException(String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
       }
-
       for (Map.Entry<DataPartitionInfo, ModificationFile> entry :
           dataPartition2ModificationFile.entrySet()) {
         entry.getValue().close();
       }
+      for (Map.Entry<DataPartitionInfo, TsFileIOWriter> entry : dataPartition2Writer.entrySet()) {
+        TsFileIOWriter writer = entry.getValue();
+        if (writer.isWritingChunkGroup()) {
+          writer.endChunkGroup();
+        }
+        writer.endFile();
 
-      final List<Map.Entry<DataPartitionInfo, TsFileIOWriter>> dataPartition2WriterList =
-          new ArrayList<>(dataPartition2Writer.entrySet());
-      Collections.shuffle(dataPartition2WriterList);
+        DataRegion dataRegion = entry.getKey().getDataRegion();
+        dataRegion.loadNewTsFile(generateResource(writer, progressIndex), true, isGeneratedByPipe);
 
-      final AtomicReference<Exception> exception = new AtomicReference<>();
-      dataPartition2WriterList.parallelStream()
-          .forEach(
-              entry -> {
-                try {
-                  final TsFileIOWriter writer = entry.getValue();
-                  if (writer.isWritingChunkGroup()) {
-                    writer.endChunkGroup();
-                  }
-                  writer.endFile();
-
-                  final DataRegion dataRegion = entry.getKey().getDataRegion();
-                  dataRegion.loadNewTsFile(
-                      generateResource(writer, progressIndex), true, isGeneratedByPipe);
-
-                  // Metrics
-                  dataRegion
-                      .getNonSystemDatabaseName()
-                      .ifPresent(
-                          databaseName ->
-                              updateWritePointCountMetrics(
-                                  dataRegion,
-                                  databaseName,
-                                  getTsFileWritePointCount(writer),
-                                  false));
-                } catch (final Exception e) {
-                  exception.set(e);
-                }
-              });
-      if (exception.get() != null) {
-        throw new LoadFileException(exception.get());
+        // Metrics
+        dataRegion
+            .getNonSystemDatabaseName()
+            .ifPresent(
+                databaseName ->
+                    updateWritePointCountMetrics(
+                        dataRegion, databaseName, getTsFileWritePointCount(writer), false));
       }
     }
 
