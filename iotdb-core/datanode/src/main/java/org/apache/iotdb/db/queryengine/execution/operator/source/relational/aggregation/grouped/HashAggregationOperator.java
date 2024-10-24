@@ -63,7 +63,9 @@ public class HashAggregationOperator extends AbstractOperator {
 
   private HashAggregationBuilder aggregationBuilder;
 
-  protected MemoryReservationManager memoryReservationManager;
+  private final MemoryReservationManager memoryReservationManager;
+  // memory already occupied by aggregationBuilder
+  private long previousRetainedSize = 0;
 
   private boolean finished = false;
 
@@ -107,6 +109,10 @@ public class HashAggregationOperator extends AbstractOperator {
 
   @Override
   public TsBlock next() throws Exception {
+    if (retainedTsBlock != null) {
+      return getResultFromRetainedTsBlock();
+    }
+
     if (aggregationBuilder == null) {
       if (spillEnabled) {
         throw new UnsupportedOperationException();
@@ -123,6 +129,7 @@ public class HashAggregationOperator extends AbstractOperator {
                 maxPartialMemory,
                 NOOP);
       }
+      updateOccupiedMemorySize();
     } else {
       checkState(!aggregationBuilder.isFull(), "Aggregation buffer is full");
     }
@@ -137,12 +144,24 @@ public class HashAggregationOperator extends AbstractOperator {
 
       aggregationBuilder.processBlock(block);
       aggregationBuilder.updateMemory();
+      updateOccupiedMemorySize();
       return null;
     } else {
       // evaluate output
       resultTsBlock = getOutput();
       return checkTsBlockSizeAndGetResult();
     }
+  }
+
+  private void updateOccupiedMemorySize() {
+    long memorySize = aggregationBuilder.getEstimatedSize();
+    long delta = memorySize - previousRetainedSize;
+    if (delta > 0) {
+      memoryReservationManager.reserveMemoryCumulatively(delta);
+    } else if (delta < 0) {
+      memoryReservationManager.releaseMemoryCumulatively(-delta);
+    }
+    previousRetainedSize = memorySize;
   }
 
   private TsBlock getOutput() {
@@ -205,7 +224,6 @@ public class HashAggregationOperator extends AbstractOperator {
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
-        + (aggregationBuilder == null ? 0 : aggregationBuilder.getEstimatedSize())
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext);
   }
 }

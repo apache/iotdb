@@ -264,25 +264,6 @@ public class AggregationTest {
                                 ImmutableList.of("tag1", "s1", "s2"),
                                 ImmutableSet.of("tag1", "s2", "s1"))))))));
 
-    // AggFunction cannot be push down
-    // Output - Project - Aggregation - TableScan
-    logicalQueryPlan = planTester.createPlan("SELECT mode(s2) FROM table1 group by tag1");
-    assertPlan(
-        logicalQueryPlan,
-        output(
-            project(
-                aggregation(
-                    singleGroupingSet("tag1"),
-                    ImmutableMap.of(
-                        Optional.empty(), aggregationFunction("mode", ImmutableList.of("s2"))),
-                    ImmutableList.of("tag1"), // Streamable
-                    Optional.empty(),
-                    SINGLE,
-                    tableScan(
-                        "testdb.table1",
-                        ImmutableList.of("tag1", "s2"),
-                        ImmutableSet.of("tag1", "s2"))))));
-
     // Expr appears in arguments of AggFunction
     // Output - Project - Aggregation - Project - TableScan
     logicalQueryPlan = planTester.createPlan("SELECT count(s2+1) FROM table1 group by tag1");

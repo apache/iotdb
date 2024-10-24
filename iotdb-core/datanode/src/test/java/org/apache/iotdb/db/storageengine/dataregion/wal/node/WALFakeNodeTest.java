@@ -42,7 +42,11 @@ public class WALFakeNodeTest {
     // log something
     List<WALFlushListener> walFlushListeners = new ArrayList<>();
     walFlushListeners.add(walNode.log(1, new InsertRowNode(new PlanNodeId("0"))));
-    walFlushListeners.add(walNode.log(1, new InsertTabletNode(new PlanNodeId("1")), 0, 0));
+    walFlushListeners.add(
+        walNode.log(
+            1,
+            new InsertTabletNode(new PlanNodeId("1")),
+            Collections.singletonList(new int[] {0, 0})));
     walFlushListeners.add(
         walNode.log(1, new DeleteDataNode(new PlanNodeId("2"), Collections.emptyList(), 0, 0)));
     // check flush listeners
@@ -62,7 +66,11 @@ public class WALFakeNodeTest {
     // log something
     List<WALFlushListener> walFlushListeners = new ArrayList<>();
     walFlushListeners.add(walNode.log(1, new InsertRowNode(new PlanNodeId("0"))));
-    walFlushListeners.add(walNode.log(1, new InsertTabletNode(new PlanNodeId("1")), 0, 0));
+    walFlushListeners.add(
+        walNode.log(
+            1,
+            new InsertTabletNode(new PlanNodeId("1")),
+            Collections.singletonList(new int[] {0, 0})));
     walFlushListeners.add(
         walNode.log(1, new DeleteDataNode(new PlanNodeId("2"), Collections.emptyList(), 0, 0)));
     // check flush listeners

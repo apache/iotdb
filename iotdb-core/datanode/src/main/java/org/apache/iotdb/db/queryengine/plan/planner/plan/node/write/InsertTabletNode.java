@@ -65,6 +65,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -219,7 +220,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     int startLoc = 0; // included
     IDeviceID currDeviceId = getDeviceID(0);
 
-    Map<IDeviceID, PartitionSplitInfo> deviceIDSplitInfoMap = new HashMap<>();
+    Map<IDeviceID, PartitionSplitInfo> deviceIDSplitInfoMap = new LinkedHashMap<>();
 
     for (int i = 1; i < times.length; i++) { // times are sorted in session API.
       IDeviceID nextDeviceId = getDeviceID(i);

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.exception.metadata.view.InsertNonWritableViewException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
@@ -433,7 +434,13 @@ public class TreeDeviceSchemaCacheManager {
   public void invalidate(final List<MeasurementPath> partialPathList) {
     // Currently invalidate by device
     partialPathList.forEach(
-        measurementPath -> tableDeviceSchemaCache.invalidateCache(measurementPath.getDevicePath()));
+        measurementPath -> {
+          final boolean isMultiLevelWildcardMeasurement =
+              PathPatternUtil.isMultiLevelMatchWildcard(measurementPath.getMeasurement());
+          tableDeviceSchemaCache.invalidateCache(
+              isMultiLevelWildcardMeasurement ? measurementPath : measurementPath.getDevicePath(),
+              isMultiLevelWildcardMeasurement);
+        });
   }
 
   public void cleanUp() {

@@ -75,39 +75,6 @@ public enum TableBuiltinAggregationFunction {
     return NATIVE_FUNCTION_NAMES;
   }
 
-  /**
-   * @return if the Aggregation can use statistics to optimize
-   */
-  public static boolean canUseStatistics(String name, boolean withTime) {
-    final String functionName = name.toLowerCase();
-    switch (functionName) {
-      case "sum":
-      case "count":
-      case "avg":
-      case "extreme":
-      case "max":
-      case "min":
-      case "first":
-      case "last":
-        return true;
-      case "first_by":
-      case "last_by":
-        return withTime;
-      case "mode":
-      case "max_by":
-      case "min_by":
-      case "stddev":
-      case "stddev_pop":
-      case "stddev_samp":
-      case "variance":
-      case "var_pop":
-      case "var_samp":
-        return false;
-      default:
-        throw new IllegalArgumentException("Invalid Aggregation function: " + name);
-    }
-  }
-
   public static List<Type> getIntermediateTypes(String name, List<Type> originalArgumentTypes) {
     if (COUNT.functionName.equalsIgnoreCase(name)) {
       return ImmutableList.of(INT64);
