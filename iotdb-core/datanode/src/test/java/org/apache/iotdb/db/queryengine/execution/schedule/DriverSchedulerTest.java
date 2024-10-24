@@ -133,7 +133,7 @@ public class DriverSchedulerTest {
     // Abort one FragmentInstance
     Mockito.reset(mockDriver1);
     Mockito.when(mockDriver1.getDriverTaskId()).thenReturn(driverTaskId1);
-    manager.abortFragmentInstance(instanceId1);
+    manager.abortFragmentInstance(instanceId1, null);
     Mockito.verify(mockMPPDataExchangeManager, Mockito.times(1))
         .forceDeregisterFragmentInstance(Mockito.any());
     Assert.assertTrue(manager.getBlockedTasks().isEmpty());
