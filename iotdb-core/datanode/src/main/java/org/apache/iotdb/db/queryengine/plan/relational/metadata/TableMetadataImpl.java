@@ -213,7 +213,7 @@ public class TableMetadataImpl implements Metadata {
         throw new SemanticException(
             "Scalar function "
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only supports text or string data type.");
+                + " only accepts two or three arguments and they must be text or string data type.");
       }
       return STRING;
     } else if (TableBuiltinScalarFunction.SUBSTRING
