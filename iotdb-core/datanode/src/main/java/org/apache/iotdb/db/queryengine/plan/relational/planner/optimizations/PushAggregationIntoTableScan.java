@@ -137,17 +137,7 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
           hasProject ? projectNode.getAssignments().getMap() : null;
       // calculate Function part
       for (AggregationNode.Aggregation aggregation : values) {
-        // if the function cannot make use of Statistics, we don't push down
-        if (!metadata.canUseStatistics(
-            aggregation.getResolvedFunction().getSignature().getName(),
-            aggregation.getArguments().stream()
-                .anyMatch(
-                    v ->
-                        ((SymbolReference) v)
-                            .getName()
-                            .equalsIgnoreCase(TimestampOperand.TIMESTAMP_EXPRESSION_STRING)))) {
-          return PushDownLevel.NOOP;
-        }
+        // all the functions can be pre-agg in AggTableScanNode
 
         // if expr appears in arguments of Aggregation, we don't push down
         if (hasProject

@@ -25,6 +25,7 @@ import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 
@@ -33,7 +34,7 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 
 public interface ChunkData extends TsFileData {
-  String getDevice();
+  IDeviceID getDevice();
 
   TTimePartitionSlot getTimePartitionSlot();
 
@@ -63,7 +64,7 @@ public interface ChunkData extends TsFileData {
 
   static ChunkData createChunkData(
       boolean isAligned,
-      String device,
+      IDeviceID device,
       ChunkHeader chunkHeader,
       TTimePartitionSlot timePartitionSlot) {
     return isAligned
