@@ -319,10 +319,12 @@ public class TsFileNameGenerator {
   public static List<TsFileResource> getNewInnerCompactionTargetFileResources(
       List<TsFileResource> tsFileResources, boolean sequence)
       throws IOException, DiskSpaceInsufficientException {
+    long maxInnerCompactionCount = Long.MIN_VALUE;
     long maxCrossMergeCount = Long.MIN_VALUE;
     int maxTierLevel = 0;
     for (TsFileResource resource : tsFileResources) {
       TsFileName tsFileName = getTsFileName(resource.getTsFile().getName());
+      maxInnerCompactionCount = Math.max(tsFileName.innerCompactionCnt, maxInnerCompactionCount);
       maxCrossMergeCount = Math.max(tsFileName.crossCompactionCnt, maxCrossMergeCount);
       maxTierLevel = Math.max(resource.getTierLevel(), maxTierLevel);
     }
@@ -339,7 +341,7 @@ public class TsFileNameGenerator {
                       tsFileResources.get(0).getTimePartition(),
                       tsFileName.time,
                       tsFileName.version,
-                      tsFileName.innerCompactionCnt + 1,
+                      (int) maxInnerCompactionCount + 1,
                       (int) maxCrossMergeCount,
                       maxTierLevel,
                       IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)),

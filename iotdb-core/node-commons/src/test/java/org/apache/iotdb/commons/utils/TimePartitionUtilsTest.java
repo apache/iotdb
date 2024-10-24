@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.utils;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -88,5 +89,20 @@ public class TimePartitionUtilsTest {
 
     TTimePartitionSlot actualSlot = TimePartitionUtils.getTimePartitionSlot(testTime);
     assertEquals(expectedSlot.getStartTime(), actualSlot.getStartTime());
+  }
+
+  @Test
+  public void testOverflow() {
+    long testTime = Long.MIN_VALUE;
+    TTimePartitionSlot actualSlot = TimePartitionUtils.getTimePartitionSlot(testTime);
+    Assert.assertTrue(actualSlot.getStartTime() < 0);
+    testTime += 1;
+    long lowerBound = TimePartitionUtils.getTimePartitionLowerBound(testTime);
+    assertEquals(Long.MIN_VALUE, lowerBound);
+    testTime = Long.MAX_VALUE;
+    actualSlot = TimePartitionUtils.getTimePartitionSlot(testTime);
+    Assert.assertTrue(actualSlot.getStartTime() > 0);
+    long upperBound = TimePartitionUtils.getTimePartitionUpperBound(testTime);
+    assertEquals(Long.MAX_VALUE, upperBound);
   }
 }

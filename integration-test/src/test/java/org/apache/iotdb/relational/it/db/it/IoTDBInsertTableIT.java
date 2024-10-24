@@ -65,6 +65,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -954,7 +955,123 @@ public class IoTDBInsertTableIT {
         Assert.assertTrue(record.getFields().get(0).getLongV() > timeLowerBound);
         count++;
       }
-      Assert.assertTrue(count > 0 && count < 4);
+      Assert.assertEquals(2, count);
+    }
+  }
+
+  @Test
+  public void testInsertUnsequenceData()
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection(BaseEnv.TABLE_SQL_DIALECT)) {
+      session.executeNonQueryStatement("USE \"test\"");
+      // the table is missing column "m2"
+      session.executeNonQueryStatement(
+          "CREATE TABLE table4 (id1 string id, attr1 string attribute, "
+              + "m1 double "
+              + "measurement)");
+
+      // the insertion contains "m2"
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
+      schemaList.add(new MeasurementSchema("m2", TSDataType.DOUBLE));
+      final List<Tablet.ColumnType> columnTypes =
+          Arrays.asList(
+              Tablet.ColumnType.ID,
+              Tablet.ColumnType.ATTRIBUTE,
+              Tablet.ColumnType.MEASUREMENT,
+              Tablet.ColumnType.MEASUREMENT);
+
+      long timestamp = 0;
+      Tablet tablet = new Tablet("table4", schemaList, columnTypes, 15);
+
+      for (long row = 0; row < 15; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, timestamp + row);
+        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("attr1", rowIndex, "attr:" + row);
+        tablet.addValue("m1", rowIndex, row * 1.0);
+        tablet.addValue("m2", rowIndex, row * 1.0);
+        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+          try {
+            session.insertRelationalTablet(tablet, true);
+          } catch (StatementExecutionException e) {
+            // a partial insertion should be reported
+            if (!e.getMessage()
+                .equals(
+                    "507: Fail to insert measurements [m2] caused by [Column m2 does not exists or fails to be created]")) {
+              throw e;
+            }
+          }
+          tablet.reset();
+        }
+      }
+
+      session.executeNonQueryStatement("FLush");
+
+      for (long row = 0; row < 15; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, 14 - row);
+        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("attr1", rowIndex, "attr:" + row);
+        tablet.addValue("m1", rowIndex, row * 1.0);
+        tablet.addValue("m2", rowIndex, row * 1.0);
+        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+          try {
+            session.insertRelationalTablet(tablet, true);
+          } catch (StatementExecutionException e) {
+            if (!e.getMessage()
+                .equals(
+                    "507: Fail to insert measurements [m2] caused by [Column m2 does not exists or fails to be created]")) {
+              throw e;
+            }
+          }
+          tablet.reset();
+        }
+      }
+      session.executeNonQueryStatement("FLush");
+
+      int cnt = 0;
+      SessionDataSet dataSet = session.executeQueryStatement("select * from table4");
+      while (dataSet.hasNext()) {
+        dataSet.next();
+        cnt++;
+      }
+      assertEquals(29, cnt);
+    }
+  }
+
+  @Test
+  public void testInsertAllNullRow() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement st1 = connection.createStatement()) {
+      st1.execute("use \"test\"");
+      st1.execute("create table table5(d1 string id, s1 int32 measurement, s2 int32 measurement)");
+
+      st1.execute("insert into table5(time, d1,s1,s2) values(1,'a',1,null)");
+      // insert all null row
+      st1.execute("insert into table5(time, d1,s1,s2) values(2,'a',null,null)");
+
+      ResultSet rs1 = st1.executeQuery("select * from table5");
+      assertTrue(rs1.next());
+      assertEquals("1", rs1.getString("s1"));
+      assertNull(rs1.getString("s2"));
+      assertTrue(rs1.next());
+      assertNull(rs1.getString("s1"));
+      assertNull(rs1.getString("s2"));
+      assertFalse(rs1.next());
+
+      st1.execute("flush");
+
+      rs1 = st1.executeQuery("select * from table5");
+      assertTrue(rs1.next());
+      assertEquals("1", rs1.getString("s1"));
+      assertNull(rs1.getString("s2"));
+      assertTrue(rs1.next());
+      assertNull(rs1.getString("s1"));
+      assertNull(rs1.getString("s2"));
+      assertFalse(rs1.next());
     }
   }
 

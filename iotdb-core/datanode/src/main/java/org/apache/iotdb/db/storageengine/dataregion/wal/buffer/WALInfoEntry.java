@@ -24,6 +24,10 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 
 /** This entry class stores info for persistence. */
@@ -42,19 +46,23 @@ public class WALInfoEntry extends WALEntry {
   public WALInfoEntry(long memTableId, WALEntryValue value) {
     this(memTableId, value, config.getWalMode() == WALMode.SYNC);
     if (value instanceof InsertTabletNode) {
-      tabletInfo = new TabletInfo(0, ((InsertTabletNode) value).getRowCount());
+      tabletInfo =
+          new TabletInfo(
+              Collections.singletonList(new int[] {0, ((InsertTabletNode) value).getRowCount()}));
     }
   }
 
-  public WALInfoEntry(long memTableId, InsertTabletNode value, int tabletStart, int tabletEnd) {
+  public WALInfoEntry(long memTableId, InsertTabletNode value, List<int[]> tabletRangeList) {
     this(memTableId, value, config.getWalMode() == WALMode.SYNC);
-    tabletInfo = new TabletInfo(tabletStart, tabletEnd);
+    tabletInfo = new TabletInfo(tabletRangeList);
   }
 
   WALInfoEntry(WALEntryType type, long memTableId, WALEntryValue value) {
     super(type, memTableId, value, false);
     if (value instanceof InsertTabletNode) {
-      tabletInfo = new TabletInfo(0, ((InsertTabletNode) value).getRowCount());
+      tabletInfo =
+          new TabletInfo(
+              Collections.singletonList(new int[] {0, ((InsertTabletNode) value).getRowCount()}));
     }
   }
 
@@ -65,18 +73,21 @@ public class WALInfoEntry extends WALEntry {
 
   @Override
   public void serialize(IWALByteBufferView buffer) {
-    buffer.put(type.getCode());
-    buffer.putLong(memTableId);
     switch (type) {
       case INSERT_TABLET_NODE:
-        ((InsertTabletNode) value)
-            .serializeToWAL(buffer, tabletInfo.tabletStart, tabletInfo.tabletEnd);
+        for (int[] range : tabletInfo.tabletRangeList) {
+          buffer.put(type.getCode());
+          buffer.putLong(memTableId);
+          ((InsertTabletNode) value).serializeToWAL(buffer, range[0], range[1]);
+        }
         break;
       case INSERT_ROW_NODE:
       case INSERT_ROWS_NODE:
       case DELETE_DATA_NODE:
       case MEMORY_TABLE_SNAPSHOT:
       case CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE:
+        buffer.put(type.getCode());
+        buffer.putLong(memTableId);
         value.serializeToWAL(buffer);
         break;
       case MEMORY_TABLE_CHECKPOINT:
@@ -87,19 +98,16 @@ public class WALInfoEntry extends WALEntry {
   }
 
   private static class TabletInfo {
-    // start row of insert tablet
-    private final int tabletStart;
-    // end row of insert tablet
-    private final int tabletEnd;
+    // ranges of insert tablet
+    private final List<int[]> tabletRangeList;
 
-    public TabletInfo(int tabletStart, int tabletEnd) {
-      this.tabletStart = tabletStart;
-      this.tabletEnd = tabletEnd;
+    public TabletInfo(List<int[]> tabletRangeList) {
+      this.tabletRangeList = new ArrayList<>(tabletRangeList);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(tabletStart, tabletEnd);
+      return Objects.hash(tabletRangeList);
     }
 
     @Override
@@ -113,8 +121,17 @@ public class WALInfoEntry extends WALEntry {
       if (!(obj instanceof TabletInfo)) {
         return false;
       }
-      TabletInfo other = (TabletInfo) obj;
-      return this.tabletStart == other.tabletStart && this.tabletEnd == other.tabletEnd;
+      TabletInfo that = (TabletInfo) obj;
+      if (this.tabletRangeList.size() != that.tabletRangeList.size()) {
+        return false;
+      }
+
+      for (int i = 0; i < tabletRangeList.size(); i++) {
+        if (!Arrays.equals(this.tabletRangeList.get(i), that.tabletRangeList.get(i))) {
+          return false;
+        }
+      }
+      return true;
     }
   }
 

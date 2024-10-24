@@ -32,7 +32,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSche
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableBuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
@@ -309,11 +308,6 @@ public class TestMatadata implements Metadata {
   public DataPartition getDataPartitionWithUnclosedTimeRange(
       String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
     return DATA_PARTITION;
-  }
-
-  @Override
-  public boolean canUseStatistics(String name, boolean withTime) {
-    return TableBuiltinAggregationFunction.canUseStatistics(name, withTime);
   }
 
   private static final DataPartition DATA_PARTITION =

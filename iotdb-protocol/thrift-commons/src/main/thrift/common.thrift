@@ -275,7 +275,13 @@ enum TAggregationType {
   VAR_SAMP,
   MAX_BY,
   MIN_BY,
-  UDAF
+  UDAF,
+  FIRST,
+  LAST,
+  FIRST_BY,
+  LAST_BY,
+  MIN,
+  MAX
 }
 
 struct TShowConfigurationTemplateResp {

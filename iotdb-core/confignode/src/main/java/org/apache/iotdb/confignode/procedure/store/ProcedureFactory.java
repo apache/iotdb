@@ -52,6 +52,9 @@ import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.AlterConsumerGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
@@ -196,6 +199,15 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case SET_TABLE_PROPERTIES_PROCEDURE:
         procedure = new SetTablePropertiesProcedure();
+        break;
+      case RENAME_TABLE_COLUMN_PROCEDURE:
+        procedure = new RenameTableColumnProcedure();
+        break;
+      case DROP_TABLE_COLUMN_PROCEDURE:
+        procedure = new DropTableColumnProcedure();
+        break;
+      case DROP_TABLE_PROCEDURE:
+        procedure = new DropTableProcedure();
         break;
       case CREATE_PIPE_PLUGIN_PROCEDURE:
         procedure = new CreatePipePluginProcedure();
@@ -351,6 +363,12 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.ADD_TABLE_COLUMN_PROCEDURE;
     } else if (procedure instanceof SetTablePropertiesProcedure) {
       return ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE;
+    } else if (procedure instanceof RenameTableColumnProcedure) {
+      return ProcedureType.RENAME_TABLE_COLUMN_PROCEDURE;
+    } else if (procedure instanceof DropTableColumnProcedure) {
+      return ProcedureType.DROP_TABLE_COLUMN_PROCEDURE;
+    } else if (procedure instanceof DropTableProcedure) {
+      return ProcedureType.DROP_TABLE_PROCEDURE;
     } else if (procedure instanceof CreatePipePluginProcedure) {
       return ProcedureType.CREATE_PIPE_PLUGIN_PROCEDURE;
     } else if (procedure instanceof DropPipePluginProcedure) {

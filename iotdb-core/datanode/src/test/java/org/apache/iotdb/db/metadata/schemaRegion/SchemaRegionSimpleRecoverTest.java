@@ -32,7 +32,7 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;

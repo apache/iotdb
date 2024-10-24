@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
@@ -133,7 +134,7 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq, boolean onCluster);
 
-  SettableFuture<ConfigTaskResult> clearCache(boolean onCluster);
+  SettableFuture<ConfigTaskResult> clearCache(boolean onCluster, Set<CacheClearOptions> options);
 
   SettableFuture<ConfigTaskResult> setConfiguration(TSetConfigurationReq tSetConfigurationReq);
 
@@ -287,14 +288,38 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> describeTable(final String database, final String tableName);
 
-  SettableFuture<ConfigTaskResult> showTables(final String database);
+  SettableFuture<ConfigTaskResult> showTables(final String database, final boolean isDetails);
 
   TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap);
+
+  SettableFuture<ConfigTaskResult> alterTableRenameTable(
+      final String database,
+      final String sourceName,
+      final String targetName,
+      final String queryId,
+      final boolean tableIfExists);
 
   SettableFuture<ConfigTaskResult> alterTableAddColumn(
       final String database,
       final String tableName,
       final List<TsTableColumnSchema> columnSchemaList,
+      final String queryId,
+      final boolean tableIfExists,
+      final boolean columnIfExists);
+
+  SettableFuture<ConfigTaskResult> alterTableRenameColumn(
+      final String database,
+      final String tableName,
+      final String oldName,
+      final String newName,
+      final String queryId,
+      final boolean tableIfExists,
+      final boolean columnIfExists);
+
+  SettableFuture<ConfigTaskResult> alterTableDropColumn(
+      final String database,
+      final String tableName,
+      final String columnName,
       final String queryId,
       final boolean tableIfExists,
       final boolean columnIfExists);
@@ -305,4 +330,7 @@ public interface IConfigTaskExecutor {
       final Map<String, String> properties,
       final String queryId,
       final boolean ifExists);
+
+  SettableFuture<ConfigTaskResult> dropTable(
+      final String database, final String tableName, final String queryId, final boolean ifExists);
 }

@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncPipeConsensusServiceClient;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ComparableConsensusRequest;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
@@ -49,10 +50,13 @@ import org.apache.iotdb.consensus.pipe.thrift.TNotifyPeerToDropConsensusPipeReq;
 import org.apache.iotdb.consensus.pipe.thrift.TNotifyPeerToDropConsensusPipeResp;
 import org.apache.iotdb.consensus.pipe.thrift.TSetActiveReq;
 import org.apache.iotdb.consensus.pipe.thrift.TSetActiveResp;
+import org.apache.iotdb.consensus.pipe.thrift.TWaitReleaseAllRegionRelatedResourceReq;
+import org.apache.iotdb.consensus.pipe.thrift.TWaitReleaseAllRegionRelatedResourceResp;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.RpcUtils;
 
 import com.google.common.collect.ImmutableMap;
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -442,6 +446,9 @@ public class PipeConsensusServerImpl {
     final List<Peer> otherPeers = peerManager.getOtherPeers(thisNode);
     Exception exception = null;
     for (Peer peer : otherPeers) {
+      if (peer.equals(targetPeer)) {
+        continue;
+      }
       try (SyncPipeConsensusServiceClient client =
           syncClientManager.borrowClient(peer.getEndpoint())) {
         TNotifyPeerToDropConsensusPipeResp resp =
@@ -589,6 +596,43 @@ public class PipeConsensusServerImpl {
       LOGGER.info(e.getMessage());
       return false;
     }
+  }
+
+  public void waitReleaseAllRegionRelatedResource(Peer targetPeer)
+      throws ConsensusGroupModifyPeerException {
+    long checkIntervalInMs = 10_000L;
+    try (SyncPipeConsensusServiceClient client =
+        syncClientManager.borrowClient(targetPeer.getEndpoint())) {
+      while (true) {
+        TWaitReleaseAllRegionRelatedResourceResp res =
+            client.waitReleaseAllRegionRelatedResource(
+                new TWaitReleaseAllRegionRelatedResourceReq(
+                    targetPeer.getGroupId().convertToTConsensusGroupId()));
+        if (res.releaseAllResource) {
+          LOGGER.info("[WAIT RELEASE] {} has released all region related resource", targetPeer);
+          return;
+        }
+        LOGGER.info("[WAIT RELEASE] {} is still releasing all region related resource", targetPeer);
+        Thread.sleep(checkIntervalInMs);
+      }
+    } catch (ClientManagerException | TException e) {
+      throw new ConsensusGroupModifyPeerException(
+          String.format(
+              "error when waiting %s to release all region related resource. %s",
+              targetPeer, e.getMessage()),
+          e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new ConsensusGroupModifyPeerException(
+          String.format(
+              "thread interrupted when waiting %s to release all region related resource. %s",
+              targetPeer, e.getMessage()),
+          e);
+    }
+  }
+
+  public boolean hasReleaseAllRegionRelatedResource(ConsensusGroupId groupId) {
+    return stateMachine.hasReleaseAllRegionRelatedResource(groupId);
   }
 
   public boolean isReadOnly() {

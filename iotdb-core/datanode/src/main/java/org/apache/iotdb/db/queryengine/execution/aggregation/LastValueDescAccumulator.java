@@ -35,11 +35,6 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
   }
 
   @Override
-  public void reset() {
-    super.reset();
-  }
-
-  @Override
   protected void addIntInput(Column[] column, BitMap needSkip) {
     int count = column[0].getPositionCount();
     for (int i = 0; i < count; i++) {

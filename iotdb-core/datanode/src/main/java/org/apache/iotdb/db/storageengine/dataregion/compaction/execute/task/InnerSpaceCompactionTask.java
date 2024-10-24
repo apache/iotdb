@@ -362,13 +362,15 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       TsFileResource resource = filesView.sortedAllSourceFilesInTask.get(i);
       File file = resource.getTsFile();
       File skippedSourceFile = filesView.skippedSourceFiles.get(i).getTsFile();
+      TsFileNameGenerator.TsFileName skippedSourceFileName =
+          TsFileNameGenerator.getTsFileName(skippedSourceFile.getName());
       TsFileNameGenerator.TsFileName tsFileName = TsFileNameGenerator.getTsFileName(file.getName());
       String newFileName =
           String.format(
               "%s-%s-%s-%s" + TsFileConstant.TSFILE_SUFFIX,
               tsFileName.getTime(),
               tsFileName.getVersion(),
-              tsFileName.getInnerCompactionCnt(),
+              skippedSourceFileName.getInnerCompactionCnt(),
               tsFileName.getCrossCompactionCnt() + 1);
       TsFileResource renamedTargetFile =
           new TsFileResource(
@@ -600,6 +602,11 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
   public List<TsFileResource> getSelectedTsFileResourceList() {
     return filesView.sourceFilesInCompactionPerformer;
+  }
+
+  public double getAvgCompactionCount() {
+    return (double) filesView.sumOfCompactionCount
+        / filesView.sourceFilesInCompactionPerformer.size();
   }
 
   @TestOnly

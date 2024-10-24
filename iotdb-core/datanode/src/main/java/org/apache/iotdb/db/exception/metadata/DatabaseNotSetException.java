@@ -26,15 +26,17 @@ public class DatabaseNotSetException extends MetadataException {
 
   private static final long serialVersionUID = 3739300272099030533L;
 
+  public static final String DATABASE_NOT_SET = "Database is not set";
+
   public DatabaseNotSetException(String path) {
     super(
-        String.format("Database is not set for current seriesPath: [%s]", path),
+        String.format("%s for current seriesPath: [%s]", DATABASE_NOT_SET, path),
         TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
   }
 
   public DatabaseNotSetException(String path, boolean isUserException) {
     super(
-        String.format("Database is not set for current seriesPath: [%s]", path),
+        String.format("%s for current seriesPath: [%s]", DATABASE_NOT_SET, path),
         TSStatusCode.DATABASE_NOT_EXIST.getStatusCode(),
         isUserException);
   }
@@ -42,6 +44,6 @@ public class DatabaseNotSetException extends MetadataException {
   public DatabaseNotSetException(String path, String reason) {
     super(
         String.format(
-            "Database is not set for current seriesPath: [%s], because %s", path, reason));
+            "%s for current seriesPath: [%s], because %s", DATABASE_NOT_SET, path, reason));
   }
 }

@@ -54,7 +54,7 @@ public class LogicalOrMultiColumnTransformer extends LogicalMultiColumnTransform
       }
     }
 
-    int positionCount = columnTransformerList.get(0).getColumnCachePositionCount();
+    int positionCount = childColumns.get(0).getPositionCount();
     ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
 
     for (int i = 0; i < positionCount; i++) {

@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.commons.consensus.index.ComparableConsensusRequest;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -52,7 +51,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public abstract class InsertNode extends SearchNode implements ComparableConsensusRequest {
+public abstract class InsertNode extends SearchNode {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -394,6 +393,21 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
   @Override
   public List<PlanNode> getChildren() {
     return Collections.emptyList();
+  }
+
+  public String[] getRawMeasurements() {
+    String[] measurements = getMeasurements();
+    MeasurementSchema[] measurementSchemas = getMeasurementSchemas();
+    String[] rawMeasurements = new String[measurements.length];
+    for (int i = 0; i < measurements.length; i++) {
+      if (measurementSchemas[i] != null) {
+        // get raw measurement rather than alias
+        rawMeasurements[i] = measurementSchemas[i].getMeasurementId();
+      } else {
+        rawMeasurements[i] = measurements[i];
+      }
+    }
+    return rawMeasurements;
   }
 
   protected PartialPath readTargetPath(ByteBuffer buffer) throws IllegalPathException {

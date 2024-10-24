@@ -61,8 +61,11 @@ import java.io.IOException;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -220,12 +223,17 @@ public class LoadTsFileManager {
       }
 
       for (TsFileData tsFileData : pieceNode.getAllTsFileData()) {
-        if (!tsFileData.isModification()) {
-          ChunkData chunkData = (ChunkData) tsFileData;
-          writerManager.write(
-              new DataPartitionInfo(dataRegion, chunkData.getTimePartitionSlot()), chunkData);
-        } else {
-          writerManager.writeDeletion(dataRegion, (DeletionData) tsFileData);
+        switch (tsFileData.getType()) {
+          case CHUNK:
+            ChunkData chunkData = (ChunkData) tsFileData;
+            writerManager.write(
+                new DataPartitionInfo(dataRegion, chunkData.getTimePartitionSlot()), chunkData);
+            break;
+          case DELETION:
+            writerManager.writeDeletion(dataRegion, (DeletionData) tsFileData);
+            break;
+          default:
+            throw new IOException("Unsupported TsFileData type: " + tsFileData.getType());
         }
       }
     } finally {
@@ -356,7 +364,7 @@ public class LoadTsFileManager {
 
     private final File taskDir;
     private Map<DataPartitionInfo, TsFileIOWriter> dataPartition2Writer;
-    private Map<DataPartitionInfo, String> dataPartition2LastDevice;
+    private Map<DataPartitionInfo, IDeviceID> dataPartition2LastDevice;
     private Map<DataPartitionInfo, ModificationFile> dataPartition2ModificationFile;
     private boolean isClosed;
 
@@ -398,14 +406,16 @@ public class LoadTsFileManager {
           return;
         }
 
-        dataPartition2Writer.put(partitionInfo, new TsFileIOWriter(newTsFile));
+        final TsFileIOWriter writer = new TsFileIOWriter(newTsFile);
+        writer.setGenerateTableSchema(true);
+        dataPartition2Writer.put(partitionInfo, writer);
       }
       TsFileIOWriter writer = dataPartition2Writer.get(partitionInfo);
-      if (!chunkData.getDevice().equals(dataPartition2LastDevice.getOrDefault(partitionInfo, ""))) {
+      if (!Objects.equals(chunkData.getDevice(), dataPartition2LastDevice.get(partitionInfo))) {
         if (dataPartition2LastDevice.containsKey(partitionInfo)) {
           writer.endChunkGroup();
         }
-        writer.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create(chunkData.getDevice()));
+        writer.startChunkGroup(chunkData.getDevice());
         dataPartition2LastDevice.put(partitionInfo, chunkData.getDevice());
       }
       chunkData.writeToFileWriter(writer);
@@ -445,27 +455,47 @@ public class LoadTsFileManager {
       if (isClosed) {
         throw new IOException(String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
       }
+
       for (Map.Entry<DataPartitionInfo, ModificationFile> entry :
           dataPartition2ModificationFile.entrySet()) {
         entry.getValue().close();
       }
-      for (Map.Entry<DataPartitionInfo, TsFileIOWriter> entry : dataPartition2Writer.entrySet()) {
-        TsFileIOWriter writer = entry.getValue();
-        if (writer.isWritingChunkGroup()) {
-          writer.endChunkGroup();
-        }
-        writer.endFile();
 
-        DataRegion dataRegion = entry.getKey().getDataRegion();
-        dataRegion.loadNewTsFile(generateResource(writer, progressIndex), true, isGeneratedByPipe);
+      final List<Map.Entry<DataPartitionInfo, TsFileIOWriter>> dataPartition2WriterList =
+          new ArrayList<>(dataPartition2Writer.entrySet());
+      Collections.shuffle(dataPartition2WriterList);
 
-        // Metrics
-        dataRegion
-            .getNonSystemDatabaseName()
-            .ifPresent(
-                databaseName ->
-                    updateWritePointCountMetrics(
-                        dataRegion, databaseName, getTsFileWritePointCount(writer), false));
+      final AtomicReference<Exception> exception = new AtomicReference<>();
+      dataPartition2WriterList.parallelStream()
+          .forEach(
+              entry -> {
+                try {
+                  final TsFileIOWriter writer = entry.getValue();
+                  if (writer.isWritingChunkGroup()) {
+                    writer.endChunkGroup();
+                  }
+                  writer.endFile();
+
+                  final DataRegion dataRegion = entry.getKey().getDataRegion();
+                  dataRegion.loadNewTsFile(
+                      generateResource(writer, progressIndex), true, isGeneratedByPipe);
+
+                  // Metrics
+                  dataRegion
+                      .getNonSystemDatabaseName()
+                      .ifPresent(
+                          databaseName ->
+                              updateWritePointCountMetrics(
+                                  dataRegion,
+                                  databaseName,
+                                  getTsFileWritePointCount(writer),
+                                  false));
+                } catch (final Exception e) {
+                  exception.set(e);
+                }
+              });
+      if (exception.get() != null) {
+        throw new LoadFileException(exception.get());
       }
     }
 

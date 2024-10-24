@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -97,6 +98,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -525,7 +527,12 @@ public class MTreeBelowSGMemoryImpl {
         final IMemMNode memMNode = store.getChild(device.getAsMNode(), alias);
         if (memMNode != null) {
           throw new MetadataException(
-              "The alias is duplicated with the name or alias of other measurement.");
+              "The alias is duplicated with the name or alias of other measurement, alias: "
+                  + alias
+                  + ", fullPath: "
+                  + fullPath
+                  + ", otherMeasurement: "
+                  + memMNode.getFullPath());
         }
         if (measurementMNode.getAlias() != null) {
           device.deleteAliasChild(measurementMNode.getAlias());
@@ -1115,12 +1122,10 @@ public class MTreeBelowSGMemoryImpl {
 
     final EntityCollector<IDeviceSchemaInfo, IMemMNode> collector =
         new EntityCollector<IDeviceSchemaInfo, IMemMNode>(rootNode, pattern, store, false, null) {
-
           protected IDeviceSchemaInfo collectEntity(final IDeviceMNode<IMemMNode> node) {
-            final PartialPath device = getPartialPathFromRootToNode(node.getAsMNode());
             final ShowDevicesResult result =
                 new ShowDevicesResult(
-                    device.getFullPath(),
+                    null,
                     node.isAlignedNullable(),
                     node.getSchemaTemplateId(),
                     node.getPartialPath().getNodes());
@@ -1582,8 +1587,42 @@ public class MTreeBelowSGMemoryImpl {
     }
   }
 
-  public void deleteTableDevice(final String tableName) {
+  public void renameTableAttribute() {}
+
+  public boolean deleteTableDevice(final String tableName, final IntConsumer attributeDeleter)
+      throws MetadataException {
+    if (!store.hasChild(storageGroupMNode, tableName)) {
+      return false;
+    }
+    final AtomicInteger memoryReleased = new AtomicInteger(0);
+    try (final MNodeCollector<Void, IMemMNode> collector =
+        new MNodeCollector<Void, IMemMNode>(
+            storageGroupMNode,
+            new PartialPath(new String[] {storageGroupMNode.getName(), tableName}),
+            this.store,
+            true,
+            SchemaConstant.ALL_MATCH_SCOPE) {
+          @Override
+          protected boolean acceptInternalMatchedNode(final IMemMNode node) {
+            return true;
+          }
+
+          @Override
+          protected Void collectMNode(final IMemMNode node) {
+            if (node.isDevice()) {
+              attributeDeleter.accept(
+                  ((TableDeviceInfo<IMemMNode>) node.getAsDeviceMNode().getDeviceInfo())
+                      .getAttributePointer());
+            }
+            memoryReleased.addAndGet(node.estimateSize());
+            return null;
+          }
+        }) {
+      collector.traverse();
+    }
     storageGroupMNode.deleteChild(tableName);
+    store.releaseMemory(memoryReleased.get());
+    return true;
   }
 
   // endregion

@@ -97,6 +97,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NaturalJoin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
@@ -504,6 +505,14 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitDelete(Delete node, Optional<Scope> scope) {
       throw new SemanticException("Delete statement is not supported yet.");
+    }
+
+    @Override
+    protected Scope visitPipeEnriched(PipeEnriched node, Optional<Scope> scope) {
+      Scope ret = node.getInnerStatement().accept(this, scope);
+      createAndAssignScope(node, scope);
+      analysis.setScope(node, ret);
+      return ret;
     }
 
     @Override

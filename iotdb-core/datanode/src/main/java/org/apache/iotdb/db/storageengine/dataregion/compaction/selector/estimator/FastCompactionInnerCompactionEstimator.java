@@ -39,7 +39,7 @@ public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEs
                 * taskInfo.getMaxChunkMetadataSize());
 
     // add ChunkMetadata size of targetFileWriter
-    cost += memoryBudgetForFileWriter;
+    cost += fixedMemoryBudget;
 
     return cost;
   }
@@ -99,7 +99,7 @@ public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEs
     // source files (chunk + uncompressed page) * overlap file num
     // target file (chunk + unsealed page writer)
     return (maxOverlapFileNum + 1) * maxConcurrentSeriesNum * (maxChunkSize + maxPageSize)
-        + memoryBudgetForFileWriter
+        + fixedMemoryBudget
         + metadataCost;
   }
 }

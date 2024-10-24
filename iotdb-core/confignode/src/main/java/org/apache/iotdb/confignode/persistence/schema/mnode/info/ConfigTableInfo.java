@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.confignode.persistence.schema.mnode.info;
 
+import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.confignode.persistence.schema.mnode.impl.TableNodeStatus;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.BasicMNodeInfo;
 
 public class ConfigTableInfo extends BasicMNodeInfo {

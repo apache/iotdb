@@ -88,6 +88,10 @@ public class DataNodeInternalRPCService extends ThriftService
     return IoTDBDescriptor.getInstance().getConfig().getInternalPort();
   }
 
+  public DataNodeInternalRPCServiceImpl getImpl() {
+    return impl;
+  }
+
   private static class DataNodeInternalRPCServiceHolder {
     private static final DataNodeInternalRPCService INSTANCE = new DataNodeInternalRPCService();
 

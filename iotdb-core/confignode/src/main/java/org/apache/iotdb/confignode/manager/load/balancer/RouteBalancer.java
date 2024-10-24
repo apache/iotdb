@@ -25,7 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
@@ -47,7 +47,6 @@ import org.apache.iotdb.confignode.manager.load.subscriber.RegionGroupStatistics
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
@@ -169,7 +168,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
     long currentTime = System.nanoTime();
     AtomicInteger requestId = new AtomicInteger(0);
     DataNodeAsyncRequestContext<TRegionLeaderChangeReq, TRegionLeaderChangeResp> clientHandler =
-        new DataNodeAsyncRequestContext<>(CnToDnRequestType.CHANGE_REGION_LEADER);
+        new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.CHANGE_REGION_LEADER);
     Map<TConsensusGroupId, ConsensusGroupHeartbeatSample> successTransferMap = new TreeMap<>();
     optimalLeaderMap.forEach(
         (regionGroupId, newLeaderId) -> {
@@ -251,18 +250,19 @@ public class RouteBalancer implements IClusterStatusSubscriber {
   }
 
   private void invalidateSchemaCacheOfOldLeaders(
-      Map<TConsensusGroupId, Integer> oldLeaderMap, Set<TConsensusGroupId> successTransferSet) {
-    DataNodeAsyncRequestContext<TInvalidateCacheReq, TSStatus> invalidateSchemaCacheRequestHandler =
-        new DataNodeAsyncRequestContext<>(CnToDnRequestType.INVALIDATE_SCHEMA_CACHE);
-    AtomicInteger requestIndex = new AtomicInteger(0);
+      final Map<TConsensusGroupId, Integer> oldLeaderMap,
+      final Set<TConsensusGroupId> successTransferSet) {
+    final DataNodeAsyncRequestContext<String, TSStatus> invalidateSchemaCacheRequestHandler =
+        new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.INVALIDATE_LAST_CACHE);
+    final AtomicInteger requestIndex = new AtomicInteger(0);
     oldLeaderMap.entrySet().stream()
         .filter(entry -> TConsensusGroupType.DataRegion == entry.getKey().getType())
         .filter(entry -> successTransferSet.contains(entry.getKey()))
         .forEach(
             entry -> {
               // set target
-              Integer dataNodeId = entry.getValue();
-              TDataNodeLocation dataNodeLocation =
+              final Integer dataNodeId = entry.getValue();
+              final TDataNodeLocation dataNodeLocation =
                   getNodeManager().getRegisteredDataNode(dataNodeId).getLocation();
               if (dataNodeLocation == null) {
                 LOGGER.warn("DataNodeLocation is null, datanodeId {}", dataNodeId);
@@ -271,10 +271,9 @@ public class RouteBalancer implements IClusterStatusSubscriber {
               invalidateSchemaCacheRequestHandler.putNodeLocation(
                   requestIndex.get(), dataNodeLocation);
               // set req
-              TConsensusGroupId consensusGroupId = entry.getKey();
-              String database = getPartitionManager().getRegionStorageGroup(consensusGroupId);
-              invalidateSchemaCacheRequestHandler.putRequest(
-                  requestIndex.get(), new TInvalidateCacheReq(true, database));
+              final TConsensusGroupId consensusGroupId = entry.getKey();
+              final String database = getPartitionManager().getRegionStorageGroup(consensusGroupId);
+              invalidateSchemaCacheRequestHandler.putRequest(requestIndex.get(), database);
               requestIndex.incrementAndGet();
             });
     CnToDnInternalServiceAsyncRequestManager.getInstance()
@@ -343,7 +342,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
     Map<TConsensusGroupId, TRegionReplicaSet> tmpPriorityMap = getRegionPriorityMap();
     DataNodeAsyncRequestContext<TRegionRouteReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            CnToDnRequestType.UPDATE_REGION_ROUTE_MAP,
+            CnToDnAsyncRequestType.UPDATE_REGION_ROUTE_MAP,
             new TRegionRouteReq(broadcastTime, tmpPriorityMap),
             dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);

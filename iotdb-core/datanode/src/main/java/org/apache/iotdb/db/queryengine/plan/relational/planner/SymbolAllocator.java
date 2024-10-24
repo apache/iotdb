@@ -29,6 +29,11 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
 public class SymbolAllocator {
+
+  public static final String GROUP_KEY_SUFFIX = "gid";
+
+  public static final String SEPARATOR = "$";
+
   private final Map<Symbol, Type> symbolMap;
   private int nextId;
 
@@ -54,7 +59,7 @@ public class SymbolAllocator {
     requireNonNull(symbolType, "type is null");
 
     if (suffix != null) {
-      symbolHint = symbolHint + "$" + suffix;
+      symbolHint = symbolHint + SEPARATOR + suffix;
     }
 
     Symbol symbol = new Symbol(symbolHint);

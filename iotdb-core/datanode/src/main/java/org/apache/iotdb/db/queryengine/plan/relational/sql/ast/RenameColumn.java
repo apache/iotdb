@@ -32,12 +32,22 @@ public final class RenameColumn extends Statement {
   private final Identifier source;
   private final Identifier target;
 
+  private final boolean tableIfExists;
+  private final boolean columnIfNotExists;
+
   public RenameColumn(
-      NodeLocation location, QualifiedName table, Identifier source, Identifier target) {
+      final NodeLocation location,
+      final QualifiedName table,
+      final Identifier source,
+      final Identifier target,
+      final boolean tableIfExists,
+      final boolean columnIfNotExists) {
     super(requireNonNull(location, "location is null"));
     this.table = requireNonNull(table, "table is null");
     this.source = requireNonNull(source, "source is null");
     this.target = requireNonNull(target, "target is null");
+    this.tableIfExists = tableIfExists;
+    this.columnIfNotExists = columnIfNotExists;
   }
 
   public QualifiedName getTable() {
@@ -52,8 +62,16 @@ public final class RenameColumn extends Statement {
     return target;
   }
 
+  public boolean tableIfExists() {
+    return tableIfExists;
+  }
+
+  public boolean columnIfExists() {
+    return columnIfNotExists;
+  }
+
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitRenameColumn(this, context);
   }
 
@@ -63,15 +81,17 @@ public final class RenameColumn extends Statement {
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    RenameColumn that = (RenameColumn) o;
-    return Objects.equals(table, that.table)
+    final RenameColumn that = (RenameColumn) o;
+    return tableIfExists == that.tableIfExists
+        && columnIfNotExists == that.columnIfNotExists
+        && Objects.equals(table, that.table)
         && Objects.equals(source, that.source)
         && Objects.equals(target, that.target);
   }
@@ -87,6 +107,8 @@ public final class RenameColumn extends Statement {
         .add("table", table)
         .add("source", source)
         .add("target", target)
+        .add("tableIfExists", tableIfExists)
+        .add("columnIfExists", columnIfNotExists)
         .toString();
   }
 }

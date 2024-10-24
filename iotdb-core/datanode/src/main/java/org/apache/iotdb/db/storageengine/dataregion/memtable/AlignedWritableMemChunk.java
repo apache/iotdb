@@ -55,6 +55,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   private final Map<String, Integer> measurementIndexMap;
   private final List<IMeasurementSchema> schemaList;
   private AlignedTVList list;
+  private boolean ignoreAllNullRows;
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private final long TARGET_CHUNK_SIZE = CONFIG.getTargetChunkSize();
@@ -297,7 +298,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public synchronized void sortTvListForFlush() {
+  public synchronized void sortTvListForFlush(boolean ignoreAllNullRows) {
+    this.ignoreAllNullRows = ignoreAllNullRows;
     sortTVList();
   }
 
@@ -329,7 +331,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   @SuppressWarnings({"squid:S6541", "squid:S3776"})
   @Override
   public void encode(BlockingQueue<Object> ioTaskQueue) {
-    BitMap rowBitMap = list.getRowBitMap();
+    BitMap rowBitMap = ignoreAllNullRows ? list.getRowBitMap() : null;
     int avgPointSizeOfLargestColumn = list.getAvgPointSizeOfLargestColumn();
     MAX_NUMBER_OF_POINTS_IN_CHUNK =
         Math.min(MAX_NUMBER_OF_POINTS_IN_CHUNK, (TARGET_CHUNK_SIZE / avgPointSizeOfLargestColumn));

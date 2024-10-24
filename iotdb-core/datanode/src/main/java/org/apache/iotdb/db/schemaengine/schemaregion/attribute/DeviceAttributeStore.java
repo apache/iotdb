@@ -24,9 +24,11 @@ import org.apache.iotdb.commons.schema.MemUsageUtil;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateDetailContainer;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,8 +50,9 @@ import java.util.Objects;
 public class DeviceAttributeStore implements IDeviceAttributeStore {
 
   private static final Logger logger = LoggerFactory.getLogger(DeviceAttributeStore.class);
+  private static final long MAP_SIZE = RamUsageEstimator.shallowSizeOfInstance(HashMap.class);
 
-  public List<Map<String, String>> deviceAttributeList = new ArrayList<>();
+  private final List<Map<String, String>> deviceAttributeList = new ArrayList<>();
 
   private final MemSchemaRegionStatistics regionStatistics;
 
@@ -59,7 +62,7 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
 
   @Override
   public void clear() {
-    deviceAttributeList = new ArrayList<>();
+    deviceAttributeList.clear();
   }
 
   @Override
@@ -96,7 +99,7 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
 
       return true;
     } catch (final IOException e) {
-      logger.error("Failed to create mtree snapshot due to {}", e.getMessage(), e);
+      logger.error("Failed to create device attribute snapshot due to {}", e.getMessage(), e);
       FileUtils.deleteFileIfExist(snapshot);
       return false;
     } finally {
@@ -127,7 +130,7 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   @Override
   public synchronized int createAttribute(final List<String> nameList, final Object[] valueList) {
     // todo implement storage for device of diverse data types
-    long memUsage = 0L;
+    long memUsage = MAP_SIZE + RamUsageEstimator.NUM_BYTES_OBJECT_REF;
     final Map<String, String> attributeMap = new HashMap<>();
     String value;
     for (int i = 0; i < nameList.size(); i++) {
@@ -185,18 +188,26 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   }
 
   @Override
-  public String getAttribute(int pointer, String name) {
+  public Map<String, String> removeAttribute(final int pointer) {
+    releaseMemory(
+        MAP_SIZE + UpdateDetailContainer.sizeOfMapEntries(deviceAttributeList.get(pointer)));
+    deviceAttributeList.set(pointer, null);
+    return null;
+  }
+
+  @Override
+  public String getAttribute(final int pointer, final String name) {
     return deviceAttributeList.get(pointer).get(name);
   }
 
-  private void serialize(OutputStream outputStream) throws IOException {
+  private void serialize(final OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(deviceAttributeList.size(), outputStream);
-    for (Map<String, String> attributeMap : deviceAttributeList) {
+    for (final Map<String, String> attributeMap : deviceAttributeList) {
       ReadWriteIOUtils.write(attributeMap, outputStream);
     }
   }
 
-  private void deserialize(InputStream inputStream) throws IOException {
+  private void deserialize(final InputStream inputStream) throws IOException {
     int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; i++) {
       deviceAttributeList.add(ReadWriteIOUtils.readMap(inputStream));

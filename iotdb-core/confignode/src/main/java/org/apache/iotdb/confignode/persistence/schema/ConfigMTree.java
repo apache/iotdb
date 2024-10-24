@@ -27,13 +27,13 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
+import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.persistence.schema.mnode.factory.ConfigMNodeFactory;
 import org.apache.iotdb.confignode.persistence.schema.mnode.impl.ConfigTableNode;
-import org.apache.iotdb.confignode.persistence.schema.mnode.impl.TableNodeStatus;
 import org.apache.iotdb.db.exception.metadata.DatabaseAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.DatabaseConflictException;
 import org.apache.iotdb.db.exception.metadata.DatabaseNotSetException;
@@ -673,6 +673,26 @@ public class ConfigMTree {
     tableNode.setStatus(TableNodeStatus.USING);
   }
 
+  public void preDeleteTable(final PartialPath database, final String tableName)
+      throws MetadataException {
+    final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    if (!databaseNode.hasChild(tableName)) {
+      throw new TableNotExistsException(
+          database.getFullPath().substring(ROOT.length() + 1), tableName);
+    }
+    final ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
+    if (tableNode.getStatus().equals(TableNodeStatus.PRE_CREATE)) {
+      throw new IllegalStateException();
+    }
+    tableNode.setStatus(TableNodeStatus.PRE_DELETE);
+  }
+
+  public void dropTable(final PartialPath database, final String tableName)
+      throws MetadataException {
+    final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    store.deleteChild(databaseNode, tableName);
+  }
+
   public List<TsTable> getAllUsingTablesUnderSpecificDatabase(final PartialPath databasePath)
       throws MetadataException {
     final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(databasePath).getAsMNode();
@@ -682,6 +702,18 @@ public class ConfigMTree {
                 child instanceof ConfigTableNode
                     && ((ConfigTableNode) child).getStatus().equals(TableNodeStatus.USING))
         .map(child -> ((ConfigTableNode) child).getTable())
+        .collect(Collectors.toList());
+  }
+
+  public List<Pair<TsTable, TableNodeStatus>> getAllTablesUnderSpecificDatabase(
+      final PartialPath databasePath) throws MetadataException {
+    final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(databasePath).getAsMNode();
+    return databaseNode.getChildren().values().stream()
+        .filter(ConfigTableNode.class::isInstance)
+        .map(
+            child ->
+                new Pair<>(
+                    ((ConfigTableNode) child).getTable(), ((ConfigTableNode) child).getStatus()))
         .collect(Collectors.toList());
   }
 
@@ -753,6 +785,15 @@ public class ConfigMTree {
       throws MetadataException {
     final TsTable table = getTable(database, tableName);
     columnSchemaList.forEach(o -> table.removeColumnSchema(o.getColumnName()));
+  }
+
+  public void renameTableColumn(
+      final PartialPath database,
+      final String tableName,
+      final String oldName,
+      final String newName)
+      throws MetadataException {
+    getTable(database, tableName).renameColumnSchema(oldName, newName);
   }
 
   public void setTableProperties(

@@ -278,8 +278,7 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
                         }
                       });
               try {
-                IDeviceID deviceID =
-                    IDeviceID.Factory.DEFAULT_FACTORY.create(alignedChunkData.getDevice());
+                final IDeviceID deviceID = alignedChunkData.getDevice();
                 if (!deviceID.equals(writer.currentDevice)) {
                   if (writer.currentDevice != null) {
                     writer.endChunkGroup();

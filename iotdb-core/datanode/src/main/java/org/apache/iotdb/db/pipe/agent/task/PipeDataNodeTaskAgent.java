@@ -118,11 +118,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       throws IllegalPathException {
     if (pipeTaskMeta.getLeaderNodeId() == CONFIG.getDataNodeId()) {
       final PipeParameters extractorParameters = pipeStaticMeta.getExtractorParameters();
+      final DataRegionId dataRegionId = new DataRegionId(consensusGroupId);
       final boolean needConstructDataRegionTask =
-          StorageEngine.getInstance()
-                  .getAllDataRegionIds()
-                  .contains(new DataRegionId(consensusGroupId))
-              && DataRegionListeningFilter.shouldDataRegionBeListened(extractorParameters);
+          StorageEngine.getInstance().getAllDataRegionIds().contains(dataRegionId)
+              && DataRegionListeningFilter.shouldDataRegionBeListened(
+                  extractorParameters, dataRegionId);
       final boolean needConstructSchemaRegionTask =
           SchemaEngine.getInstance()
                   .getAllSchemaRegionIds()

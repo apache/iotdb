@@ -119,6 +119,8 @@ public class LoadTsFileToTreeModelAnalyzer extends LoadTsFileAnalyzer {
       }
 
       // check whether the tsfile is tree-model or not
+      // TODO: currently, loading a file with both tree-model and table-model data is not supported.
+      //  May need to support this and remove this check in the future.
       if (Objects.nonNull(reader.readFileMetadata().getTableSchemaMap())
           && reader.readFileMetadata().getTableSchemaMap().size() != 0) {
         throw new SemanticException("Attempted to load a table-model TsFile into tree-model.");

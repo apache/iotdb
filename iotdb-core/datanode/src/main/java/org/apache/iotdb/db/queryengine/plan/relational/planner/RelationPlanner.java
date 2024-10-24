@@ -19,6 +19,8 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
@@ -52,6 +54,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinUsing;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
@@ -707,5 +710,20 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             idAllocator.genPlanNodeId(), node.getResources(), isTableModel, node.getDatabase()),
         analysis.getRootScope(),
         Collections.emptyList());
+  }
+
+  @Override
+  protected RelationPlan visitPipeEnriched(PipeEnriched node, Void context) {
+    RelationPlan relationPlan = node.getInnerStatement().accept(this, context);
+
+    if (relationPlan.getRoot() instanceof LoadTsFileNode) {
+      return relationPlan;
+    } else if (relationPlan.getRoot() instanceof InsertNode) {
+      return new RelationPlan(
+          new PipeEnrichedInsertNode((InsertNode) relationPlan.getRoot()),
+          analysis.getRootScope(),
+          Collections.emptyList());
+    }
+    throw new IllegalStateException("Other WritePlanNode is not supported in current version.");
   }
 }

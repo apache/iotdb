@@ -188,10 +188,10 @@ class RatisConsensus implements IConsensus {
             .setRetryHandler(
                 reply ->
                     !reply.isSuccess()
-                        && (reply.getException() instanceof ResourceUnavailableException)
-                        && (reply.getException() instanceof LeaderNotReadyException)
-                        && (reply.getException() instanceof LeaderSteppingDownException)
-                        && (reply.getException() instanceof StateMachineException))
+                        && ((reply.getException() instanceof ResourceUnavailableException)
+                            || reply.getException() instanceof LeaderNotReadyException
+                            || reply.getException() instanceof LeaderSteppingDownException
+                            || reply.getException() instanceof StateMachineException))
             .setMaxAttempts(this.config.getImpl().getRetryTimesMax())
             .setWaitTime(
                 TimeDuration.valueOf(

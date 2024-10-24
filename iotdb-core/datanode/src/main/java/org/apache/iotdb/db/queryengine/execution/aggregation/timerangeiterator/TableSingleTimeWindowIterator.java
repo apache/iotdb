@@ -28,9 +28,11 @@ public class TableSingleTimeWindowIterator implements ITableTimeRangeIterator {
 
   private TimeRange curTimeRange;
 
-  public TableSingleTimeWindowIterator(long startTime, long endTime) {
-    curTimeRange = new TimeRange(startTime, endTime);
+  public TableSingleTimeWindowIterator(TimeRange curTimeRange) {
+    this.curTimeRange = curTimeRange;
   }
+
+  public TableSingleTimeWindowIterator() {}
 
   @Override
   public TimeIteratorType getType() {
@@ -59,12 +61,15 @@ public class TableSingleTimeWindowIterator implements ITableTimeRangeIterator {
 
   @Override
   public void resetCurTimeRange() {
-    // do nothing
+    this.curTimeRange = null;
   }
 
   @Override
   public void updateCurTimeRange(long startTime) {
-    // not used
+    // only meets real data, init the curTimeRange
+    if (curTimeRange == null) {
+      curTimeRange = new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE);
+    }
   }
 
   @Override

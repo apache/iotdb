@@ -35,9 +35,13 @@ public class PipeDataNodeReceiverMetrics implements IMetricSet {
   private Timer handshakeDatanodeV1Timer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer handshakeDatanodeV2Timer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer transferTabletInsertNodeTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer transferTabletInsertNodeV2Timer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer transferTabletRawTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer transferTabletRawV2Timer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer transferTabletBinaryTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer transferTabletBinaryV2Timer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer transferTabletBatchTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer transferTabletBatchV2Timer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer transferTsFilePieceTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer transferTsFileSealTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer transferTsFilePieceWithModTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
@@ -65,16 +69,32 @@ public class PipeDataNodeReceiverMetrics implements IMetricSet {
     transferTabletInsertNodeTimer.updateNanos(costTimeInNanos);
   }
 
+  public void recordTransferTabletInsertNodeV2Timer(long costTimeInNanos) {
+    transferTabletInsertNodeV2Timer.updateNanos(costTimeInNanos);
+  }
+
   public void recordTransferTabletRawTimer(long costTimeInNanos) {
     transferTabletRawTimer.updateNanos(costTimeInNanos);
+  }
+
+  public void recordTransferTabletRawV2Timer(long costTimeInNanos) {
+    transferTabletRawV2Timer.updateNanos(costTimeInNanos);
   }
 
   public void recordTransferTabletBinaryTimer(long costTimeInNanos) {
     transferTabletBinaryTimer.updateNanos(costTimeInNanos);
   }
 
+  public void recordTransferTabletBinaryV2Timer(long costTimeInNanos) {
+    transferTabletBinaryV2Timer.updateNanos(costTimeInNanos);
+  }
+
   public void recordTransferTabletBatchTimer(long costTimeInNanos) {
     transferTabletBatchTimer.updateNanos(costTimeInNanos);
+  }
+
+  public void recordTransferTabletBatchV2Timer(long costTimeInNanos) {
+    transferTabletBatchV2Timer.updateNanos(costTimeInNanos);
   }
 
   public void recordTransferTsFilePieceTimer(long costTimeInNanos) {
@@ -147,6 +167,14 @@ public class PipeDataNodeReceiverMetrics implements IMetricSet {
             RECEIVER,
             Tag.TYPE.toString(),
             "transferTabletInsertNode");
+    transferTabletInsertNodeV2Timer =
+        metricService.getOrCreateTimer(
+            Metric.PIPE_DATANODE_RECEIVER.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RECEIVER,
+            Tag.TYPE.toString(),
+            "transferTabletInsertNodeV2");
     transferTabletRawTimer =
         metricService.getOrCreateTimer(
             Metric.PIPE_DATANODE_RECEIVER.toString(),
@@ -155,6 +183,14 @@ public class PipeDataNodeReceiverMetrics implements IMetricSet {
             RECEIVER,
             Tag.TYPE.toString(),
             "transferTabletRaw");
+    transferTabletRawV2Timer =
+        metricService.getOrCreateTimer(
+            Metric.PIPE_DATANODE_RECEIVER.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RECEIVER,
+            Tag.TYPE.toString(),
+            "transferTabletRawV2");
     transferTabletBinaryTimer =
         metricService.getOrCreateTimer(
             Metric.PIPE_DATANODE_RECEIVER.toString(),
@@ -163,6 +199,14 @@ public class PipeDataNodeReceiverMetrics implements IMetricSet {
             RECEIVER,
             Tag.TYPE.toString(),
             "transferTabletBinary");
+    transferTabletBinaryV2Timer =
+        metricService.getOrCreateTimer(
+            Metric.PIPE_DATANODE_RECEIVER.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RECEIVER,
+            Tag.TYPE.toString(),
+            "transferTabletBinaryV2");
     transferTabletBatchTimer =
         metricService.getOrCreateTimer(
             Metric.PIPE_DATANODE_RECEIVER.toString(),
@@ -171,6 +215,14 @@ public class PipeDataNodeReceiverMetrics implements IMetricSet {
             RECEIVER,
             Tag.TYPE.toString(),
             "transferTabletBatch");
+    transferTabletBatchV2Timer =
+        metricService.getOrCreateTimer(
+            Metric.PIPE_DATANODE_RECEIVER.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RECEIVER,
+            Tag.TYPE.toString(),
+            "transferTabletBatchV2");
     transferTsFilePieceTimer =
         metricService.getOrCreateTimer(
             Metric.PIPE_DATANODE_RECEIVER.toString(),
@@ -262,9 +314,13 @@ public class PipeDataNodeReceiverMetrics implements IMetricSet {
     handshakeDatanodeV1Timer = DoNothingMetricManager.DO_NOTHING_TIMER;
     handshakeDatanodeV2Timer = DoNothingMetricManager.DO_NOTHING_TIMER;
     transferTabletInsertNodeTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    transferTabletInsertNodeV2Timer = DoNothingMetricManager.DO_NOTHING_TIMER;
     transferTabletRawTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    transferTabletRawV2Timer = DoNothingMetricManager.DO_NOTHING_TIMER;
     transferTabletBinaryTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    transferTabletBinaryV2Timer = DoNothingMetricManager.DO_NOTHING_TIMER;
     transferTabletBatchTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    transferTabletBatchV2Timer = DoNothingMetricManager.DO_NOTHING_TIMER;
     transferTsFilePieceTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     transferTsFileSealTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     transferTsFilePieceWithModTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
@@ -303,7 +359,21 @@ public class PipeDataNodeReceiverMetrics implements IMetricSet {
         Tag.NAME.toString(),
         RECEIVER,
         Tag.TYPE.toString(),
+        "transferTabletInsertNodeV2");
+    metricService.remove(
+        MetricType.TIMER,
+        Metric.PIPE_DATANODE_RECEIVER.toString(),
+        Tag.NAME.toString(),
+        RECEIVER,
+        Tag.TYPE.toString(),
         "transferTabletRaw");
+    metricService.remove(
+        MetricType.TIMER,
+        Metric.PIPE_DATANODE_RECEIVER.toString(),
+        Tag.NAME.toString(),
+        RECEIVER,
+        Tag.TYPE.toString(),
+        "transferTabletRawV2");
     metricService.remove(
         MetricType.TIMER,
         Metric.PIPE_DATANODE_RECEIVER.toString(),
@@ -317,7 +387,21 @@ public class PipeDataNodeReceiverMetrics implements IMetricSet {
         Tag.NAME.toString(),
         RECEIVER,
         Tag.TYPE.toString(),
+        "transferTabletBinaryV2");
+    metricService.remove(
+        MetricType.TIMER,
+        Metric.PIPE_DATANODE_RECEIVER.toString(),
+        Tag.NAME.toString(),
+        RECEIVER,
+        Tag.TYPE.toString(),
         "transferTabletBatch");
+    metricService.remove(
+        MetricType.TIMER,
+        Metric.PIPE_DATANODE_RECEIVER.toString(),
+        Tag.NAME.toString(),
+        RECEIVER,
+        Tag.TYPE.toString(),
+        "transferTabletBatchV2");
     metricService.remove(
         MetricType.TIMER,
         Metric.PIPE_DATANODE_RECEIVER.toString(),

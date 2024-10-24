@@ -40,7 +40,7 @@ public interface TableAccumulator {
    * This method can only be used in AggTableScan, it will use different statistics based on the
    * type of Accumulator.
    */
-  void addStatistics(Statistics statistics);
+  void addStatistics(Statistics[] statistics);
 
   void reset();
 }

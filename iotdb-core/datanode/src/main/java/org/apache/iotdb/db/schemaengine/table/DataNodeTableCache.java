@@ -33,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.concurrent.GuardedBy;
 
 import java.util.Collections;
 import java.util.List;
@@ -190,6 +191,23 @@ public class DataNodeTableCache implements ITableCache {
     }
   }
 
+  @GuardedBy("TableDeviceSchemaCache#writeLock")
+  @Override
+  public void invalid(String database, final String tableName) {
+    database = PathUtils.unQualifyDatabaseName(database);
+    readWriteLock.writeLock().lock();
+    try {
+      if (databaseTableMap.containsKey(database)) {
+        databaseTableMap.get(database).remove(tableName);
+      }
+      if (preUpdateTableMap.containsKey(database)) {
+        preUpdateTableMap.get(database).remove(tableName);
+      }
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
   public TsTable getTableInWrite(final String database, final String tableName) {
     final TsTable result = getTableInCache(database, tableName);
     return Objects.nonNull(result) ? result : getTable(database, tableName);
@@ -203,7 +221,7 @@ public class DataNodeTableCache implements ITableCache {
     database = PathUtils.unQualifyDatabaseName(database);
     final Map<String, Map<String, Long>> preUpdateTables =
         mayGetTableInPreUpdateMap(database, tableName);
-    if (Objects.nonNull(preUpdateTables)) {
+    if (Objects.nonNull(preUpdateTables) && !preUpdateTables.isEmpty()) {
       updateTable(getTablesInConfigNode(preUpdateTables), preUpdateTables);
     }
     return getTableInCache(database, tableName);

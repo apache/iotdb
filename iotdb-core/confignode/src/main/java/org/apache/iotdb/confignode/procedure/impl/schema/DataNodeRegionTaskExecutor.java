@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.schema;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -45,18 +45,18 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
   protected final Map<TConsensusGroupId, TRegionReplicaSet> targetRegionGroup;
   protected final boolean executeOnAllReplicaset;
 
-  protected final CnToDnRequestType dataNodeRequestType;
+  protected final CnToDnAsyncRequestType dataNodeRequestType;
   protected final BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q>
       dataNodeRequestGenerator;
 
   private boolean isInterrupted = false;
 
   protected DataNodeRegionTaskExecutor(
-      ConfigManager configManager,
-      Map<TConsensusGroupId, TRegionReplicaSet> targetRegionGroup,
-      boolean executeOnAllReplicaset,
-      CnToDnRequestType dataNodeRequestType,
-      BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
+      final ConfigManager configManager,
+      final Map<TConsensusGroupId, TRegionReplicaSet> targetRegionGroup,
+      final boolean executeOnAllReplicaset,
+      final CnToDnAsyncRequestType dataNodeRequestType,
+      final BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
     this.configManager = configManager;
     this.targetRegionGroup = targetRegionGroup;
     this.executeOnAllReplicaset = executeOnAllReplicaset;
@@ -65,11 +65,11 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
   }
 
   protected DataNodeRegionTaskExecutor(
-      ConfigNodeProcedureEnv env,
-      Map<TConsensusGroupId, TRegionReplicaSet> targetRegionGroup,
-      boolean executeOnAllReplicaset,
-      CnToDnRequestType dataNodeRequestType,
-      BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
+      final ConfigNodeProcedureEnv env,
+      final Map<TConsensusGroupId, TRegionReplicaSet> targetRegionGroup,
+      final boolean executeOnAllReplicaset,
+      final CnToDnAsyncRequestType dataNodeRequestType,
+      final BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
     this.configManager = env.getConfigManager();
     this.targetRegionGroup = targetRegionGroup;
     this.executeOnAllReplicaset = executeOnAllReplicaset;
@@ -79,18 +79,18 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
 
   public void execute() {
     // organize region by dataNode
-    Map<TConsensusGroupId, Set<TDataNodeLocation>> failedHistory = new HashMap<>();
+    final Map<TConsensusGroupId, Set<TDataNodeLocation>> failedHistory = new HashMap<>();
     Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeConsensusGroupIdMap =
         executeOnAllReplicaset
             ? getAllReplicaDataNodeRegionGroupMap(targetRegionGroup)
             : getLeaderDataNodeRegionGroupMap(
                 configManager.getLoadManager().getRegionLeaderMap(), targetRegionGroup);
     while (!dataNodeConsensusGroupIdMap.isEmpty()) {
-      DataNodeAsyncRequestContext<Q, R> clientHandler =
+      final DataNodeAsyncRequestContext<Q, R> clientHandler =
           prepareRequestHandler(dataNodeConsensusGroupIdMap);
       CnToDnInternalServiceAsyncRequestManager.getInstance()
           .sendAsyncRequestWithRetry(clientHandler);
-      Map<TDataNodeLocation, List<TConsensusGroupId>> currentFailedDataNodeMap =
+      final Map<TDataNodeLocation, List<TConsensusGroupId>> currentFailedDataNodeMap =
           checkDataNodeExecutionResult(clientHandler.getResponseMap(), dataNodeConsensusGroupIdMap);
 
       if (isInterrupted) {
@@ -115,10 +115,10 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
   }
 
   private DataNodeAsyncRequestContext<Q, R> prepareRequestHandler(
-      Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeConsensusGroupIdMap) {
-    DataNodeAsyncRequestContext<Q, R> clientHandler =
+      final Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeConsensusGroupIdMap) {
+    final DataNodeAsyncRequestContext<Q, R> clientHandler =
         new DataNodeAsyncRequestContext<>(dataNodeRequestType);
-    for (Map.Entry<TDataNodeLocation, List<TConsensusGroupId>> entry :
+    for (final Map.Entry<TDataNodeLocation, List<TConsensusGroupId>> entry :
         dataNodeConsensusGroupIdMap.entrySet()) {
       clientHandler.putNodeLocation(entry.getKey().getDataNodeId(), entry.getKey());
       clientHandler.putRequest(
@@ -129,13 +129,14 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
   }
 
   private Map<TDataNodeLocation, List<TConsensusGroupId>> checkDataNodeExecutionResult(
-      Map<Integer, R> executionResult,
-      Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeConsensusGroupIdMap) {
-    Map<TDataNodeLocation, List<TConsensusGroupId>> currentFailedDataNodeMap = new HashMap<>();
-    for (Map.Entry<TDataNodeLocation, List<TConsensusGroupId>> entry :
+      final Map<Integer, R> executionResult,
+      final Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeConsensusGroupIdMap) {
+    final Map<TDataNodeLocation, List<TConsensusGroupId>> currentFailedDataNodeMap =
+        new HashMap<>();
+    for (final Map.Entry<TDataNodeLocation, List<TConsensusGroupId>> entry :
         dataNodeConsensusGroupIdMap.entrySet()) {
-      R response = executionResult.get(entry.getKey().getDataNodeId());
-      List<TConsensusGroupId> failedRegionList =
+      final R response = executionResult.get(entry.getKey().getDataNodeId());
+      final List<TConsensusGroupId> failedRegionList =
           processResponseOfOneDataNode(entry.getKey(), entry.getValue(), response);
       if (failedRegionList.isEmpty()) {
         continue;
@@ -146,8 +147,8 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
   }
 
   private Map<TDataNodeLocation, List<TConsensusGroupId>> getAvailableDataNodeLocationForRetry(
-      Map<TDataNodeLocation, List<TConsensusGroupId>> failedDataNodeConsensusGroupIdMap,
-      Map<TConsensusGroupId, Set<TDataNodeLocation>> failedHistory) {
+      final Map<TDataNodeLocation, List<TConsensusGroupId>> failedDataNodeConsensusGroupIdMap,
+      final Map<TConsensusGroupId, Set<TDataNodeLocation>> failedHistory) {
 
     failedDataNodeConsensusGroupIdMap.forEach(
         (k, v) -> {
@@ -156,18 +157,21 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
           }
         });
 
-    Map<TDataNodeLocation, List<TConsensusGroupId>> availableDataNodeLocation = new HashMap<>();
+    final Map<TDataNodeLocation, List<TConsensusGroupId>> availableDataNodeLocation =
+        new HashMap<>();
 
-    Map<TConsensusGroupId, Integer> leaderMap = configManager.getLoadManager().getRegionLeaderMap();
-    for (List<TConsensusGroupId> consensusGroupIdList :
+    final Map<TConsensusGroupId, Integer> leaderMap =
+        configManager.getLoadManager().getRegionLeaderMap();
+    for (final List<TConsensusGroupId> consensusGroupIdList :
         failedDataNodeConsensusGroupIdMap.values()) {
-      for (TConsensusGroupId consensusGroupId : consensusGroupIdList) {
-        TRegionReplicaSet regionReplicaSet = targetRegionGroup.get(consensusGroupId);
+      for (final TConsensusGroupId consensusGroupId : consensusGroupIdList) {
+        final TRegionReplicaSet regionReplicaSet = targetRegionGroup.get(consensusGroupId);
         TDataNodeLocation selectedDataNode = null;
-        Integer leaderId = leaderMap.get(consensusGroupId);
+        final Integer leaderId = leaderMap.get(consensusGroupId);
         Set<TDataNodeLocation> failedDataNodeSet;
         if (leaderId == null || leaderId == -1) {
-          for (TDataNodeLocation candidateDataNode : regionReplicaSet.getDataNodeLocations()) {
+          for (final TDataNodeLocation candidateDataNode :
+              regionReplicaSet.getDataNodeLocations()) {
             if ((failedDataNodeSet = failedHistory.get(consensusGroupId)) != null
                 && failedDataNodeSet.contains(candidateDataNode)) {
               continue;
@@ -177,7 +181,8 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
             break;
           }
         } else {
-          for (TDataNodeLocation candidateDataNode : regionReplicaSet.getDataNodeLocations()) {
+          for (final TDataNodeLocation candidateDataNode :
+              regionReplicaSet.getDataNodeLocations()) {
             if ((failedDataNodeSet = failedHistory.get(consensusGroupId)) != null
                 && failedDataNodeSet.contains(candidateDataNode)) {
               continue;
@@ -214,12 +219,14 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
    * with execution failure.
    */
   protected abstract List<TConsensusGroupId> processResponseOfOneDataNode(
-      TDataNodeLocation dataNodeLocation, List<TConsensusGroupId> consensusGroupIdList, R response);
+      final TDataNodeLocation dataNodeLocation,
+      final List<TConsensusGroupId> consensusGroupIdList,
+      final R response);
 
   /**
    * When all replicas failed on executing given task, the process defined by subclass will be
    * executed.
    */
   protected abstract void onAllReplicasetFailure(
-      TConsensusGroupId consensusGroupId, Set<TDataNodeLocation> dataNodeLocationSet);
+      final TConsensusGroupId consensusGroupId, final Set<TDataNodeLocation> dataNodeLocationSet);
 }

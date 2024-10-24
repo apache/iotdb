@@ -29,16 +29,16 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEven
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventPlainBatch;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventTsFileBatch;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTransferBatchReqBuilder;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReqV2;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReqV2;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReqV2;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletBatchEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletInsertNodeEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletRawEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTsFileHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBDataRegionSyncConnector;
+import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
-import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
@@ -86,15 +86,11 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       "Failed to borrow client from client pool when sending to receiver.";
   private static final String THRIFT_ERROR_FORMATTER_WITH_ENDPOINT =
       "Exception occurred while sending to receiver %s:%s.";
-
-  private IoTDBDataNodeAsyncClientManager clientManager;
-
   private final IoTDBDataRegionSyncConnector retryConnector = new IoTDBDataRegionSyncConnector();
   private final BlockingQueue<Event> retryEventQueue = new LinkedBlockingQueue<>();
-
-  private PipeTransferBatchReqBuilder tabletBatchBuilder;
-
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
+  private IoTDBDataNodeAsyncClientManager clientManager;
+  private PipeTransferBatchReqBuilder tabletBatchBuilder;
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
@@ -196,7 +192,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
                 eventsHadBeenAddedToRetryQueue,
                 sealedFile,
                 null,
-                false));
+                false,
+                null));
       }
     } else {
       LOGGER.warn(
@@ -219,12 +216,16 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
       final InsertNode insertNode =
           pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
+      final String databaseName =
+          pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
+              ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
+              : null;
       final TPipeTransferReq pipeTransferReq =
           compressIfNeeded(
               Objects.isNull(insertNode)
-                  ? PipeTransferTabletBinaryReq.toTPipeTransferReq(
-                      pipeInsertNodeTabletInsertionEvent.getByteBuffer())
-                  : PipeTransferTabletInsertNodeReq.toTPipeTransferReq(insertNode));
+                  ? PipeTransferTabletBinaryReqV2.toTPipeTransferReq(
+                      pipeInsertNodeTabletInsertionEvent.getByteBuffer(), databaseName)
+                  : PipeTransferTabletInsertNodeReqV2.toTPipeTransferReq(insertNode, databaseName));
       final PipeTransferTabletInsertNodeEventHandler pipeTransferInsertNodeReqHandler =
           new PipeTransferTabletInsertNodeEventHandler(
               pipeInsertNodeTabletInsertionEvent, pipeTransferReq, this);
@@ -243,9 +244,12 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
       final TPipeTransferReq pipeTransferTabletRawReq =
           compressIfNeeded(
-              PipeTransferTabletRawReq.toTPipeTransferReq(
+              PipeTransferTabletRawReqV2.toTPipeTransferReq(
                   pipeRawTabletInsertionEvent.convertToTablet(),
-                  pipeRawTabletInsertionEvent.isAligned()));
+                  pipeRawTabletInsertionEvent.isAligned(),
+                  pipeRawTabletInsertionEvent.isTableModelEvent()
+                      ? pipeRawTabletInsertionEvent.getTableModelDatabaseName()
+                      : null));
       final PipeTransferTabletRawEventHandler pipeTransferTabletReqHandler =
           new PipeTransferTabletRawEventHandler(
               pipeRawTabletInsertionEvent, pipeTransferTabletRawReq, this);
@@ -338,7 +342,10 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
               pipeTsFileInsertionEvent.getTsFile(),
               pipeTsFileInsertionEvent.getModFile(),
               pipeTsFileInsertionEvent.isWithMod()
-                  && clientManager.supportModsIfIsDataNodeReceiver());
+                  && clientManager.supportModsIfIsDataNodeReceiver(),
+              pipeTsFileInsertionEvent.isTableModelEvent()
+                  ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
+                  : null);
 
       transfer(pipeTransferTsFileHandler);
     } catch (final Exception e) {
@@ -366,7 +373,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     transferBatchedEventsIfNecessary();
 
     if (!(event instanceof PipeHeartbeatEvent
-        || event instanceof PipeSchemaRegionWritePlanEvent
+        || event instanceof PipeDeleteDataNodeEvent
         || event instanceof PipeTerminateEvent)) {
       LOGGER.warn(
           "IoTDBThriftAsyncConnector does not support transferring generic event: {}.", event);

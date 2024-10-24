@@ -26,6 +26,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.utils.Binary;
@@ -59,7 +60,7 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
   }
 
   // Used for deserialize
-  public BatchedAlignedValueChunkData(String device, TTimePartitionSlot timePartitionSlot) {
+  public BatchedAlignedValueChunkData(IDeviceID device, TTimePartitionSlot timePartitionSlot) {
     super(device, timePartitionSlot);
     valueChunkWriters = new ArrayList<>();
   }

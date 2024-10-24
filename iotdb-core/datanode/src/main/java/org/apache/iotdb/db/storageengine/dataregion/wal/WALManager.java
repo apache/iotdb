@@ -54,6 +54,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+
 /** This class is used to manage and allocate wal nodes. */
 public class WALManager implements IService {
   private static final Logger logger = LoggerFactory.getLogger(WALManager.class);
@@ -79,13 +81,13 @@ public class WALManager implements IService {
     }
   }
 
-  public static String getApplicantUniqueId(String storageGroupName, boolean sequence) {
+  public static String getApplicantUniqueId(String dataRegionName, boolean sequence) {
     return config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
             || config
                 .getDataRegionConsensusProtocolClass()
                 .equals(ConsensusFactory.IOT_CONSENSUS_V2)
-        ? storageGroupName
-        : storageGroupName
+        ? dataRegionName
+        : dataRegionName
             + IoTDBConstant.FILE_NAME_SEPARATOR
             + (sequence ? "sequence" : "unsequence");
   }
@@ -127,6 +129,19 @@ public class WALManager implements IService {
 
     ((FirstCreateStrategy) walNodesManager).deleteWALNode(applicantUniqueId);
     WritingMetrics.getInstance().removeWALNodeInfoMetrics(applicantUniqueId);
+  }
+
+  /** Region information and WAL node will be removed when using ElasticStrategy. */
+  public void deleteRegionAndMayDeleteWALNode(String databaseName, String dataRegionId) {
+    if (config.getWalMode() == WALMode.DISABLE || !(walNodesManager instanceof ElasticStrategy)) {
+      return;
+    }
+
+    String dataRegionName = databaseName + FILE_NAME_SEPARATOR + dataRegionId;
+    ((ElasticStrategy) walNodesManager)
+        .deleteUniqueIdAndMayDeleteWALNode(getApplicantUniqueId(dataRegionName, true));
+    ((ElasticStrategy) walNodesManager)
+        .deleteUniqueIdAndMayDeleteWALNode(getApplicantUniqueId(dataRegionName, false));
   }
 
   @Override

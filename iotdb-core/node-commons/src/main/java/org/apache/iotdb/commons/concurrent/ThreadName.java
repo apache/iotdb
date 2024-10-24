@@ -68,6 +68,7 @@ public enum ThreadName {
   PBTREE_RELEASE_MONITOR("PBTree-Release-Task-Monitor"),
   PBTREE_FLUSH_MONITOR("PBTree-Flush-Monitor"),
   PBTREE_WORKER_POOL("PBTree-Worker-Pool"),
+  GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE("General-Region-Attribute-Security-Service"),
   // -------------------------- ClientService --------------------------
   CLIENT_RPC_SERVICE("ClientRPC-Service"),
   CLIENT_RPC_PROCESSOR("ClientRPC-Processor"),
@@ -101,6 +102,9 @@ public enum ThreadName {
   PIPE_CONSENSUS_RPC_SERVICE("PipeConsensusRPC-Service"),
   PIPE_CONSENSUS_RPC_PROCESSOR("PipeConsensusRPC-Processor"),
   ASYNC_DATANODE_PIPE_CONSENSUS_CLIENT_POOL("AsyncDataNodePipeConsensusServiceClientPool"),
+  PIPE_CONSENSUS_DELETION_SERIALIZE("WAL-Serialize"),
+  PIPE_CONSENSUS_DELETION_SYNC("WAL-Sync"),
+
   // -------------------------- IoTConsensus --------------------------
   IOT_CONSENSUS_RPC_SERVICE("IoTConsensusRPC-Service"),
   IOT_CONSENSUS_RPC_PROCESSOR("IoTConsensusRPC-Processor"),
@@ -136,6 +140,8 @@ public enum ThreadName {
   PIPE_RUNTIME_HEARTBEAT("Pipe-Runtime-Heartbeat"),
   PIPE_RUNTIME_PROCEDURE_SUBMITTER("Pipe-Runtime-Procedure-Submitter"),
   PIPE_RUNTIME_PERIODICAL_JOB_EXECUTOR("Pipe-Runtime-Periodical-Job-Executor"),
+  PIPE_RUNTIME_PERIODICAL_PHANTOM_REFERENCE_CLEANER(
+      "Pipe-Runtime-Periodical-Phantom-Reference-Cleaner"),
   PIPE_ASYNC_CONNECTOR_CLIENT_POOL("Pipe-Async-Connector-Client-Pool"),
   PIPE_RECEIVER_AIR_GAP_AGENT("Pipe-Receiver-Air-Gap-Agent"),
   SUBSCRIPTION_EXECUTOR_POOL("Subscription-Executor-Pool"),
@@ -235,7 +241,8 @@ public enum ThreadName {
               PBTREE_RELEASE_MONITOR,
               SCHEMA_FORCE_MLOG,
               PBTREE_FLUSH_MONITOR,
-              PBTREE_WORKER_POOL));
+              PBTREE_WORKER_POOL,
+              GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE));
 
   private static final Set<ThreadName> clientServiceThreadNames =
       new HashSet<>(Arrays.asList(CLIENT_RPC_SERVICE, CLIENT_RPC_PROCESSOR));

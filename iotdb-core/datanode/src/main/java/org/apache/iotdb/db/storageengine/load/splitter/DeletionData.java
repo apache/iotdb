@@ -49,13 +49,13 @@ public class DeletionData implements TsFileData {
   }
 
   @Override
-  public boolean isModification() {
-    return true;
+  public TsFileDataType getType() {
+    return TsFileDataType.DELETION;
   }
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(isModification(), stream);
+    ReadWriteIOUtils.write(getType().ordinal(), stream);
     deletion.serializeWithoutFileOffset(stream);
   }
 

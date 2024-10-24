@@ -24,7 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -110,7 +110,7 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
     DataNodeAsyncRequestContext<TSetTTLReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            CnToDnRequestType.SET_TTL,
+            CnToDnAsyncRequestType.SET_TTL,
             new TSetTTLReq(
                 Collections.singletonList(String.join(".", plan.getPathPattern())),
                 plan.getTTL(),
