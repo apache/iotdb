@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.persistence.schema.mnode.factory.ConfigMNodeF
 import org.apache.iotdb.confignode.persistence.schema.mnode.impl.ConfigTableNode;
 import org.apache.iotdb.db.exception.metadata.DatabaseAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.DatabaseConflictException;
+import org.apache.iotdb.db.exception.metadata.DatabaseModelException;
 import org.apache.iotdb.db.exception.metadata.DatabaseNotSetException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -227,13 +228,16 @@ public class ConfigMTree {
    *
    * @return a list contains all distinct databases
    */
-  public List<PartialPath> getAllDatabasePaths() {
-    List<PartialPath> res = new ArrayList<>();
-    Deque<IConfigMNode> nodeStack = new ArrayDeque<>();
+  public List<PartialPath> getAllDatabasePaths(final boolean onlyTableModel) {
+    final List<PartialPath> res = new ArrayList<>();
+    final Deque<IConfigMNode> nodeStack = new ArrayDeque<>();
     nodeStack.add(root);
     while (!nodeStack.isEmpty()) {
-      IConfigMNode current = nodeStack.pop();
+      final IConfigMNode current = nodeStack.pop();
       if (current.isDatabase()) {
+        if (onlyTableModel && !current.getDatabaseSchema().isIsTableModel()) {
+          continue;
+        }
         res.add(current.getPartialPath());
       } else {
         nodeStack.addAll(current.getChildren().values());
@@ -457,7 +461,7 @@ public class ConfigMTree {
    * check whether there is template on given path and the subTree has template return true,
    * otherwise false
    */
-  public void checkTemplateOnPath(PartialPath path) throws MetadataException {
+  public void checkTemplateOnPath(final PartialPath path) throws MetadataException {
     String[] nodeNames = path.getNodes();
     IConfigMNode cur = root;
     IConfigMNode child;
@@ -475,25 +479,23 @@ public class ConfigMTree {
       if (cur.getSchemaTemplateId() != NON_TEMPLATE) {
         throw new MetadataException("Template already exists on " + cur.getFullPath());
       }
-      if (cur.isMeasurement()) {
-        return;
+      if (cur.isDatabase() && cur.getDatabaseSchema().isIsTableModel()) {
+        throw new DatabaseModelException(cur.getFullPath(), true);
       }
     }
 
     checkTemplateOnSubtree(cur);
   }
 
-  // traverse  all the  descendant of the given path node
-  private void checkTemplateOnSubtree(IConfigMNode node) throws MetadataException {
-    if (node.isMeasurement()) {
-      return;
-    }
+  // traverse all the descendant of the given path node
+  private void checkTemplateOnSubtree(final IConfigMNode node) throws MetadataException {
     IConfigMNode child;
     IMNodeIterator<IConfigMNode> iterator = store.getChildrenIterator(node);
     while (iterator.hasNext()) {
       child = iterator.next();
 
-      if (child.isMeasurement()) {
+      // Skip table model databases
+      if (child.isDatabase() && child.getDatabaseSchema().isIsTableModel()) {
         continue;
       }
       if (child.getSchemaTemplateId() != NON_TEMPLATE) {
@@ -504,13 +506,14 @@ public class ConfigMTree {
   }
 
   public List<String> getPathsSetOnTemplate(
-      int templateId, PathPatternTree scope, boolean filterPreUnset) throws MetadataException {
-    List<String> resSet = new ArrayList<>();
-    try (MNodeCollector<Void, IConfigMNode> collector =
+      final int templateId, final PathPatternTree scope, final boolean filterPreUnset)
+      throws MetadataException {
+    final List<String> resSet = new ArrayList<>();
+    try (final MNodeCollector<Void, IConfigMNode> collector =
         new MNodeCollector<Void, IConfigMNode>(
             root, new PartialPath(ALL_RESULT_NODES), store, false, scope) {
           @Override
-          protected boolean acceptFullMatchedNode(IConfigMNode node) {
+          protected boolean acceptFullMatchedNode(final IConfigMNode node) {
             if (super.acceptFullMatchedNode(node)) {
               // if node not set template, go on traversing
               if (node.getSchemaTemplateId() != NON_TEMPLATE) {
@@ -526,23 +529,25 @@ public class ConfigMTree {
           }
 
           @Override
-          protected Void collectMNode(IConfigMNode node) {
+          protected Void collectMNode(final IConfigMNode node) {
             resSet.add(node.getFullPath());
             return null;
           }
 
           @Override
-          protected boolean shouldVisitSubtreeOfFullMatchedNode(IConfigMNode node) {
+          protected boolean shouldVisitSubtreeOfFullMatchedNode(final IConfigMNode node) {
             // descendants of the node cannot set another template, exit from this branch
-            return (node.getSchemaTemplateId() == NON_TEMPLATE)
+            return node.getSchemaTemplateId() == NON_TEMPLATE
+                && !(node.isDatabase() && node.getDatabaseSchema().isIsTableModel())
                 && super.shouldVisitSubtreeOfFullMatchedNode(node);
           }
 
           @Override
-          protected boolean shouldVisitSubtreeOfInternalMatchedNode(IConfigMNode node) {
+          protected boolean shouldVisitSubtreeOfInternalMatchedNode(final IConfigMNode node) {
             // descendants of the node cannot set another template, exit from this branch
-            return (node.getSchemaTemplateId() == NON_TEMPLATE)
-                && super.shouldVisitSubtreeOfFullMatchedNode(node);
+            return node.getSchemaTemplateId() == NON_TEMPLATE
+                && !(node.isDatabase() && node.getDatabaseSchema().isIsTableModel())
+                && super.shouldVisitSubtreeOfInternalMatchedNode(node);
           }
         }) {
       collector.traverse();
@@ -551,25 +556,24 @@ public class ConfigMTree {
   }
 
   /** This method returns the templateId set on paths covered by input path pattern. */
-  public Map<Integer, Set<PartialPath>> getTemplateSetInfo(PartialPath pathPattern)
+  public Map<Integer, Set<PartialPath>> getTemplateSetInfo(final PartialPath pathPattern)
       throws MetadataException {
-    Map<Integer, Set<PartialPath>> result = new HashMap<>();
-    try (MNodeCollector<Void, IConfigMNode> collector =
+    final Map<Integer, Set<PartialPath>> result = new HashMap<>();
+    try (final MNodeCollector<Void, IConfigMNode> collector =
         new MNodeCollector<Void, IConfigMNode>(root, pathPattern, store, false, ALL_MATCH_SCOPE) {
           @Override
-          protected boolean acceptFullMatchedNode(IConfigMNode node) {
-            return (node.getSchemaTemplateId() != NON_TEMPLATE)
-                || super.acceptFullMatchedNode(node);
+          protected boolean acceptFullMatchedNode(final IConfigMNode node) {
+            return node.getSchemaTemplateId() != NON_TEMPLATE || super.acceptFullMatchedNode(node);
           }
 
           @Override
-          protected boolean acceptInternalMatchedNode(IConfigMNode node) {
-            return (node.getSchemaTemplateId() != NON_TEMPLATE)
+          protected boolean acceptInternalMatchedNode(final IConfigMNode node) {
+            return node.getSchemaTemplateId() != NON_TEMPLATE
                 || super.acceptInternalMatchedNode(node);
           }
 
           @Override
-          protected Void collectMNode(IConfigMNode node) {
+          protected Void collectMNode(final IConfigMNode node) {
             if (node.getSchemaTemplateId() != NON_TEMPLATE && !node.isSchemaTemplatePreUnset()) {
               result
                   .computeIfAbsent(node.getSchemaTemplateId(), k -> new HashSet<>())
@@ -579,17 +583,19 @@ public class ConfigMTree {
           }
 
           @Override
-          protected boolean shouldVisitSubtreeOfFullMatchedNode(IConfigMNode node) {
+          protected boolean shouldVisitSubtreeOfFullMatchedNode(final IConfigMNode node) {
             // descendants of the node cannot set another template, exit from this branch
-            return (node.getSchemaTemplateId() == NON_TEMPLATE)
+            return node.getSchemaTemplateId() == NON_TEMPLATE
+                && !(node.isDatabase() && node.getDatabaseSchema().isIsTableModel())
                 && super.shouldVisitSubtreeOfFullMatchedNode(node);
           }
 
           @Override
-          protected boolean shouldVisitSubtreeOfInternalMatchedNode(IConfigMNode node) {
+          protected boolean shouldVisitSubtreeOfInternalMatchedNode(final IConfigMNode node) {
             // descendants of the node cannot set another template, exit from this branch
-            return (node.getSchemaTemplateId() == NON_TEMPLATE)
-                && super.shouldVisitSubtreeOfFullMatchedNode(node);
+            return node.getSchemaTemplateId() == NON_TEMPLATE
+                && !(node.isDatabase() && node.getDatabaseSchema().isIsTableModel())
+                && super.shouldVisitSubtreeOfInternalMatchedNode(node);
           }
         }) {
       collector.traverse();
@@ -597,7 +603,8 @@ public class ConfigMTree {
     return result;
   }
 
-  public void setTemplate(int templateId, PartialPath templateSetPath) throws MetadataException {
+  public void setTemplate(final int templateId, final PartialPath templateSetPath)
+      throws MetadataException {
     getNodeWithAutoCreate(templateSetPath).setSchemaTemplateId(templateId);
   }
 
@@ -637,6 +644,9 @@ public class ConfigMTree {
   public void preCreateTable(final PartialPath database, final TsTable table)
       throws MetadataException {
     final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    if (!databaseNode.getDatabaseSchema().isIsTableModel()) {
+      throw new DatabaseModelException(database.getFullPath(), false);
+    }
     final IConfigMNode node = databaseNode.getChild(table.getTableName());
     if (node == null) {
       final ConfigTableNode tableNode =
@@ -735,7 +745,7 @@ public class ConfigMTree {
   }
 
   public Map<String, List<TsTable>> getAllUsingTables() {
-    return getAllDatabasePaths().stream()
+    return getAllDatabasePaths(true).stream()
         .collect(
             Collectors.toMap(
                 PartialPath::getFullPath,
@@ -752,7 +762,7 @@ public class ConfigMTree {
 
   public Map<String, List<TsTable>> getAllPreCreateTables() throws MetadataException {
     final Map<String, List<TsTable>> result = new HashMap<>();
-    final List<PartialPath> databaseList = getAllDatabasePaths();
+    final List<PartialPath> databaseList = getAllDatabasePaths(true);
     for (PartialPath databasePath : databaseList) {
       final String database = databasePath.getFullPath().substring(ROOT.length() + 1);
       final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(databasePath).getAsMNode();

@@ -125,7 +125,7 @@ useDatabaseStatement
     ;
 
 showDatabasesStatement
-    : SHOW DATABASES
+    : SHOW DATABASES (DETAILS)?
     ;
 
 createDbStatement

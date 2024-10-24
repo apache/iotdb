@@ -991,9 +991,9 @@ public class PartitionInfo implements SnapshotProcessor {
     }
   }
 
-  public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
+  public void processLoadSnapshot(final File snapshotDir) throws TException, IOException {
 
-    File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
+    final File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
           "Failed to load snapshot,snapshot file [{}] is not exist.",
@@ -1001,11 +1001,11 @@ public class PartitionInfo implements SnapshotProcessor {
       return;
     }
 
-    try (BufferedInputStream fileInputStream =
+    try (final BufferedInputStream fileInputStream =
             new BufferedInputStream(
                 Files.newInputStream(snapshotFile.toPath()), PARTITION_TABLE_BUFFER_SIZE);
-        TIOStreamTransport tioStreamTransport = new TIOStreamTransport(fileInputStream)) {
-      TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
+        final TIOStreamTransport tioStreamTransport = new TIOStreamTransport(fileInputStream)) {
+      final TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
       // before restoring a snapshot, clear all old data
       clear();
 
@@ -1015,11 +1015,12 @@ public class PartitionInfo implements SnapshotProcessor {
       // restore StorageGroupPartitionTable
       int length = ReadWriteIOUtils.readInt(fileInputStream);
       for (int i = 0; i < length; i++) {
-        String storageGroup = ReadWriteIOUtils.readString(fileInputStream);
+        final String storageGroup = ReadWriteIOUtils.readString(fileInputStream);
         if (storageGroup == null) {
           throw new IOException("Failed to load snapshot because get null StorageGroup name");
         }
-        DatabasePartitionTable databasePartitionTable = new DatabasePartitionTable(storageGroup);
+        final DatabasePartitionTable databasePartitionTable =
+            new DatabasePartitionTable(storageGroup);
         databasePartitionTable.deserialize(fileInputStream, protocol);
         databasePartitionTables.put(storageGroup, databasePartitionTable);
       }
@@ -1027,7 +1028,8 @@ public class PartitionInfo implements SnapshotProcessor {
       // restore deletedRegionSet
       length = ReadWriteIOUtils.readInt(fileInputStream);
       for (int i = 0; i < length; i++) {
-        RegionMaintainTask task = RegionMaintainTask.Factory.create(fileInputStream, protocol);
+        final RegionMaintainTask task =
+            RegionMaintainTask.Factory.create(fileInputStream, protocol);
         regionMaintainTaskList.add(task);
       }
     }

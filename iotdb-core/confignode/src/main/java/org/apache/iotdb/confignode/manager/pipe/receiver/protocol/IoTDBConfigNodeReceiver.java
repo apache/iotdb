@@ -222,7 +222,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case CreateDatabase:
         // Here we only reserve database name and substitute the sender's local information
         // with the receiver's default configurations
-        TDatabaseSchema schema = ((DatabaseSchemaPlan) plan).getSchema();
+        final TDatabaseSchema schema = ((DatabaseSchemaPlan) plan).getSchema();
         schema.setSchemaReplicationFactor(
             ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor());
         schema.setDataReplicationFactor(
