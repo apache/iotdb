@@ -504,16 +504,18 @@ public class ConfigMTree {
   }
 
   public List<String> getPathsSetOnTemplate(
-      int templateId, PathPatternTree scope, boolean filterPreUnset) throws MetadataException {
-    List<String> resSet = new ArrayList<>();
-    try (MNodeCollector<Void, IConfigMNode> collector =
+      final int templateId, final PathPatternTree scope, final boolean filterPreUnset)
+      throws MetadataException {
+    final List<String> resSet = new ArrayList<>();
+    try (final MNodeCollector<Void, IConfigMNode> collector =
         new MNodeCollector<Void, IConfigMNode>(
             root, new PartialPath(ALL_RESULT_NODES), store, false, scope) {
           @Override
-          protected boolean acceptFullMatchedNode(IConfigMNode node) {
+          protected boolean acceptFullMatchedNode(final IConfigMNode node) {
             if (super.acceptFullMatchedNode(node)) {
               // if node not set template, go on traversing
-              if (node.getSchemaTemplateId() != NON_TEMPLATE) {
+              if (!(node instanceof ConfigTableNode)
+                  && node.getSchemaTemplateId() != NON_TEMPLATE) {
                 if (filterPreUnset && node.isSchemaTemplatePreUnset()) {
                   // filter the pre unset template
                   return false;
@@ -526,20 +528,20 @@ public class ConfigMTree {
           }
 
           @Override
-          protected Void collectMNode(IConfigMNode node) {
+          protected Void collectMNode(final IConfigMNode node) {
             resSet.add(node.getFullPath());
             return null;
           }
 
           @Override
-          protected boolean shouldVisitSubtreeOfFullMatchedNode(IConfigMNode node) {
+          protected boolean shouldVisitSubtreeOfFullMatchedNode(final IConfigMNode node) {
             // descendants of the node cannot set another template, exit from this branch
             return (node.getSchemaTemplateId() == NON_TEMPLATE)
                 && super.shouldVisitSubtreeOfFullMatchedNode(node);
           }
 
           @Override
-          protected boolean shouldVisitSubtreeOfInternalMatchedNode(IConfigMNode node) {
+          protected boolean shouldVisitSubtreeOfInternalMatchedNode(final IConfigMNode node) {
             // descendants of the node cannot set another template, exit from this branch
             return (node.getSchemaTemplateId() == NON_TEMPLATE)
                 && super.shouldVisitSubtreeOfFullMatchedNode(node);
