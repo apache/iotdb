@@ -98,7 +98,7 @@ public class SubscriptionConsumerAgent {
     if (Objects.isNull(metaInAgent)) {
       consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
       consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
-      // no need to create broker manually
+      SubscriptionAgent.broker().createBrokerIfNotExist(consumerGroupId);
       return;
     }
 

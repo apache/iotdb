@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.subscription.agent;
 
-import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMetaKeeper;
 import org.apache.iotdb.db.subscription.broker.SubscriptionBroker;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.task.subtask.SubscriptionConnectorSubtask;
@@ -118,18 +117,16 @@ public class SubscriptionBrokerAgent {
 
   /////////////////////////////// broker ///////////////////////////////
 
-  /**
-   * Caller should ensure that the method is called in the lock {@link
-   * ConsumerGroupMetaKeeper#acquireReadLock}.
-   */
   public boolean isBrokerExist(final String consumerGroupId) {
     return consumerGroupIdToSubscriptionBroker.containsKey(consumerGroupId);
   }
 
+  public void createBrokerIfNotExist(final String consumerGroupId) {
+    consumerGroupIdToSubscriptionBroker.computeIfAbsent(consumerGroupId, SubscriptionBroker::new);
+    LOGGER.info("Subscription: create broker bound to consumer group [{}]", consumerGroupId);
+  }
+
   /**
-   * Caller should ensure that the method is called in the lock {@link
-   * ConsumerGroupMetaKeeper#acquireWriteLock}.
-   *
    * @return {@code true} if drop broker success, {@code false} otherwise
    */
   public boolean dropBroker(final String consumerGroupId) {
