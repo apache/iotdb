@@ -846,7 +846,7 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(seriesScanUtil)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId)
-            + tableAggregators.stream().mapToLong(TableAggregator::getEstimatedSize).sum()
+        + tableAggregators.stream().mapToLong(TableAggregator::getEstimatedSize).sum()
         + (resultTsBlockBuilder == null ? 0 : resultTsBlockBuilder.getRetainedSizeInBytes())
         + RamUsageEstimator.sizeOfCollection(deviceEntries);
   }
