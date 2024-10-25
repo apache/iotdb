@@ -1165,8 +1165,11 @@ public class TsFileProcessor {
     }
     try {
       if (workMemTable != null) {
-        logger.info("[Deletion] Deletion with {} in workMemTable", deletion);
-        workMemTable.delete(deletion);
+        long pointDeleted = workMemTable.delete(deletion);
+        logger.info(
+            "[Deletion] Deletion with {} in workMemTable, {} points deleted",
+            deletion,
+            pointDeleted);
       }
       // Flushing memTables are immutable, only record this deletion in these memTables for read
       if (!flushingMemTables.isEmpty()) {

@@ -28,7 +28,6 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
@@ -132,6 +131,7 @@ import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeSpaceQuotaManager
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.DateTimeUtils;
+import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -158,7 +158,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -1993,6 +1992,7 @@ public class DataRegion implements IDataRegionForQuery {
       WritingMetrics.getInstance().recordActiveTimePartitionCount(-1);
     } finally {
       writeUnlock();
+      writeUnlock();
     }
   }
 
@@ -2264,7 +2264,6 @@ public class DataRegion implements IDataRegionForQuery {
 
     try {
       TreeDeviceSchemaCacheManager.getInstance().invalidateLastCache(pattern);
-      Set<PartialPath> devicePaths = new HashSet<>(pattern.getDevicePathPattern());
       // write log to impacted working TsFileProcessors
       List<WALFlushListener> walListeners =
           logDeletionInWAL(startTime, endTime, searchIndex, pattern);
@@ -2475,9 +2474,11 @@ public class DataRegion implements IDataRegionForQuery {
 
   private boolean canSkipDelete(TsFileResource tsFileResource, ModEntry deletion) {
     long fileStartTime = tsFileResource.getTimeIndex().getMinStartTime();
-    long fileEndTime = tsFileResource.getTimeIndex().getMaxEndTime();
+    long fileEndTime =
+        tsFileResource.isClosed() ? tsFileResource.getTimeIndex().getMaxEndTime() : Long.MAX_VALUE;
 
-    if (!deletion.getTimeRange().contains(fileStartTime, fileEndTime)) {
+    if (!ModificationUtils.overlap(
+        deletion.getStartTime(), deletion.getEndTime(), fileStartTime, fileEndTime)) {
       return true;
     }
     ITimeIndex timeIndex = tsFileResource.getTimeIndex();
@@ -2487,7 +2488,10 @@ public class DataRegion implements IDataRegionForQuery {
 
     for (IDeviceID device : tsFileResource.getDevices()) {
       long startTime = tsFileResource.getTimeIndex().getStartTime(device);
-      long endTime = tsFileResource.getTimeIndex().getEndTime(device);
+      long endTime =
+          tsFileResource.isClosed()
+              ? tsFileResource.getTimeIndex().getEndTime(device)
+              : Long.MAX_VALUE;
       if (deletion.affects(device, startTime, endTime)) {
         return false;
       }
@@ -2509,15 +2513,15 @@ public class DataRegion implements IDataRegionForQuery {
       if (tsFileResource.isClosed()) {
         sealedTsFiles.add(tsFileResource);
       } else {
-        tsFileResource.getProcessor().getFlushQueryLock().readLock().lock();
+        tsFileResource.getProcessor().getFlushQueryLock().writeLock().lock();
         if (tsFileResource.isClosed()) {
           sealedTsFiles.add(tsFileResource);
-          tsFileResource.getProcessor().getFlushQueryLock().readLock().unlock();
+          tsFileResource.getProcessor().getFlushQueryLock().writeLock().unlock();
         } else {
           try {
             tsFileResource.getProcessor().deleteDataInMemory(deletion);
           } finally {
-            tsFileResource.getProcessor().getFlushQueryLock().readLock().unlock();
+            tsFileResource.getProcessor().getFlushQueryLock().writeLock().unlock();
           }
         }
       }

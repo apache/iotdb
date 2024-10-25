@@ -143,8 +143,12 @@ public interface IMemTable extends WALEntryValue {
 
   boolean isEmpty();
 
-  /** Delete data in the MemTable according to the modEntry. */
-  void delete(ModEntry modEntry);
+  /**
+   * Delete data in the MemTable according to the modEntry.
+   *
+   * @return
+   */
+  long delete(ModEntry modEntry);
 
   /**
    * Make a copy of this MemTable.

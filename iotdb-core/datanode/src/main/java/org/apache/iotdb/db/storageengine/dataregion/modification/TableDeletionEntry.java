@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.utils.ModificationUtils;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.TimeRange;
@@ -80,7 +81,8 @@ public class TableDeletionEntry extends ModEntry {
 
   @Override
   public boolean affects(IDeviceID deviceID, long startTime, long endTime) {
-    return predicate.matches(deviceID) && timeRange.contains(startTime, endTime);
+    return predicate.matches(deviceID)
+        && ModificationUtils.overlap(getStartTime(), getEndTime(), startTime, endTime);
   }
 
   @Override
@@ -117,7 +119,8 @@ public class TableDeletionEntry extends ModEntry {
   }
 
   public TableDeletionEntry clone() {
-    return new TableDeletionEntry(predicate, new TimeRange(timeRange.getMin(), timeRange.getMax()));
+    TimeRange timeRangeCopy = new TimeRange(timeRange.getMin(), timeRange.getMax());
+    return new TableDeletionEntry(predicate, timeRangeCopy);
   }
 
   public String getTableName() {

@@ -44,7 +44,7 @@ public abstract class ModEntry
 
   public int serializedSize() {
     // modType + time range
-    return Byte.BYTES + Long.BYTES * 2;
+    return Byte.BYTES + Long.BYTES * 2 + Byte.BYTES * 2;
   }
 
   @Override

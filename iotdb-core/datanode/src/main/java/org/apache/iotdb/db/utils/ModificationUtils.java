@@ -40,6 +40,11 @@ public class ModificationUtils {
     // util class
   }
 
+  // both ranges are closed
+  public static boolean overlap(long startA, long endA, long startB, long endB) {
+    return endB >= startA && startB <= endA;
+  }
+
   /**
    * modifyChunkMetaData iterates the chunkMetaData and applies all available modifications on it to
    * generate a ModifiedChunkMetadata. <br>

@@ -22,7 +22,9 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
+import org.apache.iotdb.db.utils.ModificationUtils;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.TimeRange;
@@ -57,6 +59,7 @@ public class TreeDeletionEntry extends ModEntry {
     this.timeRange = timeRange;
   }
 
+  @TestOnly
   public TreeDeletionEntry(PartialPath path, long endTime) {
     this();
     this.pathPattern = path;
@@ -120,19 +123,24 @@ public class TreeDeletionEntry extends ModEntry {
 
   @Override
   public boolean affects(IDeviceID deviceID, long startTime, long endTime) {
-    try {
-      return pathPattern.endWithMultiLevelWildcard()
-          && pathPattern.getDevicePath().matchFullPath(new PartialPath(deviceID))
-          && timeRange.contains(startTime, endTime);
-    } catch (IllegalPathException e) {
-      return false;
-    }
+    return affects(deviceID)
+        && ModificationUtils.overlap(getStartTime(), getEndTime(), startTime, endTime);
   }
 
   @Override
   public boolean affects(IDeviceID deviceID) {
     try {
-      return pathPattern.matchPrefixPath(new PartialPath(deviceID));
+      if (pathPattern.endWithMultiLevelWildcard()) {
+        PartialPath deviceIdPath = new PartialPath(deviceID);
+        // pattern: root.db1.d1.**, deviceId: root.db1.d1, match
+        return pathPattern.getDevicePath().matchFullPath(deviceIdPath)
+            // pattern: root.db1.**, deviceId: root.db1.d1, match
+            || pathPattern.matchFullPath(deviceIdPath);
+      } else {
+        // pattern: root.db1.d1.s1, deviceId: root.db1.d1, match
+        // pattern: root.db1.d1, deviceId: root.db1.d1, not match
+        return pathPattern.getDevicePath().matchFullPath(new PartialPath(deviceID));
+      }
     } catch (IllegalPathException e) {
       return false;
     }

@@ -815,7 +815,7 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public void delete(ModEntry modEntry) {
+  public long delete(ModEntry modEntry) {
     List<Pair<IDeviceID, IWritableMemChunkGroup>> targetDeviceList = new ArrayList<>();
     for (Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
       if (modEntry.affects(entry.getKey())) {
@@ -823,12 +823,14 @@ public abstract class AbstractMemTable implements IMemTable {
       }
     }
 
+    long pointDeleted = 0;
     for (Pair<IDeviceID, IWritableMemChunkGroup> pair : targetDeviceList) {
-      pair.right.delete(modEntry);
+      pointDeleted += pair.right.delete(modEntry);
       if (pair.right.getMemChunkMap().isEmpty()) {
         memTableMap.remove(pair.left);
       }
     }
+    return pointDeleted;
   }
 
   @Override
