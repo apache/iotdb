@@ -198,8 +198,17 @@ public abstract class SystemPropertiesHandler {
     this.tmpFile = SystemFileFactory.INSTANCE.getFile(filePath + ".tmp");
   }
 
-  public void delete() throws IOException {
-    FileUtils.deleteFile(this.formalFile);
-    FileUtils.deleteFile(this.tmpFile);
+  public void delete() {
+    try {
+      FileUtils.deleteFile(this.formalFile);
+    } catch (IOException e) {
+      LOGGER.warn("Delete formalFile error, ", e);
+    }
+
+    try {
+      FileUtils.deleteFile(this.tmpFile);
+    } catch (IOException e) {
+      LOGGER.warn("Delete tmpFile error, ", e);
+    }
   }
 }
