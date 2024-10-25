@@ -26,8 +26,8 @@ import java.util.Objects;
 public class TimeRange extends Node {
 
   // [startTime, endTime)
-  private final long startTime;
-  private final long endTime;
+  private long startTime;
+  private long endTime;
   // if it is left close and right open interval
   private final boolean leftCRightO;
 
@@ -89,7 +89,19 @@ public class TimeRange extends Node {
     return endTime;
   }
 
+  public void setStartTime(long startTime) {
+    this.startTime = startTime;
+  }
+
+  public void setEndTime(long endTime) {
+    this.endTime = endTime;
+  }
+
   public boolean isLeftCRightO() {
     return leftCRightO;
+  }
+
+  public org.apache.tsfile.read.common.TimeRange toTsFileTimeRange() {
+    return new org.apache.tsfile.read.common.TimeRange(this.startTime, this.endTime);
   }
 }

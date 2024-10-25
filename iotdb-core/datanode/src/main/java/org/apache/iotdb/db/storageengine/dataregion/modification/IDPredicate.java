@@ -18,15 +18,23 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
+import org.apache.iotdb.db.utils.io.BufferSerializable;
+import org.apache.iotdb.db.utils.io.StreamSerializable;
+
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Deserializer;
+import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
-import org.apache.iotdb.db.utils.io.BufferSerializable;
-import org.apache.iotdb.db.utils.io.StreamSerializable;
-import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.IDeviceID.Deserializer;
 
 public abstract class IDPredicate implements StreamSerializable, BufferSerializable {
 
@@ -38,7 +46,9 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
   @SuppressWarnings("java:S6548")
   public enum IDPredicateType {
     NOP,
-    FULL_EXACT_MATCH;
+    FULL_EXACT_MATCH,
+    SEGMENT_EXACT_MATCH,
+    AND;
 
     public void serialize(OutputStream stream) throws IOException {
       stream.write((byte) ordinal());
@@ -168,6 +178,117 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     @Override
     public boolean matches(IDeviceID deviceID) {
       return this.deviceID.equals(deviceID);
+    }
+  }
+
+  public static class SegmentExactMatch extends IDPredicate {
+
+    private String pattern;
+    private int segmentIndex;
+
+    public SegmentExactMatch(String pattern, int segmentIndex) {
+      super(IDPredicateType.SEGMENT_EXACT_MATCH);
+      this.pattern = pattern;
+      this.segmentIndex = segmentIndex;
+    }
+
+    @Override
+    public int serializedSize() {
+      byte[] bytes = pattern.getBytes(TSFileConfig.STRING_CHARSET);
+      return super.serializedSize()
+          + ReadWriteForEncodingUtils.varIntSize(bytes.length)
+          + bytes.length * Character.BYTES
+          + ReadWriteForEncodingUtils.varIntSize(segmentIndex);
+    }
+
+    @Override
+    public void serialize(OutputStream stream) throws IOException {
+      ReadWriteIOUtils.writeVar(pattern, stream);
+      ReadWriteForEncodingUtils.writeVarInt(segmentIndex, stream);
+    }
+
+    @Override
+    public void serialize(ByteBuffer buffer) {
+      ReadWriteIOUtils.writeVar(pattern, buffer);
+      ReadWriteForEncodingUtils.writeVarInt(segmentIndex, buffer);
+    }
+
+    @Override
+    public void deserialize(InputStream stream) throws IOException {
+      pattern = ReadWriteIOUtils.readVarIntString(stream);
+      segmentIndex = ReadWriteForEncodingUtils.readVarInt(stream);
+    }
+
+    @Override
+    public void deserialize(ByteBuffer buffer) {
+      pattern = ReadWriteIOUtils.readVarIntString(buffer);
+      segmentIndex = ReadWriteForEncodingUtils.readVarInt(buffer);
+    }
+
+    @Override
+    public boolean matches(IDeviceID deviceID) {
+      return deviceID.segmentNum() > segmentIndex && deviceID.segment(segmentIndex).equals(pattern);
+    }
+  }
+
+  public static class And extends IDPredicate {
+
+    private final List<IDPredicate> predicates = new ArrayList<>();
+
+    public And(IDPredicate... predicates) {
+      super(IDPredicateType.AND);
+      Collections.addAll(this.predicates, predicates);
+    }
+
+    public void add(IDPredicate predicate) {
+      predicates.add(predicate);
+    }
+
+    @Override
+    public int serializedSize() {
+      int serializedSize = super.serializedSize();
+      serializedSize += ReadWriteForEncodingUtils.varIntSize(predicates.size());
+      for (IDPredicate predicate : predicates) {
+        serializedSize += predicate.serializedSize();
+      }
+      return serializedSize;
+    }
+
+    @Override
+    public void serialize(OutputStream stream) throws IOException {
+      ReadWriteForEncodingUtils.writeVarInt(predicates.size(), stream);
+      for (IDPredicate predicate : predicates) {
+        predicate.serialize(stream);
+      }
+    }
+
+    @Override
+    public void serialize(ByteBuffer buffer) {
+      ReadWriteForEncodingUtils.writeVarInt(predicates.size(), buffer);
+      for (IDPredicate predicate : predicates) {
+        predicate.serialize(buffer);
+      }
+    }
+
+    @Override
+    public void deserialize(InputStream stream) throws IOException {
+      int size = ReadWriteForEncodingUtils.readVarInt(stream);
+      for (int i = 0; i < size; i++) {
+        predicates.add(IDPredicate.createFrom(stream));
+      }
+    }
+
+    @Override
+    public void deserialize(ByteBuffer buffer) {
+      int size = ReadWriteForEncodingUtils.readVarInt(buffer);
+      for (int i = 0; i < size; i++) {
+        predicates.add(IDPredicate.createFrom(buffer));
+      }
+    }
+
+    @Override
+    public boolean matches(IDeviceID deviceID) {
+      return predicates.stream().allMatch(predicate -> predicate.matches(deviceID));
     }
   }
 }

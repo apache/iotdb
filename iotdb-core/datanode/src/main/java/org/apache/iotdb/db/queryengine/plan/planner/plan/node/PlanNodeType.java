@@ -270,7 +270,9 @@ public enum PlanNodeType {
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),
-  RELATIONAL_INSERT_ROWS((short) 2002);
+  RELATIONAL_INSERT_ROWS((short) 2002),
+  RELATIONAL_DELETE_DATA((short) 2003),
+  ;
 
   public static final int BYTES = Short.BYTES;
 

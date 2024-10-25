@@ -21,16 +21,36 @@ package org.apache.iotdb.db.queryengine.plan.analyze;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.Operator;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TimeRange;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.And;
+import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.SegmentExactMatch;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -42,8 +62,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 
 public class AnalyzeUtils {
@@ -270,6 +292,147 @@ public class AnalyzeUtils {
                   + "because enable_auto_create_schema is FALSE."));
     }
     analysis.setDataPartitionInfo(dataPartition);
+  }
+
+  public static void analyzeDelete(Delete node, MPPQueryContext queryContext) {
+    queryContext.setQueryType(QueryType.WRITE);
+    validateSchema(node, queryContext);
+
+    try (ConfigNodeClient configNodeClient =
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID); ) {
+      // TODO: may use time and db/table to filter
+      TRegionRouteMapResp latestRegionRouteMap = configNodeClient.getLatestRegionRouteMap();
+      node.setReplicaSets(latestRegionRouteMap.regionRouteMap.values());
+    } catch (Exception e) {
+      throw new IoTDBRuntimeException(e, TSStatusCode.CAN_NOT_CONNECT_CONFIGNODE.getStatusCode());
+    }
+  }
+
+  private static void validateSchema(Delete node, MPPQueryContext queryContext) {
+    String tableName = node.getTable().getName().getSuffix();
+    String databaseName;
+    if (node.getTable().getName().getPrefix().isPresent()) {
+      databaseName = node.getTable().getName().getPrefix().get().toString();
+    } else if (queryContext.getDatabaseName().isPresent()) {
+      databaseName = queryContext.getDatabaseName().get();
+    } else {
+      throw new SemanticException("Database is not specified");
+    }
+    node.setDatabaseName(databaseName);
+
+    TsTable table = DataNodeTableCache.getInstance().getTable(databaseName, tableName);
+    if (table == null) {
+      throw new SemanticException("Table " + tableName + " not found");
+    }
+
+    parsePredicate(node, table);
+  }
+
+  private static void parsePredicate(Delete node, TsTable table) {
+    if (!node.getWhere().isPresent()) {
+      node.setPredicate(new DeletionPredicate(table.getTableName()));
+      node.setTimeRange(new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE, true));
+      return;
+    }
+
+    Queue<Expression> expressionQueue = new LinkedList<>();
+    expressionQueue.add(node.getWhere().get());
+    DeletionPredicate predicate = new DeletionPredicate(table.getTableName());
+    IDPredicate idPredicate = null;
+    TimeRange timeRange = new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE, true);
+    while (!expressionQueue.isEmpty()) {
+      Expression expression = expressionQueue.remove();
+      if (expression instanceof LogicalExpression) {
+        parseAndPredicate(((LogicalExpression) expression), expressionQueue);
+      } else if (expression instanceof ComparisonExpression) {
+        idPredicate =
+            parseComparison(((ComparisonExpression) expression), timeRange, idPredicate, table);
+      }
+    }
+    if (idPredicate != null) {
+      predicate.setIdPredicate(idPredicate);
+    }
+
+    node.setPredicate(predicate);
+    node.setTimeRange(timeRange);
+  }
+
+  private static void parseAndPredicate(
+      LogicalExpression expression, Queue<Expression> expressionQueue) {
+    if (expression.getOperator() != Operator.AND) {
+      throw new SemanticException("Only support AND operator in deletion");
+    }
+    expressionQueue.addAll(expression.getTerms());
+  }
+
+  private static IDPredicate parseComparison(
+      ComparisonExpression comparisonExpression,
+      TimeRange timeRange,
+      IDPredicate oldPredicate,
+      TsTable table) {
+    Expression left = comparisonExpression.getLeft();
+    Expression right = comparisonExpression.getRight();
+    if (!(left instanceof Identifier)) {
+      throw new SemanticException("The left hand value must be an identifier: " + left);
+    }
+    Identifier identifier = (Identifier) left;
+    // time predicate
+    if (identifier.getValue().equals("time")) {
+      long rightHandValue;
+      if (right instanceof LongLiteral) {
+        rightHandValue = ((LongLiteral) right).getParsedValue();
+      } else {
+        throw new SemanticException(
+            "The right hand value of time predicate must be a long: " + right);
+      }
+
+      switch (comparisonExpression.getOperator()) {
+        case LESS_THAN:
+          timeRange.setEndTime(Math.min(timeRange.getEndTime(), rightHandValue));
+          break;
+        case LESS_THAN_OR_EQUAL:
+          timeRange.setEndTime(Math.min(timeRange.getEndTime(), rightHandValue + 1));
+          break;
+        case GREATER_THAN:
+          timeRange.setStartTime(Math.max(timeRange.getStartTime(), rightHandValue + 1));
+          break;
+        case GREATER_THAN_OR_EQUAL:
+          timeRange.setStartTime(Math.max(timeRange.getStartTime(), rightHandValue));
+          break;
+        case EQUAL:
+        case NOT_EQUAL:
+        case IS_DISTINCT_FROM:
+        default:
+          throw new SemanticException(
+              "The operator of time predicate must be <, <=, >, or >=: " + right);
+      }
+    }
+
+    // id predicate
+    String columnName = identifier.getValue();
+    int idColumnOrdinal = table.getIdColumnOrdinal(columnName);
+    if (idColumnOrdinal == -1) {
+      throw new SemanticException(
+          "The column '" + columnName + "' does not exist or is not an id column");
+    }
+
+    String rightHandValue;
+    if (right instanceof StringLiteral) {
+      rightHandValue = ((StringLiteral) right).getValue();
+    } else {
+      throw new SemanticException(
+          "The right hand value of id predicate must be a string: " + right);
+    }
+    IDPredicate newPredicate = new SegmentExactMatch(rightHandValue, idColumnOrdinal);
+
+    if (oldPredicate == null) {
+      return newPredicate;
+    }
+    if (oldPredicate instanceof IDPredicate.And) {
+      ((And) oldPredicate).add(newPredicate);
+      return oldPredicate;
+    }
+    return new IDPredicate.And(oldPredicate, newPredicate);
   }
 
   public interface DataPartitionQueryFunc {

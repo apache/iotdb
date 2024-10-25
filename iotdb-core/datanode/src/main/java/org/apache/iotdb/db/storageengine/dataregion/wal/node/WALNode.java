@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -164,6 +165,16 @@ public class WALNode implements IWALNode {
   public WALFlushListener log(long memTableId, DeleteDataNode deleteDataNode) {
     logger.debug(
         "WAL node-{} logs deleteDataNode, the search index is {}.",
+        identifier,
+        deleteDataNode.getSearchIndex());
+    WALEntry walEntry = new WALInfoEntry(memTableId, deleteDataNode);
+    return log(walEntry);
+  }
+
+  @Override
+  public WALFlushListener log(long memTableId, RelationalDeleteDataNode deleteDataNode) {
+    logger.debug(
+        "WAL node-{} logs relationalDeleteDataNode, the search index is {}.",
         identifier,
         deleteDataNode.getSearchIndex());
     WALEntry walEntry = new WALInfoEntry(memTableId, deleteDataNode);

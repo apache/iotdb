@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushListener;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
@@ -46,6 +47,9 @@ public interface IWALNode extends FlushListener, AutoCloseable, ConsensusReqRead
 
   /** Log DeleteDataNode. */
   WALFlushListener log(long memTableId, DeleteDataNode deleteDataNode);
+
+  /** Log DeleteDataNode. */
+  WALFlushListener log(long memTableId, RelationalDeleteDataNode deleteDataNode);
 
   /** Log BatchDoneNode */
   WALFlushListener log(long memTableId, ContinuousSameSearchIndexSeparatorNode separatorNode);

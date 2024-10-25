@@ -64,7 +64,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.service.SettleService;
@@ -92,6 +94,7 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessorInfo;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
@@ -108,6 +111,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameG
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.VersionController;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.utils.fileTimeIndexCache.FileTimeIndexCacheReader;
 import org.apache.iotdb.db.storageengine.dataregion.utils.validate.TsFileValidator;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
@@ -176,7 +180,6 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.IntToLongFunction;
-import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet.SEQUENCE_TSFILE;
@@ -2280,8 +2283,7 @@ public class DataRegion implements IDataRegionForQuery {
       getTwoKindsOfTsFiles(sealedTsFileResource, unsealedTsFileResource, startTime, endTime);
       // deviceMatchInfo is used for filter the matched deviceId in TsFileResource
       // deviceMatchInfo contains the DeviceId means this device matched the pattern
-      Set<String> deviceMatchInfo = new HashSet<>();
-      deleteDataInFiles(unsealedTsFileResource, deletion, devicePaths, deviceMatchInfo);
+      deleteDataInUnsealedFiles(unsealedTsFileResource, deletion, sealedTsFileResource);
       // capture deleteDataNode and wait it to be persisted to DAL.
       DeletionResource deletionResource =
           PipeInsertionDataNodeListener.getInstance().listenToDeleteData(dataRegionId, node);
@@ -2292,7 +2294,57 @@ public class DataRegion implements IDataRegionForQuery {
       writeUnlock();
       hasReleasedLock = true;
 
-      deleteDataInFiles(sealedTsFileResource, deletion, devicePaths, deviceMatchInfo);
+      deleteDataInSealedFiles(sealedTsFileResource, deletion);
+    } catch (Exception e) {
+      throw new IOException(e);
+    } finally {
+      if (!hasReleasedLock) {
+        writeUnlock();
+      }
+    }
+  }
+
+  public void deleteByTable(RelationalDeleteDataNode node) throws IOException {
+    if (SettleService.getINSTANCE().getFilesToBeSettledCount().get() != 0) {
+      throw new IOException(
+          "Delete failed. " + "Please do not delete until the old files settled.");
+    }
+    TableDeletionEntry modEntry = node.getModEntry();
+
+    writeLock("delete");
+    boolean hasReleasedLock = false;
+    try {
+      TableDeviceSchemaCache.getInstance()
+          .invalidateLastCache(getDatabaseName(), modEntry.getTableName());
+
+      List<WALFlushListener> walListeners = logDeletionInWAL(node);
+
+      for (WALFlushListener walFlushListener : walListeners) {
+        if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
+          logger.error("Fail to log delete to wal.", walFlushListener.getCause());
+          throw walFlushListener.getCause();
+        }
+      }
+
+      List<TsFileResource> sealedTsFileResource = new ArrayList<>();
+      List<TsFileResource> unsealedTsFileResource = new ArrayList<>();
+      getTwoKindsOfTsFiles(
+          sealedTsFileResource,
+          unsealedTsFileResource,
+          modEntry.getStartTime(),
+          modEntry.getEndTime());
+      deleteDataInUnsealedFiles(unsealedTsFileResource, modEntry, sealedTsFileResource);
+      // capture deleteDataNode and wait it to be persisted to DAL.
+      DeletionResource deletionResource =
+          PipeInsertionDataNodeListener.getInstance().listenToDeleteData(dataRegionId, node);
+      // just get result. We have already waited for result in `listenToDeleteData`
+      if (deletionResource != null && deletionResource.waitForResult() == Status.FAILURE) {
+        throw deletionResource.getCause();
+      }
+      writeUnlock();
+      hasReleasedLock = true;
+
+      deleteDataInSealedFiles(sealedTsFileResource, modEntry);
     } catch (Exception e) {
       throw new IOException(e);
     } finally {
@@ -2328,10 +2380,11 @@ public class DataRegion implements IDataRegionForQuery {
           throw walFlushListener.getCause();
         }
       }
+      TreeDeletionEntry deletion = new TreeDeletionEntry(pathToDelete, startTime, endTime);
       List<TsFileResource> sealedTsFileResource = new ArrayList<>();
       List<TsFileResource> unsealedTsFileResource = new ArrayList<>();
       getTwoKindsOfTsFiles(sealedTsFileResource, unsealedTsFileResource, startTime, endTime);
-      deleteDataDirectlyInFile(unsealedTsFileResource, pathToDelete, startTime, endTime);
+      deleteDataDirectlyInFile(unsealedTsFileResource, deletion);
       // capture deleteDataNode and wait it to be persisted to DAL.
       DeletionResource deletionResource =
           PipeInsertionDataNodeListener.getInstance().listenToDeleteData(dataRegionId, node);
@@ -2341,7 +2394,7 @@ public class DataRegion implements IDataRegionForQuery {
       }
       writeUnlock();
       releasedLock = true;
-      deleteDataDirectlyInFile(sealedTsFileResource, pathToDelete, startTime, endTime);
+      deleteDataDirectlyInFile(sealedTsFileResource, deletion);
     } catch (Exception e) {
       throw new IOException(e);
     } finally {
@@ -2351,12 +2404,34 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
+  private List<WALFlushListener> logDeletionInWAL(RelationalDeleteDataNode deleteDataNode) {
+    if (config.getWalMode() == WALMode.DISABLE) {
+      return Collections.emptyList();
+    }
+    List<WALFlushListener> walFlushListeners = new ArrayList<>();
+    long startTime = deleteDataNode.getModEntry().getStartTime();
+    long endTime = deleteDataNode.getModEntry().getEndTime();
+    for (Map.Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
+      if (TimePartitionUtils.satisfyPartitionId(startTime, endTime, entry.getKey())) {
+        WALFlushListener walFlushListener = entry.getValue().logDeleteDataNodeInWAL(deleteDataNode);
+        walFlushListeners.add(walFlushListener);
+      }
+    }
+    for (Map.Entry<Long, TsFileProcessor> entry : workUnsequenceTsFileProcessors.entrySet()) {
+      if (TimePartitionUtils.satisfyPartitionId(startTime, endTime, entry.getKey())) {
+        WALFlushListener walFlushListener = entry.getValue().logDeleteDataNodeInWAL(deleteDataNode);
+        walFlushListeners.add(walFlushListener);
+      }
+    }
+    return walFlushListeners;
+  }
+
   private List<WALFlushListener> logDeletionInWAL(
       long startTime, long endTime, long searchIndex, MeasurementPath path) {
-    List<WALFlushListener> walFlushListeners = new ArrayList<>();
     if (config.getWalMode() == WALMode.DISABLE) {
-      return walFlushListeners;
+      return Collections.emptyList();
     }
+    List<WALFlushListener> walFlushListeners = new ArrayList<>();
     DeleteDataNode deleteDataNode =
         new DeleteDataNode(new PlanNodeId(""), Collections.singletonList(path), startTime, endTime);
     deleteDataNode.setSearchIndex(searchIndex);
@@ -2398,66 +2473,23 @@ public class DataRegion implements IDataRegionForQuery {
                     new ContinuousSameSearchIndexSeparatorNode()));
   }
 
-  private boolean canSkipDelete(
-      TsFileResource tsFileResource,
-      Set<PartialPath> devicePaths,
-      long deleteStart,
-      long deleteEnd,
-      Set<String> deviceMatchInfo) {
+  private boolean canSkipDelete(TsFileResource tsFileResource, ModEntry deletion) {
     long fileStartTime = tsFileResource.getTimeIndex().getMinStartTime();
     long fileEndTime = tsFileResource.getTimeIndex().getMaxEndTime();
 
-    for (PartialPath device : devicePaths) {
-      long deviceStartTime, deviceEndTime;
-      if (device.hasWildcard()) {
-        if (!tsFileResource.isClosed() && fileEndTime == Long.MIN_VALUE) {
-          // unsealed seq file
-          if (deleteEnd < fileStartTime) {
-            // time range of file has not overlapped with the deletion
-            return true;
-          }
-        } else {
-          if (deleteEnd < fileStartTime || deleteStart > fileEndTime) {
-            // time range of file has not overlapped with the deletion
-            return true;
-          }
-        }
-        if (databaseName.contentEquals(device.getIDeviceID().toString())) {
-          return false;
-        }
-        Pair<Long, Long> startAndEndTime =
-            tsFileResource.getPossibleStartTimeAndEndTime(
-                device,
-                deviceMatchInfo.stream()
-                    .map(IDeviceID.Factory.DEFAULT_FACTORY::create)
-                    .collect(Collectors.toSet()));
-        if (startAndEndTime == null) {
-          continue;
-        }
-        deviceStartTime = startAndEndTime.getLeft();
-        deviceEndTime = startAndEndTime.getRight();
-      } else {
-        // TODO: DELETE
-        IDeviceID deviceId = IDeviceID.Factory.DEFAULT_FACTORY.create(device.getFullPath());
-        if (tsFileResource.definitelyNotContains(deviceId)) {
-          // resource does not contain this device
-          continue;
-        }
-        deviceStartTime = tsFileResource.getStartTime(deviceId);
-        deviceEndTime = tsFileResource.getEndTime(deviceId);
-      }
+    if (!deletion.getTimeRange().contains(fileStartTime, fileEndTime)) {
+      return true;
+    }
+    ITimeIndex timeIndex = tsFileResource.getTimeIndex();
+    if (timeIndex.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE) {
+      return false;
+    }
 
-      if (!tsFileResource.isClosed() && deviceEndTime == Long.MIN_VALUE) {
-        // unsealed seq file
-        if (deleteEnd >= deviceStartTime) {
-          return false;
-        }
-      } else {
-        // sealed file or unsealed unseq file
-        if (deleteEnd >= deviceStartTime && deleteStart <= deviceEndTime) {
-          // time range of device has overlap with the deletion
-          return false;
-        }
+    for (IDeviceID device : tsFileResource.getDevices()) {
+      long startTime = tsFileResource.getTimeIndex().getStartTime(device);
+      long endTime = tsFileResource.getTimeIndex().getEndTime(device);
+      if (deletion.affects(device, startTime, endTime)) {
+        return false;
       }
     }
     return true;
@@ -2465,90 +2497,43 @@ public class DataRegion implements IDataRegionForQuery {
 
   // suppress warn of Throwable catch
   @SuppressWarnings("java:S1181")
-  private void deleteDataInFiles(
-      Collection<TsFileResource> tsFileResourceList,
+  private void deleteDataInUnsealedFiles(
+      Collection<TsFileResource> unsealedTsFiles,
       ModEntry deletion,
-      Set<PartialPath> devicePaths,
-      Set<String> deviceMatchInfo)
-      throws IOException {
-    for (TsFileResource tsFileResource : tsFileResourceList) {
-      if (canSkipDelete(
-          tsFileResource,
-          devicePaths,
-          deletion.getStartTime(),
-          deletion.getEndTime(),
-          deviceMatchInfo)) {
+      Collection<TsFileResource> sealedTsFiles) {
+    for (TsFileResource tsFileResource : unsealedTsFiles) {
+      if (canSkipDelete(tsFileResource, deletion)) {
         continue;
       }
 
-      ModificationFile modFile = tsFileResource.getNewModFile();
       if (tsFileResource.isClosed()) {
-        long originSize = -1;
-        synchronized (modFile) {
-          try {
-            originSize = modFile.getSize();
-            // delete data in sealed file
-            if (tsFileResource.isCompacting()) {
-              // write deletion into compaction modification file
-              tsFileResource.getCompactionModFile().write(deletion);
-              // write deletion into modification file to enable read during compaction
-              modFile.write(deletion);
-              // remember to close mod file
-              tsFileResource.getCompactionModFile().close();
-              modFile.close();
-            } else {
-              // write deletion into modification file
-              boolean modFileExists = modFile.exists();
-
-              modFile.write(deletion);
-
-              // remember to close mod file
-              modFile.close();
-
-              if (!modFileExists) {
-                FileMetrics.getInstance().increaseModFileNum(1);
-              }
-
-              // The file size may be smaller than the original file, so the increment here may be
-              // negative
-              FileMetrics.getInstance().increaseModFileSize(modFile.getSize() - originSize);
-            }
-          } catch (Throwable t) {
-            if (originSize != -1) {
-              modFile.truncate(originSize);
-            }
-            throw t;
-          }
-          logger.info("[Deletion] Deletion with {} written into mods file:{}.", deletion, modFile);
-        }
+        sealedTsFiles.add(tsFileResource);
       } else {
-        // delete data in memory of unsealed file
-        tsFileResource.getProcessor().deleteDataInMemory(deletion);
+        tsFileResource.getProcessor().getFlushQueryLock().readLock().lock();
+        if (tsFileResource.isClosed()) {
+          sealedTsFiles.add(tsFileResource);
+          tsFileResource.getProcessor().getFlushQueryLock().readLock().unlock();
+        } else {
+          try {
+            tsFileResource.getProcessor().deleteDataInMemory(deletion);
+          } finally {
+            tsFileResource.getProcessor().getFlushQueryLock().readLock().unlock();
+          }
+        }
       }
     }
   }
 
-  private void deleteDataDirectlyInFile(
-      List<TsFileResource> tsfileResourceList,
-      MeasurementPath pathToDelete,
-      long startTime,
-      long endTime)
+  private void deleteDataInSealedFiles(Collection<TsFileResource> sealedTsFiles, ModEntry deletion)
       throws IOException {
-    List<TsFileResource> deletedByMods = new ArrayList<>();
-    List<TsFileResource> deletedByFiles = new ArrayList<>();
-    separateTsFileToDelete(
-        new HashSet<>(pathToDelete.getDevicePathPattern()),
-        tsfileResourceList,
-        deletedByMods,
-        deletedByFiles,
-        startTime,
-        endTime);
-    TreeDeletionEntry deletion = new TreeDeletionEntry(pathToDelete, startTime, endTime);
-    // can be deleted by mods.
-    for (TsFileResource tsFileResource : deletedByMods) {
+    for (TsFileResource tsFileResource : sealedTsFiles) {
+      if (canSkipDelete(tsFileResource, deletion)) {
+        continue;
+      }
+
       ModificationFile modFile = tsFileResource.getNewModFile();
-      if (tsFileResource.isClosed()) {
-        long originSize = -1;
+      long originSize = -1;
+      synchronized (modFile) {
         try {
           originSize = modFile.getSize();
           // delete data in sealed file
@@ -2583,11 +2568,61 @@ public class DataRegion implements IDataRegionForQuery {
           }
           throw t;
         }
+        logger.info("[Deletion] Deletion with {} written into mods file:{}.", deletion, modFile);
+      }
+    }
+  }
+
+  private void deleteDataDirectlyInFile(List<TsFileResource> tsfileResourceList, ModEntry modEntry)
+      throws IOException {
+    List<TsFileResource> deletedByMods = new ArrayList<>();
+    List<TsFileResource> deletedByFiles = new ArrayList<>();
+    separateTsFileToDelete(modEntry, tsfileResourceList, deletedByMods, deletedByFiles);
+
+    // can be deleted by mods.
+    for (TsFileResource tsFileResource : deletedByMods) {
+      ModificationFile modFile = tsFileResource.getNewModFile();
+      if (tsFileResource.isClosed()) {
+        long originSize = -1;
+        try {
+          originSize = modFile.getSize();
+          // delete data in sealed file
+          if (tsFileResource.isCompacting()) {
+            // write deletion into compaction modification file
+            tsFileResource.getCompactionModFile().write(modEntry);
+            // write deletion into modification file to enable read during compaction
+            modFile.write(modEntry);
+            // remember to close mod file
+            tsFileResource.getCompactionModFile().close();
+            modFile.close();
+          } else {
+            // write deletion into modification file
+            boolean modFileExists = modFile.exists();
+
+            modFile.write(modEntry);
+
+            // remember to close mod file
+            modFile.close();
+
+            if (!modFileExists) {
+              FileMetrics.getInstance().increaseModFileNum(1);
+            }
+
+            // The file size may be smaller than the original file, so the increment here may be
+            // negative
+            FileMetrics.getInstance().increaseModFileSize(modFile.getSize() - originSize);
+          }
+        } catch (Throwable t) {
+          if (originSize != -1) {
+            modFile.truncate(originSize);
+          }
+          throw t;
+        }
         logger.info(
-            "[Deletion] Deletion with path {} written into mods file:{}.", deletion, modFile);
+            "[Deletion] Deletion with path {} written into mods file:{}.", modFile, modFile);
       } else {
         // delete data in memory of unsealed file
-        tsFileResource.getProcessor().deleteDataInMemory(deletion);
+        tsFileResource.getProcessor().deleteDataInMemory(modEntry);
       }
     }
 
@@ -2607,18 +2642,17 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void separateTsFileToDelete(
-      Set<PartialPath> pathToDelete,
+      ModEntry modEntry,
       List<TsFileResource> tsFileResourceList,
       List<TsFileResource> deletedByMods,
-      List<TsFileResource> deletedByFiles,
-      long startTime,
-      long endTime) {
-    Set<String> deviceMatchInfo = new HashSet<>();
+      List<TsFileResource> deletedByFiles) {
+    long startTime = modEntry.getStartTime();
+    long endTime = modEntry.getEndTime();
     for (TsFileResource file : tsFileResourceList) {
       long fileStartTime = file.getTimeIndex().getMinStartTime();
       long fileEndTime = file.getTimeIndex().getMaxEndTime();
 
-      if (!canSkipDelete(file, pathToDelete, startTime, endTime, deviceMatchInfo)) {
+      if (!canSkipDelete(file, modEntry)) {
         if (startTime <= fileStartTime
             && endTime >= fileEndTime
             && file.isClosed()

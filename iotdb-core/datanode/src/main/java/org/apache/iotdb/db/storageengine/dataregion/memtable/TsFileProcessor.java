@@ -46,6 +46,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -1175,6 +1176,10 @@ public class TsFileProcessor {
   }
 
   public WALFlushListener logDeleteDataNodeInWAL(DeleteDataNode deleteDataNode) {
+    return walNode.log(workMemTable.getMemTableId(), deleteDataNode);
+  }
+
+  public WALFlushListener logDeleteDataNodeInWAL(RelationalDeleteDataNode deleteDataNode) {
     return walNode.log(workMemTable.getMemTableId(), deleteDataNode);
   }
 
@@ -2320,5 +2325,9 @@ public class TsFileProcessor {
   public void registerToTsFile(
       String tableName, Function<String, TableSchema> tableSchemaFunction) {
     getWriter().getSchema().getTableSchemaMap().computeIfAbsent(tableName, tableSchemaFunction);
+  }
+
+  public ReadWriteLock getFlushQueryLock() {
+    return flushQueryLock;
   }
 }

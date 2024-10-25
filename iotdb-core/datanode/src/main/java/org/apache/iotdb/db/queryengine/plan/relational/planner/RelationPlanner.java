@@ -22,6 +22,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
@@ -42,6 +43,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
@@ -725,5 +727,13 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
           Collections.emptyList());
     }
     throw new IllegalStateException("Other WritePlanNode is not supported in current version.");
+  }
+
+  @Override
+  protected RelationPlan visitDelete(Delete node, Void context) {
+    return new RelationPlan(
+        new RelationalDeleteDataNode(idAllocator.genPlanNodeId(), node),
+        analysis.getRootScope(),
+        Collections.emptyList());
   }
 }

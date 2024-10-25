@@ -119,4 +119,8 @@ public class TableDeletionEntry extends ModEntry {
   public TableDeletionEntry clone() {
     return new TableDeletionEntry(predicate, new TimeRange(timeRange.getMin(), timeRange.getMax()));
   }
+
+  public String getTableName() {
+    return predicate.getTableName();
+  }
 }

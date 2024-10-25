@@ -63,6 +63,10 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
     return tableName.equals(deviceID.getTableName()) && idPredicate.matches(deviceID);
   }
 
+  public void setIdPredicate(IDPredicate idPredicate) {
+    this.idPredicate = idPredicate;
+  }
+
   public String getTableName() {
     return tableName;
   }
@@ -141,5 +145,4 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
     }
     return size;
   }
-
 }

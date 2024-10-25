@@ -28,6 +28,7 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRe
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeDataRegionAssigner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 
@@ -166,6 +167,12 @@ public class PipeInsertionDataNodeListener {
     assigner.publishToAssign(PipeRealtimeEventFactory.createRealtimeEvent(node));
 
     return deletionResource;
+  }
+
+  public DeletionResource listenToDeleteData(
+      final String regionId, final RelationalDeleteDataNode node) {
+    // TODO: implement
+    return null;
   }
 
   public void listenToHeartbeat(boolean shouldPrintMessage) {

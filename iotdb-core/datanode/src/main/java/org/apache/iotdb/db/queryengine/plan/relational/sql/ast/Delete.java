@@ -19,10 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+
 import com.google.common.collect.ImmutableList;
 
 import javax.annotation.Nullable;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -34,6 +38,12 @@ public class Delete extends Statement {
 
   private final Table table;
   @Nullable private final Expression where;
+
+  // generated after analysis
+  private TimeRange timeRange;
+  private DeletionPredicate predicate;
+  private String databaseName;
+  private Collection<TRegionReplicaSet> replicaSets;
 
   public Delete(NodeLocation location, Table table) {
     super(requireNonNull(location, "location is null"));
@@ -90,5 +100,37 @@ public class Delete extends Statement {
   @Override
   public String toString() {
     return toStringHelper(this).add("table", table.getName()).add("where", where).toString();
+  }
+
+  public TimeRange getTimeRange() {
+    return timeRange;
+  }
+
+  public void setTimeRange(TimeRange timeRange) {
+    this.timeRange = timeRange;
+  }
+
+  public DeletionPredicate getPredicate() {
+    return predicate;
+  }
+
+  public void setPredicate(DeletionPredicate predicate) {
+    this.predicate = predicate;
+  }
+
+  public String getDatabaseName() {
+    return databaseName;
+  }
+
+  public void setDatabaseName(String databaseName) {
+    this.databaseName = databaseName;
+  }
+
+  public Collection<TRegionReplicaSet> getReplicaSets() {
+    return replicaSets;
+  }
+
+  public void setReplicaSets(Collection<TRegionReplicaSet> replicaSets) {
+    this.replicaSets = replicaSets;
   }
 }
