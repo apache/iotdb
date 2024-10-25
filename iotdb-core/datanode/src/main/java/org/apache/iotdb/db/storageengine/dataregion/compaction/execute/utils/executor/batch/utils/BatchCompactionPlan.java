@@ -51,9 +51,8 @@ public class BatchCompactionPlan {
     Chunk chunk = cachedTimeChunks.get(key);
     if (chunk == null) {
       chunk = reader.readMemChunk(chunkMetadata);
-      chunk.getData().mark();
     }
-    chunk.getData().reset();
+    chunk.getData().rewind();
     return chunk;
   }
 
@@ -61,7 +60,6 @@ public class BatchCompactionPlan {
     if (cachedTimeChunkSize >= maxCachedTimeChunksSize) {
       return;
     }
-    chunk.getData().mark();
     cachedTimeChunks.put(
         new Pair<>(file, offset),
         new Chunk(
