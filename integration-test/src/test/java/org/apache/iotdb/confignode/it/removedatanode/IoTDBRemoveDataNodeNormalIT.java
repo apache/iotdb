@@ -31,7 +31,7 @@ import org.junit.runner.RunWith;
 public class IoTDBRemoveDataNodeNormalIT extends IoTDBRemoveDataNodeITFramework {
   @Test
   public void success1C4DTest() throws Exception {
-    successTest(2, 3, 1, 4, 1, 2, false);
+    successTest(2, 3, 1, 4, 1, 2, true);
   }
 
   @Test

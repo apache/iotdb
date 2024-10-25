@@ -51,7 +51,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework.closeQuietly;
 import static org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework.getRegionMap;
 
 public class IoTDBRemoveDataNodeITFramework {
@@ -143,8 +142,8 @@ public class IoTDBRemoveDataNodeITFramework {
             dataRegionPerDataNode * dataNodeNum / dataReplicateFactor);
     EnvFactory.getEnv().initClusterEnvironment(configNodeNum, dataNodeNum);
 
-    try (final Connection connection = closeQuietly(EnvFactory.getEnv().getConnection());
-        final Statement statement = closeQuietly(connection.createStatement());
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement();
         SyncConfigNodeIServiceClient client =
             (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
@@ -217,30 +216,13 @@ public class IoTDBRemoveDataNodeITFramework {
       LOGGER.info("Remove DataNodes success");
 
       if (rejoinRemovedDataNode) {
-        removeDataNodeWrappers.parallelStream().forEach(DataNodeWrapper::start);
-        LOGGER.info("RemoveDataNodes rejoin: {}", removeDataNodes);
-
-        final Set<Integer> finalAllDataNodeId = new HashSet<>();
-
         try {
-          // Get all data nodes
-          ResultSet rejoinResult = statement.executeQuery(SHOW_DATANODES);
-          while (rejoinResult.next()) {
-            finalAllDataNodeId.add(rejoinResult.getInt(ColumnHeaderConstant.NODE_ID));
-          }
+          removeDataNodeWrappers.parallelStream().forEach(DataNodeWrapper::start);
+          LOGGER.info("RemoveDataNodes:{} rejoined successfully.", removeDataNodes);
         } catch (Exception e) {
-          LOGGER.info("Rejoin DataNodes exception: {}", e.getMessage());
+          LOGGER.error("RemoveDataNodes rejoin failed.");
+          Assert.fail();
         }
-
-        removeDataNodes.forEach(
-            removeDataNodeId -> {
-              if (finalAllDataNodeId.contains(removeDataNodeId)) {
-                LOGGER.info("DataNode {} rejoin successfully", removeDataNodeId);
-              } else {
-                LOGGER.error("DataNode {} not found after rejoin", removeDataNodeId);
-                Assert.fail();
-              }
-            });
       }
     } catch (InconsistentDataException ignored) {
 
