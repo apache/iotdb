@@ -25,6 +25,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -50,7 +51,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
         String.format(
             "create pipe a2b with source ('source'='iotdb-source', 'database-name'='test', 'table-name'='test1', 'mode.streaming'='true') with processor ('processor'='do-nothing-processor') with sink ('node-urls'='%s')",
             receiverDataNode.getIpAndPortString());
-    try (final Connection connection = senderEnv.getConnection();
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(sql);
     } catch (SQLException e) {
@@ -82,7 +83,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
     }
 
     // Stop pipe
-    try (final Connection connection = senderEnv.getConnection();
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute("stop pipe a2b");
     } catch (SQLException e) {
@@ -99,7 +100,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
     }
 
     // Alter pipe (modify)
-    try (final Connection connection = senderEnv.getConnection();
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
           "alter pipe a2b modify source ('table-name'='test1','database-name'='test1')");
@@ -134,7 +135,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
     }
 
     // Alter pipe (replace)
-    try (final Connection connection = senderEnv.getConnection();
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
           "alter pipe a2b replace source ('source'='iotdb-source', 'table-name'='test','database-name'='test')");
@@ -169,7 +170,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
     }
 
     // Alter pipe (modify)
-    try (final Connection connection = senderEnv.getConnection();
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute("alter pipe a2b modify sink ('sink.batch.enable'='false')");
     } catch (SQLException e) {
@@ -203,7 +204,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
     }
 
     // Start pipe
-    try (final Connection connection = senderEnv.getConnection();
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute("start pipe a2b");
     } catch (SQLException e) {
@@ -211,7 +212,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
     }
 
     // Alter pipe (modify)
-    try (final Connection connection = senderEnv.getConnection();
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute("alter pipe a2b modify sink ('connector.batch.enable'='true')");
     } catch (SQLException e) {
@@ -243,7 +244,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
     }
 
     // Alter pipe (modify empty)
-    try (final Connection connection = senderEnv.getConnection();
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute("alter pipe a2b modify source ()");
     } catch (SQLException e) {
@@ -275,7 +276,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
     }
 
     // Alter pipe (replace empty)
-    try (final Connection connection = senderEnv.getConnection();
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute("alter pipe a2b replace source ()");
     } catch (SQLException e) {
@@ -307,7 +308,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
     }
 
     // Alter pipe (replace empty)
-    try (final Connection connection = senderEnv.getConnection();
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute("alter pipe a2b replace processor ()");
     } catch (SQLException e) {
@@ -338,7 +339,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
     }
 
     // Alter pipe (modify empty)
-    try (final Connection connection = senderEnv.getConnection();
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute("alter pipe a2b modify sink ()");
     } catch (SQLException e) {
@@ -375,7 +376,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
         String.format(
             "alter pipe a2b modify sink ('node-urls'='%s', 'batch.enable'='true')",
             receiverDataNode.getIpAndPortString());
-    try (final Connection connection = senderEnv.getConnection();
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(sql);
       fail();
@@ -387,7 +388,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
         String.format(
             "create pipe a2b with source ('source'='iotdb-source', 'database-name'='test', 'table-name'='test1', 'mode.streaming'='true') with sink ('node-urls'='%s', 'batch.enable'='false')",
             receiverDataNode.getIpAndPortString());
-    try (final Connection connection = senderEnv.getConnection();
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(sql);
     } catch (SQLException e) {
@@ -406,7 +407,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
         String.format(
             "create pipe a2b with source ('source'='iotdb-source', 'database-name'='test', 'table-name'='test1', 'mode.streaming'='true') with processor ('processor'='do-nothing-processor') with sink ('node-urls'='%s', 'batch.enable'='false')",
             receiverDataNode.getIpAndPortString());
-    try (final Connection connection = senderEnv.getConnection();
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(sql);
     } catch (final SQLException e) {
@@ -434,7 +435,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
 
     // Alter pipe (modify 'source.path', 'source.inclusion' and
     // 'processor.tumbling-time.interval-seconds')
-    try (final Connection connection = senderEnv.getConnection();
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
           "alter pipe a2b modify source('source' = 'iotdb-source','database-name'='test1', 'table-name'='test1', 'mode.streaming'='true', 'source.inclusion'='data.insert') modify sink ('batch.enable'='true')");

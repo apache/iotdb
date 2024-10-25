@@ -436,11 +436,18 @@ public abstract class AbstractEnv implements BaseEnv {
 
   @Override
   public Connection getWriteOnlyConnectionWithSpecifiedDataNode(
-      final DataNodeWrapper dataNode, final String username, final String password)
+      final DataNodeWrapper dataNode,
+      final String username,
+      final String password,
+      String sqlDialect)
       throws SQLException {
     return new ClusterTestConnection(
         getWriteConnectionWithSpecifiedDataNode(
-            dataNode, null, username, password, TREE_SQL_DIALECT),
+            dataNode,
+            null,
+            username,
+            password,
+            TABLE_SQL_DIALECT.equals(sqlDialect) ? TABLE_SQL_DIALECT : TREE_SQL_DIALECT),
         Collections.emptyList());
   }
 

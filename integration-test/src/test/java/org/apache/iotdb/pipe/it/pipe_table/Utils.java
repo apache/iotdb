@@ -20,6 +20,7 @@
 package org.apache.iotdb.pipe.it.pipe_table;
 
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.RpcUtils;
 
@@ -27,6 +28,7 @@ import java.sql.Connection;
 import java.sql.Statement;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -39,14 +41,48 @@ public class Utils {
       String dataBaseName, String tableName, int start, int end, BaseEnv baseEnv) {
     List<String> list = new ArrayList<>(end - start + 1);
     for (int i = start; i < end; ++i) {
-      list.add("use " + dataBaseName);
       list.add(
           String.format(
               "insert into %s (id1, s3, s2, s1, time) values ('t%s','%s', %s.0, %s, %s)",
               tableName, i, i, i, i, i));
     }
     list.add("flush");
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(baseEnv, list, BaseEnv.TABLE_SQL_DIALECT)) {
+    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list)) {
+      fail();
+    }
+  }
+
+  public static boolean insertDataNotThrowError(
+      String dataBaseName, String tableName, int start, int end, BaseEnv baseEnv) {
+    List<String> list = new ArrayList<>(end - start + 1);
+    for (int i = start; i < end; ++i) {
+      list.add(
+          String.format(
+              "insert into %s (id1, s3, s2, s1, time) values ('t%s','%s', %s.0, %s, %s)",
+              tableName, i, i, i, i, i));
+    }
+    return TestUtils.tryExecuteNonQueriesWithRetry(
+        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list);
+  }
+
+  public static void insertData(
+      String dataBaseName,
+      String tableName,
+      int start,
+      int end,
+      BaseEnv baseEnv,
+      DataNodeWrapper wrapper) {
+    List<String> list = new ArrayList<>(end - start + 1);
+    for (int i = start; i < end; ++i) {
+      list.add(
+          String.format(
+              "insert into %s (id1, s3, s2, s1, time) values ('t%s','%s', %s.0, %s, %s)",
+              tableName, i, i, i, i, i));
+    }
+    list.add("flush");
+    if (!TestUtils.tryExecuteNonQueriesOnSpecifiedDataNodeWithRetry(
+        baseEnv, wrapper, list, dataBaseName, BaseEnv.TABLE_SQL_DIALECT)) {
       fail();
     }
   }
@@ -82,5 +118,24 @@ public class Utils {
 
   public static String getQuerySql(String table) {
     return "select id1,s3,s2,s1,time from " + table;
+  }
+
+  public static String getQueryCountSql(String table) {
+    return "select count(*) from " + table;
+  }
+
+  public static void assertData(
+      String database, String table, int start, int end, BaseEnv baseEnv) {
+    TestUtils.assertDataEventuallyOnEnv(
+        baseEnv,
+        Utils.getQuerySql("test"),
+        Utils.generateHeaderResults(),
+        Utils.generateExpectedResults(start, end),
+        "test");
+  }
+
+  public static void assertCountData(String database, String table, int count, BaseEnv baseEnv) {
+    TestUtils.assertDataEventuallyOnEnv(
+        baseEnv, getQueryCountSql(table), "_col0,", Collections.singleton(count + ","), "test");
   }
 }

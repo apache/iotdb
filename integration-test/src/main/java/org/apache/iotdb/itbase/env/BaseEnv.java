@@ -147,12 +147,19 @@ public interface BaseEnv {
   default Connection getWriteOnlyConnectionWithSpecifiedDataNode(DataNodeWrapper dataNode)
       throws SQLException {
     return getWriteOnlyConnectionWithSpecifiedDataNode(
-        dataNode, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
+        dataNode, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, TREE_SQL_DIALECT);
+  }
+
+  default Connection getWriteOnlyConnectionWithSpecifiedDataNode(
+      DataNodeWrapper dataNode, String sqlDialect) throws SQLException {
+    return getWriteOnlyConnectionWithSpecifiedDataNode(
+        dataNode, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, sqlDialect);
   }
 
   // This is useful when you shut down a dataNode.
   Connection getWriteOnlyConnectionWithSpecifiedDataNode(
-      DataNodeWrapper dataNode, String username, String password) throws SQLException;
+      DataNodeWrapper dataNode, String username, String password, String sqlDialect)
+      throws SQLException;
 
   default Connection getConnectionWithSpecifiedDataNode(DataNodeWrapper dataNode)
       throws SQLException {

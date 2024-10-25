@@ -271,7 +271,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelTestIT {
       extractorAttributes.put("source.forwarding-pipe-requests", "false");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
+      connectorAttributes.put("connector.batch.enable", "true");
       connectorAttributes.put("connector.ip", senderIp);
       connectorAttributes.put("connector.port", Integer.toString(senderPort));
 
@@ -326,7 +326,8 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelTestIT {
               tableName, i, i, i, i, i));
     }
     list.add("flush");
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(baseEnv, list, BaseEnv.TABLE_SQL_DIALECT)) {
+    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list)) {
       fail();
     }
   }

@@ -583,21 +583,31 @@ public class TestUtils {
         env, sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
 
-  public static boolean tryExecuteNonQueryWithRetry(BaseEnv env, String sql, String sqlDialect) {
+  public static boolean tryExecuteNonQueryWithRetry(
+      String dataBaseName, String sqlDialect, BaseEnv env, String sql) {
     return tryExecuteNonQueryWithRetry(
-        env, sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, sqlDialect);
+        env,
+        sql,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        dataBaseName,
+        sqlDialect);
   }
 
   public static boolean tryExecuteNonQueryWithRetry(
       BaseEnv env, String sql, String userName, String password) {
-    return tryExecuteNonQueriesWithRetry(
-        env, Collections.singletonList(sql), userName, password, BaseEnv.TREE_SQL_DIALECT);
+    return tryExecuteNonQueriesWithRetry(env, Collections.singletonList(sql), userName, password);
   }
 
   public static boolean tryExecuteNonQueryWithRetry(
-      BaseEnv env, String sql, String userName, String password, String sqlDialect) {
+      BaseEnv env,
+      String sql,
+      String userName,
+      String password,
+      String dataBaseName,
+      String sqlDialect) {
     return tryExecuteNonQueriesWithRetry(
-        env, Collections.singletonList(sql), userName, password, sqlDialect);
+        env, Collections.singletonList(sql), userName, password, dataBaseName, sqlDialect);
   }
 
   public static boolean tryExecuteNonQueriesWithRetry(BaseEnv env, List<String> sqlList) {
@@ -606,19 +616,36 @@ public class TestUtils {
         sqlList,
         SessionConfig.DEFAULT_USER,
         SessionConfig.DEFAULT_PASSWORD,
+        null,
         BaseEnv.TREE_SQL_DIALECT);
   }
 
   public static boolean tryExecuteNonQueriesWithRetry(
-      BaseEnv env, List<String> sqlList, String sqlDialect) {
+      String dataBase, String sqlDialect, BaseEnv env, List<String> sqlList) {
     return tryExecuteNonQueriesWithRetry(
-        env, sqlList, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, sqlDialect);
+        env,
+        sqlList,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        dataBase,
+        sqlDialect);
   }
 
   // This method will not throw failure given that a failure is encountered.
   // Instead, it returns a flag to indicate the result of the execution.
   public static boolean tryExecuteNonQueriesWithRetry(
-      BaseEnv env, List<String> sqlList, String userName, String password, String sqlDialect) {
+      BaseEnv env, List<String> sqlList, String userName, String password) {
+    return tryExecuteNonQueriesWithRetry(
+        env, sqlList, userName, password, null, BaseEnv.TREE_SQL_DIALECT);
+  }
+
+  public static boolean tryExecuteNonQueriesWithRetry(
+      BaseEnv env,
+      List<String> sqlList,
+      String userName,
+      String password,
+      String dataBase,
+      String sqlDialect) {
     int lastIndex = 0;
     for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
       try (Connection connection =
@@ -629,6 +656,9 @@ public class TestUtils {
                       ? BaseEnv.TABLE_SQL_DIALECT
                       : BaseEnv.TREE_SQL_DIALECT);
           Statement statement = connection.createStatement()) {
+        if (BaseEnv.TABLE_SQL_DIALECT.equals(sqlDialect) && dataBase != null) {
+          statement.execute("use " + dataBase);
+        }
         for (int i = lastIndex; i < sqlList.size(); ++i) {
           lastIndex = i;
           statement.execute(sqlList.get(i));
@@ -684,6 +714,42 @@ public class TestUtils {
     for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
       try (Connection connection = env.getWriteOnlyConnectionWithSpecifiedDataNode(wrapper);
           Statement statement = connection.createStatement()) {
+        for (int i = lastIndex; i < sqlList.size(); ++i) {
+          statement.execute(sqlList.get(i));
+          lastIndex = i;
+        }
+        return true;
+      } catch (SQLException e) {
+        if (retryCountLeft > 0) {
+          try {
+            Thread.sleep(10000);
+          } catch (InterruptedException ignored) {
+          }
+        } else {
+          e.printStackTrace();
+          return false;
+        }
+      }
+    }
+    return false;
+  }
+
+  public static boolean tryExecuteNonQueriesOnSpecifiedDataNodeWithRetry(
+      BaseEnv env,
+      DataNodeWrapper wrapper,
+      List<String> sqlList,
+      String dataBase,
+      String sqlDialect) {
+    int lastIndex = 0;
+    for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
+      try (Connection connection =
+              env.getWriteOnlyConnectionWithSpecifiedDataNode(wrapper, sqlDialect);
+          Statement statement = connection.createStatement()) {
+
+        if (BaseEnv.TABLE_SQL_DIALECT.equals(sqlDialect) && dataBase != null) {
+          statement.execute("use dataBase");
+        }
+
         for (int i = lastIndex; i < sqlList.size(); ++i) {
           statement.execute(sqlList.get(i));
           lastIndex = i;
