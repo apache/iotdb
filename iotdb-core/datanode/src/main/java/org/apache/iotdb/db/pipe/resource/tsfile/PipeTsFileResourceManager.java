@@ -133,8 +133,13 @@ public class PipeTsFileResourceManager {
       throws IOException {
     // If the file is already a hardlink or copied file,
     // just increase reference count and return it
-    if (increaseReferenceIfExists(file)) {
-      return file;
+    segmentLock.lock(file);
+    try {
+      if (increaseReferenceIfExists(file)) {
+        return file;
+      }
+    } finally {
+      segmentLock.unlock(file);
     }
 
     // If the file is not a hardlink or copied file, check if there is a related hardlink or
@@ -171,18 +176,13 @@ public class PipeTsFileResourceManager {
   }
 
   private boolean increaseReferenceIfExists(final File file) {
-    segmentLock.lock(file);
-    try {
-      final PipeTsFileResource resource =
-          hardlinkOrCopiedFileToPipeTsFileResourceMap.get(file.getPath());
-      if (resource != null) {
-        resource.increaseAndGetReference();
-        return true;
-      }
-      return false;
-    } finally {
-      segmentLock.unlock(file);
+    final PipeTsFileResource resource =
+        hardlinkOrCopiedFileToPipeTsFileResourceMap.get(file.getPath());
+    if (resource != null) {
+      resource.increaseAndGetReference();
+      return true;
     }
+    return false;
   }
 
   public static File getHardlinkOrCopiedFileInPipeDir(final File file) throws IOException {
