@@ -893,11 +893,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitShowVariablesStatement(RelationalSqlParser.ShowVariablesStatementContext ctx) {
-    return super.visitShowVariablesStatement(ctx);
-  }
-
-  @Override
   public Node visitFlushStatement(RelationalSqlParser.FlushStatementContext ctx) {
     FlushStatement flushStatement = new FlushStatement(StatementType.FLUSH);
     List<PartialPath> storageGroups = null;
@@ -960,6 +955,29 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitShowVersionStatement(RelationalSqlParser.ShowVersionStatementContext ctx) {
     return super.visitShowVersionStatement(ctx);
+  }
+
+  @Override
+  public Node visitShowCurrentSqlDialectStatement(
+      RelationalSqlParser.ShowCurrentSqlDialectStatementContext ctx) {
+    return super.visitShowCurrentSqlDialectStatement(ctx);
+  }
+
+  @Override
+  public Node visitShowCurrentDatabaseStatement(
+      RelationalSqlParser.ShowCurrentDatabaseStatementContext ctx) {
+    return super.visitShowCurrentDatabaseStatement(ctx);
+  }
+
+  @Override
+  public Node visitShowCurrentUserStatement(
+      RelationalSqlParser.ShowCurrentUserStatementContext ctx) {
+    return super.visitShowCurrentUserStatement(ctx);
+  }
+
+  @Override
+  public Node visitShowVariablesStatement(RelationalSqlParser.ShowVariablesStatementContext ctx) {
+    return super.visitShowVariablesStatement(ctx);
   }
 
   @Override

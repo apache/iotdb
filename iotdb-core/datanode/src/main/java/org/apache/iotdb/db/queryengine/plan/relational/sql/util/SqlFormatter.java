@@ -66,11 +66,16 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentDatabase;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentSqlDialect;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVariables;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
@@ -526,6 +531,36 @@ public final class SqlFormatter {
     protected Void visitShowFunctions(ShowFunctions node, Integer indent) {
       builder.append("SHOW FUNCTIONS");
 
+      return null;
+    }
+
+    @Override
+    protected Void visitShowCurrentSqlDialect(ShowCurrentSqlDialect node, Integer context) {
+      builder.append(node.toString());
+      return null;
+    }
+
+    @Override
+    protected Void visitShowCurrentDatabase(ShowCurrentDatabase node, Integer context) {
+      builder.append(node.toString());
+      return null;
+    }
+
+    @Override
+    protected Void visitShowCurrentUser(ShowCurrentUser node, Integer context) {
+      builder.append(node.toString());
+      return null;
+    }
+
+    @Override
+    protected Void visitShowVersion(ShowVersion node, Integer context) {
+      builder.append(node.toString());
+      return null;
+    }
+
+    @Override
+    protected Void visitShowVariables(ShowVariables node, Integer context) {
+      builder.append(node.toString());
       return null;
     }
 

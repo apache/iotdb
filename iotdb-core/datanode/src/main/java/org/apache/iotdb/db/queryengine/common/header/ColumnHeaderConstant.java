@@ -224,6 +224,12 @@ public class ColumnHeaderConstant {
 
   public static final String GRANT_OPTION = "GrantOption";
 
+  public static final String CURRENT_USER = "CurrentUser";
+
+  public static final String CURRENT_DATABASE = "CurrentDatabase";
+
+  public static final String CURRENT_SQL_DIALECT = "CurrentSqlDialect";
+
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(TIMESERIES, TSDataType.TEXT),
@@ -577,4 +583,13 @@ public class ColumnHeaderConstant {
           new ColumnHeader(PATH, TSDataType.TEXT),
           new ColumnHeader(PRIVILEGES, TSDataType.TEXT),
           new ColumnHeader(GRANT_OPTION, TSDataType.BOOLEAN));
+
+  public static final List<ColumnHeader> SHOW_CURRENT_USER_COLUMN_HEADERS =
+      ImmutableList.of(new ColumnHeader(CURRENT_USER, TSDataType.STRING));
+
+  public static final List<ColumnHeader> SHOW_CURRENT_DATABASE_COLUMN_HEADERS =
+      ImmutableList.of(new ColumnHeader(CURRENT_DATABASE, TSDataType.STRING));
+
+  public static final List<ColumnHeader> SHOW_CURRENT_SQL_DIALECT_COLUMN_HEADERS =
+      ImmutableList.of(new ColumnHeader(CURRENT_SQL_DIALECT, TSDataType.STRING));
 }

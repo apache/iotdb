@@ -333,4 +333,12 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> dropTable(
       final String database, final String tableName, final String queryId, final boolean ifExists);
+
+  SettableFuture<ConfigTaskResult> showVersion();
+
+  SettableFuture<ConfigTaskResult> showCurrentSqlDialect(String sqlDialect);
+
+  SettableFuture<ConfigTaskResult> showCurrentUser(String currentUser);
+
+  SettableFuture<ConfigTaskResult> showCurrentDatabase(String currentDatabase);
 }

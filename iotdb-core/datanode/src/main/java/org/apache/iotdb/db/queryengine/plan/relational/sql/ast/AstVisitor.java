@@ -554,4 +554,24 @@ public abstract class AstVisitor<R, C> {
   protected R visitPipeEnriched(PipeEnriched node, C context) {
     return visitStatement(node, context);
   }
+
+  protected R visitShowVersion(ShowVersion node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitShowCurrentUser(ShowCurrentUser node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitShowCurrentDatabase(ShowCurrentDatabase node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitShowCurrentSqlDialect(ShowCurrentSqlDialect node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitShowVariables(ShowVariables node, C context) {
+    return visitStatement(node, context);
+  }
 }
