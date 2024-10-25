@@ -615,7 +615,14 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         retArray,
         DATABASE_NAME);
 
-    // TODO select count(*),count(t1) from (select avg(num+1) as t1 from table0) where time < 0
+    expectedHeader = buildHeaders(2);
+    sql =
+        "select count(*),count(t1),sum(t1) from (select avg(num+1) as t1 from table0 where time < 0)";
+    retArray =
+        new String[] {
+          "1,0,null,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
     expectedHeader = buildHeaders(1);
     retArray =
@@ -908,17 +915,19 @@ public class IoTDBMultiIDsWithAttributesTableIT {
           "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.000Z,",
           "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.000Z,"
         };
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
-    // TODO(beyyes) test below
-    //        sql = "select count(*) from (\n" +
-    //                "\tselect device, level, date_bin(1d, time) as bin, \n" +
-    //                "\tcount(num) as count_num, count(*) as count_star, count(device) as
-    // count_device,
-    //     count(date) as count_date, count(attr1) as count_attr1, count(attr2) as count_attr2,
-    //     count(time) as count_time, avg(num) as avg_num \n" +
-    //                "\tfrom table0 \n" +
-    //                "\tgroup by 3, device, level order by device, level, bin\n" +
-    //                ")\n";
+    sql =
+        "select count(*) from ("
+            + "select device, level, date_bin(1d, time) as bin, "
+            + "count(num) as count_num, count(*) as count_star, count(device) as count_device, count(date) as count_date, count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, avg(num) as avg_num \n"
+            + "from table0 "
+            + "group by 3, device, level order by device, level, bin)";
+    retArray =
+        new String[] {
+          "28,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
   @Test

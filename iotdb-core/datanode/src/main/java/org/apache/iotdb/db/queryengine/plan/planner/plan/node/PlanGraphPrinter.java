@@ -631,7 +631,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
         String.format(
             "RegionId: %s",
             node.getRegionReplicaSet() == null || node.getRegionReplicaSet().getRegionId() == null
-                ? ""
+                ? "Not Assign"
                 : node.getRegionReplicaSet().getRegionId().getId()));
     return render(node, boxValue, context);
   }
