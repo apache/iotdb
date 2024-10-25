@@ -1240,7 +1240,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
     // no push-down, test GroupedAccumulator
     expectedHeader = buildHeaders(16);
     sql =
-        "select mode(time),mode(device),mode(level),mode(attr1),mode(attr2),mode(num),mode(bignum),mode(floatnum),mode(date),mode(str),mode(bool),mode(date),mode(ts),mode(stringv),mode(doublenum),count(num+1) from table0 where device='d2' and level='l4' and time=80";
+        "select mode(time),mode(device),mode(level),mode(attr1),mode(attr2),mode(num),mode(bignum),mode(floatnum),mode(date),mode(str),mode(bool),mode(date),mode(ts),mode(stringv),mode(doublenum),count(num+1) from table0 where device='d2' and level='l4' and time=80 group by device, level";
     retArray =
         new String[] {
           "1970-01-01T00:00:00.080Z,d2,l4,null,null,9,2147483646,43.12,null,apple,false,null,2024-09-20T06:15:35.000Z,test-string2,6666.7,1,",
@@ -1249,7 +1249,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
 
     expectedHeader = buildHeaders(11);
     sql =
-        "select mode(device),mode(level),mode(attr1),mode(attr2),mode(date),mode(bool),mode(date),mode(ts),mode(stringv),mode(doublenum),count(num+1) from table0 where device='d2' and level='l1'";
+        "select mode(device),mode(level),mode(attr1),mode(attr2),mode(date),mode(bool),mode(date),mode(ts),mode(stringv),mode(doublenum),count(num+1) from table0 where device='d2' and level='l1' group by device, level";
     retArray =
         new String[] {
           "d2,l1,d,c,null,false,null,null,null,null,3,",
@@ -1258,7 +1258,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
 
     expectedHeader = buildHeaders(2);
     sql =
-        "select mode(stringv),count(num+1) from table0 where device='d2' and level='l1' and stringv is not null";
+        "select mode(stringv),count(num+1) from table0 where device='d2' and level='l1' and stringv is not null group by device, level";
     retArray =
         new String[] {
           "test-string3,1,",
@@ -1285,7 +1285,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         "select \n"
             + "round(variance(num),1),round(var_pop(num),1),round(var_samp(num),1),round(stddev(num),1),round(stddev_pop(num),1),round(stddev_samp(num),1),\n"
             + "round(variance(floatnum),1),round(var_pop(floatnum),1),round(var_samp(floatnum),1),round(stddev(floatnum),1),round(stddev_pop(floatnum),1),round(stddev_samp(floatnum),1),\n"
-            + "round(variance(doublenum),1),round(var_pop(doublenum),1),round(var_samp(doublenum),1),round(stddev(doublenum),1),round(stddev_pop(doublenum),1),round(stddev_samp(doublenum),1), count(num+1) from table0 where device='d2' and level='l4'";
+            + "round(variance(doublenum),1),round(var_pop(doublenum),1),round(var_samp(doublenum),1),round(stddev(doublenum),1),round(stddev_pop(doublenum),1),round(stddev_samp(doublenum),1), count(num+1) from table0 where device='d2' and level='l4' group by device, level";
     retArray =
         new String[] {
           "16.0,10.7,16.0,4.0,3.3,4.0,50.0,33.3,50.0,7.1,5.8,7.1,null,0.0,null,null,0.0,null,3,",
