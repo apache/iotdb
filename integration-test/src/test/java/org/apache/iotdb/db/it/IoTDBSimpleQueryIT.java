@@ -1041,25 +1041,23 @@ public class IoTDBSimpleQueryIT {
 
   @Test
   public void testStorageGroupWithHyphenInName() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
       statement.execute("CREATE DATABASE root.group_with_hyphen");
-    } catch (SQLException e) {
+    } catch (final SQLException e) {
       fail();
     }
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES DETAILS")) {
         while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
-          builder.append(resultSet.getString(1));
-          Assert.assertEquals(builder.toString(), "root.group_with_hyphen");
+          Assert.assertEquals("root.group_with_hyphen", resultSet.getString(1));
+          Assert.assertEquals("TREE", resultSet.getString(12));
         }
       }
-    } catch (SQLException e) {
+    } catch (final SQLException e) {
       fail();
     }
   }

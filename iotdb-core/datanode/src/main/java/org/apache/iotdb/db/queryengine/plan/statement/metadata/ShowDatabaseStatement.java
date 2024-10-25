@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
@@ -74,10 +73,10 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
   }
 
   public void buildTSBlock(
-      Map<String, TDatabaseInfo> storageGroupInfoMap, SettableFuture<ConfigTaskResult> future)
-      throws IllegalPathException {
+      final Map<String, TDatabaseInfo> storageGroupInfoMap,
+      final SettableFuture<ConfigTaskResult> future) {
 
-    List<TSDataType> outputDataTypes =
+    final List<TSDataType> outputDataTypes =
         isDetailed
             ? ColumnHeaderConstant.showStorageGroupsDetailColumnHeaders.stream()
                 .map(ColumnHeader::getColumnType)
@@ -86,10 +85,10 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
                 .map(ColumnHeader::getColumnType)
                 .collect(Collectors.toList());
 
-    TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    for (Map.Entry<String, TDatabaseInfo> entry : storageGroupInfoMap.entrySet()) {
-      String storageGroup = entry.getKey();
-      TDatabaseInfo storageGroupInfo = entry.getValue();
+    final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
+    for (final Map.Entry<String, TDatabaseInfo> entry : storageGroupInfoMap.entrySet()) {
+      final String storageGroup = entry.getKey();
+      final TDatabaseInfo storageGroupInfo = entry.getValue();
 
       builder.getTimeColumnBuilder().writeLong(0L);
       builder
@@ -106,11 +105,17 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
         builder.getColumnBuilder(8).writeInt(storageGroupInfo.getDataRegionNum());
         builder.getColumnBuilder(9).writeInt(storageGroupInfo.getMinDataRegionNum());
         builder.getColumnBuilder(10).writeInt(storageGroupInfo.getMaxDataRegionNum());
+        builder
+            .getColumnBuilder(11)
+            .writeBinary(
+                new Binary(
+                    storageGroupInfo.isIsTableModel() ? "TABLE" : "TREE",
+                    TSFileConfig.STRING_CHARSET));
       }
       builder.declarePosition();
     }
 
-    DatasetHeader datasetHeader = DatasetHeaderFactory.getShowStorageGroupHeader(isDetailed);
+    final DatasetHeader datasetHeader = DatasetHeaderFactory.getShowStorageGroupHeader(isDetailed);
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 
