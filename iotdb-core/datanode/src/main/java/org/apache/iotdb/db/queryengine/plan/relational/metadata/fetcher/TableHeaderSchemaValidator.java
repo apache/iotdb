@@ -192,13 +192,13 @@ public class TableHeaderSchemaValidator {
     return Optional.of(new TableSchema(tableSchema.getTableName(), resultColumnList));
   }
 
-  private void autoCreateTable(String database, TableSchema tableSchema) {
-    TsTable tsTable = new TsTable(tableSchema.getTableName());
+  private void autoCreateTable(final String database, final TableSchema tableSchema) {
+    final TsTable tsTable = new TsTable(tableSchema.getTableName());
     addColumnSchema(tableSchema.getColumns(), tsTable);
-    CreateTableTask createTableTask = new CreateTableTask(tsTable, database, true);
+    final CreateTableTask createTableTask = new CreateTableTask(tsTable, database, true);
     try {
-      ListenableFuture<ConfigTaskResult> future = createTableTask.execute(configTaskExecutor);
-      ConfigTaskResult result = future.get();
+      final ListenableFuture<ConfigTaskResult> future = createTableTask.execute(configTaskExecutor);
+      final ConfigTaskResult result = future.get();
       if (result.getStatusCode().getStatusCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new RuntimeException(
             new IoTDBException(

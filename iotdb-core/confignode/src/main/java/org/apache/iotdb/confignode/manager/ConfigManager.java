@@ -726,8 +726,8 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus alterDatabase(DatabaseSchemaPlan databaseSchemaPlan) {
-    TSStatus status = confirmLeader();
+  public TSStatus alterDatabase(final DatabaseSchemaPlan databaseSchemaPlan) {
+    final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return clusterSchemaManager.alterDatabase(databaseSchemaPlan, false);
     } else {
@@ -736,19 +736,19 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public synchronized TSStatus deleteDatabases(TDeleteDatabasesReq tDeleteReq) {
-    TSStatus status = confirmLeader();
+  public synchronized TSStatus deleteDatabases(final TDeleteDatabasesReq tDeleteReq) {
+    final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      List<String> deletedPaths = tDeleteReq.getPrefixPathList();
+      final List<String> deletedPaths = tDeleteReq.getPrefixPathList();
       // remove wild
-      Map<String, TDatabaseSchema> deleteDatabaseSchemaMap =
+      final Map<String, TDatabaseSchema> deleteDatabaseSchemaMap =
           getClusterSchemaManager().getMatchedDatabaseSchemasByName(deletedPaths);
       if (deleteDatabaseSchemaMap.isEmpty()) {
         return RpcUtils.getStatus(
             TSStatusCode.PATH_NOT_EXIST.getStatusCode(),
             String.format("Path %s does not exist", Arrays.toString(deletedPaths.toArray())));
       }
-      ArrayList<TDatabaseSchema> parsedDeleteDatabases =
+      final ArrayList<TDatabaseSchema> parsedDeleteDatabases =
           new ArrayList<>(deleteDatabaseSchemaMap.values());
       return procedureManager.deleteDatabases(
           parsedDeleteDatabases,
@@ -1834,14 +1834,15 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TShowDatabaseResp showDatabase(TGetDatabaseReq req) {
-    TSStatus status = confirmLeader();
+  public TShowDatabaseResp showDatabase(final TGetDatabaseReq req) {
+    final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      PathPatternTree scope =
+      final PathPatternTree scope =
           req.getScopePatternTree() == null
               ? SchemaConstant.ALL_MATCH_SCOPE
               : PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
-      GetDatabasePlan getDatabasePlan = new GetDatabasePlan(req.getDatabasePathPattern(), scope);
+      final GetDatabasePlan getDatabasePlan =
+          new GetDatabasePlan(req.getDatabasePathPattern(), scope);
       return getClusterSchemaManager().showDatabase(getDatabasePlan);
     } else {
       return new TShowDatabaseResp().setStatus(status);
@@ -1943,17 +1944,18 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req) {
-    TSStatus status = confirmLeader();
+  public TSStatus deactivateSchemaTemplate(final TDeactivateSchemaTemplateReq req) {
+    final TSStatus status = confirmLeader();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return status;
     }
 
-    PathPatternTree patternTree =
+    final PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
 
-    List<PartialPath> patternList = patternTree.getAllPathPatterns();
-    TemplateSetInfoResp templateSetInfoResp = clusterSchemaManager.getTemplateSetInfo(patternList);
+    final List<PartialPath> patternList = patternTree.getAllPathPatterns();
+    final TemplateSetInfoResp templateSetInfoResp =
+        clusterSchemaManager.getTemplateSetInfo(patternList);
     if (templateSetInfoResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return templateSetInfoResp.getStatus();
     }
@@ -1968,9 +1970,9 @@ public class ConfigManager implements IManager {
     }
 
     if (!req.getTemplateName().equals(ONE_LEVEL_PATH_WILDCARD)) {
-      Map<PartialPath, List<Template>> filteredTemplateSetInfo = new HashMap<>();
-      for (Map.Entry<PartialPath, List<Template>> entry : templateSetInfo.entrySet()) {
-        for (Template template : entry.getValue()) {
+      final Map<PartialPath, List<Template>> filteredTemplateSetInfo = new HashMap<>();
+      for (final Map.Entry<PartialPath, List<Template>> entry : templateSetInfo.entrySet()) {
+        for (final Template template : entry.getValue()) {
           if (template.getName().equals(req.getTemplateName())) {
             filteredTemplateSetInfo.put(entry.getKey(), Collections.singletonList(template));
             break;
