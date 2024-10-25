@@ -157,6 +157,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     context.setQueryType(QueryType.WRITE);
 
     final TDatabaseSchema schema = new TDatabaseSchema();
+    schema.setIsTableModel(true);
 
     final String dbName = node.getDbName();
     validateDatabaseName(dbName);
@@ -391,7 +392,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
         node.ifExists());
   }
 
-  public static void validateDatabaseName(String dbName) throws SemanticException {
+  public static void validateDatabaseName(final String dbName) throws SemanticException {
     // Check database length here
     // We need to calculate the database name without "root."
     if (dbName.contains(PATH_SEPARATOR)
