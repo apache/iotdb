@@ -45,7 +45,12 @@ public final class MapBigArray {
    * @return the element of this big array at the specified position.
    */
   public HashMap<TsPrimitiveType, Long> get(long index) {
-    return array.get(index);
+    HashMap<TsPrimitiveType, Long> result = array.get(index);
+    if (result == null) {
+      result = new HashMap<>();
+      array.set(index, result);
+    }
+    return result;
   }
 
   /**
@@ -54,6 +59,9 @@ public final class MapBigArray {
    * @param index a position in this big array.
    */
   public void set(long index, HashMap<TsPrimitiveType, Long> value) {
+    if (value == null) {
+      this.set(index, new HashMap<>());
+    }
     updateRetainedSize(index, value);
     array.set(index, value);
   }
