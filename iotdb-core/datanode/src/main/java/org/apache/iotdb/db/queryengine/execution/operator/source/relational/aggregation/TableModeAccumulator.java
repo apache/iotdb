@@ -466,9 +466,7 @@ public class TableModeAccumulator implements TableAccumulator {
     for (int i = 0; i < column.getPositionCount(); i++) {
       if (!column.isNull(i)) {
         booleanCountMap.compute(column.getBoolean(i), (k, v) -> v == null ? 1 : v + 1);
-        if (booleanCountMap.size() > MAP_SIZE_THRESHOLD) {
-          checkMapSize(booleanCountMap.size());
-        }
+        checkMapSize(booleanCountMap.size());
       } else {
         nullCount++;
       }
@@ -531,11 +529,11 @@ public class TableModeAccumulator implements TableAccumulator {
   }
 
   private void checkMapSize(int size) {
-    if (size > MAP_SIZE_THRESHOLD) {
+    if (size > IoTDBDescriptor.getInstance().getConfig().getModeMapSizeThreshold()) {
       throw new RuntimeException(
           String.format(
               "distinct values has exceeded the threshold %s when calculate Mode",
-              MAP_SIZE_THRESHOLD));
+              IoTDBDescriptor.getInstance().getConfig().getModeMapSizeThreshold()));
     }
   }
 }

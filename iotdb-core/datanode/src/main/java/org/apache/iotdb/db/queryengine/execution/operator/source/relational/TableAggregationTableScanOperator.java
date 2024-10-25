@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITableTimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractSeriesAggregationScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractDataSourceOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanUtil;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAggregator;
 import org.apache.iotdb.db.queryengine.execution.operator.window.IWindow;
@@ -39,6 +39,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
@@ -67,53 +68,54 @@ import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
 import static org.apache.tsfile.read.common.block.TsBlockUtil.skipPointsOutOfTimeRange;
 
-public class TableAggregationTableScanOperator extends AbstractSeriesAggregationScanOperator {
-
-  private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(TableAggregationTableScanOperator.class);
-
-  private final List<TableAggregator> tableAggregators;
-
-  private final List<ColumnSchema> groupingKeySchemas;
-  private final int[] groupingKeyIndex;
+public class TableAggregationTableScanOperator extends AbstractDataSourceOperator {
 
   public static final LongColumn TIME_COLUMN_TEMPLATE =
       new LongColumn(1, Optional.empty(), new long[] {0});
 
-  private final List<ColumnSchema> columnSchemas;
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(TableAggregationTableScanOperator.class);
+  // can not calc maxTsBlockLineNum using date_bin
+  private final int maxTsBlockLineNum =
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
+  private final long cachedRawDataSize;
 
-  private final int[] columnsIndexArray;
+  private boolean finished = false;
 
-  private final List<DeviceEntry> deviceEntries;
-
-  private final int deviceCount;
-
-  private final Ordering scanOrder;
-  private final SeriesScanOptions seriesScanOptions;
-
-  private final List<String> measurementColumnNames;
-
-  private final List<IMeasurementSchema> measurementSchemas;
-
-  private final List<TSDataType> measurementColumnTSDataTypes;
-
-  // TODO calc maxTsBlockLineNum using date_bin
-  private final int maxTsBlockLineNum;
-
+  private final List<TableAggregator> tableAggregators;
+  private final List<ColumnSchema> groupingKeySchemas;
+  private final int[] groupingKeyIndex;
   // for different aggregations aiming to same column, use this variable to point to same column
   private final List<Integer> aggArguments;
 
-  private QueryDataSource queryDataSource;
+  private final List<ColumnSchema> columnSchemas;
+  private final int[] columnsIndexArray;
 
+  private final List<DeviceEntry> deviceEntries;
+  private final int deviceCount;
+  private final int measurementCount;
   private int currentDeviceIndex;
 
-  ITableTimeRangeIterator timeIterator;
+  private final List<String> measurementColumnNames;
+  private final List<IMeasurementSchema> measurementSchemas;
+  private final List<TSDataType> measurementColumnTSDataTypes;
 
+  private final Ordering scanOrder;
+  private final SeriesScanOptions seriesScanOptions;
+  private QueryDataSource queryDataSource;
+
+  private final ITableTimeRangeIterator timeIterator;
+
+  private final boolean canUseStatistics;
+  private final boolean ascending;
   private boolean allAggregatorsHasFinalResult = false;
+  private long leftRuntimeOfOneNextCall;
+
+  private TsBlock inputTsBlock;
 
   public TableAggregationTableScanOperator(
       PlanNodeId sourceId,
-      OperatorContext context,
+      OperatorContext operatorContext,
       List<ColumnSchema> columnSchemas,
       int[] columnsIndexArray,
       List<DeviceEntry> deviceEntries,
@@ -121,36 +123,25 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
       SeriesScanOptions seriesScanOptions,
       List<String> measurementColumnNames,
       List<IMeasurementSchema> measurementSchemas,
-      int maxTsBlockLineNum,
       int measurementCount,
       List<TableAggregator> tableAggregators,
       List<ColumnSchema> groupingKeySchemas,
       int[] groupingKeyIndex,
       ITableTimeRangeIterator tableTimeRangeIterator,
       boolean ascending,
-      long maxReturnSize,
       boolean canUseStatistics,
       List<Integer> aggArguments) {
 
-    super(
-        sourceId,
-        context,
-        null,
-        measurementCount,
-        null,
-        null,
-        ascending,
-        false,
-        null,
-        maxReturnSize,
-        canUseStatistics);
+    this.sourceId = sourceId;
+    this.operatorContext = operatorContext;
+    this.canUseStatistics = canUseStatistics;
+    this.ascending = ascending;
+    this.measurementCount = measurementCount;
 
     this.tableAggregators = tableAggregators;
     this.groupingKeySchemas = groupingKeySchemas;
     this.groupingKeyIndex = groupingKeyIndex;
 
-    this.sourceId = sourceId;
-    this.operatorContext = context;
     this.columnSchemas = columnSchemas;
     this.columnsIndexArray = columnsIndexArray;
     this.deviceEntries = deviceEntries;
@@ -164,13 +155,10 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     this.currentDeviceIndex = 0;
     this.aggArguments = aggArguments;
     this.timeIterator = tableTimeRangeIterator;
-    if (tableTimeRangeIterator.getType()
-        == ITableTimeRangeIterator.TimeIteratorType.SINGLE_TIME_ITERATOR) {
-      curTimeRange = new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE);
-    }
 
-    this.maxReturnSize = maxReturnSize;
-    this.maxTsBlockLineNum = maxTsBlockLineNum;
+    this.maxReturnSize = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+    this.cachedRawDataSize =
+        (1L + measurementCount) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
 
     constructAlignedSeriesScanUtil();
   }
@@ -279,7 +267,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   }
 
   /** Return true if we have the result of this timeRange. */
-  @Override
+  // @Override
   protected boolean calculateAggregationResultForCurrentTimeRange() {
     try {
       if (calcFromCachedData()) {
@@ -342,14 +330,14 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     }
   }
 
-  @Override
+  // @Override
   protected void updateResultTsBlock() {
     appendAggregationResult(resultTsBlockBuilder, tableAggregators);
     // after appendAggregationResult invoked, aggregators must be cleared
     resetTableAggregators();
   }
 
-  @Override
+  // @Override
   protected boolean calcFromCachedData() {
     return calcUsingRawData(inputTsBlock);
   }
@@ -552,7 +540,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   }
 
   @SuppressWarnings({"squid:S3776", "squid:S135", "squid:S3740"})
-  @Override
+  // @Override
   public boolean readAndCalcFromFile() throws IOException {
     // start stopwatch
     long start = System.nanoTime();
@@ -575,8 +563,8 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
         if (timeIterator
             .getCurTimeRange()
             .contains(fileTimeStatistics.getStartTime(), fileTimeStatistics.getEndTime())) {
-          Statistics[] statisticsList = new Statistics[subSensorSize];
-          for (int i = 0; i < subSensorSize; i++) {
+          Statistics[] statisticsList = new Statistics[measurementCount];
+          for (int i = 0; i < measurementCount; i++) {
             statisticsList[i] = seriesScanUtil.currentFileStatistics(i);
           }
           calcFromStatistics(fileTimeStatistics, statisticsList);
@@ -622,8 +610,8 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
             .getCurTimeRange()
             .contains(chunkTimeStatistics.getStartTime(), chunkTimeStatistics.getEndTime())) {
           // calc from chunkMetaData
-          Statistics[] statisticsList = new Statistics[subSensorSize];
-          for (int i = 0; i < subSensorSize; i++) {
+          Statistics[] statisticsList = new Statistics[measurementCount];
+          for (int i = 0; i < measurementCount; i++) {
             statisticsList[i] = seriesScanUtil.currentChunkStatistics(i);
           }
           calcFromStatistics(chunkTimeStatistics, statisticsList);
@@ -643,8 +631,6 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     }
     return false;
   }
-
-  long leftRuntimeOfOneNextCall = Long.MAX_VALUE;
 
   @SuppressWarnings({"squid:S3776", "squid:S135", "squid:S3740"})
   protected boolean readAndCalcFromPage() throws IOException {
@@ -671,8 +657,8 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
           if (timeIterator
               .getCurTimeRange()
               .contains(pageTimeStatistics.getStartTime(), pageTimeStatistics.getEndTime())) {
-            Statistics[] statisticsList = new Statistics[subSensorSize];
-            for (int i = 0; i < subSensorSize; i++) {
+            Statistics[] statisticsList = new Statistics[measurementCount];
+            for (int i = 0; i < measurementCount; i++) {
               statisticsList[i] = seriesScanUtil.currentPageStatistics(i);
             }
             calcFromStatistics(pageTimeStatistics, statisticsList);
@@ -862,5 +848,22 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId)
         + (resultTsBlockBuilder == null ? 0 : resultTsBlockBuilder.getRetainedSizeInBytes())
         + RamUsageEstimator.sizeOfCollection(deviceEntries);
+  }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    return 0;
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    return 0;
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    return timeIterator.getType() == ITableTimeRangeIterator.TimeIteratorType.DATE_BIN_TIME_ITERATOR
+        ? cachedRawDataSize
+        : 0;
   }
 }

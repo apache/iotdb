@@ -1643,14 +1643,12 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             scanOptionsBuilder.build(),
             measurementColumnNames,
             measurementSchemas,
-            TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber(),
             measurementColumnCount,
             aggregators,
             groupingKeySchemas,
             groupingKeyIndex,
             timeRangeIterator,
             scanAscending,
-            calculateMaxAggregationResultSize(),
             canUseStatistic,
             aggColumnIndexes);
 
@@ -1733,31 +1731,5 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       }
     }
     return new boolean[] {canUseStatistic, isAscending};
-  }
-
-  public static long calculateMaxAggregationResultSize(
-      // List<? extends AggregationDescriptor> aggregationDescriptors,
-      // ITimeRangeIterator timeRangeIterator
-      ) {
-    // TODO perfect max aggregation result size logic
-    return TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
-
-    //    long timeValueColumnsSizePerLine = TimeColumn.SIZE_IN_BYTES_PER_POSITION;
-    //    for (AggregationDescriptor descriptor : aggregationDescriptors) {
-    //      List<TSDataType> outPutDataTypes =
-    //              descriptor.getOutputColumnNames().stream()
-    //                      .map(typeProvider::getTableModelType)
-    //                      .collect(Collectors.toList());
-    //      for (TSDataType tsDataType : outPutDataTypes) {
-    //        timeValueColumnsSizePerLine += getOutputColumnSizePerLine(tsDataType);
-    //      }
-    //    }
-    //
-    //    return Math.min(
-    //            TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
-    //            Math.min(
-    //                    TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber(),
-    //                    timeRangeIterator.getTotalIntervalNum())
-    //                    * timeValueColumnsSizePerLine);
   }
 }

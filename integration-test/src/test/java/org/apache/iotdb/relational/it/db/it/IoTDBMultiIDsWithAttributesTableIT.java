@@ -615,7 +615,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         retArray,
         DATABASE_NAME);
 
-    expectedHeader = buildHeaders(2);
+    expectedHeader = buildHeaders(3);
     sql =
         "select count(*),count(t1),sum(t1) from (select avg(num+1) as t1 from table0 where time < 0)";
     retArray =
@@ -908,15 +908,16 @@ public class IoTDBMultiIDsWithAttributesTableIT {
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
     // flush multi times, generated multi tsfile
-    expectedHeader = buildHeaders(1);
-    sql = "select date_bin(40ms,time), first(time) from table1 where device='d11' group by 1";
+    expectedHeader = buildHeaders(2);
+    sql = "select date_bin(30ms,time), first(time) from table1 where device='d11' group by 1";
     retArray =
         new String[] {
           "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.000Z,",
-          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.000Z,"
+          "1970-01-01T00:00:00.030Z,1970-01-01T00:00:00.030Z,"
         };
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
+    expectedHeader = buildHeaders(1);
     sql =
         "select count(*) from ("
             + "select device, level, date_bin(1d, time) as bin, "
