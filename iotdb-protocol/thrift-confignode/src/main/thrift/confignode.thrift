@@ -210,6 +210,7 @@ struct TDatabaseSchema {
     8: optional i32 minDataRegionGroupNum
     9: optional i32 maxDataRegionGroupNum
     10: optional i64 timePartitionOrigin
+    11: optional bool isTableModel
 }
 
 // Schema
@@ -595,6 +596,7 @@ struct TDatabaseInfo {
   10: required i32 minDataRegionNum
   11: required i32 maxDataRegionNum
   12: optional i64 timePartitionOrigin
+  13: optional bool isTableModel
 }
 
 struct TGetDatabaseReq {

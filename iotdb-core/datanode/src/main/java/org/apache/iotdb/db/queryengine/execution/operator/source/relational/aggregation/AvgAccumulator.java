@@ -31,10 +31,6 @@ import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class AvgAccumulator implements TableAccumulator {
@@ -99,14 +95,10 @@ public class AvgAccumulator implements TableAccumulator {
       }
 
       initResult = true;
-      long midCountValue = BytesUtils.bytesToLong(argument.getBinary(i).getValues(), Long.BYTES);
-      double midSumValue = BytesUtils.bytesToDouble(argument.getBinary(i).getValues(), Long.BYTES);
+      long midCountValue = BytesUtils.bytesToLong(argument.getBinary(i).getValues(), 8);
+      double midSumValue = BytesUtils.bytesToDouble(argument.getBinary(i).getValues(), 8);
       countValue += midCountValue;
       sumValue += midSumValue;
-    }
-
-    if (countValue == 0) {
-      initResult = false;
     }
   }
 
@@ -161,16 +153,10 @@ public class AvgAccumulator implements TableAccumulator {
   }
 
   private byte[] serializeState() {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    try {
-      dataOutputStream.writeLong(countValue);
-      dataOutputStream.writeDouble(sumValue);
-    } catch (IOException e) {
-      throw new UnsupportedOperationException(
-          "Failed to serialize intermediate result for AvgAccumulator.", e);
-    }
-    return byteArrayOutputStream.toByteArray();
+    byte[] bytes = new byte[16];
+    BytesUtils.longToBytes(countValue, bytes, 0);
+    BytesUtils.doubleToBytes(sumValue, bytes, 8);
+    return bytes;
   }
 
   private void addIntInput(Column column) {

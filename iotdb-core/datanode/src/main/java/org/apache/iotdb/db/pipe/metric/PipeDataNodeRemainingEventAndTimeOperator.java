@@ -44,7 +44,7 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
   private final Set<IoTDBSchemaRegionExtractor> schemaRegionExtractors =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
 
-  private final AtomicInteger insertionEventCount = new AtomicInteger(0);
+  private final AtomicInteger tabletEventCount = new AtomicInteger(0);
   private final AtomicInteger tsfileEventCount = new AtomicInteger(0);
   private final AtomicInteger heartbeatEventCount = new AtomicInteger(0);
 
@@ -58,12 +58,12 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
 
   //////////////////////////// Remaining event & time calculation ////////////////////////////
 
-  void increaseInsertionEventCount() {
-    tsfileEventCount.incrementAndGet();
+  void increaseTabletEventCount() {
+    tabletEventCount.incrementAndGet();
   }
 
-  void decreaseInsertionEventCount() {
-    tsfileEventCount.decrementAndGet();
+  void decreaseTabletEventCount() {
+    tabletEventCount.decrementAndGet();
   }
 
   void increaseTsFileEventCount() {
@@ -84,6 +84,7 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
 
   long getRemainingEvents() {
     return tsfileEventCount.get()
+        + tabletEventCount.get()
         + heartbeatEventCount.get()
         + schemaRegionExtractors.stream()
             .map(IoTDBSchemaRegionExtractor::getUnTransferredEventCount)
@@ -105,7 +106,7 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     final double invocationValue = collectInvocationHistogram.getMean();
     // Do not take heartbeat event into account
     final double totalDataRegionWriteEventCount =
-        tsfileEventCount.get() * Math.max(invocationValue, 1) + insertionEventCount.get();
+        tsfileEventCount.get() * Math.max(invocationValue, 1) + tabletEventCount.get();
 
     dataRegionCommitMeter.updateAndGet(
         meter -> {

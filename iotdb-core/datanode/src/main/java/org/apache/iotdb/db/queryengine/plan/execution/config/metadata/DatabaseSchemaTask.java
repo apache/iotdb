@@ -50,8 +50,8 @@ public class DatabaseSchemaTask implements IConfigTask {
 
   /** Construct DatabaseSchema according to statement */
   public static TDatabaseSchema constructDatabaseSchema(
-      DatabaseSchemaStatement databaseSchemaStatement) {
-    TDatabaseSchema databaseSchema = new TDatabaseSchema();
+      final DatabaseSchemaStatement databaseSchemaStatement) {
+    final TDatabaseSchema databaseSchema = new TDatabaseSchema();
     databaseSchema.setName(databaseSchemaStatement.getDatabasePath().getFullPath());
     if (databaseSchemaStatement.getTtl() != null) {
       databaseSchema.setTTL(databaseSchemaStatement.getTtl());
@@ -72,6 +72,7 @@ public class DatabaseSchemaTask implements IConfigTask {
     if (databaseSchemaStatement.getDataRegionGroupNum() != null) {
       databaseSchema.setMinDataRegionGroupNum(databaseSchemaStatement.getDataRegionGroupNum());
     }
+    databaseSchema.setIsTableModel(false);
     return databaseSchema;
   }
 }

@@ -26,16 +26,20 @@ import java.util.List;
 import static java.util.Objects.requireNonNull;
 
 public class ShowDB extends Statement {
-  public ShowDB() {
-    super(null);
+
+  private final boolean isDetails;
+
+  public ShowDB(final NodeLocation location, final boolean isDetails) {
+    super(requireNonNull(location, "location is null"));
+    this.isDetails = isDetails;
   }
 
-  public ShowDB(NodeLocation location) {
-    super(requireNonNull(location, "location is null"));
+  public boolean isDetails() {
+    return isDetails;
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitShowDB(this, context);
   }
 
@@ -50,7 +54,7 @@ public class ShowDB extends Statement {
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }

@@ -257,8 +257,9 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitShowDatabasesStatement(RelationalSqlParser.ShowDatabasesStatementContext ctx) {
-    return new ShowDB(getLocation(ctx));
+  public Node visitShowDatabasesStatement(
+      final RelationalSqlParser.ShowDatabasesStatementContext ctx) {
+    return new ShowDB(getLocation(ctx), Objects.nonNull(ctx.DETAILS()));
   }
 
   @Override
@@ -1695,8 +1696,12 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitCast(RelationalSqlParser.CastContext ctx) {
+    boolean isTryCast = ctx.TRY_CAST() != null;
     return new Cast(
-        getLocation(ctx), (Expression) visit(ctx.expression()), (DataType) visit(ctx.type()));
+        getLocation(ctx),
+        (Expression) visit(ctx.expression()),
+        (DataType) visit(ctx.type()),
+        isTryCast);
   }
 
   @Override
