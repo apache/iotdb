@@ -129,16 +129,6 @@ public class SubscriptionBrokerAgent {
   /**
    * Caller should ensure that the method is called in the lock {@link
    * ConsumerGroupMetaKeeper#acquireWriteLock}.
-   */
-  public void createBroker(final String consumerGroupId) {
-    final SubscriptionBroker broker = new SubscriptionBroker(consumerGroupId);
-    consumerGroupIdToSubscriptionBroker.put(consumerGroupId, broker);
-    LOGGER.info("Subscription: create broker bound to consumer group [{}]", consumerGroupId);
-  }
-
-  /**
-   * Caller should ensure that the method is called in the lock {@link
-   * ConsumerGroupMetaKeeper#acquireWriteLock}.
    *
    * @return {@code true} if drop broker success, {@code false} otherwise
    */
@@ -176,7 +166,7 @@ public class SubscriptionBrokerAgent {
             consumerGroupId,
             (id, broker) -> {
               if (Objects.isNull(broker)) {
-                LOGGER.warn(
+                LOGGER.info(
                     "Subscription: broker bound to consumer group [{}] does not exist, create new for binding prefetching queue",
                     consumerGroupId);
                 // TODO: consider more robust metadata semantics

@@ -339,7 +339,7 @@ public class SubscriptionBroker {
     final SubscriptionPrefetchingQueue prefetchingQueue =
         topicNameToPrefetchingQueue.get(topicName);
     if (Objects.nonNull(prefetchingQueue)) {
-      LOGGER.warn(
+      LOGGER.info(
           "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] still exists, unbind it before closing",
           topicName,
           brokerId);
