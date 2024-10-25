@@ -1213,7 +1213,44 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         "select mode(device),mode(level),mode(attr1),mode(attr2),mode(date),mode(bool),mode(date),mode(ts),mode(stringv),mode(doublenum) from table0 where device='d2' and level='l1'";
     retArray =
         new String[] {
-          "d2,l1,d,c,null,false,null,2024-08-01T06:15:35.000Z,test-string3,null,",
+          "d2,l1,d,c,null,false,null,null,null,null,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = buildHeaders(1);
+    sql =
+        "select mode(stringv) from table0 where device='d2' and level='l1' and stringv is not null";
+    retArray =
+        new String[] {
+          "test-string3,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    // no push-down, test GroupedAccumulator
+    expectedHeader = buildHeaders(16);
+    sql =
+        "select mode(time),mode(device),mode(level),mode(attr1),mode(attr2),mode(num),mode(bignum),mode(floatnum),mode(date),mode(str),mode(bool),mode(date),mode(ts),mode(stringv),mode(doublenum),count(num+1) from table0 where device='d2' and level='l4' and time=80";
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.080Z,d2,l4,null,null,9,2147483646,43.12,null,apple,false,null,2024-09-20T06:15:35.000Z,test-string2,6666.7,1,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = buildHeaders(11);
+    sql =
+        "select mode(device),mode(level),mode(attr1),mode(attr2),mode(date),mode(bool),mode(date),mode(ts),mode(stringv),mode(doublenum),count(num+1) from table0 where device='d2' and level='l1'";
+    retArray =
+        new String[] {
+          "d2,l1,d,c,null,false,null,null,null,null,3,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = buildHeaders(2);
+    sql =
+        "select mode(stringv),count(num+1) from table0 where device='d2' and level='l1' and stringv is not null";
+    retArray =
+        new String[] {
+          "test-string3,1,",
         };
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
