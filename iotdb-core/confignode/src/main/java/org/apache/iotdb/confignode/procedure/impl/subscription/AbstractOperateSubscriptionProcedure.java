@@ -36,7 +36,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,6 +62,7 @@ public abstract class AbstractOperateSubscriptionProcedure
 
   // Only used in rollback to avoid executing rollbackFromValidate multiple times
   // Pure in-memory object, not involved in snapshot serialization and deserialization.
+  // TODO: consider serializing this variable later
   protected boolean isRollbackFromValidateSuccessful = false;
 
   protected AtomicReference<SubscriptionInfo> subscriptionInfo;
@@ -378,12 +378,10 @@ public abstract class AbstractOperateSubscriptionProcedure
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     super.serialize(stream);
-    ReadWriteIOUtils.write(isRollbackFromValidateSuccessful, stream);
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
-    isRollbackFromValidateSuccessful = ReadWriteIOUtils.readBool(byteBuffer);
   }
 }
