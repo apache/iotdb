@@ -583,23 +583,51 @@ public class TestUtils {
         env, sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
 
+  public static boolean tryExecuteNonQueryWithRetry(BaseEnv env, String sql, String sqlDialect) {
+    return tryExecuteNonQueryWithRetry(
+        env, sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, sqlDialect);
+  }
+
   public static boolean tryExecuteNonQueryWithRetry(
       BaseEnv env, String sql, String userName, String password) {
-    return tryExecuteNonQueriesWithRetry(env, Collections.singletonList(sql), userName, password);
+    return tryExecuteNonQueriesWithRetry(
+        env, Collections.singletonList(sql), userName, password, BaseEnv.TREE_SQL_DIALECT);
+  }
+
+  public static boolean tryExecuteNonQueryWithRetry(
+      BaseEnv env, String sql, String userName, String password, String sqlDialect) {
+    return tryExecuteNonQueriesWithRetry(
+        env, Collections.singletonList(sql), userName, password, sqlDialect);
   }
 
   public static boolean tryExecuteNonQueriesWithRetry(BaseEnv env, List<String> sqlList) {
     return tryExecuteNonQueriesWithRetry(
-        env, sqlList, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
+        env,
+        sqlList,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        BaseEnv.TREE_SQL_DIALECT);
+  }
+
+  public static boolean tryExecuteNonQueriesWithRetry(
+      BaseEnv env, List<String> sqlList, String sqlDialect) {
+    return tryExecuteNonQueriesWithRetry(
+        env, sqlList, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, sqlDialect);
   }
 
   // This method will not throw failure given that a failure is encountered.
   // Instead, it returns a flag to indicate the result of the execution.
   public static boolean tryExecuteNonQueriesWithRetry(
-      BaseEnv env, List<String> sqlList, String userName, String password) {
+      BaseEnv env, List<String> sqlList, String userName, String password, String sqlDialect) {
     int lastIndex = 0;
     for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
-      try (Connection connection = env.getConnection(userName, password);
+      try (Connection connection =
+              env.getConnection(
+                  userName,
+                  password,
+                  BaseEnv.TABLE_SQL_DIALECT.equals(sqlDialect)
+                      ? BaseEnv.TABLE_SQL_DIALECT
+                      : BaseEnv.TREE_SQL_DIALECT);
           Statement statement = connection.createStatement()) {
         for (int i = lastIndex; i < sqlList.size(); ++i) {
           lastIndex = i;
@@ -851,6 +879,38 @@ public class TestUtils {
     } catch (Exception e) {
       e.printStackTrace();
       fail();
+    }
+  }
+
+  public static void assertDataEventuallyOnEnv(
+      BaseEnv env,
+      String sql,
+      String expectedHeader,
+      Set<String> expectedResSet,
+      long timeoutSeconds,
+      String dataBaseName) {
+    try (Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      // Keep retrying if there are execution failures
+      await()
+          .pollInSameThread()
+          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollInterval(1L, TimeUnit.SECONDS)
+          .atMost(timeoutSeconds, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                try {
+                  if (dataBaseName != null) {
+                    statement.execute("use " + dataBaseName);
+                  }
+                  TestUtils.assertResultSetEqual(
+                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
+                } catch (Exception e) {
+                  Assert.fail();
+                }
+              });
+    } catch (Exception e) {
+      fail(e.getMessage());
     }
   }
 
