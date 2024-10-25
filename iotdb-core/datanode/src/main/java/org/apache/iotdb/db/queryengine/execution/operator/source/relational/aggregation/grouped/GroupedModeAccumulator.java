@@ -58,12 +58,13 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
 
   @Override
   public long getEstimatedSize() {
-    return INSTANCE_SIZE + countMaps.sizeOf();
+    return INSTANCE_SIZE + countMaps.sizeOf() + nullCounts.sizeOf();
   }
 
   @Override
   public void setGroupCount(long groupCount) {
     countMaps.ensureCapacity(groupCount);
+    nullCounts.ensureCapacity(groupCount);
   }
 
   @Override
