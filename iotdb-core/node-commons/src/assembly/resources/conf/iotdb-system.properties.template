@@ -1542,7 +1542,7 @@ compressor=LZ4
 encrypt_flag=false
 
 # Encryption configuration
-# Data encryption method, supports UNENCRYPTED, AES128.
+# Data encryption method, supports org.apache.tsfile.encrypt.UNENCRYPTED, org.apache.tsfile.encrypt.AES128.
 # effectiveMode: restart
 encrypt_type=org.apache.tsfile.encrypt.UNENCRYPTED
 

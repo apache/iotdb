@@ -376,7 +376,9 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               == TsFileConstant.TIME_COLUMN_MASK) {
             timeChunkList.add(
                 new Chunk(
-                    chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize()),tsFileSequenceReader.getDecryptor()));
+                    chunkHeader,
+                    tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize()),
+                    tsFileSequenceReader.getDecryptor()));
             isMultiPageList.add(marker == MetaMarker.TIME_CHUNK_HEADER);
             break;
           }
