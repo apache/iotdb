@@ -36,11 +36,9 @@ import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -62,6 +60,8 @@ public abstract class AbstractOperateSubscriptionProcedure
   private static final int RETRY_THRESHOLD = 1;
 
   // Only used in rollback to reduce the number of network calls
+  // Pure in-memory object, not involved in snapshot serialization and deserialization.
+  // TODO: consider serializing this variable later
   protected boolean isRollbackFromOperateOnDataNodesSuccessful = false;
 
   protected AtomicReference<SubscriptionInfo> subscriptionInfo;
@@ -374,17 +374,5 @@ public abstract class AbstractOperateSubscriptionProcedure
   @Override
   protected OperateSubscriptionState getInitialState() {
     return OperateSubscriptionState.VALIDATE;
-  }
-
-  @Override
-  public void serialize(DataOutputStream stream) throws IOException {
-    super.serialize(stream);
-    ReadWriteIOUtils.write(isRollbackFromOperateOnDataNodesSuccessful, stream);
-  }
-
-  @Override
-  public void deserialize(ByteBuffer byteBuffer) {
-    super.deserialize(byteBuffer);
-    isRollbackFromOperateOnDataNodesSuccessful = ReadWriteIOUtils.readBool(byteBuffer);
   }
 }
