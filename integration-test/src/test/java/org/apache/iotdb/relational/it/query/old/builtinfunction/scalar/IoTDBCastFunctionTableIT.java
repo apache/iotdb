@@ -641,6 +641,522 @@ public class IoTDBCastFunctionTableIT {
 
   // endregion
 
+  // region try_cast
+
+  @Test
+  public void testNewTransformerWithIntSourceInTryCast() {
+    // cast to int
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, "cast_s1"};
+    String[] intRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,0,",
+          "1970-01-01T00:00:00.001Z,1,",
+          "1970-01-01T00:00:00.002Z,2,",
+          "1970-01-01T00:00:00.003Z,3,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s1 AS INT32) as cast_s1 from normal where device_id='d1'",
+        expectedHeader,
+        intRetArray,
+        DATABASE_NAME);
+
+    // cast to long
+    String[] longRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,0,",
+          "1970-01-01T00:00:00.001Z,1,",
+          "1970-01-01T00:00:00.002Z,2,",
+          "1970-01-01T00:00:00.003Z,3,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s1 AS INT64) as cast_s1 from normal where device_id='d1'",
+        expectedHeader,
+        longRetArray,
+        DATABASE_NAME);
+
+    // cast to float
+    String[] floatRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,0.0,",
+          "1970-01-01T00:00:00.001Z,1.0,",
+          "1970-01-01T00:00:00.002Z,2.0,",
+          "1970-01-01T00:00:00.003Z,3.0,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s1 AS FLOAT) as cast_s1 from normal where device_id='d1'",
+        expectedHeader,
+        floatRetArray,
+        DATABASE_NAME);
+
+    // cast to double
+    String[] doubleRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,0.0,",
+          "1970-01-01T00:00:00.001Z,1.0,",
+          "1970-01-01T00:00:00.002Z,2.0,",
+          "1970-01-01T00:00:00.003Z,3.0,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s1 AS DOUBLE) as cast_s1 from normal where device_id='d1'",
+        expectedHeader,
+        doubleRetArray,
+        DATABASE_NAME);
+
+    // cast to boolean
+    String[] booleanRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,false,",
+          "1970-01-01T00:00:00.001Z,true,",
+          "1970-01-01T00:00:00.002Z,true,",
+          "1970-01-01T00:00:00.003Z,true,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s1 AS BOOLEAN) as cast_s1 from normal where device_id='d1'",
+        expectedHeader,
+        booleanRetArray,
+        DATABASE_NAME);
+
+    // cast to string
+    String[] stringRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,0,",
+          "1970-01-01T00:00:00.001Z,1,",
+          "1970-01-01T00:00:00.002Z,2,",
+          "1970-01-01T00:00:00.003Z,3,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s1 AS STRING) as cast_s1 from normal where device_id='d1'",
+        expectedHeader,
+        stringRetArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testNewTransformerWithLongSourceInTryCast() {
+    // cast to int
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, "cast_s2"};
+    String[] intRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,0,",
+          "1970-01-01T00:00:00.001Z,1,",
+          "1970-01-01T00:00:00.002Z,2,",
+          "1970-01-01T00:00:00.003Z,3,",
+        };
+
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s2 AS INT32) as cast_s2 from normal where device_id='d1'",
+        expectedHeader,
+        intRetArray,
+        DATABASE_NAME);
+
+    // cast to long
+    String[] longRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,0,",
+          "1970-01-01T00:00:00.001Z,1,",
+          "1970-01-01T00:00:00.002Z,2,",
+          "1970-01-01T00:00:00.003Z,3,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s2 AS INT64) as cast_s2 from normal where device_id='d1'",
+        expectedHeader,
+        longRetArray,
+        DATABASE_NAME);
+
+    // cast to float
+    String[] floatRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,0.0,",
+          "1970-01-01T00:00:00.001Z,1.0,",
+          "1970-01-01T00:00:00.002Z,2.0,",
+          "1970-01-01T00:00:00.003Z,3.0,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s2 AS FLOAT) as cast_s2 from normal where device_id='d1'",
+        expectedHeader,
+        floatRetArray,
+        DATABASE_NAME);
+
+    // cast to double
+    String[] doubleRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,0.0,",
+          "1970-01-01T00:00:00.001Z,1.0,",
+          "1970-01-01T00:00:00.002Z,2.0,",
+          "1970-01-01T00:00:00.003Z,3.0,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s2 AS DOUBLE) as cast_s2 from normal where device_id='d1'",
+        expectedHeader,
+        doubleRetArray,
+        DATABASE_NAME);
+
+    // cast to boolean
+    String[] booleanRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,false,",
+          "1970-01-01T00:00:00.001Z,true,",
+          "1970-01-01T00:00:00.002Z,true,",
+          "1970-01-01T00:00:00.003Z,true,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s2 AS BOOLEAN) as cast_s2 from normal where device_id='d1'",
+        expectedHeader,
+        booleanRetArray,
+        DATABASE_NAME);
+
+    // cast to text
+    String[] stringRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,0,",
+          "1970-01-01T00:00:00.001Z,1,",
+          "1970-01-01T00:00:00.002Z,2,",
+          "1970-01-01T00:00:00.003Z,3,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s2 AS STRING) as cast_s2 from normal where device_id='d1'",
+        expectedHeader,
+        stringRetArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testNewTransformerWithFloatSourceInTryCast() {
+    // cast to int
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, "cast_s3"};
+    String[] intRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,0,",
+          "1970-01-01T00:00:00.001Z,1,",
+          "1970-01-01T00:00:00.002Z,3,",
+          "1970-01-01T00:00:00.003Z,3,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s3 AS INT32) as cast_s3 from normal where device_id='d1'",
+        expectedHeader,
+        intRetArray,
+        DATABASE_NAME);
+
+    // cast to long
+    String[] longRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,0,",
+          "1970-01-01T00:00:00.001Z,1,",
+          "1970-01-01T00:00:00.002Z,3,",
+          "1970-01-01T00:00:00.003Z,3,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s3 AS INT64) as cast_s3 from normal where device_id='d1'",
+        expectedHeader,
+        longRetArray,
+        DATABASE_NAME);
+
+    // cast to float
+    String[] floatRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,0.0,",
+          "1970-01-01T00:00:00.001Z,1.0,",
+          "1970-01-01T00:00:00.002Z,2.7,",
+          "1970-01-01T00:00:00.003Z,3.33,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s3 AS FLOAT) as cast_s3 from normal where device_id='d1'",
+        expectedHeader,
+        floatRetArray,
+        DATABASE_NAME);
+
+    // cast to double
+    String[] doubleRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,0.0,",
+          "1970-01-01T00:00:00.001Z,1.0,",
+          "1970-01-01T00:00:00.002Z,2.700000047683716,",
+          "1970-01-01T00:00:00.003Z,3.3299999237060547,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s3 AS DOUBLE) as cast_s3 from normal where device_id='d1'",
+        expectedHeader,
+        doubleRetArray,
+        DATABASE_NAME);
+
+    // cast to boolean
+    String[] booleanRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,false,",
+          "1970-01-01T00:00:00.001Z,true,",
+          "1970-01-01T00:00:00.002Z,true,",
+          "1970-01-01T00:00:00.003Z,true,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s3 AS BOOLEAN) as cast_s3 from normal where device_id='d1'",
+        expectedHeader,
+        booleanRetArray,
+        DATABASE_NAME);
+
+    // cast to text
+    String[] stringRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,0.0,",
+          "1970-01-01T00:00:00.001Z,1.0,",
+          "1970-01-01T00:00:00.002Z,2.7,",
+          "1970-01-01T00:00:00.003Z,3.33,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s3 AS STRING) as cast_s3 from normal where device_id='d1'",
+        expectedHeader,
+        stringRetArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testNewTransformerWithDoubleSourceInTryCast() {
+    // cast to int
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, "cast_s4"};
+    String[] intRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,0,",
+          "1970-01-01T00:00:00.001Z,1,",
+          "1970-01-01T00:00:00.002Z,3,",
+          "1970-01-01T00:00:00.003Z,3,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s4 AS INT32) as cast_s4 from normal where device_id='d1'",
+        expectedHeader,
+        intRetArray,
+        DATABASE_NAME);
+
+    // cast to long
+    String[] longRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,0,",
+          "1970-01-01T00:00:00.001Z,1,",
+          "1970-01-01T00:00:00.002Z,3,",
+          "1970-01-01T00:00:00.003Z,3,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s4 AS INT64) as cast_s4 from normal where device_id='d1'",
+        expectedHeader,
+        longRetArray,
+        DATABASE_NAME);
+
+    // cast to float
+    String[] floatRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,0.0,",
+          "1970-01-01T00:00:00.001Z,1.0,",
+          "1970-01-01T00:00:00.002Z,2.7,",
+          "1970-01-01T00:00:00.003Z,3.33,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s4 AS FLOAT) as cast_s4 from normal where device_id='d1'",
+        expectedHeader,
+        floatRetArray,
+        DATABASE_NAME);
+
+    // cast to double
+    String[] doubleRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,0.0,",
+          "1970-01-01T00:00:00.001Z,1.0,",
+          "1970-01-01T00:00:00.002Z,2.7,",
+          "1970-01-01T00:00:00.003Z,3.33,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s4 AS DOUBLE) as cast_s4 from normal where device_id='d1'",
+        expectedHeader,
+        doubleRetArray,
+        DATABASE_NAME);
+
+    // cast to boolean
+    String[] booleanRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,false,",
+          "1970-01-01T00:00:00.001Z,true,",
+          "1970-01-01T00:00:00.002Z,true,",
+          "1970-01-01T00:00:00.003Z,true,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s4 AS BOOLEAN) as cast_s4 from normal where device_id='d1'",
+        expectedHeader,
+        booleanRetArray,
+        DATABASE_NAME);
+
+    // cast to string
+    String[] stringRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,0.0,",
+          "1970-01-01T00:00:00.001Z,1.0,",
+          "1970-01-01T00:00:00.002Z,2.7,",
+          "1970-01-01T00:00:00.003Z,3.33,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s4 AS STRING) as cast_s4 from normal where device_id='d1'",
+        expectedHeader,
+        stringRetArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testNewTransformerWithBooleanSourceInTryCast() {
+    // cast to int
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, "cast_s5"};
+    String[] intRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,0,",
+          "1970-01-01T00:00:00.001Z,0,",
+          "1970-01-01T00:00:00.002Z,1,",
+          "1970-01-01T00:00:00.003Z,1,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s5 AS INT32) as cast_s5 from normal where device_id='d1'",
+        expectedHeader,
+        intRetArray,
+        DATABASE_NAME);
+
+    // cast to long
+    String[] longRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,0,",
+          "1970-01-01T00:00:00.001Z,0,",
+          "1970-01-01T00:00:00.002Z,1,",
+          "1970-01-01T00:00:00.003Z,1,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s5 AS INT64) as cast_s5 from normal where device_id='d1'",
+        expectedHeader,
+        longRetArray,
+        DATABASE_NAME);
+
+    // cast to float
+    String[] floatRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,0.0,",
+          "1970-01-01T00:00:00.001Z,0.0,",
+          "1970-01-01T00:00:00.002Z,1.0,",
+          "1970-01-01T00:00:00.003Z,1.0,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s5 AS FLOAT) as cast_s5 from normal where device_id='d1'",
+        expectedHeader,
+        floatRetArray,
+        DATABASE_NAME);
+
+    // cast to double
+    String[] doubleRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,0.0,",
+          "1970-01-01T00:00:00.001Z,0.0,",
+          "1970-01-01T00:00:00.002Z,1.0,",
+          "1970-01-01T00:00:00.003Z,1.0,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s5 AS DOUBLE) as cast_s5 from normal where device_id='d1'",
+        expectedHeader,
+        doubleRetArray,
+        DATABASE_NAME);
+
+    // cast to boolean
+    String[] booleanRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,false,",
+          "1970-01-01T00:00:00.001Z,false,",
+          "1970-01-01T00:00:00.002Z,true,",
+          "1970-01-01T00:00:00.003Z,true,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s5 AS BOOLEAN) as cast_s5 from normal where device_id='d1'",
+        expectedHeader,
+        booleanRetArray,
+        DATABASE_NAME);
+
+    // cast to text
+    String[] stringRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,false,",
+          "1970-01-01T00:00:00.001Z,false,",
+          "1970-01-01T00:00:00.002Z,true,",
+          "1970-01-01T00:00:00.003Z,true,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s5 AS STRING) as cast_s5 from normal where device_id='d1'",
+        expectedHeader,
+        stringRetArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testNewTransformerWithTextSourceInTryCast() {
+    // cast to int
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, "cast_s6"};
+    String[] intRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,10000,", "1970-01-01T00:00:00.001Z,3,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s6 AS INT32) as cast_s6 from normal where device_id='d1' and Time < 2",
+        expectedHeader,
+        intRetArray,
+        DATABASE_NAME);
+
+    // cast to long
+    String[] longRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,10000,", "1970-01-01T00:00:00.001Z,3,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s6 AS INT64) as cast_s6 from normal where device_id='d1' and Time < 2",
+        expectedHeader,
+        longRetArray,
+        DATABASE_NAME);
+
+    // cast to float
+    String[] floatRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,10000.0,", "1970-01-01T00:00:00.001Z,3.0,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s6 AS FLOAT) as cast_s6 from normal where device_id='d1' and Time < 2",
+        expectedHeader,
+        floatRetArray,
+        DATABASE_NAME);
+
+    // cast to double
+    String[] doubleRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,10000.0,", "1970-01-01T00:00:00.001Z,3.0,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s6 AS DOUBLE) as cast_s6 from normal where device_id='d1' and Time < 2",
+        expectedHeader,
+        doubleRetArray,
+        DATABASE_NAME);
+
+    // cast to boolean
+    String[] booleanRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.002Z,true,", "1970-01-01T00:00:00.003Z,false,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s6 AS BOOLEAN) as cast_s6 from normal where device_id='d1' and Time >= 2",
+        expectedHeader,
+        booleanRetArray,
+        DATABASE_NAME);
+
+    // cast to text
+    String[] stringRetArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,10000,", "1970-01-01T00:00:00.001Z,3,",
+          "1970-01-01T00:00:00.002Z,TRue,", "1970-01-01T00:00:00.003Z,faLse,",
+        };
+    tableResultSetEqualTest(
+        "select Time, TRY_CAST(s6 AS STRING) as cast_s6 from normal where device_id='d1'",
+        expectedHeader,
+        stringRetArray,
+        DATABASE_NAME);
+  }
+
+  // endregion
+
   // region special cases
 
   @Test
@@ -657,6 +1173,16 @@ public class IoTDBCastFunctionTableIT {
       e.printStackTrace();
       fail();
     }
+  }
+
+  @Test
+  public void testTryCastWithLongSource() {
+    String sql = "select TRY_CAST(s2 AS INT32) from special where device_id='d1'";
+    tableResultSetEqualTest(
+        sql,
+        new String[] {"_col0"},
+        new String[] {"null,", "null,", "null,", "null,"},
+        DATABASE_NAME);
   }
 
   @Test
@@ -680,6 +1206,16 @@ public class IoTDBCastFunctionTableIT {
       e.printStackTrace();
       fail();
     }
+  }
+
+  @Test
+  public void testTryCastWithFloatSource() {
+    String sql = "select TRY_CAST(s3 AS INT32) from special where device_id='d1'";
+    tableResultSetEqualTest(
+        sql,
+        new String[] {"_col0"},
+        new String[] {"2147483647,", "null,", "null,", "null,"},
+        DATABASE_NAME);
   }
 
   @Test
@@ -710,6 +1246,16 @@ public class IoTDBCastFunctionTableIT {
       e.printStackTrace();
       fail();
     }
+  }
+
+  @Test
+  public void testTryCastWithDoubleSource() {
+    String sql = "select TRY_CAST(s4 AS Float) from special where device_id='d1'";
+    tableResultSetEqualTest(
+        sql,
+        new String[] {"_col0"},
+        new String[] {"null,", "null,", "null,", "null,"},
+        DATABASE_NAME);
   }
 
   @Test
@@ -782,6 +1328,12 @@ public class IoTDBCastFunctionTableIT {
       e.printStackTrace();
       fail();
     }
+  }
+
+  @Test
+  public void testTryCastWithTextSource() {
+    String sql = "select TRY_CAST(s6 AS INT32) from special where device_id='d1' and time = 1";
+    tableResultSetEqualTest(sql, new String[] {"_col0"}, new String[] {"null,"}, DATABASE_NAME);
   }
 
   @Test

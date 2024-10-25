@@ -712,6 +712,7 @@ primaryExpression
     | CASE operand=expression whenClause+ (ELSE elseExpression=expression)? END           #simpleCase
     | CASE whenClause+ (ELSE elseExpression=expression)? END                              #searchedCase
     | CAST '(' expression AS type ')'                                                     #cast
+    | TRY_CAST '(' expression AS type ')'                                                 #cast
     | identifier                                                                          #columnReference
     | base=primaryExpression '.' fieldName=identifier                                     #dereference
     | name=NOW ('(' ')')?                                                                 #specialDateTimeFunction
