@@ -409,7 +409,6 @@ public class LoadTsFileManager {
         }
 
         final TsFileIOWriter writer = new TsFileIOWriter(newTsFile);
-        writer.setGenerateTableSchema(true);
         dataPartition2Writer.put(partitionInfo, writer);
       }
       TsFileIOWriter writer = dataPartition2Writer.get(partitionInfo);
