@@ -327,7 +327,7 @@ public class FragmentInstanceExecution {
             context.releaseMemoryReservationManager();
 
             if (newState.isFailed()) {
-              scheduler.abortFragmentInstance(instanceId);
+              scheduler.abortFragmentInstance(instanceId, context.getFailureCause().orElse(null));
             }
           } catch (Throwable t) {
             try (SetThreadName threadName = new SetThreadName(instanceId.getFullId())) {
