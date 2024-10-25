@@ -499,7 +499,7 @@ public class IoTDBNullIdQueryIT {
     expectedHeader = new String[] {"ClusterId"};
     tableResultSetFuzzyTest("show cluster_id", expectedHeader, 1, DATABASE_NAME);
 
-    expectedHeader = new String[] {"ClusterId"};
+    expectedHeader = new String[] {"CurrentTimestamp"};
     tableResultSetFuzzyTest("show current_timestamp", expectedHeader, 1, DATABASE_NAME);
   }
 }
