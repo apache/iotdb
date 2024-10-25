@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProced
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.DropPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.subscription.SubscriptionOperation;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.AlterConsumerGroupProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.topic.AlterTopicProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -62,6 +63,9 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
   // NOTE: The 'drop pipe' operation must be performed before 'alter consumer group'.
   private List<DropPipeProcedureV2> dropPipeProcedures = new ArrayList<>();
   private AlterConsumerGroupProcedure alterConsumerGroupProcedure;
+
+  // TODO: remove this variable later
+  private final List<AlterTopicProcedure> alterTopicProcedures = new ArrayList<>(); // unused now
 
   public DropSubscriptionProcedure() {
     super();
@@ -225,6 +229,17 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
       ReadWriteIOUtils.write(false, stream);
     }
 
+    // Serialize AlterTopicProcedures
+    if (alterTopicProcedures != null) {
+      ReadWriteIOUtils.write(true, stream);
+      ReadWriteIOUtils.write(alterTopicProcedures.size(), stream);
+      for (final AlterTopicProcedure topicProcedure : alterTopicProcedures) {
+        topicProcedure.serialize(stream);
+      }
+    } else {
+      ReadWriteIOUtils.write(false, stream);
+    }
+
     // Serialize DropPipeProcedureV2s
     if (dropPipeProcedures != null) {
       ReadWriteIOUtils.write(true, stream);
@@ -258,6 +273,19 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
 
       alterConsumerGroupProcedure = new AlterConsumerGroupProcedure();
       alterConsumerGroupProcedure.deserialize(byteBuffer);
+    }
+
+    // Deserialize AlterTopicProcedures
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      size = ReadWriteIOUtils.readInt(byteBuffer);
+      for (int i = 0; i < size; ++i) {
+        // This readShort should return ALTER_TOPIC_PROCEDURE, and we ignore it.
+        ReadWriteIOUtils.readShort(byteBuffer);
+
+        final AlterTopicProcedure topicProcedure = new AlterTopicProcedure();
+        topicProcedure.deserialize(byteBuffer);
+        alterTopicProcedures.add(topicProcedure);
+      }
     }
 
     // Deserialize DropPipeProcedureV2s

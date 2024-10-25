@@ -43,7 +43,8 @@ public class TopicMeta {
   private long creationTime; // unit in ms
   private TopicConfig config;
 
-  private Set<String> subscribedConsumerGroupIds; // unused now, always empty
+  // TODO: remove this variable later
+  private Set<String> subscribedConsumerGroupIds; // unused now
 
   private TopicMeta() {
     this.config = new TopicConfig(new HashMap<>());

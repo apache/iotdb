@@ -32,6 +32,7 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProced
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.CreatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.subscription.SubscriptionOperation;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.AlterConsumerGroupProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.topic.AlterTopicProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
@@ -63,6 +64,9 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
   // NOTE: The 'alter consumer group' operation must be performed before 'create pipe'.
   private AlterConsumerGroupProcedure alterConsumerGroupProcedure;
   private List<CreatePipeProcedureV2> createPipeProcedures = new ArrayList<>();
+
+  // TODO: remove this variable later
+  private final List<AlterTopicProcedure> alterTopicProcedures = new ArrayList<>(); // unused now
 
   public CreateSubscriptionProcedure() {
     super();
@@ -265,6 +269,17 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
       ReadWriteIOUtils.write(false, stream);
     }
 
+    // Serialize AlterTopicProcedures
+    if (alterTopicProcedures != null) {
+      ReadWriteIOUtils.write(true, stream);
+      ReadWriteIOUtils.write(alterTopicProcedures.size(), stream);
+      for (final AlterTopicProcedure topicProcedure : alterTopicProcedures) {
+        topicProcedure.serialize(stream);
+      }
+    } else {
+      ReadWriteIOUtils.write(false, stream);
+    }
+
     // Serialize CreatePipeProcedureV2s
     if (createPipeProcedures != null) {
       ReadWriteIOUtils.write(true, stream);
@@ -298,6 +313,19 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
 
       alterConsumerGroupProcedure = new AlterConsumerGroupProcedure();
       alterConsumerGroupProcedure.deserialize(byteBuffer);
+    }
+
+    // Deserialize AlterTopicProcedures
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      size = ReadWriteIOUtils.readInt(byteBuffer);
+      for (int i = 0; i < size; ++i) {
+        // This readShort should return ALTER_TOPIC_PROCEDURE, and we ignore it.
+        ReadWriteIOUtils.readShort(byteBuffer);
+
+        final AlterTopicProcedure topicProcedure = new AlterTopicProcedure();
+        topicProcedure.deserialize(byteBuffer);
+        alterTopicProcedures.add(topicProcedure);
+      }
     }
 
     // Deserialize CreatePipeProcedureV2s
