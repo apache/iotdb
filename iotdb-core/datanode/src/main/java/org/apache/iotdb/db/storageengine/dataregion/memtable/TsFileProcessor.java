@@ -332,10 +332,11 @@ public class TsFileProcessor {
             insertRowNode,
             tsFileResource);
 
+    int pointInserted;
     if (insertRowNode.isAligned()) {
-      workMemTable.insertAlignedRow(insertRowNode);
+      pointInserted = workMemTable.insertAlignedRow(insertRowNode);
     } else {
-      workMemTable.insert(insertRowNode);
+      pointInserted = workMemTable.insert(insertRowNode);
     }
 
     // Update start time of this memtable
@@ -345,6 +346,7 @@ public class TsFileProcessor {
     if (!sequence) {
       tsFileResource.updateEndTime(insertRowNode.getDeviceID(), insertRowNode.getTime());
     }
+    workMemTable.updateMemtablePointCountMetric(insertRowNode, pointInserted);
 
     tsFileResource.updateProgressIndex(insertRowNode.getProgressIndex());
     // RecordScheduleMemTableCost
@@ -419,14 +421,14 @@ public class TsFileProcessor {
             walFlushListener.getWalEntryHandler(),
             insertRowsNode,
             tsFileResource);
+
+    int pointInserted = 0;
     for (InsertRowNode insertRowNode : insertRowsNode.getInsertRowNodeList()) {
-
       if (insertRowNode.isAligned()) {
-        workMemTable.insertAlignedRow(insertRowNode);
+        pointInserted += workMemTable.insertAlignedRow(insertRowNode);
       } else {
-        workMemTable.insert(insertRowNode);
+        pointInserted += workMemTable.insert(insertRowNode);
       }
-
       // update start time of this memtable
       tsFileResource.updateStartTime(insertRowNode.getDeviceID(), insertRowNode.getTime());
       // for sequence tsfile, we update the endTime only when the file is prepared to be closed.
@@ -435,6 +437,8 @@ public class TsFileProcessor {
         tsFileResource.updateEndTime(insertRowNode.getDeviceID(), insertRowNode.getTime());
       }
     }
+    workMemTable.updateMemtablePointCountMetric(insertRowsNode, pointInserted);
+
     tsFileResource.updateProgressIndex(insertRowsNode.getProgressIndex());
     // recordScheduleMemTableCost
     costsForMetrics[3] += System.nanoTime() - startTime;
@@ -584,15 +588,17 @@ public class TsFileProcessor {
             insertTabletNode,
             tsFileResource);
 
+    int pointInserted = 0;
     for (int[] rangePair : rangeList) {
       int start = rangePair[0];
       int end = rangePair[1];
       try {
         if (insertTabletNode.isAligned()) {
-          workMemTable.insertAlignedTablet(
-              insertTabletNode, start, end, noFailure ? null : results);
+          pointInserted +=
+              workMemTable.insertAlignedTablet(
+                  insertTabletNode, start, end, noFailure ? null : results);
         } else {
-          workMemTable.insertTablet(insertTabletNode, start, end);
+          pointInserted += workMemTable.insertTablet(insertTabletNode, start, end);
         }
       } catch (WriteProcessException e) {
         for (int i = start; i < end; i++) {
@@ -627,7 +633,7 @@ public class TsFileProcessor {
         }
       }
     }
-
+    workMemTable.updateMemtablePointCountMetric(insertTabletNode, pointInserted);
     tsFileResource.updateProgressIndex(insertTabletNode.getProgressIndex());
 
     // recordScheduleMemTableCost

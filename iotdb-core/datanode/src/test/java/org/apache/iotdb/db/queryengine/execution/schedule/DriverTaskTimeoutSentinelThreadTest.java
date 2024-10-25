@@ -99,7 +99,7 @@ public class DriverTaskTimeoutSentinelThreadTest {
     executor.execute(testTask);
     Assert.assertEquals(DriverTaskStatus.BLOCKED, testTask.getStatus());
     Mockito.verify(mockDriver, Mockito.never()).processFor(Mockito.any());
-    Assert.assertNull(testTask.getAbortCause());
+    Assert.assertFalse(testTask.getAbortCause().isPresent());
     Mockito.verify(mockScheduler, Mockito.never()).toAborted(Mockito.any());
     Mockito.verify(mockScheduler, Mockito.never()).runningToBlocked(Mockito.any(), Mockito.any());
     Mockito.verify(mockScheduler, Mockito.never()).runningToFinished(Mockito.any(), Mockito.any());
@@ -139,7 +139,8 @@ public class DriverTaskTimeoutSentinelThreadTest {
     executor.execute(testTask);
     Mockito.verify(mockDriver, Mockito.times(1)).processFor(Mockito.any());
     Assert.assertEquals(
-        DriverTaskAbortedException.BY_ALREADY_BEING_CANCELLED, testTask.getAbortCause());
+        "DriverTask test.0.inst-0.0 is aborted by already being cancelled",
+        testTask.getAbortCause().get().getMessage());
     Mockito.verify(mockScheduler, Mockito.times(1)).toAborted(Mockito.any());
     Mockito.verify(mockScheduler, Mockito.never()).runningToReady(Mockito.any(), Mockito.any());
     Mockito.verify(mockScheduler, Mockito.never()).runningToBlocked(Mockito.any(), Mockito.any());
@@ -179,7 +180,7 @@ public class DriverTaskTimeoutSentinelThreadTest {
     DriverTask testTask = new DriverTask(mockDriver, 100L, DriverTaskStatus.READY, null, 0, false);
     executor.execute(testTask);
     Mockito.verify(mockDriver, Mockito.times(1)).processFor(Mockito.any());
-    Assert.assertNull(testTask.getAbortCause());
+    Assert.assertFalse(testTask.getAbortCause().isPresent());
     Mockito.verify(mockScheduler, Mockito.never()).toAborted(Mockito.any());
     Mockito.verify(mockScheduler, Mockito.never()).runningToReady(Mockito.any(), Mockito.any());
     Mockito.verify(mockScheduler, Mockito.never()).runningToBlocked(Mockito.any(), Mockito.any());
@@ -229,7 +230,7 @@ public class DriverTaskTimeoutSentinelThreadTest {
     DriverTask testTask = new DriverTask(mockDriver, 100L, DriverTaskStatus.READY, null, 0, false);
     executor.execute(testTask);
     Mockito.verify(mockDriver, Mockito.times(1)).processFor(Mockito.any());
-    Assert.assertNull(testTask.getAbortCause());
+    Assert.assertFalse(testTask.getAbortCause().isPresent());
     Mockito.verify(mockScheduler, Mockito.never()).toAborted(Mockito.any());
     Mockito.verify(mockScheduler, Mockito.never()).runningToReady(Mockito.any(), Mockito.any());
     Mockito.verify(mockScheduler, Mockito.times(1)).runningToBlocked(Mockito.any(), Mockito.any());
@@ -280,7 +281,7 @@ public class DriverTaskTimeoutSentinelThreadTest {
     DriverTask testTask = new DriverTask(mockDriver, 100L, DriverTaskStatus.READY, null, 0, false);
     executor.execute(testTask);
     Mockito.verify(mockDriver, Mockito.times(1)).processFor(Mockito.any());
-    Assert.assertNull(testTask.getAbortCause());
+    Assert.assertFalse(testTask.getAbortCause().isPresent());
     Mockito.verify(mockScheduler, Mockito.never()).toAborted(Mockito.any());
     Mockito.verify(mockScheduler, Mockito.times(1)).runningToReady(Mockito.any(), Mockito.any());
     Mockito.verify(mockScheduler, Mockito.never()).runningToBlocked(Mockito.any(), Mockito.any());
@@ -323,7 +324,8 @@ public class DriverTaskTimeoutSentinelThreadTest {
     executor.run(); // Here we use run() instead of start() to execute the task in the same thread
     Mockito.verify(mockDriver, Mockito.times(1)).processFor(Mockito.any());
     Assert.assertEquals(
-        DriverTaskAbortedException.BY_INTERNAL_ERROR_SCHEDULED, testTask.getAbortCause());
+        "DriverTask test.0.inst-0.0 is aborted by internal error scheduled",
+        testTask.getAbortCause().get().getMessage());
     Assert.assertEquals(0, taskQueue.size());
     Mockito.verify(mockScheduler, Mockito.times(1)).toAborted(Mockito.any());
     Mockito.verify(mockScheduler, Mockito.never()).runningToReady(Mockito.any(), Mockito.any());
