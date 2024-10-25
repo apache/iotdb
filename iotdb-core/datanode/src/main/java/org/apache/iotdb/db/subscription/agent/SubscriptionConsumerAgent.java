@@ -94,10 +94,17 @@ public class SubscriptionConsumerAgent {
     final ConsumerGroupMeta metaInAgent =
         consumerGroupMetaKeeper.getConsumerGroupMeta(consumerGroupId);
 
+    // if consumer group meta does not exist on local agent
+    if (Objects.isNull(metaInAgent)) {
+      consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
+      consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
+      // no need to create broker manually
+      return;
+    }
+
     // if the creation time of consumer group meta on local agent is inconsistent with meta from
     // coordinator
-    if (Objects.nonNull(metaInAgent)
-        && metaInAgent.getCreationTime() != metaFromCoordinator.getCreationTime()) {
+    if (metaInAgent.getCreationTime() != metaFromCoordinator.getCreationTime()) {
       if (SubscriptionAgent.broker().isBrokerExist(consumerGroupId)) {
         LOGGER.warn(
             "Subscription: broker bound to consumer group [{}] has already existed when the creation time of consumer group meta on local agent {} is inconsistent with meta from coordinator {}, drop it",
@@ -113,14 +120,6 @@ public class SubscriptionConsumerAgent {
         }
       }
 
-      consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
-      consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
-      // no need to create broker manually
-      return;
-    }
-
-    // if consumer group meta does not exist on local agent
-    if (Objects.isNull(metaInAgent)) {
       consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
       consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
       // no need to create broker manually
