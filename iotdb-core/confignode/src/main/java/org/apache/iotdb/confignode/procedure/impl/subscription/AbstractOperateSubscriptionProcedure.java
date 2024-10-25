@@ -63,6 +63,7 @@ public abstract class AbstractOperateSubscriptionProcedure
   // Pure in-memory object, not involved in snapshot serialization and deserialization.
   // TODO: consider serializing this variable later
   protected boolean isRollbackFromOperateOnDataNodesSuccessful = false;
+
   // Only used in rollback to avoid executing rollbackFromValidate multiple times
   // Pure in-memory object, not involved in snapshot serialization and deserialization.
   // TODO: consider serializing this variable later
