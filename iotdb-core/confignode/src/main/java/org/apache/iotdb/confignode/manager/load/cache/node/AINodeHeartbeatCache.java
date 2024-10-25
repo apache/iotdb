@@ -34,7 +34,7 @@ public class AINodeHeartbeatCache extends BaseNodeCache {
   }
 
   @Override
-  public void updateCurrentStatistics() {
+  public void updateCurrentStatistics(boolean forceUpdate) {
     NodeHeartbeatSample lastSample = null;
     synchronized (slidingWindow) {
       if (!slidingWindow.isEmpty()) {

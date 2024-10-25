@@ -197,4 +197,9 @@ public abstract class SystemPropertiesHandler {
     this.formalFile = SystemFileFactory.INSTANCE.getFile(filePath);
     this.tmpFile = SystemFileFactory.INSTANCE.getFile(filePath + ".tmp");
   }
+
+  public void delete() throws IOException {
+    FileUtils.deleteFile(this.formalFile);
+    FileUtils.deleteFile(this.tmpFile);
+  }
 }

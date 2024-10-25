@@ -67,7 +67,7 @@ public class LeaderPriorityBalancerTest {
             .cacheHeartbeatSample(new NodeHeartbeatSample(currentTimeNs, NodeStatus.Running));
       }
     }
-    nodeCacheMap.values().forEach(BaseNodeCache::updateCurrentStatistics);
+    nodeCacheMap.values().forEach(baseNodeCache -> baseNodeCache.updateCurrentStatistics(false));
 
     // Get the loadScoreMap
     Map<Integer, Long> loadScoreMap = new ConcurrentHashMap<>();

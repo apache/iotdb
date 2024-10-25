@@ -45,6 +45,7 @@ import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrationPlan;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TCleanDataNodeCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TStopDataNodeReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -134,29 +135,26 @@ public class RemoveDataNodeHandler {
 
       int dataNodeId = entry.getKey();
       NodeStatus nodeStatus = nodeStatusMap.get(dataNodeId);
-
-      // Force updating NodeStatus to NodeStatus.Removing
+      RegionStatus regionStatus = RegionStatus.valueOf(nodeStatus.getStatus());
+      // Force updating NodeStatus
       configManager
           .getLoadManager()
           .forceUpdateNodeCache(
               NodeType.DataNode, dataNodeId, new NodeHeartbeatSample(currentTime, nodeStatus));
 
-      if (nodeStatus == NodeStatus.Removing) {
-        Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>> removingHeartbeatSampleMap =
-            new TreeMap<>();
-        // Force update RegionStatus to NodeStatus.Removing
-        configManager
-            .getPartitionManager()
-            .getAllReplicaSets(entry.getKey())
-            .forEach(
-                replicaSet ->
-                    removingHeartbeatSampleMap.put(
-                        replicaSet.getRegionId(),
-                        Collections.singletonMap(
-                            dataNodeId,
-                            new RegionHeartbeatSample(currentTime, RegionStatus.Removing))));
-        configManager.getLoadManager().forceUpdateRegionGroupCache(removingHeartbeatSampleMap);
-      }
+      Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>> heartbeatSampleMap =
+          new TreeMap<>();
+      // Force update RegionStatus
+      configManager
+          .getPartitionManager()
+          .getAllReplicaSets(entry.getKey())
+          .forEach(
+              replicaSet ->
+                  heartbeatSampleMap.put(
+                      replicaSet.getRegionId(),
+                      Collections.singletonMap(
+                          dataNodeId, new RegionHeartbeatSample(currentTime, regionStatus))));
+      configManager.getLoadManager().forceUpdateRegionGroupCache(heartbeatSampleMap);
     }
   }
 
@@ -267,11 +265,11 @@ public class RemoveDataNodeHandler {
         REMOVE_DATANODE_PROCESS,
         removedDataNodes);
 
-    DataNodeAsyncRequestContext<TDataNodeLocation, TSStatus> stopDataNodesContext =
+    DataNodeAsyncRequestContext<TStopDataNodeReq, TSStatus> stopDataNodesContext =
         new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.STOP_DATA_NODE);
 
     for (TDataNodeLocation dataNode : removedDataNodes) {
-      stopDataNodesContext.putRequest(dataNode.getDataNodeId(), dataNode);
+      stopDataNodesContext.putRequest(dataNode.getDataNodeId(), new TStopDataNodeReq(true));
       stopDataNodesContext.putNodeLocation(dataNode.getDataNodeId(), dataNode);
     }
 

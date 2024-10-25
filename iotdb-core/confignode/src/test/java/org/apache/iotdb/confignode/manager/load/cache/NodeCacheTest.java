@@ -35,7 +35,7 @@ public class NodeCacheTest {
     long currentTime = System.nanoTime();
     dataNodeHeartbeatCache.cacheHeartbeatSample(
         new NodeHeartbeatSample(currentTime, NodeStatus.Running));
-    dataNodeHeartbeatCache.updateCurrentStatistics();
+    dataNodeHeartbeatCache.updateCurrentStatistics(false);
     Assert.assertEquals(NodeStatus.Running, dataNodeHeartbeatCache.getNodeStatus());
     Assert.assertEquals(0, dataNodeHeartbeatCache.getLoadScore());
 
@@ -44,7 +44,7 @@ public class NodeCacheTest {
     currentTime = System.nanoTime();
     configNodeHeartbeatCache.cacheHeartbeatSample(
         new NodeHeartbeatSample(currentTime, NodeStatus.Running));
-    configNodeHeartbeatCache.updateCurrentStatistics();
+    configNodeHeartbeatCache.updateCurrentStatistics(false);
     Assert.assertEquals(NodeStatus.Running, configNodeHeartbeatCache.getNodeStatus());
     Assert.assertEquals(0, configNodeHeartbeatCache.getLoadScore());
   }

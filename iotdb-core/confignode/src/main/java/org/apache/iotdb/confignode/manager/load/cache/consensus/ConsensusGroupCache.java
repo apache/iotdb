@@ -36,7 +36,7 @@ public class ConsensusGroupCache extends AbstractLoadCache {
   }
 
   @Override
-  public synchronized void updateCurrentStatistics() {
+  public synchronized void updateCurrentStatistics(boolean forceUpdate) {
     ConsensusGroupHeartbeatSample lastSample;
     synchronized (slidingWindow) {
       lastSample = (ConsensusGroupHeartbeatSample) getLastSample();

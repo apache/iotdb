@@ -44,7 +44,7 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
   }
 
   @Override
-  public synchronized void updateCurrentStatistics() {
+  public synchronized void updateCurrentStatistics(boolean forceUpdate) {
     // Skip itself and the Removing status can not be updated
     if (nodeId == CURRENT_NODE_ID || NodeStatus.Removing.equals(getNodeStatus())) {
       return;
