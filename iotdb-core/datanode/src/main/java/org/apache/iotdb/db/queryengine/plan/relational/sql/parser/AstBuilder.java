@@ -257,8 +257,9 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitShowDatabasesStatement(RelationalSqlParser.ShowDatabasesStatementContext ctx) {
-    return new ShowDB(getLocation(ctx));
+  public Node visitShowDatabasesStatement(
+      final RelationalSqlParser.ShowDatabasesStatementContext ctx) {
+    return new ShowDB(getLocation(ctx), Objects.nonNull(ctx.DETAILS()));
   }
 
   @Override
