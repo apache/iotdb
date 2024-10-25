@@ -566,22 +566,26 @@ public class TableDistributedPlanGenerator
   public List<PlanNode> visitAggregationTableScan(
       AggregationTableScanNode node, PlanContext context) {
 
-    Map<TRegionReplicaSet, AggregationTableScanNode> tableScanNodeMap = new HashMap<>();
     boolean needSplit = false;
     List<List<TRegionReplicaSet>> regionReplicaSetsList = new ArrayList<>();
     for (DeviceEntry deviceEntry : node.getDeviceEntries()) {
       List<TRegionReplicaSet> regionReplicaSets =
-          analysis
-              .getDataPartitionInfo()
-              .getDataRegionReplicaSetWithTimeFilter(
-                  node.getQualifiedObjectName().getDatabaseName(),
-                  deviceEntry.getDeviceID(),
-                  node.getTimeFilter());
+          analysis.getDataRegionReplicaSetWithTimeFilter(
+              node.getQualifiedObjectName().getDatabaseName(),
+              deviceEntry.getDeviceID(),
+              node.getTimeFilter());
       if (regionReplicaSets.size() > 1) {
         needSplit = true;
       }
       regionReplicaSetsList.add(regionReplicaSets);
     }
+
+    if (regionReplicaSetsList.isEmpty()) {
+      regionReplicaSetsList =
+          Collections.singletonList(Collections.singletonList(new TRegionReplicaSet()));
+    }
+
+    Map<TRegionReplicaSet, AggregationTableScanNode> regionNodeMap = new HashMap<>();
     // Step is SINGLE, has date_bin(time) and device data in more than one region, we need to split
     // this node into two-stage Aggregation
     needSplit = needSplit && node.getProjection() != null && node.getStep() == SINGLE;
@@ -591,78 +595,15 @@ public class TableDistributedPlanGenerator
           split(node, symbolAllocator, queryId);
       finalAggregation = splitResult.left;
       AggregationTableScanNode partialAggregation = splitResult.right;
-      for (int i = 0; i < regionReplicaSetsList.size(); i++) {
-        for (TRegionReplicaSet regionReplicaSet : regionReplicaSetsList.get(i)) {
-          AggregationTableScanNode aggregationTableScanNode =
-              tableScanNodeMap.computeIfAbsent(
-                  regionReplicaSet,
-                  k -> {
-                    AggregationTableScanNode scanNode =
-                        new AggregationTableScanNode(
-                            queryId.genPlanNodeId(),
-                            partialAggregation.getQualifiedObjectName(),
-                            partialAggregation.getOutputSymbols(),
-                            partialAggregation.getAssignments(),
-                            new ArrayList<>(),
-                            partialAggregation.getIdAndAttributeIndexMap(),
-                            partialAggregation.getScanOrder(),
-                            partialAggregation.getTimePredicate().orElse(null),
-                            partialAggregation.getPushDownPredicate(),
-                            partialAggregation.getPushDownLimit(),
-                            partialAggregation.getPushDownOffset(),
-                            partialAggregation.isPushLimitToEachDevice(),
-                            partialAggregation.getProjection(),
-                            partialAggregation.getAggregations(),
-                            partialAggregation.getGroupingSets(),
-                            partialAggregation.getPreGroupedSymbols(),
-                            partialAggregation.getStep(),
-                            partialAggregation.getGroupIdSymbol());
-                    scanNode.setRegionReplicaSet(regionReplicaSet);
-                    return scanNode;
-                  });
-          aggregationTableScanNode.appendDeviceEntry(node.getDeviceEntries().get(i));
-        }
-      }
+      buildRegionNodeMap(node, regionReplicaSetsList, regionNodeMap, partialAggregation);
     } else {
-      for (int i = 0; i < regionReplicaSetsList.size(); i++) {
-        for (TRegionReplicaSet regionReplicaSet : regionReplicaSetsList.get(i)) {
-          AggregationTableScanNode aggregationTableScanNode =
-              tableScanNodeMap.computeIfAbsent(
-                  regionReplicaSet,
-                  k -> {
-                    AggregationTableScanNode scanNode =
-                        new AggregationTableScanNode(
-                            queryId.genPlanNodeId(),
-                            node.getQualifiedObjectName(),
-                            node.getOutputSymbols(),
-                            node.getAssignments(),
-                            new ArrayList<>(),
-                            node.getIdAndAttributeIndexMap(),
-                            node.getScanOrder(),
-                            node.getTimePredicate().orElse(null),
-                            node.getPushDownPredicate(),
-                            node.getPushDownLimit(),
-                            node.getPushDownOffset(),
-                            node.isPushLimitToEachDevice(),
-                            node.getProjection(),
-                            node.getAggregations(),
-                            node.getGroupingSets(),
-                            node.getPreGroupedSymbols(),
-                            node.getStep(),
-                            node.getGroupIdSymbol());
-                    scanNode.setRegionReplicaSet(regionReplicaSet);
-                    return scanNode;
-                  });
-          aggregationTableScanNode.appendDeviceEntry(node.getDeviceEntries().get(i));
-        }
-      }
+      buildRegionNodeMap(node, regionReplicaSetsList, regionNodeMap, node);
     }
 
     List<PlanNode> resultTableScanNodeList = new ArrayList<>();
     TRegionReplicaSet mostUsedDataRegion = null;
     int maxDeviceEntrySizeOfTableScan = 0;
-    for (Map.Entry<TRegionReplicaSet, AggregationTableScanNode> entry :
-        tableScanNodeMap.entrySet()) {
+    for (Map.Entry<TRegionReplicaSet, AggregationTableScanNode> entry : regionNodeMap.entrySet()) {
       TRegionReplicaSet regionReplicaSet = entry.getKey();
       TableScanNode subTableScanNode = entry.getValue();
       subTableScanNode.setPlanNodeId(queryId.genPlanNodeId());
@@ -696,6 +637,49 @@ public class TableDistributedPlanGenerator
     }
 
     return resultTableScanNodeList;
+  }
+
+  private void buildRegionNodeMap(
+      AggregationTableScanNode originalAggTableScanNode,
+      List<List<TRegionReplicaSet>> regionReplicaSetsList,
+      Map<TRegionReplicaSet, AggregationTableScanNode> regionNodeMap,
+      AggregationTableScanNode partialAggTableScanNode) {
+    for (int i = 0; i < regionReplicaSetsList.size(); i++) {
+      for (TRegionReplicaSet regionReplicaSet : regionReplicaSetsList.get(i)) {
+        AggregationTableScanNode aggregationTableScanNode =
+            regionNodeMap.computeIfAbsent(
+                regionReplicaSet,
+                k -> {
+                  AggregationTableScanNode scanNode =
+                      new AggregationTableScanNode(
+                          queryId.genPlanNodeId(),
+                          partialAggTableScanNode.getQualifiedObjectName(),
+                          partialAggTableScanNode.getOutputSymbols(),
+                          partialAggTableScanNode.getAssignments(),
+                          new ArrayList<>(),
+                          partialAggTableScanNode.getIdAndAttributeIndexMap(),
+                          partialAggTableScanNode.getScanOrder(),
+                          partialAggTableScanNode.getTimePredicate().orElse(null),
+                          partialAggTableScanNode.getPushDownPredicate(),
+                          partialAggTableScanNode.getPushDownLimit(),
+                          partialAggTableScanNode.getPushDownOffset(),
+                          partialAggTableScanNode.isPushLimitToEachDevice(),
+                          partialAggTableScanNode.getProjection(),
+                          partialAggTableScanNode.getAggregations(),
+                          partialAggTableScanNode.getGroupingSets(),
+                          partialAggTableScanNode.getPreGroupedSymbols(),
+                          partialAggTableScanNode.getStep(),
+                          partialAggTableScanNode.getGroupIdSymbol());
+                  scanNode.setRegionReplicaSet(regionReplicaSet);
+                  return scanNode;
+                });
+        if (originalAggTableScanNode.getDeviceEntries().size() > i
+            && originalAggTableScanNode.getDeviceEntries().get(i) != null) {
+          aggregationTableScanNode.appendDeviceEntry(
+              originalAggTableScanNode.getDeviceEntries().get(i));
+        }
+      }
+    }
   }
 
   private static OrderingScheme constructOrderingSchema(List<Symbol> symbols) {

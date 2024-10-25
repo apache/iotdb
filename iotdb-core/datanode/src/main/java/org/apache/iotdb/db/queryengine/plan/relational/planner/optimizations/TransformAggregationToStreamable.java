@@ -50,7 +50,7 @@ public class TransformAggregationToStreamable implements PlanOptimizer {
   @Override
   public PlanNode optimize(PlanNode plan, PlanOptimizer.Context context) {
     if (!(context.getAnalysis().getStatement() instanceof Query)
-        || !context.getAnalysis().hasAggregates()) {
+        || context.getAnalysis().noAggregates()) {
       return plan;
     }
 

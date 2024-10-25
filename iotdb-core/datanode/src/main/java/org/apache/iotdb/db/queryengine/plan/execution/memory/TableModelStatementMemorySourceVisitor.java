@@ -75,9 +75,9 @@ public class TableModelStatementMemorySourceVisitor
                 symbolAllocator,
                 NOOP)
             .plan(context.getAnalysis());
-    if (context.getAnalysis().isEmptyDataSource()) {
-      return new StatementMemorySource(new TsBlock(0), header);
-    }
+    //    if (context.getAnalysis().isEmptyDataSource()) {
+    //      return new StatementMemorySource(new TsBlock(0), header);
+    //    }
 
     // Generate table model distributed plan
     final TableDistributedPlanGenerator.PlanContext planContext =
