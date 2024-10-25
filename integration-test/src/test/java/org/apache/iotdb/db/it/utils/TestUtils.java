@@ -887,6 +887,15 @@ public class TestUtils {
       String sql,
       String expectedHeader,
       Set<String> expectedResSet,
+      String dataBaseName) {
+    assertDataEventuallyOnEnv(env, sql, expectedHeader, expectedResSet, 60, dataBaseName);
+  }
+
+  public static void assertDataEventuallyOnEnv(
+      BaseEnv env,
+      String sql,
+      String expectedHeader,
+      Set<String> expectedResSet,
       long timeoutSeconds,
       String dataBaseName) {
     try (Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);

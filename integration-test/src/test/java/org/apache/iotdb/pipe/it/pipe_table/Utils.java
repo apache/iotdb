@@ -35,10 +35,11 @@ import static org.junit.Assert.fail;
 
 public class Utils {
 
-  public void insertData(
+  public static void insertData(
       String dataBaseName, String tableName, int start, int end, BaseEnv baseEnv) {
     List<String> list = new ArrayList<>(end - start + 1);
     for (int i = start; i < end; ++i) {
+      list.add("use " + dataBaseName);
       list.add(
           String.format(
               "insert into %s (id1, s3, s2, s1, time) values ('t%s','%s', %s.0, %s, %s)",
@@ -50,7 +51,7 @@ public class Utils {
     }
   }
 
-  private void createDataBaseAndTable(BaseEnv baseEnv, String table, String database) {
+  public static void createDataBaseAndTable(BaseEnv baseEnv, String table, String database) {
     try (Connection connection = baseEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("create database if not exists " + database);

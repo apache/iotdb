@@ -51,8 +51,8 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelTestIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      Utils.createDataBaseAndTable(senderEnv,"test","test");
-      Utils.insertData("test","test",0,100,senderEnv);
+      Utils.createDataBaseAndTable(senderEnv, "test", "test");
+      Utils.insertData("test", "test", 0, 100, senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -77,11 +77,7 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelTestIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          Utils.getQuerySql("test"),
-          "_col0,",
-          Collections.singleton("100,"),
-              "test");
+          receiverEnv, Utils.getQuerySql("test"), "_col0,", Collections.singleton("100,"), "test");
 
       TestUtils.assertDataEventuallyOnEnv(
           senderEnv,
@@ -101,8 +97,8 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelTestIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      Utils.createDataBaseAndTable(senderEnv,"test","test");
-      Utils.insertData("test","test",0,100,senderEnv);
+      Utils.createDataBaseAndTable(senderEnv, "test", "test");
+      Utils.insertData("test", "test", 0, 100, senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -129,11 +125,7 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelTestIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
       TestUtils.assertDataEventuallyOnEnv(
-              receiverEnv,
-              Utils.getQuerySql("test"),
-              "_col0,",
-              Collections.singleton("50,"),
-              "test");
+          receiverEnv, Utils.getQuerySql("test"), "_col0,", Collections.singleton("50,"), "test");
 
       TestUtils.assertDataEventuallyOnEnv(
           senderEnv,

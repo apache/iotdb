@@ -33,12 +33,8 @@ import org.junit.runner.RunWith;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import static org.junit.Assert.fail;
 
@@ -73,8 +69,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("database-name=test"));
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("table-name=test"));
-      Assert.assertTrue(
-          showPipeResult.get(0).pipeExtractor.contains("mode.streaming=true"));
+      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("mode.streaming=true"));
       Assert.assertTrue(
           showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
       Assert.assertTrue(
@@ -106,7 +101,8 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
     // Alter pipe (modify)
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute("alter pipe a2b modify source ('table-name'='test1','database-name'='test1')");
+      statement.execute(
+          "alter pipe a2b modify source ('table-name'='test1','database-name'='test1')");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -122,8 +118,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("table-name=test1"));
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("database-name=test1"));
-      Assert.assertTrue(
-              showPipeResult.get(0).pipeExtractor.contains("mode.streaming=true"));
+      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("mode.streaming=true"));
       Assert.assertTrue(
           showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
       Assert.assertTrue(
@@ -158,8 +153,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("database-name=test"));
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("table-name=test"));
-      Assert.assertFalse(
-              showPipeResult.get(0).pipeExtractor.contains("mode.streaming=true"));
+      Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("mode.streaming=true"));
       Assert.assertTrue(
           showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
       Assert.assertTrue(
@@ -215,7 +209,6 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
     } catch (SQLException e) {
       fail(e.getMessage());
     }
-
 
     // Alter pipe (modify)
     try (final Connection connection = senderEnv.getConnection();
@@ -331,10 +324,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
       // check configurations
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
       Assert.assertFalse(
-          showPipeResult
-              .get(0)
-              .pipeProcessor
-              .contains("processor=do-nothing-processor"));
+          showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
       Assert.assertTrue(
           showPipeResult
               .get(0)
@@ -413,11 +403,11 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
     Utils.createDataBaseAndTable(senderEnv, "test1", "test1");
     // Create pipe
     final String sql =
-            String.format(
-                    "create pipe a2b with source ('source'='iotdb-source', 'database-name'='test', 'table-name'='test1', 'mode.streaming'='true') with processor ('processor'='do-nothing-processor') with sink ('node-urls'='%s', 'batch.enable'='false')",
-                    receiverDataNode.getIpAndPortString());
+        String.format(
+            "create pipe a2b with source ('source'='iotdb-source', 'database-name'='test', 'table-name'='test1', 'mode.streaming'='true') with processor ('processor'='do-nothing-processor') with sink ('node-urls'='%s', 'batch.enable'='false')",
+            receiverDataNode.getIpAndPortString());
     try (final Connection connection = senderEnv.getConnection();
-         final Statement statement = connection.createStatement()) {
+        final Statement statement = connection.createStatement()) {
       statement.execute(sql);
     } catch (final SQLException e) {
       fail(e.getMessage());
@@ -428,18 +418,26 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
 
     // Check data on receiver
     TestUtils.assertDataEventuallyOnEnv(
-            receiverEnv, Utils.getQuerySql("test"), Utils.generateHeaderResults(), Utils.generateExpectedResults(0, 100), "test");
+        receiverEnv,
+        Utils.getQuerySql("test"),
+        Utils.generateHeaderResults(),
+        Utils.generateExpectedResults(0, 100),
+        "test");
     HashSet<String> expectedResults = new HashSet();
     expectedResults.add("test,1,1,604800000");
     TestUtils.assertDataEventuallyOnEnv(
-            receiverEnv, "show databases", "Database,SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,", expectedResults, null);
+        receiverEnv,
+        "show databases",
+        "Database,SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
+        expectedResults,
+        null);
 
     // Alter pipe (modify 'source.path', 'source.inclusion' and
     // 'processor.tumbling-time.interval-seconds')
     try (final Connection connection = senderEnv.getConnection();
-         final Statement statement = connection.createStatement()) {
+        final Statement statement = connection.createStatement()) {
       statement.execute(
-              "alter pipe a2b modify source('source' = 'iotdb-source','database-name'='test1', 'table-name'='test1', 'mode.streaming'='true', 'source.inclusion'='data.insert') modify sink ('batch.enable'='true')");
+          "alter pipe a2b modify source('source' = 'iotdb-source','database-name'='test1', 'table-name'='test1', 'mode.streaming'='true', 'source.inclusion'='data.insert') modify sink ('batch.enable'='true')");
     } catch (final SQLException e) {
       fail(e.getMessage());
     }
@@ -447,10 +445,16 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
     Utils.insertData("test1", "test1", 100, 200, senderEnv);
 
     TestUtils.assertDataEventuallyOnEnv(
-            receiverEnv, Utils.getQuerySql("test"), Utils.generateHeaderResults(), Utils.generateExpectedResults(0, 100), "test");
+        receiverEnv,
+        Utils.getQuerySql("test"),
+        Utils.generateHeaderResults(),
+        Utils.generateExpectedResults(0, 100),
+        "test");
     TestUtils.assertDataEventuallyOnEnv(
-            receiverEnv, Utils.getQuerySql("test1"), Utils.generateHeaderResults(), Utils.generateExpectedResults(0, 200), "test1");
-
-
+        receiverEnv,
+        Utils.getQuerySql("test1"),
+        Utils.generateHeaderResults(),
+        Utils.generateExpectedResults(0, 200),
+        "test1");
   }
 }
