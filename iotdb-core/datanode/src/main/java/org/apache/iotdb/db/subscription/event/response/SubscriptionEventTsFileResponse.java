@@ -38,6 +38,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * The {@code SubscriptionEventTsFileResponse} class extends {@link
@@ -69,35 +70,7 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
       return;
     }
 
-    synchronized (this) {
-      final SubscriptionPollResponse previousResponse = peekLast();
-      if (Objects.isNull(previousResponse)) {
-        LOGGER.warn("broken invariant");
-        return;
-      }
-      final short responseType = previousResponse.getResponseType();
-      final SubscriptionPollPayload payload = previousResponse.getPayload();
-      if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
-        LOGGER.warn("unexpected response type: {}", responseType);
-        return;
-      }
-
-      switch (SubscriptionPollResponseType.valueOf(responseType)) {
-        case FILE_INIT:
-          offer(generateResponseWithPieceOrSealPayload(0));
-          break;
-        case FILE_PIECE:
-          offer(
-              generateResponseWithPieceOrSealPayload(
-                  ((FilePiecePayload) payload).getNextWritingOffset()));
-          break;
-        case FILE_SEAL:
-          // not need to prefetch
-          break;
-        default:
-          LOGGER.warn("unexpected message type: {}", responseType);
-      }
-    }
+    generateNextTsFileResponse().ifPresent(super::offer);
   }
 
   @Override
@@ -115,7 +88,9 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
 
   private void init() {
     if (!isEmpty()) {
-      LOGGER.warn("broken invariant");
+      LOGGER.warn(
+          "SubscriptionEventTsFileResponse {} is not empty when initializing (broken invariant)",
+          this);
       return;
     }
 
@@ -124,6 +99,39 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
             SubscriptionPollResponseType.FILE_INIT.getType(),
             new FileInitPayload(tsFile.getName()),
             commitContext));
+  }
+
+  private synchronized Optional<CachedSubscriptionPollResponse> generateNextTsFileResponse()
+      throws IOException {
+    final SubscriptionPollResponse previousResponse = peekLast();
+    if (Objects.isNull(previousResponse)) {
+      LOGGER.warn(
+          "SubscriptionEventTsFileResponse {} is empty when generating next response (broken invariant)",
+          this);
+      return Optional.empty();
+    }
+    final short responseType = previousResponse.getResponseType();
+    final SubscriptionPollPayload payload = previousResponse.getPayload();
+    if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
+      LOGGER.warn("unexpected response type: {}", responseType);
+      return Optional.empty();
+    }
+
+    switch (SubscriptionPollResponseType.valueOf(responseType)) {
+      case FILE_INIT:
+        return Optional.of(generateResponseWithPieceOrSealPayload(0));
+      case FILE_PIECE:
+        return Optional.of(
+            generateResponseWithPieceOrSealPayload(
+                ((FilePiecePayload) payload).getNextWritingOffset()));
+      case FILE_SEAL:
+        // not need to prefetch
+        break;
+      default:
+        LOGGER.warn("unexpected message type: {}", responseType);
+    }
+
+    return Optional.empty();
   }
 
   private @NonNull CachedSubscriptionPollResponse generateResponseWithPieceOrSealPayload(

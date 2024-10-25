@@ -96,7 +96,9 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
 
   private void init(final SubscriptionPipeTabletEventBatch batch) {
     if (!isEmpty()) {
-      LOGGER.warn("broken invariant");
+      LOGGER.warn(
+          "SubscriptionEventTabletResponse {} is not empty when initializing (broken invariant)",
+          this);
       return;
     }
 
@@ -105,7 +107,7 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
     offer(generateNextTabletResponse());
   }
 
-  private CachedSubscriptionPollResponse generateNextTabletResponse() {
+  private synchronized CachedSubscriptionPollResponse generateNextTabletResponse() {
     final List<Tablet> currentTablets = new ArrayList<>();
     final AtomicLong currentTotalBufferSize = new AtomicLong();
 
@@ -123,13 +125,13 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
                 Collections.singletonList(currentTablet), nextOffset.incrementAndGet()),
             commitContext);
       }
-
       if (currentTotalBufferSize.get() + bufferSize > READ_TABLET_BUFFER_SIZE) {
         final CachedSubscriptionPollResponse response =
             new CachedSubscriptionPollResponse(
                 SubscriptionPollResponseType.TABLETS.getType(),
                 new TabletsPayload(new ArrayList<>(currentTablets), nextOffset.incrementAndGet()),
                 commitContext);
+        tablets.add(currentTablet); // re-enqueue current tablet
         currentTablets.clear();
         currentTotalBufferSize.set(0);
         return response;

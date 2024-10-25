@@ -27,10 +27,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Deque;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentLinkedDeque;
 
 /**
  * The {@code SubscriptionEventExtendableResponse} class represents a subscription event response
@@ -44,11 +45,11 @@ public abstract class SubscriptionEventExtendableResponse
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubscriptionEventTabletResponse.class);
 
-  private final LinkedList<CachedSubscriptionPollResponse> responses;
+  private final Deque<CachedSubscriptionPollResponse> responses;
   protected volatile boolean hasNoMore = false;
 
   protected SubscriptionEventExtendableResponse() {
-    this.responses = new LinkedList<>();
+    this.responses = new ConcurrentLinkedDeque<>();
   }
 
   @Override
@@ -60,7 +61,9 @@ public abstract class SubscriptionEventExtendableResponse
   public void fetchNextResponse() throws IOException {
     prefetchRemainingResponses();
     if (Objects.isNull(poll())) {
-      LOGGER.warn("broken invariant");
+      LOGGER.warn(
+          "SubscriptionEventExtendableResponse {} is empty when fetching next response (broken invariant)",
+          this);
     }
   }
 
