@@ -329,6 +329,15 @@ public class DataNodeTableCache implements ITableCache {
     }
   }
 
+  public boolean isDatabaseExist(final String database) {
+    readWriteLock.readLock().lock();
+    try {
+      return databaseTableMap.containsKey(database);
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
   // Database shall not start with "root"
   public String tryGetInternColumnName(
       final @Nonnull String database,
