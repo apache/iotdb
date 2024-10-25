@@ -146,6 +146,9 @@ public class ModificationFile implements AutoCloseable {
     private ModEntry nextEntry;
 
     public ModIterator(long offset) throws IOException {
+      if (!file.exists()) {
+        return;
+      }
       this.inputStream = Files.newInputStream(file.toPath());
       long skipped = inputStream.skip(offset);
       if (skipped != offset) {
