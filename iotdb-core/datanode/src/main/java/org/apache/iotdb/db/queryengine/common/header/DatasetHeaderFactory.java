@@ -214,7 +214,7 @@ public class DatasetHeaderFactory {
   }
 
   public static DatasetHeader getShowCurrentTimestampHeader() {
-    return new DatasetHeader(ColumnHeaderConstant.showCurrentTimestampColumnHeaders, true);
+    return new DatasetHeader(ColumnHeaderConstant.SHOW_CURRENT_TIMESTAMP_COLUMN_HEADERS, true);
   }
 
   public static DatasetHeader getShowDBHeader() {

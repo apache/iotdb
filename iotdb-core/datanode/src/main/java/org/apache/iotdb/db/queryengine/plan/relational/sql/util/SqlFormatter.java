@@ -66,8 +66,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentSqlDialect;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentTimestamp;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
@@ -560,6 +562,18 @@ public final class SqlFormatter {
 
     @Override
     protected Void visitShowVariables(ShowVariables node, Integer context) {
+      builder.append(node.toString());
+      return null;
+    }
+
+    @Override
+    protected Void visitShowClusterId(ShowClusterId node, Integer context) {
+      builder.append(node.toString());
+      return null;
+    }
+
+    @Override
+    protected Void visitShowCurrentTimestamp(ShowCurrentTimestamp node, Integer context) {
       builder.append(node.toString());
       return null;
     }

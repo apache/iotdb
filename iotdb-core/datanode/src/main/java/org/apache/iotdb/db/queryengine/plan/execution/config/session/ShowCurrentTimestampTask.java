@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.session;
 
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
@@ -29,51 +27,22 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
-import org.apache.tsfile.common.conf.TSFileConfig;
-import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.utils.Binary;
 
-import javax.annotation.Nullable;
+import static org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySourceVisitor.getCurrentTimestampResult;
 
-import java.util.List;
-import java.util.stream.Collectors;
+public class ShowCurrentTimestampTask implements IConfigTask {
 
-public class ShowCurrentDatabaseTask implements IConfigTask {
-
-  @Nullable private final String database;
-
-  public ShowCurrentDatabaseTask(@Nullable String database) {
-    this.database = database;
-  }
-
-  public static void buildTsBlock(String database, SettableFuture<ConfigTaskResult> future) {
-    List<TSDataType> outputDataTypes =
-        ColumnHeaderConstant.SHOW_CURRENT_DATABASE_COLUMN_HEADERS.stream()
-            .map(ColumnHeader::getColumnType)
-            .collect(Collectors.toList());
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
-    tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-    if (database == null) {
-      tsBlockBuilder.getColumnBuilder(0).appendNull();
-    } else {
-      tsBlockBuilder
-          .getColumnBuilder(0)
-          .writeBinary(new Binary(database, TSFileConfig.STRING_CHARSET));
-    }
-
-    tsBlockBuilder.declarePosition();
-
+  public static void buildTsBlock(SettableFuture<ConfigTaskResult> future) {
     future.set(
         new ConfigTaskResult(
             TSStatusCode.SUCCESS_STATUS,
-            tsBlockBuilder.build(),
-            DatasetHeaderFactory.getShowCurrentDatabaseHeader()));
+            getCurrentTimestampResult(),
+            DatasetHeaderFactory.getShowCurrentTimestampHeader()));
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.showCurrentDatabase(database);
+    return configTaskExecutor.showCurrentTimestamp();
   }
 }

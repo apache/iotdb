@@ -542,9 +542,6 @@ public class ColumnHeaderConstant {
           new ColumnHeader(VIEW_TYPE, TSDataType.TEXT),
           new ColumnHeader(SOURCE, TSDataType.TEXT));
 
-  public static final List<ColumnHeader> showCurrentTimestampColumnHeaders =
-      ImmutableList.of(new ColumnHeader(CURRENT_TIMESTAMP, TSDataType.INT64));
-
   public static final List<ColumnHeader> showDBColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(DATABASE, TSDataType.TEXT),
@@ -592,4 +589,7 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> SHOW_CURRENT_SQL_DIALECT_COLUMN_HEADERS =
       ImmutableList.of(new ColumnHeader(CURRENT_SQL_DIALECT, TSDataType.STRING));
+
+  public static final List<ColumnHeader> SHOW_CURRENT_TIMESTAMP_COLUMN_HEADERS =
+      ImmutableList.of(new ColumnHeader(CURRENT_TIMESTAMP, TSDataType.TIMESTAMP));
 }

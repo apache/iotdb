@@ -271,18 +271,24 @@ public class StatementMemorySourceVisitor
         tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());
   }
 
+  @Override
   public StatementMemorySource visitShowCurrentTimestamp(
       ShowCurrentTimestampStatement showCurrentTimestampStatement,
       StatementMemorySourceContext context) {
+
+    return new StatementMemorySource(
+        getCurrentTimestampResult(), context.getAnalysis().getRespDatasetHeader());
+  }
+
+  public static TsBlock getCurrentTimestampResult() {
     List<TSDataType> outputDataTypes =
-        ColumnHeaderConstant.showCurrentTimestampColumnHeaders.stream()
+        ColumnHeaderConstant.SHOW_CURRENT_TIMESTAMP_COLUMN_HEADERS.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
     tsBlockBuilder.getColumnBuilder(0).writeLong(System.currentTimeMillis());
     tsBlockBuilder.declarePosition();
-    return new StatementMemorySource(
-        tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());
+    return tsBlockBuilder.build();
   }
 }

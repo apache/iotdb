@@ -574,4 +574,12 @@ public abstract class AstVisitor<R, C> {
   protected R visitShowVariables(ShowVariables node, C context) {
     return visitStatement(node, context);
   }
+
+  protected R visitShowClusterId(ShowClusterId node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitShowCurrentTimestamp(ShowCurrentTimestamp node, C context) {
+    return visitStatement(node, context);
+  }
 }

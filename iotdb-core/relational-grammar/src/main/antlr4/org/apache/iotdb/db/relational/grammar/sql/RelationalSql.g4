@@ -115,6 +115,7 @@ statement
     | showCurrentSqlDialectStatement
     | showCurrentUserStatement
     | showCurrentDatabaseStatement
+    | showCurrentTimestampStatement
 
     // auth Statement
 
@@ -493,6 +494,11 @@ showCurrentUserStatement
 showCurrentDatabaseStatement
     : SHOW CURRENT_DATABASE
     ;
+
+showCurrentTimestampStatement
+    : SHOW CURRENT_TIMESTAMP
+    ;
+
 
 
 

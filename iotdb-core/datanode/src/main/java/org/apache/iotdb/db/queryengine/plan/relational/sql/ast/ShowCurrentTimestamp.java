@@ -25,9 +25,9 @@ import javax.annotation.Nullable;
 
 import java.util.List;
 
-public class ShowVersion extends Statement {
+public class ShowCurrentTimestamp extends Statement {
 
-  public ShowVersion(@Nullable NodeLocation location) {
+  public ShowCurrentTimestamp(@Nullable NodeLocation location) {
     super(location);
   }
 
@@ -38,7 +38,7 @@ public class ShowVersion extends Statement {
 
   @Override
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitShowVersion(this, context);
+    return visitor.visitShowCurrentTimestamp(this, context);
   }
 
   @Override
@@ -61,6 +61,6 @@ public class ShowVersion extends Statement {
 
   @Override
   public String toString() {
-    return "SHOW VERSION";
+    return "SHOW CURRENT_TIMESTAMP";
   }
 }
