@@ -15,17 +15,16 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
 
-package org.apache.iotdb.db.queryengine.exception;
+package org.apache.iotdb.commons.exception;
 
-import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import static org.apache.iotdb.rpc.TSStatusCode.QUERY_TIMEOUT;
 
-import static org.apache.iotdb.rpc.TSStatusCode.QUERY_EXECUTION_MEMORY_NOT_ENOUGH;
+public class QueryTimeoutException extends IoTDBRuntimeException {
 
-public class MemoryNotEnoughException extends IoTDBRuntimeException {
-
-  public MemoryNotEnoughException(String message) {
-    super(message, QUERY_EXECUTION_MEMORY_NOT_ENOUGH.getStatusCode());
+  public QueryTimeoutException() {
+    super("Query execution is time out", QUERY_TIMEOUT.getStatusCode(), true);
   }
 }
