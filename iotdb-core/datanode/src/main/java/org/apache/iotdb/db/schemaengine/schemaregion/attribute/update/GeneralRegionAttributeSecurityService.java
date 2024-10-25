@@ -102,7 +102,7 @@ public class GeneralRegionAttributeSecurityService implements IService {
 
   public void stopBroadcast(final ISchemaRegion schemaRegion) {
     regionLeaders.remove(schemaRegion);
-    regionId2DatabaseMap.remove(schemaRegion.getSchemaRegionId());
+    // Reserve the database info for concurrency simplicity
   }
 
   public void notifyBroadCast() {
