@@ -402,7 +402,7 @@ showAINodesStatement
     ;
 
 showClusterIdStatement
-    : SHOW CLUSTERID
+    : SHOW (CLUSTERID | CLUSTER_ID)
     ;
 
 showRegionIdStatement
@@ -955,6 +955,7 @@ CHARSET: 'CHARSET';
 CLEAR: 'CLEAR';
 CLUSTER: 'CLUSTER';
 CLUSTERID: 'CLUSTERID';
+CLUSTER_ID: 'CLUSTER_ID';
 COLUMN: 'COLUMN';
 COLUMNS: 'COLUMNS';
 COMMENT: 'COMMENT';
