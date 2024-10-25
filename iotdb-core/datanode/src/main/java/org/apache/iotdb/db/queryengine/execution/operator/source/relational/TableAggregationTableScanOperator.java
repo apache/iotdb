@@ -846,18 +846,19 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(seriesScanUtil)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId)
+            + tableAggregators.stream().mapToLong(TableAggregator::getEstimatedSize).sum()
         + (resultTsBlockBuilder == null ? 0 : resultTsBlockBuilder.getRetainedSizeInBytes())
         + RamUsageEstimator.sizeOfCollection(deviceEntries);
   }
 
   @Override
   public long calculateMaxPeekMemory() {
-    return 0;
+    return cachedRawDataSize + maxReturnSize;
   }
 
   @Override
   public long calculateMaxReturnSize() {
-    return 0;
+    return maxReturnSize;
   }
 
   @Override
