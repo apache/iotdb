@@ -21,10 +21,11 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -75,24 +76,18 @@ public enum TableBuiltinAggregationFunction {
     return NATIVE_FUNCTION_NAMES;
   }
 
-  /**
-   * @return if the Aggregation can use statistics to optimize
-   */
-  public static boolean canUseStatistics(String name, boolean withTime) {
+  public static Type getIntermediateType(String name, List<Type> originalArgumentTypes) {
     final String functionName = name.toLowerCase();
     switch (functionName) {
-      case "sum":
       case "count":
+        return INT64;
+      case "sum":
+        return DOUBLE;
       case "avg":
-      case "extreme":
-      case "max":
-      case "min":
       case "first":
-      case "last":
-        return true;
       case "first_by":
+      case "last":
       case "last_by":
-        return withTime;
       case "mode":
       case "max_by":
       case "min_by":
@@ -102,24 +97,13 @@ public enum TableBuiltinAggregationFunction {
       case "variance":
       case "var_pop":
       case "var_samp":
-        return false;
+        return RowType.anonymous(Collections.emptyList());
+      case "extreme":
+      case "max":
+      case "min":
+        return originalArgumentTypes.get(0);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + name);
-    }
-  }
-
-  public static List<Type> getIntermediateTypes(String name, List<Type> originalArgumentTypes) {
-    if (COUNT.functionName.equalsIgnoreCase(name)) {
-      return ImmutableList.of(INT64);
-    } else if (SUM.functionName.equalsIgnoreCase(name)) {
-      return ImmutableList.of(DOUBLE);
-    } else if (AVG.functionName.equalsIgnoreCase(name)) {
-      return ImmutableList.of(DOUBLE, INT64);
-    } else if (LAST.functionName.equalsIgnoreCase(name)) {
-      return ImmutableList.of(originalArgumentTypes.get(0), INT64);
-    } else {
-      // TODO(beyyes) consider other aggregations which changed the result type
-      return ImmutableList.copyOf(originalArgumentTypes);
     }
   }
 

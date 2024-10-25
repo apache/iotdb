@@ -129,6 +129,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
@@ -142,8 +143,9 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.common.type.BinaryType;
 import org.apache.tsfile.read.common.type.BlobType;
-import org.apache.tsfile.read.common.type.RowType;
+import org.apache.tsfile.read.common.type.BooleanType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
@@ -186,10 +188,16 @@ import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableBuiltinAggregationFunction.getAggregationTypeByFuncName;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.AVG;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.EXTREME;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_BY_AGGREGATION;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.MAX;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.MIN;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.SUM;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
 /** This Visitor is responsible for transferring Table PlanNode Tree to Table Operator Tree. */
@@ -1360,26 +1368,21 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       TypeProvider typeProvider,
       boolean scanAscending) {
     List<Integer> argumentChannels = new ArrayList<>();
-    List<TSDataType> argumentTypes = new ArrayList<>();
     for (Expression argument : aggregation.getArguments()) {
       Symbol argumentSymbol = Symbol.from(argument);
       argumentChannels.add(childLayout.get(argumentSymbol));
-
-      // get argument types
-      Type type = typeProvider.getTableModelType(argumentSymbol);
-      if (type instanceof RowType) {
-        type.getTypeParameters().forEach(subType -> argumentTypes.add(getTSDataType(subType)));
-      } else {
-        argumentTypes.add(getTSDataType(type));
-      }
     }
 
     String functionName = aggregation.getResolvedFunction().getSignature().getName();
+    List<TSDataType> originalArgumentTypes =
+        aggregation.getResolvedFunction().getSignature().getArgumentTypes().stream()
+            .map(InternalTypeManager::getTSDataType)
+            .collect(Collectors.toList());
     TableAccumulator accumulator =
         createAccumulator(
             functionName,
             getAggregationTypeByFuncName(functionName),
-            argumentTypes,
+            originalArgumentTypes,
             aggregation.getArguments(),
             Collections.emptyMap(),
             scanAscending);
@@ -1446,26 +1449,21 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       AggregationNode.Step step,
       TypeProvider typeProvider) {
     List<Integer> argumentChannels = new ArrayList<>();
-    List<TSDataType> argumentTypes = new ArrayList<>();
     for (Expression argument : aggregation.getArguments()) {
       Symbol argumentSymbol = Symbol.from(argument);
       argumentChannels.add(childLayout.get(argumentSymbol));
-
-      // get argument types
-      Type type = typeProvider.getTableModelType(argumentSymbol);
-      if (type instanceof RowType) {
-        type.getTypeParameters().forEach(subType -> argumentTypes.add(getTSDataType(subType)));
-      } else {
-        argumentTypes.add(getTSDataType(type));
-      }
     }
 
     String functionName = aggregation.getResolvedFunction().getSignature().getName();
+    List<TSDataType> originalArgumentTypes =
+        aggregation.getResolvedFunction().getSignature().getArgumentTypes().stream()
+            .map(InternalTypeManager::getTSDataType)
+            .collect(Collectors.toList());
     GroupedAccumulator accumulator =
         createGroupedAccumulator(
             functionName,
             getAggregationTypeByFuncName(functionName),
-            argumentTypes,
+            originalArgumentTypes,
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -1677,31 +1675,48 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
       AggregationNode.Aggregation aggregation = entry.getValue();
       String funcName = aggregation.getResolvedFunction().getSignature().getName();
+      Symbol argument = Symbol.from(aggregation.getArguments().get(0));
+      Type argumentType = node.getAssignments().get(argument).getType();
 
-      if (FIRST_AGGREGATION.equals(funcName) || FIRST_BY_AGGREGATION.equals(funcName)) {
-        ascendingCount++;
-      }
-      if (LAST_AGGREGATION.equals(funcName) || LAST_BY_AGGREGATION.equals(funcName)) {
-        descendingCount++;
-      }
+      switch (funcName) {
+        case COUNT:
+        case AVG:
+        case SUM:
+        case EXTREME:
+          break;
+        case MAX:
+        case MIN:
+          if (BlobType.BLOB.equals(argumentType)
+              || BinaryType.TEXT.equals(argumentType)
+              || BooleanType.BOOLEAN.equals(argumentType)) {
+            canUseStatistic = false;
+          }
+          break;
+        case FIRST_AGGREGATION:
+        case LAST_AGGREGATION:
+        case LAST_BY_AGGREGATION:
+        case FIRST_BY_AGGREGATION:
+          if (FIRST_AGGREGATION.equals(funcName) || FIRST_BY_AGGREGATION.equals(funcName)) {
+            ascendingCount++;
+          } else {
+            descendingCount++;
+          }
 
-      // first/last/first_by/last_by aggregation with BLOB type can not use statistics
-      if (FIRST_AGGREGATION.equals(funcName)
-          || LAST_AGGREGATION.equals(funcName)
-          || LAST_BY_AGGREGATION.equals(funcName)
-          || FIRST_BY_AGGREGATION.equals(funcName)) {
-        Symbol argument = Symbol.from(aggregation.getArguments().get(0));
-        if (!node.getAssignments().containsKey(argument)
-            || BlobType.BLOB.equals(node.getAssignments().get(argument).getType())) {
+          // first/last/first_by/last_by aggregation with BLOB type can not use statistics
+          if (BlobType.BLOB.equals(argumentType)) {
+            canUseStatistic = false;
+            break;
+          }
+
+          // only last_by(time, x) or last_by(x,time) can use statistic
+          if ((LAST_BY_AGGREGATION.equals(funcName) || FIRST_BY_AGGREGATION.equals(funcName))
+              && !isTimeColumn(aggregation.getArguments().get(0))
+              && !isTimeColumn(aggregation.getArguments().get(1))) {
+            canUseStatistic = false;
+          }
+          break;
+        default:
           canUseStatistic = false;
-        }
-
-        // only last_by(time, x) or last_by(x,time) can use statistic
-        if ((LAST_BY_AGGREGATION.equals(funcName) || FIRST_BY_AGGREGATION.equals(funcName))
-            && !isTimeColumn(aggregation.getArguments().get(0))
-            && !isTimeColumn(aggregation.getArguments().get(1))) {
-          canUseStatistic = false;
-        }
       }
     }
 

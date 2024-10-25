@@ -107,7 +107,7 @@ public class FlatGroupByHash implements GroupByHash {
       return;
     }
 
-    currentPageSizeInBytes = Arrays.stream(page).map(Column::getRetainedSizeInBytes).count();
+    currentPageSizeInBytes = Arrays.stream(page).mapToLong(Column::getRetainedSizeInBytes).sum();
 
     Column[] columns = getColumnsFromPage(page);
     addNonDictionaryPageWork(columns);
@@ -119,7 +119,7 @@ public class FlatGroupByHash implements GroupByHash {
       return new int[0];
     }
 
-    currentPageSizeInBytes = Arrays.stream(page).map(Column::getRetainedSizeInBytes).count();
+    currentPageSizeInBytes = Arrays.stream(page).mapToLong(Column::getRetainedSizeInBytes).sum();
     Column[] columns = getColumnsFromPage(page);
 
     return getNonDictionaryPageWork(columns);

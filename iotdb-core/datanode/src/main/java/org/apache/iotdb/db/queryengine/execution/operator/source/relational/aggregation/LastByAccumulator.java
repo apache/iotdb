@@ -33,11 +33,8 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Utils.serializeTimeValue;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_BY_AGGREGATION;
 
 public class LastByAccumulator implements TableAccumulator {
@@ -185,7 +182,8 @@ public class LastByAccumulator implements TableAccumulator {
     if (!initResult) {
       columnBuilder.appendNull();
     } else {
-      columnBuilder.writeBinary(new Binary(serializeTimeWithValue()));
+      columnBuilder.writeBinary(
+          new Binary(serializeTimeValue(xDataType, yLastTime, xIsNull, xResult)));
     }
   }
 
@@ -308,52 +306,6 @@ public class LastByAccumulator implements TableAccumulator {
     xIsNull = true;
     this.yLastTime = Long.MIN_VALUE;
     this.xResult.reset();
-  }
-
-  private byte[] serializeTimeWithValue() {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    try {
-      dataOutputStream.writeLong(yLastTime);
-      dataOutputStream.writeBoolean(xIsNull);
-      if (!xIsNull) {
-        switch (xDataType) {
-          case INT32:
-          case DATE:
-            dataOutputStream.writeInt(xResult.getInt());
-            break;
-          case INT64:
-          case TIMESTAMP:
-            dataOutputStream.writeLong(xResult.getLong());
-            break;
-          case FLOAT:
-            dataOutputStream.writeFloat(xResult.getFloat());
-            break;
-          case DOUBLE:
-            dataOutputStream.writeDouble(xResult.getDouble());
-            break;
-          case TEXT:
-          case BLOB:
-          case STRING:
-            dataOutputStream.writeInt(xResult.getBinary().getValues().length);
-            dataOutputStream.write(xResult.getBinary().getValues());
-            break;
-          case BOOLEAN:
-            dataOutputStream.writeBoolean(xResult.getBoolean());
-            break;
-          default:
-            throw new UnSupportedDataTypeException(
-                String.format(
-                    "Unsupported data type: %s in aggregation %s", xDataType, LAST_BY_AGGREGATION));
-        }
-      }
-    } catch (IOException e) {
-      throw new UnsupportedOperationException(
-          String.format(
-              "Failed to serialize intermediate result for Accumulator %s, errorMsg: %s.",
-              LAST_BY_AGGREGATION, e.getMessage()));
-    }
-    return byteArrayOutputStream.toByteArray();
   }
 
   // TODO can add last position optimization if last position is null ?

@@ -52,4 +52,9 @@ public class GroupedMinByAccumulator extends GroupedMaxMinByBaseAccumulator {
   protected boolean check(Binary yValue, Binary yExtremeValue) {
     return yValue.compareTo(yExtremeValue) < 0;
   }
+
+  @Override
+  protected boolean check(boolean yValue, boolean yExtremeValue) {
+    return !yValue;
+  }
 }

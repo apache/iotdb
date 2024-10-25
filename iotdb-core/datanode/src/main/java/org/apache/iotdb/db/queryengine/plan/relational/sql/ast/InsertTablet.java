@@ -78,11 +78,14 @@ public class InsertTablet extends WrappedInsertStatement {
     final InsertTabletStatement insertTabletStatement = getInnerTreeStatement();
     List<Object[]> result = new ArrayList<>(insertTabletStatement.getRowCount());
     final List<Integer> attrColumnIndices = insertTabletStatement.getAttrColumnIndices();
-    for (int i = 0; i < insertTabletStatement.getRowCount(); i++) {
+    for (int rowIndex = 0; rowIndex < insertTabletStatement.getRowCount(); rowIndex++) {
       Object[] attrValues = new Object[attrColumnIndices.size()];
-      for (int j = 0; j < attrColumnIndices.size(); j++) {
-        final int columnIndex = attrColumnIndices.get(j);
-        attrValues[j] = ((Object[]) insertTabletStatement.getColumns()[columnIndex])[i];
+      for (int attrColNum = 0; attrColNum < attrColumnIndices.size(); attrColNum++) {
+        final int columnIndex = attrColumnIndices.get(attrColNum);
+        if (!insertTabletStatement.isNull(rowIndex, columnIndex)) {
+          attrValues[attrColNum] =
+              ((Object[]) insertTabletStatement.getColumns()[columnIndex])[rowIndex];
+        }
       }
       result.add(attrValues);
     }
