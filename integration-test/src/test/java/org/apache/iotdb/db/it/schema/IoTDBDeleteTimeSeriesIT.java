@@ -241,6 +241,19 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
   }
 
   @Test
+  public void deleteTimeSeriesAndInvalidationTest() throws Exception {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("insert into root.sg.d1 (c1, c2) values (1, 1)");
+      statement.execute("delete timeSeries root.sg.d1.**");
+      try (final ResultSet resultSet = statement.executeQuery("select c1, c2 from root.sg.d1")) {
+        Assert.assertEquals(1, resultSet.getMetaData().getColumnCount());
+        Assert.assertFalse(resultSet.next());
+      }
+    }
+  }
+
+  @Test
   public void deleteTimeSeriesCrossSchemaRegionTest() throws Exception {
     String[] retArray1 = new String[] {"4,4,4,4"};
 

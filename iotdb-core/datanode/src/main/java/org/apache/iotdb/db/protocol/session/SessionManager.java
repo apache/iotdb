@@ -387,7 +387,7 @@ public class SessionManager implements SessionManagerMBean {
     return new SessionInfo(
         session.getId(),
         session.getUsername(),
-        session.getZoneId(),
+        ZoneId.systemDefault(),
         session.getClientVersion(),
         session.getDatabaseName(),
         IClientSession.SqlDialect.TABLE);
@@ -397,7 +397,7 @@ public class SessionManager implements SessionManagerMBean {
     return new SessionInfo(
         session.getId(),
         session.getUsername(),
-        session.getZoneId(),
+        ZoneId.systemDefault(),
         session.getClientVersion(),
         databaseName,
         IClientSession.SqlDialect.TABLE);

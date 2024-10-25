@@ -34,6 +34,8 @@ import org.apache.iotdb.confignode.persistence.schema.mnode.info.ConfigTableInfo
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
+
 public class ConfigTableNode implements IConfigMNode {
 
   private IConfigMNode parent;
@@ -197,7 +199,7 @@ public class ConfigTableNode implements IConfigMNode {
 
   @Override
   public int getSchemaTemplateId() {
-    throw new UnsupportedOperationException();
+    return NON_TEMPLATE;
   }
 
   @Override
