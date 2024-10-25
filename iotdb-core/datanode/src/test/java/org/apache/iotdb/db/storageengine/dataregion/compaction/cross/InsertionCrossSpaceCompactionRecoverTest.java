@@ -31,7 +31,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.Rew
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossSpaceCompactionCandidate;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
@@ -235,8 +235,8 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
           new File(sourceTsFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath());
       if (unseqResource1.newModFileExists()) {
         Files.createLink(
-            new File(targetTsFile.getPath() + ModificationFileV1.FILE_SUFFIX).toPath(),
-            new File(sourceTsFile.getPath() + ModificationFileV1.FILE_SUFFIX).toPath());
+            ModificationFile.getNormalMods(targetTsFile).toPath(),
+            ModificationFile.getNormalMods(sourceTsFile).toPath());
       }
     }
 
@@ -329,8 +329,8 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
           new File(sourceTsFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath());
       if (unseqResource1.newModFileExists()) {
         Files.createLink(
-            new File(targetTsFile.getPath() + ModificationFileV1.FILE_SUFFIX).toPath(),
-            new File(sourceTsFile.getPath() + ModificationFileV1.FILE_SUFFIX).toPath());
+            ModificationFile.getNormalMods(targetTsFile).toPath(),
+            ModificationFile.getNormalMods(sourceTsFile).toPath());
       }
     }
 

@@ -25,10 +25,9 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -167,15 +166,14 @@ public class TsFileAndModSettleToolTest {
   }
 
   public void createlModificationFile(String timeseriesPath) {
-    String modFilePath = path + ModificationFileV1.FILE_SUFFIX;
-    ModificationFileV1 modificationFile = new ModificationFileV1(modFilePath);
-    List<Modification> mods = new ArrayList<>();
+    ModificationFile modificationFile = new ModificationFile(new File(path));
+    List<ModEntry> mods = new ArrayList<>();
     try {
       MeasurementPath partialPath = new MeasurementPath(timeseriesPath);
-      mods.add(new Deletion(partialPath, 10000000, 1500, 10000));
-      mods.add(new Deletion(partialPath, 10000000, 20000, 30000));
-      mods.add(new Deletion(partialPath, 10000000, 45000, 50000));
-      for (Modification mod : mods) {
+      mods.add(new TreeDeletionEntry(partialPath, 1500, 10000));
+      mods.add(new TreeDeletionEntry(partialPath, 20000, 30000));
+      mods.add(new TreeDeletionEntry(partialPath, 45000, 50000));
+      for (ModEntry mod : mods) {
         modificationFile.write(mod);
       }
       modificationFile.close();

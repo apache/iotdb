@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -37,22 +38,35 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
 
 import static java.nio.file.StandardOpenOption.APPEND;
 import static java.nio.file.StandardOpenOption.CREATE;
+import static org.apache.iotdb.db.utils.ModificationUtils.sortAndMerge;
 
 public class ModificationFile implements AutoCloseable {
 
   public static final String FILE_SUFFIX = ".mods2";
   public static final String COMPACTION_FILE_SUFFIX = ".compaction.mods2";
+  public static final String COMPACT_SUFFIX = ".settle";
   private static final Logger LOGGER = LoggerFactory.getLogger(ModificationFile.class);
 
   private final File file;
   private FileChannel channel;
   private OutputStream fileOutputStream;
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+
+  private static final long COMPACT_THRESHOLD = 1024 * 1024L;
+  private boolean hasCompacted = false;
+
+  public ModificationFile(String filePath) {
+    this.file = new File(filePath);
+  }
 
   public ModificationFile(File file) {
     this.file = file;
@@ -226,5 +240,45 @@ public class ModificationFile implements AutoCloseable {
   @Override
   public String toString() {
     return "ModificationFile{" + "file=" + file + '}';
+  }
+
+  public void compact() {
+    long originFileSize = getSize();
+    if (originFileSize > COMPACT_THRESHOLD && !hasCompacted) {
+      try {
+        Map<PartialPath, List<ModEntry>> pathModificationMap =
+            getAllMods().stream().collect(Collectors.groupingBy(ModEntry::keyOfPatternTree));
+        String newModsFileName = getFile().getPath() + COMPACT_SUFFIX;
+        List<ModEntry> allSettledModifications = new ArrayList<>();
+        try (ModificationFile compactedModificationFile = new ModificationFile(newModsFileName)) {
+          Set<Entry<PartialPath, List<ModEntry>>> modificationsEntrySet =
+              pathModificationMap.entrySet();
+          for (Map.Entry<PartialPath, List<ModEntry>> modificationEntry : modificationsEntrySet) {
+            List<ModEntry> settledModifications = sortAndMerge(modificationEntry.getValue());
+            for (ModEntry settledModification : settledModifications) {
+              compactedModificationFile.write(settledModification);
+            }
+            allSettledModifications.addAll(settledModifications);
+          }
+        } catch (IOException e) {
+          LOGGER.error("compact mods file exception of {}", file, e);
+        }
+        // remove origin mods file
+        this.remove();
+        // rename new mods file to origin name
+        Files.move(new File(newModsFileName).toPath(), file.toPath());
+        LOGGER.info("{} settle successful", file);
+
+        if (getSize() > COMPACT_THRESHOLD) {
+          LOGGER.warn(
+              "After the mod file is settled, the file size is still greater than 1M,the size of the file before settle is {},after settled the file size is {}",
+              originFileSize,
+              getSize());
+        }
+      } catch (IOException e) {
+        LOGGER.error("remove origin file or rename new mods file error.", e);
+      }
+      hasCompacted = true;
+    }
   }
 }

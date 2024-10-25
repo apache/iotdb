@@ -40,7 +40,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -775,8 +775,8 @@ public class AbstractCompactionTest {
     file.renameTo(new File(newFileName + TsFileResource.RESOURCE_SUFFIX));
 
     // rename mods file
-    file = new File(resource.getTsFilePath() + ModificationFileV1.FILE_SUFFIX);
-    file.renameTo(new File(newFileName + ModificationFileV1.FILE_SUFFIX));
+    file = ModificationFile.getNormalMods(resource.getTsFile());
+    file.renameTo(ModificationFile.getNormalMods(new File(newFileName)));
   }
 
   protected TsFileResource generateSingleAlignedSeriesFile(

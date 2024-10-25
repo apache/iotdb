@@ -25,7 +25,7 @@ import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -43,7 +43,7 @@ public class CompactionClearUtils {
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     deleteAllFilesInOneDirBySuffix("target", TsFileConstant.TSFILE_SUFFIX);
     deleteAllFilesInOneDirBySuffix("target", TsFileResource.RESOURCE_SUFFIX);
-    deleteAllFilesInOneDirBySuffix("target", ModificationFileV1.FILE_SUFFIX);
+    deleteAllFilesInOneDirBySuffix("target", ModificationFile.FILE_SUFFIX);
     deleteAllFilesInOneDirBySuffix("target", IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX);
     deleteAllFilesInOneDirBySuffix("target", IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX);
     deleteAllFilesInOneDirBySuffix("target", CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);

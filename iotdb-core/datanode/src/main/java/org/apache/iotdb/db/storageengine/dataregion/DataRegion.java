@@ -3222,7 +3222,7 @@ public class DataRegion implements IDataRegionForQuery {
               e.getMessage()));
     }
 
-    loadModFile(tsFileToLoad, targetFile, deleteOriginFile);
+    loadModFile(tsFileToLoad, targetFile, deleteOriginFile, tsFileResource);
 
     // Listen before the tsFile is added into tsFile manager to avoid it being compacted
     PipeInsertionDataNodeListener.getInstance()
@@ -3236,15 +3236,23 @@ public class DataRegion implements IDataRegionForQuery {
     return true;
   }
 
-  private void loadModFile(File tsFileToLoad, File targetTsFile, boolean deleteOriginFile)
+  private void loadModFile(
+      File tsFileToLoad, File targetTsFile, boolean deleteOriginFile, TsFileResource tsFileResource)
       throws LoadFileException {
     final File oldModFileToLoad = ModificationFileV1.getNormalMods(tsFileToLoad);
-    final File oldTargetModFile = ModificationFileV1.getNormalMods(targetTsFile);
-    moveModFile(oldModFileToLoad, oldTargetModFile, deleteOriginFile);
-
     final File newModFileToLoad = ModificationFile.getNormalMods(tsFileToLoad);
-    final File newTargetModFile = ModificationFile.getNormalMods(targetTsFile);
-    moveModFile(newModFileToLoad, newTargetModFile, deleteOriginFile);
+    if (oldModFileToLoad.exists()) {
+      final File oldTargetModFile = ModificationFileV1.getNormalMods(targetTsFile);
+      moveModFile(oldModFileToLoad, oldTargetModFile, deleteOriginFile);
+      try {
+        tsFileResource.upgradeModFile(upgradeModFileThreadPool);
+      } catch (IOException e) {
+        throw new LoadFileException(e);
+      }
+    } else if (newModFileToLoad.exists()) {
+      final File newTargetModFile = ModificationFile.getNormalMods(targetTsFile);
+      moveModFile(newModFileToLoad, newTargetModFile, deleteOriginFile);
+    }
   }
 
   @SuppressWarnings("java:S2139")

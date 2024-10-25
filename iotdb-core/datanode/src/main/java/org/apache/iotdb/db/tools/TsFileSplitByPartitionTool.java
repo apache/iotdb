@@ -22,7 +22,6 @@ package org.apache.iotdb.db.tools;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 
@@ -103,7 +102,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
     String file = oldTsFile.getAbsolutePath();
     reader = new TsFileSequenceReader(file);
     partitionWriterMap = new HashMap<>();
-    if (FSFactoryProducer.getFSFactory().getFile(file + ModificationFileV1.FILE_SUFFIX).exists()) {
+    if (resourceToBeRewritten.newModFileExists()) {
       oldModification = resourceToBeRewritten.getAllModEntries();
       modsIterator = oldModification.iterator();
     }

@@ -709,10 +709,10 @@ public class TsFileResource implements PersistentResource {
     fsFactory.moveFile(
         fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX),
         fsFactory.getFile(targetDir, file.getName() + RESOURCE_SUFFIX));
-    File originModFile = fsFactory.getFile(file.getPath() + ModificationFileV1.FILE_SUFFIX);
-    if (originModFile.exists()) {
+
+    if (newModFileExists()) {
       fsFactory.moveFile(
-          originModFile,
+          getNewModFile().getFile(),
           fsFactory.getFile(targetDir, file.getName() + ModificationFileV1.FILE_SUFFIX));
     }
   }
@@ -1319,6 +1319,7 @@ public class TsFileResource implements PersistentResource {
     }
   }
 
+  @SuppressWarnings({"java:S4042", "java:S899", "ResultOfMethodCallIgnored"})
   public void upgradeModFile(ExecutorService upgradeModFileThreadPool) throws IOException {
     ModificationFileV1 oldModFile = ModificationFileV1.getNormalMods(this);
     if (!oldModFile.exists()) {
@@ -1329,6 +1330,7 @@ public class TsFileResource implements PersistentResource {
         upgradeModFileThreadPool.submit(
             () -> {
               ModificationFile newMFile = ModificationFile.getNormalMods(this);
+              newMFile.getFile().delete();
               try {
                 for (Modification oldMod : oldModFile.getModificationsIter()) {
                   newMFile.write(new TreeDeletionEntry((Deletion) oldMod));

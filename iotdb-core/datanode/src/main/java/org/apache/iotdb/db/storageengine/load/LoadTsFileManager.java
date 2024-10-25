@@ -39,7 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePie
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadAgent;
@@ -362,7 +362,7 @@ public class LoadTsFileManager {
     private final File taskDir;
     private Map<DataPartitionInfo, TsFileIOWriter> dataPartition2Writer;
     private Map<DataPartitionInfo, IDeviceID> dataPartition2LastDevice;
-    private Map<DataPartitionInfo, ModificationFileV1> dataPartition2ModificationFile;
+    private Map<DataPartitionInfo, ModificationFile> dataPartition2ModificationFile;
     private boolean isClosed;
 
     private TsFileWriterManager(File taskDir) {
@@ -428,9 +428,7 @@ public class LoadTsFileManager {
         if (partitionInfo.getDataRegion().equals(dataRegion)) {
           final TsFileIOWriter writer = entry.getValue();
           if (!dataPartition2ModificationFile.containsKey(partitionInfo)) {
-            File newModificationFile =
-                SystemFileFactory.INSTANCE.getFile(
-                    writer.getFile().getAbsolutePath() + ModificationFileV1.FILE_SUFFIX);
+            File newModificationFile = ModificationFile.getNormalMods(writer.getFile());
             if (!newModificationFile.createNewFile()) {
               LOGGER.error(
                   "Can not create ModificationFile {} for writing.", newModificationFile.getPath());
@@ -438,11 +436,11 @@ public class LoadTsFileManager {
             }
 
             dataPartition2ModificationFile.put(
-                partitionInfo, new ModificationFileV1(newModificationFile.getAbsolutePath()));
+                partitionInfo, new ModificationFile(newModificationFile.getAbsolutePath()));
           }
-          ModificationFileV1 modificationFile = dataPartition2ModificationFile.get(partitionInfo);
+          ModificationFile modificationFile = dataPartition2ModificationFile.get(partitionInfo);
           writer.flush();
-          deletionData.writeToModificationFile(modificationFile, writer.getFile().length());
+          deletionData.writeToModificationFile(modificationFile);
         }
       }
     }
@@ -452,7 +450,7 @@ public class LoadTsFileManager {
       if (isClosed) {
         throw new IOException(String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
       }
-      for (Map.Entry<DataPartitionInfo, ModificationFileV1> entry :
+      for (Map.Entry<DataPartitionInfo, ModificationFile> entry :
           dataPartition2ModificationFile.entrySet()) {
         entry.getValue().close();
       }
@@ -512,17 +510,17 @@ public class LoadTsFileManager {
         }
       }
       if (dataPartition2ModificationFile != null) {
-        for (Map.Entry<DataPartitionInfo, ModificationFileV1> entry :
+        for (Map.Entry<DataPartitionInfo, ModificationFile> entry :
             dataPartition2ModificationFile.entrySet()) {
           try {
-            final ModificationFileV1 modificationFile = entry.getValue();
+            final ModificationFile modificationFile = entry.getValue();
             modificationFile.close();
-            final Path modificationFilePath = new File(modificationFile.getFilePath()).toPath();
+            final Path modificationFilePath = modificationFile.getFile().toPath();
             if (Files.exists(modificationFilePath)) {
               Files.delete(modificationFilePath);
             }
           } catch (IOException e) {
-            LOGGER.warn("Close ModificationFile {} error.", entry.getValue().getFilePath(), e);
+            LOGGER.warn("Close ModificationFile {} error.", entry.getValue().getFile(), e);
           }
         }
       }
