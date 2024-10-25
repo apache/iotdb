@@ -616,6 +616,17 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         DATABASE_NAME);
 
     // TODO select count(*),count(t1) from (select avg(num+1) as t1 from table0) where time < 0
+
+    expectedHeader = buildHeaders(1);
+    retArray =
+        new String[] {
+          "10,",
+        };
+    tableResultSetEqualTest(
+        "select count(*) from (select device from table0 group by device, level)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
   }
 
   @Test
