@@ -1291,6 +1291,31 @@ public class IoTDBMultiIDsWithAttributesTableIT {
           "16.0,10.7,16.0,4.0,3.3,4.0,50.0,33.3,50.0,7.1,5.8,7.1,null,0.0,null,null,0.0,null,3,",
         };
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    sql =
+        "select \n"
+            + "round(variance(num),1),round(var_pop(num),1),round(var_samp(num),1),round(stddev(num),1),round(stddev_pop(num),1),round(stddev_samp(num),1),\n"
+            + "round(variance(floatnum),1),round(var_pop(floatnum),1),round(var_samp(floatnum),1),round(stddev(floatnum),1),round(stddev_pop(floatnum),1),round(stddev_samp(floatnum),1),\n"
+            + "round(variance(doublenum),1),round(var_pop(doublenum),1),round(var_samp(doublenum),1),round(stddev(doublenum),1),round(stddev_pop(doublenum),1),round(stddev_samp(doublenum),1), count(num+1) from table0 group by device";
+    retArray =
+        new String[] {
+          "20.0,18.7,20.0,4.5,4.3,4.5,1391642.5,1298866.4,1391642.5,1179.7,1139.7,1179.7,0.1,0.1,0.1,0.4,0.2,0.4,15,",
+          "20.0,18.7,20.0,4.5,4.3,4.5,1391642.5,1298866.4,1391642.5,1179.7,1139.7,1179.7,0.0,0.0,0.0,0.2,0.2,0.2,15,"
+        };
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = buildHeaders(18);
+    sql =
+        "select \n"
+            + "round(variance(num),1),round(var_pop(num),1),round(var_samp(num),1),round(stddev(num),1),round(stddev_pop(num),1),round(stddev_samp(num),1),\n"
+            + "round(variance(floatnum),1),round(var_pop(floatnum),1),round(var_samp(floatnum),1),round(stddev(floatnum),1),round(stddev_pop(floatnum),1),round(stddev_samp(floatnum),1),\n"
+            + "round(variance(doublenum),1),round(var_pop(doublenum),1),round(var_samp(doublenum),1),round(stddev(doublenum),1),round(stddev_pop(doublenum),1),round(stddev_samp(doublenum),1) from table0 group by device";
+    retArray =
+        new String[] {
+          "20.0,18.7,20.0,4.5,4.3,4.5,1391642.5,1298866.4,1391642.5,1179.7,1139.7,1179.7,0.1,0.1,0.1,0.4,0.2,0.4,",
+          "20.0,18.7,20.0,4.5,4.3,4.5,1391642.5,1298866.4,1391642.5,1179.7,1139.7,1179.7,0.0,0.0,0.0,0.2,0.2,0.2,"
+        };
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
   // ==================================================================

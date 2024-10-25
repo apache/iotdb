@@ -59,9 +59,6 @@ public final class MapBigArray {
    * @param index a position in this big array.
    */
   public void set(long index, HashMap<TsPrimitiveType, Long> value) {
-    if (value == null) {
-      this.set(index, new HashMap<>());
-    }
     updateRetainedSize(index, value);
     array.set(index, value);
   }
