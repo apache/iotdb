@@ -134,7 +134,7 @@ public class GroupedVarianceAccumulator implements GroupedAccumulator {
         if (counts.get(groupId) == 0) {
           columnBuilder.appendNull();
         } else {
-          columnBuilder.writeDouble(Math.sqrt(m2s.get(groupId)) / counts.get(groupId));
+          columnBuilder.writeDouble(Math.sqrt(m2s.get(groupId) / counts.get(groupId)));
         }
         break;
       case STDDEV_SAMP:
