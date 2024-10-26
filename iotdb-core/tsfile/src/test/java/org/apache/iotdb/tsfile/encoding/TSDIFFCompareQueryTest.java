@@ -511,6 +511,8 @@ public class TSDIFFCompareQueryTest {
                     "Encoding Algorithm",
                     "Encoding Time",
                     "Decoding Time",
+                    "Insert Time",
+                    "Query Time",
                     "Points",
                     "Compressed Size",
                     "Compression Ratio"
@@ -552,25 +554,36 @@ public class TSDIFFCompareQueryTest {
                 int length = 0;
 
                 String file_bin_str = "icde0802/supply_experiment/R2O2_query_processing/time/str_1.bin";
+                long input_time = 0;
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime2; repeat++) {
+                    long start_encode = System.nanoTime();
                     length =  BOSEncoder(data2_arr, dataset_block_size.get(file_i), encoded_result);
+                    long end_encode = System.nanoTime();
                     try (FileOutputStream fos = new FileOutputStream(parent_dir +file_bin_str)) {
                         // 只写入前length个元素
                         fos.write(encoded_result, 0, length);
                     } catch (IOException ioe) {
                         ioe.printStackTrace();
                     }
+                    long end_io = System.nanoTime();
+                    encodeTime += (end_encode - start_encode);
+                    input_time += (end_io - end_encode);
                 }
 
 
                 long e = System.nanoTime();
-                encodeTime += ((e - s) / repeatTime2);
+                encodeTime = (encodeTime / repeatTime2);
+                input_time = (input_time / repeatTime2);
                 compressed_size += length;
                 double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
                 ratio += ratioTmp;
+
+                long output_time = 0;
                 s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime2; repeat++){
+                    long start_io = System.nanoTime();
+
                     try (FileInputStream fis = new FileInputStream(parent_dir +file_bin_str)) {
                         // 读取数据到byte数组中
                         int bytesRead = fis.read(encoded_result);
@@ -578,11 +591,16 @@ public class TSDIFFCompareQueryTest {
                     } catch (IOException ioe) {
                         ioe.printStackTrace();
                     }
+                    long start_decode = System.nanoTime();
                     BOSDecoder(encoded_result);
+                    long end_decode = System.nanoTime();
+                    decodeTime += (end_decode - start_decode);
+                    output_time += (start_decode - start_io);
                 }
 
                 e = System.nanoTime();
-                decodeTime += ((e - s) / repeatTime2);
+                decodeTime = (decodeTime / repeatTime2);
+                output_time = (output_time / repeatTime2);
 
 
                 String[] record = {
@@ -590,6 +608,8 @@ public class TSDIFFCompareQueryTest {
                         "TS_2DIFF",
                         String.valueOf(encodeTime),
                         String.valueOf(decodeTime),
+                        String.valueOf(input_time),
+                        String.valueOf(output_time),
                         String.valueOf(data1.size()),
                         String.valueOf(compressed_size),
                         String.valueOf(ratio)

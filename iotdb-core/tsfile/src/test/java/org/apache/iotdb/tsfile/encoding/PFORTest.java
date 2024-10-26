@@ -6,6 +6,7 @@ import me.lemire.integercompression.*;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.*;
@@ -111,8 +112,8 @@ public class PFORTest {
     public static void main(@NotNull String[] args) throws IOException {
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
 //        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
-        String output_parent_dir = parent_dir + "icde0802/compression_ratio/pfor_ratio/";
-        //String output_parent_dir = parent_dir + "pfor_ratio/";
+//        String output_parent_dir = parent_dir + "icde0802/compression_ratio/pfor_ratio/";
+        String output_parent_dir = parent_dir + "icde0802/supply_experiment/R2O2_query_processing/time/pfor_ratio/";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -187,8 +188,8 @@ public class PFORTest {
                     "Compress Algorithm",
                     "Encoding Time",
                     "Decoding Time",
-                    "Compress Time",
-                    "Uncompress Time",
+                    "Input Time",
+                    "Output Time",
                     "Points",
                     "Compressed Size",
                     "Compression Ratio"
@@ -222,6 +223,9 @@ public class PFORTest {
                             System.out.println(f);
                             long encodeTime = 0;
                             long decodeTime = 0;
+                            long inputTime = 0;
+                            long outputTime = 0;
+
                             while (fileRepeat < 1) {
                                 fileRepeat += 1;
                                 InputStream inputStream = Files.newInputStream(f.toPath());
@@ -286,8 +290,40 @@ public class PFORTest {
                                                 outBlock2[i] = value;
                                                 i++;
                                             }
-                                            encodeTime += System.nanoTime() - s;
+                                            long end_encode = System.nanoTime();
+                                            encodeTime += (end_encode - s);
+
+
+                                            String file_bin_str = "icde0802/supply_experiment/R2O2_query_processing/time/pfor_1.bin";
+                                            byte[] byteArray = new byte[outBlock.size() * Integer.BYTES]; // 每个整数占用4字节
+                                            ByteBuffer byteBuffer = ByteBuffer.wrap(byteArray);
+
+                                            for (Integer value : outBlock) {
+                                                byteBuffer.putInt(value); // 将每个整数添加到缓冲区
+                                            }
+
+                                            try (FileOutputStream fos = new FileOutputStream(parent_dir + file_bin_str)) {
+                                                // 只写入前 byteArray.length 个元素
+                                                fos.write(byteArray, 0, byteArray.length);
+                                            } catch (IOException ioe) {
+                                                ioe.printStackTrace();
+                                            }
+                                            long end_input = System.nanoTime();
+                                            inputTime += (end_input - end_encode);
+
+                                            long start_output = System.nanoTime();
+                                            byte[] encoded_result = new byte[byteArray.length];
+                                            try (FileInputStream fis = new FileInputStream(parent_dir +file_bin_str)) {
+                                                // 读取数据到byte数组中
+                                                int bytesRead = fis.read(encoded_result);
+                                            } catch (IOException ioe) {
+                                                ioe.printStackTrace();
+                                            }
+
+
                                             s = System.nanoTime();
+                                            outputTime += (s - start_output);
+
                                             offset = 0;
                                             int[] uncompressed = new int[data.size()];
                                             int j = 0;
@@ -523,8 +559,8 @@ public class PFORTest {
                                     "NOCOMPRESSION",
                                     String.valueOf(1.0 * encodeTime / fileRepeat),
                                     String.valueOf(1.0 * decodeTime / fileRepeat),
-                                    "0",
-                                    "0",
+                                    String.valueOf(1.0 * inputTime / fileRepeat),
+                                    String.valueOf(1.0 * outputTime / fileRepeat),
                                     String.valueOf(points),
                                     String.valueOf(final_compressed_size / fileRepeat),
                                     String.valueOf(final_ratio / fileRepeat)
@@ -545,6 +581,8 @@ public class PFORTest {
                                 System.out.println(f);
                                 long encodeTime = 0;
                                 long decodeTime = 0;
+                                long inputTime = 0;
+                                long outputTime = 0;
 
                                 while (fileRepeat < 1) {
                                     fileRepeat += 1;
@@ -616,8 +654,43 @@ public class PFORTest {
                                             outBlock2[i] = value;
                                             i++;
                                         }
-                                        encodeTime += System.nanoTime() - s;
+//                                        encodeTime += System.nanoTime() - s;
+                                        long end_encode = System.nanoTime();
+                                        encodeTime += (end_encode - s);
+
+
+                                        String file_bin_str = "icde0802/supply_experiment/R2O2_query_processing/time/pfor_1.bin";
+                                        byte[] byteArray = new byte[outBlock.size() * Integer.BYTES]; // 每个整数占用4字节
+                                        ByteBuffer byteBuffer = ByteBuffer.wrap(byteArray);
+
+                                        for (Integer value : outBlock) {
+                                            byteBuffer.putInt(value); // 将每个整数添加到缓冲区
+                                        }
+
+                                        try (FileOutputStream fos = new FileOutputStream(parent_dir + file_bin_str)) {
+                                            // 只写入前 byteArray.length 个元素
+                                            fos.write(byteArray, 0, byteArray.length);
+                                        } catch (IOException ioe) {
+                                            ioe.printStackTrace();
+                                        }
+                                        long end_input = System.nanoTime();
+                                        inputTime += (end_input - end_encode);
+
+                                        long start_output = System.nanoTime();
+                                        byte[] encoded_result = new byte[byteArray.length];
+                                        try (FileInputStream fis = new FileInputStream(parent_dir +file_bin_str)) {
+                                            // 读取数据到byte数组中
+                                            int bytesRead = fis.read(encoded_result);
+                                        } catch (IOException ioe) {
+                                            ioe.printStackTrace();
+                                        }
+
+
                                         s = System.nanoTime();
+                                        outputTime += (s - start_output);
+
+
+//                                        s = System.nanoTime();
                                         offset = 0;
                                         int[] uncompressed = new int[data.size()];
                                         int j = 0;
@@ -667,8 +740,8 @@ public class PFORTest {
                                         "NOCOMPRESSION",
                                         String.valueOf(1.0 * encodeTime / fileRepeat),
                                         String.valueOf(1.0 * decodeTime / fileRepeat),
-                                        "0",
-                                        "0",
+                                        String.valueOf(1.0 * inputTime / fileRepeat),
+                                        String.valueOf(1.0 * outputTime / fileRepeat),
                                         String.valueOf(points),
                                         String.valueOf(final_compressed_size / fileRepeat),
                                         String.valueOf(final_ratio / fileRepeat)
