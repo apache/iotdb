@@ -214,7 +214,7 @@ public class DatasetHeaderFactory {
   }
 
   public static DatasetHeader getShowCurrentTimestampHeader() {
-    return new DatasetHeader(ColumnHeaderConstant.showCurrentTimestampColumnHeaders, true);
+    return new DatasetHeader(ColumnHeaderConstant.SHOW_CURRENT_TIMESTAMP_COLUMN_HEADERS, true);
   }
 
   public static DatasetHeader getShowDBHeader() {
@@ -235,5 +235,17 @@ public class DatasetHeaderFactory {
 
   public static DatasetHeader getShowTablesDetailsHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showTablesDetailsColumnHeaders, true);
+  }
+
+  public static DatasetHeader getShowCurrentUserHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.SHOW_CURRENT_USER_COLUMN_HEADERS, true);
+  }
+
+  public static DatasetHeader getShowCurrentDatabaseHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.SHOW_CURRENT_DATABASE_COLUMN_HEADERS, true);
+  }
+
+  public static DatasetHeader getShowCurrentSqlDialectHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.SHOW_CURRENT_SQL_DIALECT_COLUMN_HEADERS, true);
   }
 }

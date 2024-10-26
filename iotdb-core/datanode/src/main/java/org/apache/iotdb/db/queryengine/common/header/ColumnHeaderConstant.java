@@ -224,6 +224,12 @@ public class ColumnHeaderConstant {
 
   public static final String GRANT_OPTION = "GrantOption";
 
+  public static final String CURRENT_USER = "CurrentUser";
+
+  public static final String CURRENT_DATABASE = "CurrentDatabase";
+
+  public static final String CURRENT_SQL_DIALECT = "CurrentSqlDialect";
+
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(TIMESERIES, TSDataType.TEXT),
@@ -536,9 +542,6 @@ public class ColumnHeaderConstant {
           new ColumnHeader(VIEW_TYPE, TSDataType.TEXT),
           new ColumnHeader(SOURCE, TSDataType.TEXT));
 
-  public static final List<ColumnHeader> showCurrentTimestampColumnHeaders =
-      ImmutableList.of(new ColumnHeader(CURRENT_TIMESTAMP, TSDataType.INT64));
-
   public static final List<ColumnHeader> showDBColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(DATABASE, TSDataType.TEXT),
@@ -577,4 +580,16 @@ public class ColumnHeaderConstant {
           new ColumnHeader(PATH, TSDataType.TEXT),
           new ColumnHeader(PRIVILEGES, TSDataType.TEXT),
           new ColumnHeader(GRANT_OPTION, TSDataType.BOOLEAN));
+
+  public static final List<ColumnHeader> SHOW_CURRENT_USER_COLUMN_HEADERS =
+      ImmutableList.of(new ColumnHeader(CURRENT_USER, TSDataType.STRING));
+
+  public static final List<ColumnHeader> SHOW_CURRENT_DATABASE_COLUMN_HEADERS =
+      ImmutableList.of(new ColumnHeader(CURRENT_DATABASE, TSDataType.STRING));
+
+  public static final List<ColumnHeader> SHOW_CURRENT_SQL_DIALECT_COLUMN_HEADERS =
+      ImmutableList.of(new ColumnHeader(CURRENT_SQL_DIALECT, TSDataType.STRING));
+
+  public static final List<ColumnHeader> SHOW_CURRENT_TIMESTAMP_COLUMN_HEADERS =
+      ImmutableList.of(new ColumnHeader(CURRENT_TIMESTAMP, TSDataType.TIMESTAMP));
 }
