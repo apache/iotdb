@@ -1630,6 +1630,7 @@ public class RLEBOSMedianTest {
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/";// your data path
 //        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
         String output_parent_dir = parent_dir + "icde0802/compression_ratio/rle_bos_m";
+
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -1770,7 +1771,8 @@ public class RLEBOSMedianTest {
     public void ExpTest() throws IOException {
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/";// your data path
 //        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
-        String output_parent_dir = parent_dir + "icde0802/compression_ratio/exp_m";
+//        String output_parent_dir = parent_dir + "icde0802/compression_ratio/exp_m";
+        String output_parent_dir = parent_dir + "icde0802/supply_experiment/R2O3_lower_outlier_compare/compression_ratio/bos";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -1809,7 +1811,7 @@ public class RLEBOSMedianTest {
         output_path_list.add(output_parent_dir + "/Normal_1000000.csv");//5
 //        dataset_block_size.add(2048);
 
-        int repeatTime2 = 1000;
+        int repeatTime2 = 100;
 //        for (int file_i = 8; file_i < 9; file_i++) {
 
         for (int file_i = input_path_list.size()-1; file_i >=0 ; file_i--) {
@@ -1838,6 +1840,7 @@ public class RLEBOSMedianTest {
 
             for (File f : tempList) {
                 System.out.println(f);
+                if(f.toString().contains(".DS")) continue;
                 InputStream inputStream = Files.newInputStream(f.toPath());
 
                 CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);

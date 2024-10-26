@@ -998,7 +998,7 @@ public class TSDIFFBOSMedianTest {
 //        }
 //        else
 //        System.out.println(min_bits/8);
-        encode_pos = BOSEncodeBitsImprove(ts_block_delta,  final_k_start_value, final_x_l_plus, final_k_end_value, final_x_u_minus,
+        encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_x_l_plus, final_k_end_value, final_x_u_minus,
                 max_delta_value, min_delta, encode_pos , cur_byte);
 
 
@@ -1094,6 +1094,144 @@ public class TSDIFFBOSMedianTest {
 
 
             encode_pos = BOSBlockEncoder(data, block_num, block_size,remaining, encode_pos,encoded_result);
+
+        }
+
+
+        return encode_pos;
+    }
+
+    private static int BOSBlockEncoderImprove(int[] ts_block, int block_i, int block_size, int remaining, int encode_pos, byte[] cur_byte) {
+
+        int[] min_delta = new int[3];
+        int[] ts_block_delta = getAbsDeltaTsBlock(ts_block, block_i, block_size, remaining, min_delta);
+//        System.out.println(Arrays.toString(ts_block_delta));
+
+        block_size = remaining - 1;
+        int max_delta_value = min_delta[2];
+
+
+        int max_bit_width = getBitWith(max_delta_value) + 1;
+
+
+        int[] findMedianArray = new int[block_size];
+        System.arraycopy(ts_block_delta, 0, findMedianArray, 0, block_size);
+
+        int median = findMedian(findMedianArray);
+
+
+
+        //        int xl=  median;
+        //        int xu = median;
+        // xl = 2 median - xu
+        // xl = xu - 2 ^ beta
+        int left_number = 0;
+        int right_number = 0;
+
+        int length_outlier = block_size;
+//        for(int value:findMedianArray){
+//            if(value <=median) left_number++;
+//            if (value >= median)  right_number ++;
+//        }
+
+
+        int final_k_start_value = -1; // x_l_minus
+        int final_x_l_plus = 0; // x_l_plus
+        int final_k_end_value = max_delta_value+1; // x_u_plus
+        int final_x_u_minus = max_delta_value; // x_u_minus
+
+        int min_bits = (getBitWith(final_k_end_value - final_k_start_value - 2) * (block_size));
+//        min_bits +=;
+
+
+        int[] count_left = new int[max_bit_width];
+        int[] count_right = new int[max_bit_width];
+        int count_0 = 0;
+
+
+        for(int i=0;i<length_outlier;i++){
+            int cur_value = ts_block_delta[i];
+            if(cur_value > median){
+                int beta = getBitWith(cur_value - median) ;
+                count_right[beta] ++;
+            } else if (cur_value < median) {
+                int beta = getBitWith(median - cur_value) ;
+                count_left[beta] ++;
+            }else{
+                count_0 ++;
+            }
+        }
+
+
+        for(int beta = max_bit_width - 1; beta > 0 ; beta --){
+            left_number += count_left[beta];
+            right_number += count_right[beta];
+            int pow_beta = (int) pow(2,beta-1);
+            int xu = min(max_delta_value+1, median + pow_beta) ;
+            int xl = max(median - pow_beta,-1);
+            int cur_bits = Math.min((left_number + right_number) * getBitWith(block_size - 1), block_size + left_number + right_number);
+            cur_bits += left_number * getBitWith(xl);
+            cur_bits += right_number * getBitWith(max_delta_value - xu);
+            cur_bits += (block_size - left_number - right_number) * getBitWith(xu - xl - 2);
+            if (cur_bits < min_bits) {
+                min_bits = cur_bits;
+
+                final_k_start_value = xl;
+                final_x_l_plus = xl + 1;
+                final_k_end_value = xu;
+                final_x_u_minus = xu -1;
+            }
+
+        }
+//        if(min_bits == bp_cost){
+//
+//        }
+//        else
+//        System.out.println(min_bits/8);
+        encode_pos = BOSEncodeBitsImprove(ts_block_delta,  final_k_start_value, final_x_l_plus, final_k_end_value, final_x_u_minus,
+                max_delta_value, min_delta, encode_pos , cur_byte);
+
+
+        return encode_pos;
+    }
+
+    public static int BOSEncoderImprove(
+            int[] data, int block_size, byte[] encoded_result) {
+        block_size++;
+
+        int length_all = data.length;
+
+        int encode_pos = 0;
+        int2Bytes(length_all,encode_pos,encoded_result);
+        encode_pos += 4;
+
+        int block_num = length_all / block_size;
+        int2Bytes(block_size,encode_pos,encoded_result);
+        encode_pos+= 4;
+
+//        for (int i = 0; i < 1; i++) {
+        for (int i = 0; i < block_num; i++) {
+//            int start_encode_pos = encode_pos;
+            encode_pos =  BOSBlockEncoderImprove(data, i, block_size, block_size,encode_pos,encoded_result);
+//            System.out.println(encode_pos-start_encode_pos);
+//            System.out.println("------------------------------------------");
+        }
+
+        int remaining_length = length_all - block_num * block_size;
+        if (remaining_length <= 3) {
+            for (int i = remaining_length; i > 0; i--) {
+                int2Bytes(data[data.length - i], encode_pos, encoded_result);
+                encode_pos += 4;
+            }
+
+        }
+        else {
+
+            int start = block_num * block_size;
+            int remaining = length_all-start;
+
+
+            encode_pos = BOSBlockEncoderImprove(data, block_num, block_size,remaining, encode_pos,encoded_result);
 
         }
 
@@ -1507,6 +1645,40 @@ public class TSDIFFBOSMedianTest {
 
         int[] value_pos_arr = new int[1];
         for (int k = 0; k < block_num; k++) {
+            decode_pos = BOSBlockDecoder(encoded, decode_pos, value_list, block_size,value_pos_arr);
+        }
+
+        if (remain_length <= 3) {
+            for (int i = 0; i < remain_length; i++) {
+                int value_end = bytes2Integer(encoded, decode_pos, 4);
+                decode_pos += 4;
+                value_list[value_pos_arr[0]] = value_end;
+                value_pos_arr[0]++;
+            }
+        } else {
+            remain_length --;
+            BOSBlockDecoder(encoded, decode_pos, value_list, remain_length, value_pos_arr);
+        }
+    }
+    public static void BOSDecoderImprove(byte[] encoded) {
+
+        int decode_pos = 0;
+        int length_all = bytes2Integer(encoded, decode_pos, 4);
+        decode_pos += 4;
+        int block_size = bytes2Integer(encoded, decode_pos, 4);
+        decode_pos += 4;
+
+
+
+        int block_num = length_all / block_size;
+        int remain_length = length_all - block_num * block_size;
+
+
+        int[] value_list = new int[length_all+block_size];
+        block_size--;
+
+        int[] value_pos_arr = new int[1];
+        for (int k = 0; k < block_num; k++) {
 
 
             decode_pos = BOSBlockDecoderImprove(encoded, decode_pos, value_list, block_size,value_pos_arr);
@@ -1530,7 +1702,8 @@ public class TSDIFFBOSMedianTest {
     public void PruneBOSTest() throws IOException {
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
 //        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
-        String output_parent_dir = parent_dir + "icde0802/compression_ratio/bos_m";
+//        String output_parent_dir = parent_dir + "icde0802/compression_ratio/bos_m";
+        String output_parent_dir = parent_dir + "icde0802/supply_experiment/R2O3_lower_outlier_compare/compression_ratio/bos";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -1784,7 +1957,7 @@ public class TSDIFFBOSMedianTest {
 
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                    length =  BOSEncoder(data2_arr, dataset_block_size.get(file_i), encoded_result);
+                    length =  BOSEncoderImprove(data2_arr, dataset_block_size.get(file_i), encoded_result);
                 }
 
                 long e = System.nanoTime();
@@ -1794,7 +1967,7 @@ public class TSDIFFBOSMedianTest {
                 ratio += ratioTmp;
                 s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime2; repeat++)
-                    BOSDecoder(encoded_result);
+                    BOSDecoderImprove(encoded_result);
                 e = System.nanoTime();
                 decodeTime += ((e - s) / repeatTime2);
 
@@ -2010,9 +2183,10 @@ public class TSDIFFBOSMedianTest {
 
     @Test
     public void ExpTest() throws IOException {
-//        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
-        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
-        String output_parent_dir = parent_dir + "icde0802/compression_ratio/exp_test";
+        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
+//        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+//        String output_parent_dir = parent_dir + "icde0802/compression_ratio/exp_test";
+        String output_parent_dir = parent_dir + "icde0802/supply_experiment/R2O3_lower_outlier_compare/compression_ratio/bos";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -2051,7 +2225,7 @@ public class TSDIFFBOSMedianTest {
         output_path_list.add(output_parent_dir + "/Normal_1000000.csv");//5
 //        dataset_block_size.add(2048);
 
-        int repeatTime2 = 1;
+        int repeatTime2 = 100;
 
 //        for (int file_i = 0; file_i < 1; file_i++) {
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
@@ -2079,6 +2253,7 @@ public class TSDIFFBOSMedianTest {
             assert tempList != null;
 
             for (File f : tempList) {
+                if(f.toString().contains(".DS")) continue;
 //                f= tempList[1];
 
                 System.out.println(f);
@@ -2110,7 +2285,7 @@ public class TSDIFFBOSMedianTest {
 
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                    length =  BOSEncoder(data2_arr, dataset_block_size.get(file_i), encoded_result);
+                    length =  BOSEncoderImprove(data2_arr, dataset_block_size.get(file_i), encoded_result);
                 }
 
                 long e = System.nanoTime();
@@ -2120,7 +2295,7 @@ public class TSDIFFBOSMedianTest {
                 ratio += ratioTmp;
                 s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime2; repeat++)
-                    BOSDecoder(encoded_result);
+                    BOSDecoderImprove(encoded_result);
                 e = System.nanoTime();
                 decodeTime += ((e - s) / repeatTime2);
 
