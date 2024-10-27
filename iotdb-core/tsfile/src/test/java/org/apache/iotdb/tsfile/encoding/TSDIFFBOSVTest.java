@@ -1610,7 +1610,7 @@ public class TSDIFFBOSVTest {
 
             for (File f : tempList) {
 //                f=tempList[2];
-                Thread.sleep(5000);
+//                Thread.sleep(5000);
                 System.out.println(f);
                 InputStream inputStream = Files.newInputStream(f.toPath());
 
@@ -1675,7 +1675,7 @@ public class TSDIFFBOSVTest {
     }
 
     @Test
-    public void BOSImproveTest() throws IOException {
+    public void BOSImproveDecodeTest() throws IOException {
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
 //        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
         String output_parent_dir = parent_dir + "icde0802/supply_experiment/R1O4_decode_time/compression_ratio/bos_v";
