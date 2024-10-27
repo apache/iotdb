@@ -1764,7 +1764,7 @@ public class TSDIFFBOSBPreviousTest {
 
     @Test
     public void BOSBPreviousTest() throws IOException, InterruptedException {
-        int repeatTime2 = 100;
+        int repeatTime2 = 500;
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
 //        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
         String output_parent_dir = parent_dir + "icde0802/compression_ratio/bos_b";
@@ -1846,7 +1846,7 @@ public class TSDIFFBOSBPreviousTest {
 
             for (File f : tempList) {
 //                f=tempList[2];
-                Thread.sleep(5000);
+//                Thread.sleep(5000);
                 System.out.println(f);
                 InputStream inputStream = Files.newInputStream(f.toPath());
 

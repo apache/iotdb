@@ -1192,42 +1192,76 @@ public class TSDIFFBOSVTest {
         int right_outlier_i = 0;
         int normal_i = 0;
         int pre_v = value0;
-//        int final_k_end_value = (int) (final_k_start_value + pow(2, bit_width_final));
-
-// Precompute constants
-        int normalOffset = min_delta + final_k_start_value;
-        int rightOutlierOffset = min_delta + final_k_end_value;
-
-// Initialize indices and pre-fetch next outlier positions
-        int leftOutlierNextIndex = (left_outlier_i < k1) ? final_left_outlier_index.get(left_outlier_i) : Integer.MAX_VALUE;
-        int rightOutlierNextIndex = (right_outlier_i < k2) ? final_right_outlier_index.get(right_outlier_i) : Integer.MAX_VALUE;
-
-        int valuePos = value_pos_arr[0]; // Use a local variable for the position
         for (int i = 0; i < block_size; i++) {
-            int currentDelta;
-            if (i == leftOutlierNextIndex) {
-                // Process left outlier
-                currentDelta = min_delta + final_left_outlier.get(left_outlier_i);
+            int current_delta;
+            if (left_outlier_i >= k1) {
+                if (right_outlier_i >= k2) {
+                    current_delta = min_delta + final_normal.get(normal_i) + final_k_start_value;
+                    normal_i++;
+                } else if (i == final_right_outlier_index.get(right_outlier_i)) {
+                    current_delta = min_delta + final_right_outlier.get(right_outlier_i) + final_k_end_value;
+                    right_outlier_i++;
+                } else {
+                    current_delta = min_delta + final_normal.get(normal_i) + final_k_start_value;
+                    normal_i++;
+                }
+            } else if (i == final_left_outlier_index.get(left_outlier_i)) {
+                current_delta = min_delta + final_left_outlier.get(left_outlier_i);
                 left_outlier_i++;
-                leftOutlierNextIndex = (left_outlier_i < k1) ? final_left_outlier_index.get(left_outlier_i) : Integer.MAX_VALUE;
-            } else if (i == rightOutlierNextIndex) {
-                // Process right outlier
-                currentDelta = rightOutlierOffset + final_right_outlier.get(right_outlier_i);
-                right_outlier_i++;
-                rightOutlierNextIndex = (right_outlier_i < k2) ? final_right_outlier_index.get(right_outlier_i) : Integer.MAX_VALUE;
             } else {
-                // Process normal value
-                currentDelta = normalOffset + final_normal.get(normal_i);
-                normal_i++;
+
+                if (right_outlier_i >= k2) {
+                    current_delta = min_delta + final_normal.get(normal_i) + final_k_start_value;
+                    normal_i++;
+                } else if (i == final_right_outlier_index.get(right_outlier_i)) {
+                    current_delta = min_delta + final_right_outlier.get(right_outlier_i) + final_k_end_value;
+                    right_outlier_i++;
+                } else {
+                    current_delta = min_delta + final_normal.get(normal_i) + final_k_start_value;
+                    normal_i++;
+                }
             }
 
-            // Update the cumulative value and store it
-            pre_v += currentDelta;
-            value_list[valuePos++] = pre_v;
+            pre_v = current_delta + pre_v;
+            value_list[value_pos_arr[0]] = pre_v;
+            value_pos_arr[0]++;
         }
-
-// Update the position in the array
-        value_pos_arr[0] = valuePos;
+////        int final_k_end_value = (int) (final_k_start_value + pow(2, bit_width_final));
+//
+//// Precompute constants
+//        int normalOffset = min_delta + final_k_start_value;
+//        int rightOutlierOffset = min_delta + final_k_end_value;
+//
+//// Initialize indices and pre-fetch next outlier positions
+//        int leftOutlierNextIndex = (left_outlier_i < k1) ? final_left_outlier_index.get(left_outlier_i) : Integer.MAX_VALUE;
+//        int rightOutlierNextIndex = (right_outlier_i < k2) ? final_right_outlier_index.get(right_outlier_i) : Integer.MAX_VALUE;
+//
+//        int valuePos = value_pos_arr[0]; // Use a local variable for the position
+//        for (int i = 0; i < block_size; i++) {
+//            int currentDelta;
+//            if (i == leftOutlierNextIndex) {
+//                // Process left outlier
+//                currentDelta = min_delta + final_left_outlier.get(left_outlier_i);
+//                left_outlier_i++;
+//                leftOutlierNextIndex = (left_outlier_i < k1) ? final_left_outlier_index.get(left_outlier_i) : Integer.MAX_VALUE;
+//            } else if (i == rightOutlierNextIndex) {
+//                // Process right outlier
+//                currentDelta = rightOutlierOffset + final_right_outlier.get(right_outlier_i);
+//                right_outlier_i++;
+//                rightOutlierNextIndex = (right_outlier_i < k2) ? final_right_outlier_index.get(right_outlier_i) : Integer.MAX_VALUE;
+//            } else {
+//                // Process normal value
+//                currentDelta = normalOffset + final_normal.get(normal_i);
+//                normal_i++;
+//            }
+//
+//            // Update the cumulative value and store it
+//            pre_v += currentDelta;
+//            value_list[valuePos++] = pre_v;
+//        }
+//
+//// Update the position in the array
+//        value_pos_arr[0] = valuePos;
 
         return decode_pos;
     }
@@ -1530,7 +1564,7 @@ public class TSDIFFBOSVTest {
 
     @Test
     public void BOSVPreviousTest() throws IOException, InterruptedException {
-        int repeatTime2 = 100;
+        int repeatTime2 = 500;
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
 //        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
         String output_parent_dir = parent_dir + "icde0802/compression_ratio/bos";

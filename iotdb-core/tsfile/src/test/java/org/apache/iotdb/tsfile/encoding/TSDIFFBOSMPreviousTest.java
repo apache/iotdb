@@ -1715,7 +1715,7 @@ public class TSDIFFBOSMPreviousTest {
 
     @Test
     public void BOSMPreviousTest() throws IOException {
-        int repeatTime2 = 100;
+        int repeatTime2 = 500;
 
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
 //        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
