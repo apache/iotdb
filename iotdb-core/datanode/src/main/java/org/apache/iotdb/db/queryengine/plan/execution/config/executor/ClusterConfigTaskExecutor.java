@@ -177,6 +177,11 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowNodesInSchemaTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowPathSetTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowSchemaTemplateTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentDatabaseTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentSqlDialectTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentTimestampTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentUserTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowVersionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.TestConnectionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.ShowPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowSpaceQuotaTask;
@@ -269,6 +274,8 @@ import org.apache.thrift.transport.TTransportException;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nullable;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -1350,6 +1357,41 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     ShowClusterIdTask.buildTSBlock(
         IoTDBDescriptor.getInstance().getConfig().getClusterId(), future);
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showVersion() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    ShowVersionTask.buildTsBlock(future);
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showCurrentSqlDialect(String sqlDialect) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    ShowCurrentSqlDialectTask.buildTsBlock(sqlDialect, future);
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showCurrentDatabase(@Nullable String currentDatabase) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    ShowCurrentDatabaseTask.buildTsBlock(currentDatabase, future);
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showCurrentUser(String currentUser) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    ShowCurrentUserTask.buildTsBlock(currentUser, future);
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showCurrentTimestamp() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    ShowCurrentTimestampTask.buildTsBlock(future);
     return future;
   }
 
