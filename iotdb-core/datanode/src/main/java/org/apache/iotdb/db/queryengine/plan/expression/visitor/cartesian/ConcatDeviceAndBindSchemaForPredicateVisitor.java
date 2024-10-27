@@ -26,7 +26,6 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
-import org.apache.iotdb.db.queryengine.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
@@ -40,6 +39,7 @@ import java.util.List;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.cartesianProduct;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructFunctionExpressionsWithMemoryCheck;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructTimeSeriesOperandsWithMemoryCheck;
+import static org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand.FALSE;
 import static org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForExpressionVisitor.transformViewPath;
 
 public class ConcatDeviceAndBindSchemaForPredicateVisitor
@@ -70,7 +70,7 @@ public class ConcatDeviceAndBindSchemaForPredicateVisitor
     List<MeasurementPath> actualPaths =
         context.getSchemaTree().searchMeasurementPaths(concatPath).left;
     if (actualPaths.isEmpty()) {
-      return Collections.singletonList(new NullOperand());
+      return Collections.singletonList(FALSE);
     }
     for (MeasurementPath measurementPath : actualPaths) {
       if (measurementPath.getMeasurementSchema().isLogicalView()) {

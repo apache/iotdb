@@ -669,7 +669,7 @@ public class IoTDBAlignByDeviceIT {
       try (ResultSet resultSet =
           statement.executeQuery(
               "select count(s0),count(s1),count(s2),count(s3),count(s4) "
-                  + "from root.vehicle.d1,root.vehicle.d0 align by device")) {
+                  + "from root.vehicle.d1,root.vehicle.d0 having count(s0) is not null or count(s5) is not null align by device")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
