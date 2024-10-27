@@ -1181,7 +1181,7 @@ public class TSDIFFBOSMedianTest {
         for(int beta = max_bit_width - 1; beta > 0 ; beta --){
             left_number += count_left[beta];
             right_number += count_right[beta];
-            int pow_beta = (int) pow(2,beta-1);
+            int pow_beta = 1<< (beta-1);
             int xu = min(max_delta_value+1, median + pow_beta) ;
             int xl = max(median - pow_beta,-1);
             int cur_bits = Math.min((left_number + right_number) * getBitWith(block_size - 1), block_size + left_number + right_number);
