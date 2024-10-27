@@ -219,6 +219,7 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyze
 import static org.apache.iotdb.db.queryengine.plan.analyze.SelectIntoUtils.constructTargetDevice;
 import static org.apache.iotdb.db.queryengine.plan.analyze.SelectIntoUtils.constructTargetMeasurement;
 import static org.apache.iotdb.db.queryengine.plan.analyze.SelectIntoUtils.constructTargetPath;
+import static org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand.FALSE;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.canPushDownLimitOffsetInGroupByTimeForDevice;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.pushDownLimitOffsetInGroupByTimeForDevice;
 import static org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.GetSourcePathsVisitor.getSourcePaths;
@@ -397,8 +398,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         // analyze aggregation input
         analyzeGroupBy(analysis, queryStatement, schemaTree, context);
         analyzeWhere(analysis, queryStatement, schemaTree, context);
-        if (analysis.getWhereExpression() != null
-            && analysis.getWhereExpression().equals(ConstantOperand.FALSE)) {
+        if (analysis.getWhereExpression() != null && analysis.getWhereExpression().equals(FALSE)) {
           return finishQuery(queryStatement, analysis, outputExpressions);
         }
         analyzeSourceTransform(analysis, outputExpressions, queryStatement);
@@ -1103,7 +1103,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
     }
 
-    havingExpression = PredicateUtils.combineConjuncts(new ArrayList<>(conJunctions));
+    if (conJunctions.isEmpty()) {
+      havingExpression = FALSE;
+    } else {
+      havingExpression = PredicateUtils.combineConjuncts(new ArrayList<>(conJunctions));
+    }
     TSDataType outputType = analyzeExpressionType(analysis, havingExpression);
     if (outputType != TSDataType.BOOLEAN) {
       throw new SemanticException(
@@ -1500,7 +1504,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       PartialPath devicePath = deviceIterator.next();
       Expression whereExpression =
           analyzeWhereSplitByDevice(queryStatement, devicePath, schemaTree, queryContext);
-      if (whereExpression.equals(ConstantOperand.FALSE)) {
+      if (whereExpression.equals(FALSE)) {
         deviceIterator.remove();
       } else if (whereExpression.equals(ConstantOperand.TRUE)) {
         deviceToWhereExpression.put(devicePath.getIDeviceIDAsFullDevice(), null);

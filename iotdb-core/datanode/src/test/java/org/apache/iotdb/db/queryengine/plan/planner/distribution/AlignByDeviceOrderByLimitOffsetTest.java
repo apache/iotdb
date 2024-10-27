@@ -701,7 +701,7 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     // aggregation + order by time + having, has LIMIT
     // SingleDeviceViewNode + MergeSortNode
     sql =
-        "select count(s1) from root.sg.d1,root.sg.d22,root.sg.d333 having(count(s1)>1) ORDER BY TIME DESC  LIMIT 10 align by device";
+        "select count(s1) from root.sg.d1,root.sg.d22,root.sg.d333 having(count(s1) > 1 or count(s_not_exist) > 1) ORDER BY TIME DESC LIMIT 10 align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));

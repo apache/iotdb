@@ -200,11 +200,22 @@ public class ExpressionUtils {
       final List<Expression> rightExpressions,
       final MPPQueryContext queryContext) {
     List<Expression> resultExpressions = new ArrayList<>();
-    for (Expression le : leftExpressions) {
+    if (!leftExpressions.isEmpty() && !rightExpressions.isEmpty()) {
+      for (Expression le : leftExpressions) {
+        for (Expression re : rightExpressions) {
+          resultExpressions.add(
+              reserveMemoryForExpression(
+                  queryContext, reconstructBinaryExpression(expression, le, re)));
+        }
+      }
+      return resultExpressions;
+    } else if (!leftExpressions.isEmpty()) {
+      for (Expression le : leftExpressions) {
+        resultExpressions.add(reserveMemoryForExpression(queryContext, le));
+      }
+    } else if (!rightExpressions.isEmpty()) {
       for (Expression re : rightExpressions) {
-        resultExpressions.add(
-            reserveMemoryForExpression(
-                queryContext, reconstructBinaryExpression(expression, le, re)));
+        resultExpressions.add(reserveMemoryForExpression(queryContext, re));
       }
     }
     return resultExpressions;
