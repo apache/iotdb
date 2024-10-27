@@ -876,6 +876,10 @@ void Session::open(bool enableRPCCompression, int connectionTimeoutInMs) {
 
     std::map<std::string, std::string> configuration;
     configuration["version"] = getVersionString(version);
+    configuration["sql_dialect"] = sqlDialect;
+    if (database != "") {
+        configuration["db"] = database;
+    }
 
     TSOpenSessionReq openReq;
     openReq.__set_username(username);
@@ -1384,6 +1388,35 @@ void Session::insertTablet(Tablet &tablet, bool sorted) {
     TSInsertTabletReq request;
     buildInsertTabletReq(request, sessionId, tablet, sorted);
     insertTablet(request);
+}
+
+void Session::insertRelationalTablet(Tablet &tablet, bool sorted) {
+    TSInsertTabletReq request;
+    buildInsertTabletReq(request, sessionId, tablet, sorted);
+    request.__set_writeToTable(true);
+    std::vector<int8_t> columnCategories;
+    for (auto &schema: tablet.schemas) {
+        columnCategories.push_back(static_cast<int8_t>(schema.second));
+    }
+    request.__set_columnCategories(columnCategories);
+    try {
+        TSStatus respStatus;
+        client->insertTablet(respStatus, request);
+        RpcUtils::verifySuccess(respStatus);
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    } catch (const exception &e) {
+        log_debug(e.what());
+        throw IoTDBException(e.what());
+    }
+}
+
+void Session::insertRelationalTablet(Tablet &tablet) {
+    insertRelationalTablet(tablet, false);
 }
 
 void Session::insertAlignedTablet(Tablet &tablet) {
@@ -1917,7 +1950,10 @@ void Session::executeNonQueryStatement(const string &sql) {
     req.__set_timeout(0);  //0 means no timeout. This value keep consistent to JAVA SDK.
     TSExecuteStatementResp resp;
     try {
-        client->executeUpdateStatement(resp, req);
+        client->executeUpdateStatementV2(resp, req);
+        if (resp.database != "") {
+            database = resp.database;
+        }
         RpcUtils::verifySuccess(resp.status);
     } catch (const TTransportException &e) {
         log_debug(e.what());

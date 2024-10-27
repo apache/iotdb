@@ -973,6 +973,8 @@ private:
     const static int DEFAULT_FETCH_SIZE = 10000;
     const static int DEFAULT_TIMEOUT_MS = 0;
     Version::Version version;
+    std::string sqlDialect = "tree"; // default sql dialect
+    std::string database;
 
 private:
     static bool checkSorted(const Tablet &tablet);
@@ -1045,6 +1047,22 @@ public:
     }
 
     ~Session();
+
+    void setSqlDialect(const std::string &dialect){
+        this->sqlDialect = dialect;
+    }
+
+    void setDatabase(const std::string &database) {
+        this->database = database;
+    }
+
+    string getDatabase() {
+        return database;
+    }
+
+    void changeDatabase(string database) {
+        this->database = database;
+    }
 
     int64_t getSessionId();
 
@@ -1123,6 +1141,10 @@ public:
     void insertTablet(Tablet &tablet);
 
     void insertTablet(Tablet &tablet, bool sorted);
+
+    void insertRelationalTablet(Tablet &tablet);
+
+    void insertRelationalTablet(Tablet &tablet, bool sorted);
 
     static void buildInsertTabletReq(TSInsertTabletReq &request, int64_t sessionId, Tablet &tablet, bool sorted);
 

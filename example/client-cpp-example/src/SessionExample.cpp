@@ -377,6 +377,8 @@ int main() {
     LOG_LEVEL = LEVEL_DEBUG;
 
     session = new Session("127.0.0.1", 6667, "root", "root");
+    // session.setSqlDialect("tree");
+    // session.setDatabase("");
     session->open(false);
 
     cout << "setStorageGroup: root.sg1\n" << endl;
