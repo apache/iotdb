@@ -2367,10 +2367,10 @@ public class TSDIFFBOSMedianTest {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
 
         int repeatTime2 = 100;
-        int[] file_i_list = {0,9,10};
+//        int[] file_i_list = {0,9,10};
 //        for (int file_i = 9; file_i < 10; file_i++) {
-        for(int file_i :file_i_list){
-//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//        for(int file_i :file_i_list){
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
@@ -2430,7 +2430,7 @@ public class TSDIFFBOSMedianTest {
 
                     long s = System.nanoTime();
                     for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                        compressed_size = BOSEncoder(data2_arr, block_size, encoded_result);
+                        compressed_size = BOSEncoderImprove(data2_arr, block_size, encoded_result);
                     }
 
                     long e = System.nanoTime();
@@ -2439,7 +2439,7 @@ public class TSDIFFBOSMedianTest {
                     ratio += ratioTmp;
                     s = System.nanoTime();
                     for (int repeat = 0; repeat < repeatTime2; repeat++)
-                        BOSDecoder(encoded_result);
+                        BOSDecoderImprove(encoded_result);
                     e = System.nanoTime();
                     decodeTime += ((e - s) / repeatTime2);
 
