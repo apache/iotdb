@@ -40,6 +40,7 @@ import java.sql.Types;
 import static org.apache.iotdb.db.it.utils.TestUtils.defaultFormatDataTime;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
+import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetFuzzyTest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -461,5 +462,44 @@ public class IoTDBNullIdQueryIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+  }
+
+  @Test
+  public void showStatementTest() {
+    String[] expectedHeader = new String[] {"CurrentSqlDialect"};
+    String[] retArray =
+        new String[] {
+          "TABLE,",
+        };
+    tableResultSetEqualTest("show current_sql_dialect", expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = new String[] {"CurrentUser"};
+    retArray =
+        new String[] {
+          "root,",
+        };
+    tableResultSetEqualTest("show current_user", expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = new String[] {"CurrentDatabase"};
+    retArray =
+        new String[] {
+          DATABASE_NAME + ",",
+        };
+    tableResultSetEqualTest("show current_database", expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = new String[] {"Version", "BuildInfo"};
+    tableResultSetFuzzyTest("show version", expectedHeader, 1, DATABASE_NAME);
+
+    expectedHeader = new String[] {"Variable", "Value"};
+    tableResultSetFuzzyTest("show variables", expectedHeader, 15, DATABASE_NAME);
+
+    expectedHeader = new String[] {"ClusterId"};
+    tableResultSetFuzzyTest("show clusterid", expectedHeader, 1, DATABASE_NAME);
+
+    expectedHeader = new String[] {"ClusterId"};
+    tableResultSetFuzzyTest("show cluster_id", expectedHeader, 1, DATABASE_NAME);
+
+    expectedHeader = new String[] {"CurrentTimestamp"};
+    tableResultSetFuzzyTest("show current_timestamp", expectedHeader, 1, DATABASE_NAME);
   }
 }

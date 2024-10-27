@@ -31,9 +31,11 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CreatePipePluginTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.DropPipePluginTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterIdTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowRegionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowVariablesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableAddColumnTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableDropColumnTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableRenameColumnTask;
@@ -52,6 +54,11 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesDetailsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.UseDBTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentDatabaseTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentSqlDialectTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentTimestampTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentUserTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowVersionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.FlushTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.SetConfigurationTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.AlterPipeTask;
@@ -71,7 +78,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
@@ -92,13 +98,20 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentDatabase;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentSqlDialect;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentTimestamp;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVariables;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
@@ -494,11 +507,6 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitCurrentDatabase(CurrentDatabase node, MPPQueryContext context) {
-    return super.visitCurrentDatabase(node, context);
-  }
-
-  @Override
   protected IConfigTask visitFlush(Flush node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     return new FlushTask(((FlushStatement) node.getInnerTreeStatement()));
@@ -604,5 +612,50 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitShowPipePlugins(ShowPipePlugins node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new ShowPipePluginsTask();
+  }
+
+  @Override
+  protected IConfigTask visitShowCurrentUser(ShowCurrentUser node, MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    return new ShowCurrentUserTask(context.getSession().getUserName());
+  }
+
+  @Override
+  protected IConfigTask visitShowCurrentSqlDialect(
+      ShowCurrentSqlDialect node, MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    return new ShowCurrentSqlDialectTask(context.getSession().getSqlDialect().name());
+  }
+
+  @Override
+  protected IConfigTask visitShowCurrentDatabase(
+      ShowCurrentDatabase node, MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    return new ShowCurrentDatabaseTask(context.getSession().getDatabaseName().orElse(null));
+  }
+
+  @Override
+  protected IConfigTask visitShowVersion(ShowVersion node, MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    return new ShowVersionTask();
+  }
+
+  @Override
+  protected IConfigTask visitShowVariables(ShowVariables node, MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    return new ShowVariablesTask();
+  }
+
+  @Override
+  protected IConfigTask visitShowClusterId(ShowClusterId node, MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    return new ShowClusterIdTask();
+  }
+
+  @Override
+  protected IConfigTask visitShowCurrentTimestamp(
+      ShowCurrentTimestamp node, MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    return new ShowCurrentTimestampTask();
   }
 }

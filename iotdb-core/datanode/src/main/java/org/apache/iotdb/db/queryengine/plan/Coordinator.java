@@ -60,11 +60,18 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentDatabase;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentSqlDialect;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentTimestamp;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVariables;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
@@ -336,7 +343,14 @@ public class Coordinator {
         || statement instanceof Flush
         || statement instanceof ClearCache
         || statement instanceof SetConfiguration
-        || statement instanceof PipeStatement) {
+        || statement instanceof PipeStatement
+        || statement instanceof ShowCurrentSqlDialect
+        || statement instanceof ShowCurrentUser
+        || statement instanceof ShowCurrentDatabase
+        || statement instanceof ShowVersion
+        || statement instanceof ShowVariables
+        || statement instanceof ShowClusterId
+        || statement instanceof ShowCurrentTimestamp) {
       return new ConfigExecution(
           queryContext,
           null,
