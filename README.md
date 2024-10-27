@@ -27,7 +27,7 @@
     - MinMax is implemented in [server/src/main/java/org/apache/iotdb/db/query/dataset/groupby/LocalGroupByExecutorTri_MinMax.java](server/src/main/java/org/apache/iotdb/db/query/dataset/groupby/LocalGroupByExecutorTri_MinMax.java).
     - M4 is implemented in [server/src/main/java/org/apache/iotdb/db/query/dataset/groupby/LocalGroupByExecutorTri_M4.java](server/src/main/java/org/apache/iotdb/db/query/dataset/groupby/LocalGroupByExecutorTri_M4.java).
     - OM3 is implemented by storing the OM3 coefficient table as regular time series and querying them with a `WHERE timestamp in (%s)` clause.
-- For the README of [Apache IoTDB](https://iotdb.apache.org/) itself, please see [README_IOTDB.md](README_IOTDB.md). To build this repository, run `mvn clean package -DskipTests -pl -distribution`.
+- The README of [Apache IoTDB](https://iotdb.apache.org/) itself is in [README_IOTDB.md](README_IOTDB.md). To build this repository, run `mvn clean package -DskipTests -pl -distribution`.
 - Others:
     - Visval is implemented in [server/src/main/java/org/apache/iotdb/db/query/simpiece/Visval.java](server/src/main/java/org/apache/iotdb/db/query/simpiece/Visval.java).
     - Uniform is implemented in [server/src/main/java/org/apache/iotdb/db/query/dataset/groupby/LocalGroupByExecutorTri_Uniform.java](server/src/main/java/org/apache/iotdb/db/query/dataset/groupby/LocalGroupByExecutorTri_Uniform.java).
