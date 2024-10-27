@@ -1714,7 +1714,9 @@ public class TSDIFFBOSMPreviousTest {
     }
 
     @Test
-    public void BOSTest() throws IOException {
+    public void BOSMPreviousTest() throws IOException {
+        int repeatTime2 = 100;
+
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
 //        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
         String output_parent_dir = parent_dir + "icde0802/compression_ratio/bos_m";
@@ -1767,7 +1769,7 @@ public class TSDIFFBOSMPreviousTest {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
 //        dataset_block_size.add(1024);
 
-        int repeatTime2 = 200;
+
 
 //        for (int file_i = 0; file_i < 1; file_i++) {
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {

@@ -1857,7 +1857,7 @@ public class TSDIFFBOSBImproveTest {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
 //        dataset_block_size.add(1024);
 
-        int repeatTime2 = 200;
+        int repeatTime2 = 100;
 //        for (int file_i = 9; file_i < 10; file_i++) {
 //
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
@@ -1917,7 +1917,7 @@ public class TSDIFFBOSBImproveTest {
 
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                    length =  BOSEncoder(data2_arr, dataset_block_size.get(file_i), encoded_result);
+                    length =  BOSEncoderImprove(data2_arr, dataset_block_size.get(file_i), encoded_result);
                 }
 
                 long e = System.nanoTime();
@@ -1927,7 +1927,7 @@ public class TSDIFFBOSBImproveTest {
                 ratio += ratioTmp;
                 s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime2; repeat++)
-                    BOSDecoder(encoded_result);
+                    BOSDecoderImprove(encoded_result);
                 e = System.nanoTime();
                 decodeTime += ((e - s) / repeatTime2);
 
