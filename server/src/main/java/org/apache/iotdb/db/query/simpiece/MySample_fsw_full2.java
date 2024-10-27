@@ -35,44 +35,48 @@ public class MySample_fsw_full2 {
   public static void main(String[] args) {
     String fileDir = "D:\\desktop\\NISTPV\\";
     // DO NOT change the order of datasets below, as the output is used in exp bash!!!
-    String[] datasetNameList = new String[]{"WindSpeed", "Qloss", "Pyra1", "RTD"};
-    int[] noutList =
-        new int[]{
-            320, 480, 740, 1200, 2000, 3500, 6000, 10000, 15000
-        };
+    String[] datasetNameList = new String[] {"WindSpeed", "Qloss", "Pyra1", "RTD"};
+    int[] noutList = new int[] {320, 480, 740, 1200, 2000, 3500, 6000, 10000, 15000};
 
     double[][] epsilonArray = {
-        {
-            18.988672256469727, 17.742149353027344, 15.250774383544922, 5.240921974182129,
-            4.0604248046875, 3.5127735137939453, 3.09999942779541, 2.782364845275879,
-            2.5470895767211914,
-        },
-        {
-            9.9945068359375E-4, 9.984970092773438E-4, 9.946823120117188E-4, 9.822845458984375E-4,
-            9.49859619140625E-4, 8.344650268554688E-4, 4.949569702148438E-4, 0.0, 0.0,
-        },
-        {
-            566.705379486084, 526.4058027267456, 489.42593574523926, 454.6960153579712,
-            420.31038188934326, 375.1610279083252, 320.00675773620605, 254.37902355194092,
-            196.95625495910645,
-        },
-        {
-            14.356999397277832, 10.442278861999512, 8.121441841125488, 5.849754333496094,
-            3.919279098510742, 2.444706916809082, 1.4873542785644531, 0.9297647476196289,
-            0.6465520858764648,
-        }
+      {
+        18.988672256469727, 17.742149353027344, 15.250774383544922, 5.240921974182129,
+        4.0604248046875, 3.5127735137939453, 3.09999942779541, 2.782364845275879,
+        2.5470895767211914,
+      },
+      {
+        9.9945068359375E-4,
+        9.984970092773438E-4,
+        9.946823120117188E-4,
+        9.822845458984375E-4,
+        9.49859619140625E-4,
+        8.344650268554688E-4,
+        4.949569702148438E-4,
+        0.0,
+        0.0,
+      },
+      {
+        566.705379486084, 526.4058027267456, 489.42593574523926, 454.6960153579712,
+        420.31038188934326, 375.1610279083252, 320.00675773620605, 254.37902355194092,
+        196.95625495910645,
+      },
+      {
+        14.356999397277832, 10.442278861999512, 8.121441841125488, 5.849754333496094,
+        3.919279098510742, 2.444706916809082, 1.4873542785644531, 0.9297647476196289,
+        0.6465520858764648,
+      }
     };
 
-//    double[][] epsilonArray = new double[datasetNameList.length][];
-//    for (int i = 0; i < datasetNameList.length; i++) {
-//      epsilonArray[i] = new double[noutList.length];
-//    }
+    //    double[][] epsilonArray = new double[datasetNameList.length][];
+    //    for (int i = 0; i < datasetNameList.length; i++) {
+    //      epsilonArray[i] = new double[noutList.length];
+    //    }
 
     for (int y = 0; y < datasetNameList.length; y++) {
-//      if (y != 1) {
-//        System.out.println("only for Qloss");
-//        continue;
-//      }
+      //      if (y != 1) {
+      //        System.out.println("only for Qloss");
+      //        continue;
+      //      }
       String datasetName = datasetNameList[y];
       int start = 0;
       int end = 1000_0000;
@@ -85,14 +89,14 @@ public class MySample_fsw_full2 {
                 inputStream, delimiter, false, N, start, hasHeader, true);
         for (int x = 0; x < noutList.length; x++) {
 
-//          if (y == 1 && x > 6) {
-//            continue; // because FSW on Qloss special
-//          }
+          //          if (y == 1 && x > 6) {
+          //            continue; // because FSW on Qloss special
+          //          }
 
           int nout = noutList[x];
 
-//          double epsilon = MySample_fsw2.getFSWParam(nout, ts, 1e-6);
-//          epsilonArray[y][x] = epsilon;
+          //          double epsilon = MySample_fsw2.getFSWParam(nout, ts, 1e-6);
+          //          epsilonArray[y][x] = epsilon;
 
           double epsilon = epsilonArray[y][x];
 

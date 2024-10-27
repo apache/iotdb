@@ -31,13 +31,13 @@ public class MySample_fsw2 {
 
   public static void main(String[] args) {
     String fileDir = "D:\\desktop\\NISTPV\\";
-    String[] datasetNameList = new String[]{"Qloss", "Pyra1", "RTD", "WindSpeed"};
-    int[] noutList = new int[]{100};
-    double[] r = new double[]{0.1, 0.5, 1.3, 0};
-    int[] NList = new int[]{2500000, 2500000, 2500000, 2500000};
+    String[] datasetNameList = new String[] {"Qloss", "Pyra1", "RTD", "WindSpeed"};
+    int[] noutList = new int[] {100};
+    double[] r = new double[] {0.1, 0.5, 1.3, 0};
+    int[] NList = new int[] {2500000, 2500000, 2500000, 2500000};
     double[] epsilonList =
-        new double[]{
-            9.999999992942321E-4, 284.40344031846143, 6.428162015438829, 8.361764705882706
+        new double[] {
+          9.999999992942321E-4, 284.40344031846143, 6.428162015438829, 8.361764705882706
         };
     for (int y = 0; y < datasetNameList.length; y++) {
       String datasetName = datasetNameList[y];
@@ -55,7 +55,7 @@ public class MySample_fsw2 {
           TimeSeries ts =
               TimeSeriesReader.getMyTimeSeries(
                   inputStream, delimiter, false, N, start, hasHeader, true);
-//          double epsilon = getFSWParam(nout, ts, 1e-12);
+          //          double epsilon = getFSWParam(nout, ts, 1e-12);
           double epsilon = epsilonList[y];
           List<Point> reducedPoints = FSW.reducePoints(ts.data, epsilon);
           System.out.println(
@@ -82,53 +82,6 @@ public class MySample_fsw2 {
       }
     }
   }
-
-  //  public static double getFSWParam(int nout, TimeSeries ts, double accuracy) throws IOException
-  // {
-  //    double epsilon = 1;
-  //    boolean directLess = false;
-  //    boolean directMore = false;
-  //    while (true) {
-  //      List<Point> reducedPoints = FSW.reducePoints(ts.data, epsilon);
-  //      if (reducedPoints.size() > nout) {
-  //        if (directMore) {
-  //          break;
-  //        }
-  //        if (!directLess) {
-  //          directLess = true;
-  //        }
-  //        epsilon *= 2;
-  //      } else {
-  //        if (directLess) {
-  //          break;
-  //        }
-  //        if (!directMore) {
-  //          directMore = true;
-  //        }
-  //        epsilon /= 2;
-  //      }
-  //    }
-  //    double left = 0;
-  //    double right = 0;
-  //    if (directLess) {
-  //      left = epsilon / 2;
-  //      right = epsilon;
-  //    }
-  //    if (directMore) {
-  //      left = epsilon;
-  //      right = epsilon * 2;
-  //    }
-  //    while (Math.abs(right - left) > accuracy) {
-  //      double mid = (left + right) / 2;
-  //      List<Point> reducedPoints = FSW.reducePoints(ts.data, mid);
-  //      if (reducedPoints.size() > nout) {
-  //        left = mid;
-  //      } else {
-  //        right = mid;
-  //      }
-  //    }
-  //    return (left + right) / 2;
-  //  }
 
   public static double getFSWParam(int nout, TimeSeries ts, double accuracy) throws IOException {
     double epsilon = 1;

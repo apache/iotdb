@@ -36,45 +36,47 @@ public class MySample_simpiece_full2 {
   public static void main(String[] args) {
     String fileDir = "D:\\desktop\\NISTPV\\";
     // DO NOT change the order of datasets below, as the output is used in exp bash!!!!
-    String[] datasetNameList = new String[]{"WindSpeed", "Qloss", "Pyra1", "RTD"};
-    int[] noutList =
-        new int[]{
-            320, 480, 740, 1200, 2000, 3500, 6000, 10000, 15000
-        };
+    String[] datasetNameList = new String[] {"WindSpeed", "Qloss", "Pyra1", "RTD"};
+    int[] noutList = new int[] {320, 480, 740, 1200, 2000, 3500, 6000, 10000, 15000};
 
     double[][] epsilonArray = {
-        {
-            17.286434173583984, 15.812178611755371, 13.160140037536621, 8.928653717041016,
-            4.689850807189941, 3.816372871398926, 3.328960418701172, 2.950345993041992,
-            2.692307472229004,
-        },
-        {
-            9.9945068359375E-4, 9.698867797851562E-4, 7.89642333984375E-4, 6.666183471679688E-4,
-            5.626678466796875E-4, 5.07354736328125E-4, 4.987716674804688E-4,
-            4.2351647362715017E-22,
-            4.2351647362715017E-22,
-        },
-        {
-            643.1565141677856, 606.646897315979, 559.2596483230591, 519.0886516571045,
-            460.05999660491943, 400.9924087524414, 343.4447431564331, 283.27570056915283,
-            229.07614612579346,
-        },
-        {
-            19.49333381652832, 14.994223594665527, 11.001291275024414, 7.752982139587402,
-            5.533552169799805, 3.6270971298217773, 2.286458969116211, 1.4204912185668945,
-            0.9623184204101562,
-        }
+      {
+        17.286434173583984, 15.812178611755371, 13.160140037536621, 8.928653717041016,
+        4.689850807189941, 3.816372871398926, 3.328960418701172, 2.950345993041992,
+        2.692307472229004,
+      },
+      {
+        9.9945068359375E-4,
+        9.698867797851562E-4,
+        7.89642333984375E-4,
+        6.666183471679688E-4,
+        5.626678466796875E-4,
+        5.07354736328125E-4,
+        4.987716674804688E-4,
+        4.2351647362715017E-22,
+        4.2351647362715017E-22,
+      },
+      {
+        643.1565141677856, 606.646897315979, 559.2596483230591, 519.0886516571045,
+        460.05999660491943, 400.9924087524414, 343.4447431564331, 283.27570056915283,
+        229.07614612579346,
+      },
+      {
+        19.49333381652832, 14.994223594665527, 11.001291275024414, 7.752982139587402,
+        5.533552169799805, 3.6270971298217773, 2.286458969116211, 1.4204912185668945,
+        0.9623184204101562,
+      }
     };
 
-//    double[][] epsilonArray = new double[datasetNameList.length][];
-//    for (int i = 0; i < datasetNameList.length; i++) {
-//      epsilonArray[i] = new double[noutList.length];
-//    }
+    //    double[][] epsilonArray = new double[datasetNameList.length][];
+    //    for (int i = 0; i < datasetNameList.length; i++) {
+    //      epsilonArray[i] = new double[noutList.length];
+    //    }
 
     for (int y = 0; y < datasetNameList.length; y++) {
-//      if (y != 1) {
-//        continue;
-//      }
+      //      if (y != 1) {
+      //        continue;
+      //      }
 
       String datasetName = datasetNameList[y];
       int start = 0;
@@ -90,8 +92,8 @@ public class MySample_simpiece_full2 {
         for (int x = 0; x < noutList.length; x++) {
           int nout = noutList[x];
 
-//          double epsilon = MySample_simpiece2.getSimPieceParam(nout, ts, 1e-6);
-//          epsilonArray[y][x] = epsilon;
+          //          double epsilon = MySample_simpiece2.getSimPieceParam(nout, ts, 1e-6);
+          //          epsilonArray[y][x] = epsilon;
 
           double epsilon = epsilonArray[y][x];
 
@@ -125,7 +127,7 @@ public class MySample_simpiece_full2 {
               // end point of this segment
               double v =
                   (segments.get(i + 1).getInitTimestamp() - segments.get(i).getInitTimestamp())
-                      * segments.get(i).getA()
+                          * segments.get(i).getA()
                       + segments.get(i).getB();
               writer.println(segments.get(i + 1).getInitTimestamp() + "," + v);
             }
@@ -136,7 +138,7 @@ public class MySample_simpiece_full2 {
                     + segments.get(segments.size() - 1).getB());
             double v =
                 (simPiece.lastTimeStamp - segments.get(segments.size() - 1).getInitTimestamp())
-                    * segments.get(segments.size() - 1).getA()
+                        * segments.get(segments.size() - 1).getA()
                     + segments.get(segments.size() - 1).getB();
             writer.println(simPiece.lastTimeStamp + "," + v);
           }

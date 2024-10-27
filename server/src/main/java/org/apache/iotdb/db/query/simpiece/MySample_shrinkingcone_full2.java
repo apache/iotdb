@@ -35,42 +35,53 @@ public class MySample_shrinkingcone_full2 {
   public static void main(String[] args) {
     String fileDir = "D:\\desktop\\NISTPV\\";
     // do not change the order of datasets below, as the output is used in exp bash
-    String[] datasetNameList = new String[]{"WindSpeed", "Qloss", "Pyra1", "RTD"};
-    int[] noutList =
-        new int[]{
-            320, 480, 740, 1200, 2000, 3500, 6000, 10000, 15000
-        };
+    String[] datasetNameList = new String[] {"WindSpeed", "Qloss", "Pyra1", "RTD"};
+    int[] noutList = new int[] {320, 480, 740, 1200, 2000, 3500, 6000, 10000, 15000};
 
     double[][] epsilonArray = {
-        {
-            28.350000381469727, 24.75, 20.15000057220459, 7.495454788208008, 5.978656768798828,
-            5.123478889465332, 4.4909868240356445, 3.9743595123291016, 3.59999942779541,
-        },
-        {
-            0.001, 9.9945068359375E-4, 9.9945068359375E-4, 9.9945068359375E-4,
-            9.9945068359375E-4, 9.984970092773438E-4, 9.517669677734375E-4, 0.0, 0.0,
-        },
-        {
-            868.2230234146118, 824.095006942749, 772.8191223144531, 709.9235706329346,
-            632.2311534881592, 527.634295463562, 421.8133182525635, 322.99202156066895,
-            247.5426368713379,
-        },
-        {
-            17.567204475402832, 13.436342239379883, 10.276226997375488, 7.288450241088867,
-            4.86691951751709, 2.9565000534057617, 1.8069705963134766, 1.1284055709838867,
-            0.8002557754516602,
-        }
+      {
+        28.350000381469727,
+        24.75,
+        20.15000057220459,
+        7.495454788208008,
+        5.978656768798828,
+        5.123478889465332,
+        4.4909868240356445,
+        3.9743595123291016,
+        3.59999942779541,
+      },
+      {
+        0.001,
+        9.9945068359375E-4,
+        9.9945068359375E-4,
+        9.9945068359375E-4,
+        9.9945068359375E-4,
+        9.984970092773438E-4,
+        9.517669677734375E-4,
+        0.0,
+        0.0,
+      },
+      {
+        868.2230234146118, 824.095006942749, 772.8191223144531, 709.9235706329346,
+        632.2311534881592, 527.634295463562, 421.8133182525635, 322.99202156066895,
+        247.5426368713379,
+      },
+      {
+        17.567204475402832, 13.436342239379883, 10.276226997375488, 7.288450241088867,
+        4.86691951751709, 2.9565000534057617, 1.8069705963134766, 1.1284055709838867,
+        0.8002557754516602,
+      }
     };
 
-//    double[][] epsilonArray = new double[datasetNameList.length][];
-//    for (int i = 0; i < datasetNameList.length; i++) {
-//      epsilonArray[i] = new double[noutList.length];
-//    }
+    //    double[][] epsilonArray = new double[datasetNameList.length][];
+    //    for (int i = 0; i < datasetNameList.length; i++) {
+    //      epsilonArray[i] = new double[noutList.length];
+    //    }
 
     for (int y = 0; y < datasetNameList.length; y++) {
-//      if (y != 1) {
-//        continue;
-//      }
+      //      if (y != 1) {
+      //        continue;
+      //      }
 
       String datasetName = datasetNameList[y];
       int start = 0;
@@ -83,14 +94,14 @@ public class MySample_shrinkingcone_full2 {
             TimeSeriesReader.getMyTimeSeries(
                 inputStream, delimiter, false, N, start, hasHeader, true);
         for (int x = 0; x < noutList.length; x++) {
-//          if (y == 1 && x > 6) {
-//            continue; // because SC on Qloss special?
-//          }
+          //          if (y == 1 && x > 6) {
+          //            continue; // because SC on Qloss special?
+          //          }
 
           int nout = noutList[x];
-//
-//          double epsilon = MySample_shrinkingcone.getSCParam(nout, ts, 1e-6);
-//          epsilonArray[y][x] = epsilon;
+          //
+          //          double epsilon = MySample_shrinkingcone.getSCParam(nout, ts, 1e-6);
+          //          epsilonArray[y][x] = epsilon;
 
           double epsilon = epsilonArray[y][x];
 
