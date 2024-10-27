@@ -872,9 +872,15 @@ public class TSDIFFTest {
                 for (CompressionType comp : compressList) {
                     double ratio = 0;
                     double compressed_size = 0;
+                    long compressTime = encodeTime;
                     ICompressor compressor = ICompressor.getCompressor(comp);
-                    byte[] compressed = compressor.compress(encoded_result);
-
+                    s = System.nanoTime();
+                    byte[] compressed = new byte[0];
+                    for (int repeat = 0; repeat < repeatTime2; repeat++) {
+                        compressed = compressor.compress(encoded_result);
+                    }
+                    e = System.nanoTime();
+                    compressTime += ((e - s) / repeatTime2);
                     // test compression ratio and compressed size
                     compressed_size += compressed.length;
                     double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
@@ -889,7 +895,7 @@ public class TSDIFFTest {
                     String[] record = {
                             f.toString(),
                             comp.toString(),
-                            String.valueOf(encodeTime),
+                            String.valueOf(compressTime),
                             String.valueOf(decodeTime),
                             String.valueOf(data1.size()),
                             String.valueOf(compressed_size),
@@ -911,11 +917,20 @@ public class TSDIFFTest {
                 }
 
                 File input = new File(parent_dir + "icde0802/example.bin");
+
                 File output = new File(parent_dir + "icde0802/example.7z");
                 SevenZOutputFile out = new SevenZOutputFile(output);
 
-                addToArchiveCompression(out, input, ".");
-                out.closeArchiveEntry();
+                long compressTime = encodeTime;
+                s = System.nanoTime();
+//                byte[] compressed = new byte[0];
+                for (int repeat = 0; repeat < repeatTime2; repeat++) {
+                    addToArchiveCompression(out, input, ".");
+                    out.closeArchiveEntry();
+                }
+                e = System.nanoTime();
+                compressTime += ((e - s) / repeatTime2);
+
 
                 long compressed = output.length();
 
@@ -923,14 +938,14 @@ public class TSDIFFTest {
                 // test compression ratio and compressed size
                 compressed_size += compressed;
                 double ratioTmp =
-                        (double) compressed / (double) (double) (data1.size() * Integer.BYTES);
+                        (double) compressed / (double) (double) (repeatTime2*data1.size() * Integer.BYTES);
                 ratio += ratioTmp;
 
 
                 String[] record = {
                         f.toString(),
                         "7-Zip",
-                        String.valueOf(encodeTime),
+                        String.valueOf(compressTime),
                         String.valueOf(decodeTime),
                         String.valueOf(data1.size()),
                         String.valueOf(compressed_size),

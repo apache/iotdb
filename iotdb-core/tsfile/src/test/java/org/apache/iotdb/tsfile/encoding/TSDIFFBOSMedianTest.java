@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import static java.lang.Math.*;
+import static org.apache.iotdb.tsfile.constant.TestConstant.random;
 
 public class TSDIFFBOSMedianTest {
 
@@ -639,8 +640,15 @@ public class TSDIFFBOSMedianTest {
         if (left == right) {
             return arr[left];
         }
+        if (areAllElementsEqual(arr, left, right)) {
+            return arr[left];
+        }
+        // 随机选择一个pivot索引
+        int pivotIndex = left + random.nextInt(right - left + 1);
+        // 把随机选的pivot放到最后
+        swap(arr, pivotIndex, right);
 
-        int pivotIndex = partition(arr, left, right);
+        pivotIndex = partition(arr, left, right);
         if (k == pivotIndex) {
             return arr[k];
         } else if (k < pivotIndex) {
@@ -649,7 +657,14 @@ public class TSDIFFBOSMedianTest {
             return quickSelect(arr, pivotIndex + 1, right, k);
         }
     }
-
+    private static boolean areAllElementsEqual(int[] arr, int left, int right) {
+        for (int i = left + 1; i <= right; i++) {
+            if (arr[i] != arr[left]) {
+                return false;
+            }
+        }
+        return true;
+    }
     private static int partition(int[] arr, int left, int right) {
         int pivot = arr[right];
         int i = left;
@@ -976,7 +991,7 @@ public class TSDIFFBOSMedianTest {
         for(int beta = max_bit_width - 1; beta > 0 ; beta --){
             left_number += count_left[beta];
             right_number += count_right[beta];
-            int pow_beta = (int) pow(2,beta-1);
+            int pow_beta = 1 << (beta-1);
             int xu = min(max_delta_value+1, median + pow_beta) ;
             int xl = max(median - pow_beta,-1);
             int cur_bits = Math.min((left_number + right_number) * getBitWith(block_size - 1), block_size + left_number + right_number);
@@ -1699,11 +1714,11 @@ public class TSDIFFBOSMedianTest {
     }
 
     @Test
-    public void PruneBOSTest() throws IOException {
+    public void BOSTest() throws IOException {
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
 //        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
-//        String output_parent_dir = parent_dir + "icde0802/compression_ratio/bos_m";
-        String output_parent_dir = parent_dir + "icde0802/supply_experiment/R2O3_lower_outlier_compare/compression_ratio/bos";
+        String output_parent_dir = parent_dir + "icde0802/compression_ratio/bos_m";
+//        String output_parent_dir = parent_dir + "icde0802/supply_experiment/R2O3_lower_outlier_compare/compression_ratio/bos";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -1752,7 +1767,7 @@ public class TSDIFFBOSMedianTest {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
 //        dataset_block_size.add(1024);
 
-        int repeatTime2 = 100;
+        int repeatTime2 = 200;
 
 //        for (int file_i = 0; file_i < 1; file_i++) {
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
@@ -2100,7 +2115,7 @@ public class TSDIFFBOSMedianTest {
 
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                    length =  BOSEncoder(data2_arr, dataset_block_size.get(file_i), encoded_result);
+                    length =  BOSEncoderImprove(data2_arr, dataset_block_size.get(file_i), encoded_result);
                 }
                 long e = System.nanoTime();
                 encodeTime += ((e - s) / repeatTime2);
@@ -2108,16 +2123,23 @@ public class TSDIFFBOSMedianTest {
                 for (CompressionType comp : compressList) {
                     double ratio = 0;
                     double compressed_size = 0;
+                    long compressTime = encodeTime;
                     ICompressor compressor = ICompressor.getCompressor(comp);
-                    byte[] compressed = compressor.compress(encoded_result);
+                    s = System.nanoTime();
+                    byte[] compressed = new byte[0];
+                    for (int repeat = 0; repeat < repeatTime2; repeat++) {
+                        compressed = compressor.compress(encoded_result);
+                    }
+                    e = System.nanoTime();
+                    compressTime += ((e - s) / repeatTime2);
 
                     // test compression ratio and compressed size
                     compressed_size += compressed.length;
                     double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
                     ratio += ratioTmp;
                     s = System.nanoTime();
-                    for (int repeat = 0; repeat < repeatTime2; repeat++)
-                        BOSDecoder(encoded_result);
+//                    for (int repeat = 0; repeat < repeatTime2; repeat++)
+//                        BOSDecoderImprove(encoded_result);
                     e = System.nanoTime();
                     decodeTime += ((e - s) / repeatTime2);
 
@@ -2125,7 +2147,7 @@ public class TSDIFFBOSMedianTest {
                     String[] record = {
                             f.toString(),
                             "BOS+"+ comp,
-                            String.valueOf(encodeTime),
+                            String.valueOf(compressTime),
                             String.valueOf(decodeTime),
                             String.valueOf(data1.size()),
                             String.valueOf(compressed_size),
@@ -2150,8 +2172,16 @@ public class TSDIFFBOSMedianTest {
                 File output = new File(parent_dir + "icde0802/example.7z");
                 SevenZOutputFile out = new SevenZOutputFile(output);
 
-                addToArchiveCompression(out, input, ".");
-                out.closeArchiveEntry();
+                long compressTime = encodeTime;
+                s = System.nanoTime();
+//                byte[] compressed = new byte[0];
+                for (int repeat = 0; repeat < repeatTime2; repeat++) {
+                    addToArchiveCompression(out, input, ".");
+                    out.closeArchiveEntry();
+                }
+                e = System.nanoTime();
+                compressTime += ((e - s) / repeatTime2);
+
 
                 long compressed = output.length();
 
@@ -2159,14 +2189,14 @@ public class TSDIFFBOSMedianTest {
                 // test compression ratio and compressed size
                 compressed_size += compressed;
                 double ratioTmp =
-                        (double) compressed / (double) (double) (data1.size() * Integer.BYTES);
+                        (double) compressed / (double) (double) (repeatTime2 * data1.size() * Integer.BYTES);
                 ratio += ratioTmp;
 
 
                 String[] record = {
                         f.toString(),
                         "BOS+7-Zip",
-                        String.valueOf(encodeTime),
+                        String.valueOf(compressTime),
                         String.valueOf(decodeTime),
                         String.valueOf(data1.size()),
                         String.valueOf(compressed_size),
@@ -2366,7 +2396,7 @@ public class TSDIFFBOSMedianTest {
 
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
 
-        int repeatTime2 = 100;
+        int repeatTime2 = 200;
 //        int[] file_i_list = {0,9,10};
 //        for (int file_i = 9; file_i < 10; file_i++) {
 //        for(int file_i :file_i_list){
@@ -2418,7 +2448,7 @@ public class TSDIFFBOSMedianTest {
                 }
                 byte[] encoded_result = new byte[data2_arr.length*4];
 
-//                for (int block_size_i = 5; block_size_i > 4; block_size_i--) {
+//                for (int block_size_i = 5; block_size_i < 14; block_size_i++) {
                 for (int block_size_i = 13; block_size_i > 4; block_size_i--) {
                     int block_size = (int) Math.pow(2, block_size_i);
                     System.out.println(block_size);
