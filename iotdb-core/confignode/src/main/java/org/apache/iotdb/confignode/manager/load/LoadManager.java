@@ -156,7 +156,6 @@ public class LoadManager {
     routeBalancer.clearRegionPriority();
   }
 
-  // TODO：本地写真的逮胶布？
   public void clearDataPartitionPolicyTable(String database) {
     partitionBalancer.clearDataPartitionPolicyTable(database);
   }
