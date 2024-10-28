@@ -542,7 +542,7 @@ public abstract class AbstractCompactionTask {
         break;
       }
     }
-    for (; idx < timePartitionSeqFiles.size(); idx++) {
+    for (idx += 1; idx < timePartitionSeqFiles.size(); idx++) {
       TsFileResource resource = timePartitionSeqFiles.get(idx);
       if (resource.getFileStartTime() <= maxEndTimeInTargetFiles) {
         result.add(resource);
