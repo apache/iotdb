@@ -21,19 +21,12 @@ package org.apache.iotdb.db.subscription.event.pipe;
 
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
 
-import java.io.File;
-
 public class SubscriptionPipeTabletBatchEvents implements SubscriptionPipeEvents {
 
   private final SubscriptionPipeTabletEventBatch batch;
 
   public SubscriptionPipeTabletBatchEvents(final SubscriptionPipeTabletEventBatch batch) {
     this.batch = batch;
-  }
-
-  @Override
-  public File getTsFile() {
-    return null;
   }
 
   @Override
