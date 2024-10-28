@@ -21,11 +21,15 @@ package org.apache.iotdb.db.pipe.event.common.tsfile.parser.table;
 
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.read.ReadProcessException;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.query.executor.TableQueryExecutor;
 import org.apache.tsfile.read.reader.block.TsBlockReader;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.DateUtils;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -34,6 +38,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+
+import static org.apache.tsfile.enums.TSDataType.DATE;
 
 public class TsFileInsertionEventTableParserTabletIterator implements Iterator<Tablet> {
 
@@ -116,7 +122,10 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
       final int rowIndex = tablet.rowSize;
       tablet.addTimestamp(rowIndex, timestamp);
       for (int i = 0, fieldSize = row.length - 1; i < fieldSize; i++) {
-        final Object value = row[i];
+        final Object value =
+            columnSchemas.get(i).getType() != DATE
+                ? row[i]
+                : DateUtils.parseIntToLocalDate((Integer) row[i]);
         tablet.addValue(columnNames.get(i), rowIndex, value);
         if (value != null && columnTypes.get(i) == Tablet.ColumnType.MEASUREMENT) {
           isAllNull = false;
@@ -130,5 +139,28 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     }
 
     return tablet;
+  }
+
+  private Object get(TSDataType type, Object value) {
+    switch (type) {
+      case BOOLEAN:
+      case INT32:
+      case INT64:
+      case TIMESTAMP:
+      case FLOAT:
+      case DOUBLE:
+        return value;
+      case DATE:
+        return DateUtils.parseIntToLocalDate((Integer) value);
+        break;
+
+      case TEXT:
+      case BLOB:
+      case STRING:
+        ((Binary[]) columns[i])[rowIndex] = primitiveType.getBinary();
+        break;
+      default:
+        throw new UnSupportedDataTypeException("UnSupported" + primitiveType.getDataType());
+    }
   }
 }
