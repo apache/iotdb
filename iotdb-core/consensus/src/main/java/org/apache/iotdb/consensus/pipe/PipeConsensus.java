@@ -335,13 +335,13 @@ public class PipeConsensus implements IConsensus {
       impl.notifyPeersToCreateConsensusPipes(peer);
       KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_TRANSITION);
 
-      // step 3: wait until all the other Peers finish transferring
-      LOGGER.info("[{}] wait until all the other peers finish transferring...", CLASS_NAME);
-      impl.waitPeersToTargetPeerTransmissionCompleted(peer);
-
-      // step 4: active new Peer
+      // step 3: active new Peer to let new Peer receive snapshot
       LOGGER.info("[{}] activate new peer...", CLASS_NAME);
       impl.setRemotePeerActive(peer, true);
+
+      // step 4: wait until all the other Peers finish transferring
+      LOGGER.info("[{}] wait until all the other peers finish transferring...", CLASS_NAME);
+      impl.waitPeersToTargetPeerTransmissionCompleted(peer);
       KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_DONE);
     } catch (ConsensusGroupModifyPeerException e) {
       try {

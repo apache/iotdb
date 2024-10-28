@@ -505,6 +505,9 @@ public class PipeConsensusServerImpl {
 
           isTransmissionCompleted = true;
           for (Peer peer : otherPeers) {
+            if (peer.equals(targetPeer)) {
+              continue;
+            }
             isTransmissionCompleted &=
                 isRemotePeerConsensusPipesTransmissionCompleted(
                     peer,
