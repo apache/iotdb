@@ -593,7 +593,10 @@ public class ColumnTransformerVisitor
             return entry.getValue();
           }
         }
-        return UNKNOWN;
+        throw new IllegalStateException(
+            String.format(
+                "Unknown expression type: %s, perhaps it has non existent measurement.",
+                expression.getOutputSymbol()));
       }
     }
 

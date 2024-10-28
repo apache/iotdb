@@ -108,12 +108,6 @@ public class IoTDBUDAFHavingIT {
     registerUDAF();
   }
 
-  public static void main(String[] args) {
-    for (String s : SQLs) {
-      System.out.println(s + ";");
-    }
-  }
-
   @AfterClass
   public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
