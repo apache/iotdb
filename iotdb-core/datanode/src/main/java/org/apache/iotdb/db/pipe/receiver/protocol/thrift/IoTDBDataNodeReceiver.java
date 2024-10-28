@@ -124,9 +124,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       new PipeStatementExceptionVisitor();
   private static final PipeStatementPatternParseVisitor STATEMENT_PATTERN_PARSE_VISITOR =
       new PipeStatementPatternParseVisitor();
-  private static final PipeStatementDataTypeConvertExecutionVisitor
-      STATEMENT_DATA_TYPE_CONVERT_EXECUTION_VISITOR =
-          new PipeStatementDataTypeConvertExecutionVisitor(IoTDBDataNodeReceiver::executeStatement);
+  private final PipeStatementDataTypeConvertExecutionVisitor
+      statementDataTypeConvertExecutionVisitor =
+          new PipeStatementDataTypeConvertExecutionVisitor(this::executeStatement);
   private final PipeStatementToBatchVisitor batchVisitor = new PipeStatementToBatchVisitor();
 
   // Used for data transfer: confignode (cluster A) -> datanode (cluster B) -> confignode (cluster
@@ -622,7 +622,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             && ((statement instanceof InsertBaseStatement
                     && ((InsertBaseStatement) statement).hasFailedMeasurements())
                 || status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        ? statement.accept(STATEMENT_DATA_TYPE_CONVERT_EXECUTION_VISITOR, status).orElse(status)
+        ? statement.accept(statementDataTypeConvertExecutionVisitor, status).orElse(status)
         : status;
   }
 

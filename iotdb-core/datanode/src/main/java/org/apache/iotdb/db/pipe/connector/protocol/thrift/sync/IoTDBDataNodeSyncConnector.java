@@ -83,6 +83,8 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
   @Override
   protected IoTDBSyncClientManager constructClient(
       final List<TEndPoint> nodeUrls,
+      final String username,
+      final String password,
       final boolean useSSL,
       final String trustStorePath,
       final String trustStorePwd,
