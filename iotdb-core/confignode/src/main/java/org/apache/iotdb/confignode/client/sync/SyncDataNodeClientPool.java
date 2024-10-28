@@ -38,7 +38,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
-import org.apache.iotdb.mpp.rpc.thrift.TStopDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -105,8 +104,8 @@ public class SyncDataNodeClientPool {
         CnToDnSyncRequestType.CLEAN_DATA_NODE_CACHE,
         (req, client) -> client.cleanDataNodeCache((TCleanDataNodeCacheReq) req));
     actionMapBuilder.put(
-        CnToDnSyncRequestType.STOP_DATA_NODE,
-        (req, client) -> client.stopDataNode((TStopDataNodeReq) req));
+        CnToDnSyncRequestType.STOP_AND_CLEAR_DATA_NODE,
+        (req, client) -> client.stopAndClearDataNode());
     actionMapBuilder.put(
         CnToDnSyncRequestType.SET_SYSTEM_STATUS,
         (req, client) -> client.setSystemStatus((String) req));

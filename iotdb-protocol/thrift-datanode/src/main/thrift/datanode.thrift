@@ -299,10 +299,6 @@ struct TDataNodeHeartbeatResp {
   16: optional list<double> pipeRemainingTimeList
 }
 
-struct TStopDataNodeReq {
-  1: required bool needCleanup
-}
-
 struct TPipeHeartbeatReq {
   1: required i64 heartbeatId
 }
@@ -806,9 +802,9 @@ service IDataNodeRPCService {
   common.TSStatus cleanDataNodeCache(TCleanDataNodeCacheReq req)
 
   /**
-   * Config node will stop the Data node.
+   * Config node will stop and clear the Data node.
    */
-  common.TSStatus stopDataNode(TStopDataNodeReq req)
+  common.TSStatus stopAndClearDataNode()
 
   /**
    * ConfigNode will ask DataNode for heartbeat in every few seconds.
