@@ -790,7 +790,7 @@ public class TestUtils {
           Statement statement = connection.createStatement()) {
 
         if (BaseEnv.TABLE_SQL_DIALECT.equals(sqlDialect) && dataBase != null) {
-          statement.execute("use dataBase");
+          statement.execute("use " + dataBase);
         }
 
         for (int i = lastIndex; i < sqlList.size(); ++i) {

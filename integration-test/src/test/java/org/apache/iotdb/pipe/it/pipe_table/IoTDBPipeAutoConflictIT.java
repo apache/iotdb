@@ -229,14 +229,14 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelTestIT {
 
       createDataBaseAndTable(senderEnv);
       createDataBaseAndTable(receiverEnv);
-      insertData("test", "test1", 0, 100, senderEnv);
-
+      insertData("test", "test", 0, 100, senderEnv);
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("source.inclusion", "data.insert");
       extractorAttributes.put("source.inclusion.exclusion", "");
+      extractorAttributes.put("table-name", "test.*");
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("source.forwarding-pipe-requests", "false");
 
@@ -256,7 +256,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelTestIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
     }
 
-    insertData("test", "test1", 100, 200, senderEnv);
+    insertData("test", "test", 100, 200, senderEnv);
     insertData("test", "test1", 200, 300, receiverEnv);
 
     try (final SyncConfigNodeIServiceClient client =
@@ -267,6 +267,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelTestIT {
 
       extractorAttributes.put("source.inclusion", "data.insert");
       extractorAttributes.put("source.inclusion.exclusion", "");
+      extractorAttributes.put("table-name", "test.*");
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("source.forwarding-pipe-requests", "false");
 
@@ -291,15 +292,15 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelTestIT {
         receiverEnv,
         Utils.getQuerySql("test"),
         Utils.generateHeaderResults(),
-        Utils.generateExpectedResults(0, 400),
+        Utils.generateExpectedResults(0, 200),
         "test");
 
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv,
+        senderEnv,
         Utils.getQuerySql("test1"),
         Utils.generateHeaderResults(),
-        Utils.generateExpectedResults(0, 400),
-        "test1");
+        Utils.generateExpectedResults(200, 400),
+        "test");
   }
 
   private void createDataBaseAndTable(BaseEnv baseEnv) {

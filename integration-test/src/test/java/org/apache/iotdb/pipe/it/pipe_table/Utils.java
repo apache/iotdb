@@ -101,6 +101,15 @@ public class Utils {
     }
   }
 
+  public static void createDataBase(BaseEnv baseEnv, String database) {
+    try (Connection connection = baseEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("create database if not exists " + database);
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
   public static Set<String> generateExpectedResults(int start, int end) {
     Set<String> expectedResSet = new HashSet<>();
     for (int i = start; i < end; ++i) {
@@ -128,14 +137,14 @@ public class Utils {
       String database, String table, int start, int end, BaseEnv baseEnv) {
     TestUtils.assertDataEventuallyOnEnv(
         baseEnv,
-        Utils.getQuerySql("test"),
+        Utils.getQuerySql(table),
         Utils.generateHeaderResults(),
         Utils.generateExpectedResults(start, end),
-        "test");
+        database);
   }
 
   public static void assertCountData(String database, String table, int count, BaseEnv baseEnv) {
     TestUtils.assertDataEventuallyOnEnv(
-        baseEnv, getQueryCountSql(table), "_col0,", Collections.singleton(count + ","), "test");
+        baseEnv, getQueryCountSql(table), "_col0,", Collections.singleton(count + ","), database);
   }
 }
