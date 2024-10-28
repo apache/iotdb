@@ -132,7 +132,10 @@ public class TableTest {
           }
         });
     LOGGER.info(
-        "{} writing {} devices costs {}ms", sqlDialect, deviceNum, System.nanoTime() - startTime);
+        "{} writing {} devices costs {}s",
+        sqlDialect,
+        deviceNum,
+        (System.nanoTime() - startTime) / 1_000_000_000L);
   }
 
   private static void writeTable(final SessionPool sessionPool, final int deviceNum) {
