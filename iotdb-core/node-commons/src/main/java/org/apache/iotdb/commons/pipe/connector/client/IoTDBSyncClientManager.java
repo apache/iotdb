@@ -72,8 +72,18 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       boolean useLeaderCache,
       String loadBalanceStrategy,
       boolean shouldReceiverConvertOnTypeMismatch,
-      String loadTsFileStrategy) {
-    super(endPoints, useLeaderCache);
+      String loadTsFileStrategy,
+      String customSendPortStrategy,
+      int minSendPortRange,
+      int maxSendPortRange,
+      List<Integer> candidatePorts) {
+    super(
+        endPoints,
+        useLeaderCache,
+        customSendPortStrategy,
+        minSendPortRange,
+        maxSendPortRange,
+        candidatePorts);
 
     this.useSSL = useSSL;
     this.trustStorePath = trustStorePath;
@@ -159,7 +169,11 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
               endPoint.getPort(),
               useSSL,
               trustStorePath,
-              trustStorePwd));
+              trustStorePwd,
+              customSendPortStrategy,
+              minSendPortRange,
+              maxSendPortRange,
+              candidatePorts));
     } catch (Exception e) {
       throw new PipeConnectionException(
           String.format(

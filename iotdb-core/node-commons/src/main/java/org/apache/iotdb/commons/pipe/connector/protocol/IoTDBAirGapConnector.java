@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.connector.protocol;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.util.IoTDBConnectorPortBinder;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapOneByteResponse;
@@ -169,6 +170,12 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
       }
 
       final AirGapSocket socket = new AirGapSocket(ip, port);
+      IoTDBConnectorPortBinder.bindPort(
+          customSendPortStrategy,
+          minSendPortRange,
+          maxSendPortRange,
+          candidatePorts,
+          (sendPort) -> socket.bind(new InetSocketAddress(sendPort)));
 
       try {
         socket.connect(new InetSocketAddress(ip, port), handshakeTimeoutMs);
