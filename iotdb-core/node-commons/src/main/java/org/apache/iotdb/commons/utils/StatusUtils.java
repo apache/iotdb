@@ -54,6 +54,7 @@ public class StatusUtils {
     NEED_RETRY.add(TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());
     NEED_RETRY.add(TSStatusCode.STORAGE_ENGINE_NOT_READY.getStatusCode());
     NEED_RETRY.add(TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode());
+    NEED_RETRY.add(TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode());
     NEED_RETRY.add(TSStatusCode.WAL_ERROR.getStatusCode());
     NEED_RETRY.add(TSStatusCode.DISK_SPACE_INSUFFICIENT.getStatusCode());
     NEED_RETRY.add(TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
