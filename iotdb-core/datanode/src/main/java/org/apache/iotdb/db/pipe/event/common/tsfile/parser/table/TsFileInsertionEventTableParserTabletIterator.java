@@ -21,15 +21,12 @@ package org.apache.iotdb.db.pipe.event.common.tsfile.parser.table;
 
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.read.ReadProcessException;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.query.executor.TableQueryExecutor;
 import org.apache.tsfile.read.reader.block.TsBlockReader;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -139,28 +136,5 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     }
 
     return tablet;
-  }
-
-  private Object get(TSDataType type, Object value) {
-    switch (type) {
-      case BOOLEAN:
-      case INT32:
-      case INT64:
-      case TIMESTAMP:
-      case FLOAT:
-      case DOUBLE:
-        return value;
-      case DATE:
-        return DateUtils.parseIntToLocalDate((Integer) value);
-        break;
-
-      case TEXT:
-      case BLOB:
-      case STRING:
-        ((Binary[]) columns[i])[rowIndex] = primitiveType.getBinary();
-        break;
-      default:
-        throw new UnSupportedDataTypeException("UnSupported" + primitiveType.getDataType());
-    }
   }
 }
