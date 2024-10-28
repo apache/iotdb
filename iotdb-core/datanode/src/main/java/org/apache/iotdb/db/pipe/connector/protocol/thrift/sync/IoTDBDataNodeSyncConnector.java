@@ -93,6 +93,8 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
     clientManager =
         new IoTDBDataNodeSyncClientManager(
             nodeUrls,
+            username,
+            password,
             useSSL,
             Objects.nonNull(trustStorePath) ? IoTDBConfig.addDataHomeDir(trustStorePath) : null,
             trustStorePwd,

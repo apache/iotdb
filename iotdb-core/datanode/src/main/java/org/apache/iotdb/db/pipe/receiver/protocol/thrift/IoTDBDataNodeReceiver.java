@@ -623,6 +623,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private static TSStatus executeStatement(final Statement statement) {
+    // user name & password
     return Coordinator.getInstance()
         .executeForTreeModel(
             new PipeEnrichedStatement(statement),

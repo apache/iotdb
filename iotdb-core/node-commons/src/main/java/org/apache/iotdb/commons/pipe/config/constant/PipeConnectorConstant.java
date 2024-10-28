@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.config.constant;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.isession.SessionConfig;
 
 import com.github.luben.zstd.Zstd;
 
@@ -75,11 +76,12 @@ public class PipeConnectorConstant {
 
   public static final String CONNECTOR_IOTDB_USER_KEY = "connector.user";
   public static final String SINK_IOTDB_USER_KEY = "sink.user";
-  public static final String CONNECTOR_IOTDB_USER_DEFAULT_VALUE = "root";
+  public static final String CONNECTOR_IOTDB_USER_DEFAULT_VALUE = SessionConfig.DEFAULT_USER;
 
   public static final String CONNECTOR_IOTDB_PASSWORD_KEY = "connector.password";
   public static final String SINK_IOTDB_PASSWORD_KEY = "sink.password";
-  public static final String CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE = "root";
+  public static final String CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE =
+      SessionConfig.DEFAULT_PASSWORD;
 
   public static final String CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_KEY =
       "connector.exception.data.convert-on-type-mismatch";

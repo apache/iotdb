@@ -59,6 +59,8 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
   @Override
   protected IoTDBSyncClientManager constructClient(
       final List<TEndPoint> nodeUrls,
+      final String username,
+      final String password,
       final boolean useSSL,
       final String trustStorePath,
       final String trustStorePwd,
@@ -68,6 +70,8 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
       final String loadTsFileStrategy) {
     return new IoTDBConfigNodeSyncClientManager(
         nodeUrls,
+        username,
+        password,
         useSSL,
         Objects.nonNull(trustStorePath) ? ConfigNodeConfig.addHomeDir(trustStorePath) : null,
         trustStorePwd,
