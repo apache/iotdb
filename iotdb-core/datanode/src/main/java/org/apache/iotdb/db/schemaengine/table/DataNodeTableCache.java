@@ -302,6 +302,12 @@ public class DataNodeTableCache implements ITableCache {
                             previousVersions.get(database).get(tableName))) {
                       return;
                     }
+                    LOGGER.info(
+                        "Update table {}.{} by table fetch, table in preUpdateMap: {}, new table: {}",
+                        database,
+                        existingPair.getLeft().getTableName(),
+                        existingPair.getLeft(),
+                        tsTable);
                     existingPair.setLeft(null);
                     if (Objects.nonNull(tsTable)) {
                       databaseTableMap
