@@ -1427,7 +1427,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         groupByChannels,
         aggregatorBuilder.build(),
         node.getStep(),
-        10_000,
+        64,
         Long.MAX_VALUE,
         false,
         Long.MAX_VALUE);
