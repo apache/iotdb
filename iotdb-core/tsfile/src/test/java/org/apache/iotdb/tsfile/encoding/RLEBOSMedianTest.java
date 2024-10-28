@@ -16,9 +16,41 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import static java.lang.Math.*;
+import static org.apache.iotdb.tsfile.constant.TestConstant.random;
 
 public class RLEBOSMedianTest {
 
+    public static int findMedianImprove(int[] arr) {
+        if (arr == null || arr.length == 0) {
+            throw new IllegalArgumentException("数组不能为空");
+        }
+        int n = arr.length;
+        return quickSelect2(arr, 0, n - 1, n / 2);
+    }
+
+    private static int quickSelect2(int[] arr, int left, int right, int k){
+        int pivotV=arr[left+random.nextInt(right-left+1)],tmpV;
+        int posEqual=left,posSmaller=left; // a[left,posEqual): = pivotV; a[posEqual,posSmaller): < pivotV
+        for(int i=left;i<=right;i++){
+            if(arr[i]==pivotV){
+                tmpV=arr[i];
+                arr[i]=arr[posSmaller];
+                arr[posSmaller]=arr[posEqual];
+                arr[posEqual]=tmpV;
+                posEqual++;
+                posSmaller++;
+            }else
+            if(arr[i]<pivotV){
+                tmpV=arr[posSmaller];
+                arr[posSmaller]=arr[i];
+                arr[i]=tmpV;
+                posSmaller++;
+            }
+        }
+        if(k+(posEqual-left)<=posSmaller-1)return quickSelect2(arr,posEqual,posSmaller-1,k+(posEqual-left));
+        else if(k<=posSmaller-1)return pivotV;
+        else return quickSelect2(arr,posSmaller,right,k);
+    }
     public static int findMedian(int[] arr) {
         if (arr == null || arr.length == 0) {
             throw new IllegalArgumentException("数组不能为空");
@@ -963,7 +995,7 @@ public class RLEBOSMedianTest {
         int[] findMedianArray = new int[block_size];
         System.arraycopy(ts_block_delta, 0, findMedianArray, 0, block_size);
 
-        int median = findMedian(findMedianArray);
+        int median = findMedianImprove(findMedianArray);
 
         //        int xl=  median;
         //        int xu = median;
@@ -1011,7 +1043,7 @@ public class RLEBOSMedianTest {
         for(int beta = max_bit_width - 1; beta > 0 ; beta --){
             left_number += count_left[beta];
             right_number += count_right[beta];
-            int pow_beta = (int) pow(2,beta-1);
+            int pow_beta = 1 << (beta-1);
             int xu = min(max_delta_value+1, median + pow_beta) ;
             int xl = max(median - pow_beta,-1);
             int cur_bits = Math.min((left_number + right_number) * getBitWith(block_size - 1), block_size + left_number + right_number);
@@ -2095,10 +2127,155 @@ public class RLEBOSMedianTest {
     }
 
     @Test
-    public void BOSImproveTimeTest() throws IOException {
+    public void BOSImproveDecodeTest() throws IOException {
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
 //        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
         String output_parent_dir = parent_dir + "icde0802/supply_experiment/R1O4_decode_time/compression_ratio/rle_bos_m";
+        String input_parent_dir = parent_dir + "trans_data/";
+        ArrayList<String> input_path_list = new ArrayList<>();
+        ArrayList<String> output_path_list = new ArrayList<>();
+        ArrayList<String> dataset_name = new ArrayList<>();
+        ArrayList<Integer> dataset_block_size = new ArrayList<>();
+        dataset_name.add("CS-Sensors");
+        dataset_name.add("Metro-Traffic");
+        dataset_name.add("USGS-Earthquakes");
+        dataset_name.add("YZ-Electricity");
+        dataset_name.add("GW-Magnetic");
+        dataset_name.add("TY-Fuel");
+        dataset_name.add("Cyber-Vehicle");
+        dataset_name.add("Vehicle-Charge");
+        dataset_name.add("Nifty-Stocks");
+        dataset_name.add("TH-Climate");
+        dataset_name.add("TY-Transport");
+        dataset_name.add("EPM-Education");
+
+        for (String value : dataset_name) {
+            input_path_list.add(input_parent_dir + value);
+            dataset_block_size.add(1024);
+        }
+
+        output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
+//        dataset_block_size.add(1024);
+        output_path_list.add(output_parent_dir + "/Metro-Traffic_ratio.csv");// 1
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv");// 2
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/YZ-Electricity_ratio.csv"); // 3
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); //4
+//        dataset_block_size.add(1024);
+        output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv");//5
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/Cyber-Vehicle_ratio.csv"); //6
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv");//7
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv");//8
+//        dataset_block_size.add(1024);
+        output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv");//9
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv");//10
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
+//        dataset_block_size.add(1024);
+
+        int repeatTime2 = 100;
+//        for (int file_i = 4; file_i < 5; file_i++) {
+//
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+
+            String inputPath = input_path_list.get(file_i);
+            System.out.println(inputPath);
+            String Output = output_path_list.get(file_i);
+
+            File file = new File(inputPath);
+            File[] tempList = file.listFiles();
+
+            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
+
+            String[] head = {
+                    "Input Direction",
+                    "Encoding Algorithm",
+                    "Encoding Time",
+                    "Decoding Time",
+                    "Points",
+                    "Compressed Size",
+                    "Compression Ratio"
+            };
+            writer.writeRecord(head); // write header to output file
+
+            assert tempList != null;
+
+            for (File f : tempList) {
+//                f=tempList[1];
+                System.out.println(f);
+                InputStream inputStream = Files.newInputStream(f.toPath());
+
+                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
+                ArrayList<Integer> data1 = new ArrayList<>();
+                ArrayList<Integer> data2 = new ArrayList<>();
+
+
+                loader.readHeaders();
+                while (loader.readRecord()) {
+//                        String value = loader.getValues()[index];
+                    data1.add(Integer.valueOf(loader.getValues()[0]));
+                    data2.add(Integer.valueOf(loader.getValues()[1]));
+//                        data.add(Integer.valueOf(value));
+                }
+                inputStream.close();
+                int[] data2_arr = new int[data1.size()];
+                for(int i = 0;i<data2.size();i++){
+                    data2_arr[i] = data2.get(i);
+                }
+                byte[] encoded_result = new byte[data2_arr.length*4];
+                long encodeTime = 0;
+                long decodeTime = 0;
+                double ratio = 0;
+                double compressed_size = 0;
+
+
+                int length = 0;
+
+                long s = System.nanoTime();
+                for (int repeat = 0; repeat < repeatTime2; repeat++) {
+                    length =  BOSEncoderImprove(data2_arr, dataset_block_size.get(file_i), encoded_result);
+                }
+
+                long e = System.nanoTime();
+                encodeTime += ((e - s) / repeatTime2);
+                compressed_size += length;
+                double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
+                ratio += ratioTmp;
+                s = System.nanoTime();
+                for (int repeat = 0; repeat < repeatTime2; repeat++)
+                    BOSDecoderImprove(encoded_result);
+                e = System.nanoTime();
+                decodeTime += ((e - s) / repeatTime2);
+
+
+                String[] record = {
+                        f.toString(),
+                        "RLE+BOS-M",
+                        String.valueOf(encodeTime),
+                        String.valueOf(decodeTime),
+                        String.valueOf(data1.size()),
+                        String.valueOf(compressed_size),
+                        String.valueOf(ratio)
+                };
+                writer.writeRecord(record);
+                System.out.println(ratio);
+//                break;
+            }
+            writer.close();
+        }
+    }
+
+    @Test
+    public void BOSImproveEncodeTest() throws IOException {
+        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
+//        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+        String output_parent_dir = parent_dir + "icde0802/compression_ratio/rle_bos_m_improve";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();

@@ -12,13 +12,11 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Arrays;
 
 import static java.lang.Math.*;
 import static org.apache.iotdb.tsfile.constant.TestConstant.random;
-import static org.apache.iotdb.tsfile.encoding.MedianFinder.findMedian;
 
-public class TSDIFFBOSMedianTest {
+public class TSDIFFBOSMImproveTest {
 
     public static long combine2Int(int int1, int int2) {
         return ((long) int1 << 32) | (int2 & 0xFFFFFFFFL);
@@ -637,50 +635,50 @@ public class TSDIFFBOSMedianTest {
         return quickSelect(arr, 0, n - 1, n / 2);
     }
 
-    private static int quickSelect(int[] arr, int left, int right, int k){
-        int pivotV=arr[left+random.nextInt(right-left+1)],tmpV;
-        int posEqual=left,posSmaller=left; // a[left,posEqual): = pivotV; a[posEqual,posSmaller): < pivotV
-        for(int i=left;i<=right;i++){
-            if(arr[i]==pivotV){
-                tmpV=arr[i];
-                arr[i]=arr[posSmaller];
-                arr[posSmaller]=arr[posEqual];
-                arr[posEqual]=tmpV;
-                posEqual++;
-                posSmaller++;
-            }else
-            if(arr[i]<pivotV){
-                tmpV=arr[posSmaller];
-                arr[posSmaller]=arr[i];
-                arr[i]=tmpV;
-                posSmaller++;
-            }
-        }
-        if(k+(posEqual-left)<=posSmaller-1)return quickSelect(arr,posEqual,posSmaller-1,k+(posEqual-left));
-        else if(k<=posSmaller-1)return pivotV;
-        else return quickSelect(arr,posSmaller,right,k);
-    }
-//    private static int quickSelect(int[] arr, int left, int right, int k) {
-//        if (left == right) {
-//            return arr[left];
+//    private static int quickSelect(int[] arr, int left, int right, int k){
+//        int pivotV=arr[left+random.nextInt(right-left+1)],tmpV;
+//        int posEqual=left,posSmaller=left; // a[left,posEqual): = pivotV; a[posEqual,posSmaller): < pivotV
+//        for(int i=left;i<=right;i++){
+//            if(arr[i]==pivotV){
+//                tmpV=arr[i];
+//                arr[i]=arr[posSmaller];
+//                arr[posSmaller]=arr[posEqual];
+//                arr[posEqual]=tmpV;
+//                posEqual++;
+//                posSmaller++;
+//            }else
+//            if(arr[i]<pivotV){
+//                tmpV=arr[posSmaller];
+//                arr[posSmaller]=arr[i];
+//                arr[i]=tmpV;
+//                posSmaller++;
+//            }
 //        }
-//        if (areAllElementsEqual(arr, left, right)) {
-//            return arr[left];
-//        }
-//        // 随机选择一个pivot索引
-//        int pivotIndex = left + random.nextInt(right - left + 1);
-//        // 把随机选的pivot放到最后
-//        swap(arr, pivotIndex, right);
-//
-//        pivotIndex = partition(arr, left, right);
-//        if (k == pivotIndex) {
-//            return arr[k];
-//        } else if (k < pivotIndex) {
-//            return quickSelect(arr, left, pivotIndex - 1, k);
-//        } else {
-//            return quickSelect(arr, pivotIndex + 1, right, k);
-//        }
+//        if(k+(posEqual-left)<=posSmaller-1)return quickSelect(arr,posEqual,posSmaller-1,k+(posEqual-left));
+//        else if(k<=posSmaller-1)return pivotV;
+//        else return quickSelect(arr,posSmaller,right,k);
 //    }
+    private static int quickSelect(int[] arr, int left, int right, int k) {
+        if (left == right) {
+            return arr[left];
+        }
+        if (areAllElementsEqual(arr, left, right)) {
+            return arr[left];
+        }
+        // 随机选择一个pivot索引
+        int pivotIndex = left + random.nextInt(right - left + 1);
+        // 把随机选的pivot放到最后
+        swap(arr, pivotIndex, right);
+
+        pivotIndex = partition(arr, left, right);
+        if (k == pivotIndex) {
+            return arr[k];
+        } else if (k < pivotIndex) {
+            return quickSelect(arr, left, pivotIndex - 1, k);
+        } else {
+            return quickSelect(arr, pivotIndex + 1, right, k);
+        }
+    }
     private static boolean areAllElementsEqual(int[] arr, int left, int right) {
         for (int i = left + 1; i <= right; i++) {
             if (arr[i] != arr[left]) {

@@ -179,6 +179,7 @@ public class SPRINTZBOSBTest {
         return result_list;
     }
 
+
     // -----------------------------------------------------------------
 
 
@@ -1035,7 +1036,7 @@ public class SPRINTZBOSBTest {
         int[] x_u_plus_value_list = new int[gamma_max+1];
         int end_i = unique_value_count - 1;
         for(int gamma = 0; gamma <= gamma_max; gamma++) {
-            int x_u_plus_pow_beta = (int) (max_delta_value - pow(2, gamma) + 1);
+            int x_u_plus_pow_beta = max_delta_value - (1<< gamma) + 1;
             for (; end_i > 0; end_i--) {
                 x_u_minus_value = getUniqueValue(sorted_value_list[end_i - 1], left_shift);
                 int x_u_plus_value = getUniqueValue(sorted_value_list[end_i], left_shift);
@@ -1085,40 +1086,10 @@ public class SPRINTZBOSBTest {
             }
 
             int beta_max = getBitWith(max_delta_value - x_l_plus_value);
-            int end_value_i = start_value_i + 1;
+
             int lower_outlier_cost = cur_k1 * getBitWith(k_start_value);
-            for(int beta = 1; beta < beta_max; beta++){
-                int x_u_plus_pow_beta = (int) (x_l_plus_value + pow(2,beta));
-
-                for (; end_value_i < unique_value_count; end_value_i++) {
-                    long k_end_valueL = sorted_value_list[end_value_i-1];
-
-                    x_u_minus_value = getUniqueValue(k_end_valueL, left_shift);
-                    k_end_value = getUniqueValue(sorted_value_list[end_value_i], left_shift);
-                    if(x_u_minus_value < x_u_plus_pow_beta && k_end_value >= x_u_plus_pow_beta){
-                        cur_bits = 0;
-                        cur_k2 = block_size - getCount(k_end_valueL,mask);
-
-                        cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size-1), block_size + cur_k1 + cur_k2);
-                        cur_bits += lower_outlier_cost;
-                        if (cur_k1 + cur_k2 != block_size)
-                            cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(x_u_minus_value - x_l_plus_value);
-                        if (cur_k2 != 0)
-                            cur_bits += cur_k2 * getBitWith(max_delta_value - k_end_value);
 
 
-                        if (cur_bits < min_bits) {
-                            min_bits = cur_bits;
-                            final_k_start_value = k_start_value;
-                            final_x_l_plus = x_l_plus_value;
-                            final_k_end_value = k_end_value;
-                            final_x_u_minus = x_u_minus_value;
-                        }
-                    } else if (x_u_minus_value >= x_u_plus_pow_beta && k_end_value >= x_u_plus_pow_beta) {
-                        break;
-                    }
-                }
-            }
 
             for(int gamma = 0; gamma < beta_max; gamma++){
 //                int x_u_plus_pow_beta = (int) (max_delta_value - pow(2,gamma)+1);
@@ -1144,9 +1115,8 @@ public class SPRINTZBOSBTest {
                 }
 
             }
-
 //            end_value_i = unique_value_count - 1;
-//            for(int gamma = 1; gamma <= beta_max; gamma++){
+//            for(int gamma = 0; gamma <= beta_max; gamma++){
 //                for (; end_value_i > start_value_i; end_value_i--) {
 //                    int x_u_plus_pow_beta = (int) (max_delta_value - pow(2,gamma)+1);
 //                    x_u_minus_value = getUniqueValue(sorted_value_list[end_value_i-1], left_shift);
@@ -1170,12 +1140,70 @@ public class SPRINTZBOSBTest {
 //                            final_k_end_value = k_end_value;
 //                            final_x_u_minus = x_u_minus_value;
 //                        }
-//                    } else if (x_u_minus_value <= x_u_plus_pow_beta && k_end_value <= x_u_plus_pow_beta) {
+//                    } else if (x_u_minus_value < x_u_plus_pow_beta && k_end_value < x_u_plus_pow_beta) {
 //                        break;
 //                    }
 //                }
 //            }
+//
 
+        }
+
+        for(int beta = 0; beta < gamma_max; beta++){
+
+            int pow_beta = 1<<beta;
+            int start_value_i = 0;
+            int end_value_i = start_value_i+1;
+
+            for (; start_value_i < unique_value_count-1; start_value_i++) {
+                long x_l_minusL = sorted_value_list[start_value_i];
+                int x_l_minus =  getUniqueValue(x_l_minusL, left_shift) ;
+                int x_l_plus =  getUniqueValue(sorted_value_list[start_value_i+1], left_shift) ;
+                int x_u_plus_pow_beta = pow_beta+x_l_plus;
+                if(x_u_plus_pow_beta > max_delta_value) break;
+
+
+
+                cur_k1 = getCount(x_l_minusL,mask);
+                int lower_outlier_cost = cur_k1 * getBitWith(x_l_minus);
+
+                while ( end_value_i < unique_value_count) {
+//                    if(beta==3 && end_value_i==22)
+//                    {
+//                        System.out.println(x_l_minus);
+//                        System.out.println(x_l_plus);
+//                    }
+
+                    int x_u_minus = getUniqueValue(sorted_value_list[end_value_i-1], left_shift);
+                    int x_u_plus = getUniqueValue(sorted_value_list[end_value_i], left_shift);
+                    if(x_u_minus < x_u_plus_pow_beta && x_u_plus >= x_u_plus_pow_beta){
+                        int cur_bits = 0;
+                        int cur_k2 = block_size - getCount(sorted_value_list[end_value_i-1],mask);
+
+                        cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size-1), block_size + cur_k1 + cur_k2);
+                        cur_bits += lower_outlier_cost;
+                        if (cur_k1 + cur_k2 != block_size)
+                            cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(x_u_minus - x_l_plus);
+                        if (cur_k2 != 0)
+                            cur_bits += cur_k2 * getBitWith(max_delta_value - x_u_plus);
+
+
+                        if (cur_bits < min_bits) {
+                            min_bits = cur_bits;
+                            final_k_start_value = x_l_minus;
+                            final_x_l_plus = x_l_plus;
+                            final_k_end_value = x_u_plus;
+                            final_x_u_minus = x_u_minus;
+                        }
+                        break;
+                    }
+//                    else if (x_u_minus >= x_u_plus_pow_beta && x_u_plus >= x_u_plus_pow_beta) {
+//                        break;
+//                    }
+
+                    end_value_i++;
+                }
+            }
 
         }
 
@@ -1830,10 +1858,155 @@ public class SPRINTZBOSBTest {
     }
 
     @Test
-    public void BOSImproveTimeTest() throws IOException {
+    public void BOSImproveDecodeTest() throws IOException {
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
 //        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
         String output_parent_dir = parent_dir + "icde0802/supply_experiment/R1O4_decode_time/compression_ratio/sprintz_bos_b";
+        String input_parent_dir = parent_dir + "trans_data/";
+        ArrayList<String> input_path_list = new ArrayList<>();
+        ArrayList<String> output_path_list = new ArrayList<>();
+        ArrayList<String> dataset_name = new ArrayList<>();
+        ArrayList<Integer> dataset_block_size = new ArrayList<>();
+        dataset_name.add("CS-Sensors");
+        dataset_name.add("Metro-Traffic");
+        dataset_name.add("USGS-Earthquakes");
+        dataset_name.add("YZ-Electricity");
+        dataset_name.add("GW-Magnetic");
+        dataset_name.add("TY-Fuel");
+        dataset_name.add("Cyber-Vehicle");
+        dataset_name.add("Vehicle-Charge");
+        dataset_name.add("Nifty-Stocks");
+        dataset_name.add("TH-Climate");
+        dataset_name.add("TY-Transport");
+        dataset_name.add("EPM-Education");
+
+        for (String value : dataset_name) {
+            input_path_list.add(input_parent_dir + value);
+            dataset_block_size.add(1024);
+        }
+
+        output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
+//        dataset_block_size.add(1024);
+        output_path_list.add(output_parent_dir + "/Metro-Traffic_ratio.csv");// 1
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv");// 2
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/YZ-Electricity_ratio.csv"); // 3
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); //4
+//        dataset_block_size.add(1024);
+        output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv");//5
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/Cyber-Vehicle_ratio.csv"); //6
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv");//7
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv");//8
+//        dataset_block_size.add(1024);
+        output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv");//9
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv");//10
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
+//        dataset_block_size.add(1024);
+
+        int repeatTime2 = 100;
+//        for (int file_i = 9; file_i < 10; file_i++) {
+//
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+
+            String inputPath = input_path_list.get(file_i);
+            System.out.println(inputPath);
+            String Output = output_path_list.get(file_i);
+
+            File file = new File(inputPath);
+            File[] tempList = file.listFiles();
+
+            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
+
+            String[] head = {
+                    "Input Direction",
+                    "Encoding Algorithm",
+                    "Encoding Time",
+                    "Decoding Time",
+                    "Points",
+                    "Compressed Size",
+                    "Compression Ratio"
+            };
+            writer.writeRecord(head); // write header to output file
+
+            assert tempList != null;
+
+            for (File f : tempList) {
+//                f=tempList[2];
+                System.out.println(f);
+                InputStream inputStream = Files.newInputStream(f.toPath());
+
+                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
+                ArrayList<Integer> data1 = new ArrayList<>();
+                ArrayList<Integer> data2 = new ArrayList<>();
+
+
+                loader.readHeaders();
+                while (loader.readRecord()) {
+//                        String value = loader.getValues()[index];
+                    data1.add(Integer.valueOf(loader.getValues()[0]));
+                    data2.add(Integer.valueOf(loader.getValues()[1]));
+//                        data.add(Integer.valueOf(value));
+                }
+                inputStream.close();
+                int[] data2_arr = new int[data1.size()];
+                for(int i = 0;i<data2.size();i++){
+                    data2_arr[i] = data2.get(i);
+                }
+                byte[] encoded_result = new byte[data2_arr.length*4];
+                long encodeTime = 0;
+                long decodeTime = 0;
+                double ratio = 0;
+                double compressed_size = 0;
+
+
+                int length = 0;
+
+                long s = System.nanoTime();
+                for (int repeat = 0; repeat < repeatTime2; repeat++) {
+                    length =  BOSEncoderImprove(data2_arr, dataset_block_size.get(file_i), encoded_result);
+                }
+
+                long e = System.nanoTime();
+                encodeTime += ((e - s) / repeatTime2);
+                compressed_size += length;
+                double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
+                ratio += ratioTmp;
+                s = System.nanoTime();
+                for (int repeat = 0; repeat < repeatTime2; repeat++)
+                    BOSDecoderImprove(encoded_result);
+                e = System.nanoTime();
+                decodeTime += ((e - s) / repeatTime2);
+
+
+                String[] record = {
+                        f.toString(),
+                        "SPRINTZ+BOS-B",
+                        String.valueOf(encodeTime),
+                        String.valueOf(decodeTime),
+                        String.valueOf(data1.size()),
+                        String.valueOf(compressed_size),
+                        String.valueOf(ratio)
+                };
+                writer.writeRecord(record);
+                System.out.println(ratio);
+//                break;
+            }
+            writer.close();
+        }
+    }
+
+    @Test
+    public void BOSImproveEncodeTest() throws IOException {
+        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
+//        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+        String output_parent_dir = parent_dir + "icde0802/compression_ratio/sprintz_bos_b_improve";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
