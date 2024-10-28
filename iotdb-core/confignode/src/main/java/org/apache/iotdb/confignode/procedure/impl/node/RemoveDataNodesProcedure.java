@@ -185,14 +185,14 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
             migratedFailedRegions);
         rollBackDataNodes.add(dataNode);
       } else {
-        LOG.info(
-            "{}, Region all migrated successfully, start to stop DataNode: {}",
-            REMOVE_DATANODE_PROCESS,
-            dataNode);
         successDataNodes.add(dataNode);
       }
     }
     if (!successDataNodes.isEmpty()) {
+      LOG.info(
+          "{}, DataNodes: {} all regions migrated successfully, start to stop them.",
+          REMOVE_DATANODE_PROCESS,
+          successDataNodes);
       env.getRemoveDataNodeHandler().removeDataNodePersistence(successDataNodes);
       env.getRemoveDataNodeHandler().stopDataNodes(successDataNodes);
     }
