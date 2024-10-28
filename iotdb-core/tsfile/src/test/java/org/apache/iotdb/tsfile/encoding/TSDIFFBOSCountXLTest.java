@@ -508,6 +508,8 @@ public class TSDIFFBOSCountXLTest {
         int final_x_l_plus = 0; // x_l_plus
         int final_k_end_value = max_delta_value+1; // x_u_plus
         int final_x_u_minus = max_delta_value; // x_u_minus
+        int final_k1 = 0;
+        int final_k2 = 0;
 
         int min_bits = 0;
         min_bits += (getBitWith(final_k_end_value - final_k_start_value - 2 ) * (block_size));
@@ -533,6 +535,8 @@ public class TSDIFFBOSCountXLTest {
 
             if (cur_bits < min_bits) {
                 min_bits = cur_bits;
+                final_k1 = cur_k1;
+                final_k2 = cur_k2;
                 final_x_u_minus = x_u_minus_value;
                 final_k_end_value = x_u_plus_value;
             }
@@ -562,6 +566,8 @@ public class TSDIFFBOSCountXLTest {
 
             if (cur_bits < min_bits) {
                 min_bits = cur_bits;
+                final_k1 = cur_k1;
+                final_k2 = cur_k2;
                 final_encode_i = start_value_i;
                 final_k_start_value = k_start_value;
                 final_x_l_plus = x_l_plus_value;
@@ -587,6 +593,8 @@ public class TSDIFFBOSCountXLTest {
 
                 if (cur_bits < min_bits) {
                     min_bits = cur_bits;
+                    final_k1 = cur_k1;
+                    final_k2 = cur_k2;
                     final_encode_i = start_value_i;
                     final_k_start_value = k_start_value;
                     final_x_l_plus = x_l_plus_value;
@@ -598,9 +606,13 @@ public class TSDIFFBOSCountXLTest {
         }
 //        System.out.println(min_bits/4);
 //        System.out.println((double)final_k_start_value/(double)max_delta_value);
-        double cur_x_l = (double)final_encode_i/(double)block_size;
-        x_l[0] += cur_x_l;
-        x_l[1] += final_k_start_value;
+        double rate_count_lower = (double)final_k1/(double)block_size;
+        double rate_count_upper = (double)final_k2/(double)block_size;
+
+        x_l[0] += rate_count_lower;
+        x_l[1] += rate_count_upper;
+
+
         encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_x_l_plus, final_k_end_value, final_x_u_minus,
                 max_delta_value, min_delta, encode_pos , cur_byte);
 //        System.out.println(encode_pos);
@@ -610,7 +622,7 @@ public class TSDIFFBOSCountXLTest {
 
 
     public static int BOSEncoder(
-            int[] data, int block_size, byte[] encoded_result) {
+            int[] data, int block_size, byte[] encoded_result, double[] x_l_list) {
         block_size++;
 
         int length_all = data.length;
@@ -622,7 +634,7 @@ public class TSDIFFBOSCountXLTest {
         int block_num = length_all / block_size;
         int2Bytes(block_size,encode_pos,encoded_result);
         encode_pos+= 4;
-        double[] x_l_list = new double[2];
+
 
         for (int i = 0; i < block_num; i++) {
 //            int start_encode_pos = encode_pos;
@@ -630,7 +642,9 @@ public class TSDIFFBOSCountXLTest {
 //            System.out.println(encode_pos-start_encode_pos);
 //            System.out.println("------------------------------------------");
         }
-        System.out.println((x_l_list[0]/(double) block_num)+","+ (x_l_list[1]/(double) block_num));
+        x_l_list[0]/= (double) block_num;
+        x_l_list[1]/= (double) block_num;
+//        System.out.println((x_l_list[0]/(double) block_num)+","+ (x_l_list[1]/(double) block_num));
 
         int remaining_length = length_all - block_num * block_size;
         if (remaining_length <= 3) {
@@ -918,7 +932,7 @@ public class TSDIFFBOSCountXLTest {
 
             String inputPath = input_path_list.get(file_i);
 //            System.out.println(inputPath);
-            System.out.println(dataset_name.get(file_i));
+//            System.out.println(dataset_name.get(file_i));
             String Output = output_path_list.get(file_i);
 
             File file = new File(inputPath);
@@ -938,7 +952,7 @@ public class TSDIFFBOSCountXLTest {
             writer.writeRecord(head); // write header to output file
 
             assert tempList != null;
-
+            double[] x_l_list = new double[2];
             for (File f : tempList) {
 //                f=tempList[2];
 //                System.out.println(f);
@@ -972,8 +986,9 @@ public class TSDIFFBOSCountXLTest {
 
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                    length =  BOSEncoder(data2_arr, dataset_block_size.get(file_i), encoded_result);
+                    length =  BOSEncoder(data2_arr, dataset_block_size.get(file_i), encoded_result,x_l_list);
                 }
+
 
                 long e = System.nanoTime();
                 encodeTime += ((e - s) / repeatTime2);
@@ -1000,145 +1015,148 @@ public class TSDIFFBOSCountXLTest {
 //                System.out.println(ratio);
 //                break;
             }
+            x_l_list[0] /= tempList.length;
+            x_l_list[1] /= tempList.length;
+            System.out.println(dataset_name.get(file_i)+","+ x_l_list[0]+","+ x_l_list[1]);
             writer.close();
         }
     }
 
-    @Test
-    public void ExpTest() throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/";// your data path
-//        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
-        String output_parent_dir = parent_dir + "icde0802/compression_ratio/test";
-//        String output_parent_dir = parent_dir + "icde0802/supply_experiment/R2O3_lower_outlier_compare/compression_ratio/lower_outlier_bos_m";
-        String input_parent_dir = parent_dir + "trans_data/";
-        ArrayList<String> input_path_list = new ArrayList<>();
-        ArrayList<String> output_path_list = new ArrayList<>();
-        ArrayList<String> dataset_name = new ArrayList<>();
-        ArrayList<Integer> dataset_block_size = new ArrayList<>();
-        dataset_name.add("Synthetic_Exp_100");
-        dataset_name.add("Synthetic_Exp_1000");
-        dataset_name.add("Synthetic_Exp_10000");
-        dataset_name.add("Synthetic_Exp_100000");
-        dataset_name.add("Synthetic_Exp_1000000");
-        dataset_name.add("Synthetic_Normal_100");
-        dataset_name.add("Synthetic_Normal_1000");
-        dataset_name.add("Synthetic_Normal_10000");
-        dataset_name.add("Synthetic_Normal_100000");
-        dataset_name.add("Synthetic_Normal_1000000");
-
-        for (String value : dataset_name) {
-            input_path_list.add(input_parent_dir + value);
-            dataset_block_size.add(1024);
-        }
-
-        output_path_list.add(output_parent_dir + "/Exp_100.csv"); // 0
-//        dataset_block_size.add(1024);
-        output_path_list.add(output_parent_dir + "/Exp_1000.csv");// 1
-//        dataset_block_size.add(2048);
-        output_path_list.add(output_parent_dir + "/Exp_10000.csv");// 2
-        output_path_list.add(output_parent_dir + "/Exp_100000.csv");// 2
-        output_path_list.add(output_parent_dir + "/Exp_1000000.csv");// 2
-//        dataset_block_size.add(2048);
-        output_path_list.add(output_parent_dir + "/Normal_100.csv"); // 3
-//        dataset_block_size.add(2048);
-        output_path_list.add(output_parent_dir + "/Normal_1000.csv"); //4
-//        dataset_block_size.add(1024);
-        output_path_list.add(output_parent_dir + "/Normal_10000.csv");//5
-        output_path_list.add(output_parent_dir + "/Normal_100000.csv");//5
-        output_path_list.add(output_parent_dir + "/Normal_1000000.csv");//5
-//        dataset_block_size.add(2048);
-
-        int repeatTime2 = 1;
-//        for (int file_i = 8; file_i < 9; file_i++) {
-
-        for (int file_i = input_path_list.size()-1; file_i >=0 ; file_i--) {
-
-            String inputPath = input_path_list.get(file_i);
-//            System.out.println(inputPath);
-            System.out.println(dataset_name.get(file_i));
-            String Output = output_path_list.get(file_i);
-
-            File file = new File(inputPath);
-            File[] tempList = file.listFiles();
-
-            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
-
-            String[] head = {
-                    "Input Direction",
-                    "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
-                    "Points",
-                    "Compressed Size",
-                    "Compression Ratio"
-            };
-            writer.writeRecord(head); // write header to output file
-
-            assert tempList != null;
-
-            for (File f : tempList) {
-//                System.out.println(f);
-                if(f.toString().contains(".DS")) continue;
-                InputStream inputStream = Files.newInputStream(f.toPath());
-
-                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-                ArrayList<Integer> data1 = new ArrayList<>();
-                ArrayList<Integer> data2 = new ArrayList<>();
-
-
-
-                loader.readHeaders();
-                while (loader.readRecord()) {
-                    data1.add(Integer.valueOf(loader.getValues()[0]));
-                    data2.add(Integer.valueOf(loader.getValues()[1]));
-                }
-
-                inputStream.close();
-                int[] data2_arr = new int[data1.size()];
-                for(int i = 0;i<data2.size();i++){
-                    data2_arr[i] = data2.get(i);
-                }
-                byte[] encoded_result = new byte[data2_arr.length*4];
-                long encodeTime = 0;
-                long decodeTime = 0;
-                double ratio = 0;
-                double compressed_size = 0;
-
-
-                int length = 0;
-
-                long s = System.nanoTime();
-                for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                    length =  BOSEncoder(data2_arr, dataset_block_size.get(file_i), encoded_result);
-                }
-
-                long e = System.nanoTime();
-                encodeTime += ((e - s) / repeatTime2);
-                compressed_size += length;
-                double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
-                ratio += ratioTmp;
-                s = System.nanoTime();
-                for (int repeat = 0; repeat < repeatTime2; repeat++)
-                    BOSDecoder(encoded_result);
-                e = System.nanoTime();
-                decodeTime += ((e - s) / repeatTime2);
-
-
-                String[] record = {
-                        f.toString(),
-                        "RLE+BOS-M",
-                        String.valueOf(encodeTime),
-                        String.valueOf(decodeTime),
-                        String.valueOf(data1.size()),
-                        String.valueOf(compressed_size),
-                        String.valueOf(ratio)
-                };
-                writer.writeRecord(record);
-//                System.out.println(ratio);
-            }
-            writer.close();
-        }
-    }
-
+//    @Test
+//    public void ExpTest() throws IOException {
+//        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/";// your data path
+////        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+//        String output_parent_dir = parent_dir + "icde0802/compression_ratio/test";
+////        String output_parent_dir = parent_dir + "icde0802/supply_experiment/R2O3_lower_outlier_compare/compression_ratio/lower_outlier_bos_m";
+//        String input_parent_dir = parent_dir + "trans_data/";
+//        ArrayList<String> input_path_list = new ArrayList<>();
+//        ArrayList<String> output_path_list = new ArrayList<>();
+//        ArrayList<String> dataset_name = new ArrayList<>();
+//        ArrayList<Integer> dataset_block_size = new ArrayList<>();
+//        dataset_name.add("Synthetic_Exp_100");
+//        dataset_name.add("Synthetic_Exp_1000");
+//        dataset_name.add("Synthetic_Exp_10000");
+//        dataset_name.add("Synthetic_Exp_100000");
+//        dataset_name.add("Synthetic_Exp_1000000");
+//        dataset_name.add("Synthetic_Normal_100");
+//        dataset_name.add("Synthetic_Normal_1000");
+//        dataset_name.add("Synthetic_Normal_10000");
+//        dataset_name.add("Synthetic_Normal_100000");
+//        dataset_name.add("Synthetic_Normal_1000000");
+//
+//        for (String value : dataset_name) {
+//            input_path_list.add(input_parent_dir + value);
+//            dataset_block_size.add(1024);
+//        }
+//
+//        output_path_list.add(output_parent_dir + "/Exp_100.csv"); // 0
+////        dataset_block_size.add(1024);
+//        output_path_list.add(output_parent_dir + "/Exp_1000.csv");// 1
+////        dataset_block_size.add(2048);
+//        output_path_list.add(output_parent_dir + "/Exp_10000.csv");// 2
+//        output_path_list.add(output_parent_dir + "/Exp_100000.csv");// 2
+//        output_path_list.add(output_parent_dir + "/Exp_1000000.csv");// 2
+////        dataset_block_size.add(2048);
+//        output_path_list.add(output_parent_dir + "/Normal_100.csv"); // 3
+////        dataset_block_size.add(2048);
+//        output_path_list.add(output_parent_dir + "/Normal_1000.csv"); //4
+////        dataset_block_size.add(1024);
+//        output_path_list.add(output_parent_dir + "/Normal_10000.csv");//5
+//        output_path_list.add(output_parent_dir + "/Normal_100000.csv");//5
+//        output_path_list.add(output_parent_dir + "/Normal_1000000.csv");//5
+////        dataset_block_size.add(2048);
+//
+//        int repeatTime2 = 1;
+////        for (int file_i = 8; file_i < 9; file_i++) {
+//
+//        for (int file_i = input_path_list.size()-1; file_i >=0 ; file_i--) {
+//
+//            String inputPath = input_path_list.get(file_i);
+////            System.out.println(inputPath);
+//            System.out.println(dataset_name.get(file_i));
+//            String Output = output_path_list.get(file_i);
+//
+//            File file = new File(inputPath);
+//            File[] tempList = file.listFiles();
+//
+//            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
+//
+//            String[] head = {
+//                    "Input Direction",
+//                    "Encoding Algorithm",
+//                    "Encoding Time",
+//                    "Decoding Time",
+//                    "Points",
+//                    "Compressed Size",
+//                    "Compression Ratio"
+//            };
+//            writer.writeRecord(head); // write header to output file
+//
+//            assert tempList != null;
+//
+//            for (File f : tempList) {
+////                System.out.println(f);
+//                if(f.toString().contains(".DS")) continue;
+//                InputStream inputStream = Files.newInputStream(f.toPath());
+//
+//                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
+//                ArrayList<Integer> data1 = new ArrayList<>();
+//                ArrayList<Integer> data2 = new ArrayList<>();
+//
+//
+//
+//                loader.readHeaders();
+//                while (loader.readRecord()) {
+//                    data1.add(Integer.valueOf(loader.getValues()[0]));
+//                    data2.add(Integer.valueOf(loader.getValues()[1]));
+//                }
+//
+//                inputStream.close();
+//                int[] data2_arr = new int[data1.size()];
+//                for(int i = 0;i<data2.size();i++){
+//                    data2_arr[i] = data2.get(i);
+//                }
+//                byte[] encoded_result = new byte[data2_arr.length*4];
+//                long encodeTime = 0;
+//                long decodeTime = 0;
+//                double ratio = 0;
+//                double compressed_size = 0;
+//
+//
+//                int length = 0;
+//
+//                long s = System.nanoTime();
+//                for (int repeat = 0; repeat < repeatTime2; repeat++) {
+//                    length =  BOSEncoder(data2_arr, dataset_block_size.get(file_i), encoded_result);
+//                }
+//
+//                long e = System.nanoTime();
+//                encodeTime += ((e - s) / repeatTime2);
+//                compressed_size += length;
+//                double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
+//                ratio += ratioTmp;
+//                s = System.nanoTime();
+//                for (int repeat = 0; repeat < repeatTime2; repeat++)
+//                    BOSDecoder(encoded_result);
+//                e = System.nanoTime();
+//                decodeTime += ((e - s) / repeatTime2);
+//
+//
+//                String[] record = {
+//                        f.toString(),
+//                        "RLE+BOS-M",
+//                        String.valueOf(encodeTime),
+//                        String.valueOf(decodeTime),
+//                        String.valueOf(data1.size()),
+//                        String.valueOf(compressed_size),
+//                        String.valueOf(ratio)
+//                };
+//                writer.writeRecord(record);
+////                System.out.println(ratio);
+//            }
+//            writer.close();
+//        }
+//    }
+//
 
 }
