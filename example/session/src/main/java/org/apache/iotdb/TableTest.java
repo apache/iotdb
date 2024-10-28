@@ -50,7 +50,7 @@ public class TableTest {
           Tablet.ColumnType.ID,
           Tablet.ColumnType.ID,
           Tablet.ColumnType.ID,
-          Tablet.ColumnType.ATTRIBUTE,
+          //          Tablet.ColumnType.ATTRIBUTE,
           Tablet.ColumnType.MEASUREMENT,
           Tablet.ColumnType.MEASUREMENT,
           Tablet.ColumnType.MEASUREMENT);
@@ -69,7 +69,7 @@ public class TableTest {
     TABLE_SCHEMA_LIST.add(new MeasurementSchema(COLUMN_NAME_1, TSDataType.STRING));
     TABLE_SCHEMA_LIST.add(new MeasurementSchema(COLUMN_NAME_2, TSDataType.STRING));
     TABLE_SCHEMA_LIST.add(new MeasurementSchema(COLUMN_NAME_3, TSDataType.STRING));
-    TABLE_SCHEMA_LIST.add(new MeasurementSchema(COLUMN_NAME_4, TSDataType.STRING));
+    //    TABLE_SCHEMA_LIST.add(new MeasurementSchema(COLUMN_NAME_4, TSDataType.STRING));
     TABLE_SCHEMA_LIST.add(new MeasurementSchema(COLUMN_NAME_5, TSDataType.DOUBLE));
     TABLE_SCHEMA_LIST.add(new MeasurementSchema(COLUMN_NAME_6, TSDataType.DOUBLE));
     TABLE_SCHEMA_LIST.add(new MeasurementSchema(COLUMN_NAME_7, TSDataType.DOUBLE));
@@ -93,7 +93,7 @@ public class TableTest {
 
     String database = args[3];
 
-    int deviceNum = Integer.parseInt(args[4]);
+    final int deviceNum = Integer.parseInt(args[4]);
 
     SessionPool sessionPool =
         new SessionPool.Builder()
@@ -106,21 +106,40 @@ public class TableTest {
             .database(database)
             .build();
 
+    long startTime = System.nanoTime();
+    List<Thread> subThreads = new ArrayList<>(maxSize);
     if (TABLE_SQL_DIALECT.equalsIgnoreCase(sqlDialect)) {
+      // CREATE TABLE table1(city STRING ID, region STRING ID, device_id STRING ID, color STRING
+      // ATTRIBUTE, s1 DOUBLE MEASUREMENT, s2 DOUBLE MEASUREMENT, s3 DOUBLE MEASUREMENT)
       for (int i = 0; i < maxSize; i++) {
-        new Thread(() -> writeTable(sessionPool, deviceNum)).start();
+        Thread t = new Thread(() -> writeTable(sessionPool, deviceNum));
+        subThreads.add(t);
+        t.start();
       }
     } else {
       for (int i = 0; i < maxSize; i++) {
-        new Thread(() -> writeTree(sessionPool, deviceNum, database)).start();
+        Thread t = new Thread(() -> writeTree(sessionPool, deviceNum, database));
+        subThreads.add(t);
+        t.start();
       }
     }
+    subThreads.forEach(
+        t -> {
+          try {
+            t.join();
+          } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+          }
+        });
+    LOGGER.info(
+        "{} writing {} devices costs {}ms", sqlDialect, deviceNum, System.nanoTime() - startTime);
   }
 
   private static void writeTable(final SessionPool sessionPool, final int deviceNum) {
 
     try (IPooledSession session = sessionPool.getPooledSession()) {
       while (true) {
+        long startTime = System.nanoTime();
         int device = deviceIdGenerator.getAndIncrement();
         if (device >= deviceNum) {
           break;
@@ -129,18 +148,19 @@ public class TableTest {
         int region = device % 100;
         int color = device % 5;
 
-        Tablet tablet = new Tablet("table1", TABLE_SCHEMA_LIST, TABLE_COLUMN_TYPES, 10000);
+        Tablet tablet = new Tablet("table1", TABLE_SCHEMA_LIST, TABLE_COLUMN_TYPES, 10_000);
         String cityId = "city_" + city;
         String regionId = "region_" + region;
         String deviceId = "d_" + device;
         String colorId = "color_" + color;
-        for (int i = 0; i < 60 * 60 * 24 * 30; i++) {
+        long roundStartTime = System.nanoTime();
+        for (int i = 0; i < 6 * 60 * 24 * 30; i++) {
           int rowIndex = tablet.rowSize++;
-          tablet.addTimestamp(rowIndex, START_TIME + i);
+          tablet.addTimestamp(rowIndex, START_TIME + i * 10_000L);
           tablet.addValue(COLUMN_NAME_1, rowIndex, cityId);
           tablet.addValue(COLUMN_NAME_2, rowIndex, regionId);
           tablet.addValue(COLUMN_NAME_3, rowIndex, deviceId);
-          tablet.addValue(COLUMN_NAME_4, rowIndex, colorId);
+          //          tablet.addValue(COLUMN_NAME_4, rowIndex, colorId);
           tablet.addValue(COLUMN_NAME_5, rowIndex, i * 1.0d);
           tablet.addValue(COLUMN_NAME_6, rowIndex, i * 1.0d);
           tablet.addValue(COLUMN_NAME_7, rowIndex, i * 1.0d);
@@ -148,6 +168,15 @@ public class TableTest {
           if (tablet.rowSize == tablet.getMaxRowNumber()) {
             session.insertTablet(tablet);
             tablet.reset();
+            long writtenRows = i + 1L;
+            if (writtenRows % 100_000 == 0) {
+              LOGGER.info(
+                  "Device {} has written {} rows, time cost is {}ms",
+                  deviceId,
+                  writtenRows,
+                  (System.nanoTime() - roundStartTime) / 1_000_000);
+              roundStartTime = System.nanoTime();
+            }
           }
         }
 
@@ -155,6 +184,21 @@ public class TableTest {
           session.insertTablet(tablet);
           tablet.reset();
         }
+        session.executeNonQueryStatement(
+            String.format(
+                "UPDATE table1 SET %s='%s' WHERE %s='%s' AND %s='%s' AND %s='%s'",
+                COLUMN_NAME_4,
+                colorId,
+                COLUMN_NAME_1,
+                cityId,
+                COLUMN_NAME_2,
+                regionId,
+                COLUMN_NAME_3,
+                deviceId));
+        LOGGER.info(
+            "Device {} finished, total time cost is {}ms",
+            deviceId,
+            (System.nanoTime() - startTime) / 1_000_000);
       }
 
     } catch (IoTDBConnectionException e) {
@@ -171,6 +215,7 @@ public class TableTest {
 
     try {
       while (true) {
+        long startTime = System.nanoTime();
         int device = deviceIdGenerator.getAndIncrement();
         if (device >= deviceNum) {
           break;
@@ -179,21 +224,29 @@ public class TableTest {
         int region = device % 100;
         //        int color = device % 5;
 
-        Tablet tablet =
-            new Tablet(
-                String.format(
-                    "%s.%s.%s.%s", database, "city_" + city, "region_" + region, "d_" + device),
-                TREE_SCHEMA_LIST,
-                10000);
-        for (int i = 0; i < 60 * 60 * 24 * 30; i++) {
+        String deviceId =
+            String.format(
+                "%s.%s.%s.%s", database, "city_" + city, "region_" + region, "d_" + device);
+        Tablet tablet = new Tablet(deviceId, TREE_SCHEMA_LIST, 10000);
+        long roundStartTime = System.nanoTime();
+        for (int i = 0; i < 6 * 60 * 24 * 30; i++) {
           int rowIndex = tablet.rowSize++;
-          tablet.addTimestamp(rowIndex, START_TIME + i);
+          tablet.addTimestamp(rowIndex, START_TIME + i * 10_000L);
           tablet.addValue(COLUMN_NAME_5, rowIndex, i * 1.0d);
           tablet.addValue(COLUMN_NAME_6, rowIndex, i * 1.0d);
           tablet.addValue(COLUMN_NAME_7, rowIndex, i * 1.0d);
           if (tablet.rowSize == tablet.getMaxRowNumber()) {
             sessionPool.insertTablet(tablet);
             tablet.reset();
+            long writtenRows = i + 1L;
+            if (writtenRows % 100_000 == 0) {
+              LOGGER.info(
+                  "Device {} has written {} rows, time cost is {}ms",
+                  deviceId,
+                  writtenRows,
+                  (System.nanoTime() - roundStartTime) / 1_000_000);
+              roundStartTime = System.nanoTime();
+            }
           }
         }
 
@@ -201,6 +254,11 @@ public class TableTest {
           sessionPool.insertTablet(tablet);
           tablet.reset();
         }
+
+        LOGGER.info(
+            "Device {} finished, total time cost is {}ms",
+            deviceId,
+            (System.nanoTime() - startTime) / 1_000_000);
       }
 
     } catch (IoTDBConnectionException e) {
