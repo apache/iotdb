@@ -265,6 +265,49 @@ public class TestUtils {
     }
   }
 
+  public static void tableResultSetFuzzyTest(
+      String sql, String[] expectedHeader, int expectedCount, String database) {
+    tableResultSetFuzzyTest(
+        sql,
+        expectedHeader,
+        expectedCount,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        database);
+  }
+
+  public static void tableResultSetFuzzyTest(
+      String sql,
+      String[] expectedHeader,
+      int expectedCount,
+      String userName,
+      String password,
+      String database) {
+    try (Connection connection =
+        EnvFactory.getEnv().getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT)) {
+      connection.setClientInfo("time_zone", "+00:00");
+      try (Statement statement = connection.createStatement()) {
+        statement.execute("use " + database);
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            assertEquals(expectedHeader[i - 1], resultSetMetaData.getColumnName(i));
+          }
+          assertEquals(expectedHeader.length, resultSetMetaData.getColumnCount());
+
+          int cnt = 0;
+          while (resultSet.next()) {
+            cnt++;
+          }
+          assertEquals(expectedCount, cnt);
+        }
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
   public static void tableAssertTestFail(String sql, String errMsg, String databaseName) {
     tableAssertTestFail(
         sql, errMsg, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, databaseName);
