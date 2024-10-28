@@ -118,6 +118,8 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
     clientManager =
         constructClient(
             nodeUrls,
+            username,
+            password,
             useSSL,
             trustStorePath,
             trustStorePwd,
@@ -129,6 +131,8 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
 
   protected abstract IoTDBSyncClientManager constructClient(
       final List<TEndPoint> nodeUrls,
+      final String username,
+      final String password,
       final boolean useSSL,
       final String trustStorePath,
       final String trustStorePwd,

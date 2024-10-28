@@ -44,6 +44,8 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
 
   public IoTDBDataNodeSyncClientManager(
       final List<TEndPoint> endPoints,
+      final String username,
+      final String password,
       final boolean useSSL,
       final String trustStorePath,
       final String trustStorePwd,
@@ -53,6 +55,8 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
       final String loadTsFileStrategy) {
     super(
         endPoints,
+        username,
+        password,
         useSSL,
         trustStorePath,
         trustStorePwd,

@@ -332,6 +332,8 @@ public class ImportTsFile extends AbstractTsFileTool {
     // ImportTsFileRemotely
     ImportTsFileRemotely.setHost(host);
     ImportTsFileRemotely.setPort(port);
+    ImportTsFileRemotely.setUsername(username);
+    ImportTsFileRemotely.setPassword(password);
 
     // ImportTsFileBase
     ImportTsFileBase.setSuccessAndFailDirAndOperation(

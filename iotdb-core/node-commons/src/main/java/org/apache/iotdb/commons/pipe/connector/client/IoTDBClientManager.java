@@ -37,6 +37,12 @@ public abstract class IoTDBClientManager {
   protected final List<TEndPoint> endPointList;
   protected long currentClientIndex = 0;
 
+  protected final String username;
+  protected final String password;
+
+  protected final boolean shouldReceiverConvertOnTypeMismatch;
+  protected final String loadTsFileStrategy;
+
   protected final boolean useLeaderCache;
 
   // This flag indicates whether the receiver supports mods transferring if
@@ -48,8 +54,18 @@ public abstract class IoTDBClientManager {
   protected static final AtomicInteger CONNECTION_TIMEOUT_MS =
       new AtomicInteger(PipeConfig.getInstance().getPipeConnectorTransferTimeoutMs());
 
-  protected IoTDBClientManager(List<TEndPoint> endPointList, boolean useLeaderCache) {
+  protected IoTDBClientManager(
+      List<TEndPoint> endPointList,
+      String username,
+      String password,
+      boolean shouldReceiverConvertOnTypeMismatch,
+      final String loadTsFileStrategy,
+      boolean useLeaderCache) {
     this.endPointList = endPointList;
+    this.username = username;
+    this.password = password;
+    this.shouldReceiverConvertOnTypeMismatch = shouldReceiverConvertOnTypeMismatch;
+    this.loadTsFileStrategy = loadTsFileStrategy;
     this.useLeaderCache = useLeaderCache;
   }
 

@@ -73,6 +73,8 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
   @Override
   protected IoTDBSyncClientManager constructClient(
       final List<TEndPoint> nodeUrls,
+      final String username,
+      final String password,
       final boolean useSSL,
       final String trustStorePath,
       final String trustStorePwd,
@@ -83,6 +85,8 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
     clientManager =
         new IoTDBDataNodeSyncClientManager(
             nodeUrls,
+            username,
+            password,
             useSSL,
             Objects.nonNull(trustStorePath) ? IoTDBConfig.addDataHomeDir(trustStorePath) : null,
             trustStorePwd,
