@@ -94,7 +94,7 @@ public class Coordinator {
       new QueryIdGenerator(IoTDBDescriptor.getInstance().getConfig().getDataNodeId());
 
   private static final Coordinator INSTANCE = new Coordinator();
-
+  // 1 3 2 4 1
   private final ConcurrentHashMap<Long, IQueryExecution> queryExecutionMap;
 
   private Coordinator() {

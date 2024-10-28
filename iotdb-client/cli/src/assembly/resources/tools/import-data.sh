@@ -18,9 +18,9 @@
 # under the License.
 #
 
-echo ------------------------------------------
-echo Starting IoTDB Client Import Script
-echo ------------------------------------------
+#echo ------------------------------------------
+#echo Starting IoTDB Client Import Script
+#echo ------------------------------------------
 
 if [ -z "${IOTDB_INCLUDE}" ]; then
   #do nothing
