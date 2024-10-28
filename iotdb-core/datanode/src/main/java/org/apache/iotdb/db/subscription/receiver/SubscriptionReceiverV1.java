@@ -524,17 +524,17 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     if (Objects.equals(successfulCommitContexts.size(), commitContexts.size())) {
       LOGGER.info(
-          "Subscription: consumer {} commit successfully, commit contexts: {}, nack: {}",
+          "Subscription: consumer {} commit (nack: {}) successfully, commit contexts: {}",
           consumerConfig,
-          commitContexts,
-          nack);
+          nack,
+          commitContexts);
     } else {
       LOGGER.warn(
-          "Subscription: consumer {} commit partially successful, commit contexts: {}, successful commit contexts: {}, nack: {}",
+          "Subscription: consumer {} commit (nack: {}) partially successful, commit contexts: {}, successful commit contexts: {}",
           consumerConfig,
+          nack,
           commitContexts,
-          successfulCommitContexts,
-          nack);
+          successfulCommitContexts);
     }
 
     return PipeSubscribeCommitResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);

@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.subscription.event.response;
 
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
 import org.apache.iotdb.db.subscription.event.cache.CachedSubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FilePiecePayload;
@@ -138,6 +140,8 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
       final long writingOffset) throws IOException {
     final long readFileBufferSize =
         SubscriptionConfig.getInstance().getSubscriptionReadFileBufferSize();
+    final PipeTsFileMemoryBlock memoryBlock =
+        PipeDataNodeResourceManager.memory().forceAllocateForTsFileWithRetry(readFileBufferSize);
     final byte[] readBuffer = new byte[(int) readFileBufferSize];
     try (final RandomAccessFile reader = new RandomAccessFile(tsFile, "r")) {
       while (true) {
@@ -153,10 +157,13 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
                 : Arrays.copyOfRange(readBuffer, 0, readLength);
 
         // generate subscription poll response with piece payload
-        return new CachedSubscriptionPollResponse(
-            SubscriptionPollResponseType.FILE_PIECE.getType(),
-            new FilePiecePayload(tsFile.getName(), writingOffset + readLength, filePiece),
-            commitContext);
+        final CachedSubscriptionPollResponse response =
+            new CachedSubscriptionPollResponse(
+                SubscriptionPollResponseType.FILE_PIECE.getType(),
+                new FilePiecePayload(tsFile.getName(), writingOffset + readLength, filePiece),
+                commitContext);
+        response.setMemoryBlock(memoryBlock);
+        return response;
       }
 
       // generate subscription poll response with seal payload
