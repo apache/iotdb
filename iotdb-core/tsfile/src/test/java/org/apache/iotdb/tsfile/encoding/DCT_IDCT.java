@@ -1,18 +1,25 @@
 package org.apache.iotdb.tsfile.encoding;
 
+import com.csvreader.CsvReader;
+import com.csvreader.CsvWriter;
+import org.apache.commons.compress.archivers.sevenz.SevenZOutputFile;
 import org.apache.commons.math3.transform.DctNormalization;
 import org.apache.commons.math3.transform.FastCosineTransformer;
 import org.apache.commons.math3.transform.TransformType;
+import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.filter.operator.In;
+import org.junit.Test;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,7 +35,7 @@ class ValueWithIndex {
 
 public class DCT_IDCT {
 
-    static int blockSize = 9;// 使用的blocksize，只能使用2的幂次+1
+    static int blockSize = 257;// 使用的blocksize，只能使用2的幂次+1
     static int n = 3;// 选取前几个分量，需要保证n < blockSize
     public static void getTopNMaxAbsoluteValues(double[] array, int n, double[] values, int[] indices) {
         if (array == null || array.length < n) {
@@ -80,11 +87,13 @@ public class DCT_IDCT {
                 try {
                     getTopNMaxAbsoluteValues(res, n, values, indices);
                     ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-                    double[] new_res = new double[block.length];
+                    float[] f_new_res = new float[block.length];
+                    double[] d_f_new_res = new double[block.length];
                     for (int k = 0; k < n; k++){
-                        new_res[indices[k]] = values[k];
+                        f_new_res[indices[k]] = (float)values[k];
+                        d_f_new_res[indices[k]] = (double)f_new_res[indices[k]];
                     }
-                    double[] new_dts = dctTransformer.transform(new_res, TransformType.INVERSE);
+                    double[] new_dts = dctTransformer.transform(d_f_new_res, TransformType.INVERSE);
                     Encoder encoder =
                             TSEncodingBuilder.getEncodingBuilder(TSEncoding.TS_2DIFF).getEncoder(TSDataType.INT32);
                     int[] new_its = new int[new_dts.length];
@@ -107,8 +116,8 @@ public class DCT_IDCT {
                         for (byte temp:byteArray){
                             resList.add(temp);
                         }
-                        byteBuffer = ByteBuffer.allocate(8);
-                        byteBuffer.putDouble(values[k]);
+                        byteBuffer = ByteBuffer.allocate(4);
+                        byteBuffer.putFloat((float)values[k]);
                         byteArray = byteBuffer.array();
                         for (byte temp:byteArray){
                             resList.add(temp);
@@ -175,13 +184,13 @@ public class DCT_IDCT {
                     }
                     byteBuffer = ByteBuffer.wrap(numByte);
                     int index = byteBuffer.getInt(0);
-                    numByte = new byte[8];
-                    for (int j = 0; j < 8; j++){
+                    numByte = new byte[4];
+                    for (int j = 0; j < 4; j++){
                         numByte[j] = encoded.get(cursor++);
                     }
                     byteBuffer = ByteBuffer.wrap(numByte);
-                    double value = byteBuffer.getDouble(0);
-                    new_res[index] = value;
+                    float value = byteBuffer.getFloat(0);
+                    new_res[index] = (double)value;
                 }
                 double[] new_dts = dctTransformer.transform(new_res, TransformType.INVERSE);
                 Decoder decoder = Decoder.getDecoderByType(TSEncoding.TS_2DIFF, TSDataType.INT32);
@@ -227,15 +236,283 @@ public class DCT_IDCT {
         return res;
     }
 
-    //测试
-    public static void main(String[] args) throws IOException {
-        int[] timeSeries = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,};
+    public static void main1(String[] args) throws IOException {}
 
-        ArrayList<Byte> encodeResult = encode(timeSeries);
+    @Test
+    public void main1() throws IOException {
+//        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/";// your data path
+        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+        String output_parent_dir = parent_dir + "icde0802/supply_experiment/R3O2_compare_compression/compression_ratio/dct_comp";
+        String input_parent_dir = parent_dir + "icde0802/supply_experiment/R3O2_compare_compression/data/";
+        ArrayList<String> input_path_list = new ArrayList<>();
+        ArrayList<String> output_path_list = new ArrayList<>();
+        ArrayList<String> dataset_name = new ArrayList<>();
+        ArrayList<Integer> dataset_block_size = new ArrayList<>();
+        dataset_name.add("CS-Sensors");
+        dataset_name.add("Metro-Traffic");
+        dataset_name.add("USGS-Earthquakes");
+        dataset_name.add("YZ-Electricity");
+        dataset_name.add("GW-Magnetic");
+        dataset_name.add("TY-Fuel");
+        dataset_name.add("Cyber-Vehicle");
+        dataset_name.add("Vehicle-Charge");
+        dataset_name.add("Nifty-Stocks");
+        dataset_name.add("TH-Climate");
+        dataset_name.add("TY-Transport");
+        dataset_name.add("EPM-Education");
 
-        ArrayList<Integer> reconstructedTimeSeries = decode(encodeResult);
-        for (int i:reconstructedTimeSeries){
-            System.out.println(i);
+        for (String value : dataset_name) {
+            input_path_list.add(input_parent_dir + value);
+            dataset_block_size.add(1024);
+        }
+
+        output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
+//        dataset_block_size.add(1024);
+        output_path_list.add(output_parent_dir + "/Metro-Traffic_ratio.csv");// 1
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv");// 2
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/YZ-Electricity_ratio.csv"); // 3
+//        dataset_block_size.add(256);
+        output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); //4
+//        dataset_block_size.add(1024);
+        output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv");//5
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/Cyber-Vehicle_ratio.csv"); //6
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv");//7
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv");//8
+//        dataset_block_size.add(1024);
+        output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv");//9
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv");//10
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
+//        dataset_block_size.add(1024);
+
+        int repeatTime2 = 50;
+//        for (int file_i = 8; file_i < 9; file_i++) {
+        long compressTime = 0;
+        long uncompressTime = 0;
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//        for (int file_i = input_path_list.size()-1; file_i >=0 ; file_i--) {
+
+            String inputPath = input_path_list.get(file_i);
+            System.out.println(inputPath);
+            String Output = output_path_list.get(file_i);
+
+            File file = new File(inputPath);
+            File[] tempList = file.listFiles();
+
+            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
+
+            String[] head = {
+                    "Input Direction",
+                    "Encoding Algorithm",
+//                    "Compress Algorithm",
+                    "Encoding Time",
+                    "Decoding Time",
+                    "Points",
+                    "Compressed Size",
+                    "Compression Ratio"
+            };
+            writer.writeRecord(head); // write header to output file
+
+            assert tempList != null;
+
+            for (File f : tempList) {
+                System.out.println(f);
+                InputStream inputStream = Files.newInputStream(f.toPath());
+
+                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
+                ArrayList<Integer> data2 = new ArrayList<>();
+
+                loader.readHeaders();
+                while (loader.readRecord()) {
+//                    data1.add(Integer.valueOf(loader.getValues()[0]));
+                    data2.add(Integer.valueOf(loader.getValues()[0]));
+                }
+                inputStream.close();
+
+                int[] data2_arr = new int[data2.size()];
+                for(int i = 0;i<data2.size();i++){
+                    data2_arr[i] = data2.get(i);
+                }
+                double ratio = 0;
+                double compressed_size = 0;
+                long s = System.nanoTime();
+                ArrayList<Byte> res = new ArrayList<>();
+                for (int repeat = 0; repeat < repeatTime2; repeat++) {
+                    res = DCT_IDCT.encode(data2_arr);
+                }
+                long e = System.nanoTime();
+                compressTime += ((e - s) / repeatTime2);
+
+                // test compression ratio and compressed size
+                compressed_size += res.size();
+                double ratioTmp = compressed_size / (double) (data2.size() * Integer.BYTES);
+                ratio += ratioTmp;
+                s = System.nanoTime();
+                for (int repeat = 0; repeat < repeatTime2; repeat++){
+                    ArrayList<Integer> b = DCT_IDCT.decode(res);
+                }
+                e = System.nanoTime();
+                uncompressTime += ((e - s) / repeatTime2);
+
+
+                String[] record = {
+                        f.toString(),
+                        "BOS+DCT",
+                        String.valueOf(compressTime),
+                        String.valueOf(uncompressTime),
+                        String.valueOf(data2.size()),
+                        String.valueOf(compressed_size),
+                        String.valueOf(ratio)
+                };
+                writer.writeRecord(record);
+                System.out.println(ratio);
+            }
+            writer.close();
+        }
+    }
+
+    @Test
+    public void main2() throws IOException {
+//        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/";// your data path
+        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+        String output_parent_dir = parent_dir + "icde0802/supply_experiment/R3O2_compare_compression/compression_ratio/dct_comp2";
+        String input_parent_dir = parent_dir + "trans_data/";
+        ArrayList<String> input_path_list = new ArrayList<>();
+        ArrayList<String> output_path_list = new ArrayList<>();
+        ArrayList<String> dataset_name = new ArrayList<>();
+        ArrayList<Integer> dataset_block_size = new ArrayList<>();
+        dataset_name.add("CS-Sensors");
+        dataset_name.add("Metro-Traffic");
+        dataset_name.add("USGS-Earthquakes");
+        dataset_name.add("YZ-Electricity");
+        dataset_name.add("GW-Magnetic");
+        dataset_name.add("TY-Fuel");
+        dataset_name.add("Cyber-Vehicle");
+        dataset_name.add("Vehicle-Charge");
+        dataset_name.add("Nifty-Stocks");
+        dataset_name.add("TH-Climate");
+        dataset_name.add("TY-Transport");
+        dataset_name.add("EPM-Education");
+
+        for (String value : dataset_name) {
+            input_path_list.add(input_parent_dir + value);
+            dataset_block_size.add(1024);
+        }
+
+        output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
+//        dataset_block_size.add(1024);
+        output_path_list.add(output_parent_dir + "/Metro-Traffic_ratio.csv");// 1
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv");// 2
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/YZ-Electricity_ratio.csv"); // 3
+//        dataset_block_size.add(256);
+        output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); //4
+//        dataset_block_size.add(1024);
+        output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv");//5
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/Cyber-Vehicle_ratio.csv"); //6
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv");//7
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv");//8
+//        dataset_block_size.add(1024);
+        output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv");//9
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv");//10
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
+//        dataset_block_size.add(1024);
+
+        int repeatTime2 = 50;
+//        for (int file_i = 8; file_i < 9; file_i++) {
+        long compressTime = 0;
+        long uncompressTime = 0;
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//        for (int file_i = input_path_list.size()-1; file_i >=0 ; file_i--) {
+
+            String inputPath = input_path_list.get(file_i);
+            System.out.println(inputPath);
+            String Output = output_path_list.get(file_i);
+
+            File file = new File(inputPath);
+            File[] tempList = file.listFiles();
+
+            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
+
+            String[] head = {
+                    "Input Direction",
+                    "Encoding Algorithm",
+//                    "Compress Algorithm",
+                    "Encoding Time",
+                    "Decoding Time",
+                    "Points",
+                    "Compressed Size",
+                    "Compression Ratio"
+            };
+            writer.writeRecord(head); // write header to output file
+
+            assert tempList != null;
+
+            for (File f : tempList) {
+                System.out.println(f);
+                InputStream inputStream = Files.newInputStream(f.toPath());
+
+                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
+                ArrayList<Integer> data2 = new ArrayList<>();
+
+                loader.readHeaders();
+                while (loader.readRecord()) {
+//                    data1.add(Integer.valueOf(loader.getValues()[0]));
+                    data2.add(Integer.valueOf(loader.getValues()[1]));
+                }
+                inputStream.close();
+
+                int[] data2_arr = new int[data2.size()];
+                for(int i = 0;i<data2.size();i++){
+                    data2_arr[i] = data2.get(i);
+                }
+                double ratio = 0;
+                double compressed_size = 0;
+                long s = System.nanoTime();
+                ArrayList<Byte> res = new ArrayList<>();
+                for (int repeat = 0; repeat < repeatTime2; repeat++) {
+                    res = DCT_IDCT.encode(data2_arr);
+                }
+                long e = System.nanoTime();
+                compressTime += ((e - s) / repeatTime2);
+
+                // test compression ratio and compressed size
+                compressed_size += res.size();
+                double ratioTmp = compressed_size / (double) (data2.size() * Integer.BYTES);
+                ratio += ratioTmp;
+                s = System.nanoTime();
+                for (int repeat = 0; repeat < repeatTime2; repeat++){
+                    ArrayList<Integer> b = DCT_IDCT.decode(res);
+                }
+                e = System.nanoTime();
+                uncompressTime += ((e - s) / repeatTime2);
+
+
+                String[] record = {
+                        f.toString(),
+                        "DCT",
+                        String.valueOf(compressTime),
+                        String.valueOf(uncompressTime),
+                        String.valueOf(data2.size()),
+                        String.valueOf(compressed_size),
+                        String.valueOf(ratio)
+                };
+                writer.writeRecord(record);
+                System.out.println(ratio);
+            }
+            writer.close();
         }
     }
 }
