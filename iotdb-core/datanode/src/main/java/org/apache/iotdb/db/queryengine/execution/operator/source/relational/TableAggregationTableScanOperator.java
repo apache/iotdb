@@ -59,6 +59,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -92,6 +93,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   private final SeriesScanOptions seriesScanOptions;
 
   private final List<String> measurementColumnNames;
+  private final Set<String> allSensors;
 
   private final List<IMeasurementSchema> measurementSchemas;
 
@@ -120,6 +122,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
       Ordering scanOrder,
       SeriesScanOptions seriesScanOptions,
       List<String> measurementColumnNames,
+      Set<String> allSensors,
       List<IMeasurementSchema> measurementSchemas,
       int maxTsBlockLineNum,
       int measurementCount,
@@ -158,6 +161,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     this.scanOrder = scanOrder;
     this.seriesScanOptions = seriesScanOptions;
     this.measurementColumnNames = measurementColumnNames;
+    this.allSensors = allSensors;
     this.measurementSchemas = measurementSchemas;
     this.measurementColumnTSDataTypes =
         measurementSchemas.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
@@ -266,7 +270,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     }
 
     AlignedFullPath alignedPath =
-        constructAlignedPath(deviceEntry, measurementColumnNames, measurementSchemas);
+        constructAlignedPath(deviceEntry, measurementColumnNames, measurementSchemas, allSensors);
 
     this.seriesScanUtil =
         new AlignedSeriesScanUtil(

@@ -200,6 +200,9 @@ public class QueryDataSource implements IQueryDataSource {
   }
 
   public void fillOrderIndexes(IDeviceID deviceId, boolean ascending) {
+    if (unseqResources == null || unseqResources.isEmpty()) {
+      return;
+    }
     TreeMap<Long, List<Integer>> orderTimeToIndexMap =
         ascending ? new TreeMap<>() : new TreeMap<>(descendingComparator);
     int index = 0;
