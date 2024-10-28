@@ -26,7 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
@@ -142,7 +142,7 @@ public class DeleteLogicalViewProcedure
             "construct view schema engine black list",
             env,
             targetSchemaRegionGroup,
-            CnToDnRequestType.CONSTRUCT_VIEW_SCHEMA_BLACK_LIST,
+            CnToDnAsyncRequestType.CONSTRUCT_VIEW_SCHEMA_BLACK_LIST,
             ((dataNodeLocation, consensusGroupIdList) ->
                 new TConstructViewSchemaBlackListReq(consensusGroupIdList, patternTreeBytes))) {
           @Override
@@ -186,7 +186,7 @@ public class DeleteLogicalViewProcedure
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
     DataNodeAsyncRequestContext<TInvalidateMatchedSchemaCacheReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            CnToDnRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
+            CnToDnAsyncRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
             new TInvalidateMatchedSchemaCacheReq(patternTreeBytes),
             dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
@@ -211,7 +211,7 @@ public class DeleteLogicalViewProcedure
             "delete view in schema engine",
             env,
             env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
-            CnToDnRequestType.DELETE_VIEW,
+            CnToDnAsyncRequestType.DELETE_VIEW,
             ((dataNodeLocation, consensusGroupIdList) ->
                 new TDeleteViewSchemaReq(consensusGroupIdList, patternTreeBytes)
                     .setIsGeneratedByPipe(isGeneratedByPipe)));
@@ -247,7 +247,7 @@ public class DeleteLogicalViewProcedure
             "roll back view schema engine black list",
             env,
             env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
-            CnToDnRequestType.ROLLBACK_VIEW_SCHEMA_BLACK_LIST,
+            CnToDnAsyncRequestType.ROLLBACK_VIEW_SCHEMA_BLACK_LIST,
             (dataNodeLocation, consensusGroupIdList) ->
                 new TRollbackViewSchemaBlackListReq(consensusGroupIdList, patternTreeBytes));
     rollbackStateTask.execute();
@@ -343,7 +343,7 @@ public class DeleteLogicalViewProcedure
         String taskName,
         ConfigNodeProcedureEnv env,
         Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup,
-        CnToDnRequestType dataNodeRequestType,
+        CnToDnAsyncRequestType dataNodeRequestType,
         BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
       super(env, targetSchemaRegionGroup, false, dataNodeRequestType, dataNodeRequestGenerator);
       this.taskName = taskName;
