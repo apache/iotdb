@@ -91,10 +91,10 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
     // if the sum of compaction count of the selected files are different
     // we prefer to execute task with smaller compaction count
     // this can reduce write amplification
-    if (((double) o1.getSumOfCompactionCount()) / o1.getSelectedTsFileResourceList().size()
-        != ((double) o2.getSumOfCompactionCount()) / o2.getSelectedTsFileResourceList().size()) {
-      return o1.getSumOfCompactionCount() / o1.getSelectedTsFileResourceList().size()
-          - o2.getSumOfCompactionCount() / o2.getSelectedTsFileResourceList().size();
+    double avgCompactionCount1 = o1.getAvgCompactionCount();
+    double avgCompactionCount2 = o2.getAvgCompactionCount();
+    if (Math.abs(avgCompactionCount1 - avgCompactionCount2) > 1e-2) {
+      return Double.compare(avgCompactionCount1, avgCompactionCount2);
     }
 
     // if the time partition of o1 and o2 are different

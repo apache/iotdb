@@ -106,10 +106,23 @@ public class TsTable {
     }
   }
 
-  public void removeColumnSchema(String columnName) {
+  // Currently only supports attribute column
+  public void renameColumnSchema(final String oldName, final String newName) {
     readWriteLock.writeLock().lock();
     try {
-      TsTableColumnSchema columnSchema = columnSchemaMap.remove(columnName);
+      // Ensures idempotency
+      if (columnSchemaMap.containsKey(oldName)) {
+        columnSchemaMap.put(newName, columnSchemaMap.remove(oldName));
+      }
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
+  public void removeColumnSchema(final String columnName) {
+    readWriteLock.writeLock().lock();
+    try {
+      final TsTableColumnSchema columnSchema = columnSchemaMap.remove(columnName);
       if (columnSchema != null
           && columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
         idNums--;

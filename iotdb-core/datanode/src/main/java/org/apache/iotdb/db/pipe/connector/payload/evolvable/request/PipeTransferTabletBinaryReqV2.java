@@ -27,6 +27,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -34,6 +36,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Objects;
 
 public class PipeTransferTabletBinaryReqV2 extends PipeTransferTabletBinaryReq {
@@ -71,6 +74,16 @@ public class PipeTransferTabletBinaryReqV2 extends PipeTransferTabletBinaryReq {
 
     // Table model
     statement.setWriteToTable(true);
+    if (statement instanceof InsertRowsStatement) {
+      List<InsertRowStatement> rowStatements =
+          ((InsertRowsStatement) statement).getInsertRowStatementList();
+      if (rowStatements != null && !rowStatements.isEmpty()) {
+        for (InsertRowStatement insertRowStatement : rowStatements) {
+          insertRowStatement.setWriteToTable(true);
+          insertRowStatement.setDatabaseName(dataBaseName);
+        }
+      }
+    }
     statement.setDatabaseName(dataBaseName);
     return statement;
   }

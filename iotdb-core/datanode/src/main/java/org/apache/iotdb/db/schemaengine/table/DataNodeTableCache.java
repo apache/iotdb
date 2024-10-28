@@ -33,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.concurrent.GuardedBy;
 
 import java.util.Collections;
 import java.util.List;
@@ -190,6 +191,23 @@ public class DataNodeTableCache implements ITableCache {
     }
   }
 
+  @GuardedBy("TableDeviceSchemaCache#writeLock")
+  @Override
+  public void invalid(String database, final String tableName) {
+    database = PathUtils.unQualifyDatabaseName(database);
+    readWriteLock.writeLock().lock();
+    try {
+      if (databaseTableMap.containsKey(database)) {
+        databaseTableMap.get(database).remove(tableName);
+      }
+      if (preUpdateTableMap.containsKey(database)) {
+        preUpdateTableMap.get(database).remove(tableName);
+      }
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
   public TsTable getTableInWrite(final String database, final String tableName) {
     final TsTable result = getTableInCache(database, tableName);
     return Objects.nonNull(result) ? result : getTable(database, tableName);
@@ -284,6 +302,12 @@ public class DataNodeTableCache implements ITableCache {
                             previousVersions.get(database).get(tableName))) {
                       return;
                     }
+                    LOGGER.info(
+                        "Update table {}.{} by table fetch, table in preUpdateMap: {}, new table: {}",
+                        database,
+                        existingPair.getLeft().getTableName(),
+                        existingPair.getLeft(),
+                        tsTable);
                     existingPair.setLeft(null);
                     if (Objects.nonNull(tsTable)) {
                       databaseTableMap
@@ -351,12 +375,14 @@ public class DataNodeTableCache implements ITableCache {
     for (final Map.Entry<String, ? extends Map<String, ?>> dbEntry : tableMap.entrySet()) {
       final String database = dbEntry.getKey();
       if (!(path.startsWith(database, dbStartIndex)
+          && path.length() > dbStartIndex + database.length()
           && path.charAt(dbStartIndex + database.length()) == PATH_SEPARATOR)) {
         continue;
       }
       final int tableStartIndex = dbStartIndex + database.length() + 1;
       for (final String tableName : dbEntry.getValue().keySet()) {
         if (path.startsWith(tableName, tableStartIndex)
+            && path.length() > tableStartIndex + tableName.length()
             && path.charAt(tableStartIndex + tableName.length()) == PATH_SEPARATOR) {
           return new Pair<>(database, tableName);
         }

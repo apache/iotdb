@@ -49,7 +49,10 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaRep
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.DropTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
@@ -151,7 +154,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   /**
    * Cache DatabaseSchema.
    *
-   * @param plan DatabaseSchemaPlan
+   * @param plan {@link DatabaseSchemaPlan}
    * @return {@link TSStatusCode#SUCCESS_STATUS} if the Database is set successfully.
    */
   public TSStatus createDatabase(final DatabaseSchemaPlan plan) {
@@ -192,7 +195,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       final TDatabaseSchema alterSchema = plan.getSchema();
       final PartialPath partialPathName = new PartialPath(alterSchema.getName());
 
-      TDatabaseSchema currentSchema =
+      final TDatabaseSchema currentSchema =
           mTree.getDatabaseNodeByDatabasePath(partialPathName).getAsMNode().getDatabaseSchema();
       // TODO: Support alter other fields
       if (alterSchema.isSetMinSchemaRegionGroupNum()) {
@@ -231,7 +234,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           .getAsMNode()
           .setDatabaseSchema(currentSchema);
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       LOGGER.error(ERROR_NAME, e);
       result.setCode(e.getErrorCode()).setMessage(e.getMessage());
     } finally {
@@ -452,7 +455,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public List<String> getDatabaseNames() {
     databaseReadWriteLock.readLock().lock();
     try {
-      return mTree.getAllDatabasePaths().stream()
+      return mTree.getAllDatabasePaths(false).stream()
           .map(PartialPath::getFullPath)
           .collect(Collectors.toList());
     } finally {
@@ -756,12 +759,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   public synchronized TemplateInfoResp checkTemplateSettable(
-      CheckTemplateSettablePlan checkTemplateSettablePlan) {
-    TemplateInfoResp resp = new TemplateInfoResp();
-    PartialPath path;
+      final CheckTemplateSettablePlan checkTemplateSettablePlan) {
+    final TemplateInfoResp resp = new TemplateInfoResp();
+    final PartialPath path;
     try {
       path = new PartialPath(checkTemplateSettablePlan.getPath());
-    } catch (IllegalPathException e) {
+    } catch (final IllegalPathException e) {
       LOGGER.error(e.getMessage());
       resp.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       return resp;
@@ -773,7 +776,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       resp.setTemplateList(
           Collections.singletonList(
               templateTable.getTemplate(checkTemplateSettablePlan.getName())));
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       LOGGER.error(e.getMessage(), e);
       resp.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
     }
@@ -930,13 +933,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * into specified path pattern start with template set path. The result set is organized as
    * specified path pattern -> template id
    */
-  public TemplateSetInfoResp getTemplateSetInfo(GetTemplateSetInfoPlan plan) {
-    TemplateSetInfoResp resp = new TemplateSetInfoResp();
+  public TemplateSetInfoResp getTemplateSetInfo(final GetTemplateSetInfoPlan plan) {
+    final TemplateSetInfoResp resp = new TemplateSetInfoResp();
     try {
-
-      Map<PartialPath, Set<Integer>> allTemplateSetInfo = new HashMap<>();
-      for (PartialPath pattern : plan.getPatternList()) {
-        Map<Integer, Set<PartialPath>> templateSetInfo = mTree.getTemplateSetInfo(pattern);
+      final Map<PartialPath, Set<Integer>> allTemplateSetInfo = new HashMap<>();
+      for (final PartialPath pattern : plan.getPatternList()) {
+        final Map<Integer, Set<PartialPath>> templateSetInfo = mTree.getTemplateSetInfo(pattern);
         if (templateSetInfo.isEmpty()) {
           continue;
         }
@@ -1079,23 +1081,65 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
   }
 
+  public TSStatus preDeleteTable(final PreDeleteTablePlan plan) {
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      mTree.preDeleteTable(
+          getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName());
+      return RpcUtils.SUCCESS_STATUS;
+    } catch (final MetadataException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  public TSStatus dropTable(final DropTablePlan plan) {
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      mTree.dropTable(getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName());
+      return RpcUtils.SUCCESS_STATUS;
+    } catch (final MetadataException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
+  }
+
   public ShowTableResp showTables(final ShowTablePlan plan) {
     databaseReadWriteLock.readLock().lock();
     try {
       return new ShowTableResp(
           StatusUtils.OK,
-          mTree
-              .getAllUsingTablesUnderSpecificDatabase(
-                  getQualifiedDatabasePartialPath(plan.getDatabase()))
-              .stream()
-              .map(
-                  tsTable ->
-                      new TTableInfo(
-                          tsTable.getTableName(),
-                          tsTable
-                              .getPropValue(TTL_PROPERTY.toLowerCase(Locale.ENGLISH))
-                              .orElse(TTL_INFINITE)))
-              .collect(Collectors.toList()));
+          plan.isDetails()
+              ? mTree
+                  .getAllTablesUnderSpecificDatabase(
+                      getQualifiedDatabasePartialPath(plan.getDatabase()))
+                  .stream()
+                  .map(
+                      pair -> {
+                        final TTableInfo info =
+                            new TTableInfo(
+                                pair.getLeft().getTableName(),
+                                pair.getLeft()
+                                    .getPropValue(TTL_PROPERTY.toLowerCase(Locale.ENGLISH))
+                                    .orElse(TTL_INFINITE));
+                        info.setState(pair.getRight().ordinal());
+                        return info;
+                      })
+                  .collect(Collectors.toList())
+              : mTree
+                  .getAllUsingTablesUnderSpecificDatabase(
+                      getQualifiedDatabasePartialPath(plan.getDatabase()))
+                  .stream()
+                  .map(
+                      tsTable ->
+                          new TTableInfo(
+                              tsTable.getTableName(),
+                              tsTable
+                                  .getPropValue(TTL_PROPERTY.toLowerCase(Locale.ENGLISH))
+                                  .orElse(TTL_INFINITE)))
+                  .collect(Collectors.toList()));
     } catch (final MetadataException e) {
       return new ShowTableResp(
           RpcUtils.getStatus(e.getErrorCode(), e.getMessage()), Collections.emptyList());
@@ -1172,6 +1216,21 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             plan.getTableName(),
             plan.getColumnSchemaList());
       }
+      return RpcUtils.SUCCESS_STATUS;
+    } catch (final MetadataException e) {
+      LOGGER.warn(e.getMessage(), e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  public TSStatus renameTableColumn(final RenameTableColumnPlan plan) {
+    final String databaseName = PathUtils.qualifyDatabaseName(plan.getDatabase());
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      mTree.renameTableColumn(
+          new PartialPath(databaseName), plan.getTableName(), plan.getOldName(), plan.getNewName());
       return RpcUtils.SUCCESS_STATUS;
     } catch (final MetadataException e) {
       LOGGER.warn(e.getMessage(), e);

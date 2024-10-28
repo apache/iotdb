@@ -102,6 +102,15 @@ public class IoTDBTreePattern extends TreePattern {
   }
 
   @Override
+  public boolean mayOverlapWithDb(final String db) {
+    try {
+      return patternPartialPath.overlapWith(new PartialPath(db + ".**"));
+    } catch (final IllegalPathException e) {
+      return false;
+    }
+  }
+
+  @Override
   public boolean mayOverlapWithDevice(final IDeviceID device) {
     try {
       // Another way is to use patternPath.overlapWith("device.*"),

@@ -83,12 +83,15 @@ public class SetTemplateProcedure
   private static final String CONSENSUS_WRITE_ERROR =
       "Failed in the write API executing the consensus layer due to: ";
 
-  public SetTemplateProcedure(boolean isGeneratedByPipe) {
+  public SetTemplateProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
   }
 
   public SetTemplateProcedure(
-      String queryId, String templateName, String templateSetPath, boolean isGeneratedByPipe) {
+      final String queryId,
+      final String templateName,
+      final String templateSetPath,
+      final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
     this.queryId = queryId;
     this.templateName = templateName;
@@ -96,7 +99,7 @@ public class SetTemplateProcedure
   }
 
   @Override
-  protected Flow executeFromState(ConfigNodeProcedureEnv env, SetTemplateState state)
+  protected Flow executeFromState(final ConfigNodeProcedureEnv env, final SetTemplateState state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
     long startTime = System.currentTimeMillis();
     try {
@@ -148,18 +151,18 @@ public class SetTemplateProcedure
     }
   }
 
-  private void validateTemplateExistence(ConfigNodeProcedureEnv env) {
+  private void validateTemplateExistence(final ConfigNodeProcedureEnv env) {
     // check whether the template can be set on given path
-    CheckTemplateSettablePlan checkTemplateSettablePlan =
+    final CheckTemplateSettablePlan checkTemplateSettablePlan =
         new CheckTemplateSettablePlan(templateName, templateSetPath);
     TemplateInfoResp resp;
     try {
       resp =
           (TemplateInfoResp)
               env.getConfigManager().getConsensusManager().read(checkTemplateSettablePlan);
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
-      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       resp = new TemplateInfoResp();
       resp.setStatus(res);
@@ -173,13 +176,13 @@ public class SetTemplateProcedure
     }
   }
 
-  private void preSetTemplate(ConfigNodeProcedureEnv env) {
-    PreSetSchemaTemplatePlan preSetSchemaTemplatePlan =
+  private void preSetTemplate(final ConfigNodeProcedureEnv env) {
+    final PreSetSchemaTemplatePlan preSetSchemaTemplatePlan =
         new PreSetSchemaTemplatePlan(templateName, templateSetPath);
     TSStatus status;
     try {
       status = env.getConfigManager().getConsensusManager().write(preSetSchemaTemplatePlan);
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
@@ -196,26 +199,26 @@ public class SetTemplateProcedure
     }
   }
 
-  private void preReleaseTemplate(ConfigNodeProcedureEnv env) {
-    Template template = getTemplate(env);
+  private void preReleaseTemplate(final ConfigNodeProcedureEnv env) {
+    final Template template = getTemplate(env);
     if (template == null) {
       // already setFailure
       return;
     }
 
-    TUpdateTemplateReq req = new TUpdateTemplateReq();
+    final TUpdateTemplateReq req = new TUpdateTemplateReq();
     req.setType(TemplateInternalRPCUpdateType.ADD_TEMPLATE_PRE_SET_INFO.toByte());
     req.setTemplateInfo(
         TemplateInternalRPCUtil.generateAddTemplateSetInfoBytes(template, templateSetPath));
 
-    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    DataNodeAsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
+    final DataNodeAsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
             CnToDnAsyncRequestType.UPDATE_TEMPLATE, req, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
+    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
+    for (final Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
       if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
             "Failed to sync template {} pre-set info on path {} to DataNode {}",
@@ -229,16 +232,16 @@ public class SetTemplateProcedure
     setNextState(SetTemplateState.VALIDATE_TIMESERIES_EXISTENCE);
   }
 
-  private Template getTemplate(ConfigNodeProcedureEnv env) {
-    GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan(templateName);
+  private Template getTemplate(final ConfigNodeProcedureEnv env) {
+    final GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan(templateName);
     TemplateInfoResp templateResp;
     try {
       templateResp =
           (TemplateInfoResp)
               env.getConfigManager().getConsensusManager().read(getSchemaTemplatePlan);
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
-      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       templateResp = new TemplateInfoResp();
       templateResp.setStatus(res);
@@ -257,25 +260,25 @@ public class SetTemplateProcedure
     return templateResp.getTemplateList().get(0);
   }
 
-  private void validateTimeSeriesExistence(ConfigNodeProcedureEnv env) {
-    PathPatternTree patternTree = new PathPatternTree();
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+  private void validateTimeSeriesExistence(final ConfigNodeProcedureEnv env) {
+    final PathPatternTree patternTree = new PathPatternTree();
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     PartialPath path = null;
     try {
       path = new PartialPath(templateSetPath);
       patternTree.appendPathPattern(path);
       patternTree.appendPathPattern(path.concatAsMeasurementPath(MULTI_LEVEL_PATH_WILDCARD));
       patternTree.serialize(dataOutputStream);
-    } catch (IllegalPathException | IOException ignored) {
+    } catch (final IllegalPathException | IOException ignored) {
     }
-    ByteBuffer patternTreeBytes = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+    final ByteBuffer patternTreeBytes = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
 
-    Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
+    final Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
         env.getConfigManager().getRelatedSchemaRegionGroup(patternTree);
 
-    List<TCheckTimeSeriesExistenceResp> respList = new ArrayList<>();
-    DataNodeRegionTaskExecutor<TCheckTimeSeriesExistenceReq, TCheckTimeSeriesExistenceResp>
+    final List<TCheckTimeSeriesExistenceResp> respList = new ArrayList<>();
+    final DataNodeRegionTaskExecutor<TCheckTimeSeriesExistenceReq, TCheckTimeSeriesExistenceResp>
         regionTask =
             new DataNodeRegionTaskExecutor<
                 TCheckTimeSeriesExistenceReq, TCheckTimeSeriesExistenceResp>(
@@ -288,17 +291,17 @@ public class SetTemplateProcedure
 
               @Override
               protected List<TConsensusGroupId> processResponseOfOneDataNode(
-                  TDataNodeLocation dataNodeLocation,
-                  List<TConsensusGroupId> consensusGroupIdList,
-                  TCheckTimeSeriesExistenceResp response) {
+                  final TDataNodeLocation dataNodeLocation,
+                  final List<TConsensusGroupId> consensusGroupIdList,
+                  final TCheckTimeSeriesExistenceResp response) {
                 respList.add(response);
-                List<TConsensusGroupId> failedRegionList = new ArrayList<>();
+                final List<TConsensusGroupId> failedRegionList = new ArrayList<>();
                 if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
                   return failedRegionList;
                 }
 
                 if (response.getStatus().getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-                  List<TSStatus> subStatus = response.getStatus().getSubStatus();
+                  final List<TSStatus> subStatus = response.getStatus().getSubStatus();
                   for (int i = 0; i < subStatus.size(); i++) {
                     if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
                         && subStatus.get(i).getCode()
@@ -314,7 +317,8 @@ public class SetTemplateProcedure
 
               @Override
               protected void onAllReplicasetFailure(
-                  TConsensusGroupId consensusGroupId, Set<TDataNodeLocation> dataNodeLocationSet) {
+                  final TConsensusGroupId consensusGroupId,
+                  final Set<TDataNodeLocation> dataNodeLocationSet) {
                 setFailure(
                     new ProcedureException(
                         new MetadataException(
@@ -333,7 +337,7 @@ public class SetTemplateProcedure
       return;
     }
 
-    for (TCheckTimeSeriesExistenceResp resp : respList) {
+    for (final TCheckTimeSeriesExistenceResp resp : respList) {
       if (resp.isExists()) {
         setFailure(new ProcedureException(new TemplateIncompatibleException(templateName, path)));
       }
@@ -341,8 +345,8 @@ public class SetTemplateProcedure
     setNextState(SetTemplateState.COMMIT_SET);
   }
 
-  private void commitSetTemplate(ConfigNodeProcedureEnv env) {
-    CommitSetSchemaTemplatePlan commitSetSchemaTemplatePlan =
+  private void commitSetTemplate(final ConfigNodeProcedureEnv env) {
+    final CommitSetSchemaTemplatePlan commitSetSchemaTemplatePlan =
         new CommitSetSchemaTemplatePlan(templateName, templateSetPath);
     TSStatus status;
     try {
@@ -353,7 +357,7 @@ public class SetTemplateProcedure
                   isGeneratedByPipe
                       ? new PipeEnrichedPlan(commitSetSchemaTemplatePlan)
                       : commitSetSchemaTemplatePlan);
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
@@ -370,26 +374,26 @@ public class SetTemplateProcedure
     }
   }
 
-  private void commitReleaseTemplate(ConfigNodeProcedureEnv env) {
-    Template template = getTemplate(env);
+  private void commitReleaseTemplate(final ConfigNodeProcedureEnv env) {
+    final Template template = getTemplate(env);
     if (template == null) {
       // already setFailure
       return;
     }
 
-    TUpdateTemplateReq req = new TUpdateTemplateReq();
+    final TUpdateTemplateReq req = new TUpdateTemplateReq();
     req.setType(TemplateInternalRPCUpdateType.COMMIT_TEMPLATE_SET_INFO.toByte());
     req.setTemplateInfo(
         TemplateInternalRPCUtil.generateAddTemplateSetInfoBytes(template, templateSetPath));
 
-    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    DataNodeAsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
+    final DataNodeAsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
             CnToDnAsyncRequestType.UPDATE_TEMPLATE, req, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
+    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
+    for (final Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
       if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
             "Failed to sync template {} commit-set info on path {} to DataNode {}",
@@ -413,14 +417,14 @@ public class SetTemplateProcedure
   }
 
   @Override
-  protected boolean isRollbackSupported(SetTemplateState setTemplateState) {
+  protected boolean isRollbackSupported(final SetTemplateState setTemplateState) {
     return true;
   }
 
   @Override
-  protected void rollbackState(ConfigNodeProcedureEnv env, SetTemplateState state)
+  protected void rollbackState(final ConfigNodeProcedureEnv env, final SetTemplateState state)
       throws IOException, InterruptedException, ProcedureException {
-    long startTime = System.currentTimeMillis();
+    final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
         case PRE_SET:
@@ -451,13 +455,13 @@ public class SetTemplateProcedure
     }
   }
 
-  private void rollbackPreSet(ConfigNodeProcedureEnv env) {
-    PreSetSchemaTemplatePlan preSetSchemaTemplatePlan =
+  private void rollbackPreSet(final ConfigNodeProcedureEnv env) {
+    final PreSetSchemaTemplatePlan preSetSchemaTemplatePlan =
         new PreSetSchemaTemplatePlan(templateName, templateSetPath, true);
     TSStatus status;
     try {
       status = env.getConfigManager().getConsensusManager().write(preSetSchemaTemplatePlan);
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
@@ -472,31 +476,31 @@ public class SetTemplateProcedure
     }
   }
 
-  private void rollbackPreRelease(ConfigNodeProcedureEnv env) {
+  private void rollbackPreRelease(final ConfigNodeProcedureEnv env) {
     Template template = getTemplate(env);
     if (template == null) {
       // already setFailure
       return;
     }
 
-    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
 
-    TUpdateTemplateReq invalidateTemplateSetInfoReq = new TUpdateTemplateReq();
+    final TUpdateTemplateReq invalidateTemplateSetInfoReq = new TUpdateTemplateReq();
     invalidateTemplateSetInfoReq.setType(
         TemplateInternalRPCUpdateType.INVALIDATE_TEMPLATE_SET_INFO.toByte());
     invalidateTemplateSetInfoReq.setTemplateInfo(
         TemplateInternalRPCUtil.generateInvalidateTemplateSetInfoBytes(
             template.getId(), templateSetPath));
 
-    DataNodeAsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
+    final DataNodeAsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
             CnToDnAsyncRequestType.UPDATE_TEMPLATE,
             invalidateTemplateSetInfoReq,
             dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
+    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
+    for (final Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
       // all dataNodes must clear the related template cache
       if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.error(
@@ -510,13 +514,13 @@ public class SetTemplateProcedure
     }
   }
 
-  private void rollbackCommitSet(ConfigNodeProcedureEnv env) {
-    CommitSetSchemaTemplatePlan commitSetSchemaTemplatePlan =
+  private void rollbackCommitSet(final ConfigNodeProcedureEnv env) {
+    final CommitSetSchemaTemplatePlan commitSetSchemaTemplatePlan =
         new CommitSetSchemaTemplatePlan(templateName, templateSetPath, true);
     TSStatus status;
     try {
       status = env.getConfigManager().getConsensusManager().write(commitSetSchemaTemplatePlan);
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
@@ -532,12 +536,12 @@ public class SetTemplateProcedure
   }
 
   @Override
-  protected SetTemplateState getState(int stateId) {
+  protected SetTemplateState getState(final int stateId) {
     return SetTemplateState.values()[stateId];
   }
 
   @Override
-  protected int getStateId(SetTemplateState state) {
+  protected int getStateId(final SetTemplateState state) {
     return state.ordinal();
   }
 
@@ -559,7 +563,7 @@ public class SetTemplateProcedure
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
+  public void serialize(final DataOutputStream stream) throws IOException {
     stream.writeShort(
         isGeneratedByPipe
             ? ProcedureType.PIPE_ENRICHED_SET_TEMPLATE_PROCEDURE.getTypeCode()
@@ -571,7 +575,7 @@ public class SetTemplateProcedure
   }
 
   @Override
-  public void deserialize(ByteBuffer byteBuffer) {
+  public void deserialize(final ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     queryId = ReadWriteIOUtils.readString(byteBuffer);
     templateName = ReadWriteIOUtils.readString(byteBuffer);
@@ -579,10 +583,14 @@ public class SetTemplateProcedure
   }
 
   @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    SetTemplateProcedure that = (SetTemplateProcedure) o;
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final SetTemplateProcedure that = (SetTemplateProcedure) o;
     return Objects.equals(getProcId(), that.getProcId())
         && Objects.equals(getCurrentState(), that.getCurrentState())
         && Objects.equals(getCycles(), that.getCycles())

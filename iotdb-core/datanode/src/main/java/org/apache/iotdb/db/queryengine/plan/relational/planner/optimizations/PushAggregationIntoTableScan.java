@@ -56,7 +56,7 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
   @Override
   public PlanNode optimize(PlanNode plan, PlanOptimizer.Context context) {
     if (!(context.getAnalysis().getStatement() instanceof Query)
-        || !context.getAnalysis().hasAggregates()) {
+        || context.getAnalysis().noAggregates()) {
       return plan;
     }
 
@@ -96,7 +96,10 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
           tableScanNode = (TableScanNode) projectNode.getChild();
         }
       }
-      if (tableScanNode == null) { // no need to optimize
+
+      // only optimize AggregationNode with raw TableScanNode
+      if (tableScanNode == null
+          || tableScanNode instanceof AggregationTableScanNode) { // no need to optimize
         return node;
       }
 
@@ -137,17 +140,7 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
           hasProject ? projectNode.getAssignments().getMap() : null;
       // calculate Function part
       for (AggregationNode.Aggregation aggregation : values) {
-        // if the function cannot make use of Statistics, we don't push down
-        if (!metadata.canUseStatistics(
-            aggregation.getResolvedFunction().getSignature().getName(),
-            aggregation.getArguments().stream()
-                .anyMatch(
-                    v ->
-                        ((SymbolReference) v)
-                            .getName()
-                            .equalsIgnoreCase(TimestampOperand.TIMESTAMP_EXPRESSION_STRING)))) {
-          return PushDownLevel.NOOP;
-        }
+        // all the functions can be pre-agg in AggTableScanNode
 
         // if expr appears in arguments of Aggregation, we don't push down
         if (hasProject

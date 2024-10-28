@@ -22,10 +22,12 @@ package org.apache.iotdb.db.pipe.event.common.tsfile.parser;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.query.TsFileInsertionEventQueryParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.TsFileInsertionEventScanParser;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.table.TsFileInsertionEventTableParser;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -39,7 +41,8 @@ import java.util.stream.Collectors;
 public class TsFileInsertionEventParserProvider {
 
   private final File tsFile;
-  private final TreePattern pattern;
+  private final TreePattern treePattern;
+  private final TablePattern tablePattern;
   private final long startTime;
   private final long endTime;
 
@@ -49,12 +52,14 @@ public class TsFileInsertionEventParserProvider {
   public TsFileInsertionEventParserProvider(
       final File tsFile,
       final TreePattern treePattern,
+      final TablePattern tablePattern,
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipeTsFileInsertionEvent sourceEvent) {
     this.tsFile = tsFile;
-    this.pattern = treePattern;
+    this.treePattern = treePattern;
+    this.tablePattern = tablePattern;
     this.startTime = startTime;
     this.endTime = endTime;
     this.pipeTaskMeta = pipeTaskMeta;
@@ -62,10 +67,15 @@ public class TsFileInsertionEventParserProvider {
   }
 
   public TsFileInsertionEventParser provide() throws IOException {
+    if (sourceEvent.isTableModelEvent()) {
+      return new TsFileInsertionEventTableParser(
+          tsFile, tablePattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+    }
+
     if (startTime != Long.MIN_VALUE
         || endTime != Long.MAX_VALUE
-        || pattern instanceof IoTDBTreePattern
-            && !((IoTDBTreePattern) pattern).mayMatchMultipleTimeSeriesInOneDevice()) {
+        || treePattern instanceof IoTDBTreePattern
+            && !((IoTDBTreePattern) treePattern).mayMatchMultipleTimeSeriesInOneDevice()) {
       // 1. If time filter exists, use query here because the scan container may filter it
       // row by row in single page chunk.
       // 2. If the pattern matches only one time series in one device, use query container here
@@ -75,7 +85,7 @@ public class TsFileInsertionEventParserProvider {
       // hard to know whether it only matches one timeseries, while matching multiple is often the
       // case.
       return new TsFileInsertionEventQueryParser(
-          tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+          tsFile, treePattern, startTime, endTime, pipeTaskMeta, sourceEvent);
     }
 
     final Map<IDeviceID, Boolean> deviceIsAlignedMap =
@@ -84,7 +94,7 @@ public class TsFileInsertionEventParserProvider {
       // If we failed to get from cache, it indicates that the memory usage is high.
       // We use scan data container because it requires less memory.
       return new TsFileInsertionEventScanParser(
-          tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+          tsFile, treePattern, startTime, endTime, pipeTaskMeta, sourceEvent);
     }
 
     final int originalSize = deviceIsAlignedMap.size();
@@ -94,10 +104,10 @@ public class TsFileInsertionEventParserProvider {
     return (double) filteredDeviceIsAlignedMap.size() / originalSize
             > PipeConfig.getInstance().getPipeTsFileScanParsingThreshold()
         ? new TsFileInsertionEventScanParser(
-            tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent)
+            tsFile, treePattern, startTime, endTime, pipeTaskMeta, sourceEvent)
         : new TsFileInsertionEventQueryParser(
             tsFile,
-            pattern,
+            treePattern,
             startTime,
             endTime,
             pipeTaskMeta,
@@ -107,7 +117,7 @@ public class TsFileInsertionEventParserProvider {
 
   private Map<IDeviceID, Boolean> filterDeviceIsAlignedMapByPattern(
       final Map<IDeviceID, Boolean> deviceIsAlignedMap) {
-    if (Objects.isNull(pattern) || pattern.isRoot()) {
+    if (Objects.isNull(treePattern) || treePattern.isRoot()) {
       return deviceIsAlignedMap;
     }
 
@@ -115,7 +125,8 @@ public class TsFileInsertionEventParserProvider {
         .filter(
             entry -> {
               final IDeviceID deviceId = entry.getKey();
-              return pattern.coversDevice(deviceId) || pattern.mayOverlapWithDevice(deviceId);
+              return treePattern.coversDevice(deviceId)
+                  || treePattern.mayOverlapWithDevice(deviceId);
             })
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }

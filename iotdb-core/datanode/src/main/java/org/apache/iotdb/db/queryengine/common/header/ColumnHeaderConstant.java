@@ -64,6 +64,7 @@ public class ColumnHeaderConstant {
   public static final String DATA_REGION_GROUP_NUM = "DataRegionGroupNum";
   public static final String MIN_DATA_REGION_GROUP_NUM = "MinDataRegionGroupNum";
   public static final String MAX_DATA_REGION_GROUP_NUM = "MaxDataRegionGroupNum";
+  public static final String MODEL = "Model";
   public static final String CHILD_PATHS = "ChildPaths";
   public static final String NODE_TYPES = "NodeTypes";
   public static final String CHILD_NODES = "ChildNodes";
@@ -223,6 +224,12 @@ public class ColumnHeaderConstant {
 
   public static final String GRANT_OPTION = "GrantOption";
 
+  public static final String CURRENT_USER = "CurrentUser";
+
+  public static final String CURRENT_DATABASE = "CurrentDatabase";
+
+  public static final String CURRENT_SQL_DIALECT = "CurrentSqlDialect";
+
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(TIMESERIES, TSDataType.TEXT),
@@ -281,7 +288,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(MAX_SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
           new ColumnHeader(DATA_REGION_GROUP_NUM, TSDataType.INT32),
           new ColumnHeader(MIN_DATA_REGION_GROUP_NUM, TSDataType.INT32),
-          new ColumnHeader(MAX_DATA_REGION_GROUP_NUM, TSDataType.INT32));
+          new ColumnHeader(MAX_DATA_REGION_GROUP_NUM, TSDataType.INT32),
+          new ColumnHeader(MODEL, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showChildPathsColumnHeaders =
       ImmutableList.of(
@@ -534,15 +542,20 @@ public class ColumnHeaderConstant {
           new ColumnHeader(VIEW_TYPE, TSDataType.TEXT),
           new ColumnHeader(SOURCE, TSDataType.TEXT));
 
-  public static final List<ColumnHeader> showCurrentTimestampColumnHeaders =
-      ImmutableList.of(new ColumnHeader(CURRENT_TIMESTAMP, TSDataType.INT64));
-
   public static final List<ColumnHeader> showDBColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(DATABASE, TSDataType.TEXT),
           new ColumnHeader(SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
           new ColumnHeader(DATA_REPLICATION_FACTOR, TSDataType.INT32),
           new ColumnHeader(TIME_PARTITION_INTERVAL, TSDataType.INT64));
+
+  public static final List<ColumnHeader> showDBDetailsColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(DATABASE, TSDataType.TEXT),
+          new ColumnHeader(SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
+          new ColumnHeader(DATA_REPLICATION_FACTOR, TSDataType.INT32),
+          new ColumnHeader(TIME_PARTITION_INTERVAL, TSDataType.INT64),
+          new ColumnHeader(MODEL, TSDataType.TEXT));
 
   public static final List<ColumnHeader> describeTableColumnHeaders =
       ImmutableList.of(
@@ -554,10 +567,29 @@ public class ColumnHeaderConstant {
       ImmutableList.of(
           new ColumnHeader(TABLE_NAME, TSDataType.TEXT),
           new ColumnHeader(COLUMN_TTL, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showTablesDetailsColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(TABLE_NAME, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_TTL, TSDataType.TEXT),
+          new ColumnHeader(STATUS, TSDataType.TEXT));
+
   public static final List<ColumnHeader> LIST_USER_PRIVILEGES_Column_HEADERS =
       ImmutableList.of(
           new ColumnHeader(ROLE, TSDataType.TEXT),
           new ColumnHeader(PATH, TSDataType.TEXT),
           new ColumnHeader(PRIVILEGES, TSDataType.TEXT),
           new ColumnHeader(GRANT_OPTION, TSDataType.BOOLEAN));
+
+  public static final List<ColumnHeader> SHOW_CURRENT_USER_COLUMN_HEADERS =
+      ImmutableList.of(new ColumnHeader(CURRENT_USER, TSDataType.STRING));
+
+  public static final List<ColumnHeader> SHOW_CURRENT_DATABASE_COLUMN_HEADERS =
+      ImmutableList.of(new ColumnHeader(CURRENT_DATABASE, TSDataType.STRING));
+
+  public static final List<ColumnHeader> SHOW_CURRENT_SQL_DIALECT_COLUMN_HEADERS =
+      ImmutableList.of(new ColumnHeader(CURRENT_SQL_DIALECT, TSDataType.STRING));
+
+  public static final List<ColumnHeader> SHOW_CURRENT_TIMESTAMP_COLUMN_HEADERS =
+      ImmutableList.of(new ColumnHeader(CURRENT_TIMESTAMP, TSDataType.TIMESTAMP));
 }

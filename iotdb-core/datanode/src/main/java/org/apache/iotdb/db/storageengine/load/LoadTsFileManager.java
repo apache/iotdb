@@ -36,7 +36,9 @@ import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -70,6 +72,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
+
+import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT_DOT;
 
 /**
  * {@link LoadTsFileManager} is used for dealing with {@link LoadTsFilePieceNode} and {@link
@@ -220,12 +225,17 @@ public class LoadTsFileManager {
       }
 
       for (TsFileData tsFileData : pieceNode.getAllTsFileData()) {
-        if (!tsFileData.isModification()) {
-          ChunkData chunkData = (ChunkData) tsFileData;
-          writerManager.write(
-              new DataPartitionInfo(dataRegion, chunkData.getTimePartitionSlot()), chunkData);
-        } else {
-          writerManager.writeDeletion(dataRegion, (DeletionData) tsFileData);
+        switch (tsFileData.getType()) {
+          case CHUNK:
+            ChunkData chunkData = (ChunkData) tsFileData;
+            writerManager.write(
+                new DataPartitionInfo(dataRegion, chunkData.getTimePartitionSlot()), chunkData);
+            break;
+          case DELETION:
+            writerManager.writeDeletion(dataRegion, (DeletionData) tsFileData);
+            break;
+          default:
+            throw new IOException("Unsupported TsFileData type: " + tsFileData.getType());
         }
       }
     } finally {
@@ -356,7 +366,7 @@ public class LoadTsFileManager {
 
     private final File taskDir;
     private Map<DataPartitionInfo, TsFileIOWriter> dataPartition2Writer;
-    private Map<DataPartitionInfo, String> dataPartition2LastDevice;
+    private Map<DataPartitionInfo, IDeviceID> dataPartition2LastDevice;
     private Map<DataPartitionInfo, ModificationFile> dataPartition2ModificationFile;
     private boolean isClosed;
 
@@ -398,14 +408,32 @@ public class LoadTsFileManager {
           return;
         }
 
-        dataPartition2Writer.put(partitionInfo, new TsFileIOWriter(newTsFile));
+        final TsFileIOWriter writer = new TsFileIOWriter(newTsFile);
+        dataPartition2Writer.put(partitionInfo, writer);
       }
       TsFileIOWriter writer = dataPartition2Writer.get(partitionInfo);
-      if (!chunkData.getDevice().equals(dataPartition2LastDevice.getOrDefault(partitionInfo, ""))) {
+
+      // Table model needs to register TableSchema
+      final String tableName =
+          chunkData.getDevice() != null ? chunkData.getDevice().getTableName() : null;
+      if (tableName != null && !(tableName.startsWith(ROOT_DOT) || tableName.equals(ROOT))) {
+        writer
+            .getSchema()
+            .getTableSchemaMap()
+            .computeIfAbsent(
+                tableName,
+                t ->
+                    TableSchema.of(
+                            DataNodeTableCache.getInstance()
+                                .getTable(partitionInfo.getDataRegion().getDatabaseName(), t))
+                        .toTsFileTableSchemaNoAttribute());
+      }
+
+      if (!Objects.equals(chunkData.getDevice(), dataPartition2LastDevice.get(partitionInfo))) {
         if (dataPartition2LastDevice.containsKey(partitionInfo)) {
           writer.endChunkGroup();
         }
-        writer.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create(chunkData.getDevice()));
+        writer.startChunkGroup(chunkData.getDevice());
         dataPartition2LastDevice.put(partitionInfo, chunkData.getDevice());
       }
       chunkData.writeToFileWriter(writer);

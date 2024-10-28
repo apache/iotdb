@@ -37,6 +37,7 @@ import com.google.common.util.concurrent.SettableFuture;
 import io.airlift.units.Duration;
 
 import java.util.Comparator;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -52,7 +53,7 @@ public class DriverTask implements IDIndexedAccessible {
 
   private final boolean isHighestPriority;
 
-  private String abortCause;
+  private Throwable abortCause;
 
   private final AtomicReference<Priority> priority;
 
@@ -149,11 +150,11 @@ public class DriverTask implements IDIndexedAccessible {
     return o instanceof DriverTask && ((DriverTask) o).getDriverTaskId().equals(getDriverTaskId());
   }
 
-  public String getAbortCause() {
-    return abortCause;
+  public Optional<Throwable> getAbortCause() {
+    return Optional.ofNullable(abortCause);
   }
 
-  public void setAbortCause(String abortCause) {
+  public void setAbortCause(Throwable abortCause) {
     this.abortCause = abortCause;
   }
 

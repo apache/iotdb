@@ -31,10 +31,6 @@ import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class AvgAccumulator implements TableAccumulator {
@@ -99,14 +95,10 @@ public class AvgAccumulator implements TableAccumulator {
       }
 
       initResult = true;
-      long midCountValue = BytesUtils.bytesToLong(argument.getBinary(i).getValues(), Long.BYTES);
-      double midSumValue = BytesUtils.bytesToDouble(argument.getBinary(i).getValues(), Long.BYTES);
+      long midCountValue = BytesUtils.bytesToLong(argument.getBinary(i).getValues(), 8);
+      double midSumValue = BytesUtils.bytesToDouble(argument.getBinary(i).getValues(), 8);
       countValue += midCountValue;
       sumValue += midSumValue;
-    }
-
-    if (countValue == 0) {
-      initResult = false;
     }
   }
 
@@ -122,17 +114,49 @@ public class AvgAccumulator implements TableAccumulator {
     }
   }
 
-  private byte[] serializeState() {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    try {
-      dataOutputStream.writeLong(countValue);
-      dataOutputStream.writeDouble(sumValue);
-    } catch (IOException e) {
-      throw new UnsupportedOperationException(
-          "Failed to serialize intermediate result for AvgAccumulator.", e);
+  @Override
+  public void evaluateFinal(ColumnBuilder columnBuilder) {
+    if (!initResult) {
+      columnBuilder.appendNull();
+    } else {
+      columnBuilder.writeDouble(sumValue / countValue);
     }
-    return byteArrayOutputStream.toByteArray();
+  }
+
+  @Override
+  public boolean hasFinalResult() {
+    return false;
+  }
+
+  @Override
+  public void addStatistics(Statistics[] statistics) {
+    if (statistics == null || statistics[0] == null) {
+      return;
+    }
+    initResult = true;
+    countValue += statistics[0].getCount();
+    if (statistics[0] instanceof IntegerStatistics) {
+      sumValue += statistics[0].getSumLongValue();
+    } else {
+      sumValue += statistics[0].getSumDoubleValue();
+    }
+    if (countValue == 0) {
+      initResult = false;
+    }
+  }
+
+  @Override
+  public void reset() {
+    this.initResult = false;
+    this.countValue = 0;
+    this.sumValue = 0.0;
+  }
+
+  private byte[] serializeState() {
+    byte[] bytes = new byte[16];
+    BytesUtils.longToBytes(countValue, bytes, 0);
+    BytesUtils.doubleToBytes(sumValue, bytes, 8);
+    return bytes;
   }
 
   private void addIntInput(Column column) {
@@ -177,43 +201,5 @@ public class AvgAccumulator implements TableAccumulator {
         sumValue += column.getDouble(i);
       }
     }
-  }
-
-  @Override
-  public void evaluateFinal(ColumnBuilder columnBuilder) {
-    if (!initResult) {
-      columnBuilder.appendNull();
-    } else {
-      columnBuilder.writeDouble(sumValue / countValue);
-    }
-  }
-
-  @Override
-  public boolean hasFinalResult() {
-    return false;
-  }
-
-  @Override
-  public void addStatistics(Statistics statistics) {
-    if (statistics == null) {
-      return;
-    }
-    initResult = true;
-    countValue += statistics.getCount();
-    if (statistics instanceof IntegerStatistics) {
-      sumValue += statistics.getSumLongValue();
-    } else {
-      sumValue += statistics.getSumDoubleValue();
-    }
-    if (countValue == 0) {
-      initResult = false;
-    }
-  }
-
-  @Override
-  public void reset() {
-    this.initResult = false;
-    this.countValue = 0;
-    this.sumValue = 0.0;
   }
 }
