@@ -108,7 +108,6 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
           new TSStatus(TSStatusCode.ALTER_CONSUMER_ERROR.getStatusCode())
               .setMessage(e.getMessage());
     }
-
     if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new SubscriptionException(
           String.format(
@@ -119,27 +118,20 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
 
   @Override
   public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
-      throws SubscriptionException {
+      throws SubscriptionException, IOException {
     LOGGER.info(
         "AlterConsumerGroupProcedure: executeFromOperateOnDataNodes({})",
         updatedConsumerGroupMeta.getConsumerGroupId());
 
-    try {
-      final List<TSStatus> statuses =
-          env.pushSingleConsumerGroupOnDataNode(updatedConsumerGroupMeta.serialize());
-      if (RpcUtils.squashResponseStatusList(statuses).getCode()
-          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new SubscriptionException(
-            String.format(
-                "Failed to alter consumer group %s on data nodes, because %s",
-                updatedConsumerGroupMeta.getConsumerGroupId(), statuses));
-      }
-    } catch (IOException e) {
-      LOGGER.warn("Failed to serialize the consumer group meta due to: ", e);
+    final List<TSStatus> statuses =
+        env.pushSingleConsumerGroupOnDataNode(updatedConsumerGroupMeta.serialize());
+    if (RpcUtils.squashResponseStatusList(statuses).getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // throw exception instead of logging warn, do not rely on metadata synchronization
       throw new SubscriptionException(
           String.format(
-              "Failed to alter consumer group %s on data nodes, because %s",
-              updatedConsumerGroupMeta.getConsumerGroupId(), e.getMessage()));
+              "Failed to alter consumer group (%s -> %s) on data nodes, because %s",
+              existingConsumerGroupMeta, updatedConsumerGroupMeta, statuses));
     }
   }
 
@@ -149,7 +141,8 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
   }
 
   @Override
-  public void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) {
+  public void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env)
+      throws SubscriptionException {
     LOGGER.info(
         "AlterConsumerGroupProcedure: rollbackFromOperateOnConfigNodes({})",
         updatedConsumerGroupMeta.getConsumerGroupId());
@@ -166,35 +159,28 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
           new TSStatus(TSStatusCode.ALTER_CONSUMER_ERROR.getStatusCode())
               .setMessage(e.getMessage());
     }
-
     if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn(
-          "Failed to rollback from altering consumer group {} on config nodes, because {}",
-          updatedConsumerGroupMeta.getConsumerGroupId(),
-          response);
+      throw new SubscriptionException(
+          String.format(
+              "Failed to rollback from altering consumer group (%s -> %s) on config nodes, because %s",
+              existingConsumerGroupMeta, updatedConsumerGroupMeta, response));
     }
   }
 
   @Override
-  public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
+  public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+      throws SubscriptionException, IOException {
     LOGGER.info("AlterConsumerGroupProcedure: rollbackFromOperateOnDataNodes");
 
-    try {
-      final List<TSStatus> statuses =
-          env.pushSingleConsumerGroupOnDataNode(existingConsumerGroupMeta.serialize());
-      if (RpcUtils.squashResponseStatusList(statuses).getCode()
-          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new SubscriptionException(
-            String.format(
-                "Failed to rollback from altering consumer group %s on data nodes, because %s",
-                updatedConsumerGroupMeta.getConsumerGroupId(), statuses));
-      }
-    } catch (IOException e) {
-      LOGGER.warn("Failed to serialize the consumer group meta due to: ", e);
+    final List<TSStatus> statuses =
+        env.pushSingleConsumerGroupOnDataNode(existingConsumerGroupMeta.serialize());
+    if (RpcUtils.squashResponseStatusList(statuses).getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // throw exception instead of logging warn, do not rely on metadata synchronization
       throw new SubscriptionException(
           String.format(
-              "Failed to rollback from altering consumer group %s on data nodes, because %s",
-              updatedConsumerGroupMeta.getConsumerGroupId(), e.getMessage()));
+              "Failed to rollback from altering consumer group (%s -> %s) on data nodes, because %s",
+              existingConsumerGroupMeta, updatedConsumerGroupMeta, statuses));
     }
   }
 
