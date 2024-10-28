@@ -51,6 +51,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework.closeQuietly;
 import static org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework.getRegionMap;
 
 public class IoTDBRemoveDataNodeITFramework {
@@ -142,8 +143,8 @@ public class IoTDBRemoveDataNodeITFramework {
             dataRegionPerDataNode * dataNodeNum / dataReplicateFactor);
     EnvFactory.getEnv().initClusterEnvironment(configNodeNum, dataNodeNum);
 
-    try (final Connection connection = EnvFactory.getEnv().getConnection();
-        final Statement statement = connection.createStatement();
+    try (final Connection connection = closeQuietly(EnvFactory.getEnv().getConnection());
+        final Statement statement = closeQuietly(connection.createStatement());
         SyncConfigNodeIServiceClient client =
             (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
@@ -152,6 +153,13 @@ public class IoTDBRemoveDataNodeITFramework {
 
       ResultSet result = statement.executeQuery(SHOW_REGIONS);
       Map<Integer, Set<Integer>> regionMap = getRegionMap(result);
+      regionMap.forEach(
+          (key, valueSet) -> {
+            LOGGER.info("Key: {}, Value: {}", key, valueSet);
+            if (valueSet.size() != dataReplicateFactor) {
+              Assert.fail();
+            }
+          });
 
       // Get all data nodes
       result = statement.executeQuery(SHOW_DATANODES);
@@ -217,15 +225,43 @@ public class IoTDBRemoveDataNodeITFramework {
 
       if (rejoinRemovedDataNode) {
         try {
-          removeDataNodeWrappers.parallelStream().forEach(DataNodeWrapper::start);
+          // Use sleep and restart to ensure that removeDataNodes restarts successfully
+          Thread.sleep(30000);
+          restartDataNodes(removeDataNodeWrappers);
           LOGGER.info("RemoveDataNodes:{} rejoined successfully.", removeDataNodes);
         } catch (Exception e) {
           LOGGER.error("RemoveDataNodes rejoin failed.");
           Assert.fail();
         }
       }
-    } catch (InconsistentDataException ignored) {
+    } catch (InconsistentDataException e) {
+      LOGGER.error("Unexpected error:", e);
+    }
 
+    try (final Connection connection = closeQuietly(EnvFactory.getEnv().getConnection());
+        final Statement statement = closeQuietly(connection.createStatement())) {
+
+      // Check the data region distribution after removing data nodes
+      ResultSet result = statement.executeQuery(SHOW_REGIONS);
+      Map<Integer, Set<Integer>> afterRegionMap = getRegionMap(result);
+      afterRegionMap.forEach(
+          (key, valueSet) -> {
+            LOGGER.info("Key: {}, Value: {}", key, valueSet);
+            if (valueSet.size() != dataReplicateFactor) {
+              Assert.fail();
+            }
+          });
+
+      if (rejoinRemovedDataNode) {
+        result = statement.executeQuery(SHOW_DATANODES);
+        Set<Integer> allDataNodeId = new HashSet<>();
+        while (result.next()) {
+          allDataNodeId.add(result.getInt(ColumnHeaderConstant.NODE_ID));
+        }
+        Assert.assertEquals(allDataNodeId.size(), dataNodeNum);
+      }
+    } catch (InconsistentDataException e) {
+      LOGGER.error("Unexpected error:", e);
     }
   }
 
@@ -304,5 +340,29 @@ public class IoTDBRemoveDataNodeITFramework {
     }
 
     LOGGER.info("DataNodes has been successfully changed to {}", lastTimeDataNodeLocations.get());
+  }
+
+  public void restartDataNodes(List<DataNodeWrapper> dataNodeWrappers) {
+    dataNodeWrappers.parallelStream()
+        .forEach(
+            nodeWrapper -> {
+              nodeWrapper.stopForcibly();
+              Awaitility.await()
+                  .atMost(1, TimeUnit.MINUTES)
+                  .pollDelay(2, TimeUnit.SECONDS)
+                  .until(() -> !nodeWrapper.isAlive());
+              LOGGER.info("Node {} stopped.", nodeWrapper.getId());
+              nodeWrapper.start();
+              Awaitility.await()
+                  .atMost(1, TimeUnit.MINUTES)
+                  .pollDelay(2, TimeUnit.SECONDS)
+                  .until(nodeWrapper::isAlive);
+              try {
+                TimeUnit.SECONDS.sleep(10);
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+              }
+              LOGGER.info("Node {} restarted.", nodeWrapper.getId());
+            });
   }
 }
