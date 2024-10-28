@@ -44,6 +44,7 @@ public enum CnToDnAsyncRequestType {
 
   // PartitionCache
   INVALIDATE_SCHEMA_CACHE,
+  INVALIDATE_LAST_CACHE,
   CLEAR_CACHE,
 
   // Function

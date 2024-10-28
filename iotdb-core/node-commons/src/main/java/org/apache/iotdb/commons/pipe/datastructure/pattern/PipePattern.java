@@ -111,6 +111,13 @@ public abstract class PipePattern {
   public abstract boolean coversDevice(final String device);
 
   /**
+   * Check if a database may have some measurements matched by the pattern.
+   *
+   * @return {@code true} if the pattern may overlap with the database, {@code false} otherwise.
+   */
+  public abstract boolean mayOverlapWithDb(final String db);
+
+  /**
    * Check if a device may have some measurements matched by the pattern.
    *
    * <p>NOTE1: this is only called when {@link PipePattern#coversDevice} is false.

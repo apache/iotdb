@@ -47,7 +47,6 @@ import org.apache.iotdb.confignode.manager.load.subscriber.RegionGroupStatistics
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
@@ -255,8 +254,8 @@ public class RouteBalancer implements IClusterStatusSubscriber {
 
   private void invalidateSchemaCacheOfOldLeaders(
       Map<TConsensusGroupId, Integer> oldLeaderMap, Set<TConsensusGroupId> successTransferSet) {
-    DataNodeAsyncRequestContext<TInvalidateCacheReq, TSStatus> invalidateSchemaCacheRequestHandler =
-        new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.INVALIDATE_SCHEMA_CACHE);
+    DataNodeAsyncRequestContext<String, TSStatus> invalidateSchemaCacheRequestHandler =
+        new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.INVALIDATE_LAST_CACHE);
     AtomicInteger requestIndex = new AtomicInteger(0);
     oldLeaderMap.entrySet().stream()
         .filter(entry -> TConsensusGroupType.DataRegion == entry.getKey().getType())
@@ -264,8 +263,8 @@ public class RouteBalancer implements IClusterStatusSubscriber {
         .forEach(
             entry -> {
               // set target
-              Integer dataNodeId = entry.getValue();
-              TDataNodeLocation dataNodeLocation =
+              final Integer dataNodeId = entry.getValue();
+              final TDataNodeLocation dataNodeLocation =
                   getNodeManager().getRegisteredDataNode(dataNodeId).getLocation();
               if (dataNodeLocation == null) {
                 LOGGER.warn("DataNodeLocation is null, datanodeId {}", dataNodeId);
@@ -274,10 +273,9 @@ public class RouteBalancer implements IClusterStatusSubscriber {
               invalidateSchemaCacheRequestHandler.putNodeLocation(
                   requestIndex.get(), dataNodeLocation);
               // set req
-              TConsensusGroupId consensusGroupId = entry.getKey();
-              String database = getPartitionManager().getRegionStorageGroup(consensusGroupId);
-              invalidateSchemaCacheRequestHandler.putRequest(
-                  requestIndex.get(), new TInvalidateCacheReq(true, database));
+              final TConsensusGroupId consensusGroupId = entry.getKey();
+              final String database = getPartitionManager().getRegionStorageGroup(consensusGroupId);
+              invalidateSchemaCacheRequestHandler.putRequest(requestIndex.get(), database);
               requestIndex.incrementAndGet();
             });
     CnToDnInternalServiceAsyncRequestManager.getInstance()

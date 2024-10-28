@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -133,6 +134,10 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     try {
       PipeDataNodeResourceManager.wal().pin(walEntryHandler);
+      if (Objects.nonNull(pipeName)) {
+        PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+            .increaseTabletEventCount(pipeName + "_" + creationTime);
+      }
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
@@ -161,6 +166,11 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
               walEntryHandler.getMemTableId(), holderMessage),
           e);
       return false;
+    } finally {
+      if (Objects.nonNull(pipeName)) {
+        PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+            .decreaseTabletEventCount(pipeName + "_" + creationTime);
+      }
     }
   }
 

@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
@@ -115,11 +116,19 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
         PipeDataNodeResourceManager.memory()
             .forceAllocateForTabletWithRetry(
                 PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet));
+    if (Objects.nonNull(pipeName)) {
+      PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+          .increaseTabletEventCount(pipeName + "_" + creationTime);
+    }
     return true;
   }
 
   @Override
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
+    if (Objects.nonNull(pipeName)) {
+      PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+          .decreaseTabletEventCount(pipeName + "_" + creationTime);
+    }
     allocatedMemoryBlock.close();
 
     // Record the deviceId before the memory is released,
