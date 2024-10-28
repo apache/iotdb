@@ -59,6 +59,11 @@ public abstract class AbstractOperateSubscriptionProcedure
 
   private static final int RETRY_THRESHOLD = 1;
 
+  // Only used in rollback to avoid executing rollbackFromValidate multiple times
+  // Pure in-memory object, not involved in snapshot serialization and deserialization.
+  // TODO: consider serializing this variable later
+  protected boolean isRollbackFromValidateSuccessful = false;
+
   protected AtomicReference<SubscriptionInfo> subscriptionInfo;
 
   protected AtomicReference<SubscriptionInfo> acquireLockInternal(
@@ -250,15 +255,18 @@ public abstract class AbstractOperateSubscriptionProcedure
 
     switch (state) {
       case VALIDATE:
-        try {
-          rollbackFromValidate(env);
-        } catch (Exception e) {
-          LOGGER.warn(
-              "ProcedureId {}: Failed to rollback from state [{}], because {}",
-              getProcId(),
-              state,
-              e.getMessage(),
-              e);
+        if (!isRollbackFromValidateSuccessful) {
+          try {
+            rollbackFromValidate(env);
+            isRollbackFromValidateSuccessful = true;
+          } catch (Exception e) {
+            LOGGER.warn(
+                "ProcedureId {}: Failed to rollback from state [{}], because {}",
+                getProcId(),
+                state,
+                e.getMessage(),
+                e);
+          }
         }
         break;
       case OPERATE_ON_CONFIG_NODES:
