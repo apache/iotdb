@@ -1089,12 +1089,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         for (Expression aggregationExpression : searchAggregationExpressions(expression)) {
           Expression normalizedAggregationExpression = normalizeExpression(aggregationExpression);
 
-          analyzeExpressionType(analysis, aggregationExpression);
-          analyzeExpressionType(analysis, normalizedAggregationExpression);
-
           if (!new ExistUnknownTypeInExpression().process(aggregationExpression, null).isEmpty()) {
             continue;
           }
+
+          analyzeExpressionType(analysis, aggregationExpression);
+          analyzeExpressionType(analysis, normalizedAggregationExpression);
 
           aggregationExpressions.add(aggregationExpression);
           normalizedAggregationExpressions.add(normalizedAggregationExpression);
