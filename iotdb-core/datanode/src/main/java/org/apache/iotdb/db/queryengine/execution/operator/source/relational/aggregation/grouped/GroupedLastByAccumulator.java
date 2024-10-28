@@ -37,12 +37,12 @@ import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_BY_AGGREGATION;
+import static org.apache.tsfile.utils.BytesUtils.boolToBytes;
+import static org.apache.tsfile.utils.BytesUtils.doubleToBytes;
+import static org.apache.tsfile.utils.BytesUtils.floatToBytes;
+import static org.apache.tsfile.utils.BytesUtils.intToBytes;
+import static org.apache.tsfile.utils.BytesUtils.longToBytes;
 
 public class GroupedLastByAccumulator implements GroupedAccumulator {
 
@@ -282,49 +282,68 @@ public class GroupedLastByAccumulator implements GroupedAccumulator {
   }
 
   private byte[] serializeTimeWithValue(int groupId) {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    try {
-      dataOutputStream.writeLong(yLastTimes.get(groupId));
-      dataOutputStream.writeBoolean(xNulls.get(groupId));
-      if (!xNulls.get(groupId)) {
-        switch (xDataType) {
-          case INT32:
-          case DATE:
-            dataOutputStream.writeInt(xIntValues.get(groupId));
-            break;
-          case INT64:
-          case TIMESTAMP:
-            dataOutputStream.writeLong(xLongValues.get(groupId));
-            break;
-          case FLOAT:
-            dataOutputStream.writeFloat(xFloatValues.get(groupId));
-            break;
-          case DOUBLE:
-            dataOutputStream.writeDouble(xDoubleValues.get(groupId));
-            break;
-          case TEXT:
-          case BLOB:
-          case STRING:
-            dataOutputStream.writeInt(xBinaryValues.get(groupId).getValues().length);
-            dataOutputStream.write(xBinaryValues.get(groupId).getValues());
-            break;
-          case BOOLEAN:
-            dataOutputStream.writeBoolean(xBooleanValues.get(groupId));
-            break;
-          default:
-            throw new UnSupportedDataTypeException(
-                String.format(
-                    "Unsupported data type: %s in aggregation %s", xDataType, LAST_BY_AGGREGATION));
-        }
+    boolean xNull = xNulls.get(groupId);
+    int length = Long.BYTES + 1 + (xNull ? 0 : calculateValueLength(groupId));
+    byte[] bytes = new byte[length];
+
+    longToBytes(yLastTimes.get(groupId), bytes, 0);
+    boolToBytes(xNulls.get(groupId), bytes, Long.BYTES);
+    if (!xNull) {
+      switch (xDataType) {
+        case INT32:
+        case DATE:
+          intToBytes(xIntValues.get(groupId), bytes, Long.BYTES + 1);
+          return bytes;
+        case INT64:
+        case TIMESTAMP:
+          longToBytes(xLongValues.get(groupId), bytes, Long.BYTES + 1);
+          return bytes;
+        case FLOAT:
+          floatToBytes(xFloatValues.get(groupId), bytes, Long.BYTES + 1);
+          return bytes;
+        case DOUBLE:
+          doubleToBytes(xDoubleValues.get(groupId), bytes, Long.BYTES + 1);
+          return bytes;
+        case TEXT:
+        case BLOB:
+        case STRING:
+          byte[] values = xBinaryValues.get(groupId).getValues();
+          intToBytes(values.length, bytes, Long.BYTES + 1);
+          System.arraycopy(values, 0, bytes, length - values.length, values.length);
+          return bytes;
+        case BOOLEAN:
+          boolToBytes(xBooleanValues.get(groupId), bytes, Long.BYTES + 1);
+          return bytes;
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format("Unsupported data type: %s", yDataType));
       }
-    } catch (IOException e) {
-      throw new UnsupportedOperationException(
-          String.format(
-              "Failed to serialize intermediate result for Accumulator %s, errorMsg: %s.",
-              LAST_BY_AGGREGATION, e.getMessage()));
     }
-    return byteArrayOutputStream.toByteArray();
+    return bytes;
+  }
+
+  private int calculateValueLength(int groupId) {
+    switch (xDataType) {
+      case INT32:
+      case DATE:
+        return Integer.BYTES;
+      case INT64:
+      case TIMESTAMP:
+        return Long.BYTES;
+      case FLOAT:
+        return Float.BYTES;
+      case DOUBLE:
+        return Double.BYTES;
+      case TEXT:
+      case BLOB:
+      case STRING:
+        return Integer.BYTES + xBinaryValues.get(groupId).getValues().length;
+      case BOOLEAN:
+        return 1;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type: %s", xDataType));
+    }
   }
 
   @Override

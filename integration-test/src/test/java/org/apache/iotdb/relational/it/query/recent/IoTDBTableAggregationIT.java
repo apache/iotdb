@@ -26,13 +26,13 @@ import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
+import static org.apache.iotdb.relational.it.db.it.IoTDBMultiIDsWithAttributesTableIT.buildHeaders;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
@@ -114,6 +114,7 @@ public class IoTDBTableAggregationIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setSortBufferSize(128 * 1024);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setMaxTsBlockSizeInByte(4 * 1024);
     EnvFactory.getEnv().initClusterEnvironment();
     prepareTableData(createSqls);
   }
@@ -1047,7 +1048,6 @@ public class IoTDBTableAggregationIT {
         "select min(time),min(s3) from table1", expectedHeader, retArray, DATABASE_NAME);
   }
 
-  @Ignore
   @Test
   public void minByTest() {
     String[] expectedHeader = new String[] {"device_id", "color", "type", "_col3", "_col4"};
@@ -1527,7 +1527,6 @@ public class IoTDBTableAggregationIT {
         "select max(time),max(s3) from table1", expectedHeader, retArray, DATABASE_NAME);
   }
 
-  @Ignore
   @Test
   public void maxByTest() {
     String[] expectedHeader = new String[] {"device_id", "color", "type", "_col3", "_col4"};
@@ -2716,7 +2715,6 @@ public class IoTDBTableAggregationIT {
         DATABASE_NAME);
   }
 
-  @Ignore
   @Test
   public void groupByValueTest() {
 
@@ -3256,7 +3254,6 @@ public class IoTDBTableAggregationIT {
         DATABASE_NAME);
   }
 
-  @Ignore
   @Test
   public void lastQueryTest() {
 
@@ -3540,7 +3537,6 @@ public class IoTDBTableAggregationIT {
         DATABASE_NAME);
   }
 
-  @Ignore
   @Test
   public void subQueryTest() {
 
@@ -3609,6 +3605,22 @@ public class IoTDBTableAggregationIT {
         };
     tableResultSetEqualTest(
         "SELECT device_id FROM table1 GROUP BY device_id order by device_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void modeTest() {
+    // AggTableScan + Agg mixed test
+    String[] expectedHeader = buildHeaders(11);
+    String[] retArray =
+        new String[] {
+          "A,null,null,null,null,null,null,null,null,2024-09-24T06:15:40.000Z,null,",
+          "A,null,null,null,null,null,null,null,null,2024-09-24T06:15:40.000Z,null,",
+        };
+    tableResultSetEqualTest(
+        "select mode(type), mode(s1),mode(s2),mode(s3),mode(s4),mode(s5),mode(s6),mode(s7),mode(s8),mode(s9),mode(s10) from table1 group by city",
         expectedHeader,
         retArray,
         DATABASE_NAME);

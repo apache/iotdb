@@ -274,7 +274,7 @@ public class CommonConfig {
 
   private float subscriptionCacheMemoryUsagePercentage = 0.2F;
 
-  private boolean pipeEventReferenceTrackingEnabled = false; // TODO: enable later
+  private boolean pipeEventReferenceTrackingEnabled = true;
   private long pipeEventReferenceEliminateIntervalSeconds = 10;
 
   private int subscriptionSubtaskExecutorMaxThreadNum =
@@ -290,6 +290,9 @@ public class CommonConfig {
   private long subscriptionReadFileBufferSize = 8 * MB;
   private long subscriptionReadTabletBufferSize = 8 * MB;
   private long subscriptionTsFileDeduplicationWindowSeconds = 120; // 120s
+
+  private long subscriptionMetaSyncerInitialSyncDelayMinutes = 3;
+  private long subscriptionMetaSyncerSyncIntervalMinutes = 3;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -1320,6 +1323,25 @@ public class CommonConfig {
       long subscriptionTsFileDeduplicationWindowSeconds) {
     this.subscriptionTsFileDeduplicationWindowSeconds =
         subscriptionTsFileDeduplicationWindowSeconds;
+  }
+
+  public long getSubscriptionMetaSyncerInitialSyncDelayMinutes() {
+    return subscriptionMetaSyncerInitialSyncDelayMinutes;
+  }
+
+  public void setSubscriptionMetaSyncerInitialSyncDelayMinutes(
+      long subscriptionMetaSyncerInitialSyncDelayMinutes) {
+    this.subscriptionMetaSyncerInitialSyncDelayMinutes =
+        subscriptionMetaSyncerInitialSyncDelayMinutes;
+  }
+
+  public long getSubscriptionMetaSyncerSyncIntervalMinutes() {
+    return subscriptionMetaSyncerSyncIntervalMinutes;
+  }
+
+  public void setSubscriptionMetaSyncerSyncIntervalMinutes(
+      long subscriptionMetaSyncerSyncIntervalMinutes) {
+    this.subscriptionMetaSyncerSyncIntervalMinutes = subscriptionMetaSyncerSyncIntervalMinutes;
   }
 
   public String getSchemaEngineMode() {

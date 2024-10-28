@@ -154,7 +154,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   /**
    * Cache DatabaseSchema.
    *
-   * @param plan DatabaseSchemaPlan
+   * @param plan {@link DatabaseSchemaPlan}
    * @return {@link TSStatusCode#SUCCESS_STATUS} if the Database is set successfully.
    */
   public TSStatus createDatabase(final DatabaseSchemaPlan plan) {
@@ -195,7 +195,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       final TDatabaseSchema alterSchema = plan.getSchema();
       final PartialPath partialPathName = new PartialPath(alterSchema.getName());
 
-      TDatabaseSchema currentSchema =
+      final TDatabaseSchema currentSchema =
           mTree.getDatabaseNodeByDatabasePath(partialPathName).getAsMNode().getDatabaseSchema();
       // TODO: Support alter other fields
       if (alterSchema.isSetMinSchemaRegionGroupNum()) {
@@ -234,7 +234,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           .getAsMNode()
           .setDatabaseSchema(currentSchema);
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       LOGGER.error(ERROR_NAME, e);
       result.setCode(e.getErrorCode()).setMessage(e.getMessage());
     } finally {
@@ -455,7 +455,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public List<String> getDatabaseNames() {
     databaseReadWriteLock.readLock().lock();
     try {
-      return mTree.getAllDatabasePaths().stream()
+      return mTree.getAllDatabasePaths(false).stream()
           .map(PartialPath::getFullPath)
           .collect(Collectors.toList());
     } finally {
@@ -759,12 +759,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   public synchronized TemplateInfoResp checkTemplateSettable(
-      CheckTemplateSettablePlan checkTemplateSettablePlan) {
-    TemplateInfoResp resp = new TemplateInfoResp();
-    PartialPath path;
+      final CheckTemplateSettablePlan checkTemplateSettablePlan) {
+    final TemplateInfoResp resp = new TemplateInfoResp();
+    final PartialPath path;
     try {
       path = new PartialPath(checkTemplateSettablePlan.getPath());
-    } catch (IllegalPathException e) {
+    } catch (final IllegalPathException e) {
       LOGGER.error(e.getMessage());
       resp.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       return resp;
@@ -776,7 +776,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       resp.setTemplateList(
           Collections.singletonList(
               templateTable.getTemplate(checkTemplateSettablePlan.getName())));
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       LOGGER.error(e.getMessage(), e);
       resp.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
     }
@@ -933,13 +933,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * into specified path pattern start with template set path. The result set is organized as
    * specified path pattern -> template id
    */
-  public TemplateSetInfoResp getTemplateSetInfo(GetTemplateSetInfoPlan plan) {
-    TemplateSetInfoResp resp = new TemplateSetInfoResp();
+  public TemplateSetInfoResp getTemplateSetInfo(final GetTemplateSetInfoPlan plan) {
+    final TemplateSetInfoResp resp = new TemplateSetInfoResp();
     try {
-
-      Map<PartialPath, Set<Integer>> allTemplateSetInfo = new HashMap<>();
-      for (PartialPath pattern : plan.getPatternList()) {
-        Map<Integer, Set<PartialPath>> templateSetInfo = mTree.getTemplateSetInfo(pattern);
+      final Map<PartialPath, Set<Integer>> allTemplateSetInfo = new HashMap<>();
+      for (final PartialPath pattern : plan.getPatternList()) {
+        final Map<Integer, Set<PartialPath>> templateSetInfo = mTree.getTemplateSetInfo(pattern);
         if (templateSetInfo.isEmpty()) {
           continue;
         }

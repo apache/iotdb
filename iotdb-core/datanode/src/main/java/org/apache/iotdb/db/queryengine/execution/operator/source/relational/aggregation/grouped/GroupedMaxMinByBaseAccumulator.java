@@ -35,10 +35,13 @@ import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
 import java.util.Collections;
+
+import static org.apache.tsfile.utils.BytesUtils.boolToBytes;
+import static org.apache.tsfile.utils.BytesUtils.doubleToBytes;
+import static org.apache.tsfile.utils.BytesUtils.floatToBytes;
+import static org.apache.tsfile.utils.BytesUtils.intToBytes;
+import static org.apache.tsfile.utils.BytesUtils.longToBytes;
 
 /** max(x,y) returns the value of x associated with the maximum value of y over all input values. */
 public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulator {
@@ -63,6 +66,7 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
   private FloatBigArray yFloatValues;
   private DoubleBigArray yDoubleValues;
   private BinaryBigArray yBinaryValues;
+  private BooleanBigArray yBooleanValues;
 
   private final BooleanBigArray xNulls = new BooleanBigArray(true);
 
@@ -113,12 +117,14 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
       case DOUBLE:
         yDoubleValues = new DoubleBigArray();
         break;
+      case TEXT:
+      case BLOB:
       case STRING:
         yBinaryValues = new BinaryBigArray();
         break;
-      case TEXT:
-      case BLOB:
       case BOOLEAN:
+        yBooleanValues = new BooleanBigArray();
+        break;
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type : %s", yDataType));
@@ -171,12 +177,14 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
       case DOUBLE:
         valuesSize += yDoubleValues.sizeOf();
         break;
+      case TEXT:
       case STRING:
+      case BLOB:
         valuesSize += yBinaryValues.sizeOf();
         break;
-      case TEXT:
-      case BLOB:
       case BOOLEAN:
+        valuesSize += yBooleanValues.sizeOf();
+        break;
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in : %s", xDataType));
@@ -231,12 +239,14 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
       case DOUBLE:
         yDoubleValues.ensureCapacity(groupCount);
         break;
+      case TEXT:
       case STRING:
+      case BLOB:
         yBinaryValues.ensureCapacity(groupCount);
         break;
-      case TEXT:
-      case BLOB:
       case BOOLEAN:
+        yBooleanValues.ensureCapacity(groupCount);
+        break;
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in : %s", xDataType));
@@ -263,12 +273,14 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
       case DOUBLE:
         addDoubleInput(groupIds, arguments);
         return;
+      case TEXT:
+      case BLOB:
       case STRING:
         addBinaryInput(groupIds, arguments);
         return;
-      case TEXT:
-      case BLOB:
       case BOOLEAN:
+        addBooleanInput(groupIds, arguments);
+        return;
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type : %s", yDataType));
@@ -386,6 +398,22 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
     }
   }
 
+  private void addBooleanInput(int[] groupIds, Column[] arguments) {
+    for (int i = 0; i < groupIds.length; i++) {
+      if (!arguments[1].isNull(i)) {
+        updateBooleanResult(groupIds[i], arguments[1].getBoolean(i), arguments[0], i);
+      }
+    }
+  }
+
+  private void updateBooleanResult(int groupId, boolean yValue, Column xColumn, int xIndex) {
+    if (!inits.get(groupId) || check(yValue, yBooleanValues.get(groupId))) {
+      inits.set(groupId, true);
+      yBooleanValues.set(groupId, yValue);
+      updateX(groupId, xColumn, xIndex);
+    }
+  }
+
   private void writeX(int groupId, ColumnBuilder columnBuilder) {
     if (xNulls.get(groupId)) {
       columnBuilder.appendNull();
@@ -455,56 +483,99 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
   }
 
   private byte[] serialize(int groupId) {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    try {
-      writeIntermediateToStream(groupId, false, yDataType, dataOutputStream);
-      boolean xNull = xNulls.get(groupId);
-      dataOutputStream.writeBoolean(xNull);
-      if (!xNull) {
-        writeIntermediateToStream(groupId, true, xDataType, dataOutputStream);
-      }
-    } catch (IOException e) {
-      throw new UnsupportedOperationException(
-          "Failed to serialize intermediate result for MaxByAccumulator.", e);
+    boolean xNull = xNulls.get(groupId);
+    int yLength = calculateValueLength(groupId, yDataType, false);
+    int length = yLength + 1 + (xNull ? 0 : calculateValueLength(groupId, xDataType, true));
+    byte[] bytes = new byte[length];
+
+    writeIntermediate(groupId, false, yDataType, bytes, 0);
+    boolToBytes(xNull, bytes, yLength);
+    if (!xNull) {
+      writeIntermediate(groupId, true, xDataType, bytes, yLength + 1);
     }
-    return byteArrayOutputStream.toByteArray();
+
+    return bytes;
   }
 
-  private void writeIntermediateToStream(
-      int groupId, boolean isX, TSDataType dataType, DataOutputStream dataOutputStream)
-      throws IOException {
+  private void writeIntermediate(
+      int groupId, boolean isX, TSDataType dataType, byte[] bytes, int offset) {
     switch (dataType) {
       case INT32:
       case DATE:
-        dataOutputStream.writeInt(isX ? xIntValues.get(groupId) : yIntValues.get(groupId));
+        if (isX) {
+          intToBytes(xIntValues.get(groupId), bytes, offset);
+        } else {
+          intToBytes(yIntValues.get(groupId), bytes, offset);
+        }
         break;
       case INT64:
       case TIMESTAMP:
-        dataOutputStream.writeLong(isX ? xLongValues.get(groupId) : yLongValues.get(groupId));
+        if (isX) {
+          longToBytes(xLongValues.get(groupId), bytes, offset);
+        } else {
+          longToBytes(yLongValues.get(groupId), bytes, offset);
+        }
         break;
       case FLOAT:
-        dataOutputStream.writeFloat(isX ? xFloatValues.get(groupId) : yFloatValues.get(groupId));
+        if (isX) {
+          floatToBytes(xFloatValues.get(groupId), bytes, offset);
+        } else {
+          floatToBytes(yFloatValues.get(groupId), bytes, offset);
+        }
         break;
       case DOUBLE:
-        dataOutputStream.writeDouble(isX ? xDoubleValues.get(groupId) : yDoubleValues.get(groupId));
+        if (isX) {
+          doubleToBytes(xDoubleValues.get(groupId), bytes, offset);
+        } else {
+          doubleToBytes(yDoubleValues.get(groupId), bytes, offset);
+        }
         break;
       case TEXT:
       case STRING:
       case BLOB:
-        byte[] content =
+        byte[] values =
             isX ? xBinaryValues.get(groupId).getValues() : yBinaryValues.get(groupId).getValues();
-        dataOutputStream.writeInt(content.length);
-        dataOutputStream.write(content);
+        intToBytes(values.length, bytes, offset);
+        System.arraycopy(values, 0, bytes, offset + Integer.BYTES, values.length);
         break;
       case BOOLEAN:
         if (isX) {
-          dataOutputStream.writeBoolean(xBooleanValues.get(groupId));
-          break;
+          boolToBytes(yBooleanValues.get(groupId), bytes, offset);
+        } else {
+          boolToBytes(yBooleanValues.get(groupId), bytes, offset);
         }
+        break;
+
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type : %s", dataType));
+    }
+  }
+
+  private int calculateValueLength(int groupId, TSDataType dataType, boolean isX) {
+    switch (dataType) {
+      case INT32:
+      case DATE:
+        return Integer.BYTES;
+      case INT64:
+      case TIMESTAMP:
+        return Long.BYTES;
+      case FLOAT:
+        return Float.BYTES;
+      case DOUBLE:
+        return Double.BYTES;
+      case TEXT:
+      case BLOB:
+      case STRING:
+        return Integer.BYTES
+            + (isX
+                ? xBinaryValues.get(groupId).getValues().length
+                : yBinaryValues.get(groupId).getValues().length);
+      case BOOLEAN:
+        return 1;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type: %s", dataType));
     }
   }
 
@@ -541,6 +612,8 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
         readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
         updateDoubleResult(groupId, doubleMaxVal, columnBuilder.build(), 0);
         break;
+      case STRING:
+      case TEXT:
       case BLOB:
         int length = BytesUtils.bytesToInt(bytes, offset);
         offset += Integer.BYTES;
@@ -549,9 +622,12 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
         readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
         updateBinaryResult(groupId, binaryMaxVal, columnBuilder.build(), 0);
         break;
-      case STRING:
-      case TEXT:
       case BOOLEAN:
+        boolean booleanVal = BytesUtils.bytesToBool(bytes, offset);
+        offset += 1;
+        readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
+        updateBooleanResult(groupId, booleanVal, columnBuilder.build(), 0);
+        break;
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type : %s", yDataType));
@@ -611,4 +687,6 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
   protected abstract boolean check(double yValue, double yExtremeValue);
 
   protected abstract boolean check(Binary yValue, Binary yExtremeValue);
+
+  protected abstract boolean check(boolean yValue, boolean yExtremeValue);
 }

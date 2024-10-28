@@ -117,8 +117,9 @@ public class SubscriptionBroker {
         }
         // There are two reasons for not printing logs here:
         // 1. There will be a delay in the creation of the prefetching queue after subscription.
-        // 2. There is no corresponding prefetching queue on this DN (currently the consumer is
-        // fully connected to all DNs).
+        // 2. There is no corresponding prefetching queue on this DN:
+        //   2.1. the consumer is fully connected to all DNs currently...
+        //   2.2. potential disorder of unbind and close prefetching queue...
         continue;
       }
       if (prefetchingQueue.isClosed()) {
@@ -338,11 +339,12 @@ public class SubscriptionBroker {
     final SubscriptionPrefetchingQueue prefetchingQueue =
         topicNameToPrefetchingQueue.get(topicName);
     if (Objects.nonNull(prefetchingQueue)) {
-      LOGGER.warn(
-          "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] still exists",
+      LOGGER.info(
+          "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] still exists, unbind it before closing",
           topicName,
           brokerId);
-      return;
+      // TODO: consider more robust metadata semantics
+      unbindPrefetchingQueue(topicName);
     }
 
     completedTopicNames.remove(topicName);
