@@ -322,6 +322,14 @@ public class TableLogicalPlanner {
 
     final QueryId queryId = queryContext.getQueryId();
 
+    long pushDownLimit =
+        Objects.nonNull(statement.getLimit())
+            ? analysis.getLimit(statement.getLimit()).orElse(-1)
+            : -1;
+    if (pushDownLimit > -1 && Objects.nonNull(statement.getOffset())) {
+      pushDownLimit += analysis.getOffset(statement.getOffset());
+    }
+
     // Scan
     PlanNode currentNode =
         new TableDeviceQueryScanNode(
@@ -332,9 +340,7 @@ public class TableLogicalPlanner {
             null,
             statement.getColumnHeaderList(),
             null,
-            Objects.nonNull(statement.getLimit())
-                ? analysis.getLimit(statement.getLimit()).orElse(-1)
-                : -1);
+            pushDownLimit);
 
     // Filter
     if (Objects.nonNull(statement.getIdFuzzyPredicate())) {

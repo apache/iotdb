@@ -104,6 +104,11 @@ public class TableDeviceQueryScanNode extends AbstractTableDeviceQueryNode {
   }
 
   @Override
+  public PlanNode replaceChildren(final List<PlanNode> newChildren) {
+    return this;
+  }
+
+  @Override
   public String toString() {
     return "TableDeviceQueryScanNode" + toStringMessage();
   }

@@ -37,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
@@ -514,6 +515,12 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               newFilter,
               node.isSpillable()),
           outputMapping);
+    }
+
+    @Override
+    public PlanAndMappings visitTableDeviceQueryScan(
+        final TableDeviceQueryScanNode node, final UnaliasContext context) {
+      return new PlanAndMappings(node, new HashMap<>(context.getCorrelationMapping()));
     }
   }
 
