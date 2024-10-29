@@ -205,12 +205,14 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
       switch (columnSchemas.get(i).getColumnCategory()) {
         case ID:
           // +1 for skip the table name segment
-          String idColumnValue =
-              (String) currentDeviceEntry.getNthSegment(columnsIndexArray[i] + 1);
+          Binary idColumnValue =
+              new Binary(
+                  ((String) currentDeviceEntry.getNthSegment(columnsIndexArray[i] + 1)),
+                  TSFileConfig.STRING_CHARSET);
           valueColumns[i] = getIdOrAttributeValueColumn(idColumnValue, positionCount);
           break;
         case ATTRIBUTE:
-          String attributeColumnValue =
+          Binary attributeColumnValue =
               currentDeviceEntry.getAttributeColumnValues().get(columnsIndexArray[i]);
           valueColumns[i] = getIdOrAttributeValueColumn(attributeColumnValue, positionCount);
           break;
@@ -232,16 +234,14 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
             valueColumns);
   }
 
-  private RunLengthEncodedColumn getIdOrAttributeValueColumn(String value, int positionCount) {
+  private RunLengthEncodedColumn getIdOrAttributeValueColumn(Binary value, int positionCount) {
     if (value == null) {
       return new RunLengthEncodedColumn(
           new BinaryColumn(1, Optional.of(new boolean[] {true}), new Binary[] {null}),
           positionCount);
     } else {
       return new RunLengthEncodedColumn(
-          new BinaryColumn(
-              1, Optional.empty(), new Binary[] {new Binary(value, TSFileConfig.STRING_CHARSET)}),
-          positionCount);
+          new BinaryColumn(1, Optional.empty(), new Binary[] {value}), positionCount);
     }
   }
 
