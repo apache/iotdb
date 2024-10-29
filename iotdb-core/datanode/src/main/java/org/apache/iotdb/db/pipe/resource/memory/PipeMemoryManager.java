@@ -443,7 +443,7 @@ public class PipeMemoryManager {
           "tryExpandAllAndCheckConsistency: memory usage of tsfiles is not consistent with allocated blocks,"
               + " usedMemorySizeInBytesOfTsFiles is {} but sum of all tsfile blocks is {}",
           usedMemorySizeInBytesOfTsFiles,
-          tabletBlockSum);
+          tsFileBlockSum);
     }
   }
 
