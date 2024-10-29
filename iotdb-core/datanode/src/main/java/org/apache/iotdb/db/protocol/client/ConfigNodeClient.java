@@ -191,6 +191,9 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   private static final long RETRY_INTERVAL_MS = 1000L;
   private static final long WAIT_CN_LEADER_ELECTION_INTERVAL_MS = 2000L;
 
+  private static final String UNSUPPORTED_INVOCATION =
+      "This method is not supported for invocation by DataNode";
+
   private final ThriftClientProperty property;
 
   private IConfigNodeRPCService.Iface client;
@@ -462,17 +465,17 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public TAINodeRegisterResp registerAINode(TAINodeRegisterReq req) throws TException {
-    throw new UnsupportedOperationException("RegisterAINode method is not supported in datanode");
+    throw new UnsupportedOperationException(UNSUPPORTED_INVOCATION);
   }
 
   @Override
   public TAINodeRestartResp restartAINode(TAINodeRestartReq req) throws TException {
-    throw new UnsupportedOperationException("RestartAINode method is not supported in datanode");
+    throw new UnsupportedOperationException(UNSUPPORTED_INVOCATION);
   }
 
   @Override
   public TSStatus removeAINode(TAINodeRemoveReq req) throws TException {
-    throw new UnsupportedOperationException("RemoveAINode method is not supported in datanode");
+    throw new UnsupportedOperationException(UNSUPPORTED_INVOCATION);
   }
 
   @Override
@@ -483,8 +486,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public TAINodeConfigurationResp getAINodeConfiguration(int aiNodeId) throws TException {
-    throw new UnsupportedOperationException(
-        "GetAINodeConfiguration method is not supported in datanode");
+    throw new UnsupportedOperationException(UNSUPPORTED_INVOCATION);
   }
 
   @Override
@@ -750,7 +752,8 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public TSStatus loadConfiguration() throws TException {
-    throw new UnsupportedOperationException("Please call submitLoadConfigurationTask instead");
+    throw new UnsupportedOperationException(
+        UNSUPPORTED_INVOCATION + ", please call submitLoadConfigurationTask instead");
   }
 
   @Override
