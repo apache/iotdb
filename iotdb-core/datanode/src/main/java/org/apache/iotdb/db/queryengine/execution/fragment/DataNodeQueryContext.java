@@ -47,8 +47,8 @@ public class DataNodeQueryContext {
     this.dataNodeFINum = new AtomicInteger(dataNodeFINum);
   }
 
-  public boolean unCached(PartialPath path) {
-    return uncachedPathToSeriesScanInfo.containsKey(path);
+  public boolean hasCached(PartialPath path) {
+    return !uncachedPathToSeriesScanInfo.containsKey(path);
   }
 
   public void addUnCachePath(PartialPath path, AtomicInteger dataNodeSeriesScanNum) {

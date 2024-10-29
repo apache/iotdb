@@ -2819,7 +2819,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     TimeValuePair timeValuePair = null;
     context.dataNodeQueryContext.lock();
     try {
-      if (!context.dataNodeQueryContext.unCached(seriesPath)) {
+      if (context.dataNodeQueryContext.hasCached(seriesPath)) {
         timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(seriesPath);
         if (timeValuePair == null) {
           context.dataNodeQueryContext.addUnCachePath(seriesPath, node.getDataNodeSeriesScanNum());
@@ -3053,9 +3053,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       final MeasurementPath measurementPath =
           devicePath.concatAsMeasurementPath(measurementList.get(i));
       TimeValuePair timeValuePair = null;
+      context.dataNodeQueryContext.lock();
       try {
-        context.dataNodeQueryContext.lock();
-        if (!context.dataNodeQueryContext.unCached(measurementPath)) {
+        if (context.dataNodeQueryContext.hasCached(measurementPath)) {
           timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(measurementPath);
           if (timeValuePair == null) {
             context.dataNodeQueryContext.addUnCachePath(
