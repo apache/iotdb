@@ -610,9 +610,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   }
 
   private boolean mayTsFileResourceOverlappedWithPattern(final TsFileResource resource) {
-    if (!sloppyPattern) {
-      return true;
-    }
 
     final Set<IDeviceID> deviceSet;
     try {
