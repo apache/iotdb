@@ -25,25 +25,24 @@ import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTsFileQueu
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTsFileBatchEvents;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 
-import org.checkerframework.checker.nullness.qual.NonNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
 
 public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch {
 
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(SubscriptionPipeTsFileEventBatch.class);
+
   private final PipeTabletEventTsFileBatch batch;
-  private final List<EnrichedEvent> enrichedEvents;
 
   public SubscriptionPipeTsFileEventBatch(
       final int regionId,
@@ -52,36 +51,11 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
       final long maxBatchSizeInBytes) {
     super(regionId, prefetchingQueue, maxDelayInMs, maxBatchSizeInBytes);
     this.batch = new PipeTabletEventTsFileBatch(maxDelayInMs, maxBatchSizeInBytes);
-    this.enrichedEvents = new ArrayList<>();
   }
 
   @Override
-  public synchronized boolean onEvent(final Consumer<SubscriptionEvent> consumer) throws Exception {
-    if (batch.shouldEmit() && !enrichedEvents.isEmpty()) {
-      if (Objects.isNull(events)) {
-        events = generateSubscriptionEvents();
-      }
-      if (Objects.nonNull(events)) {
-        events.forEach(consumer);
-        return true;
-      }
-      return false;
-    }
-    return false;
-  }
-
-  @Override
-  public synchronized boolean onEvent(
-      final @NonNull EnrichedEvent event, final Consumer<SubscriptionEvent> consumer)
-      throws Exception {
-    if (event instanceof TabletInsertionEvent) {
-      batch.onEvent((TabletInsertionEvent) event); // no exceptions will be thrown
-      enrichedEvents.add(event);
-      event.decreaseReferenceCount(
-          SubscriptionPipeTsFileEventBatch.class.getName(),
-          false); // missing releaseLastEvent decreases reference count
-    }
-    return onEvent(consumer);
+  public synchronized void ack() {
+    batch.decreaseEventsReferenceCount(this.getClass().getName(), true);
   }
 
   @Override
@@ -91,13 +65,27 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
     enrichedEvents.clear();
   }
 
-  public synchronized void ack() {
-    batch.decreaseEventsReferenceCount(this.getClass().getName(), true);
-  }
-
   /////////////////////////////// utility ///////////////////////////////
 
-  private List<SubscriptionEvent> generateSubscriptionEvents() throws Exception {
+  @Override
+  protected void onTabletInsertionEvent(final TabletInsertionEvent event) throws Exception {
+    batch.onEvent(event); // no exceptions will be thrown
+    ((EnrichedEvent) event)
+        .decreaseReferenceCount(
+            SubscriptionPipeTsFileEventBatch.class.getName(),
+            false); // missing releaseLastEvent decreases reference count
+  }
+
+  @Override
+  protected void onTsFileInsertionEvent(final TsFileInsertionEvent event) {
+    LOGGER.warn(
+        "SubscriptionPipeTsFileEventBatch {} ignore TsFileInsertionEvent {} when batching.",
+        this,
+        event);
+  }
+
+  @Override
+  protected List<SubscriptionEvent> generateSubscriptionEvents() throws Exception {
     if (batch.isEmpty()) {
       return null;
     }
@@ -110,13 +98,14 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
           prefetchingQueue.generateSubscriptionCommitContext();
       events.add(
           new SubscriptionEvent(
-              new SubscriptionPipeTsFileBatchEvents(this, tsFile, referenceCount),
-              new SubscriptionPollResponse(
-                  SubscriptionPollResponseType.FILE_INIT.getType(),
-                  new FileInitPayload(tsFile.getName()),
-                  commitContext)));
+              new SubscriptionPipeTsFileBatchEvents(this, referenceCount), tsFile, commitContext));
     }
     return events;
+  }
+
+  @Override
+  protected boolean shouldEmit() {
+    return batch.shouldEmit();
   }
 
   /////////////////////////////// stringify ///////////////////////////////
@@ -131,11 +120,5 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
     final Map<String, String> coreReportMessage = super.coreReportMessage();
     coreReportMessage.put("batch", batch.toString());
     return coreReportMessage;
-  }
-
-  //////////////////////////// APIs provided for metric framework ////////////////////////////
-
-  public int getPipeEventCount() {
-    return enrichedEvents.size();
   }
 }

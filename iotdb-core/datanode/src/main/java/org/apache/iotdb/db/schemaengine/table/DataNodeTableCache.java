@@ -268,7 +268,9 @@ public class DataNodeTableCache implements ITableCache {
               .fetchTables(
                   tableInput.entrySet().stream()
                       .collect(
-                          Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().keySet())));
+                          Collectors.toMap(
+                              entry -> PathUtils.qualifyDatabaseName(entry.getKey()),
+                              entry -> entry.getValue().keySet())));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
         result = TsTableInternalRPCUtil.deserializeTsTableFetchResult(resp.getTableInfoMap());
       }
