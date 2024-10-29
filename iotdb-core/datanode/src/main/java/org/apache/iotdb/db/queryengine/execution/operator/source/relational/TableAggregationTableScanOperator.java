@@ -455,7 +455,8 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
                     .get(currentDeviceIndex)
                     .getNthSegment(columnsIndexArray[columnIdx] + 1);
         return getIdOrAttrColumn(
-            inputRegion.getTimeColumn().getPositionCount(), new Binary(id.getBytes()));
+            inputRegion.getTimeColumn().getPositionCount(),
+            new Binary(id, TSFileConfig.STRING_CHARSET));
       case ATTRIBUTE:
         Binary attr =
             deviceEntries
