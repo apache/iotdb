@@ -21,11 +21,13 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALInfoEntry;
@@ -49,6 +51,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -88,6 +91,12 @@ public class WALFileTest {
     expectedWALEntries.add(new WALInfoEntry(fakeMemTableId, getInsertRowsNode(devicePath)));
     expectedWALEntries.add(new WALInfoEntry(fakeMemTableId, getInsertTabletNode(devicePath)));
     expectedWALEntries.add(new WALInfoEntry(fakeMemTableId, getDeleteDataNode(devicePath)));
+    expectedWALEntries.add(
+        new WALInfoEntry(
+            fakeMemTableId,
+            getRelationalInsertTabletNode("table1"),
+            Arrays.asList(new int[] {0, 2}, new int[] {2, 4})));
+
     // test WALEntry.serializedSize
     int size = 0;
     for (WALEntry walEntry : expectedWALEntries) {
@@ -110,6 +119,14 @@ public class WALFileTest {
         actualWALEntries.add(walReader.next());
       }
     }
+
+    // set tablet info of the RelationalInsertTablet to range [0, 4)
+    expectedWALEntries.set(
+        4,
+        new WALInfoEntry(
+            fakeMemTableId,
+            getRelationalInsertTabletNode("table1"),
+            Collections.singletonList(new int[] {0, 4})));
     assertEquals(expectedWALEntries, actualWALEntries);
   }
 
@@ -357,6 +374,53 @@ public class WALFileTest {
         bitMaps,
         columns,
         times.length);
+  }
+
+  public static RelationalInsertTabletNode getRelationalInsertTabletNode(String tableName)
+      throws IllegalPathException {
+    long[] times = new long[] {110L, 111L, 112L, 113L};
+    TSDataType[] dataTypes =
+        new TSDataType[] {
+          TSDataType.STRING, TSDataType.FLOAT,
+        };
+
+    Object[] columns = new Object[2];
+    columns[0] = new Binary[4];
+    columns[1] = new float[4];
+
+    for (int r = 0; r < 4; r++) {
+      ((Binary[]) columns[0])[r] = new Binary("hh" + r, TSFileConfig.STRING_CHARSET);
+      ((float[]) columns[1])[r] = 2 + r;
+    }
+
+    BitMap[] bitMaps = new BitMap[dataTypes.length];
+    for (int i = 0; i < dataTypes.length; i++) {
+      if (bitMaps[i] == null) {
+        bitMaps[i] = new BitMap(times.length);
+      }
+      bitMaps[i].mark(i % times.length);
+    }
+    MeasurementSchema[] schemas =
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", dataTypes[0]), new MeasurementSchema("s2", dataTypes[1]),
+        };
+
+    return new RelationalInsertTabletNode(
+        new PlanNodeId(""),
+        new PartialPath(tableName, false),
+        false,
+        new String[] {
+          "s1", "s2",
+        },
+        dataTypes,
+        schemas,
+        times,
+        bitMaps,
+        columns,
+        times.length,
+        new TsTableColumnCategory[] {
+          TsTableColumnCategory.ID, TsTableColumnCategory.MEASUREMENT,
+        });
   }
 
   public static DeleteDataNode getDeleteDataNode(String devicePath) throws IllegalPathException {

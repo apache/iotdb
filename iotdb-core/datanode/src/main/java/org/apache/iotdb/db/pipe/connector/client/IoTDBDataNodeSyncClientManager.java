@@ -47,8 +47,12 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
       final boolean useSSL,
       final String trustStorePath,
       final String trustStorePwd,
+      /* The following parameters are used locally. */
       final boolean useLeaderCache,
       final String loadBalanceStrategy,
+      /* The following parameters are used to handshake with the receiver. */
+      final String username,
+      final String password,
       final boolean shouldReceiverConvertOnTypeMismatch,
       final String loadTsFileStrategy) {
     super(
@@ -58,6 +62,8 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
         trustStorePwd,
         useLeaderCache,
         loadBalanceStrategy,
+        username,
+        password,
         shouldReceiverConvertOnTypeMismatch,
         loadTsFileStrategy);
   }

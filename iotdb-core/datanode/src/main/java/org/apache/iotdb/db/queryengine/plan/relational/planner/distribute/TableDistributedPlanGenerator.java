@@ -11,6 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -921,25 +922,26 @@ public class TableDistributedPlanGenerator
     } else {
       final Map<TRegionReplicaSet, TableDeviceFetchNode> tableDeviceFetchMap = new HashMap<>();
 
-      for (final Object[] deviceIdArray : node.getDeviceIdList()) {
-        final IDeviceID deviceID =
-            IDeviceID.Factory.DEFAULT_FACTORY.create((String[]) deviceIdArray);
+      final List<IDeviceID> partitionKeyList = node.getPartitionKeyList();
+      final List<Object[]> deviceIDArray = node.getDeviceIdList();
+      for (int i = 0; i < node.getPartitionKeyList().size(); ++i) {
         final TRegionReplicaSet regionReplicaSet =
-            databaseMap.get(schemaPartition.calculateDeviceGroupId(deviceID));
+            databaseMap.get(schemaPartition.calculateDeviceGroupId(partitionKeyList.get(i)));
         tableDeviceFetchMap
             .computeIfAbsent(
                 regionReplicaSet,
                 k -> {
-                  final TableDeviceFetchNode clonedNode = (TableDeviceFetchNode) node.clone();
+                  final TableDeviceFetchNode clonedNode =
+                      (TableDeviceFetchNode) node.cloneForDistribution();
                   clonedNode.setPlanNodeId(queryId.genPlanNodeId());
                   clonedNode.setRegionReplicaSet(regionReplicaSet);
                   return clonedNode;
                 })
-            .addDeviceId(deviceIdArray);
+            .addDeviceId(deviceIDArray.get(i));
       }
 
       final List<PlanNode> res = new ArrayList<>();
-      TRegionReplicaSet mostUsedDataRegion = null;
+      TRegionReplicaSet mostUsedSchemaRegion = null;
       int maxDeviceEntrySizeOfTableScan = 0;
       for (final Map.Entry<TRegionReplicaSet, TableDeviceFetchNode> entry :
           tableDeviceFetchMap.entrySet()) {
@@ -948,11 +950,11 @@ public class TableDistributedPlanGenerator
         res.add(subTableDeviceFetchNode);
 
         if (subTableDeviceFetchNode.getDeviceIdList().size() > maxDeviceEntrySizeOfTableScan) {
-          mostUsedDataRegion = regionReplicaSet;
+          mostUsedSchemaRegion = regionReplicaSet;
           maxDeviceEntrySizeOfTableScan = subTableDeviceFetchNode.getDeviceIdList().size();
         }
       }
-      context.mostUsedRegion = mostUsedDataRegion;
+      context.mostUsedRegion = mostUsedSchemaRegion;
       return res;
     }
   }
