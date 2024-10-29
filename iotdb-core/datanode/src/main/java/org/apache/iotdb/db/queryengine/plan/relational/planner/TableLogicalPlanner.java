@@ -17,6 +17,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -32,6 +33,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
@@ -132,11 +135,12 @@ public class TableLogicalPlanner {
     this.planOptimizers = planOptimizers;
   }
 
-  public LogicalQueryPlan plan(Analysis analysis) {
+  public LogicalQueryPlan plan(final Analysis analysis) {
     long startTime = System.nanoTime();
-    PlanNode planNode = planStatement(analysis, analysis.getStatement());
+    final Statement statement = analysis.getStatement();
+    PlanNode planNode = planStatement(analysis, statement);
 
-    if (analysis.getStatement() instanceof Query) {
+    if (statement instanceof Query || statement instanceof ShowDevice) {
       QueryPlanCostMetricSet.getInstance()
           .recordPlanCost(TABLE_TYPE, LOGICAL_PLANNER, System.nanoTime() - startTime);
       startTime = System.nanoTime();
@@ -316,9 +320,12 @@ public class TableLogicalPlanner {
   private PlanNode planShowDevice(final ShowDevice statement, final Analysis analysis) {
     planQueryDevice(statement, analysis);
 
-    final TableDeviceQueryScanNode node =
+    final QueryId queryId = queryContext.getQueryId();
+
+    // Scan
+    PlanNode currentNode =
         new TableDeviceQueryScanNode(
-            queryContext.getQueryId().genPlanNodeId(),
+            queryId.genPlanNodeId(),
             statement.getDatabase(),
             statement.getTableName(),
             statement.getIdDeterminedFilterList(),
@@ -329,10 +336,29 @@ public class TableLogicalPlanner {
             Objects.nonNull(statement.getLimit())
                 ? analysis.getLimit(statement.getLimit()).orElse(-1)
                 : -1);
-    return Objects.nonNull(statement.getIdFuzzyPredicate())
-        ? new FilterNode(
-            queryContext.getQueryId().genPlanNodeId(), node, statement.getIdFuzzyPredicate())
-        : node;
+
+    // Filter
+    if (Objects.nonNull(statement.getIdFuzzyPredicate())) {
+      currentNode =
+          new FilterNode(queryId.genPlanNodeId(), currentNode, statement.getIdFuzzyPredicate());
+    }
+
+    // Offset
+    if (Objects.nonNull(statement.getOffset())) {
+      currentNode =
+          new OffsetNode(
+              queryId.genPlanNodeId(), currentNode, analysis.getOffset(statement.getOffset()));
+    }
+
+    // Limit
+    return Objects.nonNull(statement.getLimit())
+            && analysis.getLimit(statement.getLimit()).isPresent()
+        ? new LimitNode(
+            queryId.genPlanNodeId(),
+            currentNode,
+            analysis.getLimit(statement.getLimit()).getAsLong(),
+            Optional.empty())
+        : currentNode;
   }
 
   private PlanNode planCountDevice(final CountDevice statement, final Analysis analysis) {
