@@ -37,7 +37,7 @@ public class InsertTablet extends WrappedInsertStatement {
 
   public InsertTablet(InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
     super(insertTabletStatement, context);
-    for (int i = insertTabletStatement.getRowCount(); i > 0; i--) {
+    for (int i = insertTabletStatement.getRowCount() - 1; i >= 0; i--) {
       IDeviceID deviceID = insertTabletStatement.getTableDeviceID(i);
       deviceID2LastIdxMap.putIfAbsent(deviceID, i);
     }
