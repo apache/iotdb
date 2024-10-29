@@ -30,7 +30,6 @@ import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
@@ -49,15 +48,11 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.TsFileSequenceReaderTimeseriesMetadataIterator;
-import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -74,9 +69,6 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
   private final Metadata metadata;
 
   private final LoadTsFileTableSchemaCache schemaCache;
-
-  // tableName -> Pair<device column count, device column mapping>
-  private final Map<String, Pair<Integer, List<Integer>>> tableIdColumnMapper = new HashMap<>();
 
   public LoadTsFileToTableModelAnalyzer(
       LoadTsFileStatement loadTsFileStatement, Metadata metadata, MPPQueryContext context) {
@@ -137,8 +129,6 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
       }
 
       // check whether the tsfile is table-model or not
-      // TODO: currently, loading a file with both tree-model and table-model data is not supported.
-      //  May need to support this and remove this check in the future.
       if (Objects.isNull(reader.readFileMetadata().getTableSchemaMap())
           || reader.readFileMetadata().getTableSchemaMap().isEmpty()) {
         throw new SemanticException("Attempted to load a tree-model TsFile into table-model.");
@@ -154,10 +144,7 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
           reader.readFileMetadata().getTableSchemaMap().entrySet()) {
         final TableSchema fileSchema =
             TableSchema.fromTsFileTableSchema(name2Schema.getKey(), name2Schema.getValue());
-        // TODO: remove this synchronized block after the metadata is thread-safe
-        synchronized (metadata) {
-          schemaCache.createTable(fileSchema, context, metadata);
-        }
+        schemaCache.createTable(fileSchema, context, metadata);
       }
 
       long writePointCount = 0;
@@ -182,13 +169,13 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
 
       addTsFileResource(tsFileResource);
       addWritePointCount(writePointCount);
+
+      schemaCache.flush();
     } catch (final LoadEmptyFileException loadEmptyFileException) {
       LOGGER.warn("Failed to load empty file: {}", tsFile.getAbsolutePath());
       if (isDeleteAfterLoad) {
         FileUtils.deleteQuietly(tsFile);
       }
-    } finally {
-      schemaCache.flush();
     }
   }
 
@@ -215,54 +202,8 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
     }
   }
 
-  private ITableDeviceSchemaValidation createTableSchemaValidation(
-      IDeviceID deviceId, LoadTsFileToTableModelAnalyzer analyzer) {
-    return new ITableDeviceSchemaValidation() {
-
-      @Override
-      public String getDatabase() {
-        return analyzer.database;
-      }
-
-      @Override
-      public String getTableName() {
-        return deviceId.getTableName();
-      }
-
-      @Override
-      public List<Object[]> getDeviceIdList() {
-        final Pair<Integer, List<Integer>> idColumnCountAndMapper =
-            analyzer.tableIdColumnMapper.get(deviceId.getTableName());
-        if (Objects.isNull(idColumnCountAndMapper)) {
-          // This should not happen
-          LOGGER.warn(
-              "Failed to find id column mapping for table {}, deviceId: {}",
-              deviceId.getTableName(),
-              deviceId);
-          return Collections.singletonList(
-              Arrays.copyOfRange(deviceId.getSegments(), 1, deviceId.getSegments().length));
-        }
-
-        final Object[] deviceIdArray = new String[idColumnCountAndMapper.getLeft()];
-        for (int i = 0; i < idColumnCountAndMapper.getRight().size(); i++) {
-          final int j = idColumnCountAndMapper.getRight().get(i);
-          deviceIdArray[j] = deviceId.getSegments()[i + 1];
-        }
-        return Collections.singletonList(deviceIdArray);
-      }
-
-      @Override
-      public List<String> getAttributeColumnNameList() {
-        return Collections.emptyList();
-      }
-
-      @Override
-      public List<Object[]> getAttributeValueList() {
-        return Collections.singletonList(new Object[0]);
-      }
-    };
-  }
-
   @Override
-  public void close() throws Exception {}
+  public void close() throws Exception {
+    schemaCache.close();
+  }
 }
