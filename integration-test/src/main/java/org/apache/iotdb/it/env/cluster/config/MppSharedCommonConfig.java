@@ -491,14 +491,4 @@ public class MppSharedCommonConfig implements CommonConfig {
     cnConfig.setPipeConnectorRequestSliceThresholdBytes(pipeConnectorRequestSliceThresholdBytes);
     return this;
   }
-
-  @Override
-  public CommonConfig setPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold(
-      double pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold) {
-    dnConfig.setPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold(
-        pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold);
-    cnConfig.setPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold(
-        pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold);
-    return this;
-  }
 }

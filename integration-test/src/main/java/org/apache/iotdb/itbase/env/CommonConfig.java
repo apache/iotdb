@@ -153,7 +153,4 @@ public interface CommonConfig {
 
   CommonConfig setPipeConnectorRequestSliceThresholdBytes(
       int pipeConnectorRequestSliceThresholdBytes);
-
-  CommonConfig setPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold(
-      double pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold);
 }
