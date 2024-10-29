@@ -77,14 +77,8 @@ public class TableDeviceFetchNode extends TableDeviceSourceNode {
 
   @Override
   public PlanNode clone() {
-    return new TableDeviceFetchNode(
-        getPlanNodeId(),
-        database,
-        tableName,
-        deviceIdList,
-        partitionKeyList,
-        columnHeaderList,
-        senderLocation);
+    throw new UnsupportedOperationException(
+        "The TableDeviceFetchNode's clone() method shall not be called.");
   }
 
   public PlanNode cloneForDistribution() {
