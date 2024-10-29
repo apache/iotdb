@@ -38,7 +38,6 @@ import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.executable.ExecutableResource;
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -1916,7 +1915,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TGetAllPipeInfoResp getAllPipeInfoResp = configNodeClient.getAllPipeInfo();
       if (getAllPipeInfoResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new StartupException("Failed to get pipe task meta from config node.");
+        String exceptionMessage =
+            String.format(
+                "Failed to get pipe info from config node, status is %s.",
+                getAllPipeInfoResp.getStatus());
+        LOGGER.warn(exceptionMessage);
+        future.setException(
+            new IoTDBException(exceptionMessage, TSStatusCode.PIPE_ERROR.getStatusCode()));
+        return future;
       }
 
       pipeMetaFromCoordinator =
@@ -1954,12 +1960,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     // Construct temporary pipe static meta for validation
     final String pipeName = alterPipeStatement.getPipeName();
     try {
-      if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
-        if (!alterPipeStatement.getExtractorAttributes().isEmpty()) {
+      if (!alterPipeStatement.getExtractorAttributes().isEmpty()) {
+        if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
           PipeDataNodeAgent.plugin().validateExtractor(alterPipeStatement.getExtractorAttributes());
-        }
-      } else {
-        if (!alterPipeStatement.getExtractorAttributes().isEmpty()) {
+        } else {
           pipeMetaFromCoordinator
               .getStaticMeta()
               .getExtractorParameters()
@@ -1971,12 +1975,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         }
       }
 
-      if (alterPipeStatement.isReplaceAllProcessorAttributes()) {
-        if (!alterPipeStatement.getProcessorAttributes().isEmpty()) {
+      if (!alterPipeStatement.getProcessorAttributes().isEmpty()) {
+        if (alterPipeStatement.isReplaceAllProcessorAttributes()) {
           PipeDataNodeAgent.plugin().validateProcessor(alterPipeStatement.getProcessorAttributes());
-        }
-      } else {
-        if (!alterPipeStatement.getProcessorAttributes().isEmpty()) {
+        } else {
           pipeMetaFromCoordinator
               .getStaticMeta()
               .getProcessorParameters()
@@ -1988,13 +1990,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         }
       }
 
-      if (alterPipeStatement.isReplaceAllConnectorAttributes()) {
-        if (!alterPipeStatement.getConnectorAttributes().isEmpty()) {
+      if (!alterPipeStatement.getConnectorAttributes().isEmpty()) {
+        if (alterPipeStatement.isReplaceAllConnectorAttributes()) {
           PipeDataNodeAgent.plugin()
               .validateConnector(pipeName, alterPipeStatement.getConnectorAttributes());
-        }
-      } else {
-        if (!alterPipeStatement.getConnectorAttributes().isEmpty()) {
+        } else {
           pipeMetaFromCoordinator
               .getStaticMeta()
               .getConnectorParameters()
