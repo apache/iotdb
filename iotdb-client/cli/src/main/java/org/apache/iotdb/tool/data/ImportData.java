@@ -476,6 +476,7 @@ public class ImportData extends AbstractDataTool {
             sqlOptions,
             true);
       }
+      System.exit(CODE_ERROR);
     } else if (commandLine.hasOption(FILE_TYPE_ARGS)) {
       fileType = commandLine.getOptionValue(FILE_TYPE_ARGS);
       if (StringUtils.isNotBlank(fileType)) {
@@ -483,7 +484,6 @@ public class ImportData extends AbstractDataTool {
           try {
             commandLine = parser.parse(tsFileOptions, args);
             ImportTsFile.importData(commandLine);
-            System.exit(CODE_OK);
           } catch (ParseException e) {
             ioTPrinter.println("Parse error: " + e.getMessage());
             printHelpOptions(null, TSFILEDB_CLI_PREFIX, hf, tsFileOptions, null, null, false);
@@ -515,6 +515,7 @@ public class ImportData extends AbstractDataTool {
               csvOptions,
               sqlOptions,
               true);
+          System.exit(CODE_ERROR);
         }
       } else {
         printHelpOptions(
@@ -525,6 +526,7 @@ public class ImportData extends AbstractDataTool {
             csvOptions,
             sqlOptions,
             true);
+        System.exit(CODE_ERROR);
       }
     }
 

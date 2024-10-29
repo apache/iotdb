@@ -1306,7 +1306,6 @@ public abstract class AbstractDataTool {
         Option.builder(FILE_TYPE_ARGS)
             .longOpt(FILE_TYPE_NAME)
             .argName(FILE_TYPE_ARGS_NAME)
-            .required()
             .hasArg()
             .desc("Export file type ?You can choose tsfile)、csv) or sql) . (required)")
             .build();
