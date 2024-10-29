@@ -59,6 +59,16 @@ public abstract class AbstractOperateSubscriptionProcedure
 
   private static final int RETRY_THRESHOLD = 1;
 
+  // Only used in rollback to reduce the number of network calls
+  // Pure in-memory object, not involved in snapshot serialization and deserialization.
+  // TODO: consider serializing this variable later
+  protected boolean isRollbackFromOperateOnDataNodesSuccessful = false;
+
+  // Only used in rollback to avoid executing rollbackFromValidate multiple times
+  // Pure in-memory object, not involved in snapshot serialization and deserialization.
+  // TODO: consider serializing this variable later
+  protected boolean isRollbackFromValidateSuccessful = false;
+
   protected AtomicReference<SubscriptionInfo> subscriptionInfo;
 
   protected AtomicReference<SubscriptionInfo> acquireLockInternal(
@@ -250,20 +260,25 @@ public abstract class AbstractOperateSubscriptionProcedure
 
     switch (state) {
       case VALIDATE:
-        try {
-          rollbackFromValidate(env);
-        } catch (Exception e) {
-          LOGGER.warn(
-              "ProcedureId {}: Failed to rollback from state [{}], because {}",
-              getProcId(),
-              state,
-              e.getMessage(),
-              e);
+        if (!isRollbackFromValidateSuccessful) {
+          try {
+            rollbackFromValidate(env);
+            isRollbackFromValidateSuccessful = true;
+          } catch (Exception e) {
+            LOGGER.warn(
+                "ProcedureId {}: Failed to rollback from state [{}], because {}",
+                getProcId(),
+                state,
+                e.getMessage(),
+                e);
+          }
         }
         break;
       case OPERATE_ON_CONFIG_NODES:
         try {
-          rollbackFromOperateOnConfigNodes(env);
+          if (!isRollbackFromOperateOnDataNodesSuccessful) {
+            rollbackFromOperateOnConfigNodes(env);
+          }
         } catch (Exception e) {
           LOGGER.warn(
               "ProcedureId {}: Failed to rollback from state [{}], because {}",
@@ -275,7 +290,9 @@ public abstract class AbstractOperateSubscriptionProcedure
         break;
       case OPERATE_ON_DATA_NODES:
         try {
+          rollbackFromOperateOnConfigNodes(env);
           rollbackFromOperateOnDataNodes(env);
+          isRollbackFromOperateOnDataNodesSuccessful = true;
         } catch (Exception e) {
           LOGGER.warn(
               "ProcedureId {}: Failed to rollback from state [{}], because {}",
@@ -293,10 +310,11 @@ public abstract class AbstractOperateSubscriptionProcedure
 
   protected abstract void rollbackFromValidate(ConfigNodeProcedureEnv env);
 
-  protected abstract void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env);
+  protected abstract void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env)
+      throws SubscriptionException;
 
   protected abstract void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
-      throws IOException;
+      throws SubscriptionException, IOException;
 
   /**
    * Pushing all the topicMeta's to all the dataNodes.

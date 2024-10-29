@@ -35,6 +35,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -71,6 +72,9 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
 
   private static String host;
   private static String port;
+
+  private static String username = SessionConfig.DEFAULT_USER;
+  private static String password = SessionConfig.DEFAULT_PASSWORD;
 
   public ImportTsFileRemotely() {
     initClient();
@@ -186,6 +190,8 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_CONVERT_ON_TYPE_MISMATCH,
         Boolean.toString(true));
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY, LOAD_STRATEGY);
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME, username);
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD, password);
     return params;
   }
 
@@ -334,5 +340,13 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
 
   public static void setPort(final String port) {
     ImportTsFileRemotely.port = port;
+  }
+
+  public static void setUsername(final String username) {
+    ImportTsFileRemotely.username = username;
+  }
+
+  public static void setPassword(final String password) {
+    ImportTsFileRemotely.password = password;
   }
 }
