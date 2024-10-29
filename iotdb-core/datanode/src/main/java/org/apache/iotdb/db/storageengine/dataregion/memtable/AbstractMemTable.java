@@ -31,6 +31,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
@@ -198,7 +199,7 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public void insert(InsertRowNode insertRowNode) {
+  public int insert(InsertRowNode insertRowNode) {
 
     String[] measurements = insertRowNode.getMeasurements();
     Object[] values = insertRowNode.getValues();
@@ -228,39 +229,11 @@ public abstract class AbstractMemTable implements IMemTable {
             - nullPointsNumber;
 
     totalPointsNum += pointsInserted;
-
-    MetricService.getInstance()
-        .count(
-            pointsInserted,
-            Metric.QUANTITY.toString(),
-            MetricLevel.CORE,
-            Tag.NAME.toString(),
-            METRIC_POINT_IN,
-            Tag.DATABASE.toString(),
-            database,
-            Tag.REGION.toString(),
-            dataRegionId,
-            Tag.TYPE.toString(),
-            Metric.MEMTABLE_POINT_COUNT.toString());
-    if (!insertRowNode.isGeneratedByRemoteConsensusLeader()) {
-      MetricService.getInstance()
-          .count(
-              pointsInserted,
-              Metric.LEADER_QUANTITY.toString(),
-              MetricLevel.CORE,
-              Tag.NAME.toString(),
-              METRIC_POINT_IN,
-              Tag.DATABASE.toString(),
-              database,
-              Tag.REGION.toString(),
-              dataRegionId,
-              Tag.TYPE.toString(),
-              Metric.MEMTABLE_POINT_COUNT.toString());
-    }
+    return pointsInserted;
   }
 
   @Override
-  public void insertAlignedRow(InsertRowNode insertRowNode) {
+  public int insertAlignedRow(InsertRowNode insertRowNode) {
 
     String[] measurements = insertRowNode.getMeasurements();
     Object[] values = insertRowNode.getValues();
@@ -277,14 +250,49 @@ public abstract class AbstractMemTable implements IMemTable {
       dataTypes.add(schema.getType());
     }
     if (schemaList.isEmpty()) {
-      return;
+      return 0;
     }
     memSize += MemUtils.getAlignedRowRecordSize(dataTypes, values);
     writeAlignedRow(insertRowNode.getDeviceID(), schemaList, insertRowNode.getTime(), values);
     int pointsInserted =
         insertRowNode.getMeasurements().length - insertRowNode.getFailedMeasurementNumber();
     totalPointsNum += pointsInserted;
+    return pointsInserted;
+  }
 
+  @Override
+  public int insertTablet(InsertTabletNode insertTabletNode, int start, int end)
+      throws WriteProcessException {
+    try {
+      writeTabletNode(insertTabletNode, start, end);
+      memSize += MemUtils.getTabletSize(insertTabletNode, start, end);
+      int pointsInserted =
+          (insertTabletNode.getDataTypes().length - insertTabletNode.getFailedMeasurementNumber())
+              * (end - start);
+      totalPointsNum += pointsInserted;
+      return pointsInserted;
+    } catch (RuntimeException e) {
+      throw new WriteProcessException(e);
+    }
+  }
+
+  @Override
+  public int insertAlignedTablet(InsertTabletNode insertTabletNode, int start, int end)
+      throws WriteProcessException {
+    try {
+      writeAlignedTablet(insertTabletNode, start, end);
+      memSize += MemUtils.getAlignedTabletSize(insertTabletNode, start, end);
+      int pointsInserted =
+          (insertTabletNode.getDataTypes().length - insertTabletNode.getFailedMeasurementNumber())
+              * (end - start);
+      totalPointsNum += pointsInserted;
+      return pointsInserted;
+    } catch (RuntimeException e) {
+      throw new WriteProcessException(e);
+    }
+  }
+
+  public void updateMemtablePointCountMetric(InsertNode insertNode, int pointsInserted) {
     MetricService.getInstance()
         .count(
             pointsInserted,
@@ -298,7 +306,7 @@ public abstract class AbstractMemTable implements IMemTable {
             dataRegionId,
             Tag.TYPE.toString(),
             Metric.MEMTABLE_POINT_COUNT.toString());
-    if (!insertRowNode.isGeneratedByRemoteConsensusLeader()) {
+    if (!insertNode.isGeneratedByRemoteConsensusLeader()) {
       MetricService.getInstance()
           .count(
               pointsInserted,
@@ -312,92 +320,6 @@ public abstract class AbstractMemTable implements IMemTable {
               dataRegionId,
               Tag.TYPE.toString(),
               Metric.MEMTABLE_POINT_COUNT.toString());
-    }
-  }
-
-  @Override
-  public void insertTablet(InsertTabletNode insertTabletNode, int start, int end)
-      throws WriteProcessException {
-    try {
-      writeTabletNode(insertTabletNode, start, end);
-      memSize += MemUtils.getTabletSize(insertTabletNode, start, end);
-      int pointsInserted =
-          (insertTabletNode.getDataTypes().length - insertTabletNode.getFailedMeasurementNumber())
-              * (end - start);
-      totalPointsNum += pointsInserted;
-      MetricService.getInstance()
-          .count(
-              pointsInserted,
-              Metric.QUANTITY.toString(),
-              MetricLevel.CORE,
-              Tag.NAME.toString(),
-              METRIC_POINT_IN,
-              Tag.DATABASE.toString(),
-              database,
-              Tag.REGION.toString(),
-              dataRegionId,
-              Tag.TYPE.toString(),
-              Metric.MEMTABLE_POINT_COUNT.toString());
-      if (!insertTabletNode.isGeneratedByRemoteConsensusLeader()) {
-        MetricService.getInstance()
-            .count(
-                pointsInserted,
-                Metric.LEADER_QUANTITY.toString(),
-                MetricLevel.CORE,
-                Tag.NAME.toString(),
-                METRIC_POINT_IN,
-                Tag.DATABASE.toString(),
-                database,
-                Tag.REGION.toString(),
-                dataRegionId,
-                Tag.TYPE.toString(),
-                Metric.MEMTABLE_POINT_COUNT.toString());
-      }
-    } catch (RuntimeException e) {
-      throw new WriteProcessException(e);
-    }
-  }
-
-  @Override
-  public void insertAlignedTablet(InsertTabletNode insertTabletNode, int start, int end)
-      throws WriteProcessException {
-    try {
-      writeAlignedTablet(insertTabletNode, start, end);
-      memSize += MemUtils.getAlignedTabletSize(insertTabletNode, start, end);
-      int pointsInserted =
-          (insertTabletNode.getDataTypes().length - insertTabletNode.getFailedMeasurementNumber())
-              * (end - start);
-      totalPointsNum += pointsInserted;
-      MetricService.getInstance()
-          .count(
-              pointsInserted,
-              Metric.QUANTITY.toString(),
-              MetricLevel.CORE,
-              Tag.NAME.toString(),
-              METRIC_POINT_IN,
-              Tag.DATABASE.toString(),
-              database,
-              Tag.REGION.toString(),
-              dataRegionId,
-              Tag.TYPE.toString(),
-              Metric.MEMTABLE_POINT_COUNT.toString());
-      if (!insertTabletNode.isGeneratedByRemoteConsensusLeader()) {
-        MetricService.getInstance()
-            .count(
-                pointsInserted,
-                Metric.LEADER_QUANTITY.toString(),
-                MetricLevel.CORE,
-                Tag.NAME.toString(),
-                METRIC_POINT_IN,
-                Tag.DATABASE.toString(),
-                database,
-                Tag.REGION.toString(),
-                dataRegionId,
-                Tag.TYPE.toString(),
-                Metric.MEMTABLE_POINT_COUNT.toString());
-      }
-    } catch (RuntimeException e) {
-      throw new WriteProcessException(e);
     }
   }
 
