@@ -36,6 +36,7 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
@@ -121,7 +122,12 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
                 * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
     this.maxTsBlockLineNum = maxTsBlockLineNum;
 
-    this.seriesScanUtil = constructAlignedSeriesScanUtil(deviceEntries.get(currentDeviceIndex));
+    if (!deviceEntries.isEmpty()) {
+      this.seriesScanUtil = constructAlignedSeriesScanUtil(deviceEntries.get(currentDeviceIndex));
+    } else {
+      this.seriesScanUtil =
+          constructAlignedSeriesScanUtil(new DeviceEntry(new StringArrayDeviceID(""), null));
+    }
   }
 
   @Override

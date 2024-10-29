@@ -485,7 +485,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       if (deviceEntries.isEmpty()) {
         if (analysis.noAggregates()) {
           // no device entries, queries(except aggregation) can be finished
-          analysis.setFinishQueryAfterAnalyze();
+          // analysis.setFinishQueryAfterAnalyze();
         }
         analysis.setEmptyDataSource(true);
       } else {
@@ -511,7 +511,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         if (dataPartition.getDataPartitionMap().isEmpty()) {
           if (analysis.noAggregates()) {
             // no data partitions, queries(except aggregation) can be finished
-            analysis.setFinishQueryAfterAnalyze();
+            // analysis.setFinishQueryAfterAnalyze();
           }
           analysis.setEmptyDataSource(true);
         } else {

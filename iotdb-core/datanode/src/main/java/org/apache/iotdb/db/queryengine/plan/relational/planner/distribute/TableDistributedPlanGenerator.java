@@ -450,9 +450,12 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitTableScan(TableScanNode node, PlanContext context) {
+    if (node.getDeviceEntries().isEmpty()) {
+      node.setRegionReplicaSet(new TRegionReplicaSet());
+      return Collections.singletonList(node);
+    }
 
     Map<TRegionReplicaSet, TableScanNode> tableScanNodeMap = new HashMap<>();
-
     for (DeviceEntry deviceEntry : node.getDeviceEntries()) {
       List<TRegionReplicaSet> regionReplicaSets =
           analysis
