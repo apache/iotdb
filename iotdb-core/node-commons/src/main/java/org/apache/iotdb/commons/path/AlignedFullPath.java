@@ -24,8 +24,12 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
+import javax.annotation.Nullable;
+
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 public class AlignedFullPath implements IFullPath {
 
@@ -38,12 +42,25 @@ public class AlignedFullPath implements IFullPath {
 
   private final List<String> measurementList;
   private final List<IMeasurementSchema> schemaList;
+  @Nullable private final Set<String> allSensors;
 
   public AlignedFullPath(
       IDeviceID deviceID, List<String> measurementList, List<IMeasurementSchema> schemaList) {
     this.deviceID = deviceID;
     this.measurementList = measurementList;
     this.schemaList = schemaList;
+    this.allSensors = null;
+  }
+
+  public AlignedFullPath(
+      IDeviceID deviceID,
+      List<String> measurementList,
+      List<IMeasurementSchema> schemaList,
+      Set<String> allSensors) {
+    this.deviceID = deviceID;
+    this.measurementList = measurementList;
+    this.schemaList = schemaList;
+    this.allSensors = allSensors;
   }
 
   @Override
@@ -66,6 +83,17 @@ public class AlignedFullPath implements IFullPath {
 
   public int getColumnNum() {
     return measurementList.size();
+  }
+
+  public Set<String> getAllSensors() {
+    if (allSensors != null) {
+      return allSensors;
+    } else {
+      Set<String> res = new HashSet<>(measurementList);
+      // for time column
+      res.add("");
+      return res;
+    }
   }
 
   @Override
