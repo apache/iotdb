@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -112,7 +113,7 @@ public class TableDeviceSchemaValidator {
     final ValidateResult result = new ValidateResult();
 
     for (int i = 0, size = deviceIdList.size(); i < size; i++) {
-      final Map<String, String> attributeMap =
+      final Map<String, Binary> attributeMap =
           TableDeviceSchemaCache.getInstance()
               .getDeviceAttribute(
                   schemaValidation.getDatabase(),
@@ -140,7 +141,7 @@ public class TableDeviceSchemaValidator {
       final List<Object[]> deviceIdList,
       final List<String> attributeKeyList,
       final List<Object[]> attributeValueList) {
-    final Map<IDeviceID, Map<String, String>> fetchedDeviceSchema =
+    final Map<IDeviceID, Map<String, Binary>> fetchedDeviceSchema =
         fetcher.fetchMissingDeviceSchemaForDataInsertion(
             new FetchDevice(
                 schemaValidation.getDatabase(),
@@ -152,7 +153,7 @@ public class TableDeviceSchemaValidator {
 
     final ValidateResult result = new ValidateResult();
     for (final int index : previousValidateResult.missingDeviceIndexList) {
-      final Map<String, String> attributeMap =
+      final Map<String, Binary> attributeMap =
           fetchedDeviceSchema.get(
               convertIdValuesToDeviceID(
                   schemaValidation.getTableName(), (String[]) deviceIdList.get(index)));
@@ -175,12 +176,12 @@ public class TableDeviceSchemaValidator {
       final List<Object[]> attributeValueList,
       final ValidateResult result,
       final int index,
-      final Map<String, String> attributeMap) {
+      final Map<String, Binary> attributeMap) {
     final Object[] deviceAttributeValueList = attributeValueList.get(index);
     for (int j = 0, size = attributeKeyList.size(); j < size; j++) {
       if (deviceAttributeValueList[j] != null) {
         final String key = attributeKeyList.get(j);
-        final String value = attributeMap.get(key);
+        final Binary value = attributeMap.get(key);
 
         if (!deviceAttributeValueList[j].equals(value)) {
           result.attributeUpdateDeviceIndexList.add(index);

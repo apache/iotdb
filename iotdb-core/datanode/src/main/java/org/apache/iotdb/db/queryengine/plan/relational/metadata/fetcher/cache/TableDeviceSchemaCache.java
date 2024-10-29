@@ -37,6 +37,7 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -119,7 +120,7 @@ public class TableDeviceSchemaCache {
   /////////////////////////////// Attribute ///////////////////////////////
 
   // The input deviceId shall have its tailing nulls trimmed
-  public Map<String, String> getDeviceAttribute(final String database, final IDeviceID deviceId) {
+  public Map<String, Binary> getDeviceAttribute(final String database, final IDeviceID deviceId) {
     readWriteLock.readLock().lock();
     try {
       final TableDeviceCacheEntry entry =
@@ -132,7 +133,7 @@ public class TableDeviceSchemaCache {
 
   // The input deviceId shall have its tailing nulls trimmed
   public void putAttributes(
-      final String database, final IDeviceID deviceId, final Map<String, String> attributeMap) {
+      final String database, final IDeviceID deviceId, final Map<String, Binary> attributeMap) {
     readWriteLock.readLock().lock();
     try {
       // Avoid stale table
@@ -152,7 +153,7 @@ public class TableDeviceSchemaCache {
   }
 
   public void updateAttributes(
-      final String database, final IDeviceID deviceId, final Map<String, String> attributeMap) {
+      final String database, final IDeviceID deviceId, final Map<String, Binary> attributeMap) {
     dualKeyCache.update(
         new TableId(database, deviceId.getTableName()),
         deviceId,

@@ -23,18 +23,19 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 
+import org.apache.tsfile.utils.Binary;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
-import java.util.function.UnaryOperator;
 
 public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchemaInfo {
   private Boolean isAligned;
   private int templateId;
 
-  private Function<String, String> attributeProvider;
+  private Function<String, Binary> attributeProvider;
 
   private String[] rawNodes = null;
 
@@ -60,12 +61,12 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
     return templateId;
   }
 
-  public void setAttributeProvider(final UnaryOperator<String> attributeProvider) {
+  public void setAttributeProvider(final Function<String, Binary> attributeProvider) {
     this.attributeProvider = attributeProvider;
   }
 
   @Override
-  public String getAttributeValue(final String attributeKey) {
+  public Binary getAttributeValue(final String attributeKey) {
     return attributeProvider.apply(attributeKey);
   }
 
@@ -83,7 +84,7 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
     final ShowDevicesResult result =
         new ShowDevicesResult(
             entry.getDeviceID().toString(), null, -1, (String[]) entry.getDeviceID().getSegments());
-    final Map<String, String> attributeProviderMap = new HashMap<>();
+    final Map<String, Binary> attributeProviderMap = new HashMap<>();
     for (int i = 0; i < attributeColumns.size(); ++i) {
       attributeProviderMap.put(attributeColumns.get(i), entry.getAttributeColumnValues().get(i));
     }

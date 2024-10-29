@@ -25,6 +25,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -47,9 +48,9 @@ public class DeviceEntry implements Accountable {
       RamUsageEstimator.shallowSizeOfInstance(DeviceEntry.class);
 
   private final IDeviceID deviceID;
-  private final List<String> attributeColumnValues;
+  private final List<Binary> attributeColumnValues;
 
-  public DeviceEntry(final IDeviceID deviceID, final List<String> attributeColumnValues) {
+  public DeviceEntry(final IDeviceID deviceID, final List<Binary> attributeColumnValues) {
     this.deviceID = deviceID;
     this.attributeColumnValues = attributeColumnValues;
   }
@@ -64,14 +65,14 @@ public class DeviceEntry implements Accountable {
     return segmentIndex < deviceID.segmentNum() ? deviceID.segment(segmentIndex) : null;
   }
 
-  public List<String> getAttributeColumnValues() {
+  public List<Binary> getAttributeColumnValues() {
     return attributeColumnValues;
   }
 
   public void serialize(final ByteBuffer byteBuffer) {
     deviceID.serialize(byteBuffer);
     ReadWriteIOUtils.write(attributeColumnValues.size(), byteBuffer);
-    for (final String value : attributeColumnValues) {
+    for (final Binary value : attributeColumnValues) {
       ReadWriteIOUtils.write(value, byteBuffer);
     }
   }
@@ -79,7 +80,7 @@ public class DeviceEntry implements Accountable {
   public void serialize(final DataOutputStream stream) throws IOException {
     deviceID.serialize(stream);
     ReadWriteIOUtils.write(attributeColumnValues.size(), stream);
-    for (final String value : attributeColumnValues) {
+    for (final Binary value : attributeColumnValues) {
       ReadWriteIOUtils.write(value, stream);
     }
   }
@@ -87,9 +88,9 @@ public class DeviceEntry implements Accountable {
   public static DeviceEntry deserialize(final ByteBuffer byteBuffer) {
     final IDeviceID iDeviceID = StringArrayDeviceID.deserialize(byteBuffer);
     int size = ReadWriteIOUtils.readInt(byteBuffer);
-    final List<String> attributeColumnValues = new ArrayList<>(size);
+    final List<Binary> attributeColumnValues = new ArrayList<>(size);
     while (size-- > 0) {
-      attributeColumnValues.add(ReadWriteIOUtils.readString(byteBuffer));
+      attributeColumnValues.add(ReadWriteIOUtils.readBinary(byteBuffer));
     }
     return new DeviceEntry(iDeviceID, attributeColumnValues);
   }
