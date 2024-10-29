@@ -118,13 +118,13 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
     clientManager =
         constructClient(
             nodeUrls,
-            username,
-            password,
             useSSL,
             trustStorePath,
             trustStorePwd,
             useLeaderCache,
             loadBalanceStrategy,
+            username,
+            password,
             shouldReceiverConvertOnTypeMismatch,
             loadTsFileStrategy);
   }
