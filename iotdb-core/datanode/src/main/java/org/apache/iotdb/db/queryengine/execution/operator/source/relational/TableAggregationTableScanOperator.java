@@ -456,7 +456,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
                     .getNthSegment(columnsIndexArray[columnIdx] + 1);
         return getIdOrAttrColumn(
             inputRegion.getTimeColumn().getPositionCount(),
-            new Binary(id, TSFileConfig.STRING_CHARSET));
+            id == null ? null : new Binary(id, TSFileConfig.STRING_CHARSET));
       case ATTRIBUTE:
         Binary attr =
             deviceEntries
@@ -517,14 +517,13 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
         return timeStatistics;
       case ID:
         // TODO avoid create deviceStatics multi times; count, sum can use time statistics
-        Binary id =
-            new Binary(
-                (String)
-                    deviceEntries
-                        .get(currentDeviceIndex)
-                        .getNthSegment(columnsIndexArray[columnIdx] + 1),
-                TSFileConfig.STRING_CHARSET);
-        return getStatistics(timeStatistics, id);
+        String id =
+            (String)
+                deviceEntries
+                    .get(currentDeviceIndex)
+                    .getNthSegment(columnsIndexArray[columnIdx] + 1);
+        return getStatistics(
+            timeStatistics, id == null ? null : new Binary(id, TSFileConfig.STRING_CHARSET));
       case ATTRIBUTE:
         Binary attr =
             deviceEntries
