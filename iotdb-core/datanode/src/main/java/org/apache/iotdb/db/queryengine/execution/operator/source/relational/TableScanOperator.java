@@ -205,11 +205,14 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
       switch (columnSchemas.get(i).getColumnCategory()) {
         case ID:
           // +1 for skip the table name segment
-          Binary idColumnValue =
-              new Binary(
-                  ((String) currentDeviceEntry.getNthSegment(columnsIndexArray[i] + 1)),
-                  TSFileConfig.STRING_CHARSET);
-          valueColumns[i] = getIdOrAttributeValueColumn(idColumnValue, positionCount);
+          String idColumnValue =
+              ((String) currentDeviceEntry.getNthSegment(columnsIndexArray[i] + 1));
+          valueColumns[i] =
+              getIdOrAttributeValueColumn(
+                  idColumnValue == null
+                      ? null
+                      : new Binary(idColumnValue, TSFileConfig.STRING_CHARSET),
+                  positionCount);
           break;
         case ATTRIBUTE:
           Binary attributeColumnValue =
