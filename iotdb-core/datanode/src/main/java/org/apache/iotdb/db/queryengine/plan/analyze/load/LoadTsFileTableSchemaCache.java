@@ -245,8 +245,7 @@ public class LoadTsFileTableSchemaCache {
 
   public void createTable(TableSchema fileSchema, MPPQueryContext context, Metadata metadata)
       throws VerifyMetadataException {
-    final TableSchema realSchema;
-    realSchema =
+    final TableSchema realSchema =
         metadata.validateTableHeaderSchema(database, fileSchema, context, true).orElse(null);
     if (Objects.isNull(realSchema)) {
       throw new VerifyMetadataException(
