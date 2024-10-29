@@ -104,7 +104,7 @@ public class PipeMemoryManager {
       throw new PipeRuntimeOutOfMemoryCriticalException(
           String.format(
               "forceAllocateForTablet: failed to allocate because there's too much memory for tablets, "
-                  + "total memory size %d bytes, used memory for tablet size %d bytes,",
+                  + "total memory size %d bytes, used memory for tablet size %d bytes",
               TOTAL_MEMORY_SIZE_IN_BYTES, usedMemorySizeInBytesOfTablets));
     }
 
@@ -141,7 +141,7 @@ public class PipeMemoryManager {
       throw new PipeRuntimeOutOfMemoryCriticalException(
           String.format(
               "forceAllocateForTsFile: failed to allocate because there's too much memory for tsfiles, "
-                  + "total memory size %d bytes, used memory for tsfile size %d bytes,",
+                  + "total memory size %d bytes, used memory for tsfile size %d bytes",
               TOTAL_MEMORY_SIZE_IN_BYTES, usedMemorySizeInBytesOfTsFiles));
     }
 
@@ -304,7 +304,7 @@ public class PipeMemoryManager {
         LOGGER.info(
             "tryAllocate: allocated memory, "
                 + "total memory size {} bytes, used memory size {} bytes, "
-                + "original requested memory size {} bytes,"
+                + "original requested memory size {} bytes, "
                 + "actual requested memory size {} bytes",
             TOTAL_MEMORY_SIZE_IN_BYTES,
             usedMemorySizeInBytes,
@@ -323,7 +323,7 @@ public class PipeMemoryManager {
       LOGGER.info(
           "tryAllocate: allocated memory, "
               + "total memory size {} bytes, used memory size {} bytes, "
-              + "original requested memory size {} bytes,"
+              + "original requested memory size {} bytes, "
               + "actual requested memory size {} bytes",
           TOTAL_MEMORY_SIZE_IN_BYTES,
           usedMemorySizeInBytes,
