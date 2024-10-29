@@ -86,8 +86,7 @@ public class InsertTablet extends WrappedInsertStatement {
   public List<Object[]> getAttributeValueList() {
     final InsertTabletStatement insertTabletStatement = getInnerTreeStatement();
     List<Object[]> result = new ArrayList<>(insertTabletStatement.getRowCount());
-    Map<IDeviceID, Integer> attrIdxInResultList =
-        new HashMap<>(insertTabletStatement.getRowCount());
+    Map<IDeviceID, Integer> deviceId2IdxMap = new HashMap<>(insertTabletStatement.getRowCount());
     final List<Integer> attrColumnIndices = insertTabletStatement.getAttrColumnIndices();
     for (int rowIndex = 0; rowIndex < insertTabletStatement.getRowCount(); rowIndex++) {
       IDeviceID deviceID = insertTabletStatement.getTableDeviceID(rowIndex);
@@ -99,12 +98,12 @@ public class InsertTablet extends WrappedInsertStatement {
               ((Object[]) insertTabletStatement.getColumns()[columnIndex])[rowIndex];
         }
       }
-      if (attrIdxInResultList.containsKey(deviceID)) {
-        Integer idx = attrIdxInResultList.get(deviceID);
+      Integer idx = deviceId2IdxMap.get(deviceID);
+      if (idx != null) {
         result.set(idx, attrValues);
       } else {
         result.add(attrValues);
-        attrIdxInResultList.put(deviceID, result.size() - 1);
+        deviceId2IdxMap.put(deviceID, result.size() - 1);
       }
     }
     return result;
