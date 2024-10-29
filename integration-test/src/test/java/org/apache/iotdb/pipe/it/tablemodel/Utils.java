@@ -111,10 +111,6 @@ public class Utils {
           "CREATE TABLE "
               + table
               + "(id1 string id, s1 int64 measurement, s2 float measurement, s3 string measurement, s4 timestamp  measurement, s5 int32  measurement, s6 double  measurement, s7 date  measurement, s8 text  measurement )");
-      System.out.println(
-          "CREATE TABLE "
-              + table
-              + "(id1 string id, s1 int64 measurement, s2 float measurement, s3 string measurement, s4 timestamp  measurement, s5 int32  measurement, s6 double  measurement, s7 date  measurement, s8 text  measurement )");
     } catch (Exception e) {
       fail(e.getMessage());
     }

@@ -25,7 +25,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema;
+import org.apache.iotdb.itbase.category.MultiClusterIT2ManualCreateSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -39,7 +39,7 @@ import java.util.HashSet;
 import java.util.Map;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2AutoCreateSchema.class})
+@Category({MultiClusterIT2ManualCreateSchema.class})
 public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
 
   @Test
@@ -130,6 +130,8 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
       extractorAttributes.put("extractor.table-name", "test.*");
       extractorAttributes.put("extractor.inclusion", "data.insert");
       extractorAttributes.put("extractor.capture.table", "true");
+      extractorAttributes.put("extractor.start-time", "0");
+      extractorAttributes.put("extractor.end-time", "49");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -147,8 +149,8 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      Utils.assertData("test", "test", 0, 100, receiverEnv);
-      Utils.assertData("test1", "test1", 0, 100, receiverEnv);
+      Utils.assertData("test", "test", 0, 50, receiverEnv);
+      Utils.assertData("test1", "test1", 0, 50, receiverEnv);
       HashSet<String> expectedResults = new HashSet();
       expectedResults.add("test,1,1,604800000,");
       expectedResults.add("test1,1,1,604800000,");
@@ -184,6 +186,8 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
       extractorAttributes.put("extractor.table-name", "test.*");
       extractorAttributes.put("extractor.inclusion", "data.insert");
       extractorAttributes.put("extractor.capture.table", "true");
+      extractorAttributes.put("extractor.start-time", "100");
+      extractorAttributes.put("extractor.end-time", "149");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -205,8 +209,8 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
       Utils.insertData("pattern", "pattern", 100, 200, senderEnv);
       Utils.insertData("pattern1", "pattern1", 100, 200, senderEnv);
 
-      Utils.assertData("test", "test", 100, 200, receiverEnv);
-      Utils.assertData("test1", "test1", 100, 200, receiverEnv);
+      Utils.assertData("test", "test", 100, 150, receiverEnv);
+      Utils.assertData("test1", "test1", 100, 150, receiverEnv);
       HashSet<String> expectedResults = new HashSet();
       expectedResults.add("test,1,1,604800000,");
       expectedResults.add("test1,1,1,604800000,");

@@ -26,7 +26,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema;
+import org.apache.iotdb.itbase.category.MultiClusterIT2ManualCreateSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -40,7 +40,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2AutoCreateSchema.class})
+@Category({MultiClusterIT2ManualCreateSchema.class})
 public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelTestIT {
 
   @Before
@@ -99,7 +99,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelTestIT {
       // Generate TsFile
       Utils.createDataBaseAndTable(senderEnv, "test", "test");
       Utils.insertData("test", "test", 0, 100, senderEnv);
-      Utils.deleteData("test","test",50,100,senderEnv);
+      Utils.deleteData("test", "test", 50, 100, senderEnv);
 
       TSStatus status =
           client.createPipe(
