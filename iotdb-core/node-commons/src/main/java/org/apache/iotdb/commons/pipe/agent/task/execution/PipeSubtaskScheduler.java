@@ -21,7 +21,12 @@ package org.apache.iotdb.commons.pipe.agent.task.execution;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class PipeSubtaskScheduler {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeSubtaskScheduler.class);
 
   private final PipeSubtaskExecutor executor;
 
@@ -81,6 +86,11 @@ public class PipeSubtaskScheduler {
             (long)
                 (((float) BASIC_CHECKPOINT_INTERVAL_BY_TIME_DURATION / runningSubtaskNumber)
                     * corePoolSize));
+    LOGGER.info("Core pool size: {}", corePoolSize);
+    LOGGER.info("Running Subtask number: {}", runningSubtaskNumber);
+    LOGGER.info(
+        "Consumed event count checkpoint interval: {}", consumedEventCountCheckpointInterval);
+    LOGGER.info("Time duration checkpoint interval: {}", timeDurationCheckpointInterval);
   }
 
   public void reset() {
