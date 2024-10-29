@@ -112,6 +112,11 @@ public class PipeMemoryManager {
     }
   }
 
+  public boolean isEnough4TabletParsing() {
+    return (double) usedMemorySizeInBytesOfTablets / TOTAL_MEMORY_SIZE_IN_BYTES
+        < TABLET_MEMORY_REJECT_THRESHOLD * 0.8;
+  }
+
   private PipeMemoryBlock forceAllocate(long sizeInBytes, boolean isForTablet)
       throws PipeRuntimeOutOfMemoryCriticalException {
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {

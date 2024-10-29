@@ -294,6 +294,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeMemoryExpanderIntervalSeconds();
   }
 
+  public long getPipeTsFileParserCheckMemoryEnoughIntervalMs() {
+    return COMMON_CONFIG.getPipeTsFileParserCheckMemoryEnoughIntervalMs();
+  }
+
   /////////////////////////////// TwoStage ///////////////////////////////
 
   public long getTwoStageAggregateMaxCombinerLiveTimeInMs() {
