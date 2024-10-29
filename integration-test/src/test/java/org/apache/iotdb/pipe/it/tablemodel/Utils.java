@@ -25,11 +25,15 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.RpcUtils;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.Statement;
 import java.text.SimpleDateFormat;
@@ -41,6 +45,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 
 import static org.junit.Assert.fail;
@@ -143,6 +148,65 @@ public class Utils {
     return expectedResSet;
   }
 
+  public static Set<String> generateExpectedResults(Tablet tablet) {
+    Set<String> expectedResSet = new HashSet<>();
+    List<IMeasurementSchema> schemas = tablet.getSchemas();
+    for (int i = 0; i < tablet.rowSize; i++) {
+      StringBuilder stringBuffer = new StringBuilder();
+      for (int j = 0; j < tablet.getSchemas().size(); j++) {
+        BitMap bitMap = tablet.bitMaps[j];
+        if (bitMap.isMarked(i)) {
+          stringBuffer.append("null,");
+          continue;
+        }
+        switch (schemas.get(j).getType()) {
+          case TIMESTAMP:
+            final String time =
+                RpcUtils.formatDatetime(
+                    "default", "ms", ((long[]) tablet.values[j])[i], ZoneOffset.UTC);
+            stringBuffer.append(time);
+            stringBuffer.append(",");
+            break;
+          case DATE:
+            stringBuffer.append(((LocalDate[]) tablet.values[j])[i].toString());
+            stringBuffer.append(",");
+            break;
+          case BLOB:
+            stringBuffer.append(
+                BytesUtils.parseBlobByteArrayToString(
+                    ((Binary[]) tablet.values[j])[i].getValues()));
+            stringBuffer.append(",");
+            break;
+          case TEXT:
+          case STRING:
+            stringBuffer.append(
+                new String(((Binary[]) tablet.values[j])[i].getValues(), StandardCharsets.UTF_8));
+            stringBuffer.append(",");
+            break;
+          case DOUBLE:
+            stringBuffer.append(((double[]) tablet.values[j])[i]);
+            stringBuffer.append(",");
+            break;
+          case FLOAT:
+            stringBuffer.append(((float[]) tablet.values[j])[i]);
+            stringBuffer.append(",");
+          case INT32:
+            stringBuffer.append(((int[]) tablet.values[j])[i]);
+            stringBuffer.append(",");
+          case INT64:
+            stringBuffer.append(((long[]) tablet.values[j])[i]);
+            stringBuffer.append(",");
+        }
+      }
+      String time = RpcUtils.formatDatetime("default", "ms", tablet.timestamps[i], ZoneOffset.UTC);
+      stringBuffer.append(time);
+      stringBuffer.append(",");
+      expectedResSet.add(stringBuffer.toString());
+    }
+
+    return expectedResSet;
+  }
+
   public static String generateHeaderResults() {
     return "id1,s3,s2,s1,s4,s5,s6,s7,s8,time,";
   }
@@ -163,6 +227,16 @@ public class Utils {
         Utils.generateHeaderResults(),
         Utils.generateExpectedResults(start, end),
         database);
+  }
+
+  public static void assertData(
+          String database, String table, Tablet tablet, BaseEnv baseEnv) {
+    TestUtils.assertDataEventuallyOnEnv(
+            baseEnv,
+            Utils.getQuerySql(table),
+            Utils.generateHeaderResults(),
+            Utils.generateExpectedResults(tablet),
+            database);
   }
 
   public static void assertCountData(String database, String table, int count, BaseEnv baseEnv) {
@@ -191,8 +265,7 @@ public class Utils {
     }
   }
 
-  // s2 float, s3 string, s4 timestamp, s5 int32, s6 double, s7 date, s8 text
-  public static Tablet createTablet(String tableName, int start, int end) {
+  public static Tablet createTablet(String tableName, int start, int end, boolean allowNullValue) {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
@@ -216,14 +289,24 @@ public class Utils {
             Tablet.ColumnType.MEASUREMENT,
             Tablet.ColumnType.MEASUREMENT);
     Tablet tablet = new Tablet(tableName, schemaList, columnTypes, end - start);
-    long timestamp = 0;
+    tablet.initBitMaps();
+    Random random = new Random();
 
-    for (long row = 0; row < 15; row++) {
+    // s2 float, s3 string, s4 timestamp, s5 int32, s6 double, s7 date, s8 text
+    for (long row = 0; row < start - end; row++) {
+      int randomNumber = allowNullValue ? random.nextInt(9) : 9;
+      long value = start + row;
       int rowIndex = tablet.rowSize++;
-      tablet.addTimestamp(rowIndex, timestamp + row);
-      tablet.addValue("id1", rowIndex, String.valueOf(row));
-      tablet.addValue("s1", rowIndex, row);
-      tablet.addValue("s2", rowIndex, row * 1.0);
+      tablet.addTimestamp(rowIndex, value);
+      tablet.addValue("id1", rowIndex, randomNumber == 0 ? null : String.valueOf(value));
+      tablet.addValue("s1", rowIndex, randomNumber == 1 ? null : value);
+      tablet.addValue("s2", rowIndex, randomNumber == 2 ? null : value * 1.0);
+      tablet.addValue("s3", rowIndex, randomNumber == 3 ? null : String.valueOf(value));
+      tablet.addValue("s4", rowIndex, randomNumber == 4 ? null : value);
+      tablet.addValue("s5", rowIndex, randomNumber == 5 ? null : (int) value);
+      tablet.addValue("s6", rowIndex, randomNumber == 6 ? null : value * 0.1);
+      tablet.addValue("s7", rowIndex, randomNumber == 7 ? null : getDate((int) value));
+      tablet.addValue("s7", rowIndex, randomNumber == 8 ? null : String.valueOf(value));
     }
 
     return tablet;
