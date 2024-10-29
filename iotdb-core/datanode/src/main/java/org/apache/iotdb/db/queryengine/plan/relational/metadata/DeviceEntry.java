@@ -27,7 +27,6 @@ import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -35,6 +34,10 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+
+import static org.apache.tsfile.utils.ReadWriteIOUtils.readBytes;
+import static org.apache.tsfile.utils.ReadWriteIOUtils.readInt;
+import static org.apache.tsfile.utils.ReadWriteIOUtils.write;
 
 /**
  * The {@link DeviceEntry} shall have {@code null} suffix in its {@link IDeviceID}, e.g. "a.b.null".
@@ -71,28 +74,54 @@ public class DeviceEntry implements Accountable {
 
   public void serialize(final ByteBuffer byteBuffer) {
     deviceID.serialize(byteBuffer);
-    ReadWriteIOUtils.write(attributeColumnValues.size(), byteBuffer);
+    write(attributeColumnValues.size(), byteBuffer);
     for (final Binary value : attributeColumnValues) {
-      ReadWriteIOUtils.write(value, byteBuffer);
+      serializeBinary(byteBuffer, value);
     }
   }
 
   public void serialize(final DataOutputStream stream) throws IOException {
     deviceID.serialize(stream);
-    ReadWriteIOUtils.write(attributeColumnValues.size(), stream);
+    write(attributeColumnValues.size(), stream);
     for (final Binary value : attributeColumnValues) {
-      ReadWriteIOUtils.write(value, stream);
+      serializeBinary(stream, value);
     }
   }
 
   public static DeviceEntry deserialize(final ByteBuffer byteBuffer) {
     final IDeviceID iDeviceID = StringArrayDeviceID.deserialize(byteBuffer);
-    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    int size = readInt(byteBuffer);
     final List<Binary> attributeColumnValues = new ArrayList<>(size);
     while (size-- > 0) {
-      attributeColumnValues.add(ReadWriteIOUtils.readBinary(byteBuffer));
+      attributeColumnValues.add(deserializeBinary(byteBuffer));
     }
     return new DeviceEntry(iDeviceID, attributeColumnValues);
+  }
+
+  public static void serializeBinary(final ByteBuffer byteBuffer, final Binary binary) {
+    if (binary == null) {
+      write(-1, byteBuffer);
+      return;
+    }
+    write(binary, byteBuffer);
+  }
+
+  public static void serializeBinary(final DataOutputStream outputStream, final Binary binary)
+      throws IOException {
+    if (binary == null) {
+      write(-1, outputStream);
+      return;
+    }
+    write(binary, outputStream);
+  }
+
+  public static Binary deserializeBinary(final ByteBuffer byteBuffer) {
+    int length = readInt(byteBuffer);
+    if (length <= 0) {
+      return null;
+    }
+    byte[] bytes = readBytes(byteBuffer, length);
+    return new Binary(bytes);
   }
 
   @Override
