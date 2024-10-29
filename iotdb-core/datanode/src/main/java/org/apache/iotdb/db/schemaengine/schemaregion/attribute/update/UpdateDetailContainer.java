@@ -52,8 +52,9 @@ public class UpdateDetailContainer implements UpdateContainer {
   static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(UpdateClearContainer.class) + MAP_SIZE;
 
-  // <@Nonnull TableName, <deviceId(@Nullable deviceNodes), <@Nonnull attributeKey, @Nullable
+  // <@Nonnull TableName, <deviceId(@Nullable deviceNodes), <@Nonnull attributeKey, @Nonnull
   // attributeValue>>>
+  // If the attribute value is updated to null, the stored value is Binary.EMPTY_VALUE
   private final ConcurrentMap<String, ConcurrentMap<List<String>, ConcurrentMap<String, Binary>>>
       updateMap = new ConcurrentHashMap<>();
 
@@ -98,7 +99,9 @@ public class UpdateDetailContainer implements UpdateContainer {
                               RamUsageEstimator.sizeOf(k)
                                   + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY);
                         }
-                        result.addAndGet(sizeOf(updateAttribute.getValue()) - sizeOf(v));
+                        result.addAndGet(
+                            sizeOf(updateAttribute.getValue())
+                                - (Objects.nonNull(v) ? sizeOf(v) : 0));
                         return updateAttribute.getValue();
                       });
                 }

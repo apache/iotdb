@@ -45,7 +45,7 @@ public class TableAttributeSchema implements IDeviceSchema {
     final AtomicInteger diff = new AtomicInteger(0);
     updateMap.forEach(
         (k, v) -> {
-          if (Objects.nonNull(v)) {
+          if (v != Binary.EMPTY_VALUE) {
             if (!attributeMap.containsKey(k)) {
               k = DataNodeTableCache.getInstance().tryGetInternColumnName(database, tableName, k);
             }
