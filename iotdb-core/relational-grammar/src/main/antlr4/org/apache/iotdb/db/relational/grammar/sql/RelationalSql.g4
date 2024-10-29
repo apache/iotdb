@@ -112,6 +112,10 @@ statement
     | killQueryStatement
     | loadConfigurationStatement
     | setConfigurationStatement
+    | showCurrentSqlDialectStatement
+    | showCurrentUserStatement
+    | showCurrentDatabaseStatement
+    | showCurrentTimestampStatement
 
     // auth Statement
 
@@ -398,7 +402,7 @@ showAINodesStatement
     ;
 
 showClusterIdStatement
-    : SHOW CLUSTERID
+    : SHOW (CLUSTERID | CLUSTER_ID)
     ;
 
 showRegionIdStatement
@@ -478,6 +482,23 @@ clearCacheOptions
 localOrClusterMode
     : (ON (LOCAL | CLUSTER))
     ;
+
+showCurrentSqlDialectStatement
+    : SHOW CURRENT_SQL_DIALECT
+    ;
+
+showCurrentUserStatement
+    : SHOW CURRENT_USER
+    ;
+
+showCurrentDatabaseStatement
+    : SHOW CURRENT_DATABASE
+    ;
+
+showCurrentTimestampStatement
+    : SHOW CURRENT_TIMESTAMP
+    ;
+
 
 
 
@@ -934,6 +955,7 @@ CHARSET: 'CHARSET';
 CLEAR: 'CLEAR';
 CLUSTER: 'CLUSTER';
 CLUSTERID: 'CLUSTERID';
+CLUSTER_ID: 'CLUSTER_ID';
 COLUMN: 'COLUMN';
 COLUMNS: 'COLUMNS';
 COMMENT: 'COMMENT';
@@ -958,6 +980,7 @@ CURRENT_DATE: 'CURRENT_DATE';
 CURRENT_PATH: 'CURRENT_PATH';
 CURRENT_ROLE: 'CURRENT_ROLE';
 CURRENT_SCHEMA: 'CURRENT_SCHEMA';
+CURRENT_SQL_DIALECT: 'CURRENT_SQL_DIALECT';
 CURRENT_TIME: 'CURRENT_TIME';
 CURRENT_TIMESTAMP: 'CURRENT_TIMESTAMP';
 CURRENT_USER: 'CURRENT_USER';
