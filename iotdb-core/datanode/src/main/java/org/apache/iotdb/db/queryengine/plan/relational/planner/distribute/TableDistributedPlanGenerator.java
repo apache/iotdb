@@ -941,7 +941,7 @@ public class TableDistributedPlanGenerator
       }
 
       final List<PlanNode> res = new ArrayList<>();
-      TRegionReplicaSet mostUsedDataRegion = null;
+      TRegionReplicaSet mostUsedSchemaRegion = null;
       int maxDeviceEntrySizeOfTableScan = 0;
       for (final Map.Entry<TRegionReplicaSet, TableDeviceFetchNode> entry :
           tableDeviceFetchMap.entrySet()) {
@@ -950,11 +950,11 @@ public class TableDistributedPlanGenerator
         res.add(subTableDeviceFetchNode);
 
         if (subTableDeviceFetchNode.getDeviceIdList().size() > maxDeviceEntrySizeOfTableScan) {
-          mostUsedDataRegion = regionReplicaSet;
+          mostUsedSchemaRegion = regionReplicaSet;
           maxDeviceEntrySizeOfTableScan = subTableDeviceFetchNode.getDeviceIdList().size();
         }
       }
-      context.mostUsedRegion = mostUsedDataRegion;
+      context.mostUsedRegion = mostUsedSchemaRegion;
       return res;
     }
   }
