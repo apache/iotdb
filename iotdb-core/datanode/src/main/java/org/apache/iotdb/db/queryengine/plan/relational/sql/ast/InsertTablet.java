@@ -27,16 +27,20 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class InsertTablet extends WrappedInsertStatement {
 
+  private Map<IDeviceID, Integer> deviceID2LastIdxMap = new LinkedHashMap<>();
+
   public InsertTablet(InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
     super(insertTabletStatement, context);
+    for (int i = 0; i < insertTabletStatement.getRowCount(); i++) {
+      IDeviceID deviceID = insertTabletStatement.getTableDeviceID(i);
+      deviceID2LastIdxMap.putIfAbsent(deviceID, i);
+    }
   }
 
   @Override
@@ -62,14 +66,7 @@ public class InsertTablet extends WrappedInsertStatement {
   @Override
   public List<Object[]> getDeviceIdList() {
     List<Object[]> deviceIdList = new ArrayList<>();
-    final InsertTabletStatement insertTabletStatement = getInnerTreeStatement();
-    Set<IDeviceID> deviceIDSet = new HashSet<>(insertTabletStatement.getRowCount());
-    for (int i = 0; i < insertTabletStatement.getRowCount(); i++) {
-      IDeviceID deviceID = insertTabletStatement.getTableDeviceID(i);
-      if (deviceIDSet.contains(deviceID)) {
-        continue;
-      }
-      deviceIDSet.add(deviceID);
+    for (IDeviceID deviceID : deviceID2LastIdxMap.keySet()) {
       Object[] segments = deviceID.getSegments();
       deviceIdList.add(Arrays.copyOfRange(segments, 1, segments.length));
     }
@@ -86,10 +83,8 @@ public class InsertTablet extends WrappedInsertStatement {
   public List<Object[]> getAttributeValueList() {
     final InsertTabletStatement insertTabletStatement = getInnerTreeStatement();
     List<Object[]> result = new ArrayList<>(insertTabletStatement.getRowCount());
-    Map<IDeviceID, Integer> deviceId2IdxMap = new HashMap<>(insertTabletStatement.getRowCount());
     final List<Integer> attrColumnIndices = insertTabletStatement.getAttrColumnIndices();
-    for (int rowIndex = 0; rowIndex < insertTabletStatement.getRowCount(); rowIndex++) {
-      IDeviceID deviceID = insertTabletStatement.getTableDeviceID(rowIndex);
+    for (Integer rowIndex : deviceID2LastIdxMap.values()) {
       Object[] attrValues = new Object[attrColumnIndices.size()];
       for (int attrColNum = 0; attrColNum < attrColumnIndices.size(); attrColNum++) {
         final int columnIndex = attrColumnIndices.get(attrColNum);
@@ -98,13 +93,7 @@ public class InsertTablet extends WrappedInsertStatement {
               ((Object[]) insertTabletStatement.getColumns()[columnIndex])[rowIndex];
         }
       }
-      Integer idx = deviceId2IdxMap.get(deviceID);
-      if (idx != null) {
-        result.set(idx, attrValues);
-      } else {
-        result.add(attrValues);
-        deviceId2IdxMap.put(deviceID, result.size() - 1);
-      }
+      result.add(attrValues);
     }
     return result;
   }
