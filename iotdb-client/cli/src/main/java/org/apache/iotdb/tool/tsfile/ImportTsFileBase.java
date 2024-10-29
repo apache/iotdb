@@ -38,7 +38,7 @@ public abstract class ImportTsFileBase implements Runnable {
   private static final LongAdder loadFileFailedNum = new LongAdder();
   private static final LongAdder processingLoadSuccessfulFileSuccessfulNum = new LongAdder();
   private static final LongAdder processingLoadFailedFileSuccessfulNum = new LongAdder();
-
+  private static String timePrecision = "ms";
   private static String successDir;
   private static ImportTsFile.Operation successOperation;
   private static String failDir;
@@ -239,5 +239,13 @@ public abstract class ImportTsFileBase implements Runnable {
     ImportTsFileBase.successOperation = successOperation;
     ImportTsFileBase.failDir = failDir;
     ImportTsFileBase.failOperation = failOperation;
+  }
+
+  protected void setTimePrecision(String timePrecision) {
+    this.timePrecision = timePrecision;
+  }
+
+  protected String getTimePrecision() {
+    return timePrecision;
   }
 }

@@ -23,7 +23,6 @@ import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferHandshakeConstant;
@@ -72,7 +71,8 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
   private static String host;
   private static String port;
 
-  public ImportTsFileRemotely() {
+  public ImportTsFileRemotely(String timePrecision) {
+    setTimePrecision(timePrecision);
     initClient();
     sendHandshake();
   }
@@ -152,8 +152,7 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
                 client.getIpAddress(), client.getPort(), resp.getStatus()));
         resp =
             client.pipeTransfer(
-                PipeTransferDataNodeHandshakeV1Req.toTPipeTransferReq(
-                    CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
+                PipeTransferDataNodeHandshakeV1Req.toTPipeTransferReq(getTimePrecision()));
       }
 
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -178,9 +177,7 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
 
   private Map<String, String> constructParamsMap() {
     final Map<String, String> params = new HashMap<>();
-    params.put(
-        PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION,
-        CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION, getTimePrecision());
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID, getClusterId());
     params.put(
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_CONVERT_ON_TYPE_MISMATCH,

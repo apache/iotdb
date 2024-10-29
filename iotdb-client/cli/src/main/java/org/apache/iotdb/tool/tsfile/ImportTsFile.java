@@ -404,7 +404,10 @@ public class ImportTsFile extends AbstractTsFileTool {
     final List<Thread> list = new ArrayList<>(threadNum);
     for (int i = 0; i < threadNum; i++) {
       final Thread thread =
-          new Thread(isRemoteLoad ? new ImportTsFileRemotely() : new ImportTsFileLocally());
+          new Thread(
+              isRemoteLoad
+                  ? new ImportTsFileRemotely(timestampPrecision)
+                  : new ImportTsFileLocally());
       thread.start();
       list.add(thread);
     }
