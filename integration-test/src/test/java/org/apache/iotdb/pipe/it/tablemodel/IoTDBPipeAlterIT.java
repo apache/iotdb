@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.pipe_table;
+package org.apache.iotdb.pipe.it.tablemodel;
 
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;

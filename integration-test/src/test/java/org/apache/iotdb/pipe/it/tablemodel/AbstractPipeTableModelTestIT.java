@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.pipe_table;
+package org.apache.iotdb.pipe.it.tablemodel;
 
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.MultiEnvFactory;

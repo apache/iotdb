@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.pipe_table;
+package org.apache.iotdb.pipe.it.tablemodel;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
@@ -65,7 +65,6 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
-      //      extractorAttributes.put("extractor.database-name", "test.*");
       extractorAttributes.put("extractor.table-name", "test.*");
       extractorAttributes.put("extractor.inclusion", "data.insert");
       extractorAttributes.put("extractor.capture.table", "true");
@@ -290,7 +289,7 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
     final int receiverPort = receiverDataNode.getPort();
 
     try (final SyncConfigNodeIServiceClient client =
-                 (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       Utils.createDataBaseAndTable(senderEnv, "test", "test");
       Utils.createDataBaseAndTable(senderEnv, "test1", "test1");
@@ -316,15 +315,15 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
       final TSStatus status =
-              client.createPipe(
-                      new TCreatePipeReq("p1", connectorAttributes)
-                              .setExtractorAttributes(extractorAttributes)
-                              .setProcessorAttributes(processorAttributes));
+          client.createPipe(
+              new TCreatePipeReq("p1", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
       Assert.assertEquals(
-              TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
       Utils.assertData("pattern", "pattern", 0, 100, receiverEnv);
       Utils.assertData("pattern1", "pattern1", 0, 100, receiverEnv);
 
@@ -332,11 +331,11 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
       expectedResults.add("pattern,1,1,604800000,");
       expectedResults.add("pattern1,1,1,604800000,");
       TestUtils.assertDataEventuallyOnEnv(
-              receiverEnv,
-              "show databases",
-              "Database,SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
-              expectedResults,
-              null);
+          receiverEnv,
+          "show databases",
+          "Database,SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
+          expectedResults,
+          null);
     }
   }
 
@@ -348,7 +347,7 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
     final int receiverPort = receiverDataNode.getPort();
 
     try (final SyncConfigNodeIServiceClient client =
-                 (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       Utils.createDataBaseAndTable(senderEnv, "test", "test");
       Utils.createDataBaseAndTable(senderEnv, "test1", "test1");
@@ -369,21 +368,20 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
       final TSStatus status =
-              client.createPipe(
-                      new TCreatePipeReq("p1", connectorAttributes)
-                              .setExtractorAttributes(extractorAttributes)
-                              .setProcessorAttributes(processorAttributes));
+          client.createPipe(
+              new TCreatePipeReq("p1", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
       Assert.assertEquals(
-              TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
       Utils.insertData("pattern", "pattern", 0, 100, senderEnv);
       Utils.insertData("pattern1", "pattern1", 0, 100, senderEnv);
       Utils.insertData("test", "test", 0, 100, senderEnv);
       Utils.insertData("test1", "test1", 0, 100, senderEnv);
-
 
       Utils.assertData("pattern", "pattern", 0, 100, receiverEnv);
       Utils.assertData("pattern1", "pattern1", 0, 100, receiverEnv);
@@ -392,11 +390,11 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
       expectedResults.add("pattern,1,1,604800000,");
       expectedResults.add("pattern1,1,1,604800000,");
       TestUtils.assertDataEventuallyOnEnv(
-              receiverEnv,
-              "show databases",
-              "Database,SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
-              expectedResults,
-              null);
+          receiverEnv,
+          "show databases",
+          "Database,SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
+          expectedResults,
+          null);
     }
   }
 
