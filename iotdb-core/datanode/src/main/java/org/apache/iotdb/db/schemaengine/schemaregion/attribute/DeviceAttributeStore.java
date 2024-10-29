@@ -214,9 +214,16 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
     length += ReadWriteIOUtils.write(map.size(), stream);
     for (final Map.Entry<String, Binary> entry : map.entrySet()) {
       length += ReadWriteIOUtils.write(entry.getKey(), stream);
-      length += ReadWriteIOUtils.write(entry.getValue(), stream);
+      length += writeBinary(entry.getValue(), stream);
     }
     return length;
+  }
+
+  private static int writeBinary(final Binary binary, final OutputStream outputStream)
+      throws IOException {
+    return binary == Binary.EMPTY_VALUE
+        ? ReadWriteIOUtils.write(NO_BYTE_TO_READ, outputStream)
+        : ReadWriteIOUtils.write(binary, outputStream);
   }
 
   private void deserialize(final InputStream inputStream) throws IOException {
@@ -235,9 +242,18 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
     final Map<String, Binary> map =
         concurrent ? new ConcurrentHashMap<>(length) : new HashMap<>(length);
     for (int i = 0; i < length; i++) {
-      map.put(ReadWriteIOUtils.readString(inputStream), ReadWriteIOUtils.readBinary(inputStream));
+      map.put(ReadWriteIOUtils.readString(inputStream), readBinary(inputStream));
     }
     return map;
+  }
+
+  private static Binary readBinary(final InputStream inputStream) throws IOException {
+    final int length = ReadWriteIOUtils.readInt(inputStream);
+    if (length == NO_BYTE_TO_READ) {
+      return Binary.EMPTY_VALUE;
+    }
+    byte[] bytes = ReadWriteIOUtils.readBytes(inputStream, length);
+    return new Binary(bytes);
   }
 
   private void requestMemory(final long size) {
