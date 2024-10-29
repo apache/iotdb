@@ -26,6 +26,7 @@ import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.query.executor.TableQueryExecutor;
 import org.apache.tsfile.read.reader.block.TsBlockReader;
+import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -34,6 +35,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+
+import static org.apache.tsfile.enums.TSDataType.DATE;
 
 public class TsFileInsertionEventTableParserTabletIterator implements Iterator<Tablet> {
 
@@ -116,7 +119,10 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
       final int rowIndex = tablet.rowSize;
       tablet.addTimestamp(rowIndex, timestamp);
       for (int i = 0, fieldSize = row.length - 1; i < fieldSize; i++) {
-        final Object value = row[i];
+        final Object value =
+            columnSchemas.get(i).getType() != DATE
+                ? row[i]
+                : DateUtils.parseIntToLocalDate((Integer) row[i]);
         tablet.addValue(columnNames.get(i), rowIndex, value);
         if (value != null && columnTypes.get(i) == Tablet.ColumnType.MEASUREMENT) {
           isAllNull = false;

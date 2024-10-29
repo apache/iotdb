@@ -149,17 +149,13 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
           reader.readFileMetadata().getTableSchemaMap().entrySet()) {
         final TableSchema fileSchema =
             TableSchema.fromTsFileTableSchema(name2Schema.getKey(), name2Schema.getValue());
-        final TableSchema realSchema;
-        // TODO: remove this synchronized block after the metadata is thread-safe
-        synchronized (metadata) {
-          realSchema =
-              metadata.validateTableHeaderSchema(database, fileSchema, context, true).orElse(null);
-          if (Objects.isNull(realSchema)) {
-            throw new VerifyMetadataException(
-                String.format(
-                    "Failed to validate schema for table {%s, %s}",
-                    name2Schema.getKey(), name2Schema.getValue()));
-          }
+        final TableSchema realSchema =
+            metadata.validateTableHeaderSchema(database, fileSchema, context, true).orElse(null);
+        if (Objects.isNull(realSchema)) {
+          throw new VerifyMetadataException(
+              String.format(
+                  "Failed to validate schema for table {%s, %s}",
+                  name2Schema.getKey(), name2Schema.getValue()));
         }
         tableIdColumnMapper.clear();
         verifyTableDataTypeAndGenerateIdColumnMapper(fileSchema, realSchema);

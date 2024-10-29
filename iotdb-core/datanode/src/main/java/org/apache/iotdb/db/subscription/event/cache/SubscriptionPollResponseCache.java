@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.subscription.event;
+package org.apache.iotdb.db.subscription.event.cache;
 
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
@@ -35,65 +35,66 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Optional;
 
-/** This class is used to cache {@link SubscriptionPollResponse} in {@link SubscriptionEvent}. */
-class SubscriptionEventBinaryCache {
+/**
+ * This class is used to control memory usage of cache {@link SubscriptionPollResponse} in {@link
+ * CachedSubscriptionPollResponse}.
+ */
+public class SubscriptionPollResponseCache {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionEventBinaryCache.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPollResponseCache.class);
 
   private final AtomicDouble memoryUsageCheatFactor = new AtomicDouble(1);
 
-  private final LoadingCache<SubscriptionPollResponse, ByteBuffer> cache;
+  private final LoadingCache<CachedSubscriptionPollResponse, ByteBuffer> cache;
 
-  ByteBuffer serialize(final SubscriptionPollResponse response) throws IOException {
+  public ByteBuffer serialize(final CachedSubscriptionPollResponse response) throws IOException {
     try {
       return this.cache.get(response);
     } catch (final Exception e) {
       LOGGER.warn(
-          "SubscriptionEventBinaryCache raised an exception while serializing SubscriptionPollResponse: {}",
+          "SubscriptionEventBinaryCache raised an exception while serializing CachedSubscriptionPollResponse: {}",
           response,
           e);
       throw new IOException(e);
     }
   }
 
-  Optional<ByteBuffer> trySerialize(final SubscriptionPollResponse response) {
+  public Optional<ByteBuffer> trySerialize(final CachedSubscriptionPollResponse response) {
     try {
       return Optional.of(serialize(response));
     } catch (final IOException e) {
       LOGGER.warn(
-          "Subscription: something unexpected happened when serializing SubscriptionPollResponse: {}",
+          "Subscription: something unexpected happened when serializing CachedSubscriptionPollResponse: {}",
           response,
           e);
       return Optional.empty();
     }
   }
 
-  void invalidate(final SubscriptionPollResponse response) {
+  public void invalidate(final CachedSubscriptionPollResponse response) {
     this.cache.invalidate(response);
-  }
-
-  void invalidateAll(final Iterable<SubscriptionPollResponse> responses) {
-    this.cache.invalidateAll(responses);
+    response.invalidateByteBuffer();
   }
 
   //////////////////////////// singleton ////////////////////////////
 
   private static class SubscriptionEventBinaryCacheHolder {
 
-    private static final SubscriptionEventBinaryCache INSTANCE = new SubscriptionEventBinaryCache();
+    private static final SubscriptionPollResponseCache INSTANCE =
+        new SubscriptionPollResponseCache();
 
     private SubscriptionEventBinaryCacheHolder() {
       // empty constructor
     }
   }
 
-  static SubscriptionEventBinaryCache getInstance() {
-    return SubscriptionEventBinaryCache.SubscriptionEventBinaryCacheHolder.INSTANCE;
+  public static SubscriptionPollResponseCache getInstance() {
+    return SubscriptionPollResponseCache.SubscriptionEventBinaryCacheHolder.INSTANCE;
   }
 
-  private SubscriptionEventBinaryCache() {
+  private SubscriptionPollResponseCache() {
     final long initMemorySizeInBytes =
-        PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes() / 20;
+        PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes() / 5;
     final long maxMemorySizeInBytes =
         (long)
             (PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes()
@@ -129,13 +130,13 @@ class SubscriptionEventBinaryCache {
         Caffeine.newBuilder()
             .maximumWeight(allocatedMemoryBlock.getMemoryUsageInBytes())
             .weigher(
-                (Weigher<SubscriptionPollResponse, ByteBuffer>)
+                (Weigher<CachedSubscriptionPollResponse, ByteBuffer>)
                     (message, buffer) -> {
                       // TODO: overflow
                       return (int) (buffer.capacity() * memoryUsageCheatFactor.get());
                     })
             .recordStats() // TODO: metrics
             // NOTE: lambda CAN NOT be replaced with method reference
-            .build(response -> SubscriptionPollResponse.serialize(response));
+            .build(response -> CachedSubscriptionPollResponse.serialize(response));
   }
 }
