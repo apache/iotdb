@@ -321,10 +321,11 @@ public class TsFileProcessor {
             insertRowNode,
             tsFileResource);
 
+    int pointInserted;
     if (insertRowNode.isAligned()) {
-      workMemTable.insertAlignedRow(insertRowNode);
+      pointInserted = workMemTable.insertAlignedRow(insertRowNode);
     } else {
-      workMemTable.insert(insertRowNode);
+      pointInserted = workMemTable.insert(insertRowNode);
     }
 
     // Update start time of this memtable
@@ -334,6 +335,7 @@ public class TsFileProcessor {
     if (!sequence) {
       tsFileResource.updateEndTime(insertRowNode.getDeviceID(), insertRowNode.getTime());
     }
+    workMemTable.updateMemtablePointCountMetric(insertRowNode, pointInserted);
 
     tsFileResource.updateProgressIndex(insertRowNode.getProgressIndex());
     // RecordScheduleMemTableCost
@@ -414,12 +416,13 @@ public class TsFileProcessor {
             walFlushListener.getWalEntryHandler(),
             insertRowsNode,
             tsFileResource);
-    for (InsertRowNode insertRowNode : insertRowsNode.getInsertRowNodeList()) {
 
+    int pointInserted = 0;
+    for (InsertRowNode insertRowNode : insertRowsNode.getInsertRowNodeList()) {
       if (insertRowNode.isAligned()) {
-        workMemTable.insertAlignedRow(insertRowNode);
+        pointInserted += workMemTable.insertAlignedRow(insertRowNode);
       } else {
-        workMemTable.insert(insertRowNode);
+        pointInserted += workMemTable.insert(insertRowNode);
       }
 
       // update start time of this memtable
@@ -430,6 +433,7 @@ public class TsFileProcessor {
         tsFileResource.updateEndTime(insertRowNode.getDeviceID(), insertRowNode.getTime());
       }
     }
+    workMemTable.updateMemtablePointCountMetric(insertRowsNode, pointInserted);
     tsFileResource.updateProgressIndex(insertRowsNode.getProgressIndex());
     // recordScheduleMemTableCost
     costsForMetrics[3] += System.nanoTime() - startTime;
@@ -526,11 +530,12 @@ public class TsFileProcessor {
             insertTabletNode,
             tsFileResource);
 
+    int pointInserted;
     try {
       if (insertTabletNode.isAligned()) {
-        workMemTable.insertAlignedTablet(insertTabletNode, start, end);
+        pointInserted = workMemTable.insertAlignedTablet(insertTabletNode, start, end);
       } else {
-        workMemTable.insertTablet(insertTabletNode, start, end);
+        pointInserted = workMemTable.insertTablet(insertTabletNode, start, end);
       }
     } catch (WriteProcessException e) {
       for (int i = start; i < end; i++) {
@@ -550,6 +555,7 @@ public class TsFileProcessor {
       tsFileResource.updateEndTime(
           insertTabletNode.getDeviceID(), insertTabletNode.getTimes()[end - 1]);
     }
+    workMemTable.updateMemtablePointCountMetric(insertTabletNode, pointInserted);
 
     tsFileResource.updateProgressIndex(insertTabletNode.getProgressIndex());
 

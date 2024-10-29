@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.subscription.broker;
 
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -162,11 +163,7 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
 
   @Override
   protected boolean onEvent(final TsFileInsertionEvent event) {
-    LOGGER.warn(
-        "Subscription: SubscriptionPrefetchingTabletQueue {} ignore TsFileInsertionEvent {} when prefetching.",
-        this,
-        event);
-    return false;
+    return batches.onEvent((EnrichedEvent) event, this::enqueueEventToPrefetchingQueue);
   }
 
   /////////////////////////////// stringify ///////////////////////////////
