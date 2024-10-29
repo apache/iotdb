@@ -82,6 +82,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpre
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExistUnknownTypeInExpression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.MeasurementGroup;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.FillDescriptor;
@@ -200,6 +201,7 @@ import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PART
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.SCHEMA_FETCHER;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.bindSchemaForExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.concatDeviceAndBindSchemaForExpression;
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.concatDeviceAndBindSchemaForHaving;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.getMeasurementExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.normalizeExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.searchAggregationExpressions;
@@ -1056,8 +1058,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     for (PartialPath device : deviceSet) {
       List<Expression> expressionsInHaving =
-          concatDeviceAndBindSchemaForExpression(
-              havingExpression, device, schemaTree, queryContext);
+          concatDeviceAndBindSchemaForHaving(havingExpression, device, schemaTree, queryContext);
 
       conJunctions.addAll(
           expressionsInHaving.stream()
@@ -1069,6 +1070,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         Set<Expression> normalizedAggregationExpressions = new LinkedHashSet<>();
         for (Expression aggregationExpression : searchAggregationExpressions(expression)) {
           Expression normalizedAggregationExpression = normalizeExpression(aggregationExpression);
+
+          if (!new ExistUnknownTypeInExpression().process(aggregationExpression, null).isEmpty()) {
+            continue;
+          }
 
           analyzeExpressionType(analysis, aggregationExpression);
           analyzeExpressionType(analysis, normalizedAggregationExpression);
