@@ -64,6 +64,12 @@ public abstract class AbstractSubscriptionTripleIT extends AbstractSubscriptionI
     sender.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
     receiver1.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
     receiver2.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
+
+    // enlarge tsfile memory block allocation reject threshold
+    sender
+        .getConfig()
+        .getCommonConfig()
+        .setPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold(1.0);
   }
 
   @Override

@@ -484,6 +484,16 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
     return this;
   }
 
+  @Override
+  public CommonConfig setPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold(
+      double pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold) {
+    setProperty(
+        "pipe_data_structure_ts_file_memory_block_allocation_reject_threshold",
+        String.valueOf(pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold));
+
+    return this;
+  }
+
   // For part of the log directory
   public String getClusterConfigStr() {
     return fromConsensusFullNameToAbbr(properties.getProperty(CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS))

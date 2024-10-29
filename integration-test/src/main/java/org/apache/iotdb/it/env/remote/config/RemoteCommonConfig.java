@@ -345,4 +345,10 @@ public class RemoteCommonConfig implements CommonConfig {
       int pipeConnectorRequestSliceThresholdBytes) {
     return this;
   }
+
+  @Override
+  public CommonConfig setPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold(
+      double pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold) {
+    return null;
+  }
 }
