@@ -85,11 +85,11 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       String loadTsFileStrategy) {
     super(
         endPoints,
+        useLeaderCache,
         username,
         password,
         shouldReceiverConvertOnTypeMismatch,
-        loadTsFileStrategy,
-        useLeaderCache);
+        loadTsFileStrategy);
 
     endPointSet = new HashSet<>(endPoints);
 

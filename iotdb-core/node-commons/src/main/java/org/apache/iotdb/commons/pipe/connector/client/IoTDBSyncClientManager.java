@@ -62,22 +62,24 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
 
   protected IoTDBSyncClientManager(
       List<TEndPoint> endPoints,
-      String username,
-      String password,
       boolean useSSL,
       String trustStorePath,
       String trustStorePwd,
+      /* The following parameters are used locally. */
       boolean useLeaderCache,
       String loadBalanceStrategy,
+      /* The following parameters are used to handshake with the receiver. */
+      String username,
+      String password,
       boolean shouldReceiverConvertOnTypeMismatch,
       String loadTsFileStrategy) {
     super(
         endPoints,
+        useLeaderCache,
         username,
         password,
         shouldReceiverConvertOnTypeMismatch,
-        loadTsFileStrategy,
-        useLeaderCache);
+        loadTsFileStrategy);
 
     this.useSSL = useSSL;
     this.trustStorePath = trustStorePath;

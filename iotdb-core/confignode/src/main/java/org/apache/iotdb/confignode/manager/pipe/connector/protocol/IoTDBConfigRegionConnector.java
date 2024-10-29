@@ -59,23 +59,25 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
   @Override
   protected IoTDBSyncClientManager constructClient(
       final List<TEndPoint> nodeUrls,
-      final String username,
-      final String password,
       final boolean useSSL,
       final String trustStorePath,
       final String trustStorePwd,
+      /* The following parameters are used locally. */
       final boolean useLeaderCache,
       final String loadBalanceStrategy,
+      /* The following parameters are used to handshake with the receiver. */
+      final String username,
+      final String password,
       final boolean shouldReceiverConvertOnTypeMismatch,
       final String loadTsFileStrategy) {
     return new IoTDBConfigNodeSyncClientManager(
         nodeUrls,
-        username,
-        password,
         useSSL,
         Objects.nonNull(trustStorePath) ? ConfigNodeConfig.addHomeDir(trustStorePath) : null,
         trustStorePwd,
         loadBalanceStrategy,
+        username,
+        password,
         shouldReceiverConvertOnTypeMismatch,
         loadTsFileStrategy);
   }
