@@ -27,7 +27,11 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class InsertTablet extends WrappedInsertStatement {
 
@@ -59,8 +63,13 @@ public class InsertTablet extends WrappedInsertStatement {
   public List<Object[]> getDeviceIdList() {
     List<Object[]> deviceIdList = new ArrayList<>();
     final InsertTabletStatement insertTabletStatement = getInnerTreeStatement();
+    Set<IDeviceID> deviceIDSet = new HashSet<>(insertTabletStatement.getRowCount());
     for (int i = 0; i < insertTabletStatement.getRowCount(); i++) {
       IDeviceID deviceID = insertTabletStatement.getTableDeviceID(i);
+      if (deviceIDSet.contains(deviceID)) {
+        continue;
+      }
+      deviceIDSet.add(deviceID);
       Object[] segments = deviceID.getSegments();
       deviceIdList.add(Arrays.copyOfRange(segments, 1, segments.length));
     }
@@ -77,8 +86,11 @@ public class InsertTablet extends WrappedInsertStatement {
   public List<Object[]> getAttributeValueList() {
     final InsertTabletStatement insertTabletStatement = getInnerTreeStatement();
     List<Object[]> result = new ArrayList<>(insertTabletStatement.getRowCount());
+    Map<IDeviceID, Integer> attrIdxInResultList =
+        new HashMap<>(insertTabletStatement.getRowCount());
     final List<Integer> attrColumnIndices = insertTabletStatement.getAttrColumnIndices();
     for (int rowIndex = 0; rowIndex < insertTabletStatement.getRowCount(); rowIndex++) {
+      IDeviceID deviceID = insertTabletStatement.getTableDeviceID(rowIndex);
       Object[] attrValues = new Object[attrColumnIndices.size()];
       for (int attrColNum = 0; attrColNum < attrColumnIndices.size(); attrColNum++) {
         final int columnIndex = attrColumnIndices.get(attrColNum);
@@ -87,7 +99,13 @@ public class InsertTablet extends WrappedInsertStatement {
               ((Object[]) insertTabletStatement.getColumns()[columnIndex])[rowIndex];
         }
       }
-      result.add(attrValues);
+      if (attrIdxInResultList.containsKey(deviceID)) {
+        Integer idx = attrIdxInResultList.get(deviceID);
+        result.set(idx, attrValues);
+      } else {
+        result.add(attrValues);
+        attrIdxInResultList.put(deviceID, result.size() - 1);
+      }
     }
     return result;
   }
