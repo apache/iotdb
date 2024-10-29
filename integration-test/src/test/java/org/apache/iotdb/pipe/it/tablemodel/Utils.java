@@ -24,13 +24,19 @@ import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.RpcUtils;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.sql.Connection;
 import java.sql.Statement;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
@@ -48,7 +54,7 @@ public class Utils {
       list.add(
           String.format(
               "insert into %s (id1, s3, s2, s1, s4, s5, s6, s7, s8, time) values ('t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
-              tableName, i, i, i, i, i, i, i, getDate(i), i, i));
+              tableName, i, i, i, i, i, i, i, getDateStr(i), i, i));
     }
     list.add("flush");
     if (!TestUtils.tryExecuteNonQueriesWithRetry(
@@ -75,7 +81,7 @@ public class Utils {
       list.add(
           String.format(
               "insert into %s (id1, s3, s2, s1, s4, s5, s6, s7, s8, time) values ('t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
-              tableName, i, i, i, i, i, i, i, getDate(i), i, i));
+              tableName, i, i, i, i, i, i, i, getDateStr(i), i, i));
     }
     return TestUtils.tryExecuteNonQueriesWithRetry(
         dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list);
@@ -93,7 +99,7 @@ public class Utils {
       list.add(
           String.format(
               "insert into %s (id1, s3, s2, s1, s4, s5, s6, s7, s8, time) values ('t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
-              tableName, i, i, i, i, i, i, i, getDate(i), i, i));
+              tableName, i, i, i, i, i, i, i, getDateStr(i), i, i));
     }
     list.add("flush");
     if (!TestUtils.tryExecuteNonQueriesOnSpecifiedDataNodeWithRetry(
@@ -131,7 +137,8 @@ public class Utils {
       final String time = RpcUtils.formatDatetime("default", "ms", i, ZoneOffset.UTC);
       expectedResSet.add(
           String.format(
-              "t%d,%d,%d.0,%d,%s,%d,%d.0,%s,%s,%s,", i, i, i, i, time, i, i, getDate(i), i, time));
+              "t%d,%d,%d.0,%d,%s,%d,%d.0,%s,%s,%s,",
+              i, i, i, i, time, i, i, getDateStr(i), i, time));
     }
     return expectedResSet;
   }
@@ -163,7 +170,7 @@ public class Utils {
         baseEnv, getQueryCountSql(table), "_col0,", Collections.singleton(count + ","), database);
   }
 
-  public static String getDate(int value) {
+  public static String getDateStr(int value) {
     Date date = new Date(value);
     SimpleDateFormat dateFormat = new SimpleDateFormat("YYYY-MM-DD");
     try {
@@ -173,7 +180,52 @@ public class Utils {
     }
   }
 
-  public static Tablet createTablet(String tableName, String start, String end) {
-    return null;
+  public static LocalDate getDate(int value) {
+    Date date = new Date(value);
+    SimpleDateFormat dateFormat = new SimpleDateFormat("YYYY-MM-DD");
+    try {
+      return DateUtils.parseIntToLocalDate(
+          DateUtils.parseDateExpressionToInt(dateFormat.format(date)));
+    } catch (Exception e) {
+      return DateUtils.parseIntToLocalDate(DateUtils.parseDateExpressionToInt("1970-01-01"));
+    }
+  }
+
+  // s2 float, s3 string, s4 timestamp, s5 int32, s6 double, s7 date, s8 text
+  public static Tablet createTablet(String tableName, int start, int end) {
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.FLOAT));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.STRING));
+    schemaList.add(new MeasurementSchema("s4", TSDataType.TIMESTAMP));
+    schemaList.add(new MeasurementSchema("s5", TSDataType.INT32));
+    schemaList.add(new MeasurementSchema("s6", TSDataType.DOUBLE));
+    schemaList.add(new MeasurementSchema("s7", TSDataType.DATE));
+    schemaList.add(new MeasurementSchema("s8", TSDataType.TEXT));
+
+    final List<Tablet.ColumnType> columnTypes =
+        Arrays.asList(
+            Tablet.ColumnType.ID,
+            Tablet.ColumnType.MEASUREMENT,
+            Tablet.ColumnType.MEASUREMENT,
+            Tablet.ColumnType.MEASUREMENT,
+            Tablet.ColumnType.MEASUREMENT,
+            Tablet.ColumnType.MEASUREMENT,
+            Tablet.ColumnType.MEASUREMENT,
+            Tablet.ColumnType.MEASUREMENT,
+            Tablet.ColumnType.MEASUREMENT);
+    Tablet tablet = new Tablet(tableName, schemaList, columnTypes, end - start);
+    long timestamp = 0;
+
+    for (long row = 0; row < 15; row++) {
+      int rowIndex = tablet.rowSize++;
+      tablet.addTimestamp(rowIndex, timestamp + row);
+      tablet.addValue("id1", rowIndex, String.valueOf(row));
+      tablet.addValue("s1", rowIndex, row);
+      tablet.addValue("s2", rowIndex, row * 1.0);
+    }
+
+    return tablet;
   }
 }
