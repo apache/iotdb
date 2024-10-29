@@ -110,6 +110,10 @@ public class LoadTsFileTableSchemaCache {
     this.currentModifications = new ArrayList<>();
   }
 
+  public void setDatabase(String database) {
+    this.database = database;
+  }
+
   public void autoCreateAndVerify(IDeviceID device) {
     try {
       if (isDeviceDeletedByMods(device)) {
@@ -127,6 +131,36 @@ public class LoadTsFileTableSchemaCache {
     if (shouldFlushDevices()) {
       flush();
     }
+  }
+
+  private boolean isDeviceDeletedByMods(IDeviceID device) throws IllegalPathException {
+    return currentTimeIndex != null
+        && ModificationUtils.isAllDeletedByMods(
+            currentModifications,
+            device,
+            currentTimeIndex.getStartTime(device),
+            currentTimeIndex.getEndTime(device));
+  }
+
+  private void addDevice(final IDeviceID device) {
+    final String tableName = device.getTableName();
+    long memoryUsageSizeInBytes = 0;
+    if (!currentBatchTable2Devices.containsKey(tableName)) {
+      memoryUsageSizeInBytes += computeStringMemUsage(tableName);
+    }
+    if (currentBatchTable2Devices.computeIfAbsent(tableName, k -> new HashSet<>()).add(device)) {
+      memoryUsageSizeInBytes += device.ramBytesUsed();
+      currentBatchDevicesCount++;
+    }
+
+    if (memoryUsageSizeInBytes > 0) {
+      batchTable2DevicesMemoryUsageSizeInBytes += memoryUsageSizeInBytes;
+      block.addMemoryUsage(memoryUsageSizeInBytes);
+    }
+  }
+
+  private boolean shouldFlushDevices() {
+    return !block.hasEnoughMemory() || currentBatchDevicesCount >= BATCH_FLUSH_TABLE_DEVICE_NUMBER;
   }
 
   public void flush() {
@@ -156,8 +190,57 @@ public class LoadTsFileTableSchemaCache {
         .iterator();
   }
 
-  public void setDatabase(String database) {
-    this.database = database;
+  private ITableDeviceSchemaValidation createTableSchemaValidation(String tableName) {
+    return new ITableDeviceSchemaValidation() {
+
+      @Override
+      public String getDatabase() {
+        return database;
+      }
+
+      @Override
+      public String getTableName() {
+        return tableName;
+      }
+
+      @Override
+      public List<Object[]> getDeviceIdList() {
+        final List<Object[]> devices = new ArrayList<>();
+        final Pair<Integer, Map<Integer, Integer>> idColumnCountAndMapper =
+            tableIdColumnMapper.get(tableName);
+        if (Objects.isNull(idColumnCountAndMapper)) {
+          // This should not happen
+          LOGGER.warn("Failed to find id column mapping for table {}", tableName);
+        }
+
+        for (final IDeviceID device : currentBatchTable2Devices.get(tableName)) {
+          if (Objects.isNull(idColumnCountAndMapper)) {
+            devices.add(Arrays.copyOfRange(device.getSegments(), 1, device.getSegments().length));
+            continue;
+          }
+
+          final Object[] deviceIdArray = new String[idColumnCountAndMapper.getLeft()];
+          for (final Map.Entry<Integer, Integer> fileColumn2RealColumn :
+              idColumnCountAndMapper.getRight().entrySet()) {
+            final int fileColumnIndex = fileColumn2RealColumn.getKey();
+            final int realColumnIndex = fileColumn2RealColumn.getValue();
+            deviceIdArray[realColumnIndex] = device.getSegments()[fileColumnIndex + 1];
+          }
+          devices.add(deviceIdArray);
+        }
+        return devices;
+      }
+
+      @Override
+      public List<String> getAttributeColumnNameList() {
+        return Collections.emptyList();
+      }
+
+      @Override
+      public List<Object[]> getAttributeValueList() {
+        return Collections.nCopies(currentBatchTable2Devices.get(tableName).size(), new Object[0]);
+      }
+    };
   }
 
   public void createTable(TableSchema fileSchema, MPPQueryContext context, Metadata metadata)
@@ -172,23 +255,6 @@ public class LoadTsFileTableSchemaCache {
               fileSchema.getTableName(), fileSchema));
     }
     verifyTableDataTypeAndGenerateIdColumnMapper(fileSchema, realSchema);
-  }
-
-  private void addDevice(final IDeviceID device) {
-    final String tableName = device.getTableName();
-    long memoryUsageSizeInBytes = 0;
-    if (!currentBatchTable2Devices.containsKey(tableName)) {
-      memoryUsageSizeInBytes += computeStringMemUsage(tableName);
-    }
-    if (currentBatchTable2Devices.computeIfAbsent(tableName, k -> new HashSet<>()).add(device)) {
-      memoryUsageSizeInBytes += device.ramBytesUsed();
-      currentBatchDevicesCount++;
-    }
-
-    if (memoryUsageSizeInBytes > 0) {
-      batchTable2DevicesMemoryUsageSizeInBytes += memoryUsageSizeInBytes;
-      block.addMemoryUsage(memoryUsageSizeInBytes);
-    }
   }
 
   private void verifyTableDataTypeAndGenerateIdColumnMapper(
@@ -274,70 +340,15 @@ public class LoadTsFileTableSchemaCache {
     }
   }
 
-  public boolean isDeviceDeletedByMods(IDeviceID device) throws IllegalPathException {
-    return currentTimeIndex != null
-        && ModificationUtils.isAllDeletedByMods(
-            currentModifications,
-            device,
-            currentTimeIndex.getStartTime(device),
-            currentTimeIndex.getEndTime(device));
-  }
+  public void close() {
+    clearDevices();
+    clearIdColumnMapper();
+    clearModificationsAndTimeIndex();
 
-  private boolean shouldFlushDevices() {
-    return !block.hasEnoughMemory() || currentBatchDevicesCount >= BATCH_FLUSH_TABLE_DEVICE_NUMBER;
-  }
+    block.close();
 
-  private ITableDeviceSchemaValidation createTableSchemaValidation(String tableName) {
-    return new ITableDeviceSchemaValidation() {
-
-      @Override
-      public String getDatabase() {
-        return database;
-      }
-
-      @Override
-      public String getTableName() {
-        return tableName;
-      }
-
-      @Override
-      public List<Object[]> getDeviceIdList() {
-        final List<Object[]> devices = new ArrayList<>();
-        final Pair<Integer, Map<Integer, Integer>> idColumnCountAndMapper =
-            tableIdColumnMapper.get(tableName);
-        if (Objects.isNull(idColumnCountAndMapper)) {
-          // This should not happen
-          LOGGER.warn("Failed to find id column mapping for table {}", tableName);
-        }
-
-        for (final IDeviceID device : currentBatchTable2Devices.get(tableName)) {
-          if (Objects.isNull(idColumnCountAndMapper)) {
-            devices.add(Arrays.copyOfRange(device.getSegments(), 1, device.getSegments().length));
-            continue;
-          }
-
-          final Object[] deviceIdArray = new String[idColumnCountAndMapper.getLeft()];
-          for (final Map.Entry<Integer, Integer> fileColumn2RealColumn :
-              idColumnCountAndMapper.getRight().entrySet()) {
-            final int fileColumnIndex = fileColumn2RealColumn.getKey();
-            final int realColumnIndex = fileColumn2RealColumn.getValue();
-            deviceIdArray[realColumnIndex] = device.getSegments()[fileColumnIndex + 1];
-          }
-          devices.add(deviceIdArray);
-        }
-        return devices;
-      }
-
-      @Override
-      public List<String> getAttributeColumnNameList() {
-        return Collections.emptyList();
-      }
-
-      @Override
-      public List<Object[]> getAttributeValueList() {
-        return Collections.nCopies(currentBatchTable2Devices.get(tableName).size(), new Object[0]);
-      }
-    };
+    currentBatchTable2Devices = null;
+    tableIdColumnMapper = null;
   }
 
   private void clearDevices() {
@@ -360,16 +371,5 @@ public class LoadTsFileTableSchemaCache {
     tableIdColumnMapper.clear();
     block.reduceMemoryUsage(tableIdColumnMapperMemoryUsageSizeInBytes);
     tableIdColumnMapperMemoryUsageSizeInBytes = 0;
-  }
-
-  public void close() {
-    clearDevices();
-    clearIdColumnMapper();
-    clearModificationsAndTimeIndex();
-
-    block.close();
-
-    currentBatchTable2Devices = null;
-    tableIdColumnMapper = null;
   }
 }
