@@ -37,6 +37,9 @@ import java.util.List;
 
 public class InsertRows extends WrappedInsertStatement {
 
+  // Only InsertRows constructed by Pipe will be set to true
+  private boolean allowCreateTable = false;
+
   public InsertRows(InsertRowsStatement insertRowsStatement, MPPQueryContext context) {
     super(insertRowsStatement, context);
   }
@@ -79,6 +82,10 @@ public class InsertRows extends WrappedInsertStatement {
     throw new UnsupportedOperationException();
   }
 
+  public void setAllowCreateTable(boolean allowCreateTable) {
+    this.allowCreateTable = allowCreateTable;
+  }
+
   @Override
   public void validateTableSchema(Metadata metadata, MPPQueryContext context) {
     for (InsertRowStatement insertRowStatement :
@@ -90,7 +97,7 @@ public class InsertRows extends WrappedInsertStatement {
                   AnalyzeUtils.getDatabaseName(insertRowStatement, context),
                   incomingTableSchema,
                   context,
-                  false)
+                  allowCreateTable)
               .orElse(null);
       if (realSchema == null) {
         throw new SemanticException(
