@@ -186,7 +186,8 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
     }
 
     final CreateDBTask task =
-        new CreateDBTask(new TDatabaseSchema(ROOT + PATH_SEPARATOR_CHAR + database), true);
+        new CreateDBTask(
+            new TDatabaseSchema(ROOT + PATH_SEPARATOR_CHAR + database).setIsTableModel(true), true);
     try {
       final ListenableFuture<ConfigTaskResult> future =
           task.execute(ClusterConfigTaskExecutor.getInstance());
