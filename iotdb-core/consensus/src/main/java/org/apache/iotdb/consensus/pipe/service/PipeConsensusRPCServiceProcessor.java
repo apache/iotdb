@@ -107,11 +107,17 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.I
     }
     TSStatus responseStatus;
     try {
+      // Other peers which don't act as coordinator will only transfer data(may contain both
+      // historical and realtime data) after the snapshot progress.
       impl.createConsensusPipeToTargetPeer(
           new Peer(
               ConsensusGroupId.Factory.createFromTConsensusGroupId(req.targetPeerConsensusGroupId),
               req.targetPeerNodeId,
-              req.targetPeerEndPoint));
+              req.targetPeerEndPoint),
+          new Peer(
+              ConsensusGroupId.Factory.createFromTConsensusGroupId(req.targetPeerConsensusGroupId),
+              req.coordinatorPeerNodeId,
+              req.coordinatorPeerEndPoint));
       responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (ConsensusGroupModifyPeerException e) {
       responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
