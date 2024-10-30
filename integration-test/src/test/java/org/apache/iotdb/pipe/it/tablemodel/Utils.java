@@ -20,6 +20,8 @@
 package org.apache.iotdb.pipe.it.tablemodel;
 
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.isession.IPooledSession;
+import org.apache.iotdb.isession.pool.ISessionPool;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -52,13 +54,36 @@ import static org.junit.Assert.fail;
 
 public class Utils {
 
+  public static void createDataBaseAndTable(BaseEnv baseEnv, String table, String database) {
+    try (Connection connection = baseEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("create database if not exists " + database);
+      statement.execute("use " + database);
+      statement.execute(
+          "CREATE TABLE "
+              + table
+              + "(s0 string id, s1 int64 measurement, s2 float measurement, s3 string measurement, s4 timestamp  measurement, s5 int32  measurement, s6 double  measurement, s7 date  measurement, s8 text  measurement )");
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
+  public static void createDataBase(BaseEnv baseEnv, String database) {
+    try (Connection connection = baseEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("create database if not exists " + database);
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
   public static void insertData(
       String dataBaseName, String tableName, int start, int end, BaseEnv baseEnv) {
     List<String> list = new ArrayList<>(end - start + 1);
     for (int i = start; i < end; ++i) {
       list.add(
           String.format(
-              "insert into %s (id1, s3, s2, s1, s4, s5, s6, s7, s8, time) values ('t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
+              "insert into %s (s0, s3, s2, s1, s4, s5, s6, s7, s8, time) values ('t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
               tableName, i, i, i, i, i, i, i, getDateStr(i), i, i));
     }
     list.add("flush");
@@ -68,10 +93,34 @@ public class Utils {
     }
   }
 
-  public static void deleteData(
-      String dataBaseName, String tableName, int start, int end, BaseEnv baseEnv) {
+  public static void insertData(
+      String dataBaseName,
+      String tableName,
+      int start,
+      int end,
+      BaseEnv baseEnv,
+      boolean allowNullValue) {
     List<String> list = new ArrayList<>(end - start + 1);
-    list.add(String.format("delete from %s where time between (%s,%s)", tableName, start, end));
+    Object[] values = new Object[9];
+    Random random = new Random();
+    for (int i = start; i < end; ++i) {
+      Arrays.fill(values, i);
+      values[0] = String.format("'t%s'", i);
+      values[1] = String.format("'%s'", i);
+      values[2] = String.format("%s.0", i);
+      values[5] = String.format("%s.0", i);
+      values[6] = String.format("'%s'", i);
+      values[7] = String.format("'%s'", getDateStr(i));
+      values[8] = String.format("'%s'", i);
+      if (allowNullValue) {
+        values[random.nextInt(9)] = "null";
+      }
+      list.add(
+          String.format(
+              "insert into %s (s0, s3, s2, s1, s4, s5, s6, s7, s8, time) values (%s,%s, %s.0, %s, %s, %s, %s.0, %s, %s, %s)",
+              tableName, values[0], values[1], values[2], values[3], values[4], values[5],
+              values[6], values[7], values[8], i));
+    }
     list.add("flush");
     if (!TestUtils.tryExecuteNonQueriesWithRetry(
         dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list)) {
@@ -85,7 +134,7 @@ public class Utils {
     for (int i = start; i < end; ++i) {
       list.add(
           String.format(
-              "insert into %s (id1, s3, s2, s1, s4, s5, s6, s7, s8, time) values ('t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
+              "insert into %s (s0, s3, s2, s1, s4, s5, s6, s7, s8, time) values ('t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
               tableName, i, i, i, i, i, i, i, getDateStr(i), i, i));
     }
     return TestUtils.tryExecuteNonQueriesWithRetry(
@@ -103,7 +152,7 @@ public class Utils {
     for (int i = start; i < end; ++i) {
       list.add(
           String.format(
-              "insert into %s (id1, s3, s2, s1, s4, s5, s6, s7, s8, time) values ('t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
+              "insert into %s (s0, s3, s2, s1, s4, s5, s6, s7, s8, time) values ('t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
               tableName, i, i, i, i, i, i, i, getDateStr(i), i, i));
     }
     list.add("flush");
@@ -113,26 +162,33 @@ public class Utils {
     }
   }
 
-  public static void createDataBaseAndTable(BaseEnv baseEnv, String table, String database) {
-    try (Connection connection = baseEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      statement.execute("create database if not exists " + database);
-      statement.execute("use " + database);
-      statement.execute(
-          "CREATE TABLE "
-              + table
-              + "(id1 string id, s1 int64 measurement, s2 float measurement, s3 string measurement, s4 timestamp  measurement, s5 int32  measurement, s6 double  measurement, s7 date  measurement, s8 text  measurement )");
+  public static void insertDataByTablet(
+      String dataBaseName,
+      String tableName,
+      int start,
+      int end,
+      BaseEnv baseEnv,
+      boolean allowNullValue) {
+    final Tablet tablet = createTablet(tableName, start, end, allowNullValue);
+    ISessionPool sessionPool = baseEnv.getSessionPool(1, "table");
+    try (final IPooledSession session = sessionPool.getPooledSession()) {
+      session.executeNonQueryStatement("use " + dataBaseName);
+      session.insertTablet(tablet);
+      //      session.executeNonQueryStatement("flush");
     } catch (Exception e) {
-      fail(e.getMessage());
+      e.printStackTrace();
+      fail();
     }
   }
 
-  public static void createDataBase(BaseEnv baseEnv, String database) {
-    try (Connection connection = baseEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      statement.execute("create database if not exists " + database);
-    } catch (Exception e) {
-      fail(e.getMessage());
+  public static void deleteData(
+      String dataBaseName, String tableName, int start, int end, BaseEnv baseEnv) {
+    List<String> list = new ArrayList<>(end - start + 1);
+    list.add(String.format("delete from %s where time between (%s,%s)", tableName, start, end));
+    list.add("flush");
+    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list)) {
+      fail();
     }
   }
 
@@ -208,11 +264,11 @@ public class Utils {
   }
 
   public static String generateHeaderResults() {
-    return "id1,s3,s2,s1,s4,s5,s6,s7,s8,time,";
+    return "s0,s3,s2,s1,s4,s5,s6,s7,s8,time,";
   }
 
   public static String getQuerySql(String table) {
-    return "select id1,s3,s2,s1,s4,s5,s6,s7,s8,time from " + table;
+    return "select s0,s3,s2,s1,s4,s5,s6,s7,s8,time from " + table;
   }
 
   public static String getQueryCountSql(String table) {
@@ -229,14 +285,13 @@ public class Utils {
         database);
   }
 
-  public static void assertData(
-          String database, String table, Tablet tablet, BaseEnv baseEnv) {
+  public static void assertData(String database, String table, Tablet tablet, BaseEnv baseEnv) {
     TestUtils.assertDataEventuallyOnEnv(
-            baseEnv,
-            Utils.getQuerySql(table),
-            Utils.generateHeaderResults(),
-            Utils.generateExpectedResults(tablet),
-            database);
+        baseEnv,
+        Utils.getQuerySql(table),
+        Utils.generateHeaderResults(),
+        Utils.generateExpectedResults(tablet),
+        database);
   }
 
   public static void assertCountData(String database, String table, int count, BaseEnv baseEnv) {
@@ -267,7 +322,7 @@ public class Utils {
 
   public static Tablet createTablet(String tableName, int start, int end, boolean allowNullValue) {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
+    schemaList.add(new MeasurementSchema("s0", TSDataType.STRING));
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.FLOAT));
     schemaList.add(new MeasurementSchema("s3", TSDataType.STRING));
@@ -293,20 +348,26 @@ public class Utils {
     Random random = new Random();
 
     // s2 float, s3 string, s4 timestamp, s5 int32, s6 double, s7 date, s8 text
-    for (long row = 0; row < start - end; row++) {
+    for (long row = 0; row < end - start; row++) {
       int randomNumber = allowNullValue ? random.nextInt(9) : 9;
       long value = start + row;
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, value);
-      tablet.addValue("id1", rowIndex, randomNumber == 0 ? null : String.valueOf(value));
-      tablet.addValue("s1", rowIndex, randomNumber == 1 ? null : value);
-      tablet.addValue("s2", rowIndex, randomNumber == 2 ? null : value * 1.0);
-      tablet.addValue("s3", rowIndex, randomNumber == 3 ? null : String.valueOf(value));
-      tablet.addValue("s4", rowIndex, randomNumber == 4 ? null : value);
-      tablet.addValue("s5", rowIndex, randomNumber == 5 ? null : (int) value);
-      tablet.addValue("s6", rowIndex, randomNumber == 6 ? null : value * 0.1);
-      tablet.addValue("s7", rowIndex, randomNumber == 7 ? null : getDate((int) value));
-      tablet.addValue("s7", rowIndex, randomNumber == 8 ? null : String.valueOf(value));
+      tablet.addValue(
+          "s0", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
+      tablet.addValue("s1", rowIndex, value);
+      tablet.addValue("s2", rowIndex, (value * 1.0f));
+      tablet.addValue(
+          "s3", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
+      tablet.addValue("s4", rowIndex, value);
+      tablet.addValue("s5", rowIndex, (int) value);
+      tablet.addValue("s6", rowIndex, value * 0.1);
+      tablet.addValue("s7", rowIndex, getDate((int) value));
+      tablet.addValue(
+          "s8", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
+      if (randomNumber < 9) {
+        tablet.addValue("s" + randomNumber, rowIndex, null);
+      }
     }
 
     return tablet;
