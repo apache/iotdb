@@ -83,6 +83,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionType.BETWEEN;
+import static org.apache.tsfile.enums.TSDataType.UNKNOWN;
 
 /** Responsible for constructing {@link ColumnTransformer} through Expression. */
 public class ColumnTransformerVisitor
@@ -584,7 +585,19 @@ public class ColumnTransformerVisitor
       if (typeProvider != null) {
         return typeProvider.getTreeModelType(expression.getOutputSymbol());
       }
-      return expressionTypes.get(NodeRef.of(expression));
+      if (expressionTypes.get(NodeRef.of(expression)) != UNKNOWN) {
+        return expressionTypes.get(NodeRef.of(expression));
+      } else {
+        for (Map.Entry<NodeRef<Expression>, TSDataType> entry : expressionTypes.entrySet()) {
+          if (entry.getKey().getNode().equals(expression) && entry.getValue() != UNKNOWN) {
+            return entry.getValue();
+          }
+        }
+        throw new IllegalStateException(
+            String.format(
+                "Unknown expression type: %s, perhaps it has non existent measurement.",
+                expression.getOutputSymbol()));
+      }
     }
 
     public TypeProvider getTypeProvider() {

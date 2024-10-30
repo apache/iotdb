@@ -453,32 +453,7 @@ public abstract class AbstractCompactionTask {
 
     TsFileValidator validator = TsFileValidator.getInstance();
     if (needToValidatePartitionSeqSpaceOverlap) {
-      List<TsFileResource> timePartitionSeqFiles =
-          new ArrayList<>(tsFileManager.getOrCreateSequenceListByTimePartition(timePartition));
-      timePartitionSeqFiles.removeAll(sourceSeqFiles);
-      timePartitionSeqFiles.addAll(validTargetFiles);
-      timePartitionSeqFiles.sort(
-          (f1, f2) -> {
-            int timeDiff =
-                Long.compareUnsigned(
-                    Long.parseLong(f1.getTsFile().getName().split("-")[0]),
-                    Long.parseLong(f2.getTsFile().getName().split("-")[0]));
-            return timeDiff == 0
-                ? Long.compareUnsigned(
-                    Long.parseLong(f1.getTsFile().getName().split("-")[1]),
-                    Long.parseLong(f2.getTsFile().getName().split("-")[1]))
-                : timeDiff;
-          });
-      List<TsFileResource> overlapFilesInTimePartition =
-          RepairDataFileScanUtil.checkTimePartitionHasOverlap(timePartitionSeqFiles, true);
-      if (!overlapFilesInTimePartition.isEmpty()) {
-        LOGGER.error(
-            "Failed to pass compaction validation, source seq files: {}, source unseq files: {}, target files: {}",
-            sourceSeqFiles,
-            sourceUnseqFiles,
-            targetFiles);
-        throw new CompactionValidationFailedException(overlapFilesInTimePartition);
-      }
+      checkSequenceSpaceOverlap(sourceSeqFiles, sourceUnseqFiles, targetFiles, validTargetFiles);
     }
     if (needToValidateTsFileCorrectness && !validator.validateTsFiles(validTargetFiles)) {
       LOGGER.error(
@@ -489,6 +464,87 @@ public abstract class AbstractCompactionTask {
       throw new CompactionValidationFailedException(
           "Failed to pass compaction validation, .resources file or tsfile data is wrong");
     }
+  }
+
+  protected void checkSequenceSpaceOverlap(
+      List<TsFileResource> sourceSeqFiles,
+      List<TsFileResource> sourceUnseqFiles,
+      List<TsFileResource> targetFiles,
+      List<TsFileResource> validTargetFiles) {
+    List<TsFileResource> timePartitionSeqFiles =
+        new ArrayList<>(tsFileManager.getOrCreateSequenceListByTimePartition(timePartition));
+    timePartitionSeqFiles.removeAll(sourceSeqFiles);
+    timePartitionSeqFiles.addAll(validTargetFiles);
+    timePartitionSeqFiles.sort(
+        (f1, f2) -> {
+          int timeDiff =
+              Long.compareUnsigned(
+                  Long.parseLong(f1.getTsFile().getName().split("-")[0]),
+                  Long.parseLong(f2.getTsFile().getName().split("-")[0]));
+          return timeDiff == 0
+              ? Long.compareUnsigned(
+                  Long.parseLong(f1.getTsFile().getName().split("-")[1]),
+                  Long.parseLong(f2.getTsFile().getName().split("-")[1]))
+              : timeDiff;
+        });
+    if (this instanceof InnerSpaceCompactionTask
+        || this instanceof InsertionCrossSpaceCompactionTask) {
+      timePartitionSeqFiles =
+          filterResourcesByFileTimeIndexInOverlapValidation(
+              timePartitionSeqFiles, validTargetFiles);
+    }
+    List<TsFileResource> overlapFilesInTimePartition =
+        RepairDataFileScanUtil.checkTimePartitionHasOverlap(timePartitionSeqFiles, true);
+    if (!overlapFilesInTimePartition.isEmpty()) {
+      LOGGER.error(
+          "Failed to pass compaction overlap validation, source seq files: {}, source unseq files: {}, target files: {}",
+          sourceSeqFiles,
+          sourceUnseqFiles,
+          targetFiles);
+      for (TsFileResource resource : overlapFilesInTimePartition) {
+        if (resource.getTsFileRepairStatus() != TsFileRepairStatus.CAN_NOT_REPAIR) {
+          resource.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_CHECK);
+        }
+      }
+    }
+  }
+
+  private List<TsFileResource> filterResourcesByFileTimeIndexInOverlapValidation(
+      List<TsFileResource> timePartitionSeqFiles, List<TsFileResource> targetFiles) {
+    if (targetFiles.isEmpty()) {
+      return timePartitionSeqFiles;
+    }
+    TsFileResource firstTargetResource = targetFiles.get(0);
+    TsFileResource lastTargetResource = targetFiles.get(targetFiles.size() - 1);
+    long minStartTimeInTargetFiles =
+        targetFiles.stream().mapToLong(TsFileResource::getFileStartTime).min().getAsLong();
+    long maxEndTimeInTargetFiles =
+        targetFiles.stream().mapToLong(TsFileResource::getFileEndTime).max().getAsLong();
+    List<TsFileResource> result = new ArrayList<>(timePartitionSeqFiles.size());
+    int idx;
+    for (idx = 0; idx < timePartitionSeqFiles.size(); idx++) {
+      TsFileResource resource = timePartitionSeqFiles.get(idx);
+      if (resource == firstTargetResource) {
+        break;
+      }
+      if (resource.getFileEndTime() >= minStartTimeInTargetFiles) {
+        result.add(resource);
+      }
+    }
+    for (; idx < timePartitionSeqFiles.size(); idx++) {
+      TsFileResource resource = timePartitionSeqFiles.get(idx);
+      result.add(resource);
+      if (resource == lastTargetResource) {
+        break;
+      }
+    }
+    for (idx += 1; idx < timePartitionSeqFiles.size(); idx++) {
+      TsFileResource resource = timePartitionSeqFiles.get(idx);
+      if (resource.getFileStartTime() <= maxEndTimeInTargetFiles) {
+        result.add(resource);
+      }
+    }
+    return result;
   }
 
   public abstract CompactionTaskType getCompactionTaskType();

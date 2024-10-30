@@ -73,13 +73,11 @@ public class WALInfoEntry extends WALEntry {
 
   @Override
   public void serialize(IWALByteBufferView buffer) {
+    buffer.put(type.getCode());
+    buffer.putLong(memTableId);
     switch (type) {
       case INSERT_TABLET_NODE:
-        for (int[] range : tabletInfo.tabletRangeList) {
-          buffer.put(type.getCode());
-          buffer.putLong(memTableId);
-          ((InsertTabletNode) value).serializeToWAL(buffer, range[0], range[1]);
-        }
+        ((InsertTabletNode) value).serializeToWAL(buffer, tabletInfo.tabletRangeList);
         break;
       case INSERT_ROW_NODE:
       case INSERT_ROWS_NODE:
@@ -87,8 +85,6 @@ public class WALInfoEntry extends WALEntry {
       case RELATIONAL_DELETE_DATA_NODE:
       case MEMORY_TABLE_SNAPSHOT:
       case CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE:
-        buffer.put(type.getCode());
-        buffer.putLong(memTableId);
         value.serializeToWAL(buffer);
         break;
       case MEMORY_TABLE_CHECKPOINT:

@@ -32,10 +32,13 @@ import org.apache.tsfile.read.reader.series.PaginationController;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class SeriesScanOptions {
 
   private Filter globalTimeFilter;
+
+  private final AtomicBoolean timeFilterUpdatedByTll = new AtomicBoolean(false);
 
   private final Filter pushDownFilter;
 
@@ -97,8 +100,14 @@ public class SeriesScanOptions {
     }
   }
 
+  public boolean timeFilterNeedUpdatedByTll() {
+    return !timeFilterUpdatedByTll.get();
+  }
+
   public void setTTL(long dataTTL) {
-    this.globalTimeFilter = updateFilterUsingTTL(globalTimeFilter, dataTTL);
+    if (timeFilterUpdatedByTll.compareAndSet(false, true)) {
+      this.globalTimeFilter = updateFilterUsingTTL(globalTimeFilter, dataTTL);
+    }
   }
 
   /**

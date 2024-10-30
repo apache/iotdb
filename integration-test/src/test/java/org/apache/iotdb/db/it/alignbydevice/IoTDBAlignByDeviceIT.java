@@ -100,6 +100,7 @@ public class IoTDBAlignByDeviceIT {
         "insert into root.vehicle.d1(timestamp,s0) values(1,999)",
         "insert into root.vehicle.d1(timestamp,s0) values(1000,888)",
         "insert into root.other.d1(timestamp,s0) values(2, 3.14)",
+        "insert into root.other.d2(timestamp,s6) values(6, 6.66)",
       };
 
   @BeforeClass
@@ -1182,6 +1183,50 @@ public class IoTDBAlignByDeviceIT {
       fail(
           "Meets exception in removeDeviceWhereMeasurementWhenNoDeviceSelectTest: "
               + e.getMessage());
+    }
+  }
+
+  @Test
+  public void nonExistMeasurementInHavingTest() {
+    String[] retArray =
+        new String[] {
+          "1,root.other.d1,3.14,null,", "5,root.other.d2,null,6.66,",
+        };
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_value(s0),last_value(s6) from root.other.** group by ([1,10),2ms) having last_value(s0) is not null or last_value(s6) is not null align by device")) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        List<Integer> actualIndexToExpectedIndexList =
+            checkHeader(
+                resultSetMetaData,
+                "Time,Device,last_value(s0),last_value(s6)",
+                new int[] {
+                  Types.TIMESTAMP, Types.VARCHAR, Types.FLOAT, Types.DOUBLE,
+                });
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder
+                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
+          }
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(retArray.length, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 }

@@ -306,6 +306,7 @@ public class TableLogicalPlanner {
             statement.getDatabase(),
             statement.getTableName(),
             statement.getDeviceIdList(),
+            statement.getPartitionKeyList(),
             columnHeaderList,
             null);
 

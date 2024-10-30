@@ -1980,14 +1980,30 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       logger.info("force close all processors in database: {}", databaseName + "-" + dataRegionId);
       // to avoid concurrent modification problem, we need a new array list
+      List<TsFileResource> closedTsFileResources = new ArrayList<>();
       for (TsFileProcessor tsFileProcessor :
           new ArrayList<>(workSequenceTsFileProcessors.values())) {
         tsFileProcessor.putMemTableBackAndClose();
+        closedTsFileResources.add(tsFileProcessor.getTsFileResource());
       }
       // to avoid concurrent modification problem, we need a new array list
       for (TsFileProcessor tsFileProcessor :
           new ArrayList<>(workUnsequenceTsFileProcessors.values())) {
         tsFileProcessor.putMemTableBackAndClose();
+        closedTsFileResources.add(tsFileProcessor.getTsFileResource());
+      }
+      for (TsFileResource resource : closedTsFileResources) {
+        FileMetrics.getInstance()
+            .addTsFile(
+                resource.getDatabaseName(),
+                resource.getDataRegionId(),
+                resource.getTsFileSize(),
+                resource.isSeq(),
+                resource.getTsFile().getName());
+        if (resource.newModFileExists()) {
+          FileMetrics.getInstance().increaseModFileNum(1);
+          FileMetrics.getInstance().increaseModFileSize(resource.getNewModFile().getSize());
+        }
       }
       WritingMetrics.getInstance().recordActiveTimePartitionCount(-1);
     } finally {
@@ -2026,7 +2042,7 @@ public class DataRegion implements IDataRegionForQuery {
       QUERY_RESOURCE_METRIC_SET.recordQueryResourceNum(SEQUENCE_TSFILE, seqResources.size());
       QUERY_RESOURCE_METRIC_SET.recordQueryResourceNum(UNSEQUENCE_TSFILE, unseqResources.size());
 
-      return new QueryDataSource(seqResources, unseqResources);
+      return new QueryDataSource(seqResources, unseqResources, databaseName);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }

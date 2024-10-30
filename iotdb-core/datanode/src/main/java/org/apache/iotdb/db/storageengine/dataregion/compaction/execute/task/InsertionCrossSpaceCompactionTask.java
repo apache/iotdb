@@ -48,7 +48,7 @@ import java.util.stream.Stream;
 public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
 
   private Phaser phaser;
-  private boolean failToPassOverlapValidation = false;
+  private boolean failToPassValidation = false;
 
   public InsertionCrossSpaceCompactionTask(
       Phaser phaser,
@@ -177,7 +177,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
           String.format("%.2f", costTime));
     } catch (Exception e) {
       if (e instanceof CompactionValidationFailedException) {
-        failToPassOverlapValidation = true;
+        failToPassValidation = true;
       }
       isSuccess = false;
       handleException(LOGGER, e);
@@ -292,7 +292,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
         || (unseqFileToInsert != null
             && unseqFileToInsert.newModFileExists()
             && !targetFile.newModFileExists())
-        || failToPassOverlapValidation;
+        || failToPassValidation;
   }
 
   private void rollback() throws IOException {

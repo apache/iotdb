@@ -268,7 +268,9 @@ public class DataNodeTableCache implements ITableCache {
               .fetchTables(
                   tableInput.entrySet().stream()
                       .collect(
-                          Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().keySet())));
+                          Collectors.toMap(
+                              entry -> PathUtils.qualifyDatabaseName(entry.getKey()),
+                              entry -> entry.getValue().keySet())));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
         result = TsTableInternalRPCUtil.deserializeTsTableFetchResult(resp.getTableInfoMap());
       }
@@ -302,6 +304,12 @@ public class DataNodeTableCache implements ITableCache {
                             previousVersions.get(database).get(tableName))) {
                       return;
                     }
+                    LOGGER.info(
+                        "Update table {}.{} by table fetch, table in preUpdateMap: {}, new table: {}",
+                        database,
+                        existingPair.getLeft().getTableName(),
+                        existingPair.getLeft(),
+                        tsTable);
                     existingPair.setLeft(null);
                     if (Objects.nonNull(tsTable)) {
                       databaseTableMap
@@ -324,6 +332,15 @@ public class DataNodeTableCache implements ITableCache {
       return databaseTableMap.containsKey(database)
           ? databaseTableMap.get(database).get(tableName)
           : null;
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
+  public boolean isDatabaseExist(final String database) {
+    readWriteLock.readLock().lock();
+    try {
+      return databaseTableMap.containsKey(database);
     } finally {
       readWriteLock.readLock().unlock();
     }
