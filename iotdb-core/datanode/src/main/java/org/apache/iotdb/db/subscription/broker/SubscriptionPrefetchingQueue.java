@@ -93,7 +93,7 @@ public abstract class SubscriptionPrefetchingQueue {
    */
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
 
-  private final PollStates pollStates = new PollStates();
+  private final PollPrefetchStates pollPrefetchStates;
 
   private volatile boolean isCompleted = false;
   private volatile boolean isClosed = false;
@@ -113,6 +113,8 @@ public abstract class SubscriptionPrefetchingQueue {
     this.prefetchingQueue = new LinkedBlockingQueue<>();
     this.inFlightEvents = new ConcurrentHashMap<>();
     this.batches = new SubscriptionPipeEventBatches(this, maxDelayInMs, maxBatchSizeInBytes);
+
+    this.pollPrefetchStates = new PollPrefetchStates(this);
   }
 
   public void cleanUp() {
@@ -163,18 +165,16 @@ public abstract class SubscriptionPrefetchingQueue {
   public SubscriptionEvent poll(final String consumerId) {
     acquireReadLock();
     try {
-      if (isClosed()) {
-        return null;
-      }
-      pollStates.mark();
-      return pollInternal(consumerId);
+      return isClosed() ? null : pollInternal(consumerId);
     } finally {
       releaseReadLock();
     }
   }
 
   public SubscriptionEvent pollInternal(final String consumerId) {
+    pollPrefetchStates.markPollRequest();
     if (prefetchingQueue.isEmpty()) {
+      pollPrefetchStates.markMissing();
       tryPrefetch(true);
     }
 
@@ -235,7 +235,7 @@ public abstract class SubscriptionPrefetchingQueue {
       if (isClosed()) {
         return false;
       }
-      if (pollStates.shouldPrefetch() && isResourceEnough()) {
+      if (isResourceEnough() && pollPrefetchStates.shouldPrefetch()) {
         tryPrefetch(false);
         remapInFlightEventsSnapshot(committedCleaner, pollableNacker, responsePrefetcher);
         return true;
@@ -553,6 +553,10 @@ public abstract class SubscriptionPrefetchingQueue {
             .orElse(0);
   }
 
+  public int getPrefetchedEventCount() {
+    return prefetchingQueue.size();
+  }
+
   /////////////////////////////// close & termination ///////////////////////////////
 
   public boolean isClosed() {
@@ -581,6 +585,7 @@ public abstract class SubscriptionPrefetchingQueue {
     result.put("size of prefetchingQueue", String.valueOf(prefetchingQueue.size()));
     result.put("size of inFlightEvents", String.valueOf(inFlightEvents.size()));
     result.put("commitIdGenerator", commitIdGenerator.toString());
+    result.put("pollPrefetchStates", pollPrefetchStates.toString());
     result.put("isCompleted", String.valueOf(isCompleted));
     result.put("isClosed", String.valueOf(isClosed));
     return result;
@@ -594,6 +599,7 @@ public abstract class SubscriptionPrefetchingQueue {
     result.put("prefetchingQueue", prefetchingQueue.toString());
     result.put("inFlightEvents", inFlightEvents.toString());
     result.put("commitIdGenerator", commitIdGenerator.toString());
+    result.put("pollPrefetchStates", pollPrefetchStates.toString());
     result.put("isCompleted", String.valueOf(isCompleted));
     result.put("isClosed", String.valueOf(isClosed));
     return result;

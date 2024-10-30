@@ -213,4 +213,10 @@ public class SubscriptionBrokerAgent {
     }
     return broker.getPipeEventCount(topicName);
   }
+
+  public int getPrefetchingQueueCount() {
+    return consumerGroupIdToSubscriptionBroker.values().stream()
+        .map(SubscriptionBroker::getPrefetchingQueueCount)
+        .reduce(0, Integer::sum);
+  }
 }

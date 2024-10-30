@@ -386,4 +386,8 @@ public class SubscriptionBroker {
     }
     return prefetchingQueue.getPipeEventCount();
   }
+
+  public int getPrefetchingQueueCount() {
+    return topicNameToPrefetchingQueue.size();
+  }
 }
