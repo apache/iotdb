@@ -53,6 +53,8 @@ public interface IWritableMemChunkGroup extends WALEntryValue {
 
   long delete(ModEntry modEntry);
 
+  long deleteTime(ModEntry modEntry);
+
   long getCurrentTVListSize(String measurement);
 
   long getMaxTime();

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.utils.ModificationUtils;
 
@@ -102,7 +103,8 @@ public class TableDeletionEntry extends ModEntry {
 
   @Override
   public PartialPath keyOfPatternTree() {
-    return new PartialPath(new String[] {predicate.getTableName()});
+    return new PartialPath(
+        new String[] {predicate.getTableName(), IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD});
   }
 
   @Override

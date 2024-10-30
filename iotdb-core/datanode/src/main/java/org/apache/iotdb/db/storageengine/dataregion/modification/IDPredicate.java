@@ -90,6 +90,12 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     IDPredicate predicate;
     if (Objects.requireNonNull(type) == IDPredicateType.NOP) {
       predicate = new NOP();
+    } else if (Objects.requireNonNull(type) == IDPredicateType.FULL_EXACT_MATCH) {
+      predicate = new FullExactMatch();
+    } else if (Objects.requireNonNull(type) == IDPredicateType.SEGMENT_EXACT_MATCH) {
+      predicate = new SegmentExactMatch();
+    } else if (Objects.requireNonNull(type) == IDPredicateType.AND) {
+      predicate = new And();
     } else {
       throw new IllegalArgumentException("Unrecognized predicate type: " + type);
     }
@@ -102,6 +108,12 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     IDPredicate predicate;
     if (Objects.requireNonNull(type) == IDPredicateType.NOP) {
       predicate = new NOP();
+    } else if (Objects.requireNonNull(type) == IDPredicateType.FULL_EXACT_MATCH) {
+      predicate = new FullExactMatch();
+    } else if (Objects.requireNonNull(type) == IDPredicateType.SEGMENT_EXACT_MATCH) {
+      predicate = new SegmentExactMatch();
+    } else if (Objects.requireNonNull(type) == IDPredicateType.AND) {
+      predicate = new And();
     } else {
       throw new IllegalArgumentException("Unrecognized predicate type: " + type);
     }
@@ -113,16 +125,6 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
 
     public NOP() {
       super(IDPredicateType.NOP);
-    }
-
-    @Override
-    public void serialize(OutputStream stream) {
-      // nothing to be done
-    }
-
-    @Override
-    public void serialize(ByteBuffer buffer) {
-      // nothing to be done
     }
 
     @Override
@@ -150,6 +152,10 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
       this.deviceID = deviceID;
     }
 
+    public FullExactMatch() {
+      super(IDPredicateType.FULL_EXACT_MATCH);
+    }
+
     @Override
     public int serializedSize() {
       return super.serializedSize() + deviceID.serializedSize();
@@ -157,11 +163,13 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
 
     @Override
     public void serialize(OutputStream stream) throws IOException {
+      super.serialize(stream);
       deviceID.serialize(stream);
     }
 
     @Override
     public void serialize(ByteBuffer buffer) {
+      super.serialize(buffer);
       deviceID.serialize(buffer);
     }
 
@@ -192,6 +200,10 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
       this.segmentIndex = segmentIndex;
     }
 
+    public SegmentExactMatch() {
+      super(IDPredicateType.SEGMENT_EXACT_MATCH);
+    }
+
     @Override
     public int serializedSize() {
       byte[] bytes = pattern.getBytes(TSFileConfig.STRING_CHARSET);
@@ -203,12 +215,14 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
 
     @Override
     public void serialize(OutputStream stream) throws IOException {
+      super.serialize(stream);
       ReadWriteIOUtils.writeVar(pattern, stream);
       ReadWriteForEncodingUtils.writeVarInt(segmentIndex, stream);
     }
 
     @Override
     public void serialize(ByteBuffer buffer) {
+      super.serialize(buffer);
       ReadWriteIOUtils.writeVar(pattern, buffer);
       ReadWriteForEncodingUtils.writeVarInt(segmentIndex, buffer);
     }
@@ -256,6 +270,7 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
 
     @Override
     public void serialize(OutputStream stream) throws IOException {
+      super.serialize(stream);
       ReadWriteForEncodingUtils.writeVarInt(predicates.size(), stream);
       for (IDPredicate predicate : predicates) {
         predicate.serialize(stream);
@@ -264,6 +279,7 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
 
     @Override
     public void serialize(ByteBuffer buffer) {
+      super.serialize(buffer);
       ReadWriteForEncodingUtils.writeVarInt(predicates.size(), buffer);
       for (IDPredicate predicate : predicates) {
         predicate.serialize(buffer);

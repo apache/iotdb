@@ -506,6 +506,7 @@ public class StatementAnalyzer {
     protected Scope visitDelete(Delete node, Optional<Scope> scope) {
       final Scope ret = Scope.create();
       AnalyzeUtils.analyzeDelete(node, queryContext);
+      analysis.setScope(node, ret);
       return ret;
     }
 

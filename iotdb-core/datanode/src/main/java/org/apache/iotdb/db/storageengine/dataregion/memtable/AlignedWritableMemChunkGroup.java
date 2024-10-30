@@ -123,6 +123,10 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
     return deletedPointsNumber;
   }
 
+  public long deleteTime(ModEntry modEntry) {
+    return memChunk.deleteTime(modEntry.getStartTime(), modEntry.getEndTime());
+  }
+
   @Override
   public long getCurrentTVListSize(String measurement) {
     return memChunk.getTVList().rowCount();

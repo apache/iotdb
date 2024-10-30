@@ -825,7 +825,11 @@ public abstract class AbstractMemTable implements IMemTable {
 
     long pointDeleted = 0;
     for (Pair<IDeviceID, IWritableMemChunkGroup> pair : targetDeviceList) {
-      pointDeleted += pair.right.delete(modEntry);
+      if (modEntry.affectsAll(pair.left)) {
+        pointDeleted += pair.right.deleteTime(modEntry);
+      } else {
+        pointDeleted += pair.right.delete(modEntry);
+      }
       if (pair.right.getMemChunkMap().isEmpty()) {
         memTableMap.remove(pair.left);
       }

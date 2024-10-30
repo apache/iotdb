@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
@@ -62,6 +63,11 @@ public class TsFilePlanRedoer {
       recoveryMemTable.delete(deletionEntry);
       tsFileResource.getNewModFile().write(deletionEntry);
     }
+  }
+
+  void redoDelete(RelationalDeleteDataNode node) throws IOException {
+    recoveryMemTable.delete(node.getModEntry());
+    tsFileResource.getNewModFile().write(node.getModEntry());
   }
 
   void redoInsert(InsertNode node) throws WriteProcessException {

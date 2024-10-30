@@ -39,6 +39,7 @@ import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.utils.TsPrimitiveType;
 
@@ -80,8 +81,10 @@ public abstract class AlignedTVList extends TVList {
   // If a sensor chunk size of Text datatype reaches the threshold, this flag will be set true
   boolean reachMaxChunkSizeFlag;
 
-  // not null when constructed by queries
-  BitMap rowBitMap;
+  // not null when constructed by queries for tree model
+  BitMap allValueColDeletedMap;
+  // constructed after deletion
+  BitMap timeColDeletedMap;
 
   AlignedTVList(List<TSDataType> types) {
     super();
@@ -136,7 +139,9 @@ public abstract class AlignedTVList extends TVList {
     alignedTvList.bitMaps = bitMaps;
     alignedTvList.rowCount = this.rowCount;
     // for table model, we won't discard any row even if all value columns are null
-    alignedTvList.rowBitMap = ignoreAllNullRows ? getRowBitMap() : null;
+    alignedTvList.allValueColDeletedMap = ignoreAllNullRows ? getAllValueColDeletedMap() : null;
+    alignedTvList.timeColDeletedMap = this.timeColDeletedMap;
+
     return alignedTvList;
   }
 
@@ -496,6 +501,12 @@ public abstract class AlignedTVList extends TVList {
     if (rowIndex >= rowCount) {
       return false;
     }
+    if (allValueColDeletedMap != null && allValueColDeletedMap.isMarked(rowIndex)) {
+      return true;
+    }
+    if (timeColDeletedMap != null && timeColDeletedMap.isMarked(getValueIndex(rowIndex))) {
+      return true;
+    }
     if (values.get(columnIndex) == null) {
       return true;
     }
@@ -523,6 +534,19 @@ public abstract class AlignedTVList extends TVList {
     int deletedNumber = 0;
     for (int i = 0; i < dataTypes.size(); i++) {
       deletedNumber += delete(lowerBound, upperBound, i).left;
+    }
+    return deletedNumber;
+  }
+
+  public int deleteTime(long lowerBound, long upperBound) {
+    delete(lowerBound, upperBound);
+    int deletedNumber = 0;
+    for (int i = 0; i < rowCount; i++) {
+      long time = getTime(i);
+      if (time >= lowerBound && time <= upperBound) {
+        markRowNull(i);
+        deletedNumber++;
+      }
     }
     return deletedNumber;
   }
@@ -669,6 +693,18 @@ public abstract class AlignedTVList extends TVList {
         bitMaps.get(i).add(null);
       }
     }
+  }
+
+  private void markRowNull(int i) {
+    if (timeColDeletedMap == null) {
+      timeColDeletedMap = new BitMap(rowCount);
+    } else if (timeColDeletedMap.getSize() < rowCount) {
+      byte[] prevBytes = timeColDeletedMap.getByteArray();
+      byte[] newBytes = new byte[rowCount / 8 + 1];
+      System.arraycopy(prevBytes, 0, newBytes, 0, prevBytes.length);
+      timeColDeletedMap = new BitMap(rowCount, newBytes);
+    }
+    timeColDeletedMap.mark(getValueIndex(i));
   }
 
   /**
@@ -964,13 +1000,19 @@ public abstract class AlignedTVList extends TVList {
     // time column
     for (int sortedRowIndex = 0; sortedRowIndex < rowCount; sortedRowIndex++) {
       // skip empty row
-      if (rowBitMap != null && rowBitMap.isMarked(getValueIndex(sortedRowIndex))) {
+      if (allValueColDeletedMap != null
+          && allValueColDeletedMap.isMarked(getValueIndex(sortedRowIndex))) {
+        continue;
+      }
+      if (timeColDeletedMap != null && timeColDeletedMap.isMarked(sortedRowIndex)) {
         continue;
       }
       int nextRowIndex = sortedRowIndex + 1;
       while (nextRowIndex < rowCount
-          && rowBitMap != null
-          && rowBitMap.isMarked(getValueIndex(nextRowIndex))) {
+          && ((allValueColDeletedMap != null
+                  && allValueColDeletedMap.isMarked(getValueIndex(nextRowIndex)))
+              || (timeColDeletedMap != null
+                  && timeColDeletedMap.isMarked(getValueIndex(nextRowIndex))))) {
         nextRowIndex++;
       }
       long timestamp = getTime(sortedRowIndex);
@@ -1002,7 +1044,10 @@ public abstract class AlignedTVList extends TVList {
       currentWriteRowIndex = 0;
       for (int sortedRowIndex = 0; sortedRowIndex < rowCount; sortedRowIndex++) {
         // skip empty row
-        if (rowBitMap != null && rowBitMap.isMarked(getValueIndex(sortedRowIndex))) {
+        if ((allValueColDeletedMap != null
+                && allValueColDeletedMap.isMarked(getValueIndex(sortedRowIndex)))
+            || (timeColDeletedMap != null
+                && timeColDeletedMap.isMarked(getValueIndex(sortedRowIndex)))) {
           continue;
         }
         // skip time duplicated or totally deleted rows
@@ -1172,6 +1217,13 @@ public abstract class AlignedTVList extends TVList {
     }
     // bitmap
     size += rowCount * dataTypes.size() * Byte.BYTES;
+
+    // have timeColDeletedMap
+    size += Byte.BYTES;
+    if (timeColDeletedMap != null) {
+      int length = timeColDeletedMap.getByteArray().length;
+      return ReadWriteForEncodingUtils.varIntSize(length) + length * Byte.BYTES;
+    }
     return size;
   }
 
@@ -1239,6 +1291,14 @@ public abstract class AlignedTVList extends TVList {
         // bitmap
         WALWriteUtils.write(isNullValue(rowIndex, columnIndex), buffer);
       }
+    }
+
+    if (timeColDeletedMap != null) {
+      buffer.put((byte) 1);
+      WALWriteUtils.write(timeColDeletedMap.getByteArray().length, buffer);
+      buffer.put(timeColDeletedMap.getByteArray());
+    } else {
+      buffer.put((byte) 0);
     }
   }
 
@@ -1335,10 +1395,23 @@ public abstract class AlignedTVList extends TVList {
 
     AlignedTVList tvList = AlignedTVList.newAlignedList(dataTypes);
     tvList.putAlignedValues(times, values, bitMaps, 0, rowCount, null);
+
+    boolean hasTimeColDeletedMap = stream.read() == 1;
+    if (hasTimeColDeletedMap) {
+      int length = ReadWriteForEncodingUtils.readVarInt(stream);
+      byte[] bytes = new byte[length];
+      stream.readFully(bytes);
+      tvList.timeColDeletedMap = new BitMap(rowCount, bytes);
+    }
+
     return tvList;
   }
 
-  public BitMap getRowBitMap() {
+  public BitMap getTimeColDeletedMap() {
+    return timeColDeletedMap;
+  }
+
+  public BitMap getAllValueColDeletedMap() {
     // row exists when any column value exists
     if (bitMaps == null) {
       return null;

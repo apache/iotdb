@@ -99,7 +99,7 @@ public class TsTable {
   public int getIdColumnOrdinal(final String columnName) {
     readWriteLock.readLock().lock();
     try {
-      return idColumnIndexMap.getOrDefault(columnName, -1);
+      return idColumnIndexMap.getOrDefault(columnName.toLowerCase(), -1);
     } finally {
       readWriteLock.readLock().unlock();
     }

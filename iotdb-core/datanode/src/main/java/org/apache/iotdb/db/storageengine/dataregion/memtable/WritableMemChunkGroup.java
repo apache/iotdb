@@ -142,6 +142,11 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
+  public long deleteTime(ModEntry modEntry) {
+    return delete(modEntry);
+  }
+
+  @Override
   public long getCurrentTVListSize(String measurement) {
     if (!memChunkMap.containsKey(measurement)) {
       return 0;

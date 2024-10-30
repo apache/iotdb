@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
@@ -302,7 +304,11 @@ public class AnalyzeUtils {
         ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID); ) {
       // TODO: may use time and db/table to filter
       TRegionRouteMapResp latestRegionRouteMap = configNodeClient.getLatestRegionRouteMap();
-      node.setReplicaSets(latestRegionRouteMap.regionRouteMap.values());
+      Set<TRegionReplicaSet> replicaSets = new HashSet<>();
+      latestRegionRouteMap.getRegionRouteMap().entrySet().stream()
+          .filter(e -> e.getKey().getType() == TConsensusGroupType.DataRegion)
+          .forEach(e -> replicaSets.add(e.getValue()));
+      node.setReplicaSets(replicaSets);
     } catch (Exception e) {
       throw new IoTDBRuntimeException(e, TSStatusCode.CAN_NOT_CONNECT_CONFIGNODE.getStatusCode());
     }
@@ -377,7 +383,7 @@ public class AnalyzeUtils {
     }
     Identifier identifier = (Identifier) left;
     // time predicate
-    if (identifier.getValue().equals("time")) {
+    if (identifier.getValue().equalsIgnoreCase("time")) {
       long rightHandValue;
       if (right instanceof LongLiteral) {
         rightHandValue = ((LongLiteral) right).getParsedValue();
@@ -388,10 +394,10 @@ public class AnalyzeUtils {
 
       switch (comparisonExpression.getOperator()) {
         case LESS_THAN:
-          timeRange.setEndTime(Math.min(timeRange.getEndTime(), rightHandValue));
+          timeRange.setEndTime(Math.min(timeRange.getEndTime(), rightHandValue - 1));
           break;
         case LESS_THAN_OR_EQUAL:
-          timeRange.setEndTime(Math.min(timeRange.getEndTime(), rightHandValue + 1));
+          timeRange.setEndTime(Math.min(timeRange.getEndTime(), rightHandValue));
           break;
         case GREATER_THAN:
           timeRange.setStartTime(Math.max(timeRange.getStartTime(), rightHandValue + 1));
@@ -400,20 +406,41 @@ public class AnalyzeUtils {
           timeRange.setStartTime(Math.max(timeRange.getStartTime(), rightHandValue));
           break;
         case EQUAL:
+          timeRange.setStartTime(rightHandValue);
+          timeRange.setEndTime(rightHandValue);
+          break;
         case NOT_EQUAL:
         case IS_DISTINCT_FROM:
         default:
           throw new SemanticException(
               "The operator of time predicate must be <, <=, >, or >=: " + right);
       }
-    }
 
+      return oldPredicate;
+    }
     // id predicate
     String columnName = identifier.getValue();
     int idColumnOrdinal = table.getIdColumnOrdinal(columnName);
     if (idColumnOrdinal == -1) {
       throw new SemanticException(
           "The column '" + columnName + "' does not exist or is not an id column");
+    }
+
+    IDPredicate newPredicate = getIdPredicate(comparisonExpression, right, idColumnOrdinal);
+    if (oldPredicate == null) {
+      return newPredicate;
+    }
+    if (oldPredicate instanceof IDPredicate.And) {
+      ((And) oldPredicate).add(newPredicate);
+      return oldPredicate;
+    }
+    return new IDPredicate.And(oldPredicate, newPredicate);
+  }
+
+  private static IDPredicate getIdPredicate(
+      ComparisonExpression comparisonExpression, Expression right, int idColumnOrdinal) {
+    if (comparisonExpression.getOperator() != ComparisonExpression.Operator.EQUAL) {
+      throw new SemanticException("The operator of id predicate must be '=' for " + right);
     }
 
     String rightHandValue;
@@ -423,16 +450,9 @@ public class AnalyzeUtils {
       throw new SemanticException(
           "The right hand value of id predicate must be a string: " + right);
     }
-    IDPredicate newPredicate = new SegmentExactMatch(rightHandValue, idColumnOrdinal);
-
-    if (oldPredicate == null) {
-      return newPredicate;
-    }
-    if (oldPredicate instanceof IDPredicate.And) {
-      ((And) oldPredicate).add(newPredicate);
-      return oldPredicate;
-    }
-    return new IDPredicate.And(oldPredicate, newPredicate);
+    // the first segment is the table name, so + 1
+    IDPredicate newPredicate = new SegmentExactMatch(rightHandValue, idColumnOrdinal + 1);
+    return newPredicate;
   }
 
   public interface DataPartitionQueryFunc {
