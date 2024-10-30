@@ -114,7 +114,6 @@ public class PipeConsensusReceiver {
     this.consensusGroupId = consensusGroupId;
     this.pipeConsensusReceiverMetrics = new PipeConsensusReceiverMetrics(this);
     this.consensusPipeName = consensusPipeName;
-    MetricService.getInstance().addMetricSet(pipeConsensusReceiverMetrics);
 
     // Each pipeConsensusReceiver has its own base directories. for example, a default dir path is
     // data/datanode/system/pipe/consensus/receiver/__consensus.{consensusGroupId}_{leaderDataNodeId}_{followerDataNodeId}
@@ -142,6 +141,7 @@ public class PipeConsensusReceiver {
     }
     this.requestExecutor =
         new RequestExecutor(pipeConsensusReceiverMetrics, pipeConsensusTsFileWriterPool);
+    MetricService.getInstance().addMetricSet(pipeConsensusReceiverMetrics);
   }
 
   /**
