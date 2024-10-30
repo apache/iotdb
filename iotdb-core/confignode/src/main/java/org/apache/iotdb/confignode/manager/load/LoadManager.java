@@ -270,7 +270,7 @@ public class LoadManager {
       default:
         break;
     }
-    loadCache.updateNodeStatistics();
+    loadCache.updateNodeStatistics(true);
     eventService.checkAndBroadcastNodeStatisticsChangeEventIfNecessary();
   }
 
@@ -282,7 +282,7 @@ public class LoadManager {
    */
   public void removeNodeCache(int nodeId) {
     loadCache.removeNodeCache(nodeId);
-    loadCache.updateNodeStatistics();
+    loadCache.updateNodeStatistics(true);
     eventService.checkAndBroadcastNodeStatisticsChangeEventIfNecessary();
   }
 
