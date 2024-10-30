@@ -99,9 +99,6 @@ public class ConsensusPipeManager {
                   EXTRACTOR_CONSENSUS_RECEIVER_DATANODE_ID_KEY,
                   String.valueOf(consensusPipeName.getReceiverDataNodeId()))
               .put(EXTRACTOR_REALTIME_MODE_KEY, replicateMode.getValue())
-              .put(
-                  EXTRACTOR_CONSENSUS_RESTORE_PROGRESS_PIPE_TASK_NAME_KEY,
-                  String.valueOf(new ConsensusPipeName(senderPeer, regionMigrationCoordinatorPeer)))
               .build();
     } else {
       extractorParams =
@@ -118,6 +115,9 @@ public class ConsensusPipeManager {
                   EXTRACTOR_CONSENSUS_RECEIVER_DATANODE_ID_KEY,
                   String.valueOf(consensusPipeName.getReceiverDataNodeId()))
               .put(EXTRACTOR_REALTIME_MODE_KEY, replicateMode.getValue())
+              .put(
+                  EXTRACTOR_CONSENSUS_RESTORE_PROGRESS_PIPE_TASK_NAME_KEY,
+                  String.valueOf(new ConsensusPipeName(senderPeer, regionMigrationCoordinatorPeer)))
               .build();
     }
     return new ImmutableTriple<>(
