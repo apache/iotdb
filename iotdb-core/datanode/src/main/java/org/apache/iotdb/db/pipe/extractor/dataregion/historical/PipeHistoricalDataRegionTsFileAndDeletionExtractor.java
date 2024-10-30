@@ -307,7 +307,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     creationTime = environment.getCreationTime();
     pipeTaskMeta = environment.getPipeTaskMeta();
     if (parameters.hasAnyAttributes(EXTRACTOR_CONSENSUS_RESTORE_PROGRESS_PIPE_TASK_NAME_KEY)) {
-      ConsensusPipeName consensusPipeName =
+      ConsensusPipeName currentNode2CoordinatorPipeName =
           new ConsensusPipeName(
               parameters.getString(EXTRACTOR_CONSENSUS_RESTORE_PROGRESS_PIPE_TASK_NAME_KEY));
       // For region migration in IoTV2, non-coordinators will only transfer data after
@@ -315,7 +315,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
       startIndex =
           PipeDataNodeAgent.task()
               .getPipeTaskProgressIndex(
-                  consensusPipeName.toString(), consensusPipeName.getConsensusGroupId().getId());
+                  currentNode2CoordinatorPipeName.toString(),
+                  currentNode2CoordinatorPipeName.getConsensusGroupId().getId());
     } else {
       startIndex = environment.getPipeTaskMeta().getProgressIndex();
     }
