@@ -176,11 +176,11 @@ public abstract class SubscriptionPrefetchingQueue {
 
     if (prefetchingQueue.isEmpty()) {
       states.markMissingPrefetch();
-      if (inputPendingQueue.isEmpty()) {
-        if (!onEvent()) {
-          tryPrefetch();
-        }
-      }
+      tryPrefetch();
+    }
+
+    if (prefetchingQueue.isEmpty()) {
+      onEvent();
     }
 
     final long size = prefetchingQueue.size();
@@ -238,10 +238,6 @@ public abstract class SubscriptionPrefetchingQueue {
     acquireReadLock();
     try {
       if (isClosed()) {
-        return false;
-      }
-      if (inputPendingQueue.isEmpty()) {
-        onEvent();
         return false;
       }
       if (states.shouldPrefetch()) {
