@@ -227,14 +227,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
         for (TsFileResource targetResource : targetTsfileResourceList) {
           if (!targetResource.isDeleted()) {
-            FileMetrics.getInstance()
-                .addTsFile(
-                    targetResource.getDatabaseName(),
-                    targetResource.getDataRegionId(),
-                    targetResource.getTsFileSize(),
-                    true,
-                    targetResource.getTsFile().getName());
-
+            CompactionUtils.addFilesToFileMetrics(targetResource);
           } else {
             // target resource is empty after compaction, then delete it
             targetResource.remove();
