@@ -2512,7 +2512,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @SuppressWarnings("squid:S2142") // ignore Either re-interrupt this method or rethrow
   @Override
-  public TSStatus stopDataNode() {
+  public TSStatus stopAndClearDataNode() {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     LOGGER.info("Execute stopDataNode RPC method");
 
@@ -2534,6 +2534,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     try {
       DataNode.getInstance().stop();
       status.setMessage("stop datanode succeed");
+      DataNode.getInstance().deleteDataNodeSystemProperties();
     } catch (Exception e) {
       LOGGER.warn("Stop Data Node error", e);
       status.setCode(TSStatusCode.DATANODE_STOP_ERROR.getStatusCode());

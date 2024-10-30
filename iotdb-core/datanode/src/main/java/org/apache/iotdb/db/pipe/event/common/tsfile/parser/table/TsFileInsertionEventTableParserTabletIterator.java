@@ -120,7 +120,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
       tablet.addTimestamp(rowIndex, timestamp);
       for (int i = 0, fieldSize = row.length - 1; i < fieldSize; i++) {
         final Object value =
-            columnSchemas.get(i).getType() != DATE
+            columnSchemas.get(i).getType() != DATE || row[i] == null
                 ? row[i]
                 : DateUtils.parseIntToLocalDate((Integer) row[i]);
         tablet.addValue(columnNames.get(i), rowIndex, value);

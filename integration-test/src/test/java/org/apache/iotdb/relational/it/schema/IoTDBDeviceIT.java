@@ -45,6 +45,7 @@ import static org.junit.Assert.fail;
 public class IoTDBDeviceIT {
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setDefaultSchemaRegionGroupNumPerDatabase(2);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -222,6 +223,12 @@ public class IoTDBDeviceIT {
               "show devices from table0 where substring(region_id, 1, 1) in ('1', '2') and 1 + 1 = 2"),
           "region_id,plant_id,device_id,model,",
           Collections.singleton("1,5,3,3,"));
+
+      // Test limit / offset from multi regions
+      statement.execute(
+          "insert into table0(region_id, plant_id, device_id, model, temperature, humidity) values('2', '5', '3', 'A', 37.6, 111.1)");
+      TestUtils.assertResultSetSize(
+          statement.executeQuery("show devices from table0 offset 1 limit 1"), 1);
     }
   }
 }

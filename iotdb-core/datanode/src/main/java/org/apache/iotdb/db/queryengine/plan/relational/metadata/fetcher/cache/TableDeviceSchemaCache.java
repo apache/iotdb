@@ -37,6 +37,7 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -119,7 +120,7 @@ public class TableDeviceSchemaCache {
   /////////////////////////////// Attribute ///////////////////////////////
 
   // The input deviceId shall have its tailing nulls trimmed
-  public Map<String, String> getDeviceAttribute(final String database, final IDeviceID deviceId) {
+  public Map<String, Binary> getDeviceAttribute(final String database, final IDeviceID deviceId) {
     readWriteLock.readLock().lock();
     try {
       final TableDeviceCacheEntry entry =
@@ -132,7 +133,7 @@ public class TableDeviceSchemaCache {
 
   // The input deviceId shall have its tailing nulls trimmed
   public void putAttributes(
-      final String database, final IDeviceID deviceId, final Map<String, String> attributeMap) {
+      final String database, final IDeviceID deviceId, final Map<String, Binary> attributeMap) {
     readWriteLock.readLock().lock();
     try {
       // Avoid stale table
@@ -152,7 +153,7 @@ public class TableDeviceSchemaCache {
   }
 
   public void updateAttributes(
-      final String database, final IDeviceID deviceId, final Map<String, String> attributeMap) {
+      final String database, final IDeviceID deviceId, final Map<String, Binary> attributeMap) {
     dualKeyCache.update(
         new TableId(database, deviceId.getTableName()),
         deviceId,
@@ -290,8 +291,8 @@ public class TableDeviceSchemaCache {
    *     the {@link Pair#left} will be the source measurement's last time, (OptionalLong.empty() iff
    *     the source measurement is all {@code null}); {@link Pair#right} will be an {@link
    *     TsPrimitiveType} array, whose element will be {@code null} if cache miss, {@link
-   *     TableDeviceLastCache#EMPTY_PRIMITIVE_TYPE} iff cache hit and the measurement is {@code
-   *     null} when last by the source measurement's time, and the result value otherwise.
+   *     TableDeviceLastCache#EMPTY_PRIMITIVE_TYPE} iff cache hit and the measurement is without any
+   *     values when last by the source measurement's time, and the result value otherwise.
    */
   public Optional<Pair<OptionalLong, TsPrimitiveType[]>> getLastRow(
       final String database,

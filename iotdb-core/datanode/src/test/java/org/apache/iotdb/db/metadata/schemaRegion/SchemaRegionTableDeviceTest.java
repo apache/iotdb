@@ -27,6 +27,8 @@ import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.utils.Binary;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -94,24 +96,36 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
             schemaRegion,
             tableName,
             Collections.singletonList(new String[] {"hebei", "p_1", "d_0"}));
-    Assert.assertEquals("new", deviceSchemaInfoList.get(0).getAttributeValue("type"));
-    Assert.assertEquals("monthly", deviceSchemaInfoList.get(0).getAttributeValue("cycle"));
+    Assert.assertEquals(
+        new Binary("new", TSFileConfig.STRING_CHARSET),
+        deviceSchemaInfoList.get(0).getAttributeValue("type"));
+    Assert.assertEquals(
+        new Binary("monthly", TSFileConfig.STRING_CHARSET),
+        deviceSchemaInfoList.get(0).getAttributeValue("cycle"));
 
     deviceSchemaInfoList =
         SchemaRegionTestUtil.getTableDevice(
             schemaRegion,
             tableName,
             Collections.singletonList(new String[] {"hebei", "p_1", "d_1"}));
-    Assert.assertEquals("old", deviceSchemaInfoList.get(0).getAttributeValue("type"));
-    Assert.assertEquals("monthly", deviceSchemaInfoList.get(0).getAttributeValue("cycle"));
+    Assert.assertEquals(
+        new Binary("old", TSFileConfig.STRING_CHARSET),
+        deviceSchemaInfoList.get(0).getAttributeValue("type"));
+    Assert.assertEquals(
+        new Binary("monthly", TSFileConfig.STRING_CHARSET),
+        deviceSchemaInfoList.get(0).getAttributeValue("cycle"));
 
     deviceSchemaInfoList =
         SchemaRegionTestUtil.getTableDevice(
             schemaRegion,
             tableName,
             Collections.singletonList(new String[] {"shandong", "p_1", "d_1"}));
-    Assert.assertEquals("old", deviceSchemaInfoList.get(0).getAttributeValue("type"));
-    Assert.assertEquals("daily", deviceSchemaInfoList.get(0).getAttributeValue("cycle"));
+    Assert.assertEquals(
+        new Binary("old", TSFileConfig.STRING_CHARSET),
+        deviceSchemaInfoList.get(0).getAttributeValue("type"));
+    Assert.assertEquals(
+        new Binary("daily", TSFileConfig.STRING_CHARSET),
+        deviceSchemaInfoList.get(0).getAttributeValue("cycle"));
   }
 
   @Test

@@ -29,11 +29,13 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.junit.After;
@@ -123,9 +125,9 @@ public class TableDeviceSchemaCacheTest {
   public void testDeviceCache() {
     final TableDeviceSchemaCache cache = TableDeviceSchemaCache.getInstance();
 
-    final Map<String, String> attributeMap = new HashMap<>();
-    attributeMap.put("type", "new");
-    attributeMap.put("cycle", "monthly");
+    final Map<String, Binary> attributeMap = new HashMap<>();
+    attributeMap.put("type", new Binary("new", TSFileConfig.STRING_CHARSET));
+    attributeMap.put("cycle", new Binary("monthly", TSFileConfig.STRING_CHARSET));
     cache.putAttributes(
         database1,
         convertIdValuesToDeviceID(table1, new String[] {"hebei", "p_1", "d_0"}),
@@ -138,7 +140,7 @@ public class TableDeviceSchemaCacheTest {
         cache.getDeviceAttribute(
             database1, convertIdValuesToDeviceID(table1, new String[] {"hebei", "p_1", "d_1"})));
 
-    attributeMap.put("type", "old");
+    attributeMap.put("type", new Binary("old", TSFileConfig.STRING_CHARSET));
     cache.putAttributes(
         database1,
         convertIdValuesToDeviceID(table1, new String[] {"hebei", "p_1", "d_1"}),
@@ -148,7 +150,7 @@ public class TableDeviceSchemaCacheTest {
         cache.getDeviceAttribute(
             database1, convertIdValuesToDeviceID(table1, new String[] {"hebei", "p_1", "d_1"})));
 
-    attributeMap.put("cycle", "daily");
+    attributeMap.put("cycle", new Binary("daily", TSFileConfig.STRING_CHARSET));
     cache.putAttributes(
         database1,
         convertIdValuesToDeviceID(table1, new String[] {"shandong", "p_1", "d_1"}),
@@ -162,8 +164,8 @@ public class TableDeviceSchemaCacheTest {
             database1, convertIdValuesToDeviceID(table1, new String[] {"shandong", "p_1", "d_1"})));
 
     final String table2 = "t2";
-    attributeMap.put("type", "new");
-    attributeMap.put("cycle", "monthly");
+    attributeMap.put("type", new Binary("new", TSFileConfig.STRING_CHARSET));
+    attributeMap.put("cycle", new Binary("monthly", TSFileConfig.STRING_CHARSET));
     cache.putAttributes(
         database1,
         convertIdValuesToDeviceID(table2, new String[] {"hebei", "p_1", "d_0"}),
@@ -176,7 +178,7 @@ public class TableDeviceSchemaCacheTest {
         cache.getDeviceAttribute(
             database1, convertIdValuesToDeviceID(table1, new String[] {"hebei", "p_1", "d_1"})));
 
-    attributeMap.put("type", "old");
+    attributeMap.put("type", new Binary("old", TSFileConfig.STRING_CHARSET));
     cache.putAttributes(
         database1,
         convertIdValuesToDeviceID(table2, new String[] {"hebei", "p_1", "d_1"}),

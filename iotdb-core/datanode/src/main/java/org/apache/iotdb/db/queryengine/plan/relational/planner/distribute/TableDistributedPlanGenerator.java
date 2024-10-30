@@ -58,6 +58,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Pus
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import com.google.common.collect.ImmutableSet;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 
@@ -754,7 +755,14 @@ public class TableDistributedPlanGenerator
         // segments[0] is always tableName
         orderingRules.add(deviceEntry -> (String) deviceEntry.getNthSegment(idx + 1));
       } else {
-        orderingRules.add(deviceEntry -> deviceEntry.getAttributeColumnValues().get(idx));
+        orderingRules.add(
+            deviceEntry ->
+                deviceEntry.getAttributeColumnValues().get(idx) == null
+                    ? null
+                    : deviceEntry
+                        .getAttributeColumnValues()
+                        .get(idx)
+                        .getStringValue(TSFileConfig.STRING_CHARSET));
       }
     }
     Comparator<DeviceEntry> comparator = null;
