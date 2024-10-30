@@ -226,7 +226,7 @@ public class LoadTsFileTableSchemaCache {
             final int realColumnIndex = fileColumn2RealColumn.getValue();
             deviceIdArray[realColumnIndex] = device.getSegments()[fileColumnIndex + 1];
           }
-          devices.add(deviceIdArray);
+          devices.add(truncateNullSuffixesOfDeviceIdSegments(deviceIdArray));
         }
         return devices;
       }
@@ -241,6 +241,14 @@ public class LoadTsFileTableSchemaCache {
         return Collections.nCopies(currentBatchTable2Devices.get(tableName).size(), new Object[0]);
       }
     };
+  }
+
+  private static Object[] truncateNullSuffixesOfDeviceIdSegments(Object[] segments) {
+    int lastNonNullIndex = segments.length - 1;
+    while (lastNonNullIndex >= 1 && segments[lastNonNullIndex] == null) {
+      lastNonNullIndex--;
+    }
+    return Arrays.copyOf(segments, lastNonNullIndex + 1);
   }
 
   public void createTable(TableSchema fileSchema, MPPQueryContext context, Metadata metadata)
