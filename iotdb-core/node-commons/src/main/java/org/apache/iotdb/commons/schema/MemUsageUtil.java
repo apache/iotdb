@@ -29,6 +29,10 @@ public class MemUsageUtil {
     // do nothing
   }
 
+  public static long computeStringMemUsage(final String value) {
+    return estimateStringSize(value);
+  }
+
   /**
    * The basic memory occupied by any BasicMNode object.
    *
@@ -54,7 +58,7 @@ public class MemUsageUtil {
    *   <li>hash code, 4B
    * </ul>
    */
-  private static long estimateStringSize(String string) {
+  private static long estimateStringSize(final String string) {
     // each char takes 2B in Java
     return string == null ? 0 : 32 + 2L * string.length();
   }
