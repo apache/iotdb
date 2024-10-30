@@ -101,8 +101,8 @@ public class InsertTablet extends WrappedInsertStatement {
     if (deviceID2LastIdxMap != null) {
       return;
     }
-    deviceID2LastIdxMap = new LinkedHashMap<>();
     InsertTabletStatement insertTabletStatement = getInnerTreeStatement();
+    deviceID2LastIdxMap = new LinkedHashMap<>(insertTabletStatement.getRowCount());
     for (int i = 0; i < insertTabletStatement.getRowCount(); i++) {
       IDeviceID deviceID = insertTabletStatement.getTableDeviceID(i);
       deviceID2LastIdxMap.put(deviceID, i);
