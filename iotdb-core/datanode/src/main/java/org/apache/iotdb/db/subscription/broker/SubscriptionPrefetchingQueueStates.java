@@ -28,27 +28,35 @@ import com.codahale.metrics.Meter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class PollPrefetchStates {
+/**
+ * The {@link SubscriptionPrefetchingQueueStates} manages the state of a {@link
+ * SubscriptionPrefetchingQueue}. It determines whether prefetching should occur based on memory
+ * availability, poll request rates, and missing prefetch rates.
+ */
+public class SubscriptionPrefetchingQueueStates {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PollPrefetchStates.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(SubscriptionPrefetchingQueueStates.class);
+
+  private static final double EPSILON = 1e-6;
 
   // TODO: config
   private static final double PREFETCH_MEMORY_THRESHOLD = 0.6;
-  private static final double MISSING_RATE_THRESHOLD = 0.8;
+  private static final double MISSING_RATE_THRESHOLD = 0.9;
   private static final int PREFETCHED_EVENT_COUNT_CONTROL_PARAMETER = 100;
 
   private final SubscriptionPrefetchingQueue prefetchingQueue;
 
   private volatile long lastPollRequestTimestamp;
   private final Meter pollRequestMeter;
-  private final Meter missingMeter;
+  private final Meter missingPrefechMeter;
 
-  public PollPrefetchStates(final SubscriptionPrefetchingQueue prefetchingQueue) {
+  public SubscriptionPrefetchingQueueStates(final SubscriptionPrefetchingQueue prefetchingQueue) {
     this.prefetchingQueue = prefetchingQueue;
 
     this.lastPollRequestTimestamp = -1;
     this.pollRequestMeter = new Meter(new IoTDBMovingAverage(), Clock.defaultClock());
-    this.missingMeter = new Meter(new IoTDBMovingAverage(), Clock.defaultClock());
+    this.missingPrefechMeter = new Meter(new IoTDBMovingAverage(), Clock.defaultClock());
   }
 
   public void markPollRequest() {
@@ -56,16 +64,16 @@ public class PollPrefetchStates {
     pollRequestMeter.mark();
   }
 
-  public void markMissing() {
-    missingMeter.mark();
+  public void markMissingPrefetch() {
+    missingPrefechMeter.mark();
   }
 
   public boolean shouldPrefetch() {
-    if (!isResourceEnough()) {
+    if (!isMemoryEnough()) {
       return false;
     }
 
-    if (missRate() > MISSING_RATE_THRESHOLD) {
+    if (missingRate() > MISSING_RATE_THRESHOLD) {
       return true;
     }
 
@@ -73,33 +81,38 @@ public class PollPrefetchStates {
       return false;
     }
 
-    if (lastPollRequestTimestamp == -1) {
-      return true;
-    }
-
-    final long delta = System.currentTimeMillis() - lastPollRequestTimestamp;
-    final double rate = pollRate();
-    return delta * rate > 1000 * Math.log(SubscriptionAgent.broker().getPrefetchingQueueCount());
+    // the delta between the prefetch timestamp and the timestamp of the last poll request > poll
+    // request frequency
+    return (System.currentTimeMillis() - lastPollRequestTimestamp) * pollRate() > 1000;
   }
 
-  private boolean isResourceEnough() {
+  private boolean isMemoryEnough() {
     return PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes()
             * PREFETCH_MEMORY_THRESHOLD
         > PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes();
-  }
-
-  private double missRate() {
-    return missingMeter.getOneMinuteRate() / pollRequestMeter.getOneMinuteRate();
   }
 
   private double pollRate() {
     return pollRequestMeter.getOneMinuteRate();
   }
 
+  private double missingRate() {
+    if (isApproximatelyZero(pollRate())) {
+      return 0.0;
+    }
+    return missingPrefechMeter.getOneMinuteRate() / pollRate();
+  }
+
   private boolean hasTooManyPrefetchedEvents() {
+    // The number of prefetched events in the current prefetching queue > floor(t / number of
+    // prefetching queues), where t is an adjustable parameter.
     return prefetchingQueue.getPrefetchedEventCount()
             * SubscriptionAgent.broker().getPrefetchingQueueCount()
         > PREFETCHED_EVENT_COUNT_CONTROL_PARAMETER;
+  }
+
+  private static boolean isApproximatelyZero(final double value) {
+    return Math.abs(value) < EPSILON;
   }
 
   @Override
@@ -108,8 +121,8 @@ public class PollPrefetchStates {
         + lastPollRequestTimestamp
         + ", pollRate="
         + pollRate()
-        + ", missRate="
-        + missRate()
+        + ", missingRate="
+        + missingRate()
         + "}";
   }
 }

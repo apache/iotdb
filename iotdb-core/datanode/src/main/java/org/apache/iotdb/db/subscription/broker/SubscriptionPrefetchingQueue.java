@@ -93,7 +93,7 @@ public abstract class SubscriptionPrefetchingQueue {
    */
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
 
-  private final PollPrefetchStates pollPrefetchStates;
+  private final SubscriptionPrefetchingQueueStates states;
 
   private volatile boolean isCompleted = false;
   private volatile boolean isClosed = false;
@@ -114,7 +114,7 @@ public abstract class SubscriptionPrefetchingQueue {
     this.inFlightEvents = new ConcurrentHashMap<>();
     this.batches = new SubscriptionPipeEventBatches(this, maxDelayInMs, maxBatchSizeInBytes);
 
-    this.pollPrefetchStates = new PollPrefetchStates(this);
+    this.states = new SubscriptionPrefetchingQueueStates(this);
   }
 
   public void cleanUp() {
@@ -172,10 +172,15 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   public SubscriptionEvent pollInternal(final String consumerId) {
-    pollPrefetchStates.markPollRequest();
+    states.markPollRequest();
+
     if (prefetchingQueue.isEmpty()) {
-      pollPrefetchStates.markMissing();
-      tryPrefetch(true);
+      states.markMissingPrefetch();
+      if (inputPendingQueue.isEmpty()) {
+        if (!onEvent()) {
+          tryPrefetch();
+        }
+      }
     }
 
     final long size = prefetchingQueue.size();
@@ -235,8 +240,12 @@ public abstract class SubscriptionPrefetchingQueue {
       if (isClosed()) {
         return false;
       }
-      if (pollPrefetchStates.shouldPrefetch()) {
-        tryPrefetch(false);
+      if (inputPendingQueue.isEmpty()) {
+        onEvent();
+        return false;
+      }
+      if (states.shouldPrefetch()) {
+        tryPrefetch();
         remapInFlightEventsSnapshot(committedCleaner, pollableNacker, responsePrefetcher);
         return true;
       } else {
@@ -274,12 +283,8 @@ public abstract class SubscriptionPrefetchingQueue {
    *
    * <p>It will continuously attempt to prefetch and generate a {@link SubscriptionEvent} until
    * {@link SubscriptionPrefetchingQueue#inputPendingQueue} is empty.
-   *
-   * @param onEventIfEmpty {@code true} if {@link SubscriptionPrefetchingQueue#onEvent()} is called
-   *     when {@link SubscriptionPrefetchingQueue#inputPendingQueue} is empty, {@code false}
-   *     otherwise
    */
-  private void tryPrefetch(final boolean onEventIfEmpty) {
+  private void tryPrefetch() {
     while (!inputPendingQueue.isEmpty()) {
       final Event event = UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll());
       if (Objects.isNull(event)) {
@@ -343,9 +348,6 @@ public abstract class SubscriptionPrefetchingQueue {
     }
 
     // At this moment, the inputPendingQueue is empty.
-    if (onEventIfEmpty) {
-      onEvent();
-    }
   }
 
   /**
@@ -580,7 +582,7 @@ public abstract class SubscriptionPrefetchingQueue {
     result.put("size of prefetchingQueue", String.valueOf(prefetchingQueue.size()));
     result.put("size of inFlightEvents", String.valueOf(inFlightEvents.size()));
     result.put("commitIdGenerator", commitIdGenerator.toString());
-    result.put("pollPrefetchStates", pollPrefetchStates.toString());
+    result.put("states", states.toString());
     result.put("isCompleted", String.valueOf(isCompleted));
     result.put("isClosed", String.valueOf(isClosed));
     return result;
@@ -594,7 +596,7 @@ public abstract class SubscriptionPrefetchingQueue {
     result.put("prefetchingQueue", prefetchingQueue.toString());
     result.put("inFlightEvents", inFlightEvents.toString());
     result.put("commitIdGenerator", commitIdGenerator.toString());
-    result.put("pollPrefetchStates", pollPrefetchStates.toString());
+    result.put("states", states.toString());
     result.put("isCompleted", String.valueOf(isCompleted));
     result.put("isClosed", String.valueOf(isClosed));
     return result;
