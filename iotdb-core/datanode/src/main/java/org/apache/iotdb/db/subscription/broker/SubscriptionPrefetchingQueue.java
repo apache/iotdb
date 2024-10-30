@@ -93,6 +93,8 @@ public abstract class SubscriptionPrefetchingQueue {
    */
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
 
+  private final PollStates pollStates = new PollStates();
+
   private volatile boolean isCompleted = false;
   private volatile boolean isClosed = false;
 
@@ -161,7 +163,11 @@ public abstract class SubscriptionPrefetchingQueue {
   public SubscriptionEvent poll(final String consumerId) {
     acquireReadLock();
     try {
-      return isClosed() ? null : pollInternal(consumerId);
+      if (isClosed()) {
+        return null;
+      }
+      pollStates.mark();
+      return pollInternal(consumerId);
     } finally {
       releaseReadLock();
     }
@@ -229,7 +235,7 @@ public abstract class SubscriptionPrefetchingQueue {
       if (isClosed()) {
         return false;
       }
-      if (shouldPrefetch()) {
+      if (pollStates.shouldPrefetch() && isResourceEnough()) {
         tryPrefetch(false);
         remapInFlightEventsSnapshot(committedCleaner, pollableNacker, responsePrefetcher);
         return true;
@@ -242,7 +248,8 @@ public abstract class SubscriptionPrefetchingQueue {
     }
   }
 
-  public boolean shouldPrefetch() {
+  private boolean isResourceEnough() {
+    // TODO
     return true;
   }
 
