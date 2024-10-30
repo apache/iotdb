@@ -3091,14 +3091,24 @@ public class IoTDBDescriptor {
                 .orElse(String.valueOf(conf.getMaxAllocateMemoryRatioForLoad()))));
     conf.setLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber(
         Integer.parseInt(
-            properties.getProperty(
-                "load_tsfile_analyze_schema_batch_flush_time_series_number",
-                String.valueOf(conf.getLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber()))));
+            Optional.ofNullable(
+                    properties.getProperty(
+                        "load_tsfile_analyze_schema_batch_flush_time_series_number",
+                        String.valueOf(
+                            conf.getLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber())))
+                .map(String::trim)
+                .orElse(
+                    String.valueOf(conf.getLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber()))));
     conf.setLoadTsFileAnalyzeSchemaBatchFlushTableDeviceNumber(
         Integer.parseInt(
-            properties.getProperty(
-                "load_tsfile_analyze_schema_batch_flush_table_device_number",
-                String.valueOf(conf.getLoadTsFileAnalyzeSchemaBatchFlushTableDeviceNumber()))));
+            Optional.ofNullable(
+                    properties.getProperty(
+                        "load_tsfile_analyze_schema_batch_flush_table_device_number",
+                        String.valueOf(
+                            conf.getLoadTsFileAnalyzeSchemaBatchFlushTableDeviceNumber())))
+                .map(String::trim)
+                .orElse(
+                    String.valueOf(conf.getLoadTsFileAnalyzeSchemaBatchFlushTableDeviceNumber()))));
     conf.setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
         Long.parseLong(
             Optional.ofNullable(
