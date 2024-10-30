@@ -20,6 +20,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import static java.lang.Math.*;
 import static org.apache.iotdb.tsfile.constant.TestConstant.random;
@@ -1014,6 +1015,7 @@ public class TSDIFFBOSMImproveTest {
         int2Bytes(block_size,encode_pos,encoded_result);
         encode_pos+= 4;
 
+
 //        for (int i = 0; i < 1; i++) {
         for (int i = 0; i < block_num; i++) {
 //            int start_encode_pos = encode_pos;
@@ -1151,7 +1153,9 @@ public class TSDIFFBOSMImproveTest {
         int block_num = length_all / block_size;
         int2Bytes(block_size,encode_pos,encoded_result);
         encode_pos+= 4;
-
+//        int[] test_block = new int[block_size];
+//        System.arraycopy(data, 0, test_block, 0, block_size);
+//        System.out.println(Arrays.toString(test_block));
 //        for (int i = 0; i < 1; i++) {
         for (int i = 0; i < block_num; i++) {
 //            int start_encode_pos = encode_pos;
@@ -1639,12 +1643,16 @@ public class TSDIFFBOSMImproveTest {
             remain_length --;
             BOSBlockDecoderImprove(encoded, decode_pos, value_list, remain_length, value_pos_arr);
         }
+//        int[] test_block = new int[block_size];
+//        System.arraycopy(value_list, 0, test_block, 0, block_size);
+//        System.out.println(Arrays.toString(test_block));
+//        System.out.println(value_list[1000]);
     }
 
     @Test
     public void BOSImproveEncodeTest() throws IOException {
-//        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
-        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
+//        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
         String output_parent_dir = parent_dir + "icde0802/compression_ratio/bos_m_improve";
 //        String output_parent_dir = parent_dir + "icde0802/compression_ratio/test";
 //        String output_parent_dir = parent_dir + "icde0802/supply_experiment/R2O3_lower_outlier_compare/compression_ratio/bos";
@@ -1696,9 +1704,9 @@ public class TSDIFFBOSMImproveTest {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
 //        dataset_block_size.add(1024);
 
-        int repeatTime2 = 200;
+        int repeatTime2 = 100;
 
-//        for (int file_i = 6; file_i < 7; file_i++) {
+//        for (int file_i = 0; file_i < 1; file_i++) {
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
@@ -1782,7 +1790,6 @@ public class TSDIFFBOSMImproveTest {
                 writer.writeRecord(record);
                 System.out.println(ratio);
 
-                break;
             }
             writer.close();
 
@@ -1927,7 +1934,6 @@ public class TSDIFFBOSMImproveTest {
                 };
                 writer.writeRecord(record);
                 System.out.println(ratio);
-//                break;
             }
             writer.close();
         }
@@ -2072,7 +2078,6 @@ public class TSDIFFBOSMImproveTest {
                 };
                 writer.writeRecord(record);
                 System.out.println(ratio);
-//                break;
             }
             writer.close();
         }
@@ -2524,7 +2529,6 @@ public class TSDIFFBOSMImproveTest {
                 writer.writeRecord(record);
                 System.out.println(ratio);
 
-//                break;
             }
             writer.close();
 
@@ -2857,7 +2861,6 @@ public class TSDIFFBOSMImproveTest {
                 };
                 writer.writeRecord(record);
                 System.out.println(ratio);
-//                break;
             }
             writer.close();
         }
@@ -3005,7 +3008,6 @@ public class TSDIFFBOSMImproveTest {
                 writer.writeRecord(record);
                 System.out.println(ratio);
 
-                break;
             }
             writer.close();
 
