@@ -33,14 +33,10 @@ import java.util.Map;
 
 public class InsertTablet extends WrappedInsertStatement {
 
-  private Map<IDeviceID, Integer> deviceID2LastIdxMap = new LinkedHashMap<>();
+  private Map<IDeviceID, Integer> deviceID2LastIdxMap = null;
 
   public InsertTablet(InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
     super(insertTabletStatement, context);
-    for (int i = 0; i < insertTabletStatement.getRowCount(); i++) {
-      IDeviceID deviceID = insertTabletStatement.getTableDeviceID(i);
-      deviceID2LastIdxMap.put(deviceID, i);
-    }
   }
 
   @Override
@@ -65,6 +61,7 @@ public class InsertTablet extends WrappedInsertStatement {
 
   @Override
   public List<Object[]> getDeviceIdList() {
+    prepareDeviceID2LastIdxMap();
     List<Object[]> deviceIdList = new ArrayList<>();
     for (IDeviceID deviceID : deviceID2LastIdxMap.keySet()) {
       Object[] segments = deviceID.getSegments();
@@ -81,6 +78,7 @@ public class InsertTablet extends WrappedInsertStatement {
 
   @Override
   public List<Object[]> getAttributeValueList() {
+    prepareDeviceID2LastIdxMap();
     final InsertTabletStatement insertTabletStatement = getInnerTreeStatement();
     List<Object[]> result = new ArrayList<>(insertTabletStatement.getRowCount());
     final List<Integer> attrColumnIndices = insertTabletStatement.getAttrColumnIndices();
@@ -96,5 +94,18 @@ public class InsertTablet extends WrappedInsertStatement {
       result.add(attrValues);
     }
     return result;
+  }
+
+  // The map cannot be maintained during construction because the IDeviceID may be reset later.
+  private void prepareDeviceID2LastIdxMap() {
+    if (deviceID2LastIdxMap != null) {
+      return;
+    }
+    deviceID2LastIdxMap = new LinkedHashMap<>();
+    InsertTabletStatement insertTabletStatement = getInnerTreeStatement();
+    for (int i = 0; i < insertTabletStatement.getRowCount(); i++) {
+      IDeviceID deviceID = insertTabletStatement.getTableDeviceID(i);
+      deviceID2LastIdxMap.put(deviceID, i);
+    }
   }
 }
