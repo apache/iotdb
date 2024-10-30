@@ -24,13 +24,11 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
-import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeEmptyEvent;
 import org.apache.iotdb.db.subscription.metric.SubscriptionPrefetchingQueueMetrics;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 import org.apache.iotdb.rpc.subscription.payload.poll.TerminationPayload;
 
@@ -103,22 +101,21 @@ public class SubscriptionBroker {
               brokerId);
           events.add(
               new SubscriptionEvent(
-                  new SubscriptionPipeEmptyEvent(),
-                  new SubscriptionPollResponse(
-                      SubscriptionPollResponseType.TERMINATION.getType(),
-                      new TerminationPayload(),
-                      new SubscriptionCommitContext(
-                          IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
-                          PipeDataNodeAgent.runtime().getRebootTimes(),
-                          topicName,
-                          brokerId,
-                          INVALID_COMMIT_ID))));
+                  SubscriptionPollResponseType.TERMINATION.getType(),
+                  new TerminationPayload(),
+                  new SubscriptionCommitContext(
+                      IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
+                      PipeDataNodeAgent.runtime().getRebootTimes(),
+                      topicName,
+                      brokerId,
+                      INVALID_COMMIT_ID)));
           continue;
         }
         // There are two reasons for not printing logs here:
         // 1. There will be a delay in the creation of the prefetching queue after subscription.
-        // 2. There is no corresponding prefetching queue on this DN (currently the consumer is
-        // fully connected to all DNs).
+        // 2. There is no corresponding prefetching queue on this DN:
+        //   2.1. the consumer is fully connected to all DNs currently...
+        //   2.2. potential disorder of unbind and close prefetching queue...
         continue;
       }
       if (prefetchingQueue.isClosed()) {
@@ -338,11 +335,12 @@ public class SubscriptionBroker {
     final SubscriptionPrefetchingQueue prefetchingQueue =
         topicNameToPrefetchingQueue.get(topicName);
     if (Objects.nonNull(prefetchingQueue)) {
-      LOGGER.warn(
-          "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] still exists",
+      LOGGER.info(
+          "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] still exists, unbind it before closing",
           topicName,
           brokerId);
-      return;
+      // TODO: consider more robust metadata semantics
+      unbindPrefetchingQueue(topicName);
     }
 
     completedTopicNames.remove(topicName);

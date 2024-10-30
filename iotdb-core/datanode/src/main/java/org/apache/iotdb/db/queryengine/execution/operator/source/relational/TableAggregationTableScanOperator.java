@@ -40,6 +40,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.file.metadata.statistics.StringStatistics;
 import org.apache.tsfile.read.common.TimeRange;
@@ -55,8 +56,10 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -90,6 +93,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   private final SeriesScanOptions seriesScanOptions;
 
   private final List<String> measurementColumnNames;
+  private final Set<String> allSensors;
 
   private final List<IMeasurementSchema> measurementSchemas;
 
@@ -118,6 +122,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
       Ordering scanOrder,
       SeriesScanOptions seriesScanOptions,
       List<String> measurementColumnNames,
+      Set<String> allSensors,
       List<IMeasurementSchema> measurementSchemas,
       int maxTsBlockLineNum,
       int measurementCount,
@@ -156,6 +161,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     this.scanOrder = scanOrder;
     this.seriesScanOptions = seriesScanOptions;
     this.measurementColumnNames = measurementColumnNames;
+    this.allSensors = allSensors;
     this.measurementSchemas = measurementSchemas;
     this.measurementColumnTSDataTypes =
         measurementSchemas.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
@@ -170,7 +176,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     this.maxReturnSize = maxReturnSize;
     this.maxTsBlockLineNum = maxTsBlockLineNum;
 
-    this.seriesScanUtil = constructAlignedSeriesScanUtil(deviceEntries.get(currentDeviceIndex));
+    constructAlignedSeriesScanUtil();
   }
 
   @Override
@@ -253,17 +259,27 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     return resultTsBlock;
   }
 
-  private AlignedSeriesScanUtil constructAlignedSeriesScanUtil(DeviceEntry deviceEntry) {
-    AlignedFullPath alignedPath =
-        constructAlignedPath(deviceEntry, measurementColumnNames, measurementSchemas);
+  private void constructAlignedSeriesScanUtil() {
+    DeviceEntry deviceEntry;
 
-    return new AlignedSeriesScanUtil(
-        alignedPath,
-        scanOrder,
-        seriesScanOptions,
-        operatorContext.getInstanceContext(),
-        true,
-        measurementColumnTSDataTypes);
+    if (this.deviceEntries.isEmpty() || this.deviceEntries.get(this.currentDeviceIndex) == null) {
+      // for device which is not exist
+      deviceEntry = new DeviceEntry(new StringArrayDeviceID(""), Collections.emptyList());
+    } else {
+      deviceEntry = this.deviceEntries.get(this.currentDeviceIndex);
+    }
+
+    AlignedFullPath alignedPath =
+        constructAlignedPath(deviceEntry, measurementColumnNames, measurementSchemas, allSensors);
+
+    this.seriesScanUtil =
+        new AlignedSeriesScanUtil(
+            alignedPath,
+            scanOrder,
+            seriesScanOptions,
+            operatorContext.getInstanceContext(),
+            true,
+            measurementColumnTSDataTypes);
   }
 
   /** Return true if we have the result of this timeRange. */
@@ -313,7 +329,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
 
       if (currentDeviceIndex < deviceCount) {
         // construct AlignedSeriesScanUtil for next device
-        this.seriesScanUtil = constructAlignedSeriesScanUtil(deviceEntries.get(currentDeviceIndex));
+        constructAlignedSeriesScanUtil();
         queryDataSource.reset();
         this.seriesScanUtil.initQueryDataSource(queryDataSource);
       }
@@ -790,8 +806,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
 
         if (currentDeviceIndex < deviceCount) {
           // construct AlignedSeriesScanUtil for next device
-          this.seriesScanUtil =
-              constructAlignedSeriesScanUtil(deviceEntries.get(currentDeviceIndex));
+          constructAlignedSeriesScanUtil();
           queryDataSource.reset();
           this.seriesScanUtil.initQueryDataSource(queryDataSource);
         }

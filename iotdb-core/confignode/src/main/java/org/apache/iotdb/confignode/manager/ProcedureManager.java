@@ -138,6 +138,8 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -239,7 +241,7 @@ public class ProcedureManager {
             && System.currentTimeMillis() - startCheckTimeForProcedures < PROCEDURE_WAIT_TIME_OUT) {
           final Pair<Long, Boolean> procedureIdDuplicatePair =
               checkDuplicateTableTask(
-                  database, null, null, null, ProcedureType.CREATE_TABLE_PROCEDURE);
+                  database, null, null, null, ProcedureType.DELETE_DATABASE_PROCEDURE);
           hasOverlappedTask = procedureIdDuplicatePair.getRight();
 
           if (Boolean.FALSE.equals(procedureIdDuplicatePair.getRight())) {
@@ -1587,7 +1589,7 @@ public class ProcedureManager {
   }
 
   public Pair<Long, Boolean> checkDuplicateTableTask(
-      final String database,
+      final @Nonnull String database,
       final TsTable table,
       final String tableName,
       final String queryId,
@@ -1606,8 +1608,10 @@ public class ProcedureManager {
           if (type == thisType && Objects.equals(table, createTableProcedure.getTable())) {
             return new Pair<>(procedure.getProcId(), false);
           }
+          // tableName == null indicates delete database procedure
           if (database.equals(createTableProcedure.getDatabase())
-              && Objects.equals(tableName, createTableProcedure.getTable().getTableName())) {
+              && (Objects.isNull(tableName)
+                  || Objects.equals(tableName, createTableProcedure.getTable().getTableName()))) {
             return new Pair<>(-1L, true);
           }
           break;
@@ -1621,8 +1625,10 @@ public class ProcedureManager {
           if (type == thisType && queryId.equals(alterTableProcedure.getQueryId())) {
             return new Pair<>(procedure.getProcId(), false);
           }
+          // tableName == null indicates delete database procedure
           if (database.equals(alterTableProcedure.getDatabase())
-              && Objects.equals(tableName, alterTableProcedure.getTableName())) {
+              && (Objects.isNull(tableName)
+                  || Objects.equals(tableName, alterTableProcedure.getTableName()))) {
             return new Pair<>(-1L, true);
           }
           break;

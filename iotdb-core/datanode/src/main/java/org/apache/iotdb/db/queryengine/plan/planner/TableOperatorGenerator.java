@@ -129,6 +129,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
@@ -145,7 +146,6 @@ import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.type.BinaryType;
 import org.apache.tsfile.read.common.type.BlobType;
 import org.apache.tsfile.read.common.type.BooleanType;
-import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
@@ -382,6 +382,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                   context.getTypeProvider().getTemplatedInfo().getLimitValue(), maxTsBlockLineNum);
     }
 
+    Set<String> allSensors = new HashSet<>(measurementColumnNames);
+    // for time column
+    allSensors.add("");
     TableScanOperator tableScanOperator =
         new TableScanOperator(
             operatorContext,
@@ -392,6 +395,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             node.getScanOrder(),
             scanOptionsBuilder.build(),
             measurementColumnNames,
+            allSensors,
             measurementSchemas,
             maxTsBlockLineNum);
 
@@ -400,7 +404,10 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     for (int i = 0, size = node.getDeviceEntries().size(); i < size; i++) {
       AlignedFullPath alignedPath =
           constructAlignedPath(
-              node.getDeviceEntries().get(i), measurementColumnNames, measurementSchemas);
+              node.getDeviceEntries().get(i),
+              measurementColumnNames,
+              measurementSchemas,
+              allSensors);
       ((DataDriverContext) context.getDriverContext()).addPath(alignedPath);
     }
 
@@ -1368,26 +1375,21 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       TypeProvider typeProvider,
       boolean scanAscending) {
     List<Integer> argumentChannels = new ArrayList<>();
-    List<TSDataType> argumentTypes = new ArrayList<>();
     for (Expression argument : aggregation.getArguments()) {
       Symbol argumentSymbol = Symbol.from(argument);
       argumentChannels.add(childLayout.get(argumentSymbol));
-
-      // get argument types
-      Type type = typeProvider.getTableModelType(argumentSymbol);
-      if (type instanceof RowType) {
-        type.getTypeParameters().forEach(subType -> argumentTypes.add(getTSDataType(subType)));
-      } else {
-        argumentTypes.add(getTSDataType(type));
-      }
     }
 
     String functionName = aggregation.getResolvedFunction().getSignature().getName();
+    List<TSDataType> originalArgumentTypes =
+        aggregation.getResolvedFunction().getSignature().getArgumentTypes().stream()
+            .map(InternalTypeManager::getTSDataType)
+            .collect(Collectors.toList());
     TableAccumulator accumulator =
         createAccumulator(
             functionName,
             getAggregationTypeByFuncName(functionName),
-            argumentTypes,
+            originalArgumentTypes,
             aggregation.getArguments(),
             Collections.emptyMap(),
             scanAscending);
@@ -1432,7 +1434,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         groupByChannels,
         aggregatorBuilder.build(),
         node.getStep(),
-        10_000,
+        64,
         Long.MAX_VALUE,
         false,
         Long.MAX_VALUE);
@@ -1454,26 +1456,21 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       AggregationNode.Step step,
       TypeProvider typeProvider) {
     List<Integer> argumentChannels = new ArrayList<>();
-    List<TSDataType> argumentTypes = new ArrayList<>();
     for (Expression argument : aggregation.getArguments()) {
       Symbol argumentSymbol = Symbol.from(argument);
       argumentChannels.add(childLayout.get(argumentSymbol));
-
-      // get argument types
-      Type type = typeProvider.getTableModelType(argumentSymbol);
-      if (type instanceof RowType) {
-        type.getTypeParameters().forEach(subType -> argumentTypes.add(getTSDataType(subType)));
-      } else {
-        argumentTypes.add(getTSDataType(type));
-      }
     }
 
     String functionName = aggregation.getResolvedFunction().getSignature().getName();
+    List<TSDataType> originalArgumentTypes =
+        aggregation.getResolvedFunction().getSignature().getArgumentTypes().stream()
+            .map(InternalTypeManager::getTSDataType)
+            .collect(Collectors.toList());
     GroupedAccumulator accumulator =
         createGroupedAccumulator(
             functionName,
             getAggregationTypeByFuncName(functionName),
-            argumentTypes,
+            originalArgumentTypes,
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -1642,6 +1639,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           convertPredicateToFilter(pushDownPredicate, measurementColumnNames, columnSchemaMap));
     }
 
+    Set<String> allSensors = new HashSet<>(measurementColumnNames);
+    // for time column
+    allSensors.add("");
     TableAggregationTableScanOperator aggTableScanOperator =
         new TableAggregationTableScanOperator(
             node.getPlanNodeId(),
@@ -1652,6 +1652,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             scanAscending ? Ordering.ASC : Ordering.DESC,
             scanOptionsBuilder.build(),
             measurementColumnNames,
+            allSensors,
             measurementSchemas,
             TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber(),
             measurementColumnCount,
@@ -1669,7 +1670,10 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     for (int i = 0, size = node.getDeviceEntries().size(); i < size; i++) {
       AlignedFullPath alignedPath =
           constructAlignedPath(
-              node.getDeviceEntries().get(i), measurementColumnNames, measurementSchemas);
+              node.getDeviceEntries().get(i),
+              measurementColumnNames,
+              measurementSchemas,
+              allSensors);
       ((DataDriverContext) context.getDriverContext()).addPath(alignedPath);
     }
 
