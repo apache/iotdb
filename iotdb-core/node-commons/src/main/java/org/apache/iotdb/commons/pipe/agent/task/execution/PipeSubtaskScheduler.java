@@ -86,11 +86,11 @@ public class PipeSubtaskScheduler {
             (long)
                 (((float) BASIC_CHECKPOINT_INTERVAL_BY_TIME_DURATION / runningSubtaskNumber)
                     * corePoolSize));
-    LOGGER.info("Core pool size: {}", corePoolSize);
-    LOGGER.info("Running Subtask number: {}", runningSubtaskNumber);
-    LOGGER.info(
-        "Consumed event count checkpoint interval: {}", consumedEventCountCheckpointInterval);
-    LOGGER.info("Time duration checkpoint interval: {}", timeDurationCheckpointInterval);
+    //    LOGGER.info("Core pool size: {}", corePoolSize);
+    //    LOGGER.info("Running Subtask number: {}", runningSubtaskNumber);
+    //    LOGGER.info(
+    //        "Consumed event count checkpoint interval: {}", consumedEventCountCheckpointInterval);
+    //    LOGGER.info("Time duration checkpoint interval: {}", timeDurationCheckpointInterval);
   }
 
   public void reset() {

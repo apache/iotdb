@@ -61,7 +61,8 @@ public class SubscriptionConnectorSubtask extends PipeConnectorSubtask {
       return false;
     }
 
-    LOGGER.info("execute once for consumer group {} and topic {}", consumerGroupId, topicName);
+    //    LOGGER.info("execute once for consumer group {} and topic {}", consumerGroupId,
+    // topicName);
     return SubscriptionAgent.broker().executePrefetch(consumerGroupId, topicName);
   }
 
