@@ -121,6 +121,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.type.TypeFactory;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1400,7 +1401,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       final int pointer,
       final List<String> attributeNameList,
       final Object[] attributeValueList) {
-    final Map<String, String> resultMap =
+    final Map<String, Binary> resultMap =
         deviceAttributeStore.alterAttribute(pointer, attributeNameList, attributeValueList);
     if (!isRecovering) {
       TableDeviceSchemaCache.getInstance()
