@@ -91,17 +91,14 @@ public class InsertRows extends WrappedInsertStatement {
     for (InsertRowStatement insertRowStatement :
         getInnerTreeStatement().getInsertRowStatementList()) {
       final TableSchema incomingTableSchema = toTableSchema(insertRowStatement);
-      final TableSchema realSchema;
-      synchronized (metadata) {
-        realSchema =
-            metadata
-                .validateTableHeaderSchema(
-                    AnalyzeUtils.getDatabaseName(insertRowStatement, context),
-                    incomingTableSchema,
-                    context,
-                    allowCreateTable)
-                .orElse(null);
-      }
+      final TableSchema realSchema =
+          metadata
+              .validateTableHeaderSchema(
+                  AnalyzeUtils.getDatabaseName(insertRowStatement, context),
+                  incomingTableSchema,
+                  context,
+                  allowCreateTable)
+              .orElse(null);
       if (realSchema == null) {
         throw new SemanticException(
             "Schema validation failed, table cannot be created: " + incomingTableSchema);

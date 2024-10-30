@@ -1005,7 +1005,7 @@ public class AnalyzerTest {
 
         for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
           String databaseName = dataPartitionQueryParam.getDatabaseName();
-          assertEquals(sessionInfo.getDatabaseName().get(), databaseName);
+          assertEquals("root." + sessionInfo.getDatabaseName().get(), databaseName);
           databaseName = PathUtils.qualifyDatabaseName(databaseName);
 
           String tableName = dataPartitionQueryParam.getDeviceID().getTableName();
