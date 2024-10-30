@@ -4,6 +4,11 @@ import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 import org.apache.commons.compress.archivers.sevenz.SevenZArchiveEntry;
 import org.apache.commons.compress.archivers.sevenz.SevenZOutputFile;
+import java.nio.channels.Channels;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.channels.WritableByteChannel;
+import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream;
+import org.apache.commons.compress.utils.SeekableInMemoryByteChannel;
 import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.junit.Test;
@@ -11,6 +16,9 @@ import org.junit.Test;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 
 import static java.lang.Math.*;
@@ -351,125 +359,6 @@ public class TSDIFFBOSMImproveTest {
         encoded_pos_result.add(decode_pos);
         return result_list;
     }
-
-//    private static int BOSEncodeBits(int[] ts_block_delta,
-//                                     int final_k_start_value,
-//                                     int final_k_end_value,
-//                                     int max_delta_value,
-//                                     int[] min_delta,
-//                                     int encode_pos,
-//                                     byte[] cur_byte) {
-//        int block_size = ts_block_delta.length;
-//
-//        ArrayList<Integer> final_left_outlier_index = new ArrayList<>();
-//        ArrayList<Integer> final_right_outlier_index = new ArrayList<>();
-//        ArrayList<Integer> final_left_outlier = new ArrayList<>();
-//        ArrayList<Integer> final_right_outlier = new ArrayList<>();
-//        ArrayList<Integer> final_normal = new ArrayList<>();
-//        int k1 = 0;
-//        int k2 = 0;
-//
-//        ArrayList<Integer> bitmap_outlier = new ArrayList<>();
-//        int index_bitmap_outlier = 0;
-//        int cur_index_bitmap_outlier_bits = 0;
-//        for (int i = 0; i < block_size; i++) {
-//            int cur_value = ts_block_delta[i];
-//            if ( cur_value<= final_k_start_value) {
-//                final_left_outlier.add(cur_value);
-//                final_left_outlier_index.add(i);
-//                if (cur_index_bitmap_outlier_bits % 8 != 7) {
-//                    index_bitmap_outlier <<= 2;
-//                    index_bitmap_outlier += 3;
-//                    cur_index_bitmap_outlier_bits += 2;
-//                } else {
-//                    index_bitmap_outlier <<= 1;
-//                    index_bitmap_outlier += 1;
-//                    bitmap_outlier.add(index_bitmap_outlier);
-//                    index_bitmap_outlier = 1;
-//                    cur_index_bitmap_outlier_bits = 1;
-//                }
-//                k1++;
-//
-//
-//            } else if (cur_value >= final_k_end_value) {
-//                final_right_outlier.add(cur_value - final_k_end_value);
-//                final_right_outlier_index.add(i);
-//                if (cur_index_bitmap_outlier_bits % 8 != 7) {
-//                    index_bitmap_outlier <<= 2;
-//                    index_bitmap_outlier += 2;
-//                    cur_index_bitmap_outlier_bits += 2;
-//                } else {
-//                    index_bitmap_outlier <<= 1;
-//                    index_bitmap_outlier += 1;
-//                    bitmap_outlier.add(index_bitmap_outlier);
-//                    index_bitmap_outlier = 0;
-//                    cur_index_bitmap_outlier_bits = 1;
-//                }
-//                k2++;
-//
-//            } else {
-//                final_normal.add(cur_value - final_k_start_value-1);
-//                index_bitmap_outlier <<= 1;
-//                cur_index_bitmap_outlier_bits += 1;
-//            }
-//            if (cur_index_bitmap_outlier_bits % 8 == 0) {
-//                bitmap_outlier.add(index_bitmap_outlier);
-//                index_bitmap_outlier = 0;
-//            }
-//        }
-//        if (cur_index_bitmap_outlier_bits % 8 != 0) {
-//
-//            index_bitmap_outlier <<= (8 - cur_index_bitmap_outlier_bits % 8);
-//
-//            index_bitmap_outlier &= 0xFF;
-//            bitmap_outlier.add(index_bitmap_outlier);
-//        }
-//
-//        int final_alpha = ((k1 + k2) * getBitWith(block_size-1)) <= (block_size + k1 + k2) ? 1 : 0;
-//
-//
-//        int k_byte = (k1 << 1);
-//        k_byte += final_alpha;
-//        k_byte += (k2 << 16);
-//
-//
-//        int2Bytes(k_byte,encode_pos,cur_byte);
-//        encode_pos += 4;
-//
-//        int2Bytes(min_delta[0],encode_pos,cur_byte);
-//        encode_pos += 4;
-//        int2Bytes(min_delta[1],encode_pos,cur_byte);
-//        encode_pos += 4;
-//        int2Bytes(final_k_start_value,encode_pos,cur_byte);
-//        encode_pos += 4;
-//        int bit_width_final = getBitWith(final_k_end_value - final_k_start_value-2);
-//        intByte2Bytes(bit_width_final,encode_pos,cur_byte);
-//        encode_pos += 1;
-//        int left_bit_width = getBitWith(final_k_start_value);//final_left_max
-//        int right_bit_width = getBitWith(max_delta_value - final_k_end_value);//final_right_min
-//        intByte2Bytes(left_bit_width,encode_pos,cur_byte);
-//        encode_pos += 1;
-//        intByte2Bytes(right_bit_width,encode_pos,cur_byte);
-//        encode_pos += 1;
-//        if (final_alpha == 0) { // 0
-//
-//            for (int i : bitmap_outlier) {
-//
-//                intByte2Bytes(i,encode_pos,cur_byte);
-//                encode_pos += 1;
-//            }
-//        } else {
-//            encode_pos = encodeOutlier2Bytes(final_left_outlier_index, getBitWith(block_size-1),encode_pos,cur_byte);
-//            encode_pos = encodeOutlier2Bytes(final_right_outlier_index, getBitWith(block_size-1),encode_pos,cur_byte);
-//        }
-//        encode_pos = encodeOutlier2Bytes(final_normal, bit_width_final,encode_pos,cur_byte);
-//        if (k1 != 0)
-//            encode_pos = encodeOutlier2Bytes(final_left_outlier, left_bit_width,encode_pos,cur_byte);
-//        if (k2 != 0)
-//            encode_pos = encodeOutlier2Bytes(final_right_outlier, right_bit_width,encode_pos,cur_byte);
-//        return encode_pos;
-//
-//    }
     private static int BOSEncodeBits(int[] ts_block_delta,
                                      int final_k_start_value,
                                      int final_x_l_plus,
@@ -632,7 +521,13 @@ public class TSDIFFBOSMImproveTest {
             throw new IllegalArgumentException("数组不能为空");
         }
         int n = arr.length;
-        return quickSelect(arr, 0, n - 1, n / 2);
+        if (n > 400){
+            return quickSelect(arr, 0, 99, 50);
+        }else if (n > 100){
+            return quickSelect(arr, 0, (n - 1)/4, n / 8);
+        }else {
+            return quickSelect(arr, 0, n - 1, n / 2);
+        }
     }
 
 //    private static int quickSelect(int[] arr, int left, int right, int k){
@@ -665,15 +560,13 @@ public class TSDIFFBOSMImproveTest {
         if (areAllElementsEqual(arr, left, right)) {
             return arr[left];
         }
-        // 随机选择一个pivot索引
         int pivotIndex = left + random.nextInt(right - left + 1);
-        // 把随机选的pivot放到最后
         swap(arr, pivotIndex, right);
 
         pivotIndex = partition(arr, left, right);
-        if (k == pivotIndex) {
+        if (abs(pivotIndex - k) < (right - left)/6) {
             return arr[k];
-        } else if (k < pivotIndex) {
+        } else if (k <= pivotIndex - (right - left)/6) {
             return quickSelect(arr, left, pivotIndex - 1, k);
         } else {
             return quickSelect(arr, pivotIndex + 1, right, k);
@@ -704,6 +597,19 @@ public class TSDIFFBOSMImproveTest {
         int temp = arr[i];
         arr[i] = arr[j];
         arr[j] = temp;
+    }
+
+    public static long compress(byte[] data) throws IOException {
+        File file = new File("example.7z");
+        file.createNewFile();
+        Path path = Paths.get("example.7z");
+        SeekableByteChannel channel = Files.newByteChannel(path, StandardOpenOption.READ, StandardOpenOption.WRITE);
+        SevenZOutputFile szof = new SevenZOutputFile(channel);
+        SevenZArchiveEntry entry = szof.createArchiveEntry(null, "entryName");
+        szof.putArchiveEntry(entry);
+        szof.write(data);
+        szof.closeArchiveEntry();
+        return channel.size();
     }
 
     public static int EncodeBits(int num,
@@ -1737,8 +1643,8 @@ public class TSDIFFBOSMImproveTest {
 
     @Test
     public void BOSImproveEncodeTest() throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
-//        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+//        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
+        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
         String output_parent_dir = parent_dir + "icde0802/compression_ratio/bos_m_improve";
 //        String output_parent_dir = parent_dir + "icde0802/compression_ratio/test";
 //        String output_parent_dir = parent_dir + "icde0802/supply_experiment/R2O3_lower_outlier_compare/compression_ratio/bos";
@@ -2174,10 +2080,163 @@ public class TSDIFFBOSMImproveTest {
 
     @Test
     public void compressBOSTest() throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/";// your data path
-//        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
-        String output_parent_dir = parent_dir + "icde0802/compression_ratio/test";
-//        String output_parent_dir = parent_dir + "icde0802/supply_experiment/R3O2_compare_compression/compression_ratio/bos_m_comp";
+//        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/";// your data path
+        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+        String output_parent_dir = parent_dir + "icde0802/supply_experiment/R3O2_compare_compression/compression_ratio/bos_m_comp";
+        String input_parent_dir = parent_dir + "trans_data/";
+        ArrayList<String> input_path_list = new ArrayList<>();
+        ArrayList<String> output_path_list = new ArrayList<>();
+        ArrayList<String> dataset_name = new ArrayList<>();
+        ArrayList<Integer> dataset_block_size = new ArrayList<>();
+        dataset_name.add("CS-Sensors");
+        dataset_name.add("Metro-Traffic");
+        dataset_name.add("USGS-Earthquakes");
+        dataset_name.add("YZ-Electricity");
+        dataset_name.add("GW-Magnetic");
+        dataset_name.add("TY-Fuel");
+        dataset_name.add("Cyber-Vehicle");
+        dataset_name.add("Vehicle-Charge");
+        dataset_name.add("Nifty-Stocks");
+        dataset_name.add("TH-Climate");
+        dataset_name.add("TY-Transport");
+        dataset_name.add("EPM-Education");
+
+        for (String value : dataset_name) {
+            input_path_list.add(input_parent_dir + value);
+            dataset_block_size.add(1024);
+        }
+
+        output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
+//        dataset_block_size.add(1024);
+        output_path_list.add(output_parent_dir + "/Metro-Traffic_ratio.csv");// 1
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv");// 2
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/YZ-Electricity_ratio.csv"); // 3
+//        dataset_block_size.add(256);
+        output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); //4
+//        dataset_block_size.add(1024);
+        output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv");//5
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/Cyber-Vehicle_ratio.csv"); //6
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv");//7
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv");//8
+//        dataset_block_size.add(1024);
+        output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv");//9
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv");//10
+//        dataset_block_size.add(2048);
+        output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
+//        dataset_block_size.add(1024);
+
+        int repeatTime2 = 5;
+//        for (int file_i = 8; file_i < 9; file_i++) {
+
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//        for (int file_i = input_path_list.size()-1; file_i >=0 ; file_i--) {
+
+            String inputPath = input_path_list.get(file_i);
+            System.out.println(inputPath);
+            String Output = output_path_list.get(file_i);
+
+            File file = new File(inputPath);
+            File[] tempList = file.listFiles();
+
+            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
+
+            String[] head = {
+                    "Input Direction",
+                    "Encoding Algorithm",
+//                    "Compress Algorithm",
+                    "Encoding Time",
+                    "Decoding Time",
+                    "Points",
+                    "Compressed Size",
+                    "Compression Ratio"
+            };
+            writer.writeRecord(head); // write header to output file
+
+            assert tempList != null;
+
+            for (File f : tempList) {
+                System.out.println(f);
+                InputStream inputStream = Files.newInputStream(f.toPath());
+
+                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
+                ArrayList<Integer> data1 = new ArrayList<>();
+                ArrayList<Integer> data2 = new ArrayList<>();
+
+                loader.readHeaders();
+                while (loader.readRecord()) {
+                    data1.add(Integer.valueOf(loader.getValues()[0]));
+                    data2.add(Integer.valueOf(loader.getValues()[1]));
+                }
+                inputStream.close();
+
+                int[] data2_arr = new int[data1.size()];
+                for(int i = 0;i<data2.size();i++){
+                    data2_arr[i] = data2.get(i);
+                }
+                byte[] encoded_result = new byte[data2_arr.length*4];
+                long encodeTime = 0;
+                long decodeTime = 0;
+                int length = 0;
+
+                long s = System.nanoTime();
+                for (int repeat = 0; repeat < repeatTime2; repeat++) {
+                    length =  BOSEncoderImprove(data2_arr, dataset_block_size.get(file_i), encoded_result);
+                }
+                long e = System.nanoTime();
+                encodeTime += ((e - s) / repeatTime2);
+                double ratio = 0;
+                double compressed_size = 0;
+                long compressTime = encodeTime;
+                s = System.nanoTime();
+                byte[] compressed = new byte[0];
+                for (int repeat = 0; repeat < repeatTime2; repeat++) {
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    BZip2CompressorOutputStream bzip2Out = new BZip2CompressorOutputStream(baos);
+                    bzip2Out.write(encoded_result);
+                    bzip2Out.finish();
+                    compressed = baos.toByteArray();
+                }
+                e = System.nanoTime();
+                compressTime += ((e - s) / repeatTime2);
+
+                // test compression ratio and compressed size
+                compressed_size += compressed.length;
+                double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
+                ratio += ratioTmp;
+                s = System.nanoTime();
+//                    for (int repeat = 0; repeat < repeatTime2; repeat++)
+//                        BOSDecoderImprove(encoded_result);
+                e = System.nanoTime();
+                decodeTime += ((e - s) / repeatTime2);
+
+
+                String[] record = {
+                        f.toString(),
+                        "BOS+"+ "7-Zip",
+                        String.valueOf(compressTime),
+                        String.valueOf(decodeTime),
+                        String.valueOf(data1.size()),
+                        String.valueOf(compressed_size),
+                        String.valueOf(ratio)
+                };
+                writer.writeRecord(record);
+                System.out.println(ratio);
+            }
+            writer.close();
+        }
+    }
+
+    @Test
+    public void compressBOSTest2() throws IOException {
+//        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/";// your data path
+        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+        String output_parent_dir = parent_dir + "icde0802/supply_experiment/R3O2_compare_compression/compression_ratio/bos_m_lz4_comp";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -2230,7 +2289,6 @@ public class TSDIFFBOSMImproveTest {
 //        for (int file_i = 8; file_i < 9; file_i++) {
         CompressionType[] compressList = {
                 CompressionType.LZ4,
-//                CompressionType.LZMA2,
         };
 
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
@@ -2330,51 +2388,6 @@ public class TSDIFFBOSMImproveTest {
                     writer.writeRecord(record);
 //                    System.out.println(ratio);
                 }
-//                double ratio = 0;
-//                double compressed_size = 0;
-//                File outfile = new File(parent_dir + "icde0802/example.bin");
-//
-//                // 使用FileOutputStream将byte数组写入文件
-//                try (FileOutputStream fos = new FileOutputStream(outfile)) {
-//                    fos.write(encoded_result);
-//                } catch (IOException e2) {
-//                    // 处理可能的I/O异常
-//                    e2.printStackTrace();
-//                }
-
-//                File input = new File(parent_dir + "icde0802/example.bin");
-//                File output = new File(parent_dir + "icde0802/example.7z");
-//                SevenZOutputFile out = new SevenZOutputFile(output);
-//
-//                long compressTime = encodeTime;
-//                s = System.nanoTime();
-////                byte[] compressed = new byte[0];
-//                for (int repeat = 0; repeat < repeatTime2; repeat++) {
-//                    addToArchiveCompression(out, input, ".");
-//                    out.closeArchiveEntry();
-//                }
-//                e = System.nanoTime();
-//                compressTime += ((e - s) / repeatTime2);
-//
-//
-//                long compressed = output.length();
-//                compressed_size += compressed;
-//                double ratioTmp =
-//                        (double) compressed / (double) (repeatTime2 * data1.size() * Integer.BYTES);
-//                ratio += ratioTmp;
-//
-//
-//                String[] record = {
-//                        f.toString(),
-//                        "BOS+7-Zip",
-//                        String.valueOf(compressTime),
-//                        String.valueOf(decodeTime),
-//                        String.valueOf(data1.size()),
-//                        String.valueOf(compressed_size),
-//                        String.valueOf(ratio)
-//                };
-//                writer.writeRecord(record);
-//                System.out.println(ratio);
             }
             writer.close();
         }
@@ -2520,8 +2533,8 @@ public class TSDIFFBOSMImproveTest {
 
     @Test
     public void BOSVaryBlockSize() throws IOException {
-//        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
-        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
+        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+//        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
 //        String output_parent_dir = parent_dir + "icde0802/compression_ratio/block_size_bos_m";
         String output_parent_dir = parent_dir + "icde0802/compression_ratio/block_size_bos_m";
         String input_parent_dir = parent_dir + "trans_data/";
@@ -2567,7 +2580,7 @@ public class TSDIFFBOSMImproveTest {
 
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
 
-        int repeatTime2 = 200;
+        int repeatTime2 = 100;
 //        int[] file_i_list = {0,9,10};
 //        for (int file_i = 9; file_i < 10; file_i++) {
 //        for(int file_i :file_i_list){
@@ -2621,6 +2634,7 @@ public class TSDIFFBOSMImproveTest {
 
 //                for (int block_size_i = 5; block_size_i < 14; block_size_i++) {
                 for (int block_size_i = 13; block_size_i > 4; block_size_i--) {
+//                for (int block_size_i = 10; block_size_i > 9; block_size_i--) {
                     int block_size = (int) Math.pow(2, block_size_i);
                     System.out.println(block_size);
                     long encodeTime = 0;
