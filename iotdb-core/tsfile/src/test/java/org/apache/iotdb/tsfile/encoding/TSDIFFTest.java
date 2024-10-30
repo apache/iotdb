@@ -806,6 +806,7 @@ public class TSDIFFTest {
         }
     }
 
+
     @Test
     public void ExpTest() throws IOException {
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/";// your data path
@@ -972,7 +973,9 @@ public class TSDIFFTest {
     public void compressBPTest() throws IOException {
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/";// your data path
 //        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
-        String output_parent_dir = parent_dir + "icde0802/supply_experiment/R3O2_compare_compression/compression_ratio/bp_comp";
+//        String output_parent_dir = parent_dir + "icde0802/supply_experiment/R3O2_compare_compression/compression_ratio/bp_comp";
+        String output_parent_dir = parent_dir + "icde0802/compression_ratio/test";
+
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -1021,17 +1024,18 @@ public class TSDIFFTest {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
 //        dataset_block_size.add(1024);
 
-        int repeatTime2 = 500;
+        int repeatTime2 = 50;
 //        for (int file_i = 8; file_i < 9; file_i++) {
         CompressionType[] compressList = {
                 CompressionType.LZ4,
-                CompressionType.LZMA2,
+//                CompressionType.LZMA2,
         };
 
-        for (int file_i = input_path_list.size()-1; file_i >=0 ; file_i--) {
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//        for (int file_i = input_path_list.size()-1; file_i >=0 ; file_i--) {
 
             String inputPath = input_path_list.get(file_i);
-            System.out.println(inputPath);
+//            System.out.println(inputPath);
             String Output = output_path_list.get(file_i);
 
             File file = new File(inputPath);
@@ -1054,7 +1058,7 @@ public class TSDIFFTest {
             assert tempList != null;
 
             for (File f : tempList) {
-                System.out.println(f);
+//                System.out.println(f);
                 InputStream inputStream = Files.newInputStream(f.toPath());
 
                 CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
@@ -1079,7 +1083,7 @@ public class TSDIFFTest {
 
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                    length =  BOSEncoderImprove(data2_arr, dataset_block_size.get(file_i), encoded_result);
+                    length =  BOSEncoder(data2_arr, dataset_block_size.get(file_i), encoded_result);
                 }
                 long e = System.nanoTime();
                 encodeTime += ((e - s) / repeatTime2);
@@ -1088,21 +1092,25 @@ public class TSDIFFTest {
                     double ratio = 0;
                     double compressed_size = 0;
                     long compressTime = encodeTime;
-                    ICompressor compressor = ICompressor.getCompressor(comp);
+                    System.out.println(compressTime);
+
+
                     s = System.nanoTime();
+                    ICompressor compressor = ICompressor.getCompressor(comp);
                     byte[] compressed = new byte[0];
                     for (int repeat = 0; repeat < repeatTime2; repeat++) {
                         compressed = compressor.compress(encoded_result);
                     }
                     e = System.nanoTime();
                     compressTime += ((e - s) / repeatTime2);
+                    System.out.println(compressTime-encodeTime);
                     // test compression ratio and compressed size
                     compressed_size += compressed.length;
                     double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
                     ratio += ratioTmp;
                     s = System.nanoTime();
                     for (int repeat = 0; repeat < repeatTime2; repeat++)
-                        BOSDecoderImprove(encoded_result);
+                        BOSDecoder(encoded_result);
                     e = System.nanoTime();
                     decodeTime += ((e - s) / repeatTime2);
 
@@ -1117,57 +1125,57 @@ public class TSDIFFTest {
                             String.valueOf(ratio)
                     };
                     writer.writeRecord(record);
-                    System.out.println(ratio);
+//                    System.out.println(ratio);
                 }
-                double ratio = 0;
-                double compressed_size = 0;
-                File outfile = new File(parent_dir + "icde0802/example.bin");
-
-                // 使用FileOutputStream将byte数组写入文件
-                try (FileOutputStream fos = new FileOutputStream(outfile)) {
-                    fos.write(encoded_result);
-                } catch (IOException e2) {
-                    // 处理可能的I/O异常
-                    e2.printStackTrace();
-                }
-
-                File input = new File(parent_dir + "icde0802/example.bin");
-
-                File output = new File(parent_dir + "icde0802/example.7z");
-                SevenZOutputFile out = new SevenZOutputFile(output);
-
-                long compressTime = encodeTime;
-                s = System.nanoTime();
-//                byte[] compressed = new byte[0];
-                for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                    addToArchiveCompression(out, input, ".");
-                    out.closeArchiveEntry();
-                }
-                e = System.nanoTime();
-                compressTime += ((e - s) / repeatTime2);
-
-
-                long compressed = output.length();
-
-
-                // test compression ratio and compressed size
-                compressed_size += compressed;
-                double ratioTmp =
-                        (double) compressed / (double) (double) (repeatTime2*data1.size() * Integer.BYTES);
-                ratio += ratioTmp;
-
-
-                String[] record = {
-                        f.toString(),
-                        "7-Zip",
-                        String.valueOf(compressTime),
-                        String.valueOf(decodeTime),
-                        String.valueOf(data1.size()),
-                        String.valueOf(compressed_size),
-                        String.valueOf(ratio)
-                };
-                writer.writeRecord(record);
-                System.out.println(ratio);
+//                double ratio = 0;
+//                double compressed_size = 0;
+//                File outfile = new File(parent_dir + "icde0802/example.bin");
+//
+//                // 使用FileOutputStream将byte数组写入文件
+//                try (FileOutputStream fos = new FileOutputStream(outfile)) {
+//                    fos.write(encoded_result);
+//                } catch (IOException e2) {
+//                    // 处理可能的I/O异常
+//                    e2.printStackTrace();
+//                }
+//
+//                File input = new File(parent_dir + "icde0802/example.bin");
+//
+//                File output = new File(parent_dir + "icde0802/example.7z");
+//                SevenZOutputFile out = new SevenZOutputFile(output);
+//
+//                long compressTime = encodeTime;
+//                s = System.nanoTime();
+////                byte[] compressed = new byte[0];
+//                for (int repeat = 0; repeat < repeatTime2; repeat++) {
+//                    addToArchiveCompression(out, input, ".");
+//                    out.closeArchiveEntry();
+//                }
+//                e = System.nanoTime();
+//                compressTime += ((e - s) / repeatTime2);
+//
+//
+//                long compressed = output.length();
+//
+//
+//                // test compression ratio and compressed size
+//                compressed_size += compressed;
+//                double ratioTmp =
+//                        (double) compressed / (double) (double) (repeatTime2*data1.size() * Integer.BYTES);
+//                ratio += ratioTmp;
+//
+//
+//                String[] record = {
+//                        f.toString(),
+//                        "7-Zip",
+//                        String.valueOf(compressTime),
+//                        String.valueOf(decodeTime),
+//                        String.valueOf(data1.size()),
+//                        String.valueOf(compressed_size),
+//                        String.valueOf(ratio)
+//                };
+//                writer.writeRecord(record);
+//                System.out.println(ratio);
             }
             writer.close();
         }

@@ -508,6 +508,105 @@ public class SPRINTZBPTest {
         return encode_pos;
     }
 
+    public static int EncodeBits(int num,
+                                 int bit_width,
+                                 int encode_pos,
+                                 byte[] cur_byte,
+                                 int[] bit_index_list){
+        // 找到要插入的位的索引
+        int bit_index = bit_index_list[0] ;//cur_byte[encode_pos + 1];
+
+        // 计算数值的起始位位置
+        int remaining_bits = bit_width;
+
+        while (remaining_bits > 0) {
+            // 计算在当前字节中可以使用的位数
+            int available_bits = bit_index;
+            int bits_to_write = Math.min(available_bits, remaining_bits);
+
+            // 更新 bit_index
+            bit_index = available_bits - bits_to_write;
+
+            // 计算要写入的位的掩码和数值
+            int mask = (1 << bits_to_write) - 1;
+            int bits = (num >> (remaining_bits - bits_to_write)) & mask;
+
+            // 写入到当前位置
+            cur_byte[encode_pos] &= (byte) ~(mask << bit_index); // 清除对应位置的位
+            cur_byte[encode_pos] |= (byte) (bits << bit_index);
+
+            // 更新位宽和数值
+            remaining_bits -= bits_to_write;
+            if (bit_index == 0) {
+                bit_index = 8;
+                encode_pos++;
+            }
+        }
+        bit_index_list[0] = bit_index;
+//        cur_byte[encode_pos + 1] = (byte) bit_index;
+        return encode_pos;
+    }
+    private static int BOSBlockEncoderImprove(int[] ts_block, int block_i, int block_size, int remaining ,int encode_pos , byte[] cur_byte) {
+
+        int[] min_delta = new int[3];
+        int[] ts_block_delta = getAbsDeltaTsBlock(ts_block, block_i, block_size, remaining, min_delta);
+
+        int2Bytes(min_delta[0],encode_pos,cur_byte);
+        encode_pos += 4;
+        int2Bytes(min_delta[1],encode_pos,cur_byte);
+        encode_pos += 4;
+        int bit_width_final = getBitWith(min_delta[2]);
+        intByte2Bytes(bit_width_final,encode_pos,cur_byte);
+        encode_pos += 1;
+//        ArrayList<Integer> final_normal = new ArrayList<>();
+        int[] bit_index_list = new int[1];
+        bit_index_list[0] = 8;
+        for(int value:ts_block_delta){
+            encode_pos = EncodeBits(value, bit_width_final, encode_pos, cur_byte, bit_index_list);
+        }
+        if(bit_index_list[0] != 8){
+            encode_pos ++;
+        }
+//        encode_pos = encodeOutlier2Bytes(final_normal, bit_width_final,encode_pos,cur_byte);
+        return encode_pos;
+    }
+    public static int BOSEncoderImprove(
+            int[] data, int block_size, byte[] encoded_result) {
+        block_size++;
+
+        int length_all = data.length;
+
+        int encode_pos = 0;
+        int2Bytes(length_all,encode_pos,encoded_result);
+        encode_pos += 4;
+
+        int block_num = length_all / block_size;
+        int2Bytes(block_size,encode_pos,encoded_result);
+        encode_pos+= 4;
+
+        for (int i = 0; i < block_num; i++) {
+            encode_pos =  BOSBlockEncoderImprove(data, i, block_size, block_size,encode_pos,encoded_result);
+        }
+
+        int remaining_length = length_all - block_num * block_size;
+        if (remaining_length <= 3) {
+            for (int i = remaining_length; i > 0; i--) {
+                int2Bytes(data[data.length - i], encode_pos, encoded_result);
+                encode_pos += 4;
+            }
+
+        }
+        else {
+
+            int start = block_num * block_size;
+            int remaining = length_all-start;
+            encode_pos = BOSBlockEncoderImprove(data, block_num, block_size,remaining, encode_pos,encoded_result);
+
+        }
+
+
+        return encode_pos;
+    }
     public static int BOSEncoder(
             int[] data, int block_size, byte[] encoded_result) {
         block_size++;
@@ -636,7 +735,124 @@ public class SPRINTZBPTest {
         }
     }
 
+    public static int DecodeBits(byte[] cur_byte, int bit_width, int[] decode_pos_list) {
+        int decode_pos = decode_pos_list[0];
+        int bit_index = decode_pos_list[1];  //cur_byte[decode_pos + 1];
+        int remaining_bits = bit_width;
+        int num = 0;
+
+        while (remaining_bits > 0) {
+            int available_bits = bit_index;
+            int bits_to_read = Math.min(available_bits, remaining_bits);
+
+            // 计算要读取的位的掩码
+            int mask = (1 << bits_to_read) - 1;
+            int bits = (cur_byte[decode_pos] >> (available_bits - bits_to_read)) & mask;
+
+            // 将读取的位合并到结果中
+            num = (num << bits_to_read) | bits;
+
+            // 更新位宽和 bit_index
+            remaining_bits -= bits_to_read;
+            bit_index = available_bits - bits_to_read;
+
+            if (bit_index == 0) {
+                bit_index = 8;
+                decode_pos++;
+            }
+        }
+        decode_pos_list[0] = decode_pos;
+        decode_pos_list[1] = bit_index;
+
+        return num;
+    }
+    public static int BOSBlockDecoderImprove(byte[] encoded, int decode_pos, int[] value_list, int block_size, int[] value_pos_arr) {
+
+
+        int value0 = bytes2Integer(encoded, decode_pos, 4);
+        decode_pos += 4;
+        value_list[value_pos_arr[0]] =value0;
+        value_pos_arr[0] ++;
+
+        int min_delta = bytes2Integer(encoded, decode_pos, 4);
+        decode_pos += 4;
+
+        int bit_width_final = bytes2Integer(encoded, decode_pos, 1);
+        decode_pos += 1;
+
+        int[] decode_list = new int[2];
+        decode_list[0]= decode_pos;
+        decode_list[1]= 8;
+        int pre_v = value0;
+        for (int i = 0; i < block_size; i++) {
+            int cur_delta = min_delta + DecodeBits(encoded, bit_width_final,  decode_list);
+            pre_v += deZigzag(cur_delta);
+            value_list[value_pos_arr[0]++] = pre_v;
+        }
+        if(decode_list[1]!=8){
+            return decode_list[0]+1;
+        }else {
+            return decode_list[0];
+        }
+//        value_pos_arr[0] = valuePos;
+//        return decode_list[0];
+
+//        ArrayList<Integer> decode_pos_normal = new ArrayList<>();
+//        ArrayList<Integer> final_normal = decodeOutlier2Bytes(encoded, decode_pos, bit_width_final, block_size, decode_pos_normal);
+//
+//        decode_pos = decode_pos_normal.get(0);
+//        int normal_i = 0;
+////        int pre_v = value0;
+//
+//        for (int i = 0; i < block_size; i++) {
+//            int current_delta = min_delta + final_normal.get(normal_i) ;
+//            pre_v = current_delta + pre_v;
+//            value_list[value_pos_arr[0]] = pre_v;
+//            value_pos_arr[0]++;
+//        }
+//
+//        return decode_pos;
+    }
+    public static void BOSDecoderImprove(byte[] encoded) {
+
+        int decode_pos = 0;
+        int length_all = bytes2Integer(encoded, decode_pos, 4);
+        decode_pos += 4;
+        int block_size = bytes2Integer(encoded, decode_pos, 4);
+        decode_pos += 4;
+
+
+
+        int block_num = length_all / block_size;
+        int remain_length = length_all - block_num * block_size;
+
+
+        int[] value_list = new int[length_all+block_size];
+        block_size--;
+
+        int[] value_pos_arr = new int[1];
+        for (int k = 0; k < block_num; k++) {
+
+
+            decode_pos = BOSBlockDecoderImprove(encoded, decode_pos, value_list, block_size,value_pos_arr);
+
+        }
+
+        if (remain_length <= 3) {
+            for (int i = 0; i < remain_length; i++) {
+                int value_end = bytes2Integer(encoded, decode_pos, 4);
+                decode_pos += 4;
+                value_list[value_pos_arr[0]] = value_end;
+                value_pos_arr[0]++;
+            }
+        } else {
+            remain_length --;
+            BOSBlockDecoderImprove(encoded, decode_pos, value_list, remain_length, value_pos_arr);
+        }
+    }
+
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
+        int repeatTime2 = 100;
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/";// your data path
 //        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
         String output_parent_dir = parent_dir + "icde0802/compression_ratio/sprintz";
@@ -743,7 +959,7 @@ public class SPRINTZBPTest {
                 long decodeTime = 0;
                 double ratio = 0;
                 double compressed_size = 0;
-                int repeatTime2 = 100;
+
 
                 int length = 0;
 

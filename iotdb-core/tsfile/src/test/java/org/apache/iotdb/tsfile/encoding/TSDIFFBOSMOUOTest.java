@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 
 import static java.lang.Math.*;
+import static org.apache.iotdb.tsfile.constant.TestConstant.random;
 
 public class TSDIFFBOSMOUOTest {
 
@@ -634,12 +635,42 @@ public class TSDIFFBOSMOUOTest {
         return quickSelect(arr, 0, n - 1, n / 2);
     }
 
+    //    private static int quickSelect(int[] arr, int left, int right, int k){
+//        int pivotV=arr[left+random.nextInt(right-left+1)],tmpV;
+//        int posEqual=left,posSmaller=left; // a[left,posEqual): = pivotV; a[posEqual,posSmaller): < pivotV
+//        for(int i=left;i<=right;i++){
+//            if(arr[i]==pivotV){
+//                tmpV=arr[i];
+//                arr[i]=arr[posSmaller];
+//                arr[posSmaller]=arr[posEqual];
+//                arr[posEqual]=tmpV;
+//                posEqual++;
+//                posSmaller++;
+//            }else
+//            if(arr[i]<pivotV){
+//                tmpV=arr[posSmaller];
+//                arr[posSmaller]=arr[i];
+//                arr[i]=tmpV;
+//                posSmaller++;
+//            }
+//        }
+//        if(k+(posEqual-left)<=posSmaller-1)return quickSelect(arr,posEqual,posSmaller-1,k+(posEqual-left));
+//        else if(k<=posSmaller-1)return pivotV;
+//        else return quickSelect(arr,posSmaller,right,k);
+//    }
     private static int quickSelect(int[] arr, int left, int right, int k) {
         if (left == right) {
             return arr[left];
         }
+        if (areAllElementsEqual(arr, left, right)) {
+            return arr[left];
+        }
+        // 随机选择一个pivot索引
+        int pivotIndex = left + random.nextInt(right - left + 1);
+        // 把随机选的pivot放到最后
+        swap(arr, pivotIndex, right);
 
-        int pivotIndex = partition(arr, left, right);
+        pivotIndex = partition(arr, left, right);
         if (k == pivotIndex) {
             return arr[k];
         } else if (k < pivotIndex) {
@@ -648,7 +679,14 @@ public class TSDIFFBOSMOUOTest {
             return quickSelect(arr, pivotIndex + 1, right, k);
         }
     }
-
+    private static boolean areAllElementsEqual(int[] arr, int left, int right) {
+        for (int i = left + 1; i <= right; i++) {
+            if (arr[i] != arr[left]) {
+                return false;
+            }
+        }
+        return true;
+    }
     private static int partition(int[] arr, int left, int right) {
         int pivot = arr[right];
         int i = left;
@@ -975,7 +1013,7 @@ public class TSDIFFBOSMOUOTest {
         for(int beta = max_bit_width - 1; beta > 0 ; beta --){
             left_number += count_left[beta];
             right_number += count_right[beta];
-            int pow_beta = (int) pow(2,beta-1);
+            int pow_beta = 1 << (beta-1);
             int xu = min(max_delta_value+1, median + pow_beta) ;
             int xl = -1;// max(median - pow_beta,-1);
             int cur_bits = Math.min((left_number + right_number) * getBitWith(block_size - 1), block_size + left_number + right_number);
@@ -1141,9 +1179,7 @@ public class TSDIFFBOSMOUOTest {
 //        min_bits +=;
 
 
-        int[] count_left = new int[max_bit_width];
         int[] count_right = new int[max_bit_width];
-        int count_0 = 0;
 
 
         for(int i=0;i<length_outlier;i++){
@@ -1151,30 +1187,23 @@ public class TSDIFFBOSMOUOTest {
             if(cur_value > median){
                 int beta = getBitWith(cur_value - median) ;
                 count_right[beta] ++;
-            } else if (cur_value < median) {
-                int beta = getBitWith(median - cur_value) ;
-                count_left[beta] ++;
-            }else{
-                count_0 ++;
             }
         }
 
 
         for(int beta = max_bit_width - 1; beta > 0 ; beta --){
-            left_number += count_left[beta];
+//            left_number += count_left[beta];
             right_number += count_right[beta];
-            int pow_beta = (int) pow(2,beta-1);
+            int pow_beta = 1 << (beta-1);
             int xu = min(max_delta_value+1, median + pow_beta) ;
-            int xl = max(median - pow_beta,-1);
-            int cur_bits = Math.min((left_number + right_number) * getBitWith(block_size - 1), block_size + left_number + right_number);
-            cur_bits += left_number * getBitWith(xl);
+            // max(median - pow_beta,-1);
+            int cur_bits = Math.min((  right_number) * getBitWith(block_size - 1), block_size + right_number);
+//            cur_bits += left_number * getBitWith(xl);
             cur_bits += right_number * getBitWith(max_delta_value - xu);
-            cur_bits += (block_size - left_number - right_number) * getBitWith(xu - xl - 2);
+            cur_bits += (block_size - right_number) * getBitWith(xu - 1);
             if (cur_bits < min_bits) {
                 min_bits = cur_bits;
 
-                final_k_start_value = xl;
-                final_x_l_plus = xl + 1;
                 final_k_end_value = xu;
                 final_x_u_minus = xu -1;
             }
@@ -1700,7 +1729,7 @@ public class TSDIFFBOSMOUOTest {
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
 //        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
 //        String output_parent_dir = parent_dir + "icde0802/compression_ratio/bos_m";
-        String output_parent_dir = parent_dir + "icde0802/supply_experiment/R2O3_lower_outlier_compare/compression_ratio/lower_outlier_bos_m";
+        String output_parent_dir = parent_dir + "icde0802/supply_experiment/R2O5_skew_distribution/compression_ratio/lower_outlier_bos_m";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -1749,7 +1778,7 @@ public class TSDIFFBOSMOUOTest {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
 //        dataset_block_size.add(1024);
 
-        int repeatTime2 = 100;
+        int repeatTime2 = 500;
 
 //        for (int file_i = 0; file_i < 1; file_i++) {
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
