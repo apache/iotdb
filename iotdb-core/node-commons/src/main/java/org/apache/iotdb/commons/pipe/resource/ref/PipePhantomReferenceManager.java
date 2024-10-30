@@ -86,10 +86,10 @@ public abstract class PipePhantomReferenceManager {
           System.currentTimeMillis() - startTime,
           getPhantomReferenceCount());
     } else {
-      final long currentCount = getPhantomReferenceCount();
-      if (currentCount != lastPhantomReferenceCount) {
-        LOGGER.info("Remaining pipe phantom reference count: {}", currentCount);
-        lastPhantomReferenceCount = currentCount;
+      final long currentPhantomReferenceCount = getPhantomReferenceCount();
+      if (currentPhantomReferenceCount != lastPhantomReferenceCount) {
+        LOGGER.info("Remaining pipe phantom reference count: {}", currentPhantomReferenceCount);
+        lastPhantomReferenceCount = currentPhantomReferenceCount;
       }
     }
   }
