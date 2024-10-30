@@ -140,7 +140,7 @@ public class TableLogicalPlanner {
     final Statement statement = analysis.getStatement();
     PlanNode planNode = planStatement(analysis, statement);
 
-    if (statement instanceof Query || statement instanceof ShowDevice) {
+    if (statement instanceof Query) {
       QueryPlanCostMetricSet.getInstance()
           .recordPlanCost(TABLE_TYPE, LOGICAL_PLANNER, System.nanoTime() - startTime);
       startTime = System.nanoTime();
@@ -348,21 +348,16 @@ public class TableLogicalPlanner {
           new FilterNode(queryId.genPlanNodeId(), currentNode, statement.getIdFuzzyPredicate());
     }
 
-    // Offset
-    if (Objects.nonNull(statement.getOffset())) {
+    // Limit
+    if (pushDownLimit > -1) {
       currentNode =
-          new OffsetNode(
-              queryId.genPlanNodeId(), currentNode, analysis.getOffset(statement.getOffset()));
+          new LimitNode(queryId.genPlanNodeId(), currentNode, pushDownLimit, Optional.empty());
     }
 
-    // Limit
-    return Objects.nonNull(statement.getLimit())
-            && analysis.getLimit(statement.getLimit()).isPresent()
-        ? new LimitNode(
-            queryId.genPlanNodeId(),
-            currentNode,
-            analysis.getLimit(statement.getLimit()).getAsLong(),
-            Optional.empty())
+    // Offset
+    return Objects.nonNull(statement.getOffset())
+        ? new OffsetNode(
+            queryId.genPlanNodeId(), currentNode, analysis.getOffset(statement.getOffset()))
         : currentNode;
   }
 
