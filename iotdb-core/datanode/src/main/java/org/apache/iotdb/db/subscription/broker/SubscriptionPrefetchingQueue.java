@@ -235,7 +235,7 @@ public abstract class SubscriptionPrefetchingQueue {
       if (isClosed()) {
         return false;
       }
-      if (isResourceEnough() && pollPrefetchStates.shouldPrefetch()) {
+      if (pollPrefetchStates.shouldPrefetch()) {
         tryPrefetch(false);
         remapInFlightEventsSnapshot(committedCleaner, pollableNacker, responsePrefetcher);
         return true;
@@ -246,11 +246,6 @@ public abstract class SubscriptionPrefetchingQueue {
     } finally {
       releaseReadLock();
     }
-  }
-
-  private boolean isResourceEnough() {
-    // TODO
-    return true;
   }
 
   @SafeVarargs

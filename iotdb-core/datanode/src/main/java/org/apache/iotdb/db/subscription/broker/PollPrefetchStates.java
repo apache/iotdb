@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.subscription.broker;
 
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.metrics.core.utils.IoTDBMovingAverage;
 
@@ -32,6 +33,7 @@ public class PollPrefetchStates {
   private static final Logger LOGGER = LoggerFactory.getLogger(PollPrefetchStates.class);
 
   // TODO: config
+  private static final double PREFETCH_MEMORY_THRESHOLD = 0.6;
   private static final double MISSING_RATE_THRESHOLD = 0.8;
   private static final int PREFETCHED_EVENT_COUNT_CONTROL_PARAMETER = 100;
 
@@ -59,6 +61,10 @@ public class PollPrefetchStates {
   }
 
   public boolean shouldPrefetch() {
+    if (!isResourceEnough()) {
+      return false;
+    }
+
     if (missRate() > MISSING_RATE_THRESHOLD) {
       return true;
     }
@@ -74,6 +80,12 @@ public class PollPrefetchStates {
     final long delta = System.currentTimeMillis() - lastPollRequestTimestamp;
     final double rate = pollRate();
     return delta * rate > 1000 * Math.log(SubscriptionAgent.broker().getPrefetchingQueueCount());
+  }
+
+  private boolean isResourceEnough() {
+    return PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes()
+            * PREFETCH_MEMORY_THRESHOLD
+        > PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes();
   }
 
   private double missRate() {
