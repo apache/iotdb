@@ -2,15 +2,14 @@ package org.apache.iotdb.tsfile.encoding;
 
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
-import org.apache.commons.math3.transform.DctNormalization;
-import org.apache.commons.math3.transform.FastCosineTransformer;
-import org.apache.commons.math3.transform.DftNormalization;
-import org.apache.commons.math3.transform.FastFourierTransformer;
-import org.apache.commons.math3.transform.TransformType;
 import org.apache.commons.math3.complex.Complex;
+import org.apache.commons.math3.transform.*;
 import org.junit.Test;
 
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -18,17 +17,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-class ValueWithIndex {
-    double value;
+class ComplexWithIndex {
+    Complex value;
     int index;
 
-    public ValueWithIndex(double value, int index) {
+    public ComplexWithIndex(Complex value, int index) {
         this.value = value;
         this.index = index;
     }
 }
 
-public class DCT_IDCT {
+public class FFT_IFFT {
 
     public static int getCount(long long1, int mask) {
         return ((int) (long1 & mask));
@@ -150,9 +149,7 @@ public class DCT_IDCT {
             pack8Values( numbers, start+i*8, bit_width,encode_pos, encoded_result);
             encode_pos +=bit_width;
         }
-
         return encode_pos;
-
     }
 
     public static int encodeOutlier2Bytes(
@@ -335,8 +332,8 @@ public class DCT_IDCT {
         }
         return encode_pos;
     }
-    static int blockSize = 1025;// 使用的blocksize，只能使用2的幂次+1
-    static int n = 5;// 选取前几个分量，需要保证n < blockSize
+    static int blockSize = 256;// 使用的blocksize，只能使用2的幂次
+    static int n = 3;// 选取前几个分量，需要保证n < blockSize
     public static void getTopNMaxAbsoluteValues(double[] array, int n, double[] values, int[] indices) {
         if (array == null || array.length < n) {
             throw new IllegalArgumentException("Array must contain at least " + n + " elements.");
@@ -650,23 +647,26 @@ public class DCT_IDCT {
                     d_ts[index] = value;
                     index++;
                 }
-                double[] res = dctTransformer.transform(d_ts, TransformType.FORWARD);
-                double[] values = new double[n];
+                Complex[] res = fft.transform(d_ts, TransformType.FORWARD);
+                //double[] res = dctTransformer.transform(d_ts, TransformType.FORWARD);
+                Complex[] values = new Complex[n];
                 int[] indices = new int[n];
 
                 try {
                     getTopNMaxAbsoluteValues(res, n, values, indices);
-                    ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-                    float[] f_new_res = new float[block.length];
-                    double[] d_f_new_res = new double[block.length];
-                    for (int k = 0; k < n; k++){
-                        f_new_res[indices[k]] = (float)values[k];
-                        d_f_new_res[indices[k]] = (double)f_new_res[indices[k]];
+                    Complex[] d_f_new_res = new Complex[block.length];
+                    for (int k = 0; k < block.length; k++){
+                        d_f_new_res[k] = new Complex(0,0);
                     }
-                    double[] new_dts = dctTransformer.transform(d_f_new_res, TransformType.INVERSE);
+                    for (int k = 0; k < n; k++){
+                        float r = (float)values[k].getReal();
+                        float im = (float)values[k].getImaginary();
+                        d_f_new_res[indices[k]] = new Complex(r,im);
+                    }
+                    Complex[] new_dts = fft.transform(d_f_new_res, TransformType.INVERSE);
                     int[] new_its = new int[new_dts.length];
                     for (int k = 0; k < new_dts.length; k++) {
-                         new_its[k] = (int) Math.round(new_dts[k]);
+                        new_its[k] = (int) Math.round(new_dts[k].getReal());
                     }
                     ArrayList<Integer> err = new ArrayList<>();
                     for (int k = 0; k < new_dts.length; k++) {
@@ -674,7 +674,9 @@ public class DCT_IDCT {
                     }
                     // 编码new_dts进elems
                     byte[] elems = new byte[new_dts.length*4];
-                    int encode_pos = bitPacking(err,0,getBitWith(blockSize),0,elems);
+                    int encode_pos = 0;
+                    encode_pos = bitPacking(err,0,getBitWith(blockSize),0,elems);
+                    //encode_pos = BOSBlockEncoderImprove(err,0,blockSize,blockSize,encode_pos,elems);
                     // 编码new_dts进buffer
 //                    for (int k = 0; k < new_dts.length; k++) {
 //
@@ -687,7 +689,13 @@ public class DCT_IDCT {
                             resList.add(temp);
                         }
                         byteBuffer = ByteBuffer.allocate(4);
-                        byteBuffer.putFloat((float)values[k]);
+                        byteBuffer.putFloat((float)values[k].getReal());
+                        byteArray = byteBuffer.array();
+                        for (byte temp:byteArray){
+                            resList.add(temp);
+                        }
+                        byteBuffer = ByteBuffer.allocate(4);
+                        byteBuffer.putFloat((float)values[k].getImaginary());
                         byteArray = byteBuffer.array();
                         for (byte temp:byteArray){
                             resList.add(temp);
@@ -764,23 +772,26 @@ public class DCT_IDCT {
                     d_ts[index] = value;
                     index++;
                 }
-                double[] res = dctTransformer.transform(d_ts, TransformType.FORWARD);
-                double[] values = new double[n];
+                Complex[] res = fft.transform(d_ts, TransformType.FORWARD);
+                //double[] res = dctTransformer.transform(d_ts, TransformType.FORWARD);
+                Complex[] values = new Complex[n];
                 int[] indices = new int[n];
 
                 try {
                     getTopNMaxAbsoluteValues(res, n, values, indices);
-                    ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-                    float[] f_new_res = new float[block.length];
-                    double[] d_f_new_res = new double[block.length];
-                    for (int k = 0; k < n; k++){
-                        f_new_res[indices[k]] = (float)values[k];
-                        d_f_new_res[indices[k]] = (double)f_new_res[indices[k]];
+                    Complex[] d_f_new_res = new Complex[block.length];
+                    for (int k = 0; k < block.length; k++){
+                        d_f_new_res[k] = new Complex(0,0);
                     }
-                    double[] new_dts = dctTransformer.transform(d_f_new_res, TransformType.INVERSE);
+                    for (int k = 0; k < n; k++){
+                        float r = (float)values[k].getReal();
+                        float im = (float)values[k].getImaginary();
+                        d_f_new_res[indices[k]] = new Complex(r,im);
+                    }
+                    Complex[] new_dts = fft.transform(d_f_new_res, TransformType.INVERSE);
                     int[] new_its = new int[new_dts.length];
                     for (int k = 0; k < new_dts.length; k++) {
-                        new_its[k] = (int) Math.round(new_dts[k]);
+                        new_its[k] = (int) Math.round(new_dts[k].getReal());
                     }
                     int[] err = new int[new_dts.length];
                     for (int k = 0; k < new_dts.length; k++) {
@@ -788,7 +799,8 @@ public class DCT_IDCT {
                     }
                     // 编码new_dts进elems
                     byte[] elems = new byte[new_dts.length*4];
-                    int encode_pos = BOSBlockEncoderImprove(err,0,blockSize,blockSize,0,elems);
+                    int encode_pos = 0;
+                    encode_pos = BOSBlockEncoderImprove(err,0,blockSize,blockSize,encode_pos,elems);
                     // 编码new_dts进buffer
 //                    for (int k = 0; k < new_dts.length; k++) {
 //
@@ -801,7 +813,13 @@ public class DCT_IDCT {
                             resList.add(temp);
                         }
                         byteBuffer = ByteBuffer.allocate(4);
-                        byteBuffer.putFloat((float)values[k]);
+                        byteBuffer.putFloat((float)values[k].getReal());
+                        byteArray = byteBuffer.array();
+                        for (byte temp:byteArray){
+                            resList.add(temp);
+                        }
+                        byteBuffer = ByteBuffer.allocate(4);
+                        byteBuffer.putFloat((float)values[k].getImaginary());
                         byteArray = byteBuffer.array();
                         for (byte temp:byteArray){
                             resList.add(temp);
@@ -827,7 +845,7 @@ public class DCT_IDCT {
                 int[] block = new int[end - start];
                 System.arraycopy(timeSeries, start, block, 0, end - start);
                 //ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-                byte[] elems = new byte[block.length*4];
+                byte[] elems = new byte[block.length*10];
                 int encode_pos = 0;
                 encode_pos = BOSBlockEncoderImprove(block,0,end - start,end - start,encode_pos,elems);
 //                编码block内数据
@@ -924,10 +942,10 @@ public class DCT_IDCT {
     public static void main1(String[] args) throws IOException {}
 
     @Test
-    public void main1() throws IOException {
+    public void fftTest() throws IOException {
 //        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/";// your data path
         String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
-        String output_parent_dir = parent_dir + "icde0802/supply_experiment/R3O2_compare_compression/compression_ratio/dct_comp";
+        String output_parent_dir = parent_dir + "icde0802/supply_experiment/R3O2_compare_compression/compression_ratio/fft_comp";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -1026,10 +1044,10 @@ public class DCT_IDCT {
                 }
                 double ratio = 0;
                 double compressed_size = 0;
-                ArrayList<Byte> res = new ArrayList<>();
                 long s = System.nanoTime();
+                ArrayList<Byte> res = new ArrayList<>();
                 for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                    res = DCT_IDCT.encode(data2_arr);
+                    res = FFT_IFFT.encode(data2_arr);
                 }
                 long e = System.nanoTime();
                 compressTime += ((e - s) / repeatTime2);
@@ -1048,7 +1066,7 @@ public class DCT_IDCT {
 
                 String[] record = {
                         f.toString(),
-                        "DCT",
+                        "FFT",
                         String.valueOf(compressTime),
                         String.valueOf(uncompressTime),
                         String.valueOf(data2.size()),
@@ -1063,10 +1081,10 @@ public class DCT_IDCT {
     }
 
     @Test
-    public void main2() throws IOException {
+    public void fftTest2() throws IOException {
 //        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/";// your data path
         String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
-        String output_parent_dir = parent_dir + "icde0802/supply_experiment/R3O2_compare_compression/compression_ratio/dct_comp2";
+        String output_parent_dir = parent_dir + "icde0802/supply_experiment/R3O2_compare_compression/compression_ratio/fft_bos_comp";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -1165,10 +1183,10 @@ public class DCT_IDCT {
                 }
                 double ratio = 0;
                 double compressed_size = 0;
-                ArrayList<Byte> res = new ArrayList<>();
                 long s = System.nanoTime();
+                ArrayList<Byte> res = new ArrayList<>();
                 for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                    res = DCT_IDCT.encode2(data2_arr);
+                    res = FFT_IFFT.encode2(data2_arr);
                 }
                 long e = System.nanoTime();
                 compressTime += ((e - s) / repeatTime2);
@@ -1179,7 +1197,7 @@ public class DCT_IDCT {
                 ratio += ratioTmp;
                 s = System.nanoTime();
 //                for (int repeat = 0; repeat < repeatTime2; repeat++){
-////                    ArrayList<Integer> b = DCT_IDCT.decode(res);
+//                    ArrayList<Integer> b = DCT_IDCT.decode(res);
 //                }
                 e = System.nanoTime();
                 uncompressTime += ((e - s) / repeatTime2);
@@ -1187,7 +1205,7 @@ public class DCT_IDCT {
 
                 String[] record = {
                         f.toString(),
-                        "BOS+DCT",
+                        "BOS+FFT",
                         String.valueOf(compressTime),
                         String.valueOf(uncompressTime),
                         String.valueOf(data2.size()),

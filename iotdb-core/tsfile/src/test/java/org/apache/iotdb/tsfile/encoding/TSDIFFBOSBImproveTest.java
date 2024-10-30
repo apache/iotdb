@@ -729,7 +729,7 @@ public class TSDIFFBOSBImproveTest {
 
         }
 
-        encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_x_l_plus, final_k_end_value, final_x_u_minus,
+        encode_pos = BOSEncodeBitsImprove(ts_block_delta,  final_k_start_value, final_x_l_plus, final_k_end_value, final_x_u_minus,
                 max_delta_value, min_delta, encode_pos , cur_byte);
 
 //        System.out.println(encode_pos);
@@ -1528,17 +1528,13 @@ public class TSDIFFBOSBImproveTest {
                 int2Bytes(data[data.length - i], encode_pos, encoded_result);
                 encode_pos += 4;
             }
-
         }
         else {
-
             int start = block_num * block_size;
             int remaining = length_all-start;
             encode_pos = BOSBlockEncoderImprove(data, block_num, block_size,remaining, encode_pos,encoded_result);
 
         }
-
-
         return encode_pos;
     }
 
@@ -1951,8 +1947,8 @@ public class TSDIFFBOSBImproveTest {
 
     @Test
     public void BOSEncodeImproveTest() throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
-//        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+//        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/"; // your data path
+        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
         String output_parent_dir = parent_dir + "icde0802/compression_ratio/bos_b_improve";
 //        String output_parent_dir = parent_dir + "icde0802/compression_ratio/test";
 
@@ -2064,7 +2060,7 @@ public class TSDIFFBOSBImproveTest {
 
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                    length =  BOSEncoder(data2_arr, dataset_block_size.get(file_i), encoded_result);
+                    length =  BOSEncoderImprove(data2_arr, dataset_block_size.get(file_i), encoded_result);
                 }
 
                 long e = System.nanoTime();
@@ -2074,7 +2070,7 @@ public class TSDIFFBOSBImproveTest {
                 ratio += ratioTmp;
                 s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime2; repeat++)
-                    BOSDecoder(encoded_result);
+                    BOSDecoderImprove(encoded_result);
                 e = System.nanoTime();
                 decodeTime += ((e - s) / repeatTime2);
 
