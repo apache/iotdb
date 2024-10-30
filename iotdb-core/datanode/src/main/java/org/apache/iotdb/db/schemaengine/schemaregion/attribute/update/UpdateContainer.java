@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 
 import javax.annotation.Nonnull;
@@ -35,7 +36,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public interface UpdateContainer {
 
   long updateAttribute(
-      final String tableName, final String[] deviceId, final Map<String, String> updatedAttributes);
+      final String tableName, final String[] deviceId, final Map<String, Binary> updatedAttributes);
 
   // Only this method is not synchronize called and is called by GRASS thread
   // A piece of "updateContent" won't exceed "limitBytes" in order to handle

@@ -38,6 +38,7 @@ import org.apache.tsfile.read.common.type.Type;
 import java.util.List;
 import java.util.Optional;
 
+// All the input databases shall not contain "root"
 public interface Metadata {
 
   boolean tableExists(final QualifiedObjectName name);
