@@ -51,8 +51,8 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelTestIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      Utils.createDataBaseAndTable(senderEnv, "test", "test");
-      Utils.insertData("test", "test", 0, 100, senderEnv);
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
+      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -78,7 +78,7 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelTestIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          Utils.getQueryCountSql("test"),
+          TableModelUtils.getQueryCountSql("test"),
           "_col0,",
           Collections.singleton("100,"),
           "test");
@@ -101,8 +101,8 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelTestIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      Utils.createDataBaseAndTable(senderEnv, "test", "test");
-      Utils.insertData("test", "test", 0, 100, senderEnv);
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
+      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -130,7 +130,7 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelTestIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          Utils.getQueryCountSql("test"),
+          TableModelUtils.getQueryCountSql("test"),
           "_col0,",
           Collections.singleton("50,"),
           "test");

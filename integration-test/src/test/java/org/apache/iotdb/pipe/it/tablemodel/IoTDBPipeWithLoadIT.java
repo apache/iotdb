@@ -97,9 +97,9 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelTestIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       // Generate TsFile
-      Utils.createDataBaseAndTable(senderEnv, "test", "test");
-      Utils.insertData("test", "test", 0, 100, senderEnv);
-      Utils.deleteData("test", "test", 50, 100, senderEnv);
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
+      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      TableModelUtils.deleteData("test", "test", 50, 100, senderEnv);
 
       TSStatus status =
           client.createPipe(
@@ -110,7 +110,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelTestIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      Utils.assertCountData("test", "test", 50, receiverEnv);
+      TableModelUtils.assertCountData("test", "test", 50, receiverEnv);
     }
   }
 }

@@ -52,7 +52,7 @@ import java.util.Set;
 
 import static org.junit.Assert.fail;
 
-public class Utils {
+public class TableModelUtils {
 
   public static void createDataBaseAndTable(BaseEnv baseEnv, String table, String database) {
     try (Connection connection = baseEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -103,13 +103,13 @@ public class Utils {
     List<String> list = new ArrayList<>(end - start + 1);
     Object[] values = new Object[9];
     Random random = new Random();
+    // s0 string, s1 int64, s2 float, s3 string, s4 timestamp, s5 int32, s6 double, s7 date, s8 text
     for (int i = start; i < end; ++i) {
       Arrays.fill(values, i);
       values[0] = String.format("'t%s'", i);
-      values[1] = String.format("'%s'", i);
       values[2] = String.format("%s.0", i);
-      values[5] = String.format("%s.0", i);
-      values[6] = String.format("'%s'", i);
+      values[3] = String.format("%s", i);
+      values[6] = String.format("%s.0", i);
       values[7] = String.format("'%s'", getDateStr(i));
       values[8] = String.format("'%s'", i);
       if (allowNullValue) {
@@ -117,7 +117,7 @@ public class Utils {
       }
       list.add(
           String.format(
-              "insert into %s (s0, s3, s2, s1, s4, s5, s6, s7, s8, time) values (%s,%s, %s.0, %s, %s, %s, %s.0, %s, %s, %s)",
+              "insert into %s (s0, s1, s2, s3, s4, s5, s6, s7, s8, time) values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
               tableName, values[0], values[1], values[2], values[3], values[4], values[5],
               values[6], values[7], values[8], i));
     }
@@ -279,18 +279,18 @@ public class Utils {
       String database, String table, int start, int end, BaseEnv baseEnv) {
     TestUtils.assertDataEventuallyOnEnv(
         baseEnv,
-        Utils.getQuerySql(table),
-        Utils.generateHeaderResults(),
-        Utils.generateExpectedResults(start, end),
+        TableModelUtils.getQuerySql(table),
+        TableModelUtils.generateHeaderResults(),
+        TableModelUtils.generateExpectedResults(start, end),
         database);
   }
 
   public static void assertData(String database, String table, Tablet tablet, BaseEnv baseEnv) {
     TestUtils.assertDataEventuallyOnEnv(
         baseEnv,
-        Utils.getQuerySql(table),
-        Utils.generateHeaderResults(),
-        Utils.generateExpectedResults(tablet),
+        TableModelUtils.getQuerySql(table),
+        TableModelUtils.generateHeaderResults(),
+        TableModelUtils.generateExpectedResults(tablet),
         database);
   }
 

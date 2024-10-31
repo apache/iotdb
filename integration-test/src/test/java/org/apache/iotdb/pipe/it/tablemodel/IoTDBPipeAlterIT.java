@@ -403,8 +403,8 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
   public void testAlterPipeSourceAndSink() {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    Utils.createDataBaseAndTable(senderEnv, "test", "test");
-    Utils.createDataBaseAndTable(senderEnv, "test1", "test1");
+    TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
+    TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
     // Create pipe
     final String sql =
         String.format(
@@ -417,15 +417,15 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
       fail(e.getMessage());
     }
 
-    Utils.insertData("test", "test", 0, 100, senderEnv);
-    Utils.insertData("test1", "test1", 0, 100, senderEnv);
+    TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+    TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
 
     // Check data on receiver
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        Utils.getQuerySql("test"),
-        Utils.generateHeaderResults(),
-        Utils.generateExpectedResults(0, 100),
+        TableModelUtils.getQuerySql("test"),
+        TableModelUtils.generateHeaderResults(),
+        TableModelUtils.generateExpectedResults(0, 100),
         "test");
     HashSet<String> expectedResults = new HashSet();
     expectedResults.add("test,1,1,604800000");
@@ -445,20 +445,20 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
     } catch (final SQLException e) {
       fail(e.getMessage());
     }
-    Utils.insertData("test", "test", 100, 200, senderEnv);
-    Utils.insertData("test1", "test1", 100, 200, senderEnv);
+    TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
+    TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
 
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        Utils.getQuerySql("test"),
-        Utils.generateHeaderResults(),
-        Utils.generateExpectedResults(0, 100),
+        TableModelUtils.getQuerySql("test"),
+        TableModelUtils.generateHeaderResults(),
+        TableModelUtils.generateExpectedResults(0, 100),
         "test");
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        Utils.getQuerySql("test1"),
-        Utils.generateHeaderResults(),
-        Utils.generateExpectedResults(0, 200),
+        TableModelUtils.getQuerySql("test1"),
+        TableModelUtils.generateHeaderResults(),
+        TableModelUtils.generateExpectedResults(0, 200),
         "test1");
   }
 }

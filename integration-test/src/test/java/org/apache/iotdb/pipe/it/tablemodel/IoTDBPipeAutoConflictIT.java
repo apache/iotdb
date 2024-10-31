@@ -290,16 +290,16 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelTestIT {
 
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        Utils.getQuerySql("test"),
-        Utils.generateHeaderResults(),
-        Utils.generateExpectedResults(0, 200),
+        TableModelUtils.getQuerySql("test"),
+        TableModelUtils.generateHeaderResults(),
+        TableModelUtils.generateExpectedResults(0, 200),
         "test");
 
     TestUtils.assertDataEventuallyOnEnv(
         senderEnv,
-        Utils.getQuerySql("test1"),
-        Utils.generateHeaderResults(),
-        Utils.generateExpectedResults(200, 400),
+        TableModelUtils.getQuerySql("test1"),
+        TableModelUtils.generateHeaderResults(),
+        TableModelUtils.generateExpectedResults(200, 400),
         "test");
   }
 

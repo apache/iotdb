@@ -39,21 +39,14 @@ import java.util.Map;
 @Category({MultiClusterIT2ManualCreateSchema.class})
 public class IoTDBPipeNullValueIT extends AbstractPipeTableModelTestIT {
 
-  // Test dimensions:
-  // 1. is or not aligned
-  // 2. is or not parsed
-  // 3. session insertRecord, session insertTablet, SQL insert
-  // 4. partial null, all null
-  // 5. one row or more (TODO)
-  // 6. more data types (TODO)
-
   private enum InsertType {
     SESSION_INSERT_RECORD,
     SESSION_INSERT_TABLET,
     SQL_INSERT,
   }
 
-  private void testInsertNullValueTemplate(final InsertType insertType, final boolean withParsing)
+  private void testInsertNullValueTemplate(
+      final InsertType insertType, final boolean withParsing, final String realtime)
       throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
@@ -66,12 +59,12 @@ public class IoTDBPipeNullValueIT extends AbstractPipeTableModelTestIT {
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
-      Utils.createDataBaseAndTable(senderEnv, "test", "test");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
 
       if (insertType == InsertType.SESSION_INSERT_TABLET) {
-        Utils.insertDataByTablet("test", "test", 0, 50, senderEnv, true);
+        TableModelUtils.insertDataByTablet("test", "test", 0, 200, senderEnv, true);
       } else if (insertType == InsertType.SQL_INSERT) {
-        Utils.insertData("test", "test", 0, 50, senderEnv, true);
+        TableModelUtils.insertData("test", "test", 0, 200, senderEnv, true);
       }
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
@@ -79,11 +72,11 @@ public class IoTDBPipeNullValueIT extends AbstractPipeTableModelTestIT {
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
       extractorAttributes.put("capture.table", "true");
-      extractorAttributes.put("realtime-mode", "forced-log");
+      extractorAttributes.put("realtime-mode", realtime);
       if (withParsing) {
-        extractorAttributes.put("start-time", "25");
-        extractorAttributes.put("end-time", "74");
-        extractorAttributes.put("database-name", "Test");
+        extractorAttributes.put("start-time", "150");
+        extractorAttributes.put("end-time", "249");
+        extractorAttributes.put("database-name", "test");
         extractorAttributes.put("table-name", "test");
       }
 
@@ -96,41 +89,81 @@ public class IoTDBPipeNullValueIT extends AbstractPipeTableModelTestIT {
     }
 
     if (insertType == InsertType.SESSION_INSERT_TABLET) {
-      Utils.insertDataByTablet("test", "test", 50, 100, senderEnv, true);
+      TableModelUtils.insertDataByTablet("test", "test", 200, 400, senderEnv, true);
     } else if (insertType == InsertType.SQL_INSERT) {
-      Utils.insertData("test", "test", 50, 100, senderEnv, true);
+      TableModelUtils.insertData("test", "test", 200, 400, senderEnv, true);
     }
 
     if (withParsing) {
-      Utils.assertCountData("test", "test", 50, receiverEnv);
+      TableModelUtils.assertCountData("test", "test", 100, receiverEnv);
       return;
     }
-    Utils.assertCountData("test", "test", 100, receiverEnv);
+    TableModelUtils.assertCountData("test", "test", 400, receiverEnv);
   }
 
   // ---------------------- //
   // Scenario 1: SQL Insert //
   // ---------------------- //
   @Test
-  public void testSQLInsertWithParsing() throws Exception {
-    testInsertNullValueTemplate(InsertType.SQL_INSERT, true);
+  public void testSQLInsertWithParsingForcedLog() throws Exception {
+    testInsertNullValueTemplate(InsertType.SQL_INSERT, true, "forced-log");
   }
 
   @Test
-  public void testSQLInsertWithoutParsing() throws Exception {
-    testInsertNullValueTemplate(InsertType.SQL_INSERT, false);
+  public void testSQLInsertWithoutParsingForcedLog() throws Exception {
+    testInsertNullValueTemplate(InsertType.SQL_INSERT, false, "forced-log");
+  }
+
+  @Test
+  public void testSQLInsertWithParsingFile() throws Exception {
+    testInsertNullValueTemplate(InsertType.SQL_INSERT, true, "file");
+  }
+
+  @Test
+  public void testSQLInsertWithoutParsingFile() throws Exception {
+    testInsertNullValueTemplate(InsertType.SQL_INSERT, false, "file");
+  }
+
+  @Test
+  public void testSQLInsertWithParsingStream() throws Exception {
+    testInsertNullValueTemplate(InsertType.SQL_INSERT, true, "stream");
+  }
+
+  @Test
+  public void testSQLInsertWithoutParsingStream() throws Exception {
+    testInsertNullValueTemplate(InsertType.SQL_INSERT, false, "stream");
   }
 
   // --------------------------------- //
   // Scenario 2: Session Insert Tablet //
   // --------------------------------- //
   @Test
-  public void testSessionInsertTabletWithParsing() throws Exception {
-    testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, true);
+  public void testSessionInsertTabletWithParsingForcedLog() throws Exception {
+    testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, true, "forced-log");
   }
 
   @Test
-  public void testSessionInsertTabletWithoutParsing() throws Exception {
-    testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, false);
+  public void testSessionInsertTabletWithoutParsingForcedLog() throws Exception {
+    testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, false, "forced-log");
+  }
+
+  @Test
+  public void testSessionInsertTabletWithParsingFile() throws Exception {
+    testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, true, "file");
+  }
+
+  @Test
+  public void testSessionInsertTabletWithoutParsingFile() throws Exception {
+    testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, false, "file");
+  }
+
+  @Test
+  public void testSessionInsertTabletWithParsingStream() throws Exception {
+    testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, true, "stream");
+  }
+
+  @Test
+  public void testSessionInsertTabletWithoutParsingStream() throws Exception {
+    testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, false, "stream");
   }
 }

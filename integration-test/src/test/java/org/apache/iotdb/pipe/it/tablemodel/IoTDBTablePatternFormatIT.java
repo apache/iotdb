@@ -52,14 +52,14 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      Utils.createDataBaseAndTable(senderEnv, "test", "test");
-      Utils.createDataBaseAndTable(senderEnv, "test1", "test1");
-      Utils.createDataBaseAndTable(senderEnv, "pattern", "pattern");
-      Utils.createDataBaseAndTable(senderEnv, "pattern1", "pattern1");
-      Utils.insertData("test", "test", 0, 100, senderEnv);
-      Utils.insertData("test1", "test1", 0, 100, senderEnv);
-      Utils.insertData("pattern", "pattern", 0, 100, senderEnv);
-      Utils.insertData("pattern1", "pattern1", 0, 100, senderEnv);
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern", "pattern");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern1", "pattern1");
+      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
+      TableModelUtils.insertData("pattern", "pattern", 0, 100, senderEnv);
+      TableModelUtils.insertData("pattern1", "pattern1", 0, 100, senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -84,13 +84,13 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
-      Utils.insertData("test", "test", 100, 200, senderEnv);
-      Utils.insertData("test1", "test1", 100, 200, senderEnv);
-      Utils.insertData("pattern", "pattern", 100, 200, senderEnv);
-      Utils.insertData("pattern1", "pattern1", 100, 200, senderEnv);
+      TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
+      TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
+      TableModelUtils.insertData("pattern", "pattern", 100, 200, senderEnv);
+      TableModelUtils.insertData("pattern1", "pattern1", 100, 200, senderEnv);
 
-      Utils.assertData("test", "test", 0, 200, receiverEnv);
-      Utils.assertData("test1", "test1", 0, 200, receiverEnv);
+      TableModelUtils.assertData("test", "test", 0, 200, receiverEnv);
+      TableModelUtils.assertData("test1", "test1", 0, 200, receiverEnv);
       HashSet<String> expectedResults = new HashSet();
       expectedResults.add("test,1,1,604800000,");
       expectedResults.add("test1,1,1,604800000,");
@@ -113,14 +113,14 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      Utils.createDataBaseAndTable(senderEnv, "test", "test");
-      Utils.createDataBaseAndTable(senderEnv, "test1", "test1");
-      Utils.createDataBaseAndTable(senderEnv, "pattern", "pattern");
-      Utils.createDataBaseAndTable(senderEnv, "pattern1", "pattern1");
-      Utils.insertData("test", "test", 0, 100, senderEnv);
-      Utils.insertData("test1", "test1", 0, 100, senderEnv);
-      Utils.insertData("pattern", "pattern", 0, 100, senderEnv);
-      Utils.insertData("pattern1", "pattern1", 0, 100, senderEnv);
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern", "pattern");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern1", "pattern1");
+      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
+      TableModelUtils.insertData("pattern", "pattern", 0, 100, senderEnv);
+      TableModelUtils.insertData("pattern1", "pattern1", 0, 100, senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -149,8 +149,8 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      Utils.assertData("test", "test", 0, 50, receiverEnv);
-      Utils.assertData("test1", "test1", 0, 50, receiverEnv);
+      TableModelUtils.assertData("test", "test", 0, 50, receiverEnv);
+      TableModelUtils.assertData("test1", "test1", 0, 50, receiverEnv);
       HashSet<String> expectedResults = new HashSet();
       expectedResults.add("test,1,1,604800000,");
       expectedResults.add("test1,1,1,604800000,");
@@ -173,10 +173,10 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      Utils.createDataBaseAndTable(senderEnv, "test", "test");
-      Utils.createDataBaseAndTable(senderEnv, "test1", "test1");
-      Utils.createDataBaseAndTable(senderEnv, "pattern", "pattern");
-      Utils.createDataBaseAndTable(senderEnv, "pattern1", "pattern1");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern", "pattern");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern1", "pattern1");
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -204,13 +204,13 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
-      Utils.insertData("test", "test", 100, 200, senderEnv);
-      Utils.insertData("test1", "test1", 100, 200, senderEnv);
-      Utils.insertData("pattern", "pattern", 100, 200, senderEnv);
-      Utils.insertData("pattern1", "pattern1", 100, 200, senderEnv);
+      TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
+      TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
+      TableModelUtils.insertData("pattern", "pattern", 100, 200, senderEnv);
+      TableModelUtils.insertData("pattern1", "pattern1", 100, 200, senderEnv);
 
-      Utils.assertData("test", "test", 100, 150, receiverEnv);
-      Utils.assertData("test1", "test1", 100, 150, receiverEnv);
+      TableModelUtils.assertData("test", "test", 100, 150, receiverEnv);
+      TableModelUtils.assertData("test1", "test1", 100, 150, receiverEnv);
       HashSet<String> expectedResults = new HashSet();
       expectedResults.add("test,1,1,604800000,");
       expectedResults.add("test1,1,1,604800000,");
@@ -233,15 +233,15 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      Utils.createDataBaseAndTable(senderEnv, "test", "test");
-      Utils.createDataBaseAndTable(senderEnv, "test1", "test1");
-      Utils.createDataBaseAndTable(senderEnv, "pattern", "pattern");
-      Utils.createDataBaseAndTable(senderEnv, "pattern1", "pattern1");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern", "pattern");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern1", "pattern1");
 
-      Utils.insertData("test", "test", 0, 100, senderEnv);
-      Utils.insertData("test1", "test1", 0, 100, senderEnv);
-      Utils.insertData("pattern", "pattern", 0, 100, senderEnv);
-      Utils.insertData("pattern1", "pattern1", 0, 100, senderEnv);
+      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
+      TableModelUtils.insertData("pattern", "pattern", 0, 100, senderEnv);
+      TableModelUtils.insertData("pattern1", "pattern1", 0, 100, senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -266,12 +266,12 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
-      Utils.insertData("test", "test", 100, 200, senderEnv);
-      Utils.insertData("test1", "test1", 100, 200, senderEnv);
-      Utils.insertData("pattern", "pattern", 100, 200, senderEnv);
-      Utils.insertData("pattern1", "pattern1", 100, 200, senderEnv);
-      Utils.assertData("pattern", "pattern", 0, 200, receiverEnv);
-      Utils.assertData("pattern1", "pattern1", 0, 200, receiverEnv);
+      TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
+      TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
+      TableModelUtils.insertData("pattern", "pattern", 100, 200, senderEnv);
+      TableModelUtils.insertData("pattern1", "pattern1", 100, 200, senderEnv);
+      TableModelUtils.assertData("pattern", "pattern", 0, 200, receiverEnv);
+      TableModelUtils.assertData("pattern1", "pattern1", 0, 200, receiverEnv);
 
       HashSet<String> expectedResults = new HashSet();
       expectedResults.add("pattern,1,1,604800000,");
@@ -295,15 +295,15 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      Utils.createDataBaseAndTable(senderEnv, "test", "test");
-      Utils.createDataBaseAndTable(senderEnv, "test1", "test1");
-      Utils.createDataBaseAndTable(senderEnv, "pattern", "pattern");
-      Utils.createDataBaseAndTable(senderEnv, "pattern1", "pattern1");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern", "pattern");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern1", "pattern1");
 
-      Utils.insertData("test", "test", 0, 100, senderEnv);
-      Utils.insertData("test1", "test1", 0, 100, senderEnv);
-      Utils.insertData("pattern", "pattern", 0, 100, senderEnv);
-      Utils.insertData("pattern1", "pattern1", 0, 100, senderEnv);
+      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
+      TableModelUtils.insertData("pattern", "pattern", 0, 100, senderEnv);
+      TableModelUtils.insertData("pattern1", "pattern1", 0, 100, senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -328,8 +328,8 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
-      Utils.assertData("pattern", "pattern", 0, 100, receiverEnv);
-      Utils.assertData("pattern1", "pattern1", 0, 100, receiverEnv);
+      TableModelUtils.assertData("pattern", "pattern", 0, 100, receiverEnv);
+      TableModelUtils.assertData("pattern1", "pattern1", 0, 100, receiverEnv);
 
       HashSet<String> expectedResults = new HashSet();
       expectedResults.add("pattern,1,1,604800000,");
@@ -353,10 +353,10 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      Utils.createDataBaseAndTable(senderEnv, "test", "test");
-      Utils.createDataBaseAndTable(senderEnv, "test1", "test1");
-      Utils.createDataBaseAndTable(senderEnv, "pattern", "pattern");
-      Utils.createDataBaseAndTable(senderEnv, "pattern1", "pattern1");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern", "pattern");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern1", "pattern1");
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -382,13 +382,13 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      Utils.insertData("pattern", "pattern", 0, 100, senderEnv);
-      Utils.insertData("pattern1", "pattern1", 0, 100, senderEnv);
-      Utils.insertData("test", "test", 0, 100, senderEnv);
-      Utils.insertData("test1", "test1", 0, 100, senderEnv);
+      TableModelUtils.insertData("pattern", "pattern", 0, 100, senderEnv);
+      TableModelUtils.insertData("pattern1", "pattern1", 0, 100, senderEnv);
+      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
 
-      Utils.assertData("pattern", "pattern", 0, 100, receiverEnv);
-      Utils.assertData("pattern1", "pattern1", 0, 100, receiverEnv);
+      TableModelUtils.assertData("pattern", "pattern", 0, 100, receiverEnv);
+      TableModelUtils.assertData("pattern1", "pattern1", 0, 100, receiverEnv);
 
       HashSet<String> expectedResults = new HashSet();
       expectedResults.add("pattern,1,1,604800000,");
@@ -412,15 +412,15 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      Utils.createDataBaseAndTable(senderEnv, "test", "test");
-      Utils.createDataBaseAndTable(senderEnv, "test1", "test1");
-      Utils.createDataBaseAndTable(senderEnv, "pattern", "pattern");
-      Utils.createDataBaseAndTable(senderEnv, "pattern1", "pattern1");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern", "pattern");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern1", "pattern1");
 
-      Utils.insertData("test", "test", 0, 100, senderEnv);
-      Utils.insertData("test1", "test1", 0, 100, senderEnv);
-      Utils.insertData("pattern", "pattern", 0, 100, senderEnv);
-      Utils.insertData("pattern1", "pattern1", 0, 100, senderEnv);
+      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
+      TableModelUtils.insertData("pattern", "pattern", 0, 100, senderEnv);
+      TableModelUtils.insertData("pattern1", "pattern1", 0, 100, senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -446,10 +446,10 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
-      Utils.insertData("test", "test", 100, 200, senderEnv);
-      Utils.insertData("test1", "test1", 100, 200, senderEnv);
-      Utils.insertData("pattern", "pattern", 100, 200, senderEnv);
-      Utils.insertData("pattern1", "pattern1", 100, 200, senderEnv);
+      TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
+      TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
+      TableModelUtils.insertData("pattern", "pattern", 100, 200, senderEnv);
+      TableModelUtils.insertData("pattern1", "pattern1", 100, 200, senderEnv);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
