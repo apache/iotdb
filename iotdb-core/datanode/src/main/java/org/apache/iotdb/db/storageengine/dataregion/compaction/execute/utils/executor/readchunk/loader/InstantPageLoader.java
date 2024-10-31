@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.ex
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
 
 import org.apache.tsfile.compress.IUnCompressor;
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.encrypt.IDecryptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
@@ -42,7 +43,7 @@ public class InstantPageLoader extends PageLoader {
 
   private ByteBuffer pageData;
 
-  private IDecryptor decryptor;
+  private EncryptParameter encryptParam;
 
   public InstantPageLoader() {}
 
@@ -55,10 +56,10 @@ public class InstantPageLoader extends PageLoader {
       TSEncoding encoding,
       ChunkMetadata chunkMetadata,
       ModifiedStatus modifiedStatus,
-      IDecryptor decryptor) {
+      EncryptParameter encryptParam) {
     super(file, pageHeader, compressionType, dataType, encoding, chunkMetadata, modifiedStatus);
     this.pageData = pageData;
-    this.decryptor = decryptor;
+    this.encryptParam = encryptParam;
   }
 
   @Override
@@ -69,6 +70,7 @@ public class InstantPageLoader extends PageLoader {
   @Override
   public ByteBuffer getUnCompressedData() throws IOException {
     IUnCompressor unCompressor = IUnCompressor.getUnCompressor(compressionType);
+    IDecryptor decryptor = IDecryptor.getDecryptor(encryptParam);
     if (decryptor == null || decryptor.getEncryptionType() == EncryptionType.UNENCRYPTED) {
       return uncompressPageData(pageHeader, unCompressor, pageData);
     } else {

@@ -123,7 +123,7 @@ public class ChunkCache {
             chunk.getData().duplicate(),
             timeRangeList,
             chunkStatistic,
-            chunk.getDecryptor());
+            chunk.getEncryptParam());
       }
 
       Chunk chunk = lruCache.get(chunkCacheKey);
@@ -137,7 +137,7 @@ public class ChunkCache {
           chunk.getData().duplicate(),
           timeRangeList,
           chunkStatistic,
-          chunk.getDecryptor());
+          chunk.getEncryptParam());
     } finally {
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
           READ_CHUNK_ALL, System.nanoTime() - startTime);

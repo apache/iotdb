@@ -378,7 +378,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                 new Chunk(
                     chunkHeader,
                     tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize()),
-                    tsFileSequenceReader.getDecryptor()));
+                    tsFileSequenceReader.getEncryptParam()));
             isMultiPageList.add(marker == MetaMarker.TIME_CHUNK_HEADER);
             break;
           }
@@ -395,13 +395,13 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                       new Chunk(
                           chunkHeader,
                           tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize()),
-                          tsFileSequenceReader.getDecryptor()),
+                          tsFileSequenceReader.getEncryptParam()),
                       filter)
                   : new SinglePageWholeChunkReader(
                       new Chunk(
                           chunkHeader,
                           tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize()),
-                          tsFileSequenceReader.getDecryptor()));
+                          tsFileSequenceReader.getEncryptParam()));
           currentIsAligned = false;
           currentMeasurements.add(
               new MeasurementSchema(chunkHeader.getMeasurementID(), chunkHeader.getDataType()));
@@ -447,7 +447,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               new Chunk(
                   chunkHeader,
                   tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize()),
-                  tsFileSequenceReader.getDecryptor()));
+                  tsFileSequenceReader.getEncryptParam()));
           currentMeasurements.add(
               new MeasurementSchema(chunkHeader.getMeasurementID(), chunkHeader.getDataType()));
           break;

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan;
 
 import org.apache.tsfile.compress.IUnCompressor;
 import org.apache.tsfile.encoding.decoder.Decoder;
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.encrypt.IDecryptor;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
@@ -39,14 +40,14 @@ import static org.apache.tsfile.file.metadata.enums.CompressionType.UNCOMPRESSED
 public class SinglePageWholeChunkReader extends AbstractChunkReader {
   private final ChunkHeader chunkHeader;
   private final ByteBuffer chunkDataBuffer;
-  private final IDecryptor decryptor;
+  private final EncryptParameter encryptParam;
 
   public SinglePageWholeChunkReader(Chunk chunk) throws IOException {
     super(Long.MIN_VALUE, null);
 
     this.chunkHeader = chunk.getHeader();
     this.chunkDataBuffer = chunk.getData();
-    this.decryptor = chunk.getDecryptor();
+    this.encryptParam = chunk.getEncryptParam();
     initAllPageReaders();
   }
 
@@ -61,6 +62,7 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader {
   }
 
   private PageReader constructPageReader(PageHeader pageHeader) throws IOException {
+    IDecryptor decryptor = IDecryptor.getDecryptor(encryptParam);
     return new PageReader(
         pageHeader,
         deserializePageData(pageHeader, chunkDataBuffer, chunkHeader, decryptor),

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan;
 
 import org.apache.tsfile.encoding.decoder.Decoder;
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.encrypt.IDecryptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.header.ChunkHeader;
@@ -48,7 +49,7 @@ public class AlignedSinglePageWholeChunkReader extends AbstractChunkReader {
   // chunk data of the time column
   private final ByteBuffer timeChunkDataBuffer;
 
-  private final IDecryptor decryptor;
+  private final EncryptParameter encryptParam;
 
   // chunk headers of all the sub sensors
   private final List<ChunkHeader> valueChunkHeaderList = new ArrayList<>();
@@ -62,7 +63,7 @@ public class AlignedSinglePageWholeChunkReader extends AbstractChunkReader {
     super(Long.MIN_VALUE, null);
     this.timeChunkHeader = timeChunk.getHeader();
     this.timeChunkDataBuffer = timeChunk.getData();
-    this.decryptor = timeChunk.getDecryptor();
+    this.encryptParam = timeChunk.getEncryptParam();
 
     valueChunkList.forEach(
         chunk -> {
@@ -124,6 +125,7 @@ public class AlignedSinglePageWholeChunkReader extends AbstractChunkReader {
 
   private AlignedPageReader constructAlignedPageReader(
       PageHeader timePageHeader, List<PageHeader> rawValuePageHeaderList) throws IOException {
+    IDecryptor decryptor = IDecryptor.getDecryptor(encryptParam);
     ByteBuffer timePageData =
         ChunkReader.deserializePageData(
             timePageHeader, timeChunkDataBuffer, timeChunkHeader, decryptor);

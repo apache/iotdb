@@ -94,7 +94,7 @@ public class InstantChunkLoader extends ChunkLoader {
               chunk.getHeader().getEncodingType(),
               chunkMetadata,
               pageModifiedStatus,
-              chunk.getDecryptor()));
+              chunk.getEncryptParam()));
     }
     return pageList;
   }

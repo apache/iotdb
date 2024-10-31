@@ -136,7 +136,7 @@ public class IoTDBLoadEncryptedTsFileIT {
       ChunkWriterImpl chunkWriter =
           new ChunkWriterImpl(
               new MeasurementSchema("s1", TSDataType.INT32),
-              EncryptUtils.getEncrypt(config).getEncryptor());
+              EncryptUtils.getEncryptParameter(config));
       chunkWriter.write(2, 1);
       chunkWriter.write(3, 1);
       chunkWriter.write(4, 1);
@@ -165,7 +165,7 @@ public class IoTDBLoadEncryptedTsFileIT {
       ChunkWriterImpl chunkWriter =
           new ChunkWriterImpl(
               new MeasurementSchema("s1", TSDataType.INT32),
-              EncryptUtils.getEncrypt(config).getEncryptor());
+              EncryptUtils.getEncryptParameter(config));
       chunkWriter.write(2, 1);
       chunkWriter.write(3, 1);
       chunkWriter.write(4, 1);

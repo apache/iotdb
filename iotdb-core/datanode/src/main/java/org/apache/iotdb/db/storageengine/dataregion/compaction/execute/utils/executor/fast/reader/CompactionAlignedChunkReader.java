@@ -24,6 +24,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.compress.IUnCompressor;
 import org.apache.tsfile.encoding.decoder.Decoder;
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.encrypt.IDecryptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.header.ChunkHeader;
@@ -49,7 +50,7 @@ public class CompactionAlignedChunkReader {
 
   private final IUnCompressor timeUnCompressor;
 
-  private final IDecryptor decryptor;
+  private final EncryptParameter encryptParam;
   private final boolean ignoreAllNullRows;
   private final Decoder timeDecoder =
       Decoder.getDecoderByType(
@@ -68,7 +69,7 @@ public class CompactionAlignedChunkReader {
       Chunk timeChunk, List<Chunk> valueChunkList, boolean ignoreAllNullRows) {
     ChunkHeader timeChunkHeader = timeChunk.getHeader();
     this.timeUnCompressor = IUnCompressor.getUnCompressor(timeChunkHeader.getCompressionType());
-    this.decryptor = timeChunk.getDecryptor();
+    this.encryptParam = timeChunk.getEncryptParam();
     this.timeDeleteIntervalList = timeChunk.getDeleteIntervalList();
     this.valueDeleteIntervalList = new ArrayList<>(valueChunkList.size());
 
@@ -118,6 +119,7 @@ public class CompactionAlignedChunkReader {
       throws IOException {
 
     // decrypt and uncompress time page data
+    IDecryptor decryptor = IDecryptor.getDecryptor(encryptParam);
     ByteBuffer uncompressedTimePageData =
         decryptAndUncompressPageData(
             timePageHeader, timeUnCompressor, compressedTimePageData, decryptor);
