@@ -115,7 +115,6 @@ public class IoTDBLoadEncryptedTsFileIT {
       ResultSet resultSet = statement.executeQuery("select s1 from root.testsg1.d1");
       Assert.fail();
     } catch (Exception e) {
-      System.out.println(e.getMessage());
       Assert.assertTrue(e.getMessage().contains(unrecognizedType));
     }
   }
@@ -146,6 +145,8 @@ public class IoTDBLoadEncryptedTsFileIT {
       writer.endChunkGroup();
       writer.endFile();
     }
+    config.setEncryptFlag("false");
+    config.setEncryptType("org.apache.tsfile.encrypt.UNENCRYPTED");
     return tsfile;
   }
 
@@ -176,6 +177,8 @@ public class IoTDBLoadEncryptedTsFileIT {
       writer.setEncryptParam("2", unrecognizedType, EncryptUtils.getNormalKeyStr(config));
       writer.endFile();
     }
+    config.setEncryptFlag("false");
+    config.setEncryptType("org.apache.tsfile.encrypt.UNENCRYPTED");
     return tsfile;
   }
 
