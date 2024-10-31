@@ -335,7 +335,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     }
     if (recoverMemoryStatus) {
       FileMetrics.getInstance().deleteTsFile(true, selectedSequenceFiles);
-      FileMetrics.getInstance().deleteTsFile(true, selectedUnsequenceFiles);
+      FileMetrics.getInstance().deleteTsFile(false, selectedUnsequenceFiles);
     }
   }
 
