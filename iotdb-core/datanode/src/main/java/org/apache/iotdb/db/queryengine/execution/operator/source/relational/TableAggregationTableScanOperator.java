@@ -39,6 +39,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
@@ -59,6 +60,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -92,6 +94,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   private final SeriesScanOptions seriesScanOptions;
 
   private final List<String> measurementColumnNames;
+  private final Set<String> allSensors;
 
   private final List<IMeasurementSchema> measurementSchemas;
 
@@ -120,6 +123,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
       Ordering scanOrder,
       SeriesScanOptions seriesScanOptions,
       List<String> measurementColumnNames,
+      Set<String> allSensors,
       List<IMeasurementSchema> measurementSchemas,
       int maxTsBlockLineNum,
       int measurementCount,
@@ -158,6 +162,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     this.scanOrder = scanOrder;
     this.seriesScanOptions = seriesScanOptions;
     this.measurementColumnNames = measurementColumnNames;
+    this.allSensors = allSensors;
     this.measurementSchemas = measurementSchemas;
     this.measurementColumnTSDataTypes =
         measurementSchemas.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
@@ -266,7 +271,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     }
 
     AlignedFullPath alignedPath =
-        constructAlignedPath(deviceEntry, measurementColumnNames, measurementSchemas);
+        constructAlignedPath(deviceEntry, measurementColumnNames, measurementSchemas, allSensors);
 
     this.seriesScanUtil =
         new AlignedSeriesScanUtil(
@@ -453,9 +458,11 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
                 deviceEntries
                     .get(currentDeviceIndex)
                     .getNthSegment(columnsIndexArray[columnIdx] + 1);
-        return getIdOrAttrColumn(inputRegion.getTimeColumn().getPositionCount(), id);
+        return getIdOrAttrColumn(
+            inputRegion.getTimeColumn().getPositionCount(),
+            id == null ? null : new Binary(id, TSFileConfig.STRING_CHARSET));
       case ATTRIBUTE:
-        String attr =
+        Binary attr =
             deviceEntries
                 .get(currentDeviceIndex)
                 .getAttributeColumnValues()
@@ -468,17 +475,14 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     }
   }
 
-  private Column getIdOrAttrColumn(int positionCount, String columnName) {
+  private Column getIdOrAttrColumn(int positionCount, Binary columnName) {
     if (columnName == null) {
       return new RunLengthEncodedColumn(
           new BinaryColumn(1, Optional.of(new boolean[] {true}), new Binary[] {null}),
           positionCount);
     } else {
       return new RunLengthEncodedColumn(
-          new BinaryColumn(
-              1,
-              Optional.of(new boolean[] {false}),
-              new Binary[] {new Binary(columnName.getBytes())}),
+          new BinaryColumn(1, Optional.of(new boolean[] {false}), new Binary[] {columnName}),
           positionCount);
     }
   }
@@ -522,9 +526,10 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
                 deviceEntries
                     .get(currentDeviceIndex)
                     .getNthSegment(columnsIndexArray[columnIdx] + 1);
-        return getStatistics(timeStatistics, id);
+        return getStatistics(
+            timeStatistics, id == null ? null : new Binary(id, TSFileConfig.STRING_CHARSET));
       case ATTRIBUTE:
-        String attr =
+        Binary attr =
             deviceEntries
                 .get(currentDeviceIndex)
                 .getAttributeColumnValues()
@@ -537,7 +542,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     }
   }
 
-  private Statistics getStatistics(Statistics timeStatistics, String columnName) {
+  private Statistics getStatistics(Statistics timeStatistics, Binary columnName) {
     if (columnName == null) {
       return null;
     } else {
@@ -545,8 +550,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
       stringStatics.setCount((int) timeStatistics.getCount());
       stringStatics.setStartTime(timeStatistics.getStartTime());
       stringStatics.setEndTime(timeStatistics.getEndTime());
-      Binary v = new Binary(columnName.getBytes());
-      stringStatics.initializeStats(v, v, v, v);
+      stringStatics.initializeStats(columnName, columnName, columnName, columnName);
       return stringStatics;
     }
   }
@@ -744,10 +748,10 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
           if (id == null) {
             columnBuilders[i].appendNull();
           } else {
-            columnBuilders[i].writeBinary(new Binary((id).getBytes()));
+            columnBuilders[i].writeBinary(new Binary(id, TSFileConfig.STRING_CHARSET));
           }
         } else {
-          String attribute =
+          Binary attribute =
               deviceEntries
                   .get(currentDeviceIndex)
                   .getAttributeColumnValues()
@@ -755,7 +759,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
           if (attribute == null) {
             columnBuilders[i].appendNull();
           } else {
-            columnBuilders[i].writeBinary(new Binary(attribute.getBytes()));
+            columnBuilders[i].writeBinary(attribute);
           }
         }
       }

@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceSourceNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.DeviceAttributeCacheUpdater;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -41,15 +42,20 @@ public class TableDeviceFetchNode extends TableDeviceSourceNode {
 
   private final List<Object[]> deviceIdList;
 
+  // transient
+  private final List<IDeviceID> partitionKeyList;
+
   public TableDeviceFetchNode(
       final PlanNodeId id,
       final String database,
       final String tableName,
       final List<Object[]> deviceIdList,
+      final List<IDeviceID> partitionKeyList,
       final List<ColumnHeader> columnHeaderList,
       final TDataNodeLocation senderLocation) {
     super(id, database, tableName, columnHeaderList, senderLocation);
     this.deviceIdList = deviceIdList;
+    this.partitionKeyList = partitionKeyList;
   }
 
   public void addDeviceId(final Object[] deviceId) {
@@ -60,6 +66,10 @@ public class TableDeviceFetchNode extends TableDeviceSourceNode {
     return deviceIdList;
   }
 
+  public List<IDeviceID> getPartitionKeyList() {
+    return partitionKeyList;
+  }
+
   @Override
   public PlanNodeType getType() {
     return PlanNodeType.TABLE_DEVICE_FETCH;
@@ -67,8 +77,13 @@ public class TableDeviceFetchNode extends TableDeviceSourceNode {
 
   @Override
   public PlanNode clone() {
+    throw new UnsupportedOperationException(
+        "The TableDeviceFetchNode's clone() method shall not be called.");
+  }
+
+  public PlanNode cloneForDistribution() {
     return new TableDeviceFetchNode(
-        getPlanNodeId(), database, tableName, deviceIdList, columnHeaderList, senderLocation);
+        null, database, tableName, new ArrayList<>(), null, columnHeaderList, senderLocation);
   }
 
   @Override
@@ -154,7 +169,7 @@ public class TableDeviceFetchNode extends TableDeviceSourceNode {
 
     final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
     return new TableDeviceFetchNode(
-        planNodeId, database, tableName, deviceIdList, columnHeaderList, senderLocation);
+        planNodeId, database, tableName, deviceIdList, null, columnHeaderList, senderLocation);
   }
 
   @Override

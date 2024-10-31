@@ -90,6 +90,8 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import com.google.common.util.concurrent.SettableFuture;
 
+import javax.annotation.Nullable;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -333,4 +335,14 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> dropTable(
       final String database, final String tableName, final String queryId, final boolean ifExists);
+
+  SettableFuture<ConfigTaskResult> showVersion();
+
+  SettableFuture<ConfigTaskResult> showCurrentSqlDialect(String sqlDialect);
+
+  SettableFuture<ConfigTaskResult> showCurrentUser(String currentUser);
+
+  SettableFuture<ConfigTaskResult> showCurrentDatabase(@Nullable String currentDatabase);
+
+  SettableFuture<ConfigTaskResult> showCurrentTimestamp();
 }

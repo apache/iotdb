@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.schema.filter.impl.singlechild.AttributeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,6 +63,9 @@ public class DeviceInCacheFilterVisitor extends SchemaFilterVisitor<DeviceEntry>
         .getChild()
         .accept(
             StringValueFilterVisitor.getInstance(),
-            deviceEntry.getAttributeColumnValues().get(attributeIndexMap.get(filter.getKey())));
+            deviceEntry
+                .getAttributeColumnValues()
+                .get(attributeIndexMap.get(filter.getKey()))
+                .getStringValue(TSFileConfig.STRING_CHARSET));
   }
 }

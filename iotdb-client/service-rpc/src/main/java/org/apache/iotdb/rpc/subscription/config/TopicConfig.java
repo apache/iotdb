@@ -106,7 +106,7 @@ public class TopicConfig extends PipeParameters {
   }
 
   public Map<String, String> getAttributesWithRealtimeMode() {
-    return REALTIME_STREAM_MODE_CONFIG;
+    return REALTIME_STREAM_MODE_CONFIG; // default to stream (hybrid)
   }
 
   public Map<String, String> getAttributesWithSourceMode() {
@@ -136,9 +136,6 @@ public class TopicConfig extends PipeParameters {
   }
 
   public Map<String, String> getAttributesWithSinkFormat() {
-    return TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equalsIgnoreCase(
-            attributes.getOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE))
-        ? Collections.emptyMap()
-        : SINK_TABLET_FORMAT_CONFIG;
+    return Collections.emptyMap(); // default to hybrid
   }
 }

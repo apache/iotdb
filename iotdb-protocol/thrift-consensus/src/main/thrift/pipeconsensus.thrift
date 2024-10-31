@@ -62,6 +62,8 @@ struct TNotifyPeerToCreateConsensusPipeReq {
   1: required common.TConsensusGroupId targetPeerConsensusGroupId
   2: required common.TEndPoint targetPeerEndPoint
   3: required i32 targetPeerNodeId
+  4: required common.TEndPoint coordinatorPeerEndPoint
+  5: required i32 coordinatorPeerNodeId
 }
 
 struct TNotifyPeerToCreateConsensusPipeResp {
