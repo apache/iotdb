@@ -29,8 +29,6 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -65,7 +63,6 @@ public class ImportTsFile extends AbstractTsFileTool {
   private static final IoTPrinter IOT_PRINTER = new IoTPrinter(System.out);
 
   private static final String TS_FILE_CLI_PREFIX = "ImportTsFile";
-  private static final Log log = LogFactory.getLog(ImportTsFile.class);
 
   protected static String timestampPrecision = "ms";
   private static final String TIMESTAMP_PRECISION_ARGS = "tp";
