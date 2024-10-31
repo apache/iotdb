@@ -89,10 +89,6 @@ public class ExportData extends AbstractDataTool {
   private static final String QUERY_COMMAND_NAME = "query";
   private static final String QUERY_COMMAND_ARGS_NAME = "query_command";
 
-  private static final String EXPORT_TYPE_ARGS = "type";
-
-  private static final String EXPORT_TYPE_NAME = "exportType";
-
   private static final String EXPORT_SQL_TYPE_NAME = "sql";
 
   private static final String ALIGNED_ARGS = "aligned";
@@ -156,8 +152,14 @@ public class ExportData extends AbstractDataTool {
           TSFILEDB_CLI_HEAD, TSFILEDB_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
       System.exit(CODE_ERROR);
     }
-    if (commandLine.hasOption(HELP_ARGS)) {
-      fileType = commandLine.getOptionValue(HELP_ARGS);
+    final List<String> argList = commandLine.getArgList();
+    int helpIndex = argList.indexOf(MINUS + HELP_ARGS);
+    int ftIndex = argList.indexOf(MINUS + FILE_TYPE_ARGS);
+    if (ftIndex < 0) {
+      ftIndex = argList.indexOf(MINUS + FILE_TYPE_NAME);
+    }
+    if (helpIndex >= 0) {
+      fileType = argList.get(helpIndex + 1);
       if (StringUtils.isNotBlank(fileType)) {
         if (TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
           printHelpOptions(null, TSFILEDB_CLI_PREFIX, hf, tsFileOptions, null, null, false);
@@ -187,8 +189,8 @@ public class ExportData extends AbstractDataTool {
             true);
       }
       System.exit(CODE_ERROR);
-    } else if (commandLine.hasOption(FILE_TYPE_ARGS)) {
-      fileType = commandLine.getOptionValue(FILE_TYPE_ARGS);
+    } else if (ftIndex >= 0) {
+      fileType = argList.get(ftIndex + 1);
       if (StringUtils.isNotBlank(fileType)) {
         if (TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
           try {

@@ -101,7 +101,6 @@ public class ImportData extends AbstractDataTool {
   private static Boolean aligned = false;
   private static int threadNum = 8;
   private static SessionPool sessionPool;
-  private static int fetchSize = 1000;
 
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
 
@@ -446,8 +445,14 @@ public class ImportData extends AbstractDataTool {
           TSFILEDB_CLI_HEAD, TSFILEDB_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
       System.exit(CODE_ERROR);
     }
-    if (commandLine.hasOption(HELP_ARGS)) {
-      fileType = commandLine.getOptionValue(HELP_ARGS);
+    final List<String> argList = commandLine.getArgList();
+    int helpIndex = argList.indexOf(MINUS + HELP_ARGS);
+    int ftIndex = argList.indexOf(MINUS + FILE_TYPE_ARGS);
+    if (ftIndex < 0) {
+      ftIndex = argList.indexOf(MINUS + FILE_TYPE_NAME);
+    }
+    if (helpIndex >= 0) {
+      fileType = argList.get(helpIndex + 1);
       if (StringUtils.isNotBlank(fileType)) {
         if (TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
           printHelpOptions(null, TSFILEDB_CLI_PREFIX, hf, tsFileOptions, null, null, false);
@@ -477,7 +482,7 @@ public class ImportData extends AbstractDataTool {
             true);
       }
       System.exit(CODE_ERROR);
-    } else if (commandLine.hasOption(FILE_TYPE_ARGS)) {
+    } else if (ftIndex >= 0) {
       fileType = commandLine.getOptionValue(FILE_TYPE_ARGS);
       if (StringUtils.isNotBlank(fileType)) {
         if (TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
