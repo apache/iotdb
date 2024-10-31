@@ -571,7 +571,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       throw new CompactionRecoverException("source files cannot be deleted successfully");
     }
     if (recoverMemoryStatus) {
-      FileMetrics.getInstance().deleteTsFile(true, filesView.sourceFilesInLog);
+      FileMetrics.getInstance().deleteTsFile(filesView.sequence, filesView.sourceFilesInLog);
     }
   }
 
