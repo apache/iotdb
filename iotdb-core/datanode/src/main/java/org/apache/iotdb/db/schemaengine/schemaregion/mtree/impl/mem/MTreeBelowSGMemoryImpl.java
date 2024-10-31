@@ -1567,7 +1567,6 @@ public class MTreeBelowSGMemoryImpl {
         final TableDeviceInfo<IMemMNode> deviceInfo = new TableDeviceInfo<>();
         deviceInfo.setAttributePointer(attributePointerGetter.getAsInt());
         entityMNode.getAsInternalMNode().setDeviceInfo(deviceInfo);
-        regionStatistics.addDevice();
       }
     }
   }

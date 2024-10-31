@@ -363,7 +363,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
       for (final Iterator<Map.Entry<SK, T>> it = cacheEntryGroup.getAllCacheEntries();
           it.hasNext(); ) {
         final Map.Entry<SK, T> entry = it.next();
-        if (cacheEntryManager.invalid(entry.getValue())) {
+        if (cacheEntryManager.invalidate(entry.getValue())) {
           estimateSize +=
               sizeComputer.computeSecondKeySize(entry.getKey())
                   + sizeComputer.computeValueSize(entry.getValue().getValue());
@@ -386,7 +386,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
           }
 
           final T entry = cacheEntryGroup.getCacheEntry(secondKey);
-          if (Objects.nonNull(entry) && cacheEntryManager.invalid(entry)) {
+          if (Objects.nonNull(entry) && cacheEntryManager.invalidate(entry)) {
             usedMemorySize.getAndAdd(
                 sizeComputer.computeSecondKeySize(entry.getSecondKey())
                     + sizeComputer.computeValueSize(entry.getValue()));
@@ -417,7 +417,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
           continue;
         }
 
-        if (cacheEntryManager.invalid(entry.getValue())) {
+        if (cacheEntryManager.invalidate(entry.getValue())) {
           entryGroup.removeCacheEntry(entry.getKey());
           estimateSize +=
               sizeComputer.computeSecondKeySize(entry.getKey())
