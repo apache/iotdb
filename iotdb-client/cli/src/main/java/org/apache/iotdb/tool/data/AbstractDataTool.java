@@ -156,6 +156,7 @@ public abstract class AbstractDataTool {
   protected static final String TSFILE_SUFFIXS = "tsfile";
   protected static final String TSFILEDB_CLI_DIVIDE = "-------------------";
   protected static final String COLON = ": ";
+  protected static final String MINUS = "-";
   protected static String failedFileDirectory = null;
   protected static String timeColumn = "Time";
   protected static String deviceColumn = "Device";
@@ -1268,28 +1269,6 @@ public abstract class AbstractDataTool {
       return s.substring(1);
     }
     return s;
-  }
-
-  /**
-   * create the commandline options.
-   *
-   * @return object Options
-   */
-  protected static Options createImportCommonOptions() {
-    Options options = createImportOptions();
-    Option opHelp =
-        Option.builder(HELP_ARGS)
-            .longOpt(HELP_ARGS)
-            .hasArg()
-            .desc("Display help information")
-            .build();
-    options.addOption(opHelp);
-    return options;
-  }
-
-  protected static Options createExportCommonOptions() {
-    Options options = createExportOptions();
-    return options;
   }
 
   protected static Options createHelpOptions() {
