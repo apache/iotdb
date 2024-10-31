@@ -62,14 +62,14 @@ public class AsyncImportData extends AbstractDataTool implements Runnable {
         } else {
           importFromSingleFile(file);
         }
-        processSuccessFile(filePath);
+        processSuccessFile();
       }
     } catch (Exception e) {
       ioTPrinter.println("Unexpected error occurred: " + e.getMessage());
     }
   }
 
-  protected static void processSuccessFile(final String filePath) {
+  protected static void processSuccessFile() {
     loadFileSuccessfulNum.increment();
     //    ioTPrinter.println("Imported [ " + filePath + " ] file successfully!");
   }
@@ -77,7 +77,7 @@ public class AsyncImportData extends AbstractDataTool implements Runnable {
   @SuppressWarnings("java:S2259")
   private static void importFromSqlFile(File file) {
     ArrayList<List<Object>> failedRecords = new ArrayList<>();
-    String failedFilePath = null;
+    String failedFilePath;
     if (failedFileDirectory == null) {
       failedFilePath = file.getAbsolutePath() + ".failed";
     } else {
@@ -110,6 +110,7 @@ public class AsyncImportData extends AbstractDataTool implements Runnable {
             writer.flush();
             writer.close();
           } catch (IOException e) {
+            ;
           }
         }
       }
@@ -130,7 +131,7 @@ public class AsyncImportData extends AbstractDataTool implements Runnable {
           ioTPrinter.println("The first field of header must be `Time`!");
           return;
         }
-        String failedFilePath = null;
+        String failedFilePath;
         if (failedFileDirectory == null) {
           failedFilePath = file.getAbsolutePath() + ".failed";
         } else {
