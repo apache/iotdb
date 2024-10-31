@@ -704,6 +704,7 @@ public abstract class AlignedTVList extends TVList {
       System.arraycopy(prevBytes, 0, newBytes, 0, prevBytes.length);
       timeColDeletedMap = new BitMap(rowCount, newBytes);
     }
+    // use value index so that sorts will not change the nullability
     timeColDeletedMap.mark(getValueIndex(i));
   }
 
@@ -1004,7 +1005,7 @@ public abstract class AlignedTVList extends TVList {
           && allValueColDeletedMap.isMarked(getValueIndex(sortedRowIndex))) {
         continue;
       }
-      if (timeColDeletedMap != null && timeColDeletedMap.isMarked(sortedRowIndex)) {
+      if (timeColDeletedMap != null && timeColDeletedMap.isMarked(getValueIndex(sortedRowIndex))) {
         continue;
       }
       int nextRowIndex = sortedRowIndex + 1;
