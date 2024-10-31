@@ -224,7 +224,10 @@ public class LoadTsFileTableSchemaCache {
               idColumnCountAndMapper.getRight().entrySet()) {
             final int fileColumnIndex = fileColumn2RealColumn.getKey();
             final int realColumnIndex = fileColumn2RealColumn.getValue();
-            deviceIdArray[realColumnIndex] = device.getSegments()[fileColumnIndex + 1];
+            deviceIdArray[realColumnIndex] =
+                fileColumnIndex + 1 < device.getSegments().length
+                    ? device.getSegments()[fileColumnIndex + 1]
+                    : null;
           }
           devices.add(truncateNullSuffixesOfDeviceIdSegments(deviceIdArray));
         }
