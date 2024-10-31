@@ -166,7 +166,6 @@ public class LoadTsFileTableSchemaCache {
   public void flush() {
     doAutoCreateAndVerify();
     clearDevices();
-    clearIdColumnMapper();
   }
 
   private void doAutoCreateAndVerify() throws SemanticException {
@@ -377,7 +376,7 @@ public class LoadTsFileTableSchemaCache {
     currentTimeIndexMemoryUsageSizeInBytes = 0;
   }
 
-  private void clearIdColumnMapper() {
+  public void clearIdColumnMapper() {
     tableIdColumnMapper.clear();
     block.reduceMemoryUsage(tableIdColumnMapperMemoryUsageSizeInBytes);
     tableIdColumnMapperMemoryUsageSizeInBytes = 0;

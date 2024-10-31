@@ -171,6 +171,7 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
       addWritePointCount(writePointCount);
 
       schemaCache.flush();
+      schemaCache.clearIdColumnMapper();
     } catch (final LoadEmptyFileException loadEmptyFileException) {
       LOGGER.warn("Failed to load empty file: {}", tsFile.getAbsolutePath());
       if (isDeleteAfterLoad) {
