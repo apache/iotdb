@@ -89,6 +89,8 @@ public class ImportDataTestIT extends AbstractScript {
             "root",
             "-pw",
             "root",
+            "-ft",
+            "csv",
             "-s",
             "./",
             "&",
@@ -115,6 +117,8 @@ public class ImportDataTestIT extends AbstractScript {
             "root",
             "-pw",
             "root",
+            "-ft",
+            "csv",
             "-s",
             "./");
     builder.environment().put("CLASSPATH", libPath);
