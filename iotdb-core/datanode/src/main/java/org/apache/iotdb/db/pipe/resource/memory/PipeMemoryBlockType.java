@@ -19,9 +19,8 @@
 
 package org.apache.iotdb.db.pipe.resource.memory;
 
-public class PipeTabletMemoryBlock extends PipeFixedMemoryBlock {
-
-  public PipeTabletMemoryBlock(long memoryUsageInBytes) {
-    super(memoryUsageInBytes);
-  }
+public enum PipeMemoryBlockType {
+  NORMAL,
+  TABLET,
+  TS_FILE,
 }
