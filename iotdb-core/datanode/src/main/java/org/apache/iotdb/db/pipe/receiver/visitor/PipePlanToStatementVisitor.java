@@ -85,6 +85,7 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
     statement.setNeedInferType(node.isNeedInferType());
     statement.setAligned(node.isAligned());
     statement.setMeasurementSchemas(node.getMeasurementSchemas());
+    statement.setColumnCategories(node.getColumnCategories());
     return statement;
   }
 
