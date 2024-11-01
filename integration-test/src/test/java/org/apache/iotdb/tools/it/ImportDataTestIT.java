@@ -74,7 +74,7 @@ public class ImportDataTestIT extends AbstractScript {
   @Override
   protected void testOnWindows() throws IOException {
     final String[] output = {
-      "The file name must end with \"csv\" or \"txt\"!",
+      "Source file or directory ./csv/ does not exist",
     };
     ProcessBuilder builder =
         new ProcessBuilder(
@@ -92,7 +92,7 @@ public class ImportDataTestIT extends AbstractScript {
             "-ft",
             "csv",
             "-s",
-            "./",
+            "./csv/",
             "&",
             "exit",
             "%^errorlevel%");
@@ -103,7 +103,7 @@ public class ImportDataTestIT extends AbstractScript {
   @Override
   protected void testOnUnix() throws IOException {
     final String[] output = {
-      "The file name must end with \"csv\" or \"txt\"!",
+      "Source file or directory ./csv/ does not exist",
     };
     ProcessBuilder builder =
         new ProcessBuilder(
@@ -120,7 +120,7 @@ public class ImportDataTestIT extends AbstractScript {
             "-ft",
             "csv",
             "-s",
-            "./");
+            "./csv/");
     builder.environment().put("CLASSPATH", libPath);
     testOutput(builder, output, 0);
   }
