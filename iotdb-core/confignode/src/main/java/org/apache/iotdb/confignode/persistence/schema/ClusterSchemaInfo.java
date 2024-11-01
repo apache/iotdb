@@ -452,10 +452,10 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    *
    * @return List {@literal <}DatabaseName{@literal >}, all Databases' name.
    */
-  public List<String> getDatabaseNames() {
+  public List<String> getDatabaseNames(final Boolean isTableModel) {
     databaseReadWriteLock.readLock().lock();
     try {
-      return mTree.getAllDatabasePaths(false).stream()
+      return mTree.getAllDatabasePaths(isTableModel).stream()
           .map(PartialPath::getFullPath)
           .collect(Collectors.toList());
     } finally {

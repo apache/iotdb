@@ -391,7 +391,7 @@ public class ClusterSchemaManager {
   }
 
   public Map<String, Long> getTTLInfoForUpgrading() {
-    List<String> databases = getDatabaseNames();
+    List<String> databases = getDatabaseNames(null);
     Map<String, Long> infoMap = new ConcurrentHashMap<>();
     for (String database : databases) {
       try {
@@ -454,7 +454,7 @@ public class ClusterSchemaManager {
   public synchronized void adjustMaxRegionGroupNum() {
     // Get all DatabaseSchemas
     Map<String, TDatabaseSchema> databaseSchemaMap =
-        getMatchedDatabaseSchemasByName(getDatabaseNames());
+        getMatchedDatabaseSchemasByName(getDatabaseNames(null));
     if (databaseSchemaMap.isEmpty()) {
       // Skip when there are no Databases
       return;
@@ -567,7 +567,7 @@ public class ClusterSchemaManager {
    * Check if the specified Database exists
    *
    * @param database The specified Database
-   * @return True if the DatabaseSchema is exists and the Database is not pre-deleted
+   * @return True if the DatabaseSchema exists and the Database is not pre-deleted
    */
   public boolean isDatabaseExist(String database) {
     return getPartitionManager().isDatabaseExist(database);
@@ -576,10 +576,12 @@ public class ClusterSchemaManager {
   /**
    * Only leader use this interface. Get all Databases name
    *
+   * @param isTableModel {@link Boolean#TRUE} is only extract table model database, {@link
+   *     Boolean#FALSE} is only extract tree model database, {@code null} is extract both.
    * @return List<DatabaseName>, all Databases' name
    */
-  public List<String> getDatabaseNames() {
-    return clusterSchemaInfo.getDatabaseNames().stream()
+  public List<String> getDatabaseNames(final Boolean isTableModel) {
+    return clusterSchemaInfo.getDatabaseNames(isTableModel).stream()
         .filter(this::isDatabaseExist)
         .collect(Collectors.toList());
   }
@@ -604,9 +606,9 @@ public class ClusterSchemaManager {
    *
    * @return The DatabaseName of the specified Device. Empty String if not exists.
    */
-  public String getDatabaseNameByDevice(IDeviceID deviceID) {
-    List<String> databases = getDatabaseNames();
-    for (String database : databases) {
+  public String getDatabaseNameByDevice(final IDeviceID deviceID) {
+    final List<String> databases = getDatabaseNames(null);
+    for (final String database : databases) {
       if (PathUtils.isStartWith(deviceID, database)) {
         return database;
       }
