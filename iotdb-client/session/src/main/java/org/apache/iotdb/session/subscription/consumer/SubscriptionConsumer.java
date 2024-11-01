@@ -76,7 +76,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.rpc.subscription.config.TopicConstant.MODE_SNAPSHOT_VALUE;
@@ -435,18 +435,19 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   private final Map<
           SubscriptionPollResponseType,
-          Function<SubscriptionPollResponse, Optional<SubscriptionMessage>>>
+          BiFunction<SubscriptionPollResponse, PollTimer, Optional<SubscriptionMessage>>>
       responseTransformer =
           Collections.unmodifiableMap(
               new HashMap<
                   SubscriptionPollResponseType,
-                  Function<SubscriptionPollResponse, Optional<SubscriptionMessage>>>() {
+                  BiFunction<
+                      SubscriptionPollResponse, PollTimer, Optional<SubscriptionMessage>>>() {
                 {
-                  put(TABLETS, resp -> pollTablets(resp));
-                  put(FILE_INIT, resp -> pollFile(resp));
+                  put(TABLETS, (resp, timer) -> pollTablets(resp, timer));
+                  put(FILE_INIT, (resp, timer) -> pollFile(resp, timer));
                   put(
                       ERROR,
-                      resp -> {
+                      (resp, timer) -> {
                         final ErrorPayload payload = (ErrorPayload) resp.getPayload();
                         final String errorMessage = payload.getErrorMessage();
                         if (payload.isCritical()) {
@@ -457,7 +458,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
                       });
                   put(
                       TERMINATION,
-                      resp -> {
+                      (resp, timer) -> {
                         final SubscriptionCommitContext commitContext = resp.getCommitContext();
                         final String topicNameToUnsubscribe = commitContext.getTopicName();
                         LOGGER.info(
@@ -589,11 +590,11 @@ abstract class SubscriptionConsumer implements AutoCloseable {
               responseTransformer
                   .getOrDefault(
                       SubscriptionPollResponseType.valueOf(responseType),
-                      resp -> {
+                      (resp, ignored) -> {
                         LOGGER.warn("unexpected response type: {}", responseType);
                         return Optional.empty();
                       })
-                  .apply(response)
+                  .apply(response, timer)
                   .ifPresent(currentMessages::add);
             } catch (final SubscriptionRuntimeNonCriticalException e) {
               LOGGER.warn(
@@ -670,15 +671,15 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     return messages;
   }
 
-  private Optional<SubscriptionMessage> pollFile(final SubscriptionPollResponse response)
-      throws SubscriptionException {
+  private Optional<SubscriptionMessage> pollFile(
+      final SubscriptionPollResponse response, final PollTimer timer) throws SubscriptionException {
     final SubscriptionCommitContext commitContext = response.getCommitContext();
     final String fileName = ((FileInitPayload) response.getPayload()).getFileName();
     final String topicName = commitContext.getTopicName();
     final Path filePath = getFilePath(topicName, fileName, true, true);
     final File file = filePath.toFile();
     try (final RandomAccessFile fileWriter = new RandomAccessFile(file, "rw")) {
-      return Optional.of(pollFileInternal(commitContext, fileName, file, fileWriter));
+      return Optional.of(pollFileInternal(commitContext, fileName, file, fileWriter, timer));
     } catch (final Exception e) {
       // construct temporary message to nack
       nack(
@@ -692,7 +693,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       final SubscriptionCommitContext commitContext,
       final String rawFileName,
       final File file,
-      final RandomAccessFile fileWriter)
+      final RandomAccessFile fileWriter,
+      final PollTimer timer)
       throws IOException, SubscriptionException {
     LOGGER.info(
         "{} start to poll file {} with commit context {}",
@@ -702,6 +704,16 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
     long writingOffset = fileWriter.length();
     while (true) {
+      timer.update();
+      if (timer.isExpired()) {
+        final String errorMessage =
+            String.format(
+                "timeout while poll file %s with commit context: %s, consumer: %s",
+                file.getAbsolutePath(), commitContext, this);
+        LOGGER.warn(errorMessage);
+        throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+      }
+
       final List<SubscriptionPollResponse> responses =
           pollFileInternal(commitContext, writingOffset);
 
@@ -848,10 +860,10 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     }
   }
 
-  private Optional<SubscriptionMessage> pollTablets(final SubscriptionPollResponse response)
-      throws SubscriptionException {
+  private Optional<SubscriptionMessage> pollTablets(
+      final SubscriptionPollResponse response, final PollTimer timer) throws SubscriptionException {
     try {
-      return pollTabletsInternal(response);
+      return pollTabletsInternal(response, timer);
     } catch (final Exception e) {
       // construct temporary message to nack
       nack(
@@ -862,12 +874,22 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   private Optional<SubscriptionMessage> pollTabletsInternal(
-      final SubscriptionPollResponse initialResponse) {
+      final SubscriptionPollResponse initialResponse, final PollTimer timer) {
     final List<Tablet> tablets = ((TabletsPayload) initialResponse.getPayload()).getTablets();
     final SubscriptionCommitContext commitContext = initialResponse.getCommitContext();
 
     int nextOffset = ((TabletsPayload) initialResponse.getPayload()).getNextOffset();
     while (true) {
+      timer.update();
+      if (timer.isExpired()) {
+        final String errorMessage =
+            String.format(
+                "timeout while poll tablets with commit context: %s, consumer: %s",
+                commitContext, this);
+        LOGGER.warn(errorMessage);
+        throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+      }
+
       if (nextOffset < 0) {
         if (!Objects.equals(tablets.size(), -nextOffset)) {
           final String errorMessage =
