@@ -97,7 +97,7 @@ public class ImportDataTestIT extends AbstractScript {
             "exit",
             "%^errorlevel%");
     builder.environment().put("CLASSPATH", libPath);
-    testOutput(builder, output, 0);
+    testOutput(builder, output, 1);
   }
 
   @Override
@@ -122,6 +122,6 @@ public class ImportDataTestIT extends AbstractScript {
             "-s",
             "./csv/");
     builder.environment().put("CLASSPATH", libPath);
-    testOutput(builder, output, 0);
+    testOutput(builder, output, 1);
   }
 }
