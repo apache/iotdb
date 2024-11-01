@@ -74,13 +74,13 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
   }
 
   @Override
-  public void nack() {
+  public synchronized void nack() {
     cleanUp();
     init();
   }
 
   @Override
-  public void cleanUp() {
+  public synchronized void cleanUp() {
     super.cleanUp();
   }
 
