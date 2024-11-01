@@ -58,6 +58,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
@@ -152,7 +153,7 @@ public class ExportData extends AbstractDataTool {
           TSFILEDB_CLI_HEAD, TSFILEDB_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
       System.exit(CODE_ERROR);
     }
-    final List<String> argList = commandLine.getArgList();
+    final List<String> argList = Arrays.asList(args);
     int helpIndex = argList.indexOf(MINUS + HELP_ARGS);
     int ftIndex = argList.indexOf(MINUS + FILE_TYPE_ARGS);
     if (ftIndex < 0) {
