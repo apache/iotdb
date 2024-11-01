@@ -62,7 +62,6 @@ public class AsyncImportData extends AbstractDataTool implements Runnable {
         } else {
           importFromSingleFile(file);
         }
-        processSuccessFile();
       }
     } catch (Exception e) {
       ioTPrinter.println("Unexpected error occurred: " + e.getMessage());
@@ -71,7 +70,6 @@ public class AsyncImportData extends AbstractDataTool implements Runnable {
 
   protected static void processSuccessFile() {
     loadFileSuccessfulNum.increment();
-    //    ioTPrinter.println("Imported [ " + filePath + " ] file successfully!");
   }
 
   @SuppressWarnings("java:S2259")
@@ -92,6 +90,7 @@ public class AsyncImportData extends AbstractDataTool implements Runnable {
           failedRecords.add(Arrays.asList(sql));
         }
       }
+      processSuccessFile();
     } catch (IOException e) {
       ioTPrinter.println("SQL file read exception because: " + e.getMessage());
     }
@@ -142,6 +141,7 @@ public class AsyncImportData extends AbstractDataTool implements Runnable {
         } else {
           writeDataAlignedByDevice(sessionPool, headerNames, records, failedFilePath);
         }
+        processSuccessFile();
       } catch (IOException | IllegalPathException e) {
         ioTPrinter.println("CSV file read exception because: " + e.getMessage());
       }
