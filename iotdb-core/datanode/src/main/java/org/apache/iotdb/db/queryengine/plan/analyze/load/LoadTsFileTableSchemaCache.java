@@ -166,7 +166,6 @@ public class LoadTsFileTableSchemaCache {
   public void flush() {
     doAutoCreateAndVerify();
     clearDevices();
-    clearIdColumnMapper();
   }
 
   private void doAutoCreateAndVerify() throws SemanticException {
@@ -224,9 +223,12 @@ public class LoadTsFileTableSchemaCache {
               idColumnCountAndMapper.getRight().entrySet()) {
             final int fileColumnIndex = fileColumn2RealColumn.getKey();
             final int realColumnIndex = fileColumn2RealColumn.getValue();
-            deviceIdArray[realColumnIndex] = device.getSegments()[fileColumnIndex + 1];
+            deviceIdArray[realColumnIndex] =
+                fileColumnIndex + 1 < device.getSegments().length
+                    ? device.getSegments()[fileColumnIndex + 1]
+                    : null;
           }
-          devices.add(deviceIdArray);
+          devices.add(truncateNullSuffixesOfDeviceIdSegments(deviceIdArray));
         }
         return devices;
       }
@@ -241,6 +243,14 @@ public class LoadTsFileTableSchemaCache {
         return Collections.nCopies(currentBatchTable2Devices.get(tableName).size(), new Object[0]);
       }
     };
+  }
+
+  private static Object[] truncateNullSuffixesOfDeviceIdSegments(Object[] segments) {
+    int lastNonNullIndex = segments.length - 1;
+    while (lastNonNullIndex >= 1 && segments[lastNonNullIndex] == null) {
+      lastNonNullIndex--;
+    }
+    return Arrays.copyOf(segments, lastNonNullIndex + 1);
   }
 
   public void createTable(TableSchema fileSchema, MPPQueryContext context, Metadata metadata)
@@ -366,7 +376,7 @@ public class LoadTsFileTableSchemaCache {
     currentTimeIndexMemoryUsageSizeInBytes = 0;
   }
 
-  private void clearIdColumnMapper() {
+  public void clearIdColumnMapper() {
     tableIdColumnMapper.clear();
     block.reduceMemoryUsage(tableIdColumnMapperMemoryUsageSizeInBytes);
     tableIdColumnMapperMemoryUsageSizeInBytes = 0;
