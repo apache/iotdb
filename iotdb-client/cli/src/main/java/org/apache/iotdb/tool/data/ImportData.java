@@ -576,7 +576,7 @@ public class ImportData extends AbstractDataTool {
             ioTPrinter.println("ImportData thread join interrupted: " + e.getMessage());
           }
         });
-    ioTPrinter.println("Imported file successfully!");
+    ioTPrinter.println("Import completely!");
   }
 
   private static int importFromTargetPathAsync() {
