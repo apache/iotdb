@@ -27,7 +27,7 @@ import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2ManualCreateSchema;
+import org.apache.iotdb.itbase.category.MultiClusterIT2TableModel;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -51,7 +51,7 @@ import java.util.Set;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2ManualCreateSchema.class})
+@Category({MultiClusterIT2TableModel.class})
 public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelTestIT {
   @Before
   public void setUp() {
