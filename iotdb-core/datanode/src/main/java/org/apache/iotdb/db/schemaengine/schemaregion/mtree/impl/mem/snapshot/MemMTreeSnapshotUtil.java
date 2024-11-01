@@ -220,7 +220,7 @@ public class MemMTreeSnapshotUtil {
             deviceProcess,
             tableDeviceProcess,
             regionStatistics,
-            new AtomicReference<>());
+            tableRef);
       }
     }
     return root;
@@ -244,7 +244,7 @@ public class MemMTreeSnapshotUtil {
       case INTERNAL_MNODE_TYPE:
         childrenNum = ReadWriteIOUtils.readInt(inputStream);
         node = deserializer.deserializeInternalMNode(inputStream);
-        if (ancestors.size() == 2) {
+        if (ancestors.size() == 1) {
           currentTableName.set(node.getName());
         }
         break;
@@ -275,6 +275,9 @@ public class MemMTreeSnapshotUtil {
       case TABLE_MNODE_TYPE:
         childrenNum = ReadWriteIOUtils.readInt(inputStream);
         node = deserializer.deserializeTableDeviceMNode(inputStream);
+        if (ancestors.size() == 1) {
+          currentTableName.set(node.getName());
+        }
         deviceProcess.accept(node.getAsDeviceMNode());
         tableDeviceProcess.accept(node.getAsDeviceMNode(), currentTableName.get());
         break;
