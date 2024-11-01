@@ -20,6 +20,7 @@ package org.apache.iotdb.db.storageengine.dataregion.modification;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -43,24 +44,24 @@ import java.util.Objects;
 public class TreeDeletionEntry extends ModEntry {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TreeDeletionEntry.class);
-  private PartialPath pathPattern;
+  private MeasurementPath pathPattern;
 
   public TreeDeletionEntry() {
     super(ModType.TREE_DELETION);
   }
 
-  public TreeDeletionEntry(PartialPath path, long start, long end) {
+  public TreeDeletionEntry(MeasurementPath path, long start, long end) {
     this(path, new TimeRange(start, end));
   }
 
-  public TreeDeletionEntry(PartialPath path, TimeRange timeRange) {
+  public TreeDeletionEntry(MeasurementPath path, TimeRange timeRange) {
     this();
     this.pathPattern = path;
     this.timeRange = timeRange;
   }
 
   @TestOnly
-  public TreeDeletionEntry(PartialPath path, long endTime) {
+  public TreeDeletionEntry(MeasurementPath path, long endTime) {
     this();
     this.pathPattern = path;
     this.timeRange = new TimeRange(Long.MIN_VALUE, endTime);
@@ -100,7 +101,7 @@ public class TreeDeletionEntry extends ModEntry {
   public void deserialize(InputStream stream) throws IOException {
     super.deserialize(stream);
     try {
-      this.pathPattern = new PartialPath(ReadWriteIOUtils.readVarIntString(stream));
+      this.pathPattern = new MeasurementPath(ReadWriteIOUtils.readVarIntString(stream));
     } catch (IllegalPathException e) {
       throw new IOException(e);
     }
@@ -110,7 +111,7 @@ public class TreeDeletionEntry extends ModEntry {
   public void deserialize(ByteBuffer buffer) {
     super.deserialize(buffer);
     try {
-      this.pathPattern = new PartialPath(ReadWriteIOUtils.readVarIntString(buffer));
+      this.pathPattern = new MeasurementPath(ReadWriteIOUtils.readVarIntString(buffer));
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException(e);
     }

@@ -34,7 +34,6 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -100,18 +99,14 @@ public class QueryContext {
     return true;
   }
 
-  private PatternTreeMap<ModEntry, ModsSerializer> getAllModifications(ModificationFile modFile) {
+  private PatternTreeMap<ModEntry, ModsSerializer> getAllModifications(TsFileResource resource) {
     return fileModCache.computeIfAbsent(
-        modFile.getFile().getPath(),
+        resource.getNewModFile().getFile().getPath(),
         k -> {
           PatternTreeMap<ModEntry, ModsSerializer> modifications =
               PatternTreeMapFactory.getModsPatternTreeMap();
-          try {
-            for (ModEntry modification : modFile.getAllMods()) {
-              modifications.append(modification.keyOfPatternTree(), modification);
-            }
-          } catch (IOException e) {
-            LOGGER.error("Error occurred while reading modification file {}", modFile, e);
+          for (ModEntry modification : resource.getAllModEntries()) {
+            modifications.append(modification.keyOfPatternTree(), modification);
           }
           return modifications;
         });
@@ -125,7 +120,7 @@ public class QueryContext {
     }
 
     return ModificationUtils.sortAndMerge(
-        getAllModifications(tsFileResource.getNewModFile()).getOverlapped(deviceID, measurement));
+        getAllModifications(tsFileResource).getOverlapped(deviceID, measurement));
   }
 
   public List<ModEntry> getPathModifications(TsFileResource tsFileResource, IDeviceID deviceID)
@@ -136,8 +131,7 @@ public class QueryContext {
     }
 
     return ModificationUtils.sortAndMerge(
-        getAllModifications(tsFileResource.getNewModFile())
-            .getDeviceOverlapped(new PartialPath(deviceID)));
+        getAllModifications(tsFileResource).getDeviceOverlapped(new PartialPath(deviceID)));
   }
 
   /**

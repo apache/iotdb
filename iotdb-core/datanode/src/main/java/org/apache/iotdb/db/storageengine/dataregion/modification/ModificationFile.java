@@ -21,7 +21,6 @@ package org.apache.iotdb.db.storageengine.dataregion.modification;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.FileUtils;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.slf4j.Logger;
@@ -92,7 +91,6 @@ public class ModificationFile implements AutoCloseable {
     return new ModIterator(offset);
   }
 
-  @TestOnly
   public List<ModEntry> getAllMods() throws IOException {
     return getAllMods(0);
   }
