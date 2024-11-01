@@ -445,7 +445,7 @@ public class ImportData extends AbstractDataTool {
           TSFILEDB_CLI_HEAD, TSFILEDB_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
       System.exit(CODE_ERROR);
     }
-    final List<String> argList = commandLine.getArgList();
+    final List<String> argList = Arrays.asList(args);
     int helpIndex = argList.indexOf(MINUS + HELP_ARGS);
     int ftIndex = argList.indexOf(MINUS + FILE_TYPE_ARGS);
     if (ftIndex < 0) {

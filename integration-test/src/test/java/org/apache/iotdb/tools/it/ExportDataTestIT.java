@@ -200,9 +200,9 @@ public class ExportDataTestIT extends AbstractScript {
             "-pw",
             "root",
             "-t",
+            "target",
             "-ft",
             "csv",
-            "target",
             "-q",
             "select * from root.**");
     builder1.environment().put("CLASSPATH", libPath);
