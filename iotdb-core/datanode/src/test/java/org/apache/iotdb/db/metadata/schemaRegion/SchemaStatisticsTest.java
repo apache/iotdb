@@ -401,6 +401,28 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
   }
 
   @Test
+  public void testTableDeviceStatistics() throws Exception {
+    if (!testParams.getTestModeName().equals("MemoryMode")) {
+      return;
+    }
+    final ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
+    final String tableName1 = "t1";
+
+    final Map<String, String> attributeMap = new HashMap<>();
+    attributeMap.put("type", "new");
+    attributeMap.put("cycle", "monthly");
+    SchemaRegionTestUtil.createTableDevice(
+        schemaRegion, tableName1, new String[] {"hebei", "p_1", "d_0"}, attributeMap);
+    attributeMap.put("type", "old");
+    SchemaRegionTestUtil.createTableDevice(
+        schemaRegion, tableName1, new String[] {"hebei", "p_1", "d_1"}, attributeMap);
+
+    // Check device number
+    Assert.assertEquals(
+        2, schemaRegion.getSchemaRegionStatistics().getTableDevicesNumber(tableName1));
+  }
+
+  @Test
   public void testPBTreeNodeStatistics() throws Exception {
     if (testParams.getSchemaEngineMode().equals("PBTree")) {
       final ISchemaRegion schemaRegion1 = getSchemaRegion("root.sg1", 0);
