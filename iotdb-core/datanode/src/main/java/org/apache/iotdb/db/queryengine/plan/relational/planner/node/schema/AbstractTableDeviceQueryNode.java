@@ -168,7 +168,6 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
           DeviceAttributeCacheUpdater.deserializeNodeLocationForAttributeUpdate(buffer);
     }
 
-    final long offset = isScan ? ReadWriteIOUtils.readLong(buffer) : 0;
     final long limit = isScan ? ReadWriteIOUtils.readLong(buffer) : 0;
 
     final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
@@ -181,7 +180,6 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
             idFuzzyFilter,
             columnHeaderList,
             senderLocation,
-            offset,
             limit)
         : new TableDeviceQueryCountNode(
             planNodeId,

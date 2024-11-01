@@ -118,7 +118,12 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
                 && bitMaps[columnIndex].isMarked(rowIdx);
         deviceIdSegments[i + 1] = !isNull && idSeg != null ? idSeg.toString() : null;
       }
-      deviceIDs[rowIdx] = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
+      IDeviceID currentDeviceId = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
+      if (rowIdx > 0 && currentDeviceId.equals(deviceIDs[rowIdx - 1])) {
+        deviceIDs[rowIdx] = deviceIDs[rowIdx - 1];
+      } else {
+        deviceIDs[rowIdx] = currentDeviceId;
+      }
     }
 
     return deviceIDs[rowIdx];
@@ -224,8 +229,8 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   }
 
   @Override
-  void subSerialize(IWALByteBufferView buffer, int start, int end) {
-    super.subSerialize(buffer, start, end);
+  void subSerialize(IWALByteBufferView buffer, List<int[]> rangeList) {
+    super.subSerialize(buffer, rangeList);
     for (int i = 0; i < measurements.length; i++) {
       if (measurements[i] != null) {
         buffer.put(columnCategories[i].getCategory());

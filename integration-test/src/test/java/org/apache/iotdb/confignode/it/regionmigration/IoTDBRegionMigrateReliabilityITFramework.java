@@ -306,30 +306,6 @@ public class IoTDBRegionMigrateReliabilityITFramework {
     }
   }
 
-  private void restartDataNodes(List<DataNodeWrapper> dataNodeWrappers) {
-    dataNodeWrappers.parallelStream()
-        .forEach(
-            nodeWrapper -> {
-              nodeWrapper.stop();
-              Awaitility.await()
-                  .atMost(1, TimeUnit.MINUTES)
-                  .pollDelay(2, TimeUnit.SECONDS)
-                  .until(() -> !nodeWrapper.isAlive());
-              LOGGER.info("Node {} stopped.", nodeWrapper.getId());
-              nodeWrapper.start();
-              Awaitility.await()
-                  .atMost(1, TimeUnit.MINUTES)
-                  .pollDelay(2, TimeUnit.SECONDS)
-                  .until(nodeWrapper::isAlive);
-              try {
-                TimeUnit.SECONDS.sleep(10);
-              } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-              }
-              LOGGER.info("Node {} restarted.", nodeWrapper.getId());
-            });
-  }
-
   private void setConfigNodeKillPoints(
       KeySetView<String, Boolean> killConfigNodeKeywords, Consumer<KillPointContext> action) {
     EnvFactory.getEnv()

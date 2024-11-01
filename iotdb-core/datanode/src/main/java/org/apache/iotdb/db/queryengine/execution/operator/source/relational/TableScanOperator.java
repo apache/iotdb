@@ -49,6 +49,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -75,6 +76,8 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
 
   private final List<String> measurementColumnNames;
 
+  private final Set<String> allSensors;
+
   private final List<IMeasurementSchema> measurementSchemas;
 
   private final List<TSDataType> measurementColumnTSDataTypes;
@@ -98,6 +101,7 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
       Ordering scanOrder,
       SeriesScanOptions seriesScanOptions,
       List<String> measurementColumnNames,
+      Set<String> allSensors,
       List<IMeasurementSchema> measurementSchemas,
       int maxTsBlockLineNum) {
     this.sourceId = sourceId;
@@ -109,6 +113,7 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
     this.scanOrder = scanOrder;
     this.seriesScanOptions = seriesScanOptions;
     this.measurementColumnNames = measurementColumnNames;
+    this.allSensors = allSensors;
     this.measurementSchemas = measurementSchemas;
     this.measurementColumnTSDataTypes =
         measurementSchemas.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
@@ -206,11 +211,16 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
         case ID:
           // +1 for skip the table name segment
           String idColumnValue =
-              (String) currentDeviceEntry.getNthSegment(columnsIndexArray[i] + 1);
-          valueColumns[i] = getIdOrAttributeValueColumn(idColumnValue, positionCount);
+              ((String) currentDeviceEntry.getNthSegment(columnsIndexArray[i] + 1));
+          valueColumns[i] =
+              getIdOrAttributeValueColumn(
+                  idColumnValue == null
+                      ? null
+                      : new Binary(idColumnValue, TSFileConfig.STRING_CHARSET),
+                  positionCount);
           break;
         case ATTRIBUTE:
-          String attributeColumnValue =
+          Binary attributeColumnValue =
               currentDeviceEntry.getAttributeColumnValues().get(columnsIndexArray[i]);
           valueColumns[i] = getIdOrAttributeValueColumn(attributeColumnValue, positionCount);
           break;
@@ -232,16 +242,14 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
             valueColumns);
   }
 
-  private RunLengthEncodedColumn getIdOrAttributeValueColumn(String value, int positionCount) {
+  private RunLengthEncodedColumn getIdOrAttributeValueColumn(Binary value, int positionCount) {
     if (value == null) {
       return new RunLengthEncodedColumn(
           new BinaryColumn(1, Optional.of(new boolean[] {true}), new Binary[] {null}),
           positionCount);
     } else {
       return new RunLengthEncodedColumn(
-          new BinaryColumn(
-              1, Optional.empty(), new Binary[] {new Binary(value, TSFileConfig.STRING_CHARSET)}),
-          positionCount);
+          new BinaryColumn(1, Optional.empty(), new Binary[] {value}), positionCount);
     }
   }
 
@@ -294,7 +302,7 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
 
   private AlignedSeriesScanUtil constructAlignedSeriesScanUtil(DeviceEntry deviceEntry) {
     AlignedFullPath alignedPath =
-        constructAlignedPath(deviceEntry, measurementColumnNames, measurementSchemas);
+        constructAlignedPath(deviceEntry, measurementColumnNames, measurementSchemas, allSensors);
 
     return new AlignedSeriesScanUtil(
         alignedPath,
@@ -308,9 +316,10 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
   public static AlignedFullPath constructAlignedPath(
       DeviceEntry deviceEntry,
       List<String> measurementColumnNames,
-      List<IMeasurementSchema> measurementSchemas) {
+      List<IMeasurementSchema> measurementSchemas,
+      Set<String> allSensors) {
     return new AlignedFullPath(
-        deviceEntry.getDeviceID(), measurementColumnNames, measurementSchemas);
+        deviceEntry.getDeviceID(), measurementColumnNames, measurementSchemas, allSensors);
   }
 
   @Override

@@ -79,19 +79,20 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class SchemaAutoCreatorAndVerifier {
-  private static final Logger LOGGER = LoggerFactory.getLogger(SchemaAutoCreatorAndVerifier.class);
+public class TreeSchemaAutoCreatorAndVerifier {
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(TreeSchemaAutoCreatorAndVerifier.class);
 
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
 
-  private final LoadTsFileAnalyzer loadTsFileAnalyzer;
-  private final LoadTsFileAnalyzeSchemaCache schemaCache;
+  private final LoadTsFileToTreeModelAnalyzer loadTsFileAnalyzer;
+  private final LoadTsFileTreeSchemaCache schemaCache;
 
-  SchemaAutoCreatorAndVerifier(LoadTsFileAnalyzer loadTsFileAnalyzer)
+  TreeSchemaAutoCreatorAndVerifier(LoadTsFileToTreeModelAnalyzer loadTsFileAnalyzer)
       throws LoadRuntimeOutOfMemoryException {
     this.loadTsFileAnalyzer = loadTsFileAnalyzer;
-    this.schemaCache = new LoadTsFileAnalyzeSchemaCache();
+    this.schemaCache = new LoadTsFileTreeSchemaCache();
   }
 
   public void setCurrentModificationsAndTimeIndex(

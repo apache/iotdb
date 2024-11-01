@@ -415,13 +415,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     // Therefore, we should log the deleted target files before removing the source files.
     for (TsFileResource targetTsFileResource : filesView.targetFilesInLog) {
       if (!targetTsFileResource.isDeleted()) {
-        FileMetrics.getInstance()
-            .addTsFile(
-                targetTsFileResource.getDatabaseName(),
-                targetTsFileResource.getDataRegionId(),
-                targetTsFileResource.getTsFile().length(),
-                filesView.sequence,
-                targetTsFileResource.getTsFile().getName());
+        CompactionUtils.addFilesToFileMetrics(targetTsFileResource);
       } else {
         // target resource is empty after compaction, then delete it
         compactionLogger.logEmptyTargetFile(targetTsFileResource);
@@ -577,7 +571,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       throw new CompactionRecoverException("source files cannot be deleted successfully");
     }
     if (recoverMemoryStatus) {
-      FileMetrics.getInstance().deleteTsFile(true, filesView.sourceFilesInLog);
+      FileMetrics.getInstance().deleteTsFile(filesView.sequence, filesView.sourceFilesInLog);
     }
   }
 
