@@ -100,6 +100,7 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -192,13 +193,19 @@ public class MTreeBelowSGMemoryImpl {
       final SchemaRegionMemMetric metric,
       final Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
       final Consumer<IDeviceMNode<IMemMNode>> deviceProcess,
+      final BiConsumer<IDeviceMNode<IMemMNode>, String> tableDeviceProcess,
       final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter,
       final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> attributeGetter)
       throws IOException, IllegalPathException {
     return new MTreeBelowSGMemoryImpl(
         PartialPath.getDatabasePath(storageGroupFullPath),
         MemMTreeStore.loadFromSnapshot(
-            snapshotDir, measurementProcess, deviceProcess, regionStatistics, metric),
+            snapshotDir,
+            measurementProcess,
+            deviceProcess,
+            tableDeviceProcess,
+            regionStatistics,
+            metric),
         tagGetter,
         attributeGetter,
         regionStatistics);
@@ -1567,6 +1574,7 @@ public class MTreeBelowSGMemoryImpl {
         final TableDeviceInfo<IMemMNode> deviceInfo = new TableDeviceInfo<>();
         deviceInfo.setAttributePointer(attributePointerGetter.getAsInt());
         entityMNode.getAsInternalMNode().setDeviceInfo(deviceInfo);
+        regionStatistics.addTableDevice(tableName);
       }
     }
   }

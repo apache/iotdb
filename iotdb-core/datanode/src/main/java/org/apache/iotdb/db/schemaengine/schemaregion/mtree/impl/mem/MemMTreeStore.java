@@ -43,6 +43,7 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 import java.io.File;
 import java.io.IOException;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /** This is a memory-based implementation of IMTreeStore. All MNodes are stored in memory. */
@@ -212,12 +213,13 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
       final File snapshotDir,
       final Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
       final Consumer<IDeviceMNode<IMemMNode>> deviceProcess,
+      final BiConsumer<IDeviceMNode<IMemMNode>, String> tableDeviceProcess,
       final MemSchemaRegionStatistics regionStatistics,
       final SchemaRegionMemMetric metric)
       throws IOException {
     return new MemMTreeStore(
         MemMTreeSnapshotUtil.loadSnapshot(
-            snapshotDir, measurementProcess, deviceProcess, regionStatistics),
+            snapshotDir, measurementProcess, deviceProcess, tableDeviceProcess, regionStatistics),
         regionStatistics,
         metric);
   }
