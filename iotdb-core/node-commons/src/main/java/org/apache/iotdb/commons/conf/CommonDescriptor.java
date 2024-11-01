@@ -283,6 +283,12 @@ public class CommonDescriptor {
                 "pipe_data_structure_tablet_memory_block_allocation_reject_threshold",
                 String.valueOf(
                     config.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold()))));
+    config.setPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_data_structure_ts_file_memory_block_allocation_reject_threshold",
+                String.valueOf(
+                    config.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold()))));
 
     config.setPipeRealTimeQueuePollHistoryThreshold(
         Integer.parseInt(
