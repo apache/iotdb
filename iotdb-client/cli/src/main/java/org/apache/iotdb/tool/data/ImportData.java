@@ -483,7 +483,7 @@ public class ImportData extends AbstractDataTool {
       }
       System.exit(CODE_ERROR);
     } else if (ftIndex >= 0) {
-      fileType = commandLine.getOptionValue(FILE_TYPE_ARGS);
+      fileType = argList.get(ftIndex + 1);
       if (StringUtils.isNotBlank(fileType)) {
         if (TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
           try {
