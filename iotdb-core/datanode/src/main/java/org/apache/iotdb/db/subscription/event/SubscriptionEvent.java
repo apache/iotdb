@@ -60,6 +60,9 @@ public class SubscriptionEvent {
   private volatile String lastPolledConsumerId = null;
   private final AtomicLong lastPolledTimestamp = new AtomicLong(INVALID_TIMESTAMP);
   private final AtomicLong committedTimestamp = new AtomicLong(INVALID_TIMESTAMP);
+  private final AtomicLong invisibleDuration =
+      new AtomicLong(
+          SubscriptionConfig.getInstance().getSubscriptionRecycleUncommittedEventIntervalMs());
 
   // record file name for file payload
   private String fileName;
@@ -165,6 +168,7 @@ public class SubscriptionEvent {
 
     do {
       currentTimestamp = lastPolledTimestamp.get();
+      // monotonic increase
       newTimestamp = Math.max(currentTimestamp, System.currentTimeMillis());
     } while (!lastPolledTimestamp.compareAndSet(currentTimestamp, newTimestamp));
   }
@@ -197,17 +201,20 @@ public class SubscriptionEvent {
 
   private boolean canRecycle() {
     // Recycle events that may not be able to be committed, i.e., those that have been polled but
-    // not committed within a certain period of time.
-    return System.currentTimeMillis() - lastPolledTimestamp.get()
-        > SubscriptionConfig.getInstance().getSubscriptionRecycleUncommittedEventIntervalMs();
+    // not committed within the invisible duration.
+    return System.currentTimeMillis() - lastPolledTimestamp.get() > invisibleDuration.get();
   }
 
   public void nack() {
     // nack response
     response.nack();
 
-    // reset lastPolledTimestamp makes this event pollable
+    // reset lastPolledTimestamp makes this event eagerly pollable
     lastPolledTimestamp.set(INVALID_TIMESTAMP);
+  }
+
+  public void changeInvisibleDuration(final long invisibleDurationMs) {
+    invisibleDuration.set(invisibleDurationMs);
   }
 
   public void recordLastPolledConsumerId(final String consumerId) {
