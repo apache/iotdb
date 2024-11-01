@@ -40,6 +40,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
@@ -147,6 +148,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
         false,
         null,
         maxReturnSize,
+        (1L + measurementCount) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte(),
         canUseStatistics);
 
     this.tableAggregators = tableAggregators;
