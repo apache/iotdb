@@ -68,6 +68,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold();
   }
 
+  public double getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold() {
+    return COMMON_CONFIG.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold();
+  }
+
   /////////////////////////////// Subtask Connector ///////////////////////////////
 
   public int getPipeRealTimeQueuePollHistoryThreshold() {
@@ -337,6 +341,9 @@ public class PipeConfig {
     LOGGER.info(
         "PipeDataStructureTabletMemoryBlockAllocationRejectThreshold: {}",
         getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold());
+    LOGGER.info(
+        "PipeDataStructureTsFileMemoryBlockAllocationRejectThreshold: {}",
+        getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold());
 
     LOGGER.info(
         "PipeRealTimeQueuePollHistoryThreshold: {}", getPipeRealTimeQueuePollHistoryThreshold());
