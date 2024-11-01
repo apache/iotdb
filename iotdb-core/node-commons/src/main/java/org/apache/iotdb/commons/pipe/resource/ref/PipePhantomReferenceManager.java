@@ -42,6 +42,8 @@ public abstract class PipePhantomReferenceManager {
 
   private static final ReferenceQueue<EnrichedEvent> REFERENCE_QUEUE = new ReferenceQueue<>();
 
+  private volatile long lastPhantomReferenceCount = -1;
+
   public PipePhantomReferenceManager() {
     // Do nothing now.
   }
@@ -77,12 +79,18 @@ public abstract class PipePhantomReferenceManager {
       // Nowhere to really log this.
     }
 
-    if (maxCount != 0 || getPhantomReferenceCount() != 0) {
+    if (count != 0) {
       LOGGER.info(
           "Clean {} pipe phantom reference(s) successfully within {} ms, remaining reference count: {}",
           count,
           System.currentTimeMillis() - startTime,
           getPhantomReferenceCount());
+    } else {
+      final long currentPhantomReferenceCount = getPhantomReferenceCount();
+      if (currentPhantomReferenceCount != lastPhantomReferenceCount) {
+        LOGGER.info("Remaining pipe phantom reference count: {}", currentPhantomReferenceCount);
+        lastPhantomReferenceCount = currentPhantomReferenceCount;
+      }
     }
   }
 
