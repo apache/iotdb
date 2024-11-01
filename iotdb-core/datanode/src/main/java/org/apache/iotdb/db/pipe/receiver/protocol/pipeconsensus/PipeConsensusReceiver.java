@@ -116,7 +116,6 @@ public class PipeConsensusReceiver {
     this.consensusGroupId = consensusGroupId;
     this.pipeConsensusReceiverMetrics = new PipeConsensusReceiverMetrics(this);
     this.consensusPipeName = consensusPipeName;
-    MetricService.getInstance().addMetricSet(pipeConsensusReceiverMetrics);
 
     // Each pipeConsensusReceiver has its own base directories. for example, a default dir path is
     // data/datanode/system/pipe/consensus/receiver/__consensus.{consensusGroupId}_{leaderDataNodeId}_{followerDataNodeId}
@@ -145,6 +144,7 @@ public class PipeConsensusReceiver {
     }
     this.requestExecutor =
         new RequestExecutor(pipeConsensusReceiverMetrics, pipeConsensusTsFileWriterPool);
+    MetricService.getInstance().addMetricSet(pipeConsensusReceiverMetrics);
   }
 
   /**
@@ -227,17 +227,6 @@ public class PipeConsensusReceiver {
       }
       return new TPipeConsensusTransferResp(
           RpcUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY.getStatusCode(), message));
-    }
-    if (!impl.isActive()) {
-      String message =
-          String.format(
-              "PipeConsensus-PipeName-%s: fail to receive because peer is inactive and not ready.",
-              consensusPipeName);
-      if (LOGGER.isWarnEnabled()) {
-        LOGGER.warn(message);
-      }
-      return new TPipeConsensusTransferResp(
-          RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode(), message));
     }
 
     return null;

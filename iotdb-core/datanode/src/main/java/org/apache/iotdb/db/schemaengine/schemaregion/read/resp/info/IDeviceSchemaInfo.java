@@ -19,13 +19,15 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info;
 
+import org.apache.tsfile.utils.Binary;
+
 public interface IDeviceSchemaInfo extends ISchemaInfo {
 
   Boolean isAligned();
 
   int getTemplateId();
 
-  String getAttributeValue(String attributeKey);
+  Binary getAttributeValue(final String attributeKey);
 
   String[] getRawNodes();
 }

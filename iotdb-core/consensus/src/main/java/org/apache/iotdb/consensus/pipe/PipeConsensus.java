@@ -228,7 +228,7 @@ public class PipeConsensus implements IConsensus {
     } else if (!impl.isActive()) {
       return RpcUtils.getStatus(
           TSStatusCode.WRITE_PROCESS_REJECT,
-          "peer is inactive and not ready to receive sync log request.");
+          "current node is not active and is not ready to receive user write.");
     } else {
       return impl.write(request);
     }
@@ -331,15 +331,18 @@ public class PipeConsensus implements IConsensus {
       impl.setRemotePeerActive(peer, false);
 
       // step 2: notify all the other Peers to create consensus pipes to newPeer
+      // NOTE: For this step, coordinator(thisNode) will transfer its full data snapshot to target,
+      // while other peers will only transmit data(may contain both historical and realtime data)
+      // after the snapshot progress to target.
       LOGGER.info("[{}] notify current peers to create consensus pipes...", CLASS_NAME);
-      impl.notifyPeersToCreateConsensusPipes(peer);
+      impl.notifyPeersToCreateConsensusPipes(peer, impl.getThisNodePeer());
       KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_TRANSITION);
 
-      // step 3: wait until all the other Peers finish transferring
+      // step 3: wait until the coordinator Peer finishes transferring snapshot
       LOGGER.info("[{}] wait until all the other peers finish transferring...", CLASS_NAME);
       impl.waitPeersToTargetPeerTransmissionCompleted(peer);
 
-      // step 4: active new Peer
+      // step 4: active new Peer to let new Peer receive snapshot
       LOGGER.info("[{}] activate new peer...", CLASS_NAME);
       impl.setRemotePeerActive(peer, true);
       KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_DONE);
