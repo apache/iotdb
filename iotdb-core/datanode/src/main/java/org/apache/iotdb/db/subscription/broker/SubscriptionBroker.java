@@ -347,7 +347,7 @@ public class SubscriptionBroker {
     topicNameToCommitIdGenerator.remove(topicName);
   }
 
-  public void executePrefetch(final String topicName) {
+  public boolean executePrefetch(final String topicName) {
     final SubscriptionPrefetchingQueue prefetchingQueue =
         topicNameToPrefetchingQueue.get(topicName);
     if (Objects.isNull(prefetchingQueue)) {
@@ -355,16 +355,16 @@ public class SubscriptionBroker {
           "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] does not exist",
           topicName,
           brokerId);
-      return;
+      return false;
     }
     if (prefetchingQueue.isClosed()) {
       LOGGER.warn(
           "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] is closed",
           topicName,
           brokerId);
-      return;
+      return false;
     }
-    prefetchingQueue.executePrefetch();
+    return prefetchingQueue.executePrefetch();
   }
 
   public int getPipeEventCount(final String topicName) {
@@ -385,5 +385,9 @@ public class SubscriptionBroker {
       return 0;
     }
     return prefetchingQueue.getPipeEventCount();
+  }
+
+  public int getPrefetchingQueueCount() {
+    return topicNameToPrefetchingQueue.size();
   }
 }
