@@ -162,9 +162,9 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
     try (final RandomAccessFile reader = new RandomAccessFile(tsFile, "r")) {
       reader.seek(writingOffset);
 
-      final byte[] readBuffer = new byte[(int) bufferSize];
       final PipeTsFileMemoryBlock memoryBlock =
           PipeDataNodeResourceManager.memory().forceAllocateForTsFileWithRetry(bufferSize);
+      final byte[] readBuffer = new byte[(int) bufferSize];
 
       final int readLength = reader.read(readBuffer);
       if (readLength != bufferSize) {
