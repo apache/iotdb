@@ -501,7 +501,7 @@ public class TableDeviceSchemaCache {
           tableId ->
               Objects.isNull(tableId.getDatabase())
                   && qualifiedDatabase.startsWith(tableId.getTableName()),
-          deviceID -> deviceID.matchDatabaseName(database),
+          deviceID -> deviceID.matchDatabaseName(qualifiedDatabase),
           entry -> -entry.invalidateLastCache());
     } finally {
       readWriteLock.writeLock().unlock();
@@ -523,7 +523,7 @@ public class TableDeviceSchemaCache {
           tableId ->
               Objects.isNull(tableId.getDatabase())
                   && qualifiedDatabase.startsWith(tableId.getTableName()),
-          deviceID -> deviceID.matchDatabaseName(database));
+          deviceID -> deviceID.matchDatabaseName(qualifiedDatabase));
     } finally {
       readWriteLock.writeLock().unlock();
     }

@@ -228,17 +228,6 @@ public class PipeConsensusReceiver {
       return new TPipeConsensusTransferResp(
           RpcUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY.getStatusCode(), message));
     }
-    if (!impl.isActive()) {
-      String message =
-          String.format(
-              "PipeConsensus-PipeName-%s: fail to receive because peer is inactive and not ready.",
-              consensusPipeName);
-      if (LOGGER.isWarnEnabled()) {
-        LOGGER.warn(message);
-      }
-      return new TPipeConsensusTransferResp(
-          RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode(), message));
-    }
 
     return null;
   }
