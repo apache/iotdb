@@ -101,13 +101,15 @@ public class TableHeaderSchemaValidator {
         DataNodeTableCache.getInstance().getTableInWrite(database, tableSchema.getTableName());
     final List<ColumnSchema> missingColumnList = new ArrayList<>();
 
+    final boolean isAutoCreateSchemaEnabled =
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     // first round validate, check existing schema
     if (table == null) {
       // TODO table metadata: authority check for table create
       // auto create missing table
       // it's ok that many write requests concurrently auto create same table, the thread safety
       // will be guaranteed by ProcedureManager.createTable in CN
-      if (allowCreateTable) {
+      if (allowCreateTable && isAutoCreateSchemaEnabled) {
         autoCreateTable(database, tableSchema);
         table = DataNodeTableCache.getInstance().getTable(database, tableSchema.getTableName());
         if (table == null) {
@@ -164,8 +166,7 @@ public class TableHeaderSchemaValidator {
     }
 
     final List<ColumnSchema> resultColumnList = new ArrayList<>();
-    if (!missingColumnList.isEmpty()
-        && IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
+    if (!missingColumnList.isEmpty() && isAutoCreateSchemaEnabled) {
       // TODO table metadata: authority check for table alter
       // check id or attribute column data type in this method
       autoCreateColumn(database, tableSchema.getTableName(), missingColumnList, context);

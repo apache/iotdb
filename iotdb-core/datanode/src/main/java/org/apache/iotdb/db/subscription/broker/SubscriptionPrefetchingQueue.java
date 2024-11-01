@@ -37,6 +37,7 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseTy
 
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.utils.Pair;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,6 +93,8 @@ public abstract class SubscriptionPrefetchingQueue {
    */
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
 
+  private final SubscriptionPrefetchingQueueStates states;
+
   private volatile boolean isCompleted = false;
   private volatile boolean isClosed = false;
 
@@ -110,6 +113,8 @@ public abstract class SubscriptionPrefetchingQueue {
     this.prefetchingQueue = new LinkedBlockingQueue<>();
     this.inFlightEvents = new ConcurrentHashMap<>();
     this.batches = new SubscriptionPipeEventBatches(this, maxDelayInMs, maxBatchSizeInBytes);
+
+    this.states = new SubscriptionPrefetchingQueueStates(this);
   }
 
   public void cleanUp() {
@@ -167,8 +172,15 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   public SubscriptionEvent pollInternal(final String consumerId) {
+    states.markPollRequest();
+
     if (prefetchingQueue.isEmpty()) {
-      tryPrefetch(true);
+      states.markMissingPrefetch();
+      tryPrefetch();
+    }
+
+    if (prefetchingQueue.isEmpty()) {
+      onEvent();
     }
 
     final long size = prefetchingQueue.size();
@@ -222,71 +234,40 @@ public abstract class SubscriptionPrefetchingQueue {
 
   /////////////////////////////// prefetch ///////////////////////////////
 
-  public void executePrefetch() {
+  public boolean executePrefetch() {
     acquireReadLock();
     try {
       if (isClosed()) {
-        return;
+        return false;
       }
-      executePrefetchInternal();
+      if (states.shouldPrefetch()) {
+        tryPrefetch();
+        remapInFlightEventsSnapshot(committedCleaner, pollableNacker, responsePrefetcher);
+        return true;
+      } else {
+        remapInFlightEventsSnapshot(committedCleaner, pollableNacker);
+        return false;
+      }
     } finally {
       releaseReadLock();
     }
   }
 
-  public void executePrefetchInternal() {
-    tryPrefetch(false);
-
+  @SafeVarargs
+  private final void remapInFlightEventsSnapshot(
+      final RemappingFunction<SubscriptionEvent>... functions) {
     // Iterate on the snapshot of the key set, NOTE:
     // 1. Ignore entries added during iteration.
     // 2. For entries deleted by other threads during iteration, just check if the value is null.
+    // 3. Since the compute call for the same key is atomic and will be executed serially, the
+    // remapping operations are safe.
     for (final Pair<String, SubscriptionCommitContext> pair :
         ImmutableSet.copyOf(inFlightEvents.keySet())) {
-      inFlightEvents.compute(
-          pair,
-          (key, ev) -> {
-            if (Objects.isNull(ev)) {
-              return null;
-            }
-
-            // clean up committed event
-            if (ev.isCommitted()) {
-              ev.cleanUp();
-              return null; // remove this entry
-            }
-
-            // nack pollable event and re-enqueue it to prefetchingQueue
-            if (ev.eagerlyPollable()) {
-              ev.nack(); // now pollable (the nack operation here is actually unnecessary)
-              enqueueEventToPrefetchingQueue(ev);
-              // no need to log warn for eagerly pollable event
-              return null; // remove this entry
-            } else if (ev.pollable()) {
-              ev.nack(); // now pollable
-              enqueueEventToPrefetchingQueue(ev);
-              LOGGER.warn(
-                  "Subscription: SubscriptionPrefetchingQueue {} recycle event {} from in flight events, nack and enqueue it to prefetching queue",
-                  this,
-                  ev);
-              return null; // remove this entry
-            }
-
-            // prefetch and serialize remaining subscription events
-            // NOTE: Since the compute call for the same key is atomic and will be executed
-            // serially, the current prefetch and serialize operations are safe.
-            try {
-              ev.prefetchRemainingResponses();
-              ev.trySerializeRemainingResponses();
-            } catch (final Exception ignored) {
-            }
-
-            return ev;
-          });
+      inFlightEvents.compute(pair, (key, ev) -> COMBINER(functions).remap(ev));
     }
   }
 
   protected void enqueueEventToPrefetchingQueue(final SubscriptionEvent event) {
-    // TODO: consider memory usage
     event.trySerializeCurrentResponse();
     prefetchingQueue.add(event);
   }
@@ -298,12 +279,8 @@ public abstract class SubscriptionPrefetchingQueue {
    *
    * <p>It will continuously attempt to prefetch and generate a {@link SubscriptionEvent} until
    * {@link SubscriptionPrefetchingQueue#inputPendingQueue} is empty.
-   *
-   * @param onEventIfEmpty {@code true} if {@link SubscriptionPrefetchingQueue#onEvent()} is called
-   *     when {@link SubscriptionPrefetchingQueue#inputPendingQueue} is empty, {@code false}
-   *     otherwise
    */
-  private void tryPrefetch(final boolean onEventIfEmpty) {
+  private void tryPrefetch() {
     while (!inputPendingQueue.isEmpty()) {
       final Event event = UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll());
       if (Objects.isNull(event)) {
@@ -367,9 +344,6 @@ public abstract class SubscriptionPrefetchingQueue {
     }
 
     // At this moment, the inputPendingQueue is empty.
-    if (onEventIfEmpty) {
-      onEvent();
-    }
   }
 
   /**
@@ -572,6 +546,10 @@ public abstract class SubscriptionPrefetchingQueue {
             .orElse(0);
   }
 
+  public int getPrefetchedEventCount() {
+    return prefetchingQueue.size();
+  }
+
   /////////////////////////////// close & termination ///////////////////////////////
 
   public boolean isClosed() {
@@ -600,6 +578,7 @@ public abstract class SubscriptionPrefetchingQueue {
     result.put("size of prefetchingQueue", String.valueOf(prefetchingQueue.size()));
     result.put("size of inFlightEvents", String.valueOf(inFlightEvents.size()));
     result.put("commitIdGenerator", commitIdGenerator.toString());
+    result.put("states", states.toString());
     result.put("isCompleted", String.valueOf(isCompleted));
     result.put("isClosed", String.valueOf(isClosed));
     return result;
@@ -613,8 +592,71 @@ public abstract class SubscriptionPrefetchingQueue {
     result.put("prefetchingQueue", prefetchingQueue.toString());
     result.put("inFlightEvents", inFlightEvents.toString());
     result.put("commitIdGenerator", commitIdGenerator.toString());
+    result.put("states", states.toString());
     result.put("isCompleted", String.valueOf(isCompleted));
     result.put("isClosed", String.valueOf(isClosed));
     return result;
   }
+
+  /////////////////////////////// remapping ///////////////////////////////
+
+  @FunctionalInterface
+  private interface RemappingFunction<V> {
+    /* @Nullable */ V remap(final V v);
+  }
+
+  @SafeVarargs
+  private static @NonNull RemappingFunction<SubscriptionEvent> COMBINER(
+      final @NonNull RemappingFunction<SubscriptionEvent>... functions) {
+    return (ev) -> {
+      if (Objects.isNull(ev)) {
+        return null;
+      }
+      for (final RemappingFunction<SubscriptionEvent> function : functions) {
+        if (Objects.isNull(function.remap(ev))) {
+          return null;
+        }
+      }
+      return ev;
+    };
+  }
+
+  private final RemappingFunction<SubscriptionEvent> committedCleaner =
+      (ev) -> {
+        if (ev.isCommitted()) {
+          ev.cleanUp();
+          return null; // remove this entry
+        }
+        return ev;
+      };
+
+  private final RemappingFunction<SubscriptionEvent> pollableNacker =
+      (ev) -> {
+        if (ev.eagerlyPollable()) {
+          ev.nack(); // now pollable (the nack operation here is actually unnecessary)
+          enqueueEventToPrefetchingQueue(ev);
+          // no need to log warn for eagerly pollable event
+          return null; // remove this entry
+        } else if (ev.pollable()) {
+          ev.nack(); // now pollable
+          enqueueEventToPrefetchingQueue(ev);
+          LOGGER.warn(
+              "Subscription: SubscriptionPrefetchingQueue {} recycle event {} from in flight events, nack and enqueue it to prefetching queue",
+              this,
+              ev);
+          return null; // remove this entry
+        }
+        return ev;
+      };
+
+  private final RemappingFunction<SubscriptionEvent> responsePrefetcher =
+      (ev) -> {
+        // prefetch and serialize the remaining responses
+        try {
+          ev.prefetchRemainingResponses();
+          ev.trySerializeRemainingResponses();
+        } catch (final Exception ignored) {
+        }
+        return ev;
+      };
 }
