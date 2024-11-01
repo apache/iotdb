@@ -146,14 +146,6 @@ public class DeleteDatabaseProcedure
             env.getConfigManager().getConsensusManager().write(dataRegionDeleteTaskOfferPlan);
           }
 
-          // Delete DatabasePartitionTable
-          final TSStatus deleteConfigResult =
-              env.deleteDatabaseConfig(deleteDatabaseSchema.getName(), isGeneratedByPipe);
-
-          // Delete Database metrics
-          PartitionMetrics.unbindDatabaseRelatedMetricsWhenUpdate(
-              MetricService.getInstance(), deleteDatabaseSchema.getName());
-
           // try sync delete schemaengine region
           DataNodeAsyncRequestContext<TConsensusGroupId, TSStatus> asyncClientHandler =
               new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.DELETE_REGION);
@@ -200,13 +192,23 @@ public class DeleteDatabaseProcedure
             }
           }
 
+          env.getConfigManager()
+              .getLoadManager()
+              .clearDataPartitionPolicyTable(deleteDatabaseSchema.getName());
+          LOG.info("data partition policy table cleared.");
+
+          // Delete Database metrics
+          PartitionMetrics.unbindDatabaseRelatedMetricsWhenUpdate(
+              MetricService.getInstance(), deleteDatabaseSchema.getName());
+
+          // Delete DatabasePartitionTable
+          final TSStatus deleteConfigResult =
+              env.deleteDatabaseConfig(deleteDatabaseSchema.getName(), isGeneratedByPipe);
+
           if (deleteConfigResult.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             LOG.info(
                 "[DeleteDatabaseProcedure] Database: {} is deleted successfully",
                 deleteDatabaseSchema.getName());
-            env.getConfigManager()
-                .getLoadManager()
-                .clearDataPartitionPolicyTable(deleteDatabaseSchema.getName());
             return Flow.NO_MORE_STATE;
           } else if (getCycles() > RETRY_THRESHOLD) {
             setFailure(
