@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimePa
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
@@ -63,6 +64,8 @@ public class AlignedSeriesAggregationScanOperator extends AbstractSeriesAggregat
         false,
         groupByTimeParameter,
         maxReturnSize,
+        (1L + seriesPath.getMeasurementList().size())
+            * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte(),
         canUseStatistics);
   }
 
@@ -89,6 +92,8 @@ public class AlignedSeriesAggregationScanOperator extends AbstractSeriesAggregat
         outputEndTime,
         groupByTimeParameter,
         maxReturnSize,
+        (1L + seriesPath.getMeasurementList().size())
+            * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte(),
         canUseStatistics);
   }
 
