@@ -1004,7 +1004,7 @@ public class OperatorMemoryTest {
           TimeColumn.SIZE_IN_BYTES_PER_POSITION
               + 512 * Byte.BYTES
               + LongColumn.SIZE_IN_BYTES_PER_POSITION;
-      long cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+      long cachedRawDataSize = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
 
       assertEquals(
           expectedMaxReturnSize + cachedRawDataSize,
@@ -1036,7 +1036,7 @@ public class OperatorMemoryTest {
           TimeColumn.SIZE_IN_BYTES_PER_POSITION
               + 512 * Byte.BYTES
               + 2 * LongColumn.SIZE_IN_BYTES_PER_POSITION;
-      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+      cachedRawDataSize = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
 
       assertEquals(
           expectedMaxReturnSize + cachedRawDataSize,
@@ -1079,7 +1079,7 @@ public class OperatorMemoryTest {
               * (TimeColumn.SIZE_IN_BYTES_PER_POSITION
                   + 512 * Byte.BYTES
                   + LongColumn.SIZE_IN_BYTES_PER_POSITION);
-      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+      cachedRawDataSize = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
 
       assertEquals(
           expectedMaxReturnSize + cachedRawDataSize,
@@ -1119,7 +1119,7 @@ public class OperatorMemoryTest {
                   * (TimeColumn.SIZE_IN_BYTES_PER_POSITION
                       + 512 * Byte.BYTES
                       + LongColumn.SIZE_IN_BYTES_PER_POSITION));
-      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+      cachedRawDataSize = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
 
       assertEquals(
           expectedMaxReturnSize + cachedRawDataSize,
@@ -1157,7 +1157,7 @@ public class OperatorMemoryTest {
               typeProvider);
 
       expectedMaxReturnSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
-      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+      cachedRawDataSize = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
 
       assertEquals(
           expectedMaxReturnSize + cachedRawDataSize,
