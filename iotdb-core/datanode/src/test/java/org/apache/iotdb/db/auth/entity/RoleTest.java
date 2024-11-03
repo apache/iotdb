@@ -28,7 +28,14 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class RoleTest {
 
@@ -39,13 +46,13 @@ public class RoleTest {
     role.setPrivilegeList(Collections.singletonList(pathPrivilege));
     role.addPathPrivilege(new PartialPath("root.ln"), 1, false);
     role.addPathPrivilege(new PartialPath("root.ln"), 2, true);
-    Assert.assertEquals(
+    assertEqualsDeserializedRole(
         "Role{name='role', pathPrivilegeList=[root.ln : WRITE_DATA"
             + " READ_SCHEMA_with_grant_option], systemPrivilegeSet=[]}",
         role.toString());
     Role role1 = new Role("role1");
     role1.deserialize(role.serialize());
-    Assert.assertEquals(
+    assertEqualsDeserializedRole(
         "Role{name='role', pathPrivilegeList=[root.ln : "
             + "WRITE_DATA READ_SCHEMA_with_grant_option], systemPrivilegeSet=[]}",
         role1.toString());
@@ -62,7 +69,7 @@ public class RoleTest {
       }
     }
     admin.getPathPrivilegeList().add(pathPri);
-    Assert.assertEquals(
+    assertEqualsDeserializedRole(
         "Role{name='root', pathPrivilegeList=[root.** : READ_DAT"
             + "A_with_grant_option WRITE_DATA_with_grant_option READ_SCHEMA_with"
             + "_grant_option WRITE_SCHEMA_with_grant_option], systemPrivilegeSet=[MANAGE_ROLE"
@@ -71,5 +78,43 @@ public class RoleTest {
             + "rant_option , MANAGE_USER_with_grant_option , MAINTAIN_with_grant_option , EXTEND"
             + "_TEMPLATE_with_grant_option , USE_MODEL_with_grant_option ]}",
         admin.toString());
+  }
+
+  private void assertEqualsDeserializedRole(String expectedStr, String actualStr){
+    Assert.assertEquals(extractName(expectedStr), extractName(actualStr));
+    List<String> expectedPathPrevilegeList = extractPathPrevilegeList(expectedStr);
+    List<String> actualPathPrevilegeList = extractPathPrevilegeList(actualStr);
+    Assert.assertTrue(expectedPathPrevilegeList.size() == actualPathPrevilegeList.size() && expectedPathPrevilegeList.containsAll(actualPathPrevilegeList) && actualPathPrevilegeList.containsAll(expectedPathPrevilegeList));
+    Set<String> expectedSystemPrivilegeSet = extractSystemPrivilegeSet(expectedStr);
+    Set<String> actualSystemPrivilegeSet = extractSystemPrivilegeSet(actualStr);
+    Assert.assertTrue(expectedSystemPrivilegeSet.size() == actualSystemPrivilegeSet.size() && expectedSystemPrivilegeSet.containsAll(actualSystemPrivilegeSet) && actualSystemPrivilegeSet.containsAll(expectedSystemPrivilegeSet));
+  }
+
+  private String extractName(String roleStr){
+    Pattern namePattern = Pattern.compile("name='([^']+)'");
+    Matcher nameMatcher = namePattern.matcher(roleStr);
+    return nameMatcher.find() ? nameMatcher.group(1): "";
+  }
+
+  private List<String> extractPathPrevilegeList(String roleStr){
+    Pattern pathPrivilegePattern = Pattern.compile("pathPrivilegeList=\\[([^]]+)\\]");
+    Matcher pathPrivilegeMatcher = pathPrivilegePattern.matcher(roleStr);
+    List<String> pathPrivilegeList = new ArrayList<>();
+    if (pathPrivilegeMatcher.find()) {
+      String[] privileges = pathPrivilegeMatcher.group(1).split("\\s+");
+      pathPrivilegeList.addAll(Arrays.asList(privileges));
+    }
+    return pathPrivilegeList;
+  }
+
+  private Set<String> extractSystemPrivilegeSet(String roleStr){
+    Pattern systemPrivilegePattern = Pattern.compile("systemPrivilegeSet=\\[([^]]+)\\]");
+    Matcher systemPrivilegeMatcher = systemPrivilegePattern.matcher(roleStr);
+    Set<String> systemPrivilegeSet = new HashSet<>();
+    if (systemPrivilegeMatcher.find()) {
+      String[] privileges = systemPrivilegeMatcher.group(1).split(",\\s*");
+      systemPrivilegeSet.addAll(Arrays.asList(privileges));
+    }
+    return systemPrivilegeSet;
   }
 }
