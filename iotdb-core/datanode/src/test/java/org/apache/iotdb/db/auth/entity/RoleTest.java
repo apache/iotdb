@@ -80,23 +80,29 @@ public class RoleTest {
         admin.toString());
   }
 
-  private void assertEqualsDeserializedRole(String expectedStr, String actualStr){
+  private void assertEqualsDeserializedRole(String expectedStr, String actualStr) {
     Assert.assertEquals(extractName(expectedStr), extractName(actualStr));
     List<String> expectedPathPrevilegeList = extractPathPrevilegeList(expectedStr);
     List<String> actualPathPrevilegeList = extractPathPrevilegeList(actualStr);
-    Assert.assertTrue(expectedPathPrevilegeList.size() == actualPathPrevilegeList.size() && expectedPathPrevilegeList.containsAll(actualPathPrevilegeList) && actualPathPrevilegeList.containsAll(expectedPathPrevilegeList));
+    Assert.assertTrue(
+        expectedPathPrevilegeList.size() == actualPathPrevilegeList.size()
+            && expectedPathPrevilegeList.containsAll(actualPathPrevilegeList)
+            && actualPathPrevilegeList.containsAll(expectedPathPrevilegeList));
     Set<String> expectedSystemPrivilegeSet = extractSystemPrivilegeSet(expectedStr);
     Set<String> actualSystemPrivilegeSet = extractSystemPrivilegeSet(actualStr);
-    Assert.assertTrue(expectedSystemPrivilegeSet.size() == actualSystemPrivilegeSet.size() && expectedSystemPrivilegeSet.containsAll(actualSystemPrivilegeSet) && actualSystemPrivilegeSet.containsAll(expectedSystemPrivilegeSet));
+    Assert.assertTrue(
+        expectedSystemPrivilegeSet.size() == actualSystemPrivilegeSet.size()
+            && expectedSystemPrivilegeSet.containsAll(actualSystemPrivilegeSet)
+            && actualSystemPrivilegeSet.containsAll(expectedSystemPrivilegeSet));
   }
 
-  private String extractName(String roleStr){
+  private String extractName(String roleStr) {
     Pattern namePattern = Pattern.compile("name='([^']+)'");
     Matcher nameMatcher = namePattern.matcher(roleStr);
-    return nameMatcher.find() ? nameMatcher.group(1): "";
+    return nameMatcher.find() ? nameMatcher.group(1) : "";
   }
 
-  private List<String> extractPathPrevilegeList(String roleStr){
+  private List<String> extractPathPrevilegeList(String roleStr) {
     Pattern pathPrivilegePattern = Pattern.compile("pathPrivilegeList=\\[([^]]+)\\]");
     Matcher pathPrivilegeMatcher = pathPrivilegePattern.matcher(roleStr);
     List<String> pathPrivilegeList = new ArrayList<>();
@@ -107,7 +113,7 @@ public class RoleTest {
     return pathPrivilegeList;
   }
 
-  private Set<String> extractSystemPrivilegeSet(String roleStr){
+  private Set<String> extractSystemPrivilegeSet(String roleStr) {
     Pattern systemPrivilegePattern = Pattern.compile("systemPrivilegeSet=\\[([^]]+)\\]");
     Matcher systemPrivilegeMatcher = systemPrivilegePattern.matcher(roleStr);
     Set<String> systemPrivilegeSet = new HashSet<>();
