@@ -167,6 +167,13 @@ public class GroupedVarianceAccumulator implements GroupedAccumulator {
   @Override
   public void prepareFinal() {}
 
+  @Override
+  public void reset() {
+    counts.reset();
+    means.reset();
+    m2s.reset();
+  }
+
   private void addIntInput(int[] groupIds, Column column) {
     for (int i = 0; i < column.getPositionCount(); i++) {
       if (column.isNull(i)) {

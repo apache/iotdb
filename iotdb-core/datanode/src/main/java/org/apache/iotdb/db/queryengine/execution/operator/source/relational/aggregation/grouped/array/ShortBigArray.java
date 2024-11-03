@@ -116,6 +116,10 @@ public final class ShortBigArray {
     }
   }
 
+  public void reset() {
+    fill(initialValue);
+  }
+
   /**
    * Copies this array, beginning at the specified sourceIndex, to the specified destinationIndex of
    * the destination array. A subsequence of this array's components are copied to the destination

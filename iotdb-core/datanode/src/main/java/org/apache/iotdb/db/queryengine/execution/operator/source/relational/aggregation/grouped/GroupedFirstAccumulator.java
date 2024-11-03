@@ -288,6 +288,38 @@ public class GroupedFirstAccumulator implements GroupedAccumulator {
   @Override
   public void prepareFinal() {}
 
+  @Override
+  public void reset() {
+    minTimes.reset();
+    switch (seriesDataType) {
+      case INT32:
+      case DATE:
+        intValues.reset();
+        return;
+      case INT64:
+      case TIMESTAMP:
+        longValues.reset();
+        return;
+      case FLOAT:
+        floatValues.reset();
+        return;
+      case DOUBLE:
+        doubleValues.reset();
+        return;
+      case TEXT:
+      case STRING:
+      case BLOB:
+        binaryValues.reset();
+        return;
+      case BOOLEAN:
+        booleanValues.reset();
+        return;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type : %s", seriesDataType));
+    }
+  }
+
   private byte[] serializeTimeWithValue(int groupId) {
     byte[] bytes;
     int length = Long.BYTES;

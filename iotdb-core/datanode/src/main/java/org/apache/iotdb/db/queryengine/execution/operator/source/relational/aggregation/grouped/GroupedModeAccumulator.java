@@ -162,6 +162,12 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
   @Override
   public void prepareFinal() {}
 
+  @Override
+  public void reset() {
+    countMaps.reset();
+    nullCounts.reset();
+  }
+
   // haveNull | nullCount (optional) | countMap
   private byte[] serializeCountMap(int groupId) {
     byte[] bytes;
