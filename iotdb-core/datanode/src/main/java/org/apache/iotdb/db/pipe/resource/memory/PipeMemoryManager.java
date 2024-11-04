@@ -74,8 +74,8 @@ public class PipeMemoryManager {
   }
 
   public boolean isEnough4TabletParsing() {
-    return (double) usedMemorySizeInBytesOfTablets / TOTAL_MEMORY_SIZE_IN_BYTES
-        < TABLET_MEMORY_REJECT_THRESHOLD * 0.8;
+    return (double) usedMemorySizeInBytesOfTablets
+        < 0.95 * TABLET_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES;
   }
 
   public synchronized PipeMemoryBlock forceAllocate(long sizeInBytes)
