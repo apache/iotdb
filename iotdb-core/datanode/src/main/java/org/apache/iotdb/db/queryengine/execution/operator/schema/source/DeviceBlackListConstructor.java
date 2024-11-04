@@ -35,6 +35,8 @@ public class DeviceBlackListConstructor extends DeviceUpdater {
   private final List<IDeviceMNode<IMemMNode>> nodes =
       new ArrayList<>(DEFAULT_MAX_TS_BLOCK_LINE_NUMBER);
 
+  private long preDeletedNum = 0;
+
   public DeviceBlackListConstructor(
       final List<LeafColumnTransformer> filterLeafColumnTransformerList,
       final ColumnTransformer filterOutputTransformer,
@@ -54,6 +56,7 @@ public class DeviceBlackListConstructor extends DeviceUpdater {
   public void handleDeviceNode(final IDeviceMNode<IMemMNode> node) {
     if (withoutFilter()) {
       node.preDeactivateSelfOrTemplate();
+      preDeletedNum++;
       return;
     }
     nodes.add(node);
@@ -62,10 +65,15 @@ public class DeviceBlackListConstructor extends DeviceUpdater {
 
   @Override
   protected void update() {
+    preDeletedNum += indexes.size();
     for (final Integer index : indexes) {
       nodes.get(index).preDeactivateSelfOrTemplate();
     }
     nodes.clear();
     super.clear();
+  }
+
+  public long getPreDeletedNum() {
+    return preDeletedNum;
   }
 }

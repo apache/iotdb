@@ -339,7 +339,7 @@ public interface ISchemaRegion {
   void deleteTableDevice(final DeleteTableDeviceNode deleteTableDeviceNode)
       throws MetadataException;
 
-  void constructTableDevicesBlackList(
+  long constructTableDevicesBlackList(
       final ConstructDevicesBlackListNode constructDevicesBlackListNode) throws MetadataException;
 
   // endregion

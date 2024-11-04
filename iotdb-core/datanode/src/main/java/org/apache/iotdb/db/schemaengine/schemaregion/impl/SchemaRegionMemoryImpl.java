@@ -1533,7 +1533,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public void constructTableDevicesBlackList(
+  public long constructTableDevicesBlackList(
       final ConstructDevicesBlackListNode constructDevicesBlackListNode) throws MetadataException {
     final Pair<List<PartialPath>, DeviceBlackListConstructor> pair =
         DeleteDevice.constructPathsAndDevicePredicateUpdater(
@@ -1547,6 +1547,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       }
     }
     writeToMLog(constructDevicesBlackListNode);
+    return pair.getRight().getPreDeletedNum();
   }
 
   @Override

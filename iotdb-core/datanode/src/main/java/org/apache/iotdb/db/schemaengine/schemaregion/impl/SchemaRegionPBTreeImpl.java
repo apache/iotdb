@@ -1452,7 +1452,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   }
 
   @Override
-  public void constructTableDevicesBlackList(
+  public long constructTableDevicesBlackList(
       final ConstructDevicesBlackListNode constructDevicesBlackListNode) {
     throw new UnsupportedOperationException("TableModel does not support PBTree yet.");
   }
