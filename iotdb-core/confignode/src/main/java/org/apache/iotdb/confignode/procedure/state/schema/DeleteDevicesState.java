@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.state.schema;
 
 public enum DeleteDevicesState {
+  CHECK_TABLE_EXISTENCE,
   CONSTRUCT_BLACK_LIST,
   CLEAN_DATANODE_SCHEMA_CACHE,
   DELETE_DATA,

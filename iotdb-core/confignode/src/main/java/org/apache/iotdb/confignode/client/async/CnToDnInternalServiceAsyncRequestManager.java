@@ -53,6 +53,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCleanDataNodeCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListWithTemplateReq;
+import org.apache.iotdb.mpp.rpc.thrift.TConstructTableDeviceBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructViewSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
@@ -392,6 +393,11 @@ public class CnToDnInternalServiceAsyncRequestManager
         (req, client, handler) ->
             client.deleteDevicesForDropTable(
                 (TDeleteDataOrDevicesForDropTableReq) req, (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.CONSTRUCT_TABLE_DEVICE_BLACK_LIST,
+        (req, client, handler) ->
+            client.constructTableDeviceBlackList(
+                (TConstructTableDeviceBlackListReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.CLEAN_DATA_NODE_CACHE,
         (req, client, handler) ->
