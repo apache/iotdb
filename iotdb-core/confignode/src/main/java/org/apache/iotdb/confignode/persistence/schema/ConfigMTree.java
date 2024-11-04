@@ -228,14 +228,15 @@ public class ConfigMTree {
    *
    * @return a list contains all distinct databases
    */
-  public List<PartialPath> getAllDatabasePaths(final boolean onlyTableModel) {
+  public List<PartialPath> getAllDatabasePaths(final Boolean isTableModel) {
     final List<PartialPath> res = new ArrayList<>();
     final Deque<IConfigMNode> nodeStack = new ArrayDeque<>();
     nodeStack.add(root);
     while (!nodeStack.isEmpty()) {
       final IConfigMNode current = nodeStack.pop();
       if (current.isDatabase()) {
-        if (onlyTableModel && !current.getDatabaseSchema().isIsTableModel()) {
+        if (Boolean.TRUE.equals(isTableModel) && !current.getDatabaseSchema().isIsTableModel()
+            || Boolean.FALSE.equals(isTableModel) && current.getDatabaseSchema().isIsTableModel()) {
           continue;
         }
         res.add(current.getPartialPath());

@@ -602,6 +602,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                   regionStatistics.activateTemplate(deviceMNode.getSchemaTemplateId());
                 }
               },
+              (tableDeviceMode, tableName) -> regionStatistics.addTableDevice(tableName),
               tagManager::readTags,
               tagManager::readAttributes);
       logger.info(
