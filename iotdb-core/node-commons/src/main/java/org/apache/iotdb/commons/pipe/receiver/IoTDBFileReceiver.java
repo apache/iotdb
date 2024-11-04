@@ -378,10 +378,10 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   private void closeCurrentWritingFileWriter(final boolean fsyncAfterClose) {
     if (writingFileWriter != null) {
       try {
-        writingFileWriter.close();
         if (IS_FSYNC_ENABLED && fsyncAfterClose) {
           writingFileWriter.getFD().sync();
         }
+        writingFileWriter.close();
         LOGGER.info(
             "Receiver id = {}: Current writing file writer {} was closed.",
             receiverId.get(),
@@ -473,6 +473,12 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
       final String fileAbsolutePath = writingFile.getAbsolutePath();
 
+      // Sync here is necessary to ensure that the data is written to the disk. Or data region may
+      // load the file before the data is written to the disk and cause unexpected behavior after
+      // system restart. (e.g., empty file in data region's data directory)
+      if (IS_FSYNC_ENABLED) {
+        writingFileWriter.getFD().sync();
+      }
       // 1. The writing file writer must be closed, otherwise it may cause concurrent errors during
       // the process of loading tsfile when parsing tsfile.
       //
@@ -482,12 +488,6 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       // loaded file. Since the writing file writer has already been closed, it will throw a Stream
       // Close exception.
       writingFileWriter.close();
-      // Sync here is necessary to ensure that the data is written to the disk. Or data region may
-      // load the file before the data is written to the disk and cause unexpected behavior after
-      // system restart. (e.g., empty file in data region's data directory)
-      if (IS_FSYNC_ENABLED) {
-        writingFileWriter.getFD().sync();
-      }
       writingFileWriter = null;
 
       // writingFile will be deleted after load if no exception occurs
@@ -555,6 +555,12 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
         }
       }
 
+      // Sync here is necessary to ensure that the data is written to the disk. Or data region may
+      // load the file before the data is written to the disk and cause unexpected behavior after
+      // system restart. (e.g., empty file in data region's data directory)
+      if (IS_FSYNC_ENABLED) {
+        writingFileWriter.getFD().sync();
+      }
       // 1. The writing file writer must be closed, otherwise it may cause concurrent errors during
       // the process of loading tsfile when parsing tsfile.
       //
@@ -564,12 +570,6 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       // loaded file. Since the writing file writer has already been closed, it will throw a Stream
       // Close exception.
       writingFileWriter.close();
-      // Sync here is necessary to ensure that the data is written to the disk. Or data region may
-      // load the file before the data is written to the disk and cause unexpected behavior after
-      // system restart. (e.g., empty file in data region's data directory)
-      if (IS_FSYNC_ENABLED) {
-        writingFileWriter.getFD().sync();
-      }
       writingFileWriter = null;
 
       // WritingFile will be deleted after load if no exception occurs
