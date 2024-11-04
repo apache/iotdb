@@ -53,8 +53,10 @@ public class DataNodeTableCache implements ITableCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeTableCache.class);
 
+  // The database is without "root"
   private final Map<String, Map<String, TsTable>> databaseTableMap = new ConcurrentHashMap<>();
 
+  // The database is without "root"
   private final Map<String, Map<String, Pair<TsTable, Long>>> preUpdateTableMap =
       new ConcurrentHashMap<>();
 
@@ -332,6 +334,15 @@ public class DataNodeTableCache implements ITableCache {
       return databaseTableMap.containsKey(database)
           ? databaseTableMap.get(database).get(tableName)
           : null;
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
+  public boolean isDatabaseExist(final String database) {
+    readWriteLock.readLock().lock();
+    try {
+      return databaseTableMap.containsKey(database);
     } finally {
       readWriteLock.readLock().unlock();
     }

@@ -29,6 +29,8 @@ import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
+
 public class DeviceFilterVisitor extends SchemaFilterVisitor<IDeviceSchemaInfo> {
 
   @Override
@@ -79,6 +81,8 @@ public class DeviceFilterVisitor extends SchemaFilterVisitor<IDeviceSchemaInfo> 
   public Boolean visitAttributeFilter(final AttributeFilter filter, final IDeviceSchemaInfo info) {
     return filter
         .getChild()
-        .accept(StringValueFilterVisitor.getInstance(), info.getAttributeValue(filter.getKey()));
+        .accept(
+            StringValueFilterVisitor.getInstance(),
+            info.getAttributeValue(filter.getKey()).getStringValue(TSFileConfig.STRING_CHARSET));
   }
 }

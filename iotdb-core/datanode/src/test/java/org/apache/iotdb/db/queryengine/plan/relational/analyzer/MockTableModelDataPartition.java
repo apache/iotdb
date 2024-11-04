@@ -32,6 +32,8 @@ import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import com.google.common.collect.ImmutableMap;
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.utils.Binary;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -55,12 +57,30 @@ public class MockTableModelDataPartition {
   static final String DEVICE_5 = "table1.shenzhen.B2.ZZ";
   static final String DEVICE_6 = "table1.shenzhen.B1.XX";
 
-  static final List<String> DEVICE_1_ATTRIBUTES = Arrays.asList("high", "big");
-  static final List<String> DEVICE_2_ATTRIBUTES = Arrays.asList("high", "small");
-  static final List<String> DEVICE_3_ATTRIBUTES = Arrays.asList("low", "small");
-  static final List<String> DEVICE_4_ATTRIBUTES = Arrays.asList("low", "big");
-  static final List<String> DEVICE_5_ATTRIBUTES = Arrays.asList("mid", "big");
-  static final List<String> DEVICE_6_ATTRIBUTES = Arrays.asList("mid", "small");
+  static final List<Binary> DEVICE_1_ATTRIBUTES =
+      Arrays.asList(
+          new Binary("high", TSFileConfig.STRING_CHARSET),
+          new Binary("big", TSFileConfig.STRING_CHARSET));
+  static final List<Binary> DEVICE_2_ATTRIBUTES =
+      Arrays.asList(
+          new Binary("high", TSFileConfig.STRING_CHARSET),
+          new Binary("small", TSFileConfig.STRING_CHARSET));
+  static final List<Binary> DEVICE_3_ATTRIBUTES =
+      Arrays.asList(
+          new Binary("low", TSFileConfig.STRING_CHARSET),
+          new Binary("small", TSFileConfig.STRING_CHARSET));
+  static final List<Binary> DEVICE_4_ATTRIBUTES =
+      Arrays.asList(
+          new Binary("low", TSFileConfig.STRING_CHARSET),
+          new Binary("big", TSFileConfig.STRING_CHARSET));
+  static final List<Binary> DEVICE_5_ATTRIBUTES =
+      Arrays.asList(
+          new Binary("mid", TSFileConfig.STRING_CHARSET),
+          new Binary("big", TSFileConfig.STRING_CHARSET));
+  static final List<Binary> DEVICE_6_ATTRIBUTES =
+      Arrays.asList(
+          new Binary("mid", TSFileConfig.STRING_CHARSET),
+          new Binary("small", TSFileConfig.STRING_CHARSET));
 
   private static final TRegionReplicaSet DATA_REGION_GROUP_1 = genDataRegionGroup(10, 1, 2);
   private static final TRegionReplicaSet DATA_REGION_GROUP_2 = genDataRegionGroup(11, 3, 2);

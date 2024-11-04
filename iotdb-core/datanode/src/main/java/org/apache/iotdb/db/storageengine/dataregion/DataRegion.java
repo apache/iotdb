@@ -2028,7 +2028,7 @@ public class DataRegion implements IDataRegionForQuery {
       QUERY_RESOURCE_METRIC_SET.recordQueryResourceNum(SEQUENCE_TSFILE, seqResources.size());
       QUERY_RESOURCE_METRIC_SET.recordQueryResourceNum(UNSEQUENCE_TSFILE, unseqResources.size());
 
-      return new QueryDataSource(seqResources, unseqResources);
+      return new QueryDataSource(seqResources, unseqResources, databaseName);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }

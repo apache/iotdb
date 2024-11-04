@@ -82,7 +82,7 @@ public class StatisticsService {
   }
 
   private void updateLoadStatistics() {
-    loadCache.updateNodeStatistics();
+    loadCache.updateNodeStatistics(false);
     loadCache.updateRegionGroupStatistics();
     loadCache.updateConsensusGroupStatistics();
   }

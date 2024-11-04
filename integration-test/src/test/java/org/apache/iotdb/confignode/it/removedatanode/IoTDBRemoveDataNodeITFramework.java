@@ -27,6 +27,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.exception.InconsistentDataException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -88,7 +89,8 @@ public class IoTDBRemoveDataNodeITFramework {
       final int configNodeNum,
       final int dataNodeNum,
       final int removeDataNodeNum,
-      final int dataRegionPerDataNode)
+      final int dataRegionPerDataNode,
+      final boolean rejoinRemovedDataNode)
       throws Exception {
     testRemoveDataNode(
         dataReplicateFactor,
@@ -97,7 +99,8 @@ public class IoTDBRemoveDataNodeITFramework {
         dataNodeNum,
         removeDataNodeNum,
         dataRegionPerDataNode,
-        true);
+        true,
+        rejoinRemovedDataNode);
   }
 
   public void failTest(
@@ -106,7 +109,8 @@ public class IoTDBRemoveDataNodeITFramework {
       final int configNodeNum,
       final int dataNodeNum,
       final int removeDataNodeNum,
-      final int dataRegionPerDataNode)
+      final int dataRegionPerDataNode,
+      final boolean rejoinRemovedDataNode)
       throws Exception {
     testRemoveDataNode(
         dataReplicateFactor,
@@ -115,7 +119,8 @@ public class IoTDBRemoveDataNodeITFramework {
         dataNodeNum,
         removeDataNodeNum,
         dataRegionPerDataNode,
-        false);
+        false,
+        rejoinRemovedDataNode);
   }
 
   public void testRemoveDataNode(
@@ -125,7 +130,8 @@ public class IoTDBRemoveDataNodeITFramework {
       final int dataNodeNum,
       final int removeDataNodeNum,
       final int dataRegionPerDataNode,
-      final boolean expectRemoveSuccess)
+      final boolean expectRemoveSuccess,
+      final boolean rejoinRemovedDataNode)
       throws Exception {
     // Set up the environment
     EnvFactory.getEnv()
@@ -147,6 +153,13 @@ public class IoTDBRemoveDataNodeITFramework {
 
       ResultSet result = statement.executeQuery(SHOW_REGIONS);
       Map<Integer, Set<Integer>> regionMap = getRegionMap(result);
+      regionMap.forEach(
+          (key, valueSet) -> {
+            LOGGER.info("Key: {}, Value: {}", key, valueSet);
+            if (valueSet.size() != dataReplicateFactor) {
+              Assert.fail();
+            }
+          });
 
       // Get all data nodes
       result = statement.executeQuery(SHOW_DATANODES);
@@ -158,6 +171,11 @@ public class IoTDBRemoveDataNodeITFramework {
       // Select data nodes to remove
       final Set<Integer> removeDataNodes =
           selectRemoveDataNodes(allDataNodeId, regionMap, removeDataNodeNum);
+
+      List<DataNodeWrapper> removeDataNodeWrappers =
+          removeDataNodes.stream()
+              .map(dataNodeId -> EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeId).get())
+              .collect(Collectors.toList());
 
       AtomicReference<SyncConfigNodeIServiceClient> clientRef = new AtomicReference<>(client);
       List<TDataNodeLocation> removeDataNodeLocations =
@@ -204,8 +222,46 @@ public class IoTDBRemoveDataNodeITFramework {
       }
 
       LOGGER.info("Remove DataNodes success");
-    } catch (InconsistentDataException ignored) {
 
+      if (rejoinRemovedDataNode) {
+        try {
+          // Use sleep and restart to ensure that removeDataNodes restarts successfully
+          Thread.sleep(30000);
+          restartDataNodes(removeDataNodeWrappers);
+          LOGGER.info("RemoveDataNodes:{} rejoined successfully.", removeDataNodes);
+        } catch (Exception e) {
+          LOGGER.error("RemoveDataNodes rejoin failed.");
+          Assert.fail();
+        }
+      }
+    } catch (InconsistentDataException e) {
+      LOGGER.error("Unexpected error:", e);
+    }
+
+    try (final Connection connection = closeQuietly(EnvFactory.getEnv().getConnection());
+        final Statement statement = closeQuietly(connection.createStatement())) {
+
+      // Check the data region distribution after removing data nodes
+      ResultSet result = statement.executeQuery(SHOW_REGIONS);
+      Map<Integer, Set<Integer>> afterRegionMap = getRegionMap(result);
+      afterRegionMap.forEach(
+          (key, valueSet) -> {
+            LOGGER.info("Key: {}, Value: {}", key, valueSet);
+            if (valueSet.size() != dataReplicateFactor) {
+              Assert.fail();
+            }
+          });
+
+      if (rejoinRemovedDataNode) {
+        result = statement.executeQuery(SHOW_DATANODES);
+        Set<Integer> allDataNodeId = new HashSet<>();
+        while (result.next()) {
+          allDataNodeId.add(result.getInt(ColumnHeaderConstant.NODE_ID));
+        }
+        Assert.assertEquals(allDataNodeId.size(), dataNodeNum);
+      }
+    } catch (InconsistentDataException e) {
+      LOGGER.error("Unexpected error:", e);
     }
   }
 
@@ -284,5 +340,29 @@ public class IoTDBRemoveDataNodeITFramework {
     }
 
     LOGGER.info("DataNodes has been successfully changed to {}", lastTimeDataNodeLocations.get());
+  }
+
+  public void restartDataNodes(List<DataNodeWrapper> dataNodeWrappers) {
+    dataNodeWrappers.parallelStream()
+        .forEach(
+            nodeWrapper -> {
+              nodeWrapper.stopForcibly();
+              Awaitility.await()
+                  .atMost(1, TimeUnit.MINUTES)
+                  .pollDelay(2, TimeUnit.SECONDS)
+                  .until(() -> !nodeWrapper.isAlive());
+              LOGGER.info("Node {} stopped.", nodeWrapper.getId());
+              nodeWrapper.start();
+              Awaitility.await()
+                  .atMost(1, TimeUnit.MINUTES)
+                  .pollDelay(2, TimeUnit.SECONDS)
+                  .until(nodeWrapper::isAlive);
+              try {
+                TimeUnit.SECONDS.sleep(10);
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+              }
+              LOGGER.info("Node {} restarted.", nodeWrapper.getId());
+            });
   }
 }

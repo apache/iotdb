@@ -494,6 +494,18 @@ public class TestUtils {
     }
   }
 
+  public static void assertResultSetSize(final ResultSet actualResultSet, int size) {
+    try {
+      while (actualResultSet.next()) {
+        --size;
+      }
+      Assert.assertEquals(0, size);
+    } catch (final Exception e) {
+      e.printStackTrace();
+      Assert.fail(String.valueOf(e));
+    }
+  }
+
   public static void assertResultSetEqual(
       ResultSet actualResultSet, String expectedHeader, String[] expectedRetArray) {
     assertResultSetEqual(

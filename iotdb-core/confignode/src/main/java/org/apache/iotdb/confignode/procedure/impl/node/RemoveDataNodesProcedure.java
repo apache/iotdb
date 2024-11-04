@@ -76,7 +76,7 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
       return Flow.NO_MORE_STATE;
     }
 
-    RemoveDataNodeHandler removeDataNodeHandler = env.getRemoveDataNodeManager();
+    RemoveDataNodeHandler removeDataNodeHandler = env.getRemoveDataNodeHandler();
     try {
       switch (state) {
         case REGION_REPLICA_CHECK:
@@ -169,6 +169,7 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
     List<TRegionReplicaSet> replicaSets =
         env.getConfigManager().getPartitionManager().getAllReplicaSets();
     List<TDataNodeLocation> rollBackDataNodes = new ArrayList<>();
+    List<TDataNodeLocation> successDataNodes = new ArrayList<>();
     for (TDataNodeLocation dataNode : removedDataNodes) {
       List<TConsensusGroupId> migratedFailedRegions =
           replicaSets.stream()
@@ -184,21 +185,24 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
             migratedFailedRegions);
         rollBackDataNodes.add(dataNode);
       } else {
-        LOG.info(
-            "{}, Region all migrated successfully, start to stop DataNode: {}",
-            REMOVE_DATANODE_PROCESS,
-            dataNode);
-        env.getRemoveDataNodeManager().removeDataNodePersistence(removedDataNodes);
-        env.getRemoveDataNodeManager().stopDataNodes(removedDataNodes);
+        successDataNodes.add(dataNode);
       }
+    }
+    if (!successDataNodes.isEmpty()) {
+      LOG.info(
+          "{}, DataNodes: {} all regions migrated successfully, start to stop them.",
+          REMOVE_DATANODE_PROCESS,
+          successDataNodes);
+      env.getRemoveDataNodeHandler().removeDataNodePersistence(successDataNodes);
+      env.getRemoveDataNodeHandler().stopDataNodes(successDataNodes);
     }
     if (!rollBackDataNodes.isEmpty()) {
       LOG.info(
           "{}, Start to roll back the DataNodes status: {}",
           REMOVE_DATANODE_PROCESS,
           rollBackDataNodes);
-      env.getRemoveDataNodeManager().changeDataNodeStatus(rollBackDataNodes, nodeStatusMap);
-      env.getRemoveDataNodeManager().broadcastDataNodeStatusChange(rollBackDataNodes);
+      env.getRemoveDataNodeHandler().changeDataNodeStatus(rollBackDataNodes, nodeStatusMap);
+      env.getRemoveDataNodeHandler().broadcastDataNodeStatusChange(rollBackDataNodes);
       LOG.info(
           "{}, Roll back the DataNodes status successfully: {}",
           REMOVE_DATANODE_PROCESS,
