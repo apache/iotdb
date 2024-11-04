@@ -307,27 +307,31 @@ public abstract class AstVisitor<R, C> {
     return visitNode(node, context);
   }
 
-  protected R visitCreateDB(CreateDB node, C context) {
+  protected R visitCreateDB(final CreateDB node, final C context) {
     return visitStatement(node, context);
   }
 
-  protected R visitDropDB(DropDB node, C context) {
+  protected R visitDropDB(final DropDB node, final C context) {
     return visitStatement(node, context);
   }
 
-  protected R visitShowDB(ShowDB node, C context) {
+  protected R visitShowDB(final ShowDB node, final C context) {
     return visitStatement(node, context);
   }
 
-  protected R visitCreateTable(CreateTable node, C context) {
+  protected R visitCreateTable(final CreateTable node, final C context) {
     return visitStatement(node, context);
   }
 
-  protected R visitProperty(Property node, C context) {
+  protected R visitProperty(final Property node, final C context) {
     return visitNode(node, context);
   }
 
-  protected R visitDropTable(DropTable node, C context) {
+  protected R visitDropTable(final DropTable node, final C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitDeleteDevice(final DeleteDevice node, final C context) {
     return visitStatement(node, context);
   }
 
