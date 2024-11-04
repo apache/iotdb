@@ -59,26 +59,20 @@ public class PipeTsFileResourceManager {
 
   private void tryTtlCheck() {
     try {
-      final long timeout =
-          PipeConfig.getInstance().getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds() >> 1;
-      if (segmentLock.tryLockAll(timeout, TimeUnit.SECONDS)) {
-        try {
-          ttlCheck();
-        } finally {
-          segmentLock.unlockAll();
-        }
-      } else {
-        LOGGER.warn("failed to try lock when checking TTL because of timeout ({}s)", timeout);
-      }
+      ttlCheck();
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
       LOGGER.warn("failed to try lock when checking TTL because of interruption", e);
+    } catch (final Exception e) {
+      LOGGER.warn("failed to check TTL of PipeTsFileResource: ", e);
     }
   }
 
-  private void ttlCheck() {
+  private void ttlCheck() throws InterruptedException {
     final Iterator<Map.Entry<String, PipeTsFileResource>> iterator =
         hardlinkOrCopiedFileToPipeTsFileResourceMap.entrySet().iterator();
+    final long timeout =
+        PipeConfig.getInstance().getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds() >> 1;
     final Optional<Logger> logger =
         PipeDataNodeResourceManager.log()
             .schedule(
@@ -89,6 +83,15 @@ public class PipeTsFileResourceManager {
 
     while (iterator.hasNext()) {
       final Map.Entry<String, PipeTsFileResource> entry = iterator.next();
+
+      final String hardlinkOrCopiedFile = entry.getKey();
+      if (!segmentLock.tryLock(new File(hardlinkOrCopiedFile), timeout, TimeUnit.SECONDS)) {
+        LOGGER.warn(
+            "failed to try lock when checking TTL for file {} because of timeout ({}s)",
+            hardlinkOrCopiedFile,
+            timeout);
+        continue;
+      }
 
       try {
         if (entry.getValue().closeIfOutOfTimeToLive()) {
@@ -103,6 +106,8 @@ public class PipeTsFileResourceManager {
         }
       } catch (final IOException e) {
         LOGGER.warn("failed to close PipeTsFileResource when checking TTL: ", e);
+      } finally {
+        segmentLock.unlock(new File(hardlinkOrCopiedFile));
       }
     }
   }
