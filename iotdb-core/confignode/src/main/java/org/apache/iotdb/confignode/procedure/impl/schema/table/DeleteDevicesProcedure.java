@@ -67,6 +67,9 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
   // Transient
   private PathPatternTree patternTree;
 
+  // Transient, will not be returned if once recovers
+  private long deletedDevicesNum;
+
   public DeleteDevicesProcedure() {
     super();
   }
@@ -92,7 +95,8 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
           break;
         case CONSTRUCT_BLACK_LIST:
           LOGGER.info("Construct schemaEngine black list of devices in {}.{}", database, tableName);
-          if (constructBlackList(env) > 0) {
+          constructBlackList(env);
+          if (deletedDevicesNum > 0) {
             setNextState(CLEAN_DATANODE_SCHEMA_CACHE);
             break;
           } else {
@@ -138,7 +142,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
     }
   }
 
-  private long constructBlackList(final ConfigNodeProcedureEnv env) {
+  private void constructBlackList(final ConfigNodeProcedureEnv env) {
     patternTree = new PathPatternTree();
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -156,7 +160,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
         env.getConfigManager().getRelatedSchemaRegionGroup(patternTree);
 
     if (relatedSchemaRegionGroup.isEmpty()) {
-      return 0;
+      deletedDevicesNum = 0;
     }
     final List<TSStatus> successResult = new ArrayList<>();
     new DataNodeRegionTaskExecutor<TConstructTableDeviceBlackListReq, TSStatus>(
@@ -210,12 +214,13 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
     }.execute();
 
     setNextState(CONSTRUCT_BLACK_LIST);
-    return !isFailed()
-        ? successResult.stream()
-            .mapToLong(resp -> Long.parseLong(resp.getMessage()))
-            .reduce(Long::sum)
-            .orElse(0L)
-        : 0;
+    deletedDevicesNum =
+        !isFailed()
+            ? successResult.stream()
+                .mapToLong(resp -> Long.parseLong(resp.getMessage()))
+                .reduce(Long::sum)
+                .orElse(0L)
+            : 0;
   }
 
   @Override
@@ -233,6 +238,10 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
                   new TRollbackSchemaBlackListReq(consensusGroupIdList, patternTreeBytes));
       rollbackStateTask.execute();
     }
+  }
+
+  public long getDeletedDevicesNum() {
+    return deletedDevicesNum;
   }
 
   @Override
