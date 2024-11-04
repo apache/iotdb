@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.event.common.tsfile;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
@@ -34,6 +35,7 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventP
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTimePartitionProgressIndexKeeper;
 import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -480,6 +482,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
             "Pipe skipping temporary TsFile's parsing which shouldn't be transferred: {}", tsFile);
         return Collections.emptyList();
       }
+      waitForResourceEnough4Parsing();
       return initEventParser().toTabletInsertionEvents();
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
@@ -490,6 +493,33 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
               "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath());
       LOGGER.warn(errorMsg, e);
       throw new PipeException(errorMsg);
+    }
+  }
+
+  private void waitForResourceEnough4Parsing() throws InterruptedException {
+    final PipeMemoryManager memoryManager = PipeDataNodeResourceManager.memory();
+    if (memoryManager.isEnough4TabletParsing()) {
+      return;
+    }
+
+    final long memoryCheckIntervalMs =
+        PipeConfig.getInstance().getPipeTsFileParserCheckMemoryEnoughIntervalMs();
+    final long startTime = System.currentTimeMillis();
+    while (!memoryManager.isEnough4TabletParsing()) {
+      Thread.sleep(memoryCheckIntervalMs);
+    }
+
+    final double waitTimeSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
+    if (waitTimeSeconds > 1.0) {
+      LOGGER.info(
+          "Wait for resource enough for parsing {} for {} seconds.",
+          resource != null ? resource.getTsFilePath() : "tsfile",
+          waitTimeSeconds);
+    } else if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "Wait for resource enough for parsing {} for {} seconds.",
+          resource != null ? resource.getTsFilePath() : "tsfile",
+          waitTimeSeconds);
     }
   }
 
