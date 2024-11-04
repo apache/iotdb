@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion;
 
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructDevicesBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.RollbackTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
@@ -157,7 +158,13 @@ public abstract class SchemaRegionPlanVisitor<R, C> {
   }
 
   public R visitConstructTableDevicesBlackList(
-      final ConstructDevicesBlackListNode constructTableDevicesBlackListPlan, final C context) {
+      final ConstructTableDevicesBlackListNode constructTableDevicesBlackListPlan,
+      final C context) {
     return visitSchemaRegionPlan(constructTableDevicesBlackListPlan, context);
+  }
+
+  public R visitRollbackTableDevicesBlackList(
+      final RollbackTableDevicesBlackListNode rollbackTableDevicesBlackListPlan, final C context) {
+    return visitSchemaRegionPlan(rollbackTableDevicesBlackListPlan, context);
   }
 }

@@ -23,7 +23,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
 
@@ -33,19 +32,18 @@ import javax.annotation.Nonnull;
 
 import java.nio.ByteBuffer;
 
-public class ConstructDevicesBlackListNode extends AbstractTableDevicesDeletionNode
-    implements ISchemaRegionPlan {
-  public static final ConstructDevicesBlackListNode MOCK_INSTANCE =
-      new ConstructDevicesBlackListNode(new PlanNodeId(""), null, new byte[0]);
+public class ConstructTableDevicesBlackListNode extends AbstractTableDevicesDeletionNode {
+  public static final ConstructTableDevicesBlackListNode MOCK_INSTANCE =
+      new ConstructTableDevicesBlackListNode(new PlanNodeId(""), null, new byte[0]);
 
-  public ConstructDevicesBlackListNode(
+  public ConstructTableDevicesBlackListNode(
       final PlanNodeId id, final String tableName, final @Nonnull byte[] updateBytes) {
     super(id, tableName, updateBytes);
   }
 
   @Override
   public PlanNode clone() {
-    return new ConstructDevicesBlackListNode(id, tableName, updateBytes);
+    return new ConstructTableDevicesBlackListNode(id, tableName, updateBytes);
   }
 
   @Override
@@ -53,12 +51,12 @@ public class ConstructDevicesBlackListNode extends AbstractTableDevicesDeletionN
     return PlanNodeType.CONSTRUCT_TABLE_DEVICES_BLACK_LIST;
   }
 
-  public static ConstructDevicesBlackListNode deserialize(final ByteBuffer buffer) {
+  public static ConstructTableDevicesBlackListNode deserialize(final ByteBuffer buffer) {
     final String tableName = ReadWriteIOUtils.readString(buffer);
     final byte[] updateBytes = new byte[ReadWriteIOUtils.readInt(buffer)];
     buffer.get(updateBytes);
     final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
-    return new ConstructDevicesBlackListNode(planNodeId, tableName, updateBytes);
+    return new ConstructTableDevicesBlackListNode(planNodeId, tableName, updateBytes);
   }
 
   @Override

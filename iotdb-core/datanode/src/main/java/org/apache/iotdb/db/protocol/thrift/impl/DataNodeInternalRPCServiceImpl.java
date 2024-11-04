@@ -141,7 +141,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNo
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructDevicesBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableSchemaQueryWriteVisitor;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
@@ -1594,7 +1594,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   new RegionWriteExecutor()
                       .execute(
                           new SchemaRegionId(consensusGroupId.getId()),
-                          new ConstructDevicesBlackListNode(
+                          new ConstructTableDevicesBlackListNode(
                               new PlanNodeId(""), req.getTableName(), req.getFilterInfo()))
                       .getStatus();
               if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
