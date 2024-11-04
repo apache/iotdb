@@ -57,6 +57,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedNonWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
@@ -634,6 +635,18 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   @Override
   public TSStatus visitDeleteTableDevice(
       final DeleteTableDeviceNode node, final ISchemaRegion schemaRegion) {
+    try {
+      schemaRegion.deleteTableDevice(node);
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    } catch (final MetadataException e) {
+      logger.error(e.getMessage(), e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+  }
+
+  @Override
+  public TSStatus visitConstructTableDevicesBlackList(
+      final ConstructDevicesBlackListNode node, final ISchemaRegion schemaRegion) {
     try {
       schemaRegion.deleteTableDevice(node);
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);

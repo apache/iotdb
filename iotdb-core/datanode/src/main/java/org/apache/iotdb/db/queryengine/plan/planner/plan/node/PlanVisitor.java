@@ -125,6 +125,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNo
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
@@ -541,6 +542,11 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitDeleteTableDevice(final DeleteTableDeviceNode node, final C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitConstructTableDevicesBlackList(
+      final ConstructDevicesBlackListNode node, final C context) {
     return visitPlan(node, context);
   }
 

@@ -52,8 +52,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteDevicesNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
@@ -1872,10 +1872,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
 
     @Override
-    public RecoverOperationResult visitDeleteDevices(
-        final DeleteDevicesNode deleteDevicesPlan, final SchemaRegionMemoryImpl context) {
+    public RecoverOperationResult visitConstructTableDevicesBlackList(
+        final ConstructDevicesBlackListNode constructTableDevicesBlackListPlan,
+        final SchemaRegionMemoryImpl context) {
       try {
-        deleteTableDevice(deleteDevicesPlan);
+        deleteTableDevice(constructTableDevicesBlackListPlan);
         return RecoverOperationResult.SUCCESS;
       } catch (final MetadataException e) {
         return new RecoverOperationResult(e);

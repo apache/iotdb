@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
@@ -36,14 +37,14 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 
-public class DeleteDevicesNode extends PlanNode implements ISchemaRegionPlan {
+public class ConstructDevicesBlackListNode extends PlanNode implements ISchemaRegionPlan {
   private final String tableName;
   private final byte[] updateBytes;
 
-  public static final DeleteDevicesNode MOCK_INSTANCE =
-      new DeleteDevicesNode(new PlanNodeId(""), null, new byte[0]);
+  public static final ConstructDevicesBlackListNode MOCK_INSTANCE =
+      new ConstructDevicesBlackListNode(new PlanNodeId(""), null, new byte[0]);
 
-  protected DeleteDevicesNode(
+  protected ConstructDevicesBlackListNode(
       final PlanNodeId id, final String tableName, final @Nonnull byte[] updateBytes) {
     super(id);
     this.tableName = tableName;
@@ -62,7 +63,7 @@ public class DeleteDevicesNode extends PlanNode implements ISchemaRegionPlan {
 
   @Override
   public PlanNode clone() {
-    return new DeleteDevicesNode(id, tableName, updateBytes);
+    return new ConstructDevicesBlackListNode(id, tableName, updateBytes);
   }
 
   @Override
@@ -77,7 +78,7 @@ public class DeleteDevicesNode extends PlanNode implements ISchemaRegionPlan {
 
   @Override
   public PlanNodeType getType() {
-    return PlanNodeType.DELETE_DEVICES;
+    return PlanNodeType.CONSTRUCT_TABLE_DEVICES_BLACK_LIST;
   }
 
   @Override
@@ -96,21 +97,26 @@ public class DeleteDevicesNode extends PlanNode implements ISchemaRegionPlan {
     stream.write(updateBytes);
   }
 
-  public static DeleteDevicesNode deserialize(final ByteBuffer buffer) {
+  public static ConstructDevicesBlackListNode deserialize(final ByteBuffer buffer) {
     final String tableName = ReadWriteIOUtils.readString(buffer);
     final byte[] updateBytes = new byte[ReadWriteIOUtils.readInt(buffer)];
     buffer.get(updateBytes);
     final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
-    return new DeleteDevicesNode(planNodeId, tableName, updateBytes);
+    return new ConstructDevicesBlackListNode(planNodeId, tableName, updateBytes);
+  }
+
+  @Override
+  public <R, C> R accept(final PlanVisitor<R, C> visitor, final C context) {
+    return visitor.visitConstructTableDevicesBlackList(this, context);
   }
 
   @Override
   public SchemaRegionPlanType getPlanType() {
-    return SchemaRegionPlanType.DELETE_DEVICES;
+    return SchemaRegionPlanType.CONSTRUCT_TABLE_DEVICES_BLACK_LIST;
   }
 
   @Override
   public <R, C> R accept(final SchemaRegionPlanVisitor<R, C> visitor, final C context) {
-    return visitor.visitDeleteDevices(this, context);
+    return visitor.visitConstructTableDevicesBlackList(this, context);
   }
 }

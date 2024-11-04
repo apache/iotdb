@@ -25,8 +25,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteDevicesNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
@@ -447,9 +447,10 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
     }
 
     @Override
-    public ISchemaRegionPlan visitDeleteDevices(
-        final DeleteDevicesNode deleteDevicesPlan, final ByteBuffer buffer) {
-      return (DeleteDevicesNode) PlanNodeType.deserialize(buffer);
+    public ISchemaRegionPlan visitConstructTableDevicesBlackList(
+        final ConstructDevicesBlackListNode constructTableDevicesBlackListPlan,
+        final ByteBuffer buffer) {
+      return (ConstructDevicesBlackListNode) PlanNodeType.deserialize(buffer);
     }
   }
 }
