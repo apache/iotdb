@@ -331,8 +331,10 @@ public class LoadCache {
   }
 
   /** Update the NodeStatistics of all Nodes. */
-  public void updateNodeStatistics() {
-    nodeCacheMap.values().forEach(BaseNodeCache::updateCurrentStatistics);
+  public void updateNodeStatistics(boolean forceUpdate) {
+    nodeCacheMap
+        .values()
+        .forEach(baseNodeCache -> baseNodeCache.updateCurrentStatistics(forceUpdate));
   }
 
   /** Update the RegionGroupStatistics of all RegionGroups. */
@@ -342,7 +344,9 @@ public class LoadCache {
 
   /** Update the ConsensusGroupStatistics of all RegionGroups. */
   public void updateConsensusGroupStatistics() {
-    consensusGroupCacheMap.values().forEach(ConsensusGroupCache::updateCurrentStatistics);
+    consensusGroupCacheMap
+        .values()
+        .forEach(consensusGroupCache -> consensusGroupCache.updateCurrentStatistics(false));
   }
 
   /**

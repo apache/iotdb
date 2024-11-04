@@ -78,13 +78,17 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
   }
 
   @Override
-  public void nack() {
+  public synchronized void nack() {
+    if (nextOffset.get() == 1) {
+      // do nothing if with complete tablets
+      return;
+    }
     cleanUp();
     init(batch);
   }
 
   @Override
-  public void cleanUp() {
+  public synchronized void cleanUp() {
     super.cleanUp();
 
     tablets = null;

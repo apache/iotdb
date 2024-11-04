@@ -144,10 +144,6 @@ public class CompactionUtils {
           new HashSet<>(ModificationFile.getCompactionMods(seqResources.get(i)).getModifications());
       modifications.addAll(seqModifications);
       updateOneTargetMods(targetResource, modifications);
-      if (!modifications.isEmpty()) {
-        FileMetrics.getInstance().increaseModFileNum(1);
-        FileMetrics.getInstance().increaseModFileSize(targetResource.getModFile().getSize());
-      }
       modifications.removeAll(seqModifications);
     }
   }
@@ -168,10 +164,6 @@ public class CompactionUtils {
       }
     }
     updateOneTargetMods(targetTsFile, modifications);
-    if (!modifications.isEmpty()) {
-      FileMetrics.getInstance().increaseModFileNum(1);
-      FileMetrics.getInstance().increaseModFileSize(targetTsFile.getModFile().getSize());
-    }
   }
 
   public static void combineModsInInnerCompaction(
@@ -186,10 +178,20 @@ public class CompactionUtils {
     }
     for (TsFileResource targetTsFile : targetTsFiles) {
       updateOneTargetMods(targetTsFile, modifications);
-      if (!modifications.isEmpty()) {
-        FileMetrics.getInstance().increaseModFileNum(1);
-        FileMetrics.getInstance().increaseModFileSize(targetTsFile.getModFile().getSize());
-      }
+    }
+  }
+
+  public static void addFilesToFileMetrics(TsFileResource resource) {
+    FileMetrics.getInstance()
+        .addTsFile(
+            resource.getDatabaseName(),
+            resource.getDataRegionId(),
+            resource.getTsFile().length(),
+            resource.isSeq(),
+            resource.getTsFile().getName());
+    if (resource.modFileExists()) {
+      FileMetrics.getInstance().increaseModFileNum(1);
+      FileMetrics.getInstance().increaseModFileSize(resource.getModFile().getSize());
     }
   }
 

@@ -231,7 +231,6 @@ public class SubscriptionEvent {
   //////////////////////////// byte buffer ////////////////////////////
 
   public void trySerializeRemainingResponses() {
-    // TODO: consider memory usage
     response.trySerializeRemainingResponses();
   }
 

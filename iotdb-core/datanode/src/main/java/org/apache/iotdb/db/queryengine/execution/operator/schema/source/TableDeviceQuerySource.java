@@ -234,16 +234,11 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
         }
         idIndex++;
       } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
-        final String attributeValue = schemaInfo.getAttributeValue(columnHeader.getColumnName());
+        final Binary attributeValue = schemaInfo.getAttributeValue(columnHeader.getColumnName());
         if (attributeValue == null) {
           builder.getColumnBuilder(resultIndex).appendNull();
         } else {
-          builder
-              .getColumnBuilder(resultIndex)
-              .writeBinary(
-                  new Binary(
-                      schemaInfo.getAttributeValue(columnHeader.getColumnName()),
-                      TSFileConfig.STRING_CHARSET));
+          builder.getColumnBuilder(resultIndex).writeBinary(attributeValue);
         }
       }
       resultIndex++;
