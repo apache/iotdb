@@ -44,6 +44,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+// Note that all the writings to the containers are guarded by the schema region lock.
+// The readings are guarded byt the concurrent segment lock, thus there is no need
+// to worry about the concurrent safety.
 @ThreadSafe
 public class UpdateDetailContainer implements UpdateContainer {
 
@@ -129,6 +132,39 @@ public class UpdateDetailContainer implements UpdateContainer {
     final AtomicLong result = new AtomicLong(0);
     handleTableRemoval(tableName, result);
     return result.get();
+  }
+
+  // pathNodes.length >= 3
+  @Override
+  public long invalidate(final @Nonnull String[] pathNodes) {
+    final AtomicLong result = new AtomicLong(0);
+    updateMap.compute(
+        pathNodes[2],
+        (name, value) -> {
+          if (Objects.isNull(value)) {
+            return null;
+          }
+          value.compute(
+              Arrays.asList(pathNodes).subList(3, pathNodes.length),
+              (device, attributes) -> {
+                if (Objects.nonNull(attributes)) {
+                  result.addAndGet(
+                      RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+                          + sizeOfList(device)
+                          + sizeOfMapEntries(attributes));
+                }
+                return null;
+              });
+          if (value.isEmpty()) {
+            result.addAndGet(
+                RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+                    + RamUsageEstimator.sizeOf(name)
+                    + MAP_SIZE);
+            return null;
+          }
+          return value;
+        });
+    return 0;
   }
 
   private void serializeWithLimit(
