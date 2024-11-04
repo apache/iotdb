@@ -487,7 +487,6 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
   @Override
   protected IConfigTask visitDeleteDevice(final DeleteDevice node, final MPPQueryContext context) {
-    context.setQueryType(QueryType.WRITE);
     new Analyzer(
             context,
             context.getSession(),

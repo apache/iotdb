@@ -28,6 +28,11 @@ public class DeleteDevice extends AbstractTraverseDevice {
   }
 
   @Override
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
+    return visitor.visitDeleteDevice(this, context);
+  }
+
+  @Override
   public String toString() {
     return toStringHelper(this) + " - " + super.toStringContent();
   }
