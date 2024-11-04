@@ -1629,6 +1629,7 @@ public class MTreeBelowSGMemoryImpl {
       collector.traverse();
     }
     storageGroupMNode.deleteChild(tableName);
+    regionStatistics.resetTableDevice(tableName);
     store.releaseMemory(memoryReleased.get());
     return true;
   }
