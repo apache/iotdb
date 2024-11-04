@@ -1882,7 +1882,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         final ConstructDevicesBlackListNode constructTableDevicesBlackListPlan,
         final SchemaRegionMemoryImpl context) {
       try {
-        deleteTableDevice(constructTableDevicesBlackListPlan);
+        constructTableDevicesBlackList(constructTableDevicesBlackListPlan);
         return RecoverOperationResult.SUCCESS;
       } catch (final MetadataException e) {
         return new RecoverOperationResult(e);

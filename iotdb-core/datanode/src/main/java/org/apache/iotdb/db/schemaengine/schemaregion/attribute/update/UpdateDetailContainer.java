@@ -124,6 +124,13 @@ public class UpdateDetailContainer implements UpdateContainer {
     return outputStream.toByteArray();
   }
 
+  @Override
+  public long invalidate(final String tableName) {
+    final AtomicLong result = new AtomicLong(0);
+    handleTableRemoval(tableName, result);
+    return result.get();
+  }
+
   private void serializeWithLimit(
       final RewritableByteArrayOutputStream outputStream,
       final AtomicInteger limitBytes,
@@ -253,24 +260,22 @@ public class UpdateDetailContainer implements UpdateContainer {
     } else {
       ((UpdateClearContainer) commitContainer)
           .getTableNames()
-          .forEach(
-              tableName -> {
-                final ConcurrentMap<List<String>, ConcurrentMap<String, Binary>> deviceMap =
-                    updateMap.remove(tableName);
-                if (Objects.nonNull(deviceMap)) {
-                  result.addAndGet(
-                      deviceMap.size()
-                              * (RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY + MAP_SIZE)
-                          + deviceMap.entrySet().stream()
-                              .mapToLong(
-                                  entry ->
-                                      sizeOfList(entry.getKey())
-                                          + sizeOfMapEntries(entry.getValue()))
-                              .reduce(0, Long::sum));
-                }
-              });
+          .forEach(tableName -> handleTableRemoval(tableName, result));
     }
     return new Pair<>(result.get(), updateMap.isEmpty());
+  }
+
+  private void handleTableRemoval(final String tableName, final AtomicLong result) {
+    final ConcurrentMap<List<String>, ConcurrentMap<String, Binary>> deviceMap =
+        updateMap.remove(tableName);
+    if (Objects.nonNull(deviceMap)) {
+      result.addAndGet(
+          deviceMap.size() * (RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY + MAP_SIZE)
+              + deviceMap.entrySet().stream()
+                  .mapToLong(
+                      entry -> sizeOfList(entry.getKey()) + sizeOfMapEntries(entry.getValue()))
+                  .reduce(0, Long::sum));
+    }
   }
 
   private static long sizeOfList(final @Nonnull List<String> input) {

@@ -124,6 +124,10 @@ public class DeviceAttributeCacheUpdater {
         });
   }
 
+  public void invalidate(final String tableName) {
+    attributeUpdateMap.forEach((location, container) -> {});
+  }
+
   public Pair<Long, Map<TDataNodeLocation, byte[]>> getAttributeUpdateInfo(
       final @Nonnull AtomicInteger limit, final @Nonnull AtomicBoolean hasRemaining) {
     // Note that the "updateContainerStatistics" is unsafe to use here for whole read of detail

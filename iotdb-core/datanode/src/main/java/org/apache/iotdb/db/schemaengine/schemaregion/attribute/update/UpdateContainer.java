@@ -46,6 +46,8 @@ public interface UpdateContainer {
   byte[] getUpdateContent(
       final @Nonnull AtomicInteger limitBytes, final @Nonnull AtomicBoolean hasRemaining);
 
+  long invalidate(final String tableName);
+
   Pair<Long, Boolean> updateSelfByCommitContainer(final UpdateContainer commitContainer);
 
   void serialize(final OutputStream outputstream) throws IOException;
