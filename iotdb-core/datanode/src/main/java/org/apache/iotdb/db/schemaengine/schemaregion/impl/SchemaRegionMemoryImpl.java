@@ -1570,6 +1570,22 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
+  public void deleteTableDevicesInBlackList(
+      final RollbackTableDevicesBlackListNode rollbackTableDevicesBlackListNode)
+      throws MetadataException {
+    final List<PartialPath> paths =
+        DeleteDevice.constructPaths(
+            PathUtils.unQualifyDatabaseName(storageGroupFullPath),
+            rollbackTableDevicesBlackListNode.getTableName(),
+            rollbackTableDevicesBlackListNode.getUpdateBytes());
+    for (final PartialPath pattern : paths) {
+      mtree.deleteTableDevicesInBlackList(
+          pattern, deviceAttributeStore::removeAttribute, deviceAttributeCacheUpdater::invalidate);
+    }
+    writeToMLog(rollbackTableDevicesBlackListNode);
+  }
+
+  @Override
   public ISchemaReader<IDeviceSchemaInfo> getDeviceReader(final IShowDevicesPlan showDevicesPlan)
       throws MetadataException {
     return mtree.getDeviceReader(

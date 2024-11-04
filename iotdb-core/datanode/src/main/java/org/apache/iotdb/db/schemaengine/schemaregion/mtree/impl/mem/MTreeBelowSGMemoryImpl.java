@@ -1669,6 +1669,30 @@ public class MTreeBelowSGMemoryImpl {
     }
   }
 
+  public void deleteTableDevicesInBlackList(
+      final PartialPath pattern,
+      final IntConsumer attributeDeleter,
+      final Consumer<String[]> deviceAttributeCacheUpdateInvalidator)
+      throws MetadataException {
+    try (final EntityUpdater<IMemMNode> updater =
+        new EntityUpdater<IMemMNode>(
+            rootNode, pattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
+
+          @Override
+          protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
+            if (node.isPreDeactivateSelfOrTemplate()) {
+              attributeDeleter.accept(
+                  ((TableDeviceInfo<IMemMNode>) node.getAsDeviceMNode().getDeviceInfo())
+                      .getAttributePointer());
+              deviceAttributeCacheUpdateInvalidator.accept(node.getPartialPath().getNodes());
+              deleteEmptyInternalMNode(node);
+            }
+          }
+        }) {
+      updater.update();
+    }
+  }
+
   public void renameTableAttribute() {}
 
   public boolean deleteTableDevice(final String tableName, final IntConsumer attributeDeleter)

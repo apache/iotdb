@@ -348,6 +348,10 @@ public interface ISchemaRegion {
       final RollbackTableDevicesBlackListNode rollbackTableDevicesBlackListNode)
       throws MetadataException;
 
+  void deleteTableDevicesInBlackList(
+      final RollbackTableDevicesBlackListNode rollbackTableDevicesBlackListNode)
+      throws MetadataException;
+
   // endregion
 
   // region Interfaces for SchemaReader
