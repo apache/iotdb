@@ -141,6 +141,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNo
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableSchemaQueryWriteVisitor;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
@@ -914,10 +915,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TCheckTimeSeriesExistenceResp checkTimeSeriesExistence(TCheckTimeSeriesExistenceReq req) {
-    PathPatternTree patternTree = PathPatternTree.deserialize(req.patternTree);
-    TCheckTimeSeriesExistenceResp resp = new TCheckTimeSeriesExistenceResp();
-    TSStatus status =
+  public TCheckTimeSeriesExistenceResp checkTimeSeriesExistence(
+      final TCheckTimeSeriesExistenceReq req) {
+    final PathPatternTree patternTree = PathPatternTree.deserialize(req.patternTree);
+    final TCheckTimeSeriesExistenceResp resp = new TCheckTimeSeriesExistenceResp();
+    final TSStatus status =
         executeInternalSchemaTask(
             req.getSchemaRegionIdList(),
             consensusGroupId -> {
@@ -926,23 +928,23 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               // Check timeseries existence for set template shall block all timeseries creation
               readWriteLock.writeLock().lock();
               try {
-                ISchemaRegion schemaRegion =
+                final ISchemaRegion schemaRegion =
                     schemaEngine.getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()));
-                PathPatternTree filteredPatternTree =
+                final PathPatternTree filteredPatternTree =
                     filterPathPatternTree(patternTree, schemaRegion.getDatabaseFullPath());
                 if (filteredPatternTree.isEmpty()) {
                   return RpcUtils.SUCCESS_STATUS;
                 }
-                for (PartialPath pattern : filteredPatternTree.getAllPathPatterns()) {
+                for (final PartialPath pattern : filteredPatternTree.getAllPathPatterns()) {
                   ISchemaSource<ITimeSeriesSchemaInfo> schemaSource =
                       SchemaSourceFactory.getTimeSeriesSchemaCountSource(
                           pattern, false, null, null, SchemaConstant.ALL_MATCH_SCOPE);
-                  try (ISchemaReader<ITimeSeriesSchemaInfo> schemaReader =
+                  try (final ISchemaReader<ITimeSeriesSchemaInfo> schemaReader =
                       schemaSource.getSchemaReader(schemaRegion)) {
                     if (schemaReader.hasNext()) {
                       return RpcUtils.getStatus(TSStatusCode.TIMESERIES_ALREADY_EXIST);
                     }
-                  } catch (Exception e) {
+                  } catch (final Exception e) {
                     LOGGER.warn(e.getMessage(), e);
                     return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
                   }
@@ -957,7 +959,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       resp.setExists(false);
     } else if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
       boolean hasFailure = false;
-      for (TSStatus subStatus : status.getSubStatus()) {
+      for (final TSStatus subStatus : status.getSubStatus()) {
         if (subStatus.getCode() == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
           resp.setExists(true);
         } else if (subStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -977,25 +979,25 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus constructViewSchemaBlackList(TConstructViewSchemaBlackListReq req) {
-    PathPatternTree patternTree =
+  public TSStatus constructViewSchemaBlackList(final TConstructViewSchemaBlackListReq req) {
+    final PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
-    AtomicInteger preDeletedNum = new AtomicInteger(0);
-    TSStatus executionResult =
+    final AtomicInteger preDeletedNum = new AtomicInteger(0);
+    final TSStatus executionResult =
         executeInternalSchemaTask(
             req.getSchemaRegionIdList(),
             consensusGroupId -> {
-              String storageGroup =
+              final String storageGroup =
                   schemaEngine
                       .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
                       .getDatabaseFullPath();
-              PathPatternTree filteredPatternTree =
+              final PathPatternTree filteredPatternTree =
                   filterPathPatternTree(patternTree, storageGroup);
               if (filteredPatternTree.isEmpty()) {
                 return RpcUtils.SUCCESS_STATUS;
               }
-              RegionWriteExecutor executor = new RegionWriteExecutor();
-              TSStatus status =
+              final RegionWriteExecutor executor = new RegionWriteExecutor();
+              final TSStatus status =
                   executor
                       .execute(
                           new SchemaRegionId(consensusGroupId.getId()),
@@ -1012,21 +1014,22 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus rollbackViewSchemaBlackList(TRollbackViewSchemaBlackListReq req) {
-    PathPatternTree patternTree =
+  public TSStatus rollbackViewSchemaBlackList(final TRollbackViewSchemaBlackListReq req) {
+    final PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
     return executeInternalSchemaTask(
         req.getSchemaRegionIdList(),
         consensusGroupId -> {
-          String storageGroup =
+          final String storageGroup =
               schemaEngine
                   .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
                   .getDatabaseFullPath();
-          PathPatternTree filteredPatternTree = filterPathPatternTree(patternTree, storageGroup);
+          final PathPatternTree filteredPatternTree =
+              filterPathPatternTree(patternTree, storageGroup);
           if (filteredPatternTree.isEmpty()) {
             return RpcUtils.SUCCESS_STATUS;
           }
-          RegionWriteExecutor executor = new RegionWriteExecutor();
+          final RegionWriteExecutor executor = new RegionWriteExecutor();
           return executor
               .execute(
                   new SchemaRegionId(consensusGroupId.getId()),
@@ -1582,7 +1585,25 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus constructTableDeviceBlackList(final TConstructTableDeviceBlackListReq req) {
-    return null;
+    final AtomicLong preDeletedNum = new AtomicLong(0);
+    final TSStatus executionResult =
+        executeSchemaBlackListTask(
+            req.getSchemaRegionIdList(),
+            consensusGroupId -> {
+              final TSStatus status =
+                  new RegionWriteExecutor()
+                      .execute(
+                          new SchemaRegionId(consensusGroupId.getId()),
+                          new ConstructDevicesBlackListNode(
+                              new PlanNodeId(""), req.getTableName(), req.getFilterInfo()))
+                      .getStatus();
+              if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                preDeletedNum.getAndAdd(Long.parseLong(status.getMessage()));
+              }
+              return status;
+            });
+    executionResult.setMessage(String.valueOf(preDeletedNum.get()));
+    return executionResult;
   }
 
   public TTestConnectionResp submitTestConnectionTask(TNodeLocations nodeLocations) {

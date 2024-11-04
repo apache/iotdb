@@ -44,7 +44,7 @@ public class ConstructDevicesBlackListNode extends PlanNode implements ISchemaRe
   public static final ConstructDevicesBlackListNode MOCK_INSTANCE =
       new ConstructDevicesBlackListNode(new PlanNodeId(""), null, new byte[0]);
 
-  protected ConstructDevicesBlackListNode(
+  public ConstructDevicesBlackListNode(
       final PlanNodeId id, final String tableName, final @Nonnull byte[] updateBytes) {
     super(id);
     this.tableName = tableName;
