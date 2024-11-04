@@ -73,7 +73,7 @@ launch_service()
 	iotdb_parms="$iotdb_parms -Dname=iotdb\.IoTDB"
 	iotdb_parms="$iotdb_parms -DIOTDB_LOG_DIR=${IOTDB_LOG_DIR}"
 
-	exec "$JAVA" $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" "$class" $PARAMS
+	exec "$JAVA" $iotdb_parms $IOTDB_JMX_OPTS -Xms8g -Xmx8g -cp "$CLASSPATH" "$class" $PARAMS
 	return $?
 }
 
