@@ -132,6 +132,10 @@ public class SessionUtils {
       case STRING:
         valueOccupation += rowSize * 4;
         Binary[] binaries = (Binary[]) values[columnIndex];
+        if (binaries == null) {
+          valueOccupation += rowSize * Binary.EMPTY_VALUE.getLength();
+          break;
+        }
         for (int rowIndex = 0; rowIndex < rowSize; rowIndex++) {
           valueOccupation +=
               binaries[rowIndex] != null
