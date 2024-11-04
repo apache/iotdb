@@ -274,12 +274,13 @@ public class LoadTsFileTableSchemaCache {
             .computeIfAbsent(
                 realSchema.getTableName(), k -> new Pair<>(realIdColumnCount, new HashMap<>()))
             .getRight();
+    int idColumnIndex = 0;
     for (int i = 0; i < fileSchema.getColumns().size(); i++) {
       final ColumnSchema fileColumn = fileSchema.getColumns().get(i);
       if (fileColumn.getColumnCategory() == TsTableColumnCategory.ID) {
         final int realIndex = realSchema.getIndexAmongIdColumns(fileColumn.getName());
         if (realIndex != -1) {
-          idColumnMapping.put(i, realIndex);
+          idColumnMapping.put(idColumnIndex++, realIndex);
         } else {
           throw new VerifyMetadataException(
               String.format(
