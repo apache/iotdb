@@ -53,7 +53,7 @@ public class FIFOCacheEntryManager<FK, SK, V>
   }
 
   @Override
-  public boolean invalid(final FIFOCacheEntry<SK, V> cacheEntry) {
+  public boolean invalidate(final FIFOCacheEntry<SK, V> cacheEntry) {
     if (cacheEntry.isInvalidated.getAndSet(true)) {
       return false;
     }

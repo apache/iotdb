@@ -104,7 +104,7 @@ public interface IPartitionFetcher {
    * <p>The device id shall be [table, seg1, ....]
    */
   SchemaPartition getOrCreateSchemaPartition(
-      String database, List<IDeviceID> deviceIDs, String userName);
+      final String database, final List<IDeviceID> deviceIDs, final String userName);
 
   /**
    * For data query with completed id.
@@ -113,7 +113,7 @@ public interface IPartitionFetcher {
    *
    * <p>The device id shall be [table, seg1, ....]
    */
-  SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDs);
+  SchemaPartition getSchemaPartition(final String database, final List<IDeviceID> deviceIDs);
 
   /**
    * For data query with partial device id conditions.
@@ -122,5 +122,5 @@ public interface IPartitionFetcher {
    *
    * <p>The device id shall be [table, seg1, ....]
    */
-  SchemaPartition getSchemaPartition(String database);
+  SchemaPartition getSchemaPartition(final String database);
 }
