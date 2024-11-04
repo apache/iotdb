@@ -65,6 +65,7 @@ public class DeviceBlackListConstructor extends DeviceUpdater {
     if (withoutFilter()) {
       node.preDeactivateSelfOrTemplate();
       preDeletedNum++;
+      deviceAttributeCacheUpdater.invalidate(node.getPartialPath().getNodes());
       regionStatistics.decreaseTableDevice(tableName, 1);
       return;
     }
@@ -77,6 +78,7 @@ public class DeviceBlackListConstructor extends DeviceUpdater {
     preDeletedNum += indexes.size();
     regionStatistics.decreaseTableDevice(tableName, indexes.size());
     for (final Integer index : indexes) {
+      deviceAttributeCacheUpdater.invalidate(deviceSchemaBatch.get(index).getRawNodes());
       nodes.get(index).preDeactivateSelfOrTemplate();
     }
     nodes.clear();
