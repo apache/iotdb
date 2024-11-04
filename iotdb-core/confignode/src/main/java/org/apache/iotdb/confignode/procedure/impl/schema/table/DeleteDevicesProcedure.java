@@ -19,12 +19,15 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -60,7 +63,21 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
   @Override
   protected void rollbackState(
       final ConfigNodeProcedureEnv env, final DeleteDevicesState deleteDevicesState)
-      throws IOException, InterruptedException, ProcedureException {}
+      throws IOException, InterruptedException, ProcedureException {
+    if (deleteDevicesState == DeleteDevicesState.CONSTRUCT_BLACK_LIST) {
+      final DeleteTimeSeriesProcedure.DeleteTimeSeriesRegionTaskExecutor<
+              TRollbackSchemaBlackListReq>
+          rollbackStateTask =
+              new DeleteTimeSeriesProcedure.DeleteTimeSeriesRegionTaskExecutor<>(
+                  "roll back schema engine black list",
+                  env,
+                  env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
+                  CnToDnAsyncRequestType.ROLLBACK_SCHEMA_BLACK_LIST,
+                  (dataNodeLocation, consensusGroupIdList) ->
+                      new TRollbackSchemaBlackListReq(consensusGroupIdList, patternTreeBytes));
+      rollbackStateTask.execute();
+    }
+  }
 
   @Override
   protected DeleteDevicesState getState(final int stateId) {
