@@ -32,7 +32,7 @@ import org.apache.tsfile.utils.Binary;
 import java.util.List;
 import java.util.function.BiFunction;
 
-public abstract class DeviceUpdater extends DevicePredicateFilter {
+public abstract class DeviceUpdater extends DevicePredicateHandler {
 
   private final BiFunction<Integer, String, Binary> attributeProvider;
 
