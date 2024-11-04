@@ -34,7 +34,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
-import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.DeviceAttributeCacheUpdater;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -90,14 +89,31 @@ public class DeleteDevice extends AbstractTraverseDevice {
     }
   }
 
+  public static List<PartialPath> constructPaths(
+      final String database, final String tableName, final byte[] updateInfo) {
+    final ByteBuffer buffer = ByteBuffer.wrap(updateInfo);
+
+    // Device pattern list
+    int size = ReadWriteIOUtils.readInt(buffer);
+    final List<List<SchemaFilter>> idDeterminedFilterList = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      final int singleSize = ReadWriteIOUtils.readInt(buffer);
+      idDeterminedFilterList.add(new ArrayList<>(singleSize));
+      for (int k = 0; k < singleSize; k++) {
+        idDeterminedFilterList.get(i).add(SchemaFilter.deserialize(buffer));
+      }
+    }
+
+    return TableDeviceQuerySource.getDevicePatternList(database, tableName, idDeterminedFilterList);
+  }
+
   public static Pair<List<PartialPath>, DeviceBlackListConstructor>
       constructPathsAndDevicePredicateUpdater(
           final String database,
           final String tableName,
           final byte[] updateInfo,
           final BiFunction<Integer, String, Binary> attributeProvider,
-          final MemSchemaRegionStatistics regionStatistics,
-          final DeviceAttributeCacheUpdater deviceAttributeCacheUpdater) {
+          final MemSchemaRegionStatistics regionStatistics) {
     final ByteBuffer buffer = ByteBuffer.wrap(updateInfo);
 
     // Device pattern list
@@ -184,8 +200,7 @@ public class DeleteDevice extends AbstractTraverseDevice {
             tableName,
             columnHeaderList,
             attributeProvider,
-            regionStatistics,
-            deviceAttributeCacheUpdater));
+            regionStatistics));
   }
 
   @Override

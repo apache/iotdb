@@ -31,42 +31,16 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nonnull;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Collections;
-import java.util.List;
 
-public class ConstructDevicesBlackListNode extends PlanNode implements ISchemaRegionPlan {
-  private final String tableName;
-  private final byte[] updateBytes;
-
+public class ConstructDevicesBlackListNode extends AbstractTableDevicesDeletionNode
+    implements ISchemaRegionPlan {
   public static final ConstructDevicesBlackListNode MOCK_INSTANCE =
       new ConstructDevicesBlackListNode(new PlanNodeId(""), null, new byte[0]);
 
   public ConstructDevicesBlackListNode(
       final PlanNodeId id, final String tableName, final @Nonnull byte[] updateBytes) {
-    super(id);
-    this.tableName = tableName;
-    this.updateBytes = updateBytes;
-  }
-
-  public String getTableName() {
-    return tableName;
-  }
-
-  public byte[] getUpdateBytes() {
-    return updateBytes;
-  }
-
-  @Override
-  public List<PlanNode> getChildren() {
-    return Collections.emptyList();
-  }
-
-  @Override
-  public void addChild(final PlanNode child) {
-    throw new UnsupportedOperationException();
+    super(id, tableName, updateBytes);
   }
 
   @Override
@@ -75,34 +49,8 @@ public class ConstructDevicesBlackListNode extends PlanNode implements ISchemaRe
   }
 
   @Override
-  public int allowedChildCount() {
-    return 0;
-  }
-
-  @Override
-  public List<String> getOutputColumnNames() {
-    return null;
-  }
-
-  @Override
   public PlanNodeType getType() {
     return PlanNodeType.CONSTRUCT_TABLE_DEVICES_BLACK_LIST;
-  }
-
-  @Override
-  protected void serializeAttributes(final ByteBuffer byteBuffer) {
-    getType().serialize(byteBuffer);
-    ReadWriteIOUtils.write(tableName, byteBuffer);
-    ReadWriteIOUtils.write(updateBytes.length, byteBuffer);
-    byteBuffer.put(updateBytes);
-  }
-
-  @Override
-  protected void serializeAttributes(final DataOutputStream stream) throws IOException {
-    getType().serialize(stream);
-    ReadWriteIOUtils.write(tableName, stream);
-    ReadWriteIOUtils.write(updateBytes.length, stream);
-    stream.write(updateBytes);
   }
 
   public static ConstructDevicesBlackListNode deserialize(final ByteBuffer buffer) {

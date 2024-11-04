@@ -1542,8 +1542,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             constructDevicesBlackListNode.getTableName(),
             constructDevicesBlackListNode.getUpdateBytes(),
             (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name),
-            regionStatistics,
-            deviceAttributeCacheUpdater);
+            regionStatistics);
     try (final DeviceBlackListConstructor constructor = pair.getRight()) {
       for (final PartialPath pattern : pair.getLeft()) {
         mtree.constructTableDeviceBlackList(pattern, constructor);
@@ -1551,6 +1550,20 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
     writeToMLog(constructDevicesBlackListNode);
     return pair.getRight().getPreDeletedNum();
+  }
+
+  @Override
+  public void rollbackTableDevicesBlackList(
+      final ConstructDevicesBlackListNode constructDevicesBlackListNode) throws MetadataException {
+    final List<PartialPath> paths =
+        DeleteDevice.constructPaths(
+            PathUtils.unQualifyDatabaseName(storageGroupFullPath),
+            constructDevicesBlackListNode.getTableName(),
+            constructDevicesBlackListNode.getUpdateBytes());
+    for (final PartialPath pattern : paths) {
+      mtree.rollbackTableDeviceBlackList(pattern);
+    }
+    writeToMLog(constructDevicesBlackListNode);
   }
 
   @Override

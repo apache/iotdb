@@ -1652,6 +1652,23 @@ public class MTreeBelowSGMemoryImpl {
     }
   }
 
+  public void rollbackTableDeviceBlackList(final PartialPath pattern) throws MetadataException {
+    try (final EntityUpdater<IMemMNode> updater =
+        new EntityUpdater<IMemMNode>(
+            rootNode, pattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
+
+          @Override
+          protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
+            if (node.isPreDeactivateSelfOrTemplate()) {
+              regionStatistics.addTableDevice(pattern.getNodes()[2]);
+              node.rollbackPreDeactivateSelfOrTemplate();
+            }
+          }
+        }) {
+      updater.update();
+    }
+  }
+
   public void renameTableAttribute() {}
 
   public boolean deleteTableDevice(final String tableName, final IntConsumer attributeDeleter)
