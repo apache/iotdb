@@ -51,6 +51,14 @@ public class ConstructDevicesBlackListNode extends PlanNode implements ISchemaRe
     this.updateBytes = updateBytes;
   }
 
+  public String getTableName() {
+    return tableName;
+  }
+
+  public byte[] getUpdateBytes() {
+    return updateBytes;
+  }
+
   @Override
   public List<PlanNode> getChildren() {
     return Collections.emptyList();

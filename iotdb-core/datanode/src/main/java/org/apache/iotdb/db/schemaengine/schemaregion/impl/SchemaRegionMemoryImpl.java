@@ -44,6 +44,7 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceAttributeUpdater;
+import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceBlackListConstructor;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource;
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
@@ -58,6 +59,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Delet
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
@@ -1533,6 +1535,17 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public void constructTableDevicesBlackList(
       final ConstructDevicesBlackListNode constructDevicesBlackListNode) throws MetadataException {
+    final Pair<List<PartialPath>, DeviceBlackListConstructor> pair =
+        DeleteDevice.constructPathsAndDevicePredicateUpdater(
+            PathUtils.unQualifyDatabaseName(storageGroupFullPath),
+            constructDevicesBlackListNode.getTableName(),
+            constructDevicesBlackListNode.getUpdateBytes(),
+            (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name));
+    try (final DeviceBlackListConstructor constructor = pair.getRight()) {
+      for (final PartialPath pattern : pair.getLeft()) {
+        mtree.constructTableDeviceBlackList(pattern, constructor);
+      }
+    }
     writeToMLog(constructDevicesBlackListNode);
   }
 

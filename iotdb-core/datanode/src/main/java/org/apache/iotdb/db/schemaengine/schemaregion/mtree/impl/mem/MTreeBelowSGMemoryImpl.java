@@ -45,6 +45,7 @@ import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceAttributeUpdater;
+import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceBlackListConstructor;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
@@ -1582,6 +1583,22 @@ public class MTreeBelowSGMemoryImpl {
           @Override
           protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
             batchUpdater.handleDeviceNode(node);
+          }
+        }) {
+      updater.update();
+    }
+  }
+
+  public void constructTableDeviceBlackList(
+      final PartialPath pattern, final DeviceBlackListConstructor blackListConstructor)
+      throws MetadataException {
+    try (final EntityUpdater<IMemMNode> updater =
+        new EntityUpdater<IMemMNode>(
+            rootNode, pattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
+
+          @Override
+          protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
+            blackListConstructor.handleDeviceNode(node);
           }
         }) {
       updater.update();
