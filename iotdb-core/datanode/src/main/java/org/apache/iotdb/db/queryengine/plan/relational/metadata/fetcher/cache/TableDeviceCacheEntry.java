@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 
 import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
@@ -61,7 +62,7 @@ public class TableDeviceCacheEntry {
   int setAttribute(
       final String database,
       final String tableName,
-      final @Nonnull Map<String, String> attributeSetMap) {
+      final @Nonnull Map<String, Binary> attributeSetMap) {
     return (deviceSchema.compareAndSet(null, new TableAttributeSchema())
             ? TableAttributeSchema.INSTANCE_SIZE
             : 0)
@@ -69,7 +70,7 @@ public class TableDeviceCacheEntry {
   }
 
   int updateAttribute(
-      final String database, final String tableName, final @Nonnull Map<String, String> updateMap) {
+      final String database, final String tableName, final @Nonnull Map<String, Binary> updateMap) {
     // Shall only call this for original table device
     final TableAttributeSchema schema = (TableAttributeSchema) deviceSchema.get();
     final int result =
@@ -90,7 +91,7 @@ public class TableDeviceCacheEntry {
     return size.get();
   }
 
-  Map<String, String> getAttributeMap() {
+  Map<String, Binary> getAttributeMap() {
     final IDeviceSchema map = deviceSchema.get();
     // Cache miss
     if (Objects.isNull(map)) {

@@ -1274,7 +1274,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 node.getIdDeterminedFilterList(),
                 node.getColumnHeaderList(),
                 null));
-    operator.setOffset(node.getOffset());
     operator.setLimit(node.getLimit());
     return operator;
   }

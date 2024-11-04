@@ -17,36 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.client.sync;
+package org.apache.iotdb.db.pipe.resource.memory;
 
-public enum CnToDnSyncRequestType {
-  // Node Maintenance
-  CLEAN_DATA_NODE_CACHE,
-  STOP_AND_CLEAR_DATA_NODE,
-  SET_SYSTEM_STATUS,
-  SHOW_CONFIGURATION,
+public class PipeTsFileMemoryBlock extends PipeFixedMemoryBlock {
 
-  // Region Maintenance
-  CREATE_DATA_REGION,
-  CREATE_SCHEMA_REGION,
-  DELETE_REGION,
-  CREATE_NEW_REGION_PEER,
-  ADD_REGION_PEER,
-  REMOVE_REGION_PEER,
-  DELETE_OLD_REGION_PEER,
-  RESET_PEER_LIST,
-
-  // PartitionCache
-  INVALIDATE_PARTITION_CACHE,
-  INVALIDATE_PERMISSION_CACHE,
-  INVALIDATE_SCHEMA_CACHE,
-
-  // Template
-  UPDATE_TEMPLATE,
-
-  // Schema
-  KILL_QUERY_INSTANCE,
-
-  // Table
-  UPDATE_TABLE,
+  public PipeTsFileMemoryBlock(long memoryUsageInBytes) {
+    super(memoryUsageInBytes);
+  }
 }

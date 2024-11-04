@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDev
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -90,7 +91,7 @@ public class DeviceAttributeCacheUpdater {
   /////////////////////////////// Service ///////////////////////////////
 
   public void update(
-      final String tableName, final String[] deviceId, final Map<String, String> attributeMap) {
+      final String tableName, final String[] deviceId, final Map<String, Binary> attributeMap) {
     targetDataNodeLocations.forEach(
         location -> {
           // Skip update on local

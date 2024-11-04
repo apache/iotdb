@@ -118,7 +118,12 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
                 && bitMaps[columnIndex].isMarked(rowIdx);
         deviceIdSegments[i + 1] = !isNull && idSeg != null ? idSeg.toString() : null;
       }
-      deviceIDs[rowIdx] = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
+      IDeviceID currentDeviceId = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
+      if (rowIdx > 0 && currentDeviceId.equals(deviceIDs[rowIdx - 1])) {
+        deviceIDs[rowIdx] = deviceIDs[rowIdx - 1];
+      } else {
+        deviceIDs[rowIdx] = currentDeviceId;
+      }
     }
 
     return deviceIDs[rowIdx];

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.subscription.event.cache;
 
+import org.apache.iotdb.db.pipe.resource.memory.PipeFixedMemoryBlock;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
@@ -32,6 +33,8 @@ public class CachedSubscriptionPollResponse extends SubscriptionPollResponse {
 
   private volatile ByteBuffer byteBuffer; // cached serialized response
 
+  private volatile PipeFixedMemoryBlock memoryBlock;
+
   public CachedSubscriptionPollResponse(
       final short responseType,
       final SubscriptionPollPayload payload,
@@ -43,6 +46,10 @@ public class CachedSubscriptionPollResponse extends SubscriptionPollResponse {
     super(response.getResponseType(), response.getPayload(), response.getCommitContext());
   }
 
+  public void setMemoryBlock(final PipeFixedMemoryBlock memoryBlock) {
+    this.memoryBlock = memoryBlock;
+  }
+
   public ByteBuffer getByteBuffer() {
     return byteBuffer;
   }
@@ -50,6 +57,9 @@ public class CachedSubscriptionPollResponse extends SubscriptionPollResponse {
   public void invalidateByteBuffer() {
     // maybe friendly for gc
     byteBuffer = null;
+    if (Objects.nonNull(memoryBlock)) {
+      memoryBlock.close();
+    }
   }
 
   public static ByteBuffer serialize(final CachedSubscriptionPollResponse response)
