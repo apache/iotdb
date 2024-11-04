@@ -18,29 +18,31 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
+import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.And;
+import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.FullExactMatch;
+import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.NOP;
+import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.SegmentExactMatch;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
+import org.apache.tsfile.read.common.TimeRange;
+import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.And;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.FullExactMatch;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.NOP;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.SegmentExactMatch;
-import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.IDeviceID.Factory;
-import org.apache.tsfile.read.common.TimeRange;
-import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class TableDeletionEntryTest {
   @Test
   public void testSerialization() throws IOException {
-    TableDeletionEntry entry = new TableDeletionEntry(new DeletionPredicate("table1", new NOP()), new TimeRange(1, 5));
+    TableDeletionEntry entry =
+        new TableDeletionEntry(new DeletionPredicate("table1", new NOP()), new TimeRange(1, 5));
     ByteBuffer buffer = ByteBuffer.allocate(entry.serializedSize());
     entry.serialize(buffer);
     buffer.flip();
@@ -57,21 +59,32 @@ public class TableDeletionEntryTest {
 
   @Test
   public void testAffectDevice() {
-    TableDeletionEntry entry1 = new TableDeletionEntry(new DeletionPredicate("table1", new NOP()), new TimeRange(1, 5));
-    TableDeletionEntry entry2 = new TableDeletionEntry(new DeletionPredicate("table1", new FullExactMatch(
-        Factory.DEFAULT_FACTORY.create(new String[]{"table1", "id1", "id2"}))), new TimeRange(1, 5));
-    TableDeletionEntry entry3 = new TableDeletionEntry(new DeletionPredicate("table1", new SegmentExactMatch(
-        "id1", 1)), new TimeRange(1, 5));
-    TableDeletionEntry entry4 = new TableDeletionEntry(new DeletionPredicate("table1", new And(
-        new SegmentExactMatch("id1", 1),
-        new SegmentExactMatch("id2", 2))), new TimeRange(1, 5));
+    TableDeletionEntry entry1 =
+        new TableDeletionEntry(new DeletionPredicate("table1", new NOP()), new TimeRange(1, 5));
+    TableDeletionEntry entry2 =
+        new TableDeletionEntry(
+            new DeletionPredicate(
+                "table1",
+                new FullExactMatch(
+                    Factory.DEFAULT_FACTORY.create(new String[] {"table1", "id1", "id2"}))),
+            new TimeRange(1, 5));
+    TableDeletionEntry entry3 =
+        new TableDeletionEntry(
+            new DeletionPredicate("table1", new SegmentExactMatch("id1", 1)), new TimeRange(1, 5));
+    TableDeletionEntry entry4 =
+        new TableDeletionEntry(
+            new DeletionPredicate(
+                "table1",
+                new And(new SegmentExactMatch("id1", 1), new SegmentExactMatch("id2", 2))),
+            new TimeRange(1, 5));
 
-    IDeviceID deviceID1 = Factory.DEFAULT_FACTORY.create(new String[]{"table1", "id1", "id2"});
-    IDeviceID deviceID2 = Factory.DEFAULT_FACTORY.create(new String[]{"table1", "id1", "id2", "id3"});
-    IDeviceID deviceID3 = Factory.DEFAULT_FACTORY.create(new String[]{"table2", "id1", "id2"});
-    IDeviceID deviceID4 = Factory.DEFAULT_FACTORY.create(new String[]{"table1", "id1"});
-    IDeviceID deviceID5 = Factory.DEFAULT_FACTORY.create(new String[]{"table1", null, "id2"});
-    IDeviceID deviceID6 = Factory.DEFAULT_FACTORY.create(new String[]{"table1"});
+    IDeviceID deviceID1 = Factory.DEFAULT_FACTORY.create(new String[] {"table1", "id1", "id2"});
+    IDeviceID deviceID2 =
+        Factory.DEFAULT_FACTORY.create(new String[] {"table1", "id1", "id2", "id3"});
+    IDeviceID deviceID3 = Factory.DEFAULT_FACTORY.create(new String[] {"table2", "id1", "id2"});
+    IDeviceID deviceID4 = Factory.DEFAULT_FACTORY.create(new String[] {"table1", "id1"});
+    IDeviceID deviceID5 = Factory.DEFAULT_FACTORY.create(new String[] {"table1", null, "id2"});
+    IDeviceID deviceID6 = Factory.DEFAULT_FACTORY.create(new String[] {"table1"});
 
     assertTrue(entry1.affects(deviceID1));
     assertTrue(entry1.affects(deviceID2));
@@ -104,30 +117,57 @@ public class TableDeletionEntryTest {
 
   @Test
   public void testAffectDeviceAndTime() {
-    TableDeletionEntry entry1 = new TableDeletionEntry(new DeletionPredicate("table1", new NOP()), new TimeRange(1, 5));
+    TableDeletionEntry entry1 =
+        new TableDeletionEntry(new DeletionPredicate("table1", new NOP()), new TimeRange(1, 5));
 
-    assertTrue(entry1.affects(Factory.DEFAULT_FACTORY.create(new String[]{"table1", "id1", "id2"}), 0, 3));
-    assertTrue(entry1.affects(Factory.DEFAULT_FACTORY.create(new String[]{"table1", "id1", "id2"}), 2, 6));
-    assertTrue(entry1.affects(Factory.DEFAULT_FACTORY.create(new String[]{"table1", "id1", "id2"}), 0, 1));
-    assertTrue(entry1.affects(Factory.DEFAULT_FACTORY.create(new String[]{"table1", "id1", "id2"}), 5, 8));
-    assertTrue(entry1.affects(Factory.DEFAULT_FACTORY.create(new String[]{"table1", "id1", "id2"}), 2, 4));
-    assertTrue(entry1.affects(Factory.DEFAULT_FACTORY.create(new String[]{"table1", "id1", "id2"}), 1, 5));
-    assertTrue(entry1.affects(Factory.DEFAULT_FACTORY.create(new String[]{"table1", "id1", "id2"}), 0, 15));
+    assertTrue(
+        entry1.affects(
+            Factory.DEFAULT_FACTORY.create(new String[] {"table1", "id1", "id2"}), 0, 3));
+    assertTrue(
+        entry1.affects(
+            Factory.DEFAULT_FACTORY.create(new String[] {"table1", "id1", "id2"}), 2, 6));
+    assertTrue(
+        entry1.affects(
+            Factory.DEFAULT_FACTORY.create(new String[] {"table1", "id1", "id2"}), 0, 1));
+    assertTrue(
+        entry1.affects(
+            Factory.DEFAULT_FACTORY.create(new String[] {"table1", "id1", "id2"}), 5, 8));
+    assertTrue(
+        entry1.affects(
+            Factory.DEFAULT_FACTORY.create(new String[] {"table1", "id1", "id2"}), 2, 4));
+    assertTrue(
+        entry1.affects(
+            Factory.DEFAULT_FACTORY.create(new String[] {"table1", "id1", "id2"}), 1, 5));
+    assertTrue(
+        entry1.affects(
+            Factory.DEFAULT_FACTORY.create(new String[] {"table1", "id1", "id2"}), 0, 15));
 
-    assertFalse(entry1.affects(Factory.DEFAULT_FACTORY.create(new String[]{"table1", "id1", "id2"}), -1, -3));
-    assertFalse(entry1.affects(Factory.DEFAULT_FACTORY.create(new String[]{"table1", "id1", "id2"}), 11, 13));
+    assertFalse(
+        entry1.affects(
+            Factory.DEFAULT_FACTORY.create(new String[] {"table1", "id1", "id2"}), -1, -3));
+    assertFalse(
+        entry1.affects(
+            Factory.DEFAULT_FACTORY.create(new String[] {"table1", "id1", "id2"}), 11, 13));
   }
 
   @Test
   public void testAffectMeasurement() {
-    TableDeletionEntry entry1 = new TableDeletionEntry(new DeletionPredicate("table1", new NOP(),
-        Collections.singletonList("s1")), new TimeRange(1, 5));
-    TableDeletionEntry entry2 = new TableDeletionEntry(new DeletionPredicate("table1", new NOP(),
-        Collections.emptyList()), new TimeRange(1, 5));
-    TableDeletionEntry entry3 = new TableDeletionEntry(new DeletionPredicate("table1", new NOP(),
-        Collections.singletonList("**")), new TimeRange(1, 5));
-    TableDeletionEntry entry4 = new TableDeletionEntry(new DeletionPredicate("table1", new NOP(),
-        Collections.singletonList("*")), new TimeRange(1, 5));
+    TableDeletionEntry entry1 =
+        new TableDeletionEntry(
+            new DeletionPredicate("table1", new NOP(), Collections.singletonList("s1")),
+            new TimeRange(1, 5));
+    TableDeletionEntry entry2 =
+        new TableDeletionEntry(
+            new DeletionPredicate("table1", new NOP(), Collections.emptyList()),
+            new TimeRange(1, 5));
+    TableDeletionEntry entry3 =
+        new TableDeletionEntry(
+            new DeletionPredicate("table1", new NOP(), Collections.singletonList("**")),
+            new TimeRange(1, 5));
+    TableDeletionEntry entry4 =
+        new TableDeletionEntry(
+            new DeletionPredicate("table1", new NOP(), Collections.singletonList("*")),
+            new TimeRange(1, 5));
 
     assertTrue(entry1.affects("s1"));
     assertFalse(entry1.affects("s2"));
@@ -145,16 +185,24 @@ public class TableDeletionEntryTest {
 
   @Test
   public void testAffectAll() {
-    TableDeletionEntry entry1 = new TableDeletionEntry(new DeletionPredicate("table1", new NOP(),
-        Collections.singletonList("s1")), new TimeRange(1, 5));
-    TableDeletionEntry entry2 = new TableDeletionEntry(new DeletionPredicate("table1", new NOP(),
-        Collections.emptyList()), new TimeRange(1, 5));
-    TableDeletionEntry entry3 = new TableDeletionEntry(new DeletionPredicate("table1", new NOP()), new TimeRange(1, 5));
+    TableDeletionEntry entry1 =
+        new TableDeletionEntry(
+            new DeletionPredicate("table1", new NOP(), Collections.singletonList("s1")),
+            new TimeRange(1, 5));
+    TableDeletionEntry entry2 =
+        new TableDeletionEntry(
+            new DeletionPredicate("table1", new NOP(), Collections.emptyList()),
+            new TimeRange(1, 5));
+    TableDeletionEntry entry3 =
+        new TableDeletionEntry(new DeletionPredicate("table1", new NOP()), new TimeRange(1, 5));
 
-    assertFalse(entry1.affectsAll(Factory.DEFAULT_FACTORY.create(new String[]{"table1", "id1", "id2"})));
+    assertFalse(
+        entry1.affectsAll(Factory.DEFAULT_FACTORY.create(new String[] {"table1", "id1", "id2"})));
 
-    assertTrue(entry2.affectsAll(Factory.DEFAULT_FACTORY.create(new String[]{"table1", "id1", "id2"})));
+    assertTrue(
+        entry2.affectsAll(Factory.DEFAULT_FACTORY.create(new String[] {"table1", "id1", "id2"})));
 
-    assertTrue(entry3.affectsAll(Factory.DEFAULT_FACTORY.create(new String[]{"table1", "id1", "id2"})));
+    assertTrue(
+        entry3.affectsAll(Factory.DEFAULT_FACTORY.create(new String[] {"table1", "id1", "id2"})));
   }
 }

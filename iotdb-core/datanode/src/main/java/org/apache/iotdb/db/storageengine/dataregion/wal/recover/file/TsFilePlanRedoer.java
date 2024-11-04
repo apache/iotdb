@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDe
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -66,8 +67,10 @@ public class TsFilePlanRedoer {
   }
 
   void redoDelete(RelationalDeleteDataNode node) throws IOException {
-    recoveryMemTable.delete(node.getModEntry());
-    tsFileResource.getNewModFile().write(node.getModEntry());
+    for (TableDeletionEntry modEntry : node.getModEntries()) {
+      recoveryMemTable.delete(modEntry);
+      tsFileResource.getNewModFile().write(modEntry);
+    }
   }
 
   void redoInsert(InsertNode node) throws WriteProcessException {

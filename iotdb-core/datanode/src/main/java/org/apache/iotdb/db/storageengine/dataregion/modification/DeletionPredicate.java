@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
-import java.util.Objects;
 import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.NOP;
 import org.apache.iotdb.db.utils.io.BufferSerializable;
 import org.apache.iotdb.db.utils.io.StreamSerializable;
@@ -34,6 +33,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 public class DeletionPredicate implements StreamSerializable, BufferSerializable {
 
@@ -156,9 +156,9 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
       return false;
     }
     DeletionPredicate that = (DeletionPredicate) o;
-    return Objects.equals(tableName, that.tableName) && Objects.equals(
-        idPredicate, that.idPredicate) && Objects.equals(measurementNames,
-        that.measurementNames);
+    return Objects.equals(tableName, that.tableName)
+        && Objects.equals(idPredicate, that.idPredicate)
+        && Objects.equals(measurementNames, that.measurementNames);
   }
 
   @Override
@@ -168,10 +168,14 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
 
   @Override
   public String toString() {
-    return "DeletionPredicate{" +
-        "tableName='" + tableName + '\'' +
-        ", idPredicate=" + idPredicate +
-        ", measurementNames=" + measurementNames +
-        '}';
+    return "DeletionPredicate{"
+        + "tableName='"
+        + tableName
+        + '\''
+        + ", idPredicate="
+        + idPredicate
+        + ", measurementNames="
+        + measurementNames
+        + '}';
   }
 }

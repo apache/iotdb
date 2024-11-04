@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
-import java.util.Objects;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.utils.ModificationUtils;
@@ -30,6 +29,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class TableDeletionEntry extends ModEntry {
   private DeletionPredicate predicate;

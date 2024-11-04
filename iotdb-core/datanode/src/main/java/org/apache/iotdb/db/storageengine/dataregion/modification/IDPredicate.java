@@ -222,9 +222,7 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
 
     @Override
     public String toString() {
-      return "FullExactMatch{" +
-          "deviceID=" + deviceID +
-          '}';
+      return "FullExactMatch{" + "deviceID=" + deviceID + '}';
     }
   }
 
@@ -302,10 +300,13 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
 
     @Override
     public String toString() {
-      return "SegmentExactMatch{" +
-          "pattern='" + pattern + '\'' +
-          ", segmentIndex=" + segmentIndex +
-          '}';
+      return "SegmentExactMatch{"
+          + "pattern='"
+          + pattern
+          + '\''
+          + ", segmentIndex="
+          + segmentIndex
+          + '}';
     }
   }
 
@@ -390,9 +391,7 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
 
     @Override
     public String toString() {
-      return "And{" +
-          "predicates=" + predicates +
-          '}';
+      return "And{" + "predicates=" + predicates + '}';
     }
   }
 }

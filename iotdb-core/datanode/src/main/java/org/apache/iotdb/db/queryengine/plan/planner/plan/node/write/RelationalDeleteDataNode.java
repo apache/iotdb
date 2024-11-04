@@ -35,6 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferVie
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 
 import org.apache.tsfile.utils.PublicBAOS;
+import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,6 +46,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -56,7 +58,7 @@ public class RelationalDeleteDataNode extends SearchNode implements WALEntryValu
   /** byte: type */
   private static final int FIXED_SERIALIZED_SIZE = Short.BYTES;
 
-  private final TableDeletionEntry modEntry;
+  private final List<TableDeletionEntry> modEntries;
 
   private Collection<TRegionReplicaSet> replicaSets;
 
@@ -65,14 +67,21 @@ public class RelationalDeleteDataNode extends SearchNode implements WALEntryValu
 
   public RelationalDeleteDataNode(PlanNodeId id, Delete delete) {
     super(id);
-    this.modEntry =
-        new TableDeletionEntry(delete.getPredicate(), delete.getTimeRange().toTsFileTimeRange());
+    this.modEntries =
+        Collections.singletonList(
+            new TableDeletionEntry(
+                delete.getPredicate(), delete.getTimeRange().toTsFileTimeRange()));
     this.replicaSets = delete.getReplicaSets();
   }
 
   public RelationalDeleteDataNode(PlanNodeId id, TableDeletionEntry entry) {
     super(id);
-    this.modEntry = entry;
+    this.modEntries = Collections.singletonList(entry);
+  }
+
+  public RelationalDeleteDataNode(PlanNodeId id, List<TableDeletionEntry> entries) {
+    super(id);
+    this.modEntries = entries;
   }
 
   public RelationalDeleteDataNode(PlanNodeId id, Delete delete, ProgressIndex progressIndex) {
@@ -92,6 +101,12 @@ public class RelationalDeleteDataNode extends SearchNode implements WALEntryValu
     this.regionReplicaSet = regionReplicaSet;
   }
 
+  public RelationalDeleteDataNode(
+      PlanNodeId id, List<TableDeletionEntry> deletes, TRegionReplicaSet regionReplicaSet) {
+    this(id, deletes);
+    this.regionReplicaSet = regionReplicaSet;
+  }
+
   public static RelationalDeleteDataNode deserializeFromWAL(DataInputStream stream)
       throws IOException {
     long searchIndex = stream.readLong();
@@ -106,34 +121,46 @@ public class RelationalDeleteDataNode extends SearchNode implements WALEntryValu
 
   public static RelationalDeleteDataNode deserializeFromWAL(ByteBuffer buffer) {
     long searchIndex = buffer.getLong();
-    TableDeletionEntry entry = ((TableDeletionEntry) ModEntry.createFrom(buffer));
+    int entryNum = ReadWriteForEncodingUtils.readVarInt(buffer);
+    List<TableDeletionEntry> modEntries = new ArrayList<>(entryNum);
+    for (int i = 0; i < entryNum; i++) {
+      modEntries.add((TableDeletionEntry) ModEntry.createFrom(buffer));
+    }
 
     RelationalDeleteDataNode deleteDataNode =
-        new RelationalDeleteDataNode(new PlanNodeId(""), entry);
+        new RelationalDeleteDataNode(new PlanNodeId(""), modEntries);
     deleteDataNode.setSearchIndex(searchIndex);
     return deleteDataNode;
   }
 
   public static RelationalDeleteDataNode deserialize(ByteBuffer byteBuffer) {
-    TableDeletionEntry entry = ((TableDeletionEntry) ModEntry.createFrom(byteBuffer));
+    int entryNum = ReadWriteForEncodingUtils.readVarInt(byteBuffer);
+    List<TableDeletionEntry> modEntries = new ArrayList<>(entryNum);
+    for (int i = 0; i < entryNum; i++) {
+      modEntries.add((TableDeletionEntry) ModEntry.createFrom(byteBuffer));
+    }
 
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
 
     // DeleteDataNode has no child
     int ignoredChildrenSize = ReadWriteIOUtils.readInt(byteBuffer);
-    return new RelationalDeleteDataNode(planNodeId, entry);
+    return new RelationalDeleteDataNode(planNodeId, modEntries);
   }
 
   public static RelationalDeleteDataNode deserializeFromDAL(ByteBuffer byteBuffer) {
     // notice that the type is deserialized here, may move it outside
     short nodeType = byteBuffer.getShort();
-    TableDeletionEntry entry = ((TableDeletionEntry) ModEntry.createFrom(byteBuffer));
+    int entryNum = ReadWriteForEncodingUtils.readVarInt(byteBuffer);
+    List<TableDeletionEntry> modEntries = new ArrayList<>(entryNum);
+    for (int i = 0; i < entryNum; i++) {
+      modEntries.add((TableDeletionEntry) ModEntry.createFrom(byteBuffer));
+    }
 
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
 
     // DeleteDataNode has no child
     int ignoredChildrenSize = ReadWriteIOUtils.readInt(byteBuffer);
-    return new RelationalDeleteDataNode(planNodeId, entry);
+    return new RelationalDeleteDataNode(planNodeId, modEntries);
   }
 
   public ByteBuffer serializeToDAL() {
@@ -178,7 +205,7 @@ public class RelationalDeleteDataNode extends SearchNode implements WALEntryValu
   @SuppressWarnings({"java:S2975", "java:S1182"})
   @Override
   public PlanNode clone() {
-    return new RelationalDeleteDataNode(getPlanNodeId(), modEntry);
+    return new RelationalDeleteDataNode(getPlanNodeId(), modEntries);
   }
 
   @Override
@@ -193,7 +220,11 @@ public class RelationalDeleteDataNode extends SearchNode implements WALEntryValu
 
   @Override
   public int serializedSize() {
-    return FIXED_SERIALIZED_SIZE + modEntry.serializedSize();
+    int size = FIXED_SERIALIZED_SIZE + ReadWriteForEncodingUtils.varIntSize(modEntries.size());
+    for (TableDeletionEntry modEntry : modEntries) {
+      size += modEntry.serializedSize();
+    }
+    return size;
   }
 
   @Override
@@ -201,7 +232,10 @@ public class RelationalDeleteDataNode extends SearchNode implements WALEntryValu
     buffer.putShort(PlanNodeType.DELETE_DATA.getNodeType());
     buffer.putLong(searchIndex);
     try {
-      modEntry.serialize(buffer);
+      ReadWriteForEncodingUtils.writeVarInt(modEntries.size(), buffer);
+      for (TableDeletionEntry modEntry : modEntries) {
+        modEntry.serialize(buffer);
+      }
     } catch (IOException e) {
       LOGGER.error("Failed to serialize modEntry to WAL", e);
     }
@@ -210,13 +244,17 @@ public class RelationalDeleteDataNode extends SearchNode implements WALEntryValu
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.RELATIONAL_DELETE_DATA.serialize(byteBuffer);
-    modEntry.serialize(byteBuffer);
+    ReadWriteForEncodingUtils.writeVarInt(modEntries.size(), byteBuffer);
+    modEntries.forEach(entry -> entry.serialize(byteBuffer));
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.RELATIONAL_DELETE_DATA.serialize(stream);
-    modEntry.serialize(stream);
+    ReadWriteForEncodingUtils.writeVarInt(modEntries.size(), stream);
+    for (TableDeletionEntry modEntry : modEntries) {
+      modEntry.serialize(stream);
+    }
   }
 
   @Override
@@ -243,20 +281,20 @@ public class RelationalDeleteDataNode extends SearchNode implements WALEntryValu
     }
     final RelationalDeleteDataNode that = (RelationalDeleteDataNode) obj;
     return this.getPlanNodeId().equals(that.getPlanNodeId())
-        && Objects.equals(this.modEntry, that.modEntry)
+        && Objects.equals(this.modEntries, that.modEntries)
         && Objects.equals(this.progressIndex, that.progressIndex);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(getPlanNodeId(), modEntry, progressIndex);
+    return Objects.hash(getPlanNodeId(), modEntries, progressIndex);
   }
 
   public String toString() {
     return String.format(
         "RelationalDeleteDataNode-%s[ Deletion: %s, Region: %s, ProgressIndex: %s]",
         getPlanNodeId(),
-        modEntry,
+        modEntries,
         regionReplicaSet == null ? "Not Assigned" : regionReplicaSet.getRegionId(),
         progressIndex == null ? "Not Assigned" : progressIndex);
   }
@@ -264,11 +302,11 @@ public class RelationalDeleteDataNode extends SearchNode implements WALEntryValu
   @Override
   public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
     return replicaSets.stream()
-        .map(r -> new RelationalDeleteDataNode(getPlanNodeId(), modEntry, r))
+        .map(r -> new RelationalDeleteDataNode(getPlanNodeId(), modEntries, r))
         .collect(Collectors.toList());
   }
 
-  public TableDeletionEntry getModEntry() {
-    return modEntry;
+  public List<TableDeletionEntry> getModEntries() {
+    return modEntries;
   }
 }

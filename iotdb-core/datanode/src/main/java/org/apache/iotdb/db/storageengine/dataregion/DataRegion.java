@@ -158,6 +158,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -2324,14 +2325,13 @@ public class DataRegion implements IDataRegionForQuery {
       throw new IOException(
           "Delete failed. " + "Please do not delete until the old files settled.");
     }
-    TableDeletionEntry modEntry = node.getModEntry();
+    List<TableDeletionEntry> modEntries = node.getModEntries();
 
     writeLock("delete");
     boolean hasReleasedLock = false;
     try {
       TableDeviceSchemaCache.getInstance()
-          .invalidateLastCache(getDatabaseName(), modEntry.getTableName());
-
+          .invalidateLastCache(getDatabaseName(), modEntries.get(0).getTableName());
       List<WALFlushListener> walListeners = logDeletionInWAL(node);
 
       for (WALFlushListener walFlushListener : walListeners) {
@@ -2341,14 +2341,19 @@ public class DataRegion implements IDataRegionForQuery {
         }
       }
 
-      List<TsFileResource> sealedTsFileResource = new ArrayList<>();
-      List<TsFileResource> unsealedTsFileResource = new ArrayList<>();
-      getTwoKindsOfTsFiles(
-          sealedTsFileResource,
-          unsealedTsFileResource,
-          modEntry.getStartTime(),
-          modEntry.getEndTime());
-      deleteDataInUnsealedFiles(unsealedTsFileResource, modEntry, sealedTsFileResource);
+      List<List<TsFileResource>> sealedTsFileResourceLists = new ArrayList<>(modEntries.size());
+      for (TableDeletionEntry modEntry : modEntries) {
+        List<TsFileResource> sealedTsFileResource = new ArrayList<>();
+        List<TsFileResource> unsealedTsFileResource = new ArrayList<>();
+        getTwoKindsOfTsFiles(
+            sealedTsFileResource,
+            unsealedTsFileResource,
+            modEntry.getStartTime(),
+            modEntry.getEndTime());
+        deleteDataInUnsealedFiles(unsealedTsFileResource, modEntry, sealedTsFileResource);
+        sealedTsFileResourceLists.add(sealedTsFileResource);
+      }
+
       // capture deleteDataNode and wait it to be persisted to DAL.
       DeletionResource deletionResource =
           PipeInsertionDataNodeListener.getInstance().listenToDeleteData(dataRegionId, node);
@@ -2356,10 +2361,13 @@ public class DataRegion implements IDataRegionForQuery {
       if (deletionResource != null && deletionResource.waitForResult() == Status.FAILURE) {
         throw deletionResource.getCause();
       }
+
       writeUnlock();
       hasReleasedLock = true;
 
-      deleteDataInSealedFiles(sealedTsFileResource, modEntry);
+      for (int i = 0; i < modEntries.size(); i++) {
+        deleteDataInSealedFiles(sealedTsFileResourceLists.get(i), modEntries.get(i));
+      }
     } catch (Exception e) {
       throw new IOException(e);
     } finally {
@@ -2424,20 +2432,28 @@ public class DataRegion implements IDataRegionForQuery {
       return Collections.emptyList();
     }
     List<WALFlushListener> walFlushListeners = new ArrayList<>();
-    long startTime = deleteDataNode.getModEntry().getStartTime();
-    long endTime = deleteDataNode.getModEntry().getEndTime();
-    for (Map.Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
-      if (TimePartitionUtils.satisfyPartitionId(startTime, endTime, entry.getKey())) {
-        WALFlushListener walFlushListener = entry.getValue().logDeleteDataNodeInWAL(deleteDataNode);
-        walFlushListeners.add(walFlushListener);
+    Set<TsFileProcessor> involvedProcessors = new HashSet<>();
+
+    for (TableDeletionEntry modEntry : deleteDataNode.getModEntries()) {
+      long startTime = modEntry.getStartTime();
+      long endTime = modEntry.getEndTime();
+      for (Map.Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
+        if (TimePartitionUtils.satisfyPartitionId(startTime, endTime, entry.getKey())) {
+          involvedProcessors.add(entry.getValue());
+        }
+      }
+      for (Map.Entry<Long, TsFileProcessor> entry : workUnsequenceTsFileProcessors.entrySet()) {
+        if (TimePartitionUtils.satisfyPartitionId(startTime, endTime, entry.getKey())) {
+          involvedProcessors.add(entry.getValue());
+        }
       }
     }
-    for (Map.Entry<Long, TsFileProcessor> entry : workUnsequenceTsFileProcessors.entrySet()) {
-      if (TimePartitionUtils.satisfyPartitionId(startTime, endTime, entry.getKey())) {
-        WALFlushListener walFlushListener = entry.getValue().logDeleteDataNodeInWAL(deleteDataNode);
-        walFlushListeners.add(walFlushListener);
-      }
+
+    for (TsFileProcessor involvedProcessor : involvedProcessors) {
+      WALFlushListener walFlushListener = involvedProcessor.logDeleteDataNodeInWAL(deleteDataNode);
+      walFlushListeners.add(walFlushListener);
     }
+
     return walFlushListeners;
   }
 
