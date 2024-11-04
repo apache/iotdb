@@ -55,6 +55,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataTypeParameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
@@ -564,6 +565,17 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         getLocation(ctx),
         new Table(getLocation(ctx), getQualifiedName(ctx.qualifiedName())),
         visit(ctx.updateAssignment(), UpdateAssignment.class),
+        Objects.nonNull(ctx.booleanExpression())
+            ? (Expression) visit(ctx.booleanExpression())
+            : null);
+  }
+
+  @Override
+  public Node visitDeleteDeviceStatement(
+      final RelationalSqlParser.DeleteDeviceStatementContext ctx) {
+    return new DeleteDevice(
+        getLocation(ctx),
+        new Table(getLocation(ctx), getQualifiedName(ctx.qualifiedName())),
         Objects.nonNull(ctx.booleanExpression())
             ? (Expression) visit(ctx.booleanExpression())
             : null);
