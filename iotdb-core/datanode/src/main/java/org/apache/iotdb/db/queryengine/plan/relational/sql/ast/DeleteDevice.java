@@ -86,8 +86,9 @@ public class DeleteDevice extends AbstractTraverseDevice {
     }
   }
 
-  public static Pair<List<PartialPath>, DevicePredicateFilter> constructDevicePredicateUpdater(
-      final String database, final String tableName, final byte[] updateInfo) {
+  public static Pair<List<PartialPath>, DevicePredicateFilter>
+      constructPathsAndDevicePredicateUpdater(
+          final String database, final String tableName, final byte[] updateInfo) {
     final ByteBuffer buffer = ByteBuffer.wrap(updateInfo);
 
     // Device pattern list
