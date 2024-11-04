@@ -54,6 +54,9 @@ public class InMemoryHashAggregationBuilder implements HashAggregationBuilder {
 
   private boolean full;
 
+  private Iterator<Integer> groupIds;
+  private final TsBlockBuilder pageBuilder;
+
   public InMemoryHashAggregationBuilder(
       List<GroupedAggregator> groupedAggregators,
       AggregationNode.Step step,
@@ -97,6 +100,8 @@ public class InMemoryHashAggregationBuilder implements HashAggregationBuilder {
     this.partial = step.isOutputPartial();
     this.maxPartialMemory = OptionalLong.of(maxPartialMemory);
     this.updateMemory = updateMemory;
+
+    this.pageBuilder = new TsBlockBuilder(buildTypes());
   }
 
   @Override
@@ -174,6 +179,11 @@ public class InMemoryHashAggregationBuilder implements HashAggregationBuilder {
     return buildResult(consecutiveGroupIds());
   }
 
+  @Override
+  public boolean finished() {
+    return !groupIds.hasNext();
+  }
+
   public List<Type> buildSpillTypes() {
     ArrayList<Type> types = new ArrayList<>(groupByOutputTypes);
     for (GroupedAggregator groupedAggregator : groupedAggregators) {
@@ -187,12 +197,9 @@ public class InMemoryHashAggregationBuilder implements HashAggregationBuilder {
   }
 
   private TsBlock buildResult(Iterator<Integer> groupIds) {
-    TsBlockBuilder pageBuilder = new TsBlockBuilder(buildTypes());
-
     pageBuilder.reset();
 
-    // TODO Memory Control Weihao Li
-    while (groupIds.hasNext()) {
+    while (!pageBuilder.isFull() && groupIds.hasNext()) {
       int groupId = groupIds.next();
 
       groupByHash.appendValuesTo(groupId, pageBuilder);
@@ -223,6 +230,9 @@ public class InMemoryHashAggregationBuilder implements HashAggregationBuilder {
   }
 
   private Iterator<Integer> consecutiveGroupIds() {
-    return IntStream.range(0, groupByHash.getGroupCount()).iterator();
+    if (groupIds == null) {
+      groupIds = IntStream.range(0, groupByHash.getGroupCount()).iterator();
+    }
+    return groupIds;
   }
 }

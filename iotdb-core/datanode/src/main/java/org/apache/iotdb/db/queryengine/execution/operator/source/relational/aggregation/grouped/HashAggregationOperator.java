@@ -129,7 +129,6 @@ public class HashAggregationOperator extends AbstractOperator {
                 maxPartialMemory,
                 NOOP);
       }
-      updateOccupiedMemorySize();
     } else {
       checkState(!aggregationBuilder.isFull(), "Aggregation buffer is full");
     }
@@ -172,8 +171,10 @@ public class HashAggregationOperator extends AbstractOperator {
 
     TsBlock result = aggregationBuilder.buildResult();
 
-    closeAggregationBuilder();
-    finished = true;
+    if (aggregationBuilder.finished()) {
+      closeAggregationBuilder();
+      finished = true;
+    }
     return result;
   }
 
