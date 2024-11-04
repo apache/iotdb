@@ -20,7 +20,10 @@
 package org.apache.iotdb.db.subscription.event.response;
 
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
 import org.apache.iotdb.db.subscription.event.cache.CachedSubscriptionPollResponse;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FilePiecePayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileSealPayload;
@@ -36,7 +39,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -136,35 +138,51 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
 
   private @NonNull CachedSubscriptionPollResponse generateResponseWithPieceOrSealPayload(
       final long writingOffset) throws IOException {
-    final long readFileBufferSize =
-        SubscriptionConfig.getInstance().getSubscriptionReadFileBufferSize();
-    final byte[] readBuffer = new byte[(int) readFileBufferSize];
-    try (final RandomAccessFile reader = new RandomAccessFile(tsFile, "r")) {
-      while (true) {
-        reader.seek(writingOffset);
-        final int readLength = reader.read(readBuffer);
-        if (readLength == -1) {
-          break;
-        }
-
-        final byte[] filePiece =
-            readLength == readFileBufferSize
-                ? readBuffer
-                : Arrays.copyOfRange(readBuffer, 0, readLength);
-
-        // generate subscription poll response with piece payload
-        return new CachedSubscriptionPollResponse(
-            SubscriptionPollResponseType.FILE_PIECE.getType(),
-            new FilePiecePayload(tsFile.getName(), writingOffset + readLength, filePiece),
-            commitContext);
-      }
-
+    final long tsFileLength = tsFile.length();
+    if (writingOffset >= tsFileLength) {
       // generate subscription poll response with seal payload
       hasNoMore = true;
       return new CachedSubscriptionPollResponse(
           SubscriptionPollResponseType.FILE_SEAL.getType(),
           new FileSealPayload(tsFile.getName(), tsFile.length()),
           commitContext);
+    }
+
+    final long readFileBufferSize =
+        SubscriptionConfig.getInstance().getSubscriptionReadFileBufferSize();
+    final long bufferSize;
+    if (writingOffset + readFileBufferSize >= tsFileLength) {
+      // last piece
+      bufferSize = tsFileLength - writingOffset;
+    } else {
+      // not last piece
+      bufferSize = readFileBufferSize;
+    }
+
+    try (final RandomAccessFile reader = new RandomAccessFile(tsFile, "r")) {
+      reader.seek(writingOffset);
+
+      final PipeTsFileMemoryBlock memoryBlock =
+          PipeDataNodeResourceManager.memory().forceAllocateForTsFileWithRetry(bufferSize);
+      final byte[] readBuffer = new byte[(int) bufferSize];
+
+      final int readLength = reader.read(readBuffer);
+      if (readLength != bufferSize) {
+        memoryBlock.close();
+        throw new SubscriptionException(
+            String.format(
+                "inconsistent read length (broken invariant), expected: %s, actual: %s",
+                bufferSize, readLength));
+      }
+
+      // generate subscription poll response with piece payload
+      final CachedSubscriptionPollResponse response =
+          new CachedSubscriptionPollResponse(
+              SubscriptionPollResponseType.FILE_PIECE.getType(),
+              new FilePiecePayload(tsFile.getName(), writingOffset + readLength, readBuffer),
+              commitContext);
+      response.setMemoryBlock(memoryBlock);
+      return response;
     }
   }
 }
