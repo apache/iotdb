@@ -2785,10 +2785,27 @@ public class Session implements ISession {
 
   private void insertRelationalTabletWithLeaderCache(Tablet tablet)
       throws IoTDBConnectionException, StatementExecutionException {
-    Map<SessionConnection, Tablet> relationalTabletGroup = new HashMap<>();
     if (tableModelDeviceIdToEndpoint.isEmpty()) {
-      relationalTabletGroup.put(defaultSessionConnection, tablet);
+      TSInsertTabletReq request = genTSInsertTabletReq(tablet, false, false);
+      request.setWriteToTable(true);
+      request.setColumnCategories(
+          tablet.getColumnTypes().stream()
+              .map(t -> (byte) t.ordinal())
+              .collect(Collectors.toList()));
+      try {
+        defaultSessionConnection.insertTablet(request);
+      } catch (RedirectException e) {
+        List<TEndPoint> endPointList = e.getEndPointList();
+        Map<IDeviceID, TEndPoint> endPointMap = new HashMap<>();
+        for (int i = 0; i < endPointList.size(); i++) {
+          if (endPointList.get(i) != null) {
+            endPointMap.put(tablet.getDeviceID(i), endPointList.get(i));
+          }
+        }
+        endPointMap.forEach(this::handleRedirection);
+      }
     } else {
+      Map<SessionConnection, Tablet> relationalTabletGroup = new HashMap<>();
       for (int i = 0; i < tablet.rowSize; i++) {
         IDeviceID iDeviceID = tablet.getDeviceID(i);
         final SessionConnection connection = getSessionConnection(iDeviceID);
@@ -2815,8 +2832,8 @@ public class Session implements ISession {
               return v;
             });
       }
+      insertRelationalTabletByGroup(relationalTabletGroup);
     }
-    insertRelationalTabletByGroup(relationalTabletGroup);
   }
 
   @SuppressWarnings({
