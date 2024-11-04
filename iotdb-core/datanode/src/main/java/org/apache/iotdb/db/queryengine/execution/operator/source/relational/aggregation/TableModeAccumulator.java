@@ -31,10 +31,11 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Utils.UNSUPPORTED_TYPE_MESSAGE;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Utils.serializeBinaryValue;
+import static org.apache.tsfile.utils.BytesUtils.bytesToBool;
+import static org.apache.tsfile.utils.BytesUtils.bytesToLongFromOffset;
 
 public class TableModeAccumulator implements TableAccumulator {
 
@@ -50,6 +51,8 @@ public class TableModeAccumulator implements TableAccumulator {
   private Map<Long, Long> longCountMap;
   private Map<Double, Long> doubleCountMap;
   private Map<Binary, Long> binaryCountMap;
+
+  private long nullCount;
 
   public TableModeAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
@@ -147,11 +150,14 @@ public class TableModeAccumulator implements TableAccumulator {
         if (booleanCountMap.isEmpty()) {
           columnBuilder.appendNull();
         } else {
-          Optional<Boolean> maxKey =
-              booleanCountMap.entrySet().stream()
-                  .max(Map.Entry.comparingByValue())
-                  .map(Map.Entry::getKey);
-          maxKey.ifPresent(columnBuilder::writeBoolean);
+          // must be present
+          Map.Entry<Boolean, Long> maxEntry =
+              booleanCountMap.entrySet().stream().max(Map.Entry.comparingByValue()).get();
+          if (maxEntry.getValue() < nullCount) {
+            columnBuilder.appendNull();
+          } else {
+            columnBuilder.writeBoolean(maxEntry.getKey());
+          }
         }
         break;
       case INT32:
@@ -159,22 +165,26 @@ public class TableModeAccumulator implements TableAccumulator {
         if (intCountMap.isEmpty()) {
           columnBuilder.appendNull();
         } else {
-          Optional<Integer> maxKey =
-              intCountMap.entrySet().stream()
-                  .max(Map.Entry.comparingByValue())
-                  .map(Map.Entry::getKey);
-          maxKey.ifPresent(columnBuilder::writeInt);
+          Map.Entry<Integer, Long> maxEntry =
+              intCountMap.entrySet().stream().max(Map.Entry.comparingByValue()).get();
+          if (maxEntry.getValue() < nullCount) {
+            columnBuilder.appendNull();
+          } else {
+            columnBuilder.writeInt(maxEntry.getKey());
+          }
         }
         break;
       case FLOAT:
         if (floatCountMap.isEmpty()) {
           columnBuilder.appendNull();
         } else {
-          Optional<Float> maxKey =
-              floatCountMap.entrySet().stream()
-                  .max(Map.Entry.comparingByValue())
-                  .map(Map.Entry::getKey);
-          maxKey.ifPresent(columnBuilder::writeFloat);
+          Map.Entry<Float, Long> maxEntry =
+              floatCountMap.entrySet().stream().max(Map.Entry.comparingByValue()).get();
+          if (maxEntry.getValue() < nullCount) {
+            columnBuilder.appendNull();
+          } else {
+            columnBuilder.writeFloat(maxEntry.getKey());
+          }
         }
         break;
       case INT64:
@@ -182,22 +192,26 @@ public class TableModeAccumulator implements TableAccumulator {
         if (longCountMap.isEmpty()) {
           columnBuilder.appendNull();
         } else {
-          Optional<Long> maxKey =
-              longCountMap.entrySet().stream()
-                  .max(Map.Entry.comparingByValue())
-                  .map(Map.Entry::getKey);
-          maxKey.ifPresent(columnBuilder::writeLong);
+          Map.Entry<Long, Long> maxEntry =
+              longCountMap.entrySet().stream().max(Map.Entry.comparingByValue()).get();
+          if (maxEntry.getValue() < nullCount) {
+            columnBuilder.appendNull();
+          } else {
+            columnBuilder.writeLong(maxEntry.getKey());
+          }
         }
         break;
       case DOUBLE:
         if (doubleCountMap.isEmpty()) {
           columnBuilder.appendNull();
         } else {
-          Optional<Double> maxKey =
-              doubleCountMap.entrySet().stream()
-                  .max(Map.Entry.comparingByValue())
-                  .map(Map.Entry::getKey);
-          maxKey.ifPresent(columnBuilder::writeDouble);
+          Map.Entry<Double, Long> maxEntry =
+              doubleCountMap.entrySet().stream().max(Map.Entry.comparingByValue()).get();
+          if (maxEntry.getValue() < nullCount) {
+            columnBuilder.appendNull();
+          } else {
+            columnBuilder.writeDouble(maxEntry.getKey());
+          }
         }
         break;
       case TEXT:
@@ -206,11 +220,13 @@ public class TableModeAccumulator implements TableAccumulator {
         if (binaryCountMap.isEmpty()) {
           columnBuilder.appendNull();
         } else {
-          Optional<Binary> maxKey =
-              binaryCountMap.entrySet().stream()
-                  .max(Map.Entry.comparingByValue())
-                  .map(Map.Entry::getKey);
-          maxKey.ifPresent(columnBuilder::writeBinary);
+          Map.Entry<Binary, Long> maxEntry =
+              binaryCountMap.entrySet().stream().max(Map.Entry.comparingByValue()).get();
+          if (maxEntry.getValue() < nullCount) {
+            columnBuilder.appendNull();
+          } else {
+            columnBuilder.writeBinary(maxEntry.getKey());
+          }
         }
         break;
       default:
@@ -249,15 +265,22 @@ public class TableModeAccumulator implements TableAccumulator {
     if (binaryCountMap != null) {
       binaryCountMap.clear();
     }
+    nullCount = 0;
   }
 
+  // haveNull | nullCount (optional) | countMap
   private byte[] serializeCountMap() {
     byte[] bytes;
-    int offset = 0;
+    int offset = 1 + (nullCount == 0 ? 0 : Long.BYTES);
+    ;
 
     switch (seriesDataType) {
       case BOOLEAN:
-        bytes = new byte[4 + (1 + 8) * booleanCountMap.size()];
+        bytes = new byte[offset + 4 + (1 + 8) * booleanCountMap.size()];
+        BytesUtils.boolToBytes(nullCount != 0, bytes, 0);
+        if (nullCount != 0) {
+          BytesUtils.longToBytes(nullCount, bytes, 1);
+        }
         BytesUtils.intToBytes(booleanCountMap.size(), bytes, offset);
         offset += 4;
         for (Map.Entry<Boolean, Long> entry : booleanCountMap.entrySet()) {
@@ -269,7 +292,11 @@ public class TableModeAccumulator implements TableAccumulator {
         break;
       case INT32:
       case DATE:
-        bytes = new byte[4 + (4 + 8) * intCountMap.size()];
+        bytes = new byte[offset + 4 + (4 + 8) * intCountMap.size()];
+        BytesUtils.boolToBytes(nullCount != 0, bytes, 0);
+        if (nullCount != 0) {
+          BytesUtils.longToBytes(nullCount, bytes, 1);
+        }
         BytesUtils.intToBytes(intCountMap.size(), bytes, offset);
         offset += 4;
         for (Map.Entry<Integer, Long> entry : intCountMap.entrySet()) {
@@ -280,7 +307,11 @@ public class TableModeAccumulator implements TableAccumulator {
         }
         break;
       case FLOAT:
-        bytes = new byte[4 + (4 + 8) * floatCountMap.size()];
+        bytes = new byte[offset + 4 + (4 + 8) * floatCountMap.size()];
+        BytesUtils.boolToBytes(nullCount != 0, bytes, 0);
+        if (nullCount != 0) {
+          BytesUtils.longToBytes(nullCount, bytes, 1);
+        }
         BytesUtils.intToBytes(floatCountMap.size(), bytes, offset);
         offset += 4;
         for (Map.Entry<Float, Long> entry : floatCountMap.entrySet()) {
@@ -292,7 +323,11 @@ public class TableModeAccumulator implements TableAccumulator {
         break;
       case INT64:
       case TIMESTAMP:
-        bytes = new byte[4 + (8 + 8) * longCountMap.size()];
+        bytes = new byte[offset + 4 + (8 + 8) * longCountMap.size()];
+        BytesUtils.boolToBytes(nullCount != 0, bytes, 0);
+        if (nullCount != 0) {
+          BytesUtils.longToBytes(nullCount, bytes, 1);
+        }
         BytesUtils.intToBytes(longCountMap.size(), bytes, offset);
         offset += 4;
         for (Map.Entry<Long, Long> entry : longCountMap.entrySet()) {
@@ -303,7 +338,11 @@ public class TableModeAccumulator implements TableAccumulator {
         }
         break;
       case DOUBLE:
-        bytes = new byte[4 + (8 + 8) * doubleCountMap.size()];
+        bytes = new byte[offset + 4 + (8 + 8) * doubleCountMap.size()];
+        BytesUtils.boolToBytes(nullCount != 0, bytes, 0);
+        if (nullCount != 0) {
+          BytesUtils.longToBytes(nullCount, bytes, 1);
+        }
         BytesUtils.intToBytes(doubleCountMap.size(), bytes, offset);
         offset += 4;
         for (Map.Entry<Double, Long> entry : doubleCountMap.entrySet()) {
@@ -318,11 +357,16 @@ public class TableModeAccumulator implements TableAccumulator {
       case BLOB:
         bytes =
             new byte
-                [4
+                [offset
+                    + 4
                     + (8 + 4) * binaryCountMap.size()
                     + binaryCountMap.keySet().stream()
                         .mapToInt(key -> key.getValues().length)
                         .sum()];
+        BytesUtils.boolToBytes(nullCount != 0, bytes, 0);
+        if (nullCount != 0) {
+          BytesUtils.longToBytes(nullCount, bytes, 1);
+        }
         BytesUtils.intToBytes(binaryCountMap.size(), bytes, offset);
         offset += 4;
         for (Map.Entry<Binary, Long> entry : binaryCountMap.entrySet()) {
@@ -343,6 +387,11 @@ public class TableModeAccumulator implements TableAccumulator {
 
   private void deserializeAndMergeCountMap(byte[] bytes) {
     int offset = 0;
+    if (bytesToBool(bytes, 0)) {
+      nullCount += bytesToLongFromOffset(bytes, Long.BYTES, 1);
+      offset += Long.BYTES;
+    }
+    offset++;
     int size = BytesUtils.bytesToInt(bytes, offset);
     offset += 4;
 
@@ -378,7 +427,7 @@ public class TableModeAccumulator implements TableAccumulator {
       case INT64:
       case TIMESTAMP:
         for (int i = 0; i < size; i++) {
-          long key = BytesUtils.bytesToLong(bytes, offset);
+          long key = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, offset);
           offset += 8;
           long count = BytesUtils.bytesToLongFromOffset(bytes, 8, offset);
           offset += 8;
@@ -420,6 +469,8 @@ public class TableModeAccumulator implements TableAccumulator {
         if (booleanCountMap.size() > MAP_SIZE_THRESHOLD) {
           checkMapSize(booleanCountMap.size());
         }
+      } else {
+        nullCount++;
       }
     }
   }
@@ -429,6 +480,8 @@ public class TableModeAccumulator implements TableAccumulator {
       if (!column.isNull(i)) {
         intCountMap.compute(column.getInt(i), (k, v) -> v == null ? 1 : v + 1);
         checkMapSize(intCountMap.size());
+      } else {
+        nullCount++;
       }
     }
   }
@@ -438,6 +491,8 @@ public class TableModeAccumulator implements TableAccumulator {
       if (!column.isNull(i)) {
         floatCountMap.compute(column.getFloat(i), (k, v) -> v == null ? 1 : v + 1);
         checkMapSize(floatCountMap.size());
+      } else {
+        nullCount++;
       }
     }
   }
@@ -447,6 +502,8 @@ public class TableModeAccumulator implements TableAccumulator {
       if (!column.isNull(i)) {
         longCountMap.compute(column.getLong(i), (k, v) -> v == null ? 1 : v + 1);
         checkMapSize(longCountMap.size());
+      } else {
+        nullCount++;
       }
     }
   }
@@ -456,6 +513,8 @@ public class TableModeAccumulator implements TableAccumulator {
       if (!column.isNull(i)) {
         doubleCountMap.compute(column.getDouble(i), (k, v) -> v == null ? 1 : v + 1);
         checkMapSize(doubleCountMap.size());
+      } else {
+        nullCount++;
       }
     }
   }
@@ -465,6 +524,8 @@ public class TableModeAccumulator implements TableAccumulator {
       if (!column.isNull(i)) {
         binaryCountMap.compute(column.getBinary(i), (k, v) -> v == null ? 1 : v + 1);
         checkMapSize(binaryCountMap.size());
+      } else {
+        nullCount++;
       }
     }
   }

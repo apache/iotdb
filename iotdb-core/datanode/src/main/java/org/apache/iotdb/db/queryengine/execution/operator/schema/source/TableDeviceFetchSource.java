@@ -98,10 +98,7 @@ public class TableDeviceFetchSource implements ISchemaSource<IDeviceSchemaInfo> 
         } else {
           builder
               .getColumnBuilder(resultIndex)
-              .writeBinary(
-                  new Binary(
-                      schemaInfo.getAttributeValue(columnHeader.getColumnName()),
-                      TSFileConfig.STRING_CHARSET));
+              .writeBinary(schemaInfo.getAttributeValue(columnHeader.getColumnName()));
         }
       }
       resultIndex++;

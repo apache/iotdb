@@ -68,7 +68,7 @@ public abstract class AbstractCompactionEstimator {
               ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
                   / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
                   * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion())
-          + BatchCompactionPlan.MAX_CACHED_TIME_CHUNKS_SIZE;
+          + BatchCompactionPlan.maxCachedTimeChunksSize;
 
   protected abstract long calculatingMetadataMemoryCost(CompactionTaskInfo taskInfo);
 

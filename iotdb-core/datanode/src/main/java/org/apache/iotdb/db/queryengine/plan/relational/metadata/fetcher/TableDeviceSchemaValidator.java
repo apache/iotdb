@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,27 +73,47 @@ public class TableDeviceSchemaValidator {
 
   public void validateDeviceSchema(
       final ITableDeviceSchemaValidation schemaValidation, final MPPQueryContext context) {
-    ValidateResult validateResult = validateDeviceSchemaInCache(schemaValidation);
-
-    if (!validateResult.missingDeviceIndexList.isEmpty()) {
-      validateResult = fetchAndValidateDeviceSchema(schemaValidation, validateResult, context);
-    }
-
-    if (!validateResult.missingDeviceIndexList.isEmpty()
-        || !validateResult.attributeUpdateDeviceIndexList.isEmpty()) {
-      autoCreateOrUpdateDeviceSchema(schemaValidation, validateResult, context);
-    }
-  }
-
-  private ValidateResult validateDeviceSchemaInCache(
-      final ITableDeviceSchemaValidation schemaValidation) {
-    final ValidateResult result = new ValidateResult();
+    // High-cost operations, shall only be called once
     final List<Object[]> deviceIdList = schemaValidation.getDeviceIdList();
     final List<String> attributeKeyList = schemaValidation.getAttributeColumnNameList();
     final List<Object[]> attributeValueList = schemaValidation.getAttributeValueList();
 
+    ValidateResult validateResult =
+        validateDeviceSchemaInCache(
+            schemaValidation, deviceIdList, attributeKeyList, attributeValueList);
+
+    if (!validateResult.missingDeviceIndexList.isEmpty()) {
+      validateResult =
+          fetchAndValidateDeviceSchema(
+              schemaValidation,
+              validateResult,
+              context,
+              deviceIdList,
+              attributeKeyList,
+              attributeValueList);
+    }
+
+    if (!validateResult.missingDeviceIndexList.isEmpty()
+        || !validateResult.attributeUpdateDeviceIndexList.isEmpty()) {
+      autoCreateOrUpdateDeviceSchema(
+          schemaValidation,
+          validateResult,
+          context,
+          deviceIdList,
+          attributeKeyList,
+          attributeValueList);
+    }
+  }
+
+  private ValidateResult validateDeviceSchemaInCache(
+      final ITableDeviceSchemaValidation schemaValidation,
+      final List<Object[]> deviceIdList,
+      final List<String> attributeKeyList,
+      final List<Object[]> attributeValueList) {
+    final ValidateResult result = new ValidateResult();
+
     for (int i = 0, size = deviceIdList.size(); i < size; i++) {
-      final Map<String, String> attributeMap =
+      final Map<String, Binary> attributeMap =
           TableDeviceSchemaCache.getInstance()
               .getDeviceAttribute(
                   schemaValidation.getDatabase(),
@@ -116,27 +137,26 @@ public class TableDeviceSchemaValidator {
   private ValidateResult fetchAndValidateDeviceSchema(
       final ITableDeviceSchemaValidation schemaValidation,
       final ValidateResult previousValidateResult,
-      final MPPQueryContext context) {
-    final Map<IDeviceID, Map<String, String>> fetchedDeviceSchema =
+      final MPPQueryContext context,
+      final List<Object[]> deviceIdList,
+      final List<String> attributeKeyList,
+      final List<Object[]> attributeValueList) {
+    final Map<IDeviceID, Map<String, Binary>> fetchedDeviceSchema =
         fetcher.fetchMissingDeviceSchemaForDataInsertion(
             new FetchDevice(
                 schemaValidation.getDatabase(),
                 schemaValidation.getTableName(),
                 previousValidateResult.missingDeviceIndexList.stream()
-                    .map(index -> schemaValidation.getDeviceIdList().get(index))
+                    .map(deviceIdList::get)
                     .collect(Collectors.toList())),
             context);
 
-    final List<String> attributeKeyList = schemaValidation.getAttributeColumnNameList();
-    final List<Object[]> attributeValueList = schemaValidation.getAttributeValueList();
-
     final ValidateResult result = new ValidateResult();
     for (final int index : previousValidateResult.missingDeviceIndexList) {
-      final Map<String, String> attributeMap =
+      final Map<String, Binary> attributeMap =
           fetchedDeviceSchema.get(
               convertIdValuesToDeviceID(
-                  schemaValidation.getTableName(),
-                  (String[]) schemaValidation.getDeviceIdList().get(index)));
+                  schemaValidation.getTableName(), (String[]) deviceIdList.get(index)));
       if (attributeMap == null) {
         result.missingDeviceIndexList.add(index);
       } else {
@@ -156,12 +176,12 @@ public class TableDeviceSchemaValidator {
       final List<Object[]> attributeValueList,
       final ValidateResult result,
       final int index,
-      final Map<String, String> attributeMap) {
+      final Map<String, Binary> attributeMap) {
     final Object[] deviceAttributeValueList = attributeValueList.get(index);
     for (int j = 0, size = attributeKeyList.size(); j < size; j++) {
       if (deviceAttributeValueList[j] != null) {
         final String key = attributeKeyList.get(j);
-        final String value = attributeMap.get(key);
+        final Binary value = attributeMap.get(key);
 
         if (!deviceAttributeValueList[j].equals(value)) {
           result.attributeUpdateDeviceIndexList.add(index);
@@ -174,7 +194,10 @@ public class TableDeviceSchemaValidator {
   private void autoCreateOrUpdateDeviceSchema(
       final ITableDeviceSchemaValidation schemaValidation,
       final ValidateResult previousValidateResult,
-      final MPPQueryContext context) {
+      final MPPQueryContext context,
+      final List<Object[]> inputDeviceIdList,
+      final List<String> attributeKeyList,
+      final List<Object[]> intPutAttributeValueList) {
     final int size =
         previousValidateResult.missingDeviceIndexList.size()
             + previousValidateResult.attributeUpdateDeviceIndexList.size();
@@ -183,14 +206,14 @@ public class TableDeviceSchemaValidator {
 
     previousValidateResult.missingDeviceIndexList.forEach(
         index -> {
-          deviceIdList.add(schemaValidation.getDeviceIdList().get(index));
-          attributeValueList.add(schemaValidation.getAttributeValueList().get(index));
+          deviceIdList.add(inputDeviceIdList.get(index));
+          attributeValueList.add(intPutAttributeValueList.get(index));
         });
 
     previousValidateResult.attributeUpdateDeviceIndexList.forEach(
         index -> {
-          deviceIdList.add(schemaValidation.getDeviceIdList().get(index));
-          attributeValueList.add(schemaValidation.getAttributeValueList().get(index));
+          deviceIdList.add(inputDeviceIdList.get(index));
+          attributeValueList.add(intPutAttributeValueList.get(index));
         });
 
     final ExecutionResult executionResult =
@@ -199,7 +222,7 @@ public class TableDeviceSchemaValidator {
                 schemaValidation.getDatabase(),
                 schemaValidation.getTableName(),
                 deviceIdList,
-                schemaValidation.getAttributeColumnNameList(),
+                attributeKeyList,
                 attributeValueList),
             relationSqlParser,
             SessionManager.getInstance().getCurrSession(),

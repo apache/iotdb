@@ -50,8 +50,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class LoadTsFileAnalyzeSchemaCache {
-  private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileAnalyzeSchemaCache.class);
+public class LoadTsFileTreeSchemaCache {
+  private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileTreeSchemaCache.class);
 
   private static final int BATCH_FLUSH_TIME_SERIES_NUMBER;
   private static final int MAX_DEVICE_COUNT_TO_USE_DEVICE_TIME_INDEX;
@@ -87,7 +87,7 @@ public class LoadTsFileAnalyzeSchemaCache {
 
   private int currentBatchTimeSeriesCount = 0;
 
-  public LoadTsFileAnalyzeSchemaCache() throws LoadRuntimeOutOfMemoryException {
+  public LoadTsFileTreeSchemaCache() throws LoadRuntimeOutOfMemoryException {
     this.block =
         LoadTsFileMemoryManager.getInstance()
             .allocateAnalyzeSchemaMemoryBlock(ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES);

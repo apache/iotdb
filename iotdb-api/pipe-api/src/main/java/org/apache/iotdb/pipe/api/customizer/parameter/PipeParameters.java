@@ -383,6 +383,7 @@ public class PipeParameters {
 
     static {
       KEYS.add("ssl.trust-store-pwd");
+      KEYS.add("password");
     }
 
     static String hide(final String key, final String value) {

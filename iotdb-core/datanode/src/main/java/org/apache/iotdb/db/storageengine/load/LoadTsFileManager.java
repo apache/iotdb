@@ -36,7 +36,9 @@ import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -70,6 +72,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
+
+import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT_DOT;
 
 /**
  * {@link LoadTsFileManager} is used for dealing with {@link LoadTsFilePieceNode} and {@link
@@ -404,10 +409,26 @@ public class LoadTsFileManager {
         }
 
         final TsFileIOWriter writer = new TsFileIOWriter(newTsFile);
-        writer.setGenerateTableSchema(true);
         dataPartition2Writer.put(partitionInfo, writer);
       }
       TsFileIOWriter writer = dataPartition2Writer.get(partitionInfo);
+
+      // Table model needs to register TableSchema
+      final String tableName =
+          chunkData.getDevice() != null ? chunkData.getDevice().getTableName() : null;
+      if (tableName != null && !(tableName.startsWith(ROOT_DOT) || tableName.equals(ROOT))) {
+        writer
+            .getSchema()
+            .getTableSchemaMap()
+            .computeIfAbsent(
+                tableName,
+                t ->
+                    TableSchema.of(
+                            DataNodeTableCache.getInstance()
+                                .getTable(partitionInfo.getDataRegion().getDatabaseName(), t))
+                        .toTsFileTableSchemaNoAttribute());
+      }
+
       if (!Objects.equals(chunkData.getDevice(), dataPartition2LastDevice.get(partitionInfo))) {
         if (dataPartition2LastDevice.containsKey(partitionInfo)) {
           writer.endChunkGroup();

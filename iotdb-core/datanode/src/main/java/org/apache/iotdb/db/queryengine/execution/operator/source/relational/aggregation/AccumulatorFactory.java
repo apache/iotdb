@@ -33,7 +33,9 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedMaxByAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedMinAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedMinByAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedModeAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedSumAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedVarianceAccumulator;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
@@ -135,6 +137,22 @@ public class AccumulatorFactory {
         return new GroupedMaxByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
       case MIN_BY:
         return new GroupedMinByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
+      case MODE:
+        return new GroupedModeAccumulator(inputDataTypes.get(0));
+      case STDDEV:
+      case STDDEV_SAMP:
+        return new GroupedVarianceAccumulator(
+            inputDataTypes.get(0), VarianceAccumulator.VarianceType.STDDEV_SAMP);
+      case STDDEV_POP:
+        return new GroupedVarianceAccumulator(
+            inputDataTypes.get(0), VarianceAccumulator.VarianceType.STDDEV_POP);
+      case VARIANCE:
+      case VAR_SAMP:
+        return new GroupedVarianceAccumulator(
+            inputDataTypes.get(0), VarianceAccumulator.VarianceType.VAR_SAMP);
+      case VAR_POP:
+        return new GroupedVarianceAccumulator(
+            inputDataTypes.get(0), VarianceAccumulator.VarianceType.VAR_POP);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }

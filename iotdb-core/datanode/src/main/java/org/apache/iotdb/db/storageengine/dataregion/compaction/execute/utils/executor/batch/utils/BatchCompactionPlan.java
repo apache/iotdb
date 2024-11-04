@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
 
 import org.apache.tsfile.file.metadata.ChunkMetadata;
@@ -35,7 +36,7 @@ import java.util.List;
 import java.util.Map;
 
 public class BatchCompactionPlan {
-  public static final long MAX_CACHED_TIME_CHUNKS_SIZE = 2 * 1024 * 1024;
+  public static long maxCachedTimeChunksSize = 2 * 1024 * 1024;
   private final List<CompactChunkPlan> compactChunkPlans = new ArrayList<>();
   private final Map<String, Map<TimeRange, ModifiedStatus>> alignedPageModifiedStatusCache =
       new HashMap<>();
@@ -51,12 +52,12 @@ public class BatchCompactionPlan {
     if (chunk == null) {
       chunk = reader.readMemChunk(chunkMetadata);
     }
-    chunk.getData().flip();
+    chunk.getData().rewind();
     return chunk;
   }
 
   public void addTimeChunkToCache(String file, long offset, Chunk chunk) {
-    if (cachedTimeChunkSize >= MAX_CACHED_TIME_CHUNKS_SIZE) {
+    if (cachedTimeChunkSize >= maxCachedTimeChunksSize) {
       return;
     }
     cachedTimeChunks.put(
@@ -95,6 +96,16 @@ public class BatchCompactionPlan {
 
   public boolean isEmpty() {
     return compactChunkPlans.isEmpty();
+  }
+
+  @TestOnly
+  public static void setMaxCachedTimeChunksSize(long size) {
+    maxCachedTimeChunksSize = size;
+  }
+
+  @TestOnly
+  public static long getMaxCachedTimeChunksSize() {
+    return maxCachedTimeChunksSize;
   }
 
   @Override

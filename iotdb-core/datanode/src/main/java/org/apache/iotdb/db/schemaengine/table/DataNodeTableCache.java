@@ -53,8 +53,10 @@ public class DataNodeTableCache implements ITableCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeTableCache.class);
 
+  // The database is without "root"
   private final Map<String, Map<String, TsTable>> databaseTableMap = new ConcurrentHashMap<>();
 
+  // The database is without "root"
   private final Map<String, Map<String, Pair<TsTable, Long>>> preUpdateTableMap =
       new ConcurrentHashMap<>();
 
@@ -268,7 +270,9 @@ public class DataNodeTableCache implements ITableCache {
               .fetchTables(
                   tableInput.entrySet().stream()
                       .collect(
-                          Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().keySet())));
+                          Collectors.toMap(
+                              entry -> PathUtils.qualifyDatabaseName(entry.getKey()),
+                              entry -> entry.getValue().keySet())));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
         result = TsTableInternalRPCUtil.deserializeTsTableFetchResult(resp.getTableInfoMap());
       }
@@ -302,6 +306,12 @@ public class DataNodeTableCache implements ITableCache {
                             previousVersions.get(database).get(tableName))) {
                       return;
                     }
+                    LOGGER.info(
+                        "Update table {}.{} by table fetch, table in preUpdateMap: {}, new table: {}",
+                        database,
+                        existingPair.getLeft().getTableName(),
+                        existingPair.getLeft(),
+                        tsTable);
                     existingPair.setLeft(null);
                     if (Objects.nonNull(tsTable)) {
                       databaseTableMap
@@ -324,6 +334,15 @@ public class DataNodeTableCache implements ITableCache {
       return databaseTableMap.containsKey(database)
           ? databaseTableMap.get(database).get(tableName)
           : null;
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
+  public boolean isDatabaseExist(final String database) {
+    readWriteLock.readLock().lock();
+    try {
+      return databaseTableMap.containsKey(database);
     } finally {
       readWriteLock.readLock().unlock();
     }
@@ -369,12 +388,14 @@ public class DataNodeTableCache implements ITableCache {
     for (final Map.Entry<String, ? extends Map<String, ?>> dbEntry : tableMap.entrySet()) {
       final String database = dbEntry.getKey();
       if (!(path.startsWith(database, dbStartIndex)
+          && path.length() > dbStartIndex + database.length()
           && path.charAt(dbStartIndex + database.length()) == PATH_SEPARATOR)) {
         continue;
       }
       final int tableStartIndex = dbStartIndex + database.length() + 1;
       for (final String tableName : dbEntry.getValue().keySet()) {
         if (path.startsWith(tableName, tableStartIndex)
+            && path.length() > tableStartIndex + tableName.length()
             && path.charAt(tableStartIndex + tableName.length()) == PATH_SEPARATOR) {
           return new Pair<>(database, tableName);
         }

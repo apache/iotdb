@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.persistence.schema.mnode.impl;
 
 import org.apache.iotdb.commons.schema.node.common.AbstractDatabaseMNode;
@@ -28,13 +29,13 @@ public class ConfigDatabaseMNode extends AbstractDatabaseMNode<IConfigMNode, Con
     implements IConfigMNode {
   private final ConfigDatabaseInfo configDatabaseInfo;
 
-  public ConfigDatabaseMNode(IConfigMNode parent, String name) {
+  public ConfigDatabaseMNode(final IConfigMNode parent, final String name) {
     super(new ConfigBasicInternalMNode(parent, name), new ConfigDatabaseInfo(name));
     this.configDatabaseInfo = (ConfigDatabaseInfo) getDatabaseInfo();
   }
 
   @Override
-  public void setSchemaTemplateId(int id) {
+  public void setSchemaTemplateId(final int id) {
     basicMNode.setSchemaTemplateId(id);
   }
 

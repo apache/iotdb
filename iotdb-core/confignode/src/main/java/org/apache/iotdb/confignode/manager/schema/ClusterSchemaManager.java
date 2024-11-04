@@ -336,11 +336,11 @@ public class ClusterSchemaManager {
   }
 
   /** Only used in cluster tool show Databases. */
-  public TShowDatabaseResp showDatabase(GetDatabasePlan getDatabasePlan) {
+  public TShowDatabaseResp showDatabase(final GetDatabasePlan getDatabasePlan) {
     DatabaseSchemaResp databaseSchemaResp;
     try {
       databaseSchemaResp = (DatabaseSchemaResp) getConsensusManager().read(getDatabasePlan);
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn(CONSENSUS_READ_ERROR, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
@@ -352,10 +352,10 @@ public class ClusterSchemaManager {
       return new TShowDatabaseResp().setStatus(databaseSchemaResp.getStatus());
     }
 
-    Map<String, TDatabaseInfo> infoMap = new ConcurrentHashMap<>();
-    for (TDatabaseSchema databaseSchema : databaseSchemaResp.getSchemaMap().values()) {
-      String database = databaseSchema.getName();
-      TDatabaseInfo databaseInfo = new TDatabaseInfo();
+    final Map<String, TDatabaseInfo> infoMap = new ConcurrentHashMap<>();
+    for (final TDatabaseSchema databaseSchema : databaseSchemaResp.getSchemaMap().values()) {
+      final String database = databaseSchema.getName();
+      final TDatabaseInfo databaseInfo = new TDatabaseInfo();
       databaseInfo.setName(database);
       databaseInfo.setSchemaReplicationFactor(databaseSchema.getSchemaReplicationFactor());
       databaseInfo.setDataReplicationFactor(databaseSchema.getDataReplicationFactor());
@@ -369,13 +369,14 @@ public class ClusterSchemaManager {
           getMinRegionGroupNum(database, TConsensusGroupType.DataRegion));
       databaseInfo.setMaxDataRegionNum(
           getMaxRegionGroupNum(database, TConsensusGroupType.DataRegion));
+      databaseInfo.setIsTableModel(databaseSchema.isIsTableModel());
 
       try {
         databaseInfo.setSchemaRegionNum(
             getPartitionManager().getRegionGroupCount(database, TConsensusGroupType.SchemaRegion));
         databaseInfo.setDataRegionNum(
             getPartitionManager().getRegionGroupCount(database, TConsensusGroupType.DataRegion));
-      } catch (DatabaseNotExistsException e) {
+      } catch (final DatabaseNotExistsException e) {
         // Skip pre-deleted Database
         LOGGER.warn(
             "The Database: {} doesn't exist. Maybe it has been pre-deleted.",

@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateDetailContainer;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nonnull;
@@ -36,27 +38,27 @@ public class TableAttributeSchema implements IDeviceSchema {
       (int) RamUsageEstimator.shallowSizeOfInstance(TableAttributeSchema.class)
           + (int) RamUsageEstimator.shallowSizeOfInstance(ConcurrentHashMap.class);
 
-  private final Map<String, String> attributeMap = new ConcurrentHashMap<>();
+  private final Map<String, Binary> attributeMap = new ConcurrentHashMap<>();
 
   public int updateAttribute(
-      final String database, final String tableName, final @Nonnull Map<String, String> updateMap) {
+      final String database, final String tableName, final @Nonnull Map<String, Binary> updateMap) {
     final AtomicInteger diff = new AtomicInteger(0);
     updateMap.forEach(
         (k, v) -> {
-          if (Objects.nonNull(v)) {
+          if (v != Binary.EMPTY_VALUE) {
             if (!attributeMap.containsKey(k)) {
               k = DataNodeTableCache.getInstance().tryGetInternColumnName(database, tableName, k);
             }
-            final String previousValue = attributeMap.put(k, v);
-            final long newValueSize = RamUsageEstimator.sizeOf(v);
+            final Binary previousValue = attributeMap.put(k, v);
+            final long newValueSize = UpdateDetailContainer.sizeOf(v);
             diff.addAndGet(
                 (int)
                     (Objects.nonNull(previousValue)
-                        ? newValueSize - RamUsageEstimator.sizeOf(previousValue)
+                        ? newValueSize - UpdateDetailContainer.sizeOf(previousValue)
                         : RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY + newValueSize));
           } else {
             attributeMap.remove(k);
-            diff.addAndGet((int) (-RamUsageEstimator.sizeOf(k) - RamUsageEstimator.sizeOf(v)));
+            diff.addAndGet((int) (-RamUsageEstimator.sizeOf(k) - UpdateDetailContainer.sizeOf(v)));
           }
         });
     // Typically the "update" and "invalidate" won't be concurrently called
@@ -64,14 +66,14 @@ public class TableAttributeSchema implements IDeviceSchema {
     return diff.get();
   }
 
-  public Map<String, String> getAttributeMap() {
+  public Map<String, Binary> getAttributeMap() {
     return attributeMap;
   }
 
   public int estimateSize() {
     return (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY * attributeMap.size()
         + attributeMap.values().stream()
-            .mapToInt(attrValue -> (int) RamUsageEstimator.sizeOf(attrValue))
+            .mapToInt(attrValue -> (int) attrValue.ramBytesUsed())
             .reduce(0, Integer::sum);
   }
 }

@@ -50,6 +50,7 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
@@ -92,7 +93,7 @@ public class TableDeviceSchemaFetcher {
     return attributeGuard;
   }
 
-  Map<IDeviceID, Map<String, String>> fetchMissingDeviceSchemaForDataInsertion(
+  Map<IDeviceID, Map<String, Binary>> fetchMissingDeviceSchemaForDataInsertion(
       final FetchDevice statement, final MPPQueryContext context) {
     final long queryId = SessionManager.getInstance().requestQueryId();
     Throwable t = null;
@@ -125,7 +126,7 @@ public class TableDeviceSchemaFetcher {
       final List<ColumnHeader> columnHeaderList =
           coordinator.getQueryExecution(queryId).getDatasetHeader().getColumnHeaders();
       final int idLength = DataNodeTableCache.getInstance().getTable(database, table).getIdNums();
-      final Map<IDeviceID, Map<String, String>> fetchedDeviceSchema = new HashMap<>();
+      final Map<IDeviceID, Map<String, Binary>> fetchedDeviceSchema = new HashMap<>();
 
       while (coordinator.getQueryExecution(queryId).hasNextResult()) {
         final Optional<TsBlock> tsBlock;
@@ -141,7 +142,7 @@ public class TableDeviceSchemaFetcher {
         final Column[] columns = tsBlock.get().getValueColumns();
         for (int i = 0; i < tsBlock.get().getPositionCount(); i++) {
           final String[] nodes = new String[idLength + 1];
-          final Map<String, String> attributeMap = new HashMap<>();
+          final Map<String, Binary> attributeMap = new HashMap<>();
           constructNodsArrayAndAttributeMap(
               attributeMap, nodes, table, columnHeaderList, columns, tableInstance, i);
 
@@ -321,7 +322,7 @@ public class TableDeviceSchemaFetcher {
     }
 
     final IDeviceID deviceID = convertIdValuesToDeviceID(tableInstance.getTableName(), idValues);
-    final Map<String, String> attributeMap = cache.getDeviceAttribute(database, deviceID);
+    final Map<String, Binary> attributeMap = cache.getDeviceAttribute(database, deviceID);
 
     // 1. AttributeMap == null means cache miss
     // 2. DeviceEntryList == null means that this is update statement, shall not get from cache and
@@ -418,7 +419,7 @@ public class TableDeviceSchemaFetcher {
         final Column[] columns = tsBlock.get().getValueColumns();
         for (int i = 0; i < tsBlock.get().getPositionCount(); i++) {
           String[] nodes = new String[idLength + 1];
-          final Map<String, String> attributeMap = new HashMap<>();
+          final Map<String, Binary> attributeMap = new HashMap<>();
           constructNodsArrayAndAttributeMap(
               attributeMap, nodes, table, columnHeaderList, columns, tableInstance, i);
           final IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(nodes);
@@ -448,7 +449,7 @@ public class TableDeviceSchemaFetcher {
   }
 
   private void constructNodsArrayAndAttributeMap(
-      final Map<String, String> attributeMap,
+      final Map<String, Binary> attributeMap,
       final String[] nodes,
       final String tableName,
       final List<ColumnHeader> columnHeaderList,
@@ -474,9 +475,7 @@ public class TableDeviceSchemaFetcher {
         }
         currentIndex++;
       } else if (!columns[j].isNull(rowIndex)) {
-        attributeMap.put(
-            columnSchema.getColumnName(),
-            columns[j].getBinary(rowIndex).getStringValue(TSFileConfig.STRING_CHARSET));
+        attributeMap.put(columnSchema.getColumnName(), columns[j].getBinary(rowIndex));
       }
     }
   }

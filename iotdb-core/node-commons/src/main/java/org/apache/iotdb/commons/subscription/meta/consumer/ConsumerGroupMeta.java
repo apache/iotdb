@@ -149,6 +149,10 @@ public class ConsumerGroupMeta {
     return topics;
   }
 
+  public Set<String> getTopicsSubscribedByConsumerGroup() {
+    return topicNameToSubscribedConsumerIdSet.keySet();
+  }
+
   public void addSubscription(final String consumerId, final Set<String> topics) {
     if (!consumerIdToConsumerMeta.containsKey(consumerId)) {
       throw new SubscriptionException(

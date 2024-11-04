@@ -28,7 +28,7 @@ public class DatabaseConflictException extends MetadataException {
 
   private final String storageGroupPath;
 
-  public DatabaseConflictException(final String path, boolean isChild) {
+  public DatabaseConflictException(final String path, final boolean isChild) {
     super(getMessage(path, isChild), TSStatusCode.DATABASE_CONFLICT.getStatusCode());
     this.isChild = isChild;
     storageGroupPath = path;

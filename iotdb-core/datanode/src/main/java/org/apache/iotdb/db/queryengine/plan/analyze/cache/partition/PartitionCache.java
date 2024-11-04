@@ -48,6 +48,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.DatabaseModelException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -74,6 +75,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
 
 public class PartitionCache {
 
@@ -88,7 +90,7 @@ public class PartitionCache {
   private final SeriesPartitionExecutor partitionExecutor;
 
   /** the cache of database */
-  private final Set<String> databaseCache = new HashSet<>();
+  private final Map<String, Boolean> databaseCache = new HashMap<>();
 
   /** database -> schemaPartitionTable */
   private final Cache<String, SchemaPartitionTable> schemaPartitionCache;
@@ -136,11 +138,15 @@ public class PartitionCache {
    * @param userName the userName
    */
   public Map<String, List<IDeviceID>> getDatabaseToDevice(
-      List<IDeviceID> deviceIDs, boolean tryToFetch, boolean isAutoCreate, String userName) {
-    DatabaseCacheResult<String, List<IDeviceID>> result =
+      final List<IDeviceID> deviceIDs,
+      final boolean tryToFetch,
+      final boolean isAutoCreate,
+      final String userName)
+      throws DatabaseModelException {
+    final DatabaseCacheResult<String, List<IDeviceID>> result =
         new DatabaseCacheResult<String, List<IDeviceID>>() {
           @Override
-          public void put(IDeviceID device, String databaseName) {
+          public void put(final IDeviceID device, final String databaseName) {
             map.computeIfAbsent(databaseName, k -> new ArrayList<>()).add(device);
           }
         };
@@ -157,11 +163,15 @@ public class PartitionCache {
    * @param userName the userName
    */
   public Map<IDeviceID, String> getDeviceToDatabase(
-      List<IDeviceID> deviceIDs, boolean tryToFetch, boolean isAutoCreate, String userName) {
-    DatabaseCacheResult<IDeviceID, String> result =
+      final List<IDeviceID> deviceIDs,
+      final boolean tryToFetch,
+      final boolean isAutoCreate,
+      final String userName)
+      throws DatabaseModelException {
+    final DatabaseCacheResult<IDeviceID, String> result =
         new DatabaseCacheResult<IDeviceID, String>() {
           @Override
-          public void put(IDeviceID device, String databaseName) {
+          public void put(final IDeviceID device, final String databaseName) {
             map.put(device, databaseName);
           }
         };
@@ -173,12 +183,16 @@ public class PartitionCache {
    * get database of device
    *
    * @param deviceID the path of device
-   * @return database name, return null if cache miss
+   * @return database name, return {@code null} if cache miss
    */
-  private String getDatabaseName(IDeviceID deviceID) {
-    for (String databaseName : databaseCache) {
-      if (PathUtils.isStartWith(deviceID, databaseName)) {
-        return databaseName;
+  private String getDatabaseName(final IDeviceID deviceID) throws DatabaseModelException {
+    for (final Map.Entry<String, Boolean> entry : databaseCache.entrySet()) {
+      final String database = entry.getKey();
+      if (PathUtils.isStartWith(deviceID, database)) {
+        if (Boolean.TRUE.equals(entry.getValue())) {
+          throw new DatabaseModelException(database, true);
+        }
+        return entry.getKey();
       }
     }
     return null;
@@ -188,12 +202,18 @@ public class PartitionCache {
    * judge whether this database is existed
    *
    * @param database name
-   * @return true of false
+   * @return {@code true} if this database exists
    */
-  private boolean containsDatabase(String database) {
+  private boolean containsDatabase(final String database) throws DatabaseModelException {
     try {
       databaseCacheLock.readLock().lock();
-      return databaseCache.contains(database);
+      if (databaseCache.containsKey(database)) {
+        if (Boolean.FALSE.equals(databaseCache.get(database))) {
+          throw new DatabaseModelException(PathUtils.unQualifyDatabaseName(database), false);
+        }
+        return true;
+      }
+      return false;
     } finally {
       databaseCacheLock.readLock().unlock();
     }
@@ -206,21 +226,25 @@ public class PartitionCache {
    * @param deviceIDs the devices that need to hit
    */
   private void fetchDatabaseAndUpdateCache(
-      DatabaseCacheResult<?, ?> result, List<IDeviceID> deviceIDs)
-      throws ClientManagerException, TException {
+      final DatabaseCacheResult<?, ?> result, final List<IDeviceID> deviceIDs)
+      throws ClientManagerException, TException, DatabaseModelException {
     databaseCacheLock.writeLock().lock();
-    try (ConfigNodeClient client =
+    try (final ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       result.reset();
       getDatabaseMap(result, deviceIDs, true);
       if (!result.isSuccess()) {
-        TGetDatabaseReq req = new TGetDatabaseReq(ROOT_PATH, SchemaConstant.ALL_MATCH_SCOPE_BINARY);
-        TDatabaseSchemaResp databaseSchemaResp = client.getMatchedDatabaseSchemas(req);
+        final TGetDatabaseReq req =
+            new TGetDatabaseReq(ROOT_PATH, SchemaConstant.ALL_MATCH_SCOPE_BINARY);
+        final TDatabaseSchemaResp databaseSchemaResp = client.getMatchedDatabaseSchemas(req);
         if (databaseSchemaResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          Set<String> databaseNames = databaseSchemaResp.getDatabaseSchemaMap().keySet();
           // update all database into cache
-          updateDatabaseCache(databaseNames);
+          updateDatabaseCache(
+              databaseSchemaResp.getDatabaseSchemaMap().entrySet().stream()
+                  .collect(
+                      Collectors.toMap(
+                          Map.Entry::getKey, entry -> entry.getValue().isIsTableModel())));
           getDatabaseMap(result, deviceIDs, true);
         }
       }
@@ -230,17 +254,20 @@ public class PartitionCache {
   }
 
   /** get all database from configNode and update database cache. */
-  private void fetchDatabaseAndUpdateCache(String database)
-      throws ClientManagerException, TException {
+  private void fetchDatabaseAndUpdateCache() throws ClientManagerException, TException {
     databaseCacheLock.writeLock().lock();
-    try (ConfigNodeClient client =
+    try (final ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TGetDatabaseReq req = new TGetDatabaseReq(ROOT_PATH, SchemaConstant.ALL_MATCH_SCOPE_BINARY);
-      TDatabaseSchemaResp databaseSchemaResp = client.getMatchedDatabaseSchemas(req);
+      final TGetDatabaseReq req =
+          new TGetDatabaseReq(ROOT_PATH, SchemaConstant.ALL_MATCH_SCOPE_BINARY);
+      final TDatabaseSchemaResp databaseSchemaResp = client.getMatchedDatabaseSchemas(req);
       if (databaseSchemaResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        Set<String> databaseNames = databaseSchemaResp.getDatabaseSchemaMap().keySet();
         // update all database into cache
-        updateDatabaseCache(databaseNames);
+        updateDatabaseCache(
+            databaseSchemaResp.getDatabaseSchemaMap().entrySet().stream()
+                .collect(
+                    Collectors.toMap(
+                        Map.Entry::getKey, entry -> entry.getValue().isIsTableModel())));
       }
     } finally {
       databaseCacheLock.writeLock().unlock();
@@ -274,7 +301,7 @@ public class PartitionCache {
           if (PathUtils.isStartWith(deviceID, SchemaConstant.SYSTEM_DATABASE)) {
             databaseNamesNeedCreated.add(SchemaConstant.SYSTEM_DATABASE);
           } else {
-            PartialPath databaseNameNeedCreated =
+            final PartialPath databaseNameNeedCreated =
                 MetaUtils.getDatabasePathByLevel(
                     new PartialPath(deviceID), config.getDefaultStorageGroupLevel());
             databaseNamesNeedCreated.add(databaseNameNeedCreated.getFullPath());
@@ -282,7 +309,7 @@ public class PartitionCache {
         }
 
         // Try to create databases one by one until done or one database fail
-        final Set<String> successFullyCreatedDatabase = new HashSet<>();
+        final Map<String, Boolean> successFullyCreatedDatabase = new HashMap<>();
         for (final String databaseName : databaseNamesNeedCreated) {
           final long startTime = System.nanoTime();
           try {
@@ -302,18 +329,11 @@ public class PartitionCache {
           }
           final TDatabaseSchema databaseSchema = new TDatabaseSchema();
           databaseSchema.setName(databaseName);
+          databaseSchema.setIsTableModel(false);
           final TSStatus tsStatus = client.setDatabase(databaseSchema);
-          if (SchemaConstant.SYSTEM_DATABASE.equals(databaseName)) {
-            databaseSchema.setSchemaReplicationFactor(1);
-            databaseSchema.setDataReplicationFactor(1);
-            databaseSchema.setMinSchemaRegionGroupNum(1);
-            databaseSchema.setMaxSchemaRegionGroupNum(1);
-            databaseSchema.setMaxDataRegionGroupNum(1);
-            databaseSchema.setMaxDataRegionGroupNum(1);
-          }
           if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
               || TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()) {
-            successFullyCreatedDatabase.add(databaseName);
+            successFullyCreatedDatabase.put(databaseName, false);
             // In tree model, if the user creates a conflict database concurrently, for instance,
             // the database created by user is root.db.ss.a, the auto-creation failed database is
             // root.db, we wait till "getOrCreatePartition" to judge if the time series (like
@@ -330,7 +350,7 @@ public class PartitionCache {
           }
         }
         // Try to update database cache when all databases have already been created
-        updateDatabaseCache(databaseNamesNeedCreated);
+        updateDatabaseCache(successFullyCreatedDatabase);
         getDatabaseMap(result, deviceIDs, false);
       }
     } finally {
@@ -367,11 +387,12 @@ public class PartitionCache {
       }
       final TDatabaseSchema databaseSchema = new TDatabaseSchema();
       databaseSchema.setName(database);
+      databaseSchema.setIsTableModel(true);
       final TSStatus tsStatus = client.setDatabase(databaseSchema);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
           || TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()) {
         // Try to update cache by databases successfully created
-        updateDatabaseCache(Collections.singleton(database));
+        updateDatabaseCache(Collections.singletonMap(database, true));
       } else {
         logger.warn(
             "[{} Cache] failed to create database {}", CacheMetrics.DATABASE_CACHE_NAME, database);
@@ -387,17 +408,21 @@ public class PartitionCache {
    *
    * @param result contains result(boolean), failed devices and the map
    * @param deviceIDs the devices that need to hit
-   * @param failFast if true, return when failed. if false, return when all devices hit
+   * @param failFast if {@code true}, return when failed. if {@code false}, return when all devices
+   *     hit
    */
   private void getDatabaseMap(
-      DatabaseCacheResult<?, ?> result, List<IDeviceID> deviceIDs, boolean failFast) {
+      final DatabaseCacheResult<?, ?> result,
+      final List<IDeviceID> deviceIDs,
+      final boolean failFast)
+      throws DatabaseModelException {
     try {
       databaseCacheLock.readLock().lock();
       // reset result before try
       result.reset();
       boolean status = true;
-      for (IDeviceID devicePath : deviceIDs) {
-        String databaseName = getDatabaseName(devicePath);
+      for (final IDeviceID devicePath : deviceIDs) {
+        final String databaseName = getDatabaseName(devicePath);
         if (null == databaseName) {
           logger.debug(
               "[{} Cache] miss when search device {}",
@@ -435,15 +460,16 @@ public class PartitionCache {
    * @param userName
    */
   private void getDatabaseCacheResult(
-      DatabaseCacheResult<?, ?> result,
-      List<IDeviceID> deviceIDs,
-      boolean tryToFetch,
-      boolean isAutoCreate,
-      String userName) {
+      final DatabaseCacheResult<?, ?> result,
+      final List<IDeviceID> deviceIDs,
+      final boolean tryToFetch,
+      final boolean isAutoCreate,
+      final String userName)
+      throws DatabaseModelException {
     if (!isAutoCreate) {
       // TODO: avoid IDeviceID contains "*"
       // miss when deviceId contains *
-      for (IDeviceID deviceID : deviceIDs) {
+      for (final IDeviceID deviceID : deviceIDs) {
         for (int i = 0; i < deviceID.segmentNum(); i++) {
           if (((String) deviceID.segment(i)).contains("*")) {
             return;
@@ -464,25 +490,27 @@ public class PartitionCache {
             throw new StatementAnalyzeException("Failed to get database Map");
           }
         }
-      } catch (TException | MetadataException | ClientManagerException e) {
+      } catch (final TException | MetadataException | ClientManagerException e) {
         throw new StatementAnalyzeException(
             "An error occurred when executing getDeviceToDatabase():" + e.getMessage());
       }
     }
   }
 
-  public void checkAndAutoCreateDatabase(String database, boolean isAutoCreate, String userName) {
+  public void checkAndAutoCreateDatabase(
+      final String database, final boolean isAutoCreate, final String userName)
+      throws DatabaseModelException {
     boolean isExisted = containsDatabase(database);
     if (!isExisted) {
       try {
         // try to fetch database from config node when miss
-        fetchDatabaseAndUpdateCache(database);
+        fetchDatabaseAndUpdateCache();
         isExisted = containsDatabase(database);
         if (!isExisted && isAutoCreate) {
           // try to auto create database of failed device
           createDatabaseAndUpdateCache(database, userName);
         }
-      } catch (TException | ClientManagerException e) {
+      } catch (final TException | ClientManagerException e) {
         throw new StatementAnalyzeException(
             "An error occurred when executing getDeviceToDatabase():" + e.getMessage());
       }
@@ -494,10 +522,10 @@ public class PartitionCache {
    *
    * @param databaseNames the database names that need to update
    */
-  public void updateDatabaseCache(Set<String> databaseNames) {
+  public void updateDatabaseCache(final Map<String, Boolean> databaseNames) {
     databaseCacheLock.writeLock().lock();
     try {
-      databaseCache.addAll(databaseNames);
+      databaseCache.putAll(databaseNames);
     } finally {
       databaseCacheLock.writeLock().unlock();
     }

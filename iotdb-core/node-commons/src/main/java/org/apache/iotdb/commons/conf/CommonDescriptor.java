@@ -283,6 +283,12 @@ public class CommonDescriptor {
                 "pipe_data_structure_tablet_memory_block_allocation_reject_threshold",
                 String.valueOf(
                     config.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold()))));
+    config.setPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_data_structure_ts_file_memory_block_allocation_reject_threshold",
+                String.valueOf(
+                    config.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold()))));
 
     config.setPipeRealTimeQueuePollHistoryThreshold(
         Integer.parseInt(
@@ -623,6 +629,7 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_cache_memory_usage_percentage",
                 String.valueOf(config.getSubscriptionCacheMemoryUsagePercentage()))));
+
     config.setSubscriptionSubtaskExecutorMaxThreadNum(
         Integer.parseInt(
             properties.getProperty(
@@ -686,6 +693,17 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_ts_file_deduplication_window_seconds",
                 String.valueOf(config.getSubscriptionTsFileDeduplicationWindowSeconds()))));
+
+    config.setSubscriptionMetaSyncerInitialSyncDelayMinutes(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_meta_syncer_initial_sync_delay_minutes",
+                String.valueOf(config.getSubscriptionMetaSyncerInitialSyncDelayMinutes()))));
+    config.setSubscriptionMetaSyncerSyncIntervalMinutes(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_meta_syncer_sync_interval_minutes",
+                String.valueOf(config.getSubscriptionMetaSyncerSyncIntervalMinutes()))));
   }
 
   public void loadRetryProperties(Properties properties) throws IOException {

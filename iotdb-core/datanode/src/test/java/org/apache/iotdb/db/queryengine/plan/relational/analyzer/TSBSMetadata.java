@@ -42,9 +42,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.utils.Binary;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -301,25 +303,33 @@ public class TSBSMetadata implements Metadata {
       // r03
       return ImmutableList.of(
           new DeviceEntry(
-              new StringArrayDeviceID(T1_DEVICE_1.split("\\.")), ImmutableList.of("2000")),
+              new StringArrayDeviceID(T1_DEVICE_1.split("\\.")),
+              ImmutableList.of(new Binary("2000", TSFileConfig.STRING_CHARSET))),
           new DeviceEntry(
-              new StringArrayDeviceID(T1_DEVICE_2.split("\\.")), ImmutableList.of("1000")));
+              new StringArrayDeviceID(T1_DEVICE_2.split("\\.")),
+              ImmutableList.of(new Binary("1000", TSFileConfig.STRING_CHARSET))));
     } else {
       // others (The return result maybe not correct in actual, but it is convenient for test of
       // DistributionPlan)
       return Arrays.asList(
           new DeviceEntry(
-              new StringArrayDeviceID(T1_DEVICE_1.split("\\.")), ImmutableList.of("", "")),
+              new StringArrayDeviceID(T1_DEVICE_1.split("\\.")),
+              ImmutableList.of(Binary.EMPTY_VALUE, Binary.EMPTY_VALUE)),
           new DeviceEntry(
-              new StringArrayDeviceID(T1_DEVICE_2.split("\\.")), ImmutableList.of("", "")),
+              new StringArrayDeviceID(T1_DEVICE_2.split("\\.")),
+              ImmutableList.of(Binary.EMPTY_VALUE, Binary.EMPTY_VALUE)),
           new DeviceEntry(
-              new StringArrayDeviceID(T1_DEVICE_3.split("\\.")), ImmutableList.of("", "")),
+              new StringArrayDeviceID(T1_DEVICE_3.split("\\.")),
+              ImmutableList.of(Binary.EMPTY_VALUE, Binary.EMPTY_VALUE)),
           new DeviceEntry(
-              new StringArrayDeviceID(T2_DEVICE_1.split("\\.")), ImmutableList.of("", "")),
+              new StringArrayDeviceID(T2_DEVICE_1.split("\\.")),
+              ImmutableList.of(Binary.EMPTY_VALUE, Binary.EMPTY_VALUE)),
           new DeviceEntry(
-              new StringArrayDeviceID(T2_DEVICE_2.split("\\.")), ImmutableList.of("", "")),
+              new StringArrayDeviceID(T2_DEVICE_2.split("\\.")),
+              ImmutableList.of(Binary.EMPTY_VALUE, Binary.EMPTY_VALUE)),
           new DeviceEntry(
-              new StringArrayDeviceID(T2_DEVICE_3.split("\\.")), ImmutableList.of("", "")));
+              new StringArrayDeviceID(T2_DEVICE_3.split("\\.")),
+              ImmutableList.of(Binary.EMPTY_VALUE, Binary.EMPTY_VALUE)));
     }
   }
 

@@ -204,6 +204,7 @@ public class CommonConfig {
   private int pipeDataStructureTabletRowSize = 2048;
   private int pipeDataStructureTabletSizeInBytes = 2097152;
   private double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold = 0.4;
+  private double pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold = 0.4;
 
   private int pipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount = 10_000;
   private long pipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration = 10 * 1000L;
@@ -290,6 +291,9 @@ public class CommonConfig {
   private long subscriptionReadFileBufferSize = 8 * MB;
   private long subscriptionReadTabletBufferSize = 8 * MB;
   private long subscriptionTsFileDeduplicationWindowSeconds = 120; // 120s
+
+  private long subscriptionMetaSyncerInitialSyncDelayMinutes = 3;
+  private long subscriptionMetaSyncerSyncIntervalMinutes = 3;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -694,6 +698,16 @@ public class CommonConfig {
       double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold) {
     this.pipeDataStructureTabletMemoryBlockAllocationRejectThreshold =
         pipeDataStructureTabletMemoryBlockAllocationRejectThreshold;
+  }
+
+  public double getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold() {
+    return pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold;
+  }
+
+  public void setPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold(
+      double pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold) {
+    this.pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold =
+        pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold;
   }
 
   public int getPipeExtractorAssignerDisruptorRingBufferSize() {
@@ -1320,6 +1334,25 @@ public class CommonConfig {
       long subscriptionTsFileDeduplicationWindowSeconds) {
     this.subscriptionTsFileDeduplicationWindowSeconds =
         subscriptionTsFileDeduplicationWindowSeconds;
+  }
+
+  public long getSubscriptionMetaSyncerInitialSyncDelayMinutes() {
+    return subscriptionMetaSyncerInitialSyncDelayMinutes;
+  }
+
+  public void setSubscriptionMetaSyncerInitialSyncDelayMinutes(
+      long subscriptionMetaSyncerInitialSyncDelayMinutes) {
+    this.subscriptionMetaSyncerInitialSyncDelayMinutes =
+        subscriptionMetaSyncerInitialSyncDelayMinutes;
+  }
+
+  public long getSubscriptionMetaSyncerSyncIntervalMinutes() {
+    return subscriptionMetaSyncerSyncIntervalMinutes;
+  }
+
+  public void setSubscriptionMetaSyncerSyncIntervalMinutes(
+      long subscriptionMetaSyncerSyncIntervalMinutes) {
+    this.subscriptionMetaSyncerSyncIntervalMinutes = subscriptionMetaSyncerSyncIntervalMinutes;
   }
 
   public String getSchemaEngineMode() {

@@ -64,11 +64,20 @@ public class QueryDataSource implements IQueryDataSource {
   /* The traversal order of unseqResources (different for each device) */
   private int[] unSeqFileOrderIndex;
 
+  private String databaseName = null;
+
   private static final Comparator<Long> descendingComparator = (o1, o2) -> Long.compare(o2, o1);
 
   public QueryDataSource(List<TsFileResource> seqResources, List<TsFileResource> unseqResources) {
     this.seqResources = seqResources;
     this.unseqResources = unseqResources;
+  }
+
+  public QueryDataSource(
+      List<TsFileResource> seqResources, List<TsFileResource> unseqResources, String databaseName) {
+    this.seqResources = seqResources;
+    this.unseqResources = unseqResources;
+    this.databaseName = databaseName;
   }
 
   // used for compaction, because in compaction task(unlike query, each QueryDataSource only serve
@@ -77,6 +86,7 @@ public class QueryDataSource implements IQueryDataSource {
     this.seqResources = other.seqResources;
     this.unseqResources = other.unseqResources;
     this.unSeqFileOrderIndex = other.unSeqFileOrderIndex;
+    this.databaseName = other.databaseName;
   }
 
   public List<TsFileResource> getSeqResources() {
@@ -89,7 +99,8 @@ public class QueryDataSource implements IQueryDataSource {
 
   @Override
   public IQueryDataSource clone() {
-    QueryDataSource queryDataSource = new QueryDataSource(getSeqResources(), getUnseqResources());
+    QueryDataSource queryDataSource =
+        new QueryDataSource(getSeqResources(), getUnseqResources(), databaseName);
     queryDataSource.setSingleDevice(isSingleDevice());
     return queryDataSource;
   }
@@ -189,6 +200,9 @@ public class QueryDataSource implements IQueryDataSource {
   }
 
   public void fillOrderIndexes(IDeviceID deviceId, boolean ascending) {
+    if (unseqResources == null || unseqResources.isEmpty()) {
+      return;
+    }
     TreeMap<Long, List<Integer>> orderTimeToIndexMap =
         ascending ? new TreeMap<>() : new TreeMap<>(descendingComparator);
     int index = 0;
@@ -226,7 +240,10 @@ public class QueryDataSource implements IQueryDataSource {
   }
 
   public String getDatabaseName() {
-    List<TsFileResource> resources = !seqResources.isEmpty() ? seqResources : unseqResources;
-    return resources.isEmpty() ? null : resources.get(0).getDatabaseName();
+    if (databaseName == null) {
+      List<TsFileResource> resources = !seqResources.isEmpty() ? seqResources : unseqResources;
+      databaseName = resources.isEmpty() ? null : resources.get(0).getDatabaseName();
+    }
+    return databaseName;
   }
 }

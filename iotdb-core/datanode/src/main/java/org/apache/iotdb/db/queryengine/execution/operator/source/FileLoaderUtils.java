@@ -51,7 +51,6 @@ import org.apache.tsfile.read.reader.IPageReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -264,8 +263,7 @@ public class FileLoaderUtils {
     // the order of timeSeriesMetadata list is same as subSensorList's order
     TimeSeriesMetadataCache cache = TimeSeriesMetadataCache.getInstance();
     List<String> valueMeasurementList = alignedPath.getMeasurementList();
-    Set<String> allSensors = new HashSet<>(valueMeasurementList);
-    allSensors.add("");
+    Set<String> allSensors = alignedPath.getAllSensors();
     boolean isDebug = context.isDebug();
     String filePath = resource.getTsFilePath();
     IDeviceID deviceId = alignedPath.getDeviceId();

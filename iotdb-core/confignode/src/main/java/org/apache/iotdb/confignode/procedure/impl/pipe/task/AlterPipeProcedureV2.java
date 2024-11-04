@@ -63,7 +63,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   private PipeRuntimeMeta currentPipeRuntimeMeta;
   private PipeRuntimeMeta updatedPipeRuntimeMeta;
 
-  private ProcedureType procedureType;
+  private final ProcedureType procedureType;
 
   public AlterPipeProcedureV2(ProcedureType procedureType) {
     super();

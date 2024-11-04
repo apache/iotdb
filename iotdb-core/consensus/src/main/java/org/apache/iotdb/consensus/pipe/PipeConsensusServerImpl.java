@@ -396,7 +396,7 @@ public class PipeConsensusServerImpl {
     }
   }
 
-  public void notifyPeersToCreateConsensusPipes(Peer targetPeer)
+  public void notifyPeersToCreateConsensusPipes(Peer targetPeer, Peer coordinatorPeer)
       throws ConsensusGroupModifyPeerException {
     final List<Peer> otherPeers = peerManager.getOtherPeers(thisNode);
     Exception exception = null;
@@ -408,7 +408,9 @@ public class PipeConsensusServerImpl {
                 new TNotifyPeerToCreateConsensusPipeReq(
                     targetPeer.getGroupId().convertToTConsensusGroupId(),
                     targetPeer.getEndpoint(),
-                    targetPeer.getNodeId()));
+                    targetPeer.getNodeId(),
+                    coordinatorPeer.getEndpoint(),
+                    coordinatorPeer.getNodeId()));
         if (!RpcUtils.SUCCESS_STATUS.equals(resp.getStatus())) {
           throw new ConsensusGroupModifyPeerException(
               String.format("error when notify peer %s to create consensus pipe", peer));
@@ -419,16 +421,19 @@ public class PipeConsensusServerImpl {
       }
     }
 
-    createConsensusPipeToTargetPeer(targetPeer);
+    // This node which acts as coordinator will transfer complete historical snapshot to new target.
+    createConsensusPipeToTargetPeer(targetPeer, thisNode);
     if (exception != null) {
       throw new ConsensusGroupModifyPeerException(exception);
     }
   }
 
-  public synchronized void createConsensusPipeToTargetPeer(Peer targetPeer)
+  public synchronized void createConsensusPipeToTargetPeer(
+      Peer targetPeer, Peer regionMigrationCoordinatorPeer)
       throws ConsensusGroupModifyPeerException {
     try {
-      consensusPipeManager.createConsensusPipe(thisNode, targetPeer);
+      consensusPipeManager.createConsensusPipe(
+          thisNode, targetPeer, regionMigrationCoordinatorPeer);
       peerManager.addAndPersist(targetPeer);
     } catch (IOException e) {
       LOGGER.warn("{} cannot persist peer {}", thisNode, targetPeer, e);
@@ -497,21 +502,12 @@ public class PipeConsensusServerImpl {
     try {
       while (!isTransmissionCompleted) {
         Thread.sleep(CHECK_TRANSMISSION_COMPLETION_INTERVAL_IN_MILLISECONDS);
-
-        if (isConsensusPipesTransmissionCompleted(
-            Collections.singletonList(new ConsensusPipeName(thisNode, targetPeer).toString()),
-            isFirstCheck)) {
-          final List<Peer> otherPeers = peerManager.getOtherPeers(thisNode);
-
-          isTransmissionCompleted = true;
-          for (Peer peer : otherPeers) {
-            isTransmissionCompleted &=
-                isRemotePeerConsensusPipesTransmissionCompleted(
-                    peer,
-                    Collections.singletonList(new ConsensusPipeName(peer, targetPeer).toString()),
-                    isFirstCheck);
-          }
-        }
+        // Only wait coordinator to transfer snapshot instead of waiting all peers completing data
+        // transfer. Keep consistent with IoTV1.
+        isTransmissionCompleted =
+            isConsensusPipesTransmissionCompleted(
+                Collections.singletonList(new ConsensusPipeName(thisNode, targetPeer).toString()),
+                isFirstCheck);
 
         isFirstCheck = false;
       }
@@ -662,5 +658,9 @@ public class PipeConsensusServerImpl {
 
   public long getReplicateMode() {
     return (replicateMode == ReplicateMode.BATCH) ? 2 : 1;
+  }
+
+  public Peer getThisNodePeer() {
+    return thisNode;
   }
 }

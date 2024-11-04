@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.statement.pipe;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -77,6 +78,11 @@ public class PipeEnrichedStatement extends Statement {
   @Override
   public org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement toRelationalStatement(
       MPPQueryContext context) {
-    return new PipeEnriched(innerStatement.toRelationalStatement(context));
+    final PipeEnriched pipeEnriched =
+        new PipeEnriched(innerStatement.toRelationalStatement(context));
+    if (pipeEnriched.getInnerStatement() instanceof InsertRows) {
+      ((InsertRows) pipeEnriched.getInnerStatement()).setAllowCreateTable(true);
+    }
+    return pipeEnriched;
   }
 }

@@ -83,6 +83,11 @@ public abstract class AbstractOperatePipeProcedureV2
   // Only used in rollback to reduce the number of network calls
   protected boolean isRollbackFromOperateOnDataNodesSuccessful = false;
 
+  // Only used in rollback to avoid executing rollbackFromValidateTask multiple times
+  // Pure in-memory object, not involved in snapshot serialization and deserialization.
+  // TODO: consider serializing this variable later
+  protected boolean isRollbackFromValidateTaskSuccessful = false;
+
   // This variable should not be serialized into procedure store,
   // putting it here is just for convenience
   protected AtomicReference<PipeTaskInfo> pipeTaskInfo;
@@ -298,10 +303,13 @@ public abstract class AbstractOperatePipeProcedureV2
 
     switch (state) {
       case VALIDATE_TASK:
-        try {
-          rollbackFromValidateTask(env);
-        } catch (Exception e) {
-          LOGGER.warn("ProcedureId {}: Failed to rollback from validate task.", getProcId(), e);
+        if (!isRollbackFromValidateTaskSuccessful) {
+          try {
+            rollbackFromValidateTask(env);
+            isRollbackFromValidateTaskSuccessful = true;
+          } catch (Exception e) {
+            LOGGER.warn("ProcedureId {}: Failed to rollback from validate task.", getProcId(), e);
+          }
         }
         break;
       case CALCULATE_INFO_FOR_TASK:
@@ -330,7 +338,7 @@ public abstract class AbstractOperatePipeProcedureV2
         break;
       case OPERATE_ON_DATA_NODES:
         try {
-          // We have to make sure that rollbackFromOperateOnDataNodes is executed before
+          // We have to make sure that rollbackFromOperateOnDataNodes is executed after
           // rollbackFromWriteConfigNodeConsensus, because rollbackFromOperateOnDataNodes is
           // executed based on the consensus of config nodes that is written by
           // rollbackFromWriteConfigNodeConsensus

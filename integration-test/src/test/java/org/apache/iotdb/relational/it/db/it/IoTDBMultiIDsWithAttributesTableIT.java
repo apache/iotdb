@@ -47,7 +47,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         "CREATE DATABASE db",
         "USE db",
         "CREATE TABLE table0 (device string id, level string id, attr1 string attribute, attr2 string attribute, num int32 measurement, bigNum int64 measurement, "
-            + "floatNum double measurement, str TEXT measurement, bool BOOLEAN measurement, date DATE measurement, blob BLOB measurement, ts TIMESTAMP measurement, stringV STRING measurement, doubleNum DOUBLE measurement)",
+            + "floatNum FLOAT measurement, str TEXT measurement, bool BOOLEAN measurement, date DATE measurement, blob BLOB measurement, ts TIMESTAMP measurement, stringV STRING measurement, doubleNum DOUBLE measurement)",
         "insert into table0(device, level, attr1, attr2, time,num,bigNum,floatNum,str,bool) values('d1', 'l1', 'c', 'd', 0,3,2947483648,231.2121,'coconut',FALSE)",
         "insert into table0(device, level, attr1, attr2, time,num,bigNum,floatNum,str,bool,blob,ts,doubleNum) values('d1', 'l2', 'y', 'z', 20,2,2147483648,434.12,'pineapple',TRUE,X'108DCD62',2024-09-24T06:15:35.000+00:00,6666.8)",
         "insert into table0(device, level, attr1, attr2, time,num,bigNum,floatNum,str,bool) values('d1', 'l3', 't', 'a', 40,1,2247483648,12.123,'apricot',TRUE)",
@@ -1251,7 +1251,44 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         "select mode(device),mode(level),mode(attr1),mode(attr2),mode(date),mode(bool),mode(date),mode(ts),mode(stringv),mode(doublenum) from table0 where device='d2' and level='l1'";
     retArray =
         new String[] {
-          "d2,l1,d,c,null,false,null,2024-08-01T06:15:35.000Z,test-string3,null,",
+          "d2,l1,d,c,null,false,null,null,null,null,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = buildHeaders(1);
+    sql =
+        "select mode(stringv) from table0 where device='d2' and level='l1' and stringv is not null";
+    retArray =
+        new String[] {
+          "test-string3,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    // no push-down, test GroupedAccumulator
+    expectedHeader = buildHeaders(16);
+    sql =
+        "select mode(time),mode(device),mode(level),mode(attr1),mode(attr2),mode(num),mode(bignum),mode(floatnum),mode(date),mode(str),mode(bool),mode(date),mode(ts),mode(stringv),mode(doublenum),count(num+1) from table0 where device='d2' and level='l4' and time=80 group by device, level";
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.080Z,d2,l4,null,null,9,2147483646,43.12,null,apple,false,null,2024-09-20T06:15:35.000Z,test-string2,6666.7,1,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = buildHeaders(11);
+    sql =
+        "select mode(device),mode(level),mode(attr1),mode(attr2),mode(date),mode(bool),mode(date),mode(ts),mode(stringv),mode(doublenum),count(num+1) from table0 where device='d2' and level='l1' group by device, level";
+    retArray =
+        new String[] {
+          "d2,l1,d,c,null,false,null,null,null,null,3,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = buildHeaders(2);
+    sql =
+        "select mode(stringv),count(num+1) from table0 where device='d2' and level='l1' and stringv is not null group by device, level";
+    retArray =
+        new String[] {
+          "test-string3,1,",
         };
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
@@ -1267,6 +1304,43 @@ public class IoTDBMultiIDsWithAttributesTableIT {
     retArray =
         new String[] {
           "16.0,10.7,16.0,4.0,3.3,4.0,50.0,33.3,50.0,7.1,5.8,7.1,null,0.0,null,null,0.0,null,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = buildHeaders(19);
+    sql =
+        "select \n"
+            + "round(variance(num),1),round(var_pop(num),1),round(var_samp(num),1),round(stddev(num),1),round(stddev_pop(num),1),round(stddev_samp(num),1),\n"
+            + "round(variance(floatnum),1),round(var_pop(floatnum),1),round(var_samp(floatnum),1),round(stddev(floatnum),1),round(stddev_pop(floatnum),1),round(stddev_samp(floatnum),1),\n"
+            + "round(variance(doublenum),1),round(var_pop(doublenum),1),round(var_samp(doublenum),1),round(stddev(doublenum),1),round(stddev_pop(doublenum),1),round(stddev_samp(doublenum),1), count(num+1) from table0 where device='d2' and level='l4' group by device, level";
+    retArray =
+        new String[] {
+          "16.0,10.7,16.0,4.0,3.3,4.0,50.0,33.3,50.0,7.1,5.8,7.1,null,0.0,null,null,0.0,null,3,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    sql =
+        "select \n"
+            + "round(variance(num),1),round(var_pop(num),1),round(var_samp(num),1),round(stddev(num),1),round(stddev_pop(num),1),round(stddev_samp(num),1),\n"
+            + "round(variance(floatnum),1),round(var_pop(floatnum),1),round(var_samp(floatnum),1),round(stddev(floatnum),1),round(stddev_pop(floatnum),1),round(stddev_samp(floatnum),1),\n"
+            + "round(variance(doublenum),1),round(var_pop(doublenum),1),round(var_samp(doublenum),1),round(stddev(doublenum),1),round(stddev_pop(doublenum),1),round(stddev_samp(doublenum),1), count(num+1) from table0 group by device";
+    retArray =
+        new String[] {
+          "20.0,18.7,20.0,4.5,4.3,4.5,1391642.5,1298866.4,1391642.5,1179.7,1139.7,1179.7,0.1,0.1,0.1,0.4,0.2,0.4,15,",
+          "20.0,18.7,20.0,4.5,4.3,4.5,1391642.5,1298866.4,1391642.5,1179.7,1139.7,1179.7,0.0,0.0,0.0,0.2,0.2,0.2,15,"
+        };
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = buildHeaders(18);
+    sql =
+        "select \n"
+            + "round(variance(num),1),round(var_pop(num),1),round(var_samp(num),1),round(stddev(num),1),round(stddev_pop(num),1),round(stddev_samp(num),1),\n"
+            + "round(variance(floatnum),1),round(var_pop(floatnum),1),round(var_samp(floatnum),1),round(stddev(floatnum),1),round(stddev_pop(floatnum),1),round(stddev_samp(floatnum),1),\n"
+            + "round(variance(doublenum),1),round(var_pop(doublenum),1),round(var_samp(doublenum),1),round(stddev(doublenum),1),round(stddev_pop(doublenum),1),round(stddev_samp(doublenum),1) from table0 group by device";
+    retArray =
+        new String[] {
+          "20.0,18.7,20.0,4.5,4.3,4.5,1391642.5,1298866.4,1391642.5,1179.7,1139.7,1179.7,0.1,0.1,0.1,0.4,0.2,0.4,",
+          "20.0,18.7,20.0,4.5,4.3,4.5,1391642.5,1298866.4,1391642.5,1179.7,1139.7,1179.7,0.0,0.0,0.0,0.2,0.2,0.2,"
         };
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }

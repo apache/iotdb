@@ -94,14 +94,23 @@ public class SubscriptionConsumerAgent {
     final ConsumerGroupMeta metaInAgent =
         consumerGroupMetaKeeper.getConsumerGroupMeta(consumerGroupId);
 
-    // if consumer group meta does not exist on local agent or creation time is inconsistent with
-    // meta from coordinator
-    if (Objects.isNull(metaInAgent)
-        || metaInAgent.getCreationTime() != metaFromCoordinator.getCreationTime()) {
+    // if consumer group meta does not exist on local agent
+    if (Objects.isNull(metaInAgent)) {
+      consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
+      consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
+      SubscriptionAgent.broker().createBrokerIfNotExist(consumerGroupId);
+      return;
+    }
+
+    // if the creation time of consumer group meta on local agent is inconsistent with meta from
+    // coordinator
+    if (metaInAgent.getCreationTime() != metaFromCoordinator.getCreationTime()) {
       if (SubscriptionAgent.broker().isBrokerExist(consumerGroupId)) {
         LOGGER.warn(
-            "Subscription: broker bound to consumer group [{}] has already existed when the corresponding consumer group meta does not exist on local agent, drop it",
-            consumerGroupId);
+            "Subscription: broker bound to consumer group [{}] has already existed when the creation time of consumer group meta on local agent {} is inconsistent with meta from coordinator {}, drop it",
+            consumerGroupId,
+            metaInAgent,
+            metaFromCoordinator);
         if (!SubscriptionAgent.broker().dropBroker(consumerGroupId)) {
           final String exceptionMessage =
               String.format(
@@ -113,11 +122,11 @@ public class SubscriptionConsumerAgent {
 
       consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
       consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
-      SubscriptionAgent.broker().createBroker(consumerGroupId);
+      // no need to create broker manually
       return;
     }
 
-    // remove prefetching queue
+    // remove prefetching queues for topics unsubscribed by the consumer group
     final Set<String> topicsUnsubByGroup =
         ConsumerGroupMeta.getTopicsUnsubByGroup(metaInAgent, metaFromCoordinator);
     for (final String topicName : topicsUnsubByGroup) {
@@ -125,7 +134,7 @@ public class SubscriptionConsumerAgent {
     }
 
     // TODO: Currently we fully replace the entire ConsumerGroupMeta without carefully checking the
-    // changes in its fields.
+    //       changes in its fields.
     consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
     consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
   }
