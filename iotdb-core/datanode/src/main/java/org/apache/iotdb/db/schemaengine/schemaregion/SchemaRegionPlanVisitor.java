@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.schemaengine.schemaregion;
 
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteDevicesNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
@@ -153,5 +154,9 @@ public abstract class SchemaRegionPlanVisitor<R, C> {
   public R visitDeleteTableDevice(
       final DeleteTableDeviceNode deleteTableDevicePlan, final C context) {
     return visitSchemaRegionPlan(deleteTableDevicePlan, context);
+  }
+
+  public R visitDeleteDevices(final DeleteDevicesNode deleteDevicesPlan, final C context) {
+    return visitSchemaRegionPlan(deleteDevicesPlan, context);
   }
 }

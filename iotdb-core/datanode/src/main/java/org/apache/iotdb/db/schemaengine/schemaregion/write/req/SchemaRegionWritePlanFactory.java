@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteDevicesNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
@@ -109,6 +110,8 @@ public class SchemaRegionWritePlanFactory {
         return TableNodeLocationAddNode.MOCK_INSTANCE;
       case DELETE_TABLE_DEVICE:
         return DeleteTableDeviceNode.MOCK_INSTANCE;
+      case DELETE_DEVICES:
+        return DeleteDevicesNode.MOCK_INSTANCE;
       default:
         throw new UnsupportedOperationException(
             String.format(
