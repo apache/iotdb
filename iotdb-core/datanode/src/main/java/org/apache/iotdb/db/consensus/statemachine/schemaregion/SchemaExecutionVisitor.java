@@ -648,7 +648,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   public TSStatus visitConstructTableDevicesBlackList(
       final ConstructDevicesBlackListNode node, final ISchemaRegion schemaRegion) {
     try {
-      schemaRegion.deleteTableDevice(node);
+      schemaRegion.constructTableDevicesBlackList(node);
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (final MetadataException e) {
       logger.error(e.getMessage(), e);

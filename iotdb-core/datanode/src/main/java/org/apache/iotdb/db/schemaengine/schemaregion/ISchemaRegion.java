@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
@@ -337,6 +338,9 @@ public interface ISchemaRegion {
 
   void deleteTableDevice(final DeleteTableDeviceNode deleteTableDeviceNode)
       throws MetadataException;
+
+  void constructTableDevicesBlackList(
+      final ConstructDevicesBlackListNode constructDevicesBlackListNode) throws MetadataException;
 
   // endregion
 

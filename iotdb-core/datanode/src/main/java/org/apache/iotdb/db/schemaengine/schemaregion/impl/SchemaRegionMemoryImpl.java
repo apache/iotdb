@@ -1530,6 +1530,12 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
+  public void constructTableDevicesBlackList(
+      final ConstructDevicesBlackListNode constructDevicesBlackListNode) throws MetadataException {
+    writeToMLog(constructDevicesBlackListNode);
+  }
+
+  @Override
   public ISchemaReader<IDeviceSchemaInfo> getDeviceReader(final IShowDevicesPlan showDevicesPlan)
       throws MetadataException {
     return mtree.getDeviceReader(
