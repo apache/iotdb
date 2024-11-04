@@ -266,6 +266,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_hardlink_wal_enabled",
                 Boolean.toString(config.getPipeHardLinkWALEnabled()))));
+    config.setPipeFileReceiverFsyncEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_file_receiver_fsync_enabled",
+                Boolean.toString(config.getPipeFileReceiverFsyncEnabled()))));
 
     config.setPipeDataStructureTabletRowSize(
         Integer.parseInt(

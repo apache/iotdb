@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.pipe.receiver;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
@@ -72,6 +73,8 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   protected String username = CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
   protected String password = CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
 
+  private static final boolean IS_FSYNC_ENABLED =
+      PipeConfig.getInstance().getPipeFileReceiverFsyncEnabled();
   private File writingFile;
   private RandomAccessFile writingFileWriter;
 
@@ -376,7 +379,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     if (writingFileWriter != null) {
       try {
         writingFileWriter.close();
-        if (fsyncAfterClose) {
+        if (IS_FSYNC_ENABLED && fsyncAfterClose) {
           writingFileWriter.getFD().sync();
         }
         LOGGER.info(
@@ -482,7 +485,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       // Sync here is necessary to ensure that the data is written to the disk. Or data region may
       // load the file before the data is written to the disk and cause unexpected behavior after
       // system restart. (e.g., empty file in data region's data directory)
-      writingFileWriter.getFD().sync();
+      if (IS_FSYNC_ENABLED) {
+        writingFileWriter.getFD().sync();
+      }
       writingFileWriter = null;
 
       // writingFile will be deleted after load if no exception occurs
@@ -562,7 +567,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       // Sync here is necessary to ensure that the data is written to the disk. Or data region may
       // load the file before the data is written to the disk and cause unexpected behavior after
       // system restart. (e.g., empty file in data region's data directory)
-      writingFileWriter.getFD().sync();
+      if (IS_FSYNC_ENABLED) {
+        writingFileWriter.getFD().sync();
+      }
       writingFileWriter = null;
 
       // WritingFile will be deleted after load if no exception occurs
