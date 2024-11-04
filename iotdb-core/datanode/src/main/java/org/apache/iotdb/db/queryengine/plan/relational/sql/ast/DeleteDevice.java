@@ -19,16 +19,38 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
+import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DevicePredicateFilter;
+import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource;
+import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
+import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import org.apache.tsfile.read.common.type.TypeFactory;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
@@ -62,6 +84,95 @@ public class DeleteDevice extends AbstractTraverseDevice {
     if (Objects.nonNull(sessionInfo)) {
       sessionInfo.serialize(stream);
     }
+  }
+
+  public static Pair<List<PartialPath>, DevicePredicateFilter> constructDevicePredicateUpdater(
+      final String database, final String tableName, final byte[] updateInfo) {
+    final ByteBuffer buffer = ByteBuffer.wrap(updateInfo);
+
+    // Device pattern list
+    int size = ReadWriteIOUtils.readInt(buffer);
+    final List<List<SchemaFilter>> idDeterminedFilterList = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      final int singleSize = ReadWriteIOUtils.readInt(buffer);
+      idDeterminedFilterList.add(new ArrayList<>(singleSize));
+      for (int k = 0; k < singleSize; k++) {
+        idDeterminedFilterList.get(i).add(SchemaFilter.deserialize(buffer));
+      }
+    }
+
+    final List<PartialPath> devicePatternList =
+        TableDeviceQuerySource.getDevicePatternList(database, tableName, idDeterminedFilterList);
+
+    // Device updater
+    Expression predicate = null;
+    if (buffer.get() == 1) {
+      predicate = Expression.deserialize(buffer);
+    }
+
+    size = ReadWriteIOUtils.readInt(buffer);
+    final List<ColumnHeader> columnHeaderList = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      columnHeaderList.add(ColumnHeader.deserialize(buffer));
+    }
+
+    SessionInfo sessionInfo = null;
+    if (ReadWriteIOUtils.readBool(buffer)) {
+      sessionInfo = SessionInfo.deserializeFrom(buffer);
+    }
+
+    final AtomicInteger valueColumnIndex = new AtomicInteger(0);
+    final Map<Symbol, List<InputLocation>> inputLocations =
+        columnHeaderList.stream()
+            .collect(
+                Collectors.toMap(
+                    columnHeader -> new Symbol(columnHeader.getColumnName()),
+                    columnHeader ->
+                        Collections.singletonList(
+                            new InputLocation(0, valueColumnIndex.getAndIncrement()))));
+
+    final TypeProvider mockTypeProvider =
+        new TypeProvider(
+            columnHeaderList.stream()
+                .collect(
+                    Collectors.toMap(
+                        columnHeader -> new Symbol(columnHeader.getColumnName()),
+                        columnHeader -> TypeFactory.getType(columnHeader.getColumnType()))));
+    final Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
+
+    // records LeafColumnTransformer of filter
+    final List<LeafColumnTransformer> filterLeafColumnTransformerList = new ArrayList<>();
+
+    // records subexpression -> ColumnTransformer for filter
+    final Map<Expression, ColumnTransformer> filterExpressionColumnTransformerMap = new HashMap<>();
+
+    final ColumnTransformerBuilder visitor = new ColumnTransformerBuilder();
+
+    final ColumnTransformer filterOutputTransformer =
+        Objects.nonNull(predicate)
+            ? visitor.process(
+                predicate,
+                new ColumnTransformerBuilder.Context(
+                    sessionInfo,
+                    filterLeafColumnTransformerList,
+                    inputLocations,
+                    filterExpressionColumnTransformerMap,
+                    ImmutableMap.of(),
+                    ImmutableList.of(),
+                    ImmutableList.of(),
+                    0,
+                    mockTypeProvider,
+                    metadata))
+            : null;
+
+    return new Pair<>(
+        devicePatternList,
+        new DevicePredicateFilter(
+            filterLeafColumnTransformerList,
+            filterOutputTransformer,
+            database,
+            tableName,
+            columnHeaderList));
   }
 
   @Override
