@@ -838,22 +838,26 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
    */
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
-    serializeToWAL(buffer, 0, rowCount);
+    serializeToWAL(buffer, Collections.singletonList(new int[] {0, rowCount}));
   }
 
-  public void serializeToWAL(IWALByteBufferView buffer, int start, int end) {
+  public void serializeToWAL(IWALByteBufferView buffer, List<int[]> rangeList) {
     buffer.putShort(getType().getNodeType());
-    subSerialize(buffer, start, end);
+    subSerialize(buffer, rangeList);
   }
 
-  void subSerialize(IWALByteBufferView buffer, int start, int end) {
+  void subSerialize(IWALByteBufferView buffer, List<int[]> rangeList) {
     buffer.putLong(searchIndex);
     WALWriteUtils.write(targetPath.getFullPath(), buffer);
     // data types are serialized in measurement schemas
     writeMeasurementSchemas(buffer);
-    writeTimes(buffer, start, end);
-    writeBitMaps(buffer, start, end);
-    writeValues(buffer, start, end);
+    int rowNumInRange = 0;
+    for (int[] startEnd : rangeList) {
+      rowNumInRange += startEnd[1] - startEnd[0];
+    }
+    writeTimes(buffer, rangeList, rowNumInRange);
+    writeBitMaps(buffer, rangeList, rowNumInRange);
+    writeValues(buffer, rangeList);
     buffer.put((byte) (isAligned ? 1 : 0));
   }
 
@@ -863,15 +867,17 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     serializeMeasurementSchemasToWAL(buffer);
   }
 
-  protected void writeTimes(IWALByteBufferView buffer, int start, int end) {
-    buffer.putInt(end - start);
-    for (int i = start; i < end; i++) {
-      buffer.putLong(times[i]);
+  protected void writeTimes(IWALByteBufferView buffer, List<int[]> rangeList, int rowNumInRange) {
+    buffer.putInt(rowNumInRange);
+    for (int[] startEnd : rangeList) {
+      for (int i = startEnd[0]; i < startEnd[1]; i++) {
+        buffer.putLong(times[i]);
+      }
     }
   }
 
   /** Serialize bitmaps, ignoring failed time series */
-  protected void writeBitMaps(IWALByteBufferView buffer, int start, int end) {
+  protected void writeBitMaps(IWALByteBufferView buffer, List<int[]> rangeList, int rowNumInRange) {
     buffer.put(BytesUtils.boolToByte(bitMaps != null));
     if (bitMaps != null) {
       for (int i = 0; i < bitMaps.length; i++) {
@@ -884,9 +890,13 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
           buffer.put(BytesUtils.boolToByte(false));
         } else {
           buffer.put(BytesUtils.boolToByte(true));
-          int len = end - start;
-          BitMap partBitMap = new BitMap(len);
-          BitMap.copyOfRange(bitMaps[i], start, partBitMap, 0, len);
+          BitMap partBitMap = new BitMap(rowNumInRange);
+          int copiedLength = 0;
+          for (int[] startEnd : rangeList) {
+            int len = startEnd[1] - startEnd[0];
+            BitMap.copyOfRange(bitMaps[i], startEnd[0], partBitMap, copiedLength, len);
+            copiedLength += len;
+          }
           buffer.put(partBitMap.getByteArray());
         }
       }
@@ -894,13 +904,15 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   /** Serialize values, ignoring failed time series */
-  protected void writeValues(IWALByteBufferView buffer, int start, int end) {
+  protected void writeValues(IWALByteBufferView buffer, List<int[]> rangeList) {
     for (int i = 0; i < columns.length; i++) {
       // ignore failed partial insert
       if (measurements[i] == null) {
         continue;
       }
-      serializeColumn(dataTypes[i], columns[i], buffer, start, end);
+      for (int[] startEnd : rangeList) {
+        serializeColumn(dataTypes[i], columns[i], buffer, startEnd[0], startEnd[1]);
+      }
     }
   }
 

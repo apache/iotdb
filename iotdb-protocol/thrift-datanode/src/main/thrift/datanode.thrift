@@ -802,9 +802,9 @@ service IDataNodeRPCService {
   common.TSStatus cleanDataNodeCache(TCleanDataNodeCacheReq req)
 
   /**
-   * Config node will stop the Data node.
+   * Config node will stop and clear the Data node.
    */
-  common.TSStatus stopDataNode()
+  common.TSStatus stopAndClearDataNode()
 
   /**
    * ConfigNode will ask DataNode for heartbeat in every few seconds.

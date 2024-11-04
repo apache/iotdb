@@ -398,8 +398,9 @@ public class CnToDnInternalServiceAsyncRequestManager
             client.cleanDataNodeCache(
                 (TCleanDataNodeCacheReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        CnToDnAsyncRequestType.STOP_DATA_NODE,
-        (req, client, handler) -> client.stopDataNode((DataNodeTSStatusRPCHandler) handler));
+        CnToDnAsyncRequestType.STOP_AND_CLEAR_DATA_NODE,
+        (req, client, handler) ->
+            client.stopAndClearDataNode((DataNodeTSStatusRPCHandler) handler));
   }
 
   @Override

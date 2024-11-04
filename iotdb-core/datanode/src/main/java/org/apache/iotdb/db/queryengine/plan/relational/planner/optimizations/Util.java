@@ -28,12 +28,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationN
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -58,14 +56,10 @@ public class Util {
     for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
       AggregationNode.Aggregation originalAggregation = entry.getValue();
       ResolvedFunction resolvedFunction = originalAggregation.getResolvedFunction();
-      List<Type> intermediateTypes =
-          TableBuiltinAggregationFunction.getIntermediateTypes(
+      Type intermediateType =
+          TableBuiltinAggregationFunction.getIntermediateType(
               resolvedFunction.getSignature().getName(),
               resolvedFunction.getSignature().getArgumentTypes());
-      Type intermediateType =
-          intermediateTypes.size() == 1
-              ? intermediateTypes.get(0)
-              : RowType.anonymous(intermediateTypes);
       Symbol intermediateSymbol =
           symbolAllocator.newSymbol(resolvedFunction.getSignature().getName(), intermediateType);
       // TODO put symbol and its type to TypeProvide or later process: add all map contents of
@@ -128,14 +122,10 @@ public class Util {
     for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
       AggregationNode.Aggregation originalAggregation = entry.getValue();
       ResolvedFunction resolvedFunction = originalAggregation.getResolvedFunction();
-      List<Type> intermediateTypes =
-          TableBuiltinAggregationFunction.getIntermediateTypes(
+      Type intermediateType =
+          TableBuiltinAggregationFunction.getIntermediateType(
               resolvedFunction.getSignature().getName(),
               resolvedFunction.getSignature().getArgumentTypes());
-      Type intermediateType =
-          intermediateTypes.size() == 1
-              ? intermediateTypes.get(0)
-              : RowType.anonymous(intermediateTypes);
       Symbol intermediateSymbol =
           symbolAllocator.newSymbol(resolvedFunction.getSignature().getName(), intermediateType);
 

@@ -58,7 +58,7 @@ class LRUCacheEntryManager<FK, SK, V>
   }
 
   @Override
-  public boolean invalid(final LRUCacheEntry<SK, V> cacheEntry) {
+  public boolean invalidate(final LRUCacheEntry<SK, V> cacheEntry) {
     if (cacheEntry.isInvalidated.getAndSet(true)) {
       return false;
     }

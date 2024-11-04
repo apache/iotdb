@@ -383,7 +383,7 @@ public class NodeManager {
     try {
       // Checks if the RemoveDataNode request is valid
       RemoveDataNodeHandler removeDataNodeHandler =
-          configManager.getProcedureManager().getEnv().getRemoveDataNodeManager();
+          configManager.getProcedureManager().getEnv().getRemoveDataNodeHandler();
       DataNodeToStatusResp preCheckStatus =
           removeDataNodeHandler.checkRemoveDataNodeRequest(removeDataNodePlan);
       if (preCheckStatus.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

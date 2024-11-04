@@ -726,8 +726,8 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus alterDatabase(DatabaseSchemaPlan databaseSchemaPlan) {
-    TSStatus status = confirmLeader();
+  public TSStatus alterDatabase(final DatabaseSchemaPlan databaseSchemaPlan) {
+    final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return clusterSchemaManager.alterDatabase(databaseSchemaPlan, false);
     } else {
@@ -736,19 +736,19 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public synchronized TSStatus deleteDatabases(TDeleteDatabasesReq tDeleteReq) {
-    TSStatus status = confirmLeader();
+  public synchronized TSStatus deleteDatabases(final TDeleteDatabasesReq tDeleteReq) {
+    final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      List<String> deletedPaths = tDeleteReq.getPrefixPathList();
+      final List<String> deletedPaths = tDeleteReq.getPrefixPathList();
       // remove wild
-      Map<String, TDatabaseSchema> deleteDatabaseSchemaMap =
+      final Map<String, TDatabaseSchema> deleteDatabaseSchemaMap =
           getClusterSchemaManager().getMatchedDatabaseSchemasByName(deletedPaths);
       if (deleteDatabaseSchemaMap.isEmpty()) {
         return RpcUtils.getStatus(
             TSStatusCode.PATH_NOT_EXIST.getStatusCode(),
             String.format("Path %s does not exist", Arrays.toString(deletedPaths.toArray())));
       }
-      ArrayList<TDatabaseSchema> parsedDeleteDatabases =
+      final ArrayList<TDatabaseSchema> parsedDeleteDatabases =
           new ArrayList<>(deleteDatabaseSchemaMap.values());
       return procedureManager.deleteDatabases(
           parsedDeleteDatabases,
@@ -783,7 +783,8 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSchemaPartitionTableResp getSchemaPartition(final PathPatternTree patternTree) {
+  public TSchemaPartitionTableResp getSchemaPartition(
+      final PathPatternTree patternTree, final boolean isTableModel) {
     // Construct empty response
 
     final TSStatus status = confirmLeader();
@@ -795,7 +796,7 @@ public class ConfigManager implements IManager {
     // Build GetSchemaPartitionPlan
     final Map<String, Set<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
     final List<PartialPath> relatedPaths = patternTree.getAllPathPatterns();
-    final List<String> allDatabases = getClusterSchemaManager().getDatabaseNames();
+    final List<String> allDatabases = getClusterSchemaManager().getDatabaseNames(isTableModel);
     final List<PartialPath> allDatabasePaths = new ArrayList<>();
     for (final String database : allDatabases) {
       try {
@@ -849,8 +850,8 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSchemaPartitionTableResp getOrCreateSchemaPartition(PathPatternTree patternTree) {
-
+  public TSchemaPartitionTableResp getOrCreateSchemaPartition(
+      final PathPatternTree patternTree, final boolean isTableModel) {
     TSStatus status = confirmLeader();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // Construct empty response
@@ -859,7 +860,7 @@ public class ConfigManager implements IManager {
     }
 
     List<IDeviceID> devicePaths = patternTree.getAllDevicePatterns();
-    List<String> databases = getClusterSchemaManager().getDatabaseNames();
+    List<String> databases = getClusterSchemaManager().getDatabaseNames(isTableModel);
 
     // Build GetOrCreateSchemaPartitionPlan
     Map<String, Set<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
@@ -1834,14 +1835,15 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TShowDatabaseResp showDatabase(TGetDatabaseReq req) {
-    TSStatus status = confirmLeader();
+  public TShowDatabaseResp showDatabase(final TGetDatabaseReq req) {
+    final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      PathPatternTree scope =
+      final PathPatternTree scope =
           req.getScopePatternTree() == null
               ? SchemaConstant.ALL_MATCH_SCOPE
               : PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
-      GetDatabasePlan getDatabasePlan = new GetDatabasePlan(req.getDatabasePathPattern(), scope);
+      final GetDatabasePlan getDatabasePlan =
+          new GetDatabasePlan(req.getDatabasePathPattern(), scope);
       return getClusterSchemaManager().showDatabase(getDatabasePlan);
     } else {
       return new TShowDatabaseResp().setStatus(status);
@@ -1943,17 +1945,18 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req) {
-    TSStatus status = confirmLeader();
+  public TSStatus deactivateSchemaTemplate(final TDeactivateSchemaTemplateReq req) {
+    final TSStatus status = confirmLeader();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return status;
     }
 
-    PathPatternTree patternTree =
+    final PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
 
-    List<PartialPath> patternList = patternTree.getAllPathPatterns();
-    TemplateSetInfoResp templateSetInfoResp = clusterSchemaManager.getTemplateSetInfo(patternList);
+    final List<PartialPath> patternList = patternTree.getAllPathPatterns();
+    final TemplateSetInfoResp templateSetInfoResp =
+        clusterSchemaManager.getTemplateSetInfo(patternList);
     if (templateSetInfoResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return templateSetInfoResp.getStatus();
     }
@@ -1968,9 +1971,9 @@ public class ConfigManager implements IManager {
     }
 
     if (!req.getTemplateName().equals(ONE_LEVEL_PATH_WILDCARD)) {
-      Map<PartialPath, List<Template>> filteredTemplateSetInfo = new HashMap<>();
-      for (Map.Entry<PartialPath, List<Template>> entry : templateSetInfo.entrySet()) {
-        for (Template template : entry.getValue()) {
+      final Map<PartialPath, List<Template>> filteredTemplateSetInfo = new HashMap<>();
+      for (final Map.Entry<PartialPath, List<Template>> entry : templateSetInfo.entrySet()) {
+        for (final Template template : entry.getValue()) {
           if (template.getName().equals(req.getTemplateName())) {
             filteredTemplateSetInfo.put(entry.getKey(), Collections.singletonList(template));
             break;
@@ -2379,17 +2382,22 @@ public class ConfigManager implements IManager {
    * Get all related schemaRegion which may contains the timeseries matched by given patternTree.
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup(
-      PathPatternTree patternTree) {
-    Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
-        getSchemaPartition(patternTree).getSchemaPartitionTable();
+      final PathPatternTree patternTree) {
+    return getRelatedSchemaRegionGroup(patternTree, false);
+  }
 
-    List<TRegionReplicaSet> allRegionReplicaSets = getPartitionManager().getAllReplicaSets();
-    Set<TConsensusGroupId> groupIdSet =
+  public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup(
+      final PathPatternTree patternTree, final boolean isTableModel) {
+    final Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
+        getSchemaPartition(patternTree, isTableModel).getSchemaPartitionTable();
+
+    final List<TRegionReplicaSet> allRegionReplicaSets = getPartitionManager().getAllReplicaSets();
+    final Set<TConsensusGroupId> groupIdSet =
         schemaPartitionTable.values().stream()
             .flatMap(m -> m.values().stream())
             .collect(Collectors.toSet());
-    Map<TConsensusGroupId, TRegionReplicaSet> filteredRegionReplicaSets = new HashMap<>();
-    for (TRegionReplicaSet regionReplicaSet : allRegionReplicaSets) {
+    final Map<TConsensusGroupId, TRegionReplicaSet> filteredRegionReplicaSets = new HashMap<>();
+    for (final TRegionReplicaSet regionReplicaSet : allRegionReplicaSets) {
       if (groupIdSet.contains(regionReplicaSet.getRegionId())) {
         filteredRegionReplicaSets.put(regionReplicaSet.getRegionId(), regionReplicaSet);
       }
@@ -2402,13 +2410,13 @@ public class ConfigManager implements IManager {
    * patternTree
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedDataRegionGroup(
-      PathPatternTree patternTree) {
+      final PathPatternTree patternTree, final boolean isTableModel) {
     // Get all databases and slots by getting schemaengine partition
-    Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
-        getSchemaPartition(patternTree).getSchemaPartitionTable();
+    final Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
+        getSchemaPartition(patternTree, isTableModel).getSchemaPartitionTable();
 
     // Construct request for getting data partition
-    Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap = new HashMap<>();
+    final Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap = new HashMap<>();
     schemaPartitionTable.forEach(
         (key, value) -> {
           Map<TSeriesPartitionSlot, TTimeSlotList> slotListMap = new HashMap<>();
@@ -2422,13 +2430,13 @@ public class ConfigManager implements IManager {
         });
 
     // Get all data partitions
-    GetDataPartitionPlan getDataPartitionPlan = new GetDataPartitionPlan(partitionSlotsMap);
-    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
+    final GetDataPartitionPlan getDataPartitionPlan = new GetDataPartitionPlan(partitionSlotsMap);
+    final Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
         dataPartitionTable = getDataPartition(getDataPartitionPlan).getDataPartitionTable();
 
     // Get all region replicaset of target data partitions
-    List<TRegionReplicaSet> allRegionReplicaSets = getPartitionManager().getAllReplicaSets();
-    Set<TConsensusGroupId> groupIdSet =
+    final List<TRegionReplicaSet> allRegionReplicaSets = getPartitionManager().getAllReplicaSets();
+    final Set<TConsensusGroupId> groupIdSet =
         dataPartitionTable.values().stream()
             .flatMap(
                 tSeriesPartitionSlotMapMap ->
@@ -2438,8 +2446,8 @@ public class ConfigManager implements IManager {
                                 tTimePartitionSlotListMap.values().stream()
                                     .flatMap(Collection::stream)))
             .collect(Collectors.toSet());
-    Map<TConsensusGroupId, TRegionReplicaSet> filteredRegionReplicaSets = new HashMap<>();
-    for (TRegionReplicaSet regionReplicaSet : allRegionReplicaSets) {
+    final Map<TConsensusGroupId, TRegionReplicaSet> filteredRegionReplicaSets = new HashMap<>();
+    for (final TRegionReplicaSet regionReplicaSet : allRegionReplicaSets) {
       if (groupIdSet.contains(regionReplicaSet.getRegionId())) {
         filteredRegionReplicaSets.put(regionReplicaSet.getRegionId(), regionReplicaSet);
       }

@@ -29,7 +29,9 @@ import javax.annotation.Nullable;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 public class LoadTsFileConfigurator {
@@ -83,7 +85,8 @@ public class LoadTsFileConfigurator {
   public static final String DATABASE_NAME_KEY = "database-name";
 
   public static @Nullable String parseDatabaseName(final Map<String, String> loadAttributes) {
-    return loadAttributes.get(DATABASE_NAME_KEY);
+    final String databaseName = loadAttributes.get(DATABASE_NAME_KEY);
+    return Objects.nonNull(databaseName) ? databaseName.toLowerCase(Locale.ENGLISH) : null;
   }
 
   public static final String ON_SUCCESS_KEY = "on-success";

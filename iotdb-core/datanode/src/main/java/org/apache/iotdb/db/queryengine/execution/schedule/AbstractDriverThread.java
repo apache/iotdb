@@ -81,10 +81,10 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
               new SetThreadName(next.getDriver().getDriverTaskId().getFullId())) {
             Throwable rootCause = ErrorHandlingUtils.getRootCause(e);
             if (rootCause instanceof IoTDBRuntimeException) {
-              next.setAbortCause(e.getMessage());
+              next.setAbortCause(rootCause);
             } else {
               logger.warn("[ExecuteFailed]", e);
-              next.setAbortCause(getAbortCause(e));
+              next.setAbortCause(getAbortCause(e, next.getDriverTaskId().getFullId()));
             }
             scheduler.toAborted(next);
           }
@@ -122,11 +122,12 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
     closed = true;
   }
 
-  private String getAbortCause(final Exception e) {
+  private Throwable getAbortCause(final Exception e, String fullId) {
     Throwable rootCause = ErrorHandlingUtils.getRootCause(e);
     if (rootCause instanceof MemoryNotEnoughException) {
-      return DriverTaskAbortedException.BY_MEMORY_NOT_ENOUGH;
+      return rootCause;
     }
-    return DriverTaskAbortedException.BY_INTERNAL_ERROR_SCHEDULED;
+    return new DriverTaskAbortedException(
+        fullId, DriverTaskAbortedException.BY_INTERNAL_ERROR_SCHEDULED);
   }
 }

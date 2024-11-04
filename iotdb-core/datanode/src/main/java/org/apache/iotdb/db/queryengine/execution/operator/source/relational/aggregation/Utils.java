@@ -73,7 +73,7 @@ public class Utils {
 
   public static void serializeBinaryValue(Binary binary, byte[] valueBytes, int offset) {
     BytesUtils.intToBytes(binary.getValues().length, valueBytes, offset);
-    offset += 4;
+    offset += Integer.BYTES;
     System.arraycopy(binary.getValues(), 0, valueBytes, offset, binary.getValues().length);
   }
 

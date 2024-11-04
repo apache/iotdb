@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
@@ -68,8 +69,10 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Streams;
 import com.google.errorprone.annotations.Immutable;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.TimeDuration;
 
 import javax.annotation.Nullable;
@@ -332,8 +335,9 @@ public class Analysis implements IAnalysis {
     return aggregates.get(NodeRef.of(query));
   }
 
-  public boolean hasAggregates() {
-    return !aggregates.isEmpty();
+  public boolean noAggregates() {
+    return aggregates.isEmpty()
+        || (aggregates.size() == 1 && aggregates.entrySet().iterator().next().getValue().isEmpty());
   }
 
   public void setOrderByAggregates(OrderBy node, List<Expression> aggregates) {
@@ -807,6 +811,15 @@ public class Analysis implements IAnalysis {
       redirectNodeList = new ArrayList<>();
     }
     redirectNodeList.add(endPoint);
+  }
+
+  public List<TRegionReplicaSet> getDataRegionReplicaSetWithTimeFilter(
+      String database, IDeviceID deviceId, Filter timeFilter) {
+    if (dataPartition == null) {
+      return Collections.singletonList(new TRegionReplicaSet());
+    } else {
+      return dataPartition.getDataRegionReplicaSetWithTimeFilter(database, deviceId, timeFilter);
+    }
   }
 
   @Override

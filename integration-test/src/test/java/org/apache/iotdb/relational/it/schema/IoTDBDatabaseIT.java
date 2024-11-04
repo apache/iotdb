@@ -40,6 +40,7 @@ import java.sql.Statement;
 import java.util.Collections;
 
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.showDBColumnHeaders;
+import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.showDBDetailsColumnHeaders;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -83,6 +84,7 @@ public class IoTDBDatabaseIT {
       int[] schemaReplicaFactors = new int[] {1};
       int[] dataReplicaFactors = new int[] {1};
       int[] timePartitionInterval = new int[] {604800000};
+      String[] model = new String[] {"TABLE"};
 
       // show
       try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
@@ -97,6 +99,26 @@ public class IoTDBDatabaseIT {
           assertEquals(schemaReplicaFactors[cnt], resultSet.getInt(2));
           assertEquals(dataReplicaFactors[cnt], resultSet.getInt(3));
           assertEquals(timePartitionInterval[cnt], resultSet.getLong(4));
+          cnt++;
+        }
+        assertEquals(databaseNames.length, cnt);
+      }
+
+      // show
+      try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES DETAILS")) {
+        int cnt = 0;
+        final ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(showDBDetailsColumnHeaders.size(), metaData.getColumnCount());
+        for (int i = 0; i < showDBDetailsColumnHeaders.size(); i++) {
+          assertEquals(
+              showDBDetailsColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
+        }
+        while (resultSet.next()) {
+          assertEquals(databaseNames[cnt], resultSet.getString(1));
+          assertEquals(schemaReplicaFactors[cnt], resultSet.getInt(2));
+          assertEquals(dataReplicaFactors[cnt], resultSet.getInt(3));
+          assertEquals(timePartitionInterval[cnt], resultSet.getLong(4));
+          assertEquals(model[cnt], resultSet.getString(5));
           cnt++;
         }
         assertEquals(databaseNames.length, cnt);

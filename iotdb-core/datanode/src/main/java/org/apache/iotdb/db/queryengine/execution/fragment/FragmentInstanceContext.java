@@ -395,7 +395,11 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   public Optional<Throwable> getFailureCause() {
-    return Optional.ofNullable(stateMachine.getFailureCauses().peek());
+    return Optional.ofNullable(
+        stateMachine.getFailureCauses().stream()
+            .filter(e -> e instanceof IoTDBException || e instanceof IoTDBRuntimeException)
+            .findFirst()
+            .orElse(stateMachine.getFailureCauses().peek()));
   }
 
   public Filter getGlobalTimeFilter() {

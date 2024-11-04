@@ -45,28 +45,39 @@ public class ShowDBTask implements IConfigTask {
 
   private final ShowDB node;
 
-  public ShowDBTask(ShowDB node) {
+  public ShowDBTask(final ShowDB node) {
     this.node = node;
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+  public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.showDatabases(node);
   }
 
   public static void buildTSBlock(
-      Map<String, TDatabaseInfo> storageGroupInfoMap, SettableFuture<ConfigTaskResult> future) {
+      final Map<String, TDatabaseInfo> storageGroupInfoMap,
+      final SettableFuture<ConfigTaskResult> future,
+      final boolean isDetails) {
+    if (isDetails) {
+      buildTSBlockForDetails(storageGroupInfoMap, future);
+    } else {
+      buildTSBlockForNonDetails(storageGroupInfoMap, future);
+    }
+  }
 
-    List<TSDataType> outputDataTypes =
+  private static void buildTSBlockForNonDetails(
+      final Map<String, TDatabaseInfo> storageGroupInfoMap,
+      final SettableFuture<ConfigTaskResult> future) {
+    final List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showDBColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
 
-    TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    for (Map.Entry<String, TDatabaseInfo> entry : storageGroupInfoMap.entrySet()) {
-      String dbName = entry.getKey().substring(5);
-      TDatabaseInfo storageGroupInfo = entry.getValue();
+    final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
+    for (final Map.Entry<String, TDatabaseInfo> entry : storageGroupInfoMap.entrySet()) {
+      final String dbName = entry.getKey().substring(5);
+      final TDatabaseInfo storageGroupInfo = entry.getValue();
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.getColumnBuilder(0).writeBinary(new Binary(dbName, TSFileConfig.STRING_CHARSET));
 
@@ -76,7 +87,38 @@ public class ShowDBTask implements IConfigTask {
       builder.declarePosition();
     }
 
-    DatasetHeader datasetHeader = DatasetHeaderFactory.getShowDBHeader();
+    final DatasetHeader datasetHeader = DatasetHeaderFactory.getShowDBHeader();
+    future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
+  }
+
+  private static void buildTSBlockForDetails(
+      final Map<String, TDatabaseInfo> storageGroupInfoMap,
+      final SettableFuture<ConfigTaskResult> future) {
+    final List<TSDataType> outputDataTypes =
+        ColumnHeaderConstant.showDBDetailsColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
+
+    final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
+    for (final Map.Entry<String, TDatabaseInfo> entry : storageGroupInfoMap.entrySet()) {
+      final String dbName = entry.getKey().substring(5);
+      final TDatabaseInfo storageGroupInfo = entry.getValue();
+      builder.getTimeColumnBuilder().writeLong(0L);
+      builder.getColumnBuilder(0).writeBinary(new Binary(dbName, TSFileConfig.STRING_CHARSET));
+
+      builder.getColumnBuilder(1).writeInt(storageGroupInfo.getSchemaReplicationFactor());
+      builder.getColumnBuilder(2).writeInt(storageGroupInfo.getDataReplicationFactor());
+      builder.getColumnBuilder(3).writeLong(storageGroupInfo.getTimePartitionInterval());
+      builder
+          .getColumnBuilder(4)
+          .writeBinary(
+              new Binary(
+                  storageGroupInfo.isIsTableModel() ? "TABLE" : "TREE",
+                  TSFileConfig.STRING_CHARSET));
+      builder.declarePosition();
+    }
+
+    final DatasetHeader datasetHeader = DatasetHeaderFactory.getShowDBDetailsHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }

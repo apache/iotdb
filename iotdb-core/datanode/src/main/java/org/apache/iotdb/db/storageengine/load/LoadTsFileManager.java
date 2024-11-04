@@ -36,7 +36,9 @@ import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -61,11 +63,8 @@ import java.io.IOException;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -73,6 +72,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
+
+import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT_DOT;
 
 /**
  * {@link LoadTsFileManager} is used for dealing with {@link LoadTsFilePieceNode} and {@link
@@ -407,10 +409,26 @@ public class LoadTsFileManager {
         }
 
         final TsFileIOWriter writer = new TsFileIOWriter(newTsFile);
-        writer.setGenerateTableSchema(true);
         dataPartition2Writer.put(partitionInfo, writer);
       }
       TsFileIOWriter writer = dataPartition2Writer.get(partitionInfo);
+
+      // Table model needs to register TableSchema
+      final String tableName =
+          chunkData.getDevice() != null ? chunkData.getDevice().getTableName() : null;
+      if (tableName != null && !(tableName.startsWith(ROOT_DOT) || tableName.equals(ROOT))) {
+        writer
+            .getSchema()
+            .getTableSchemaMap()
+            .computeIfAbsent(
+                tableName,
+                t ->
+                    TableSchema.of(
+                            DataNodeTableCache.getInstance()
+                                .getTable(partitionInfo.getDataRegion().getDatabaseName(), t))
+                        .toTsFileTableSchemaNoAttribute());
+      }
+
       if (!Objects.equals(chunkData.getDevice(), dataPartition2LastDevice.get(partitionInfo))) {
         if (dataPartition2LastDevice.containsKey(partitionInfo)) {
           writer.endChunkGroup();
@@ -455,47 +473,27 @@ public class LoadTsFileManager {
       if (isClosed) {
         throw new IOException(String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
       }
-
       for (Map.Entry<DataPartitionInfo, ModificationFile> entry :
           dataPartition2ModificationFile.entrySet()) {
         entry.getValue().close();
       }
+      for (Map.Entry<DataPartitionInfo, TsFileIOWriter> entry : dataPartition2Writer.entrySet()) {
+        TsFileIOWriter writer = entry.getValue();
+        if (writer.isWritingChunkGroup()) {
+          writer.endChunkGroup();
+        }
+        writer.endFile();
 
-      final List<Map.Entry<DataPartitionInfo, TsFileIOWriter>> dataPartition2WriterList =
-          new ArrayList<>(dataPartition2Writer.entrySet());
-      Collections.shuffle(dataPartition2WriterList);
+        DataRegion dataRegion = entry.getKey().getDataRegion();
+        dataRegion.loadNewTsFile(generateResource(writer, progressIndex), true, isGeneratedByPipe);
 
-      final AtomicReference<Exception> exception = new AtomicReference<>();
-      dataPartition2WriterList.parallelStream()
-          .forEach(
-              entry -> {
-                try {
-                  final TsFileIOWriter writer = entry.getValue();
-                  if (writer.isWritingChunkGroup()) {
-                    writer.endChunkGroup();
-                  }
-                  writer.endFile();
-
-                  final DataRegion dataRegion = entry.getKey().getDataRegion();
-                  dataRegion.loadNewTsFile(
-                      generateResource(writer, progressIndex), true, isGeneratedByPipe);
-
-                  // Metrics
-                  dataRegion
-                      .getNonSystemDatabaseName()
-                      .ifPresent(
-                          databaseName ->
-                              updateWritePointCountMetrics(
-                                  dataRegion,
-                                  databaseName,
-                                  getTsFileWritePointCount(writer),
-                                  false));
-                } catch (final Exception e) {
-                  exception.set(e);
-                }
-              });
-      if (exception.get() != null) {
-        throw new LoadFileException(exception.get());
+        // Metrics
+        dataRegion
+            .getNonSystemDatabaseName()
+            .ifPresent(
+                databaseName ->
+                    updateWritePointCountMetrics(
+                        dataRegion, databaseName, getTsFileWritePointCount(writer), false));
       }
     }
 

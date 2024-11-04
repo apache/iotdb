@@ -121,7 +121,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentDatabase;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentSqlDialect;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentTimestamp;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
@@ -130,6 +135,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVariables;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleGroupBy;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
@@ -257,8 +264,9 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitShowDatabasesStatement(RelationalSqlParser.ShowDatabasesStatementContext ctx) {
-    return new ShowDB(getLocation(ctx));
+  public Node visitShowDatabasesStatement(
+      final RelationalSqlParser.ShowDatabasesStatementContext ctx) {
+    return new ShowDB(getLocation(ctx), Objects.nonNull(ctx.DETAILS()));
   }
 
   @Override
@@ -860,7 +868,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitShowClusterIdStatement(RelationalSqlParser.ShowClusterIdStatementContext ctx) {
-    return super.visitShowClusterIdStatement(ctx);
+    return new ShowClusterId(getLocation(ctx));
   }
 
   @Override
@@ -889,11 +897,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitMigrateRegionStatement(RelationalSqlParser.MigrateRegionStatementContext ctx) {
     return super.visitMigrateRegionStatement(ctx);
-  }
-
-  @Override
-  public Node visitShowVariablesStatement(RelationalSqlParser.ShowVariablesStatementContext ctx) {
-    return super.visitShowVariablesStatement(ctx);
   }
 
   @Override
@@ -958,7 +961,36 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitShowVersionStatement(RelationalSqlParser.ShowVersionStatementContext ctx) {
-    return super.visitShowVersionStatement(ctx);
+    return new ShowVersion(getLocation(ctx));
+  }
+
+  @Override
+  public Node visitShowCurrentSqlDialectStatement(
+      RelationalSqlParser.ShowCurrentSqlDialectStatementContext ctx) {
+    return new ShowCurrentSqlDialect(getLocation(ctx));
+  }
+
+  @Override
+  public Node visitShowCurrentDatabaseStatement(
+      RelationalSqlParser.ShowCurrentDatabaseStatementContext ctx) {
+    return new ShowCurrentDatabase(getLocation(ctx));
+  }
+
+  @Override
+  public Node visitShowCurrentUserStatement(
+      RelationalSqlParser.ShowCurrentUserStatementContext ctx) {
+    return new ShowCurrentUser(getLocation(ctx));
+  }
+
+  @Override
+  public Node visitShowVariablesStatement(RelationalSqlParser.ShowVariablesStatementContext ctx) {
+    return new ShowVariables(getLocation(ctx));
+  }
+
+  @Override
+  public Node visitShowCurrentTimestampStatement(
+      RelationalSqlParser.ShowCurrentTimestampStatementContext ctx) {
+    return new ShowCurrentTimestamp(getLocation(ctx));
   }
 
   @Override
@@ -1695,8 +1727,12 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitCast(RelationalSqlParser.CastContext ctx) {
+    boolean isTryCast = ctx.TRY_CAST() != null;
     return new Cast(
-        getLocation(ctx), (Expression) visit(ctx.expression()), (DataType) visit(ctx.type()));
+        getLocation(ctx),
+        (Expression) visit(ctx.expression()),
+        (DataType) visit(ctx.type()),
+        isTryCast);
   }
 
   @Override

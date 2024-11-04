@@ -172,7 +172,7 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     }
 
     final Map<TConsensusGroupId, TRegionReplicaSet> relatedDataRegionGroup =
-        env.getConfigManager().getRelatedDataRegionGroup(patternTree);
+        env.getConfigManager().getRelatedDataRegionGroup(patternTree, true);
 
     if (!relatedDataRegionGroup.isEmpty()) {
       new DropTableRegionTaskExecutor<>(
@@ -208,7 +208,7 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     }
 
     final Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
-        env.getConfigManager().getRelatedSchemaRegionGroup(patternTree);
+        env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, true);
 
     if (!relatedSchemaRegionGroup.isEmpty()) {
       new DropTableRegionTaskExecutor<>(

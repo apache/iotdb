@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushStatus;
@@ -95,9 +96,9 @@ public interface IMemTable extends WALEntryValue {
    *
    * @param insertRowNode insertRowNode
    */
-  void insert(InsertRowNode insertRowNode);
+  int insert(InsertRowNode insertRowNode);
 
-  void insertAlignedRow(InsertRowNode insertRowNode);
+  int insertAlignedRow(InsertRowNode insertRowNode);
 
   /**
    * insert tablet into this memtable. The rows to be inserted are in the range [start, end). Null
@@ -108,11 +109,10 @@ public interface IMemTable extends WALEntryValue {
    * @param start included
    * @param end excluded
    */
-  void insertTablet(InsertTabletNode insertTabletNode, int start, int end)
+  int insertTablet(InsertTabletNode insertTabletNode, int start, int end)
       throws WriteProcessException;
 
-  void insertAlignedTablet(
-      InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results)
+  int insertAlignedTablet(InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results)
       throws WriteProcessException;
 
   ReadOnlyMemChunk query(
@@ -208,4 +208,6 @@ public interface IMemTable extends WALEntryValue {
   void markAsNotGeneratedByPipe();
 
   boolean isTotallyGeneratedByPipe();
+
+  void updateMemtablePointCountMetric(InsertNode insertNode, int pointsInserted);
 }
