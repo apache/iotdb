@@ -1100,14 +1100,14 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TPushPipeMetaResp pushPipeMeta(TPushPipeMetaReq req) {
-    final List<PipeMeta> pipeMetas = new ArrayList<>();
-    for (ByteBuffer byteBuffer : req.getPipeMetas()) {
-      pipeMetas.add(PipeMeta.deserialize(byteBuffer));
-    }
+  public TPushPipeMetaResp pushPipeMeta(final TPushPipeMetaReq req) {
     try {
-      List<TPushPipeMetaRespExceptionMessage> exceptionMessages =
-          PipeDataNodeAgent.task().handlePipeMetaChanges(pipeMetas);
+      final List<TPushPipeMetaRespExceptionMessage> exceptionMessages =
+          PipeDataNodeAgent.task()
+              .handlePipeMetaChanges(
+                  req.getPipeMetas().stream()
+                      .map(PipeMeta::deserialize)
+                      .collect(Collectors.toList()));
 
       return exceptionMessages.isEmpty()
           ? new TPushPipeMetaResp()
@@ -1115,7 +1115,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           : new TPushPipeMetaResp()
               .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()))
               .setExceptionMessages(exceptionMessages);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.error("Error occurred when pushing pipe meta", e);
       return new TPushPipeMetaResp()
           .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()));
@@ -1123,9 +1123,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TPushPipeMetaResp pushSinglePipeMeta(TPushSinglePipeMetaReq req) {
+  public TPushPipeMetaResp pushSinglePipeMeta(final TPushSinglePipeMetaReq req) {
     try {
-      TPushPipeMetaRespExceptionMessage exceptionMessage;
+      final TPushPipeMetaRespExceptionMessage exceptionMessage;
       if (req.isSetPipeNameToDrop()) {
         exceptionMessage = PipeDataNodeAgent.task().handleDropPipe(req.getPipeNameToDrop());
       } else if (req.isSetPipeMeta()) {
@@ -1140,7 +1140,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           : new TPushPipeMetaResp()
               .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()))
               .setExceptionMessages(Collections.singletonList(exceptionMessage));
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.error("Error occurred when pushing single pipe meta", e);
       return new TPushPipeMetaResp()
           .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()));
