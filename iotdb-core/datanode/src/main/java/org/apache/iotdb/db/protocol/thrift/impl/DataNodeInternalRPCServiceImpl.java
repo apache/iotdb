@@ -184,6 +184,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCleanDataNodeCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListWithTemplateReq;
+import org.apache.iotdb.mpp.rpc.thrift.TConstructTableDeviceBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructViewSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
@@ -1577,6 +1578,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                     new SchemaRegionId(consensusGroupId.getId()),
                     new DeleteTableDeviceNode(new PlanNodeId(""), req.getTableName()))
                 .getStatus());
+  }
+
+  @Override
+  public TSStatus constructTableDeviceBlackList(final TConstructTableDeviceBlackListReq req) {
+    return null;
   }
 
   public TTestConnectionResp submitTestConnectionTask(TNodeLocations nodeLocations) {

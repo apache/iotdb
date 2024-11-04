@@ -343,6 +343,7 @@ struct TDeleteDataOrDevicesForDropTableReq {
 struct TConstructTableDeviceBlackListReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required string tableName
+  3: required binary filterInfo
 }
 
 struct TTsFilePieceReq {

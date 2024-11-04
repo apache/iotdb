@@ -170,7 +170,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
         CnToDnAsyncRequestType.CONSTRUCT_TABLE_DEVICE_BLACK_LIST,
         ((dataNodeLocation, consensusGroupIdList) ->
             new TConstructTableDeviceBlackListReq(
-                new ArrayList<>(consensusGroupIdList), tableName))) {
+                new ArrayList<>(consensusGroupIdList), tableName, ByteBuffer.wrap(filterBytes)))) {
       @Override
       protected List<TConsensusGroupId> processResponseOfOneDataNode(
           final TDataNodeLocation dataNodeLocation,
