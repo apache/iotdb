@@ -141,6 +141,21 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     public boolean matches(IDeviceID deviceID) {
       return true;
     }
+
+    @Override
+    public int hashCode() {
+      return 0;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      return obj instanceof NOP;
+    }
+
+    @Override
+    public String toString() {
+      return "NOP";
+    }
   }
 
   public static class FullExactMatch extends IDPredicate {
@@ -186,6 +201,30 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     @Override
     public boolean matches(IDeviceID deviceID) {
       return this.deviceID.equals(deviceID);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      FullExactMatch that = (FullExactMatch) o;
+      return Objects.equals(deviceID, that.deviceID);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hashCode(deviceID);
+    }
+
+    @Override
+    public String toString() {
+      return "FullExactMatch{" +
+          "deviceID=" + deviceID +
+          '}';
     }
   }
 
@@ -241,7 +280,32 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
 
     @Override
     public boolean matches(IDeviceID deviceID) {
-      return deviceID.segmentNum() > segmentIndex && deviceID.segment(segmentIndex).equals(pattern);
+      return deviceID.segmentNum() > segmentIndex && pattern.equals(deviceID.segment(segmentIndex));
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      SegmentExactMatch that = (SegmentExactMatch) o;
+      return segmentIndex == that.segmentIndex && Objects.equals(pattern, that.pattern);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(pattern, segmentIndex);
+    }
+
+    @Override
+    public String toString() {
+      return "SegmentExactMatch{" +
+          "pattern='" + pattern + '\'' +
+          ", segmentIndex=" + segmentIndex +
+          '}';
     }
   }
 
@@ -305,6 +369,30 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     @Override
     public boolean matches(IDeviceID deviceID) {
       return predicates.stream().allMatch(predicate -> predicate.matches(deviceID));
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      And and = (And) o;
+      return Objects.equals(predicates, and.predicates);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hashCode(predicates);
+    }
+
+    @Override
+    public String toString() {
+      return "And{" +
+          "predicates=" + predicates +
+          '}';
     }
   }
 }

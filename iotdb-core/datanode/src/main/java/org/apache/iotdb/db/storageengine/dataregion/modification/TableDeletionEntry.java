@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
+import java.util.Objects;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.utils.ModificationUtils;
@@ -127,5 +128,22 @@ public class TableDeletionEntry extends ModEntry {
 
   public String getTableName() {
     return predicate.getTableName();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    TableDeletionEntry that = (TableDeletionEntry) o;
+    return Objects.equals(predicate, that.predicate) && Objects.equals(timeRange, that.timeRange);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(predicate, timeRange);
   }
 }

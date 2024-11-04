@@ -88,6 +88,7 @@ public abstract class ModEntry
    * @return true if the path can be matched by this modification, false otherwise.
    */
   @TreeModel
+  @Deprecated
   public abstract boolean matches(PartialPath path);
 
   /**

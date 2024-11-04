@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
+import java.util.Objects;
 import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.NOP;
 import org.apache.iotdb.db.utils.io.BufferSerializable;
 import org.apache.iotdb.db.utils.io.StreamSerializable;
@@ -144,5 +145,33 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
               measurementName.length() * measurementName.length() * Character.BYTES);
     }
     return size;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    DeletionPredicate that = (DeletionPredicate) o;
+    return Objects.equals(tableName, that.tableName) && Objects.equals(
+        idPredicate, that.idPredicate) && Objects.equals(measurementNames,
+        that.measurementNames);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(tableName, idPredicate, measurementNames);
+  }
+
+  @Override
+  public String toString() {
+    return "DeletionPredicate{" +
+        "tableName='" + tableName + '\'' +
+        ", idPredicate=" + idPredicate +
+        ", measurementNames=" + measurementNames +
+        '}';
   }
 }
