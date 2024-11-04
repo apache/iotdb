@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
+import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.DeviceAttributeCacheUpdater;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 
 import org.apache.tsfile.utils.Binary;
@@ -36,6 +38,8 @@ public class DeviceBlackListConstructor extends DeviceUpdater {
       new ArrayList<>(DEFAULT_MAX_TS_BLOCK_LINE_NUMBER);
 
   private long preDeletedNum = 0;
+  private final MemSchemaRegionStatistics regionStatistics;
+  private final DeviceAttributeCacheUpdater deviceAttributeCacheUpdater;
 
   public DeviceBlackListConstructor(
       final List<LeafColumnTransformer> filterLeafColumnTransformerList,
@@ -43,7 +47,9 @@ public class DeviceBlackListConstructor extends DeviceUpdater {
       final String database,
       final String tableName,
       final List<ColumnHeader> columnHeaderList,
-      final BiFunction<Integer, String, Binary> attributeProvider) {
+      final BiFunction<Integer, String, Binary> attributeProvider,
+      final MemSchemaRegionStatistics regionStatistics,
+      final DeviceAttributeCacheUpdater deviceAttributeCacheUpdater) {
     super(
         filterLeafColumnTransformerList,
         filterOutputTransformer,
@@ -51,12 +57,15 @@ public class DeviceBlackListConstructor extends DeviceUpdater {
         tableName,
         columnHeaderList,
         attributeProvider);
+    this.regionStatistics = regionStatistics;
+    this.deviceAttributeCacheUpdater = deviceAttributeCacheUpdater;
   }
 
   public void handleDeviceNode(final IDeviceMNode<IMemMNode> node) {
     if (withoutFilter()) {
       node.preDeactivateSelfOrTemplate();
       preDeletedNum++;
+      regionStatistics.decreaseTableDevice(tableName, 1);
       return;
     }
     nodes.add(node);
@@ -66,6 +75,7 @@ public class DeviceBlackListConstructor extends DeviceUpdater {
   @Override
   protected void update() {
     preDeletedNum += indexes.size();
+    regionStatistics.decreaseTableDevice(tableName, indexes.size());
     for (final Integer index : indexes) {
       nodes.get(index).preDeactivateSelfOrTemplate();
     }

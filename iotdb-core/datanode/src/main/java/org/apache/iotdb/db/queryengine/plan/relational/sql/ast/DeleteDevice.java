@@ -33,6 +33,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
+import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.DeviceAttributeCacheUpdater;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -93,7 +95,9 @@ public class DeleteDevice extends AbstractTraverseDevice {
           final String database,
           final String tableName,
           final byte[] updateInfo,
-          final BiFunction<Integer, String, Binary> attributeProvider) {
+          final BiFunction<Integer, String, Binary> attributeProvider,
+          final MemSchemaRegionStatistics regionStatistics,
+          final DeviceAttributeCacheUpdater deviceAttributeCacheUpdater) {
     final ByteBuffer buffer = ByteBuffer.wrap(updateInfo);
 
     // Device pattern list
@@ -179,7 +183,9 @@ public class DeleteDevice extends AbstractTraverseDevice {
             database,
             tableName,
             columnHeaderList,
-            attributeProvider));
+            attributeProvider,
+            regionStatistics,
+            deviceAttributeCacheUpdater));
   }
 
   @Override

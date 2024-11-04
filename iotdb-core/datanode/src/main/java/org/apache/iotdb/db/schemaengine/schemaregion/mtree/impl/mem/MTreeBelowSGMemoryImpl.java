@@ -639,7 +639,7 @@ public class MTreeBelowSGMemoryImpl {
     try (final MeasurementUpdater<IMemMNode> updater =
         new MeasurementUpdater<IMemMNode>(
             rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
-
+          @Override
           protected void updateMeasurement(final IMeasurementMNode<IMemMNode> node) {
             if (!node.isLogicalView()) {
               isAllLogicalView.set(false);
@@ -659,7 +659,7 @@ public class MTreeBelowSGMemoryImpl {
     try (final MeasurementUpdater<IMemMNode> updater =
         new MeasurementUpdater<IMemMNode>(
             rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
-
+          @Override
           protected void updateMeasurement(final IMeasurementMNode<IMemMNode> node) {
             node.setPreDeleted(false);
             result.add(getPartialPathFromRootToNode(node.getAsMNode()));
@@ -676,7 +676,7 @@ public class MTreeBelowSGMemoryImpl {
     try (final MeasurementCollector<Void, IMemMNode> collector =
         new MeasurementCollector<Void, IMemMNode>(
             rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
-
+          @Override
           protected Void collectMeasurement(final IMeasurementMNode<IMemMNode> node) {
             if (node.isPreDeleted()) {
               result.add(getPartialPathFromRootToNode(node.getAsMNode()));
@@ -696,7 +696,7 @@ public class MTreeBelowSGMemoryImpl {
     try (final MeasurementCollector<Void, IMemMNode> collector =
         new MeasurementCollector<Void, IMemMNode>(
             rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
-
+          @Override
           protected Void collectMeasurement(final IMeasurementMNode<IMemMNode> node) {
             if (node.isPreDeleted()) {
               result.add(getPartialPathFromRootToNode(node.getAsMNode()).getDevicePath());
@@ -771,6 +771,7 @@ public class MTreeBelowSGMemoryImpl {
     try (final MeasurementCollector<Void, IMemMNode> collector =
         new MeasurementCollector<Void, IMemMNode>(
             rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
+          @Override
           protected Void collectMeasurement(IMeasurementMNode<IMemMNode> node) {
             final IDeviceMNode<IMemMNode> deviceMNode =
                 getParentOfNextMatchedNode().getAsDeviceMNode();
@@ -812,6 +813,7 @@ public class MTreeBelowSGMemoryImpl {
     try (final MeasurementCollector<Void, IMemMNode> collector =
         new MeasurementCollector<Void, IMemMNode>(
             rootNode, patternTree, store, SchemaConstant.ALL_MATCH_SCOPE) {
+          @Override
           protected Void collectMeasurement(IMeasurementMNode<IMemMNode> node) {
             final IDeviceMNode<IMemMNode> deviceMNode =
                 getParentOfNextMatchedNode().getAsDeviceMNode();
@@ -947,6 +949,7 @@ public class MTreeBelowSGMemoryImpl {
           new EntityUpdater<IMemMNode>(
               rootNode, entry.getKey(), store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
+            @Override
             protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
               if (entry.getValue().contains(node.getSchemaTemplateId())) {
                 resultTemplateSetInfo.put(
@@ -969,6 +972,7 @@ public class MTreeBelowSGMemoryImpl {
           new EntityUpdater<IMemMNode>(
               rootNode, entry.getKey(), store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
+            @Override
             protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
               if (entry.getValue().contains(node.getSchemaTemplateId())
                   && node.isPreDeactivateSelfOrTemplate()) {
@@ -992,6 +996,7 @@ public class MTreeBelowSGMemoryImpl {
           new EntityUpdater<IMemMNode>(
               rootNode, entry.getKey(), store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
+            @Override
             protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
               if (entry.getValue().contains(node.getSchemaTemplateId())
                   && node.isPreDeactivateSelfOrTemplate()) {
@@ -1058,6 +1063,7 @@ public class MTreeBelowSGMemoryImpl {
             showDevicesPlan.isPrefixMatch(),
             showDevicesPlan.getScope()) {
 
+          @Override
           protected IDeviceSchemaInfo collectEntity(final IDeviceMNode<IMemMNode> node) {
             final PartialPath device = getPartialPathFromRootToNode(node.getAsMNode());
             final ShowDevicesResult result =
@@ -1080,22 +1086,27 @@ public class MTreeBelowSGMemoryImpl {
           private final DeviceFilterVisitor filterVisitor = new DeviceFilterVisitor();
           private IDeviceSchemaInfo next;
 
+          @Override
           public boolean isSuccess() {
             return collector.isSuccess();
           }
 
+          @Override
           public Throwable getFailure() {
             return collector.getFailure();
           }
 
+          @Override
           public void close() {
             collector.close();
           }
 
+          @Override
           public ListenableFuture<?> isBlocked() {
             return NOT_BLOCKED;
           }
 
+          @Override
           public boolean hasNext() {
             while (next == null && collector.hasNext()) {
               IDeviceSchemaInfo temp = collector.next();
@@ -1131,6 +1142,12 @@ public class MTreeBelowSGMemoryImpl {
 
     final EntityCollector<IDeviceSchemaInfo, IMemMNode> collector =
         new EntityCollector<IDeviceSchemaInfo, IMemMNode>(rootNode, pattern, store, false, null) {
+          @Override
+          protected boolean acceptFullMatchedNode(final IMemMNode node) {
+            return node.isDevice() && !node.getAsDeviceMNode().isPreDeactivateSelfOrTemplate();
+          }
+
+          @Override
           protected IDeviceSchemaInfo collectEntity(final IDeviceMNode<IMemMNode> node) {
             final ShowDevicesResult result =
                 new ShowDevicesResult(
@@ -1225,7 +1242,7 @@ public class MTreeBelowSGMemoryImpl {
           try {
             final IMemMNode node = getTableDeviceNode(table, deviceIdIterator.next());
 
-            if (!node.isDevice()) {
+            if (!node.isDevice() || node.getAsDeviceMNode().isPreDeactivateSelfOrTemplate()) {
               continue;
             }
             final IDeviceMNode<IMemMNode> deviceNode = node.getAsDeviceMNode();

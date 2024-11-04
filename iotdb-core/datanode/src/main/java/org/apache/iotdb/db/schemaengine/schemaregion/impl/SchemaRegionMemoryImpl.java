@@ -1541,7 +1541,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             PathUtils.unQualifyDatabaseName(storageGroupFullPath),
             constructDevicesBlackListNode.getTableName(),
             constructDevicesBlackListNode.getUpdateBytes(),
-            (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name));
+            (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name),
+            regionStatistics,
+            deviceAttributeCacheUpdater);
     try (final DeviceBlackListConstructor constructor = pair.getRight()) {
       for (final PartialPath pattern : pair.getLeft()) {
         mtree.constructTableDeviceBlackList(pattern, constructor);

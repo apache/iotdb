@@ -43,7 +43,7 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
   protected final ColumnTransformer filterOutputTransformer;
   private final List<TSDataType> inputDataTypes;
   private final String database;
-  private final String tableName;
+  protected final String tableName;
   private final List<ColumnHeader> columnHeaderList;
 
   // Batch logic
