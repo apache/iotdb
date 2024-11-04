@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
-import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DevicePredicateFilter;
+import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceBlackListConstructor;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource;
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
@@ -37,6 +37,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumn
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.read.common.type.TypeFactory;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -50,6 +51,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
@@ -86,9 +88,12 @@ public class DeleteDevice extends AbstractTraverseDevice {
     }
   }
 
-  public static Pair<List<PartialPath>, DevicePredicateFilter>
+  public static Pair<List<PartialPath>, DeviceBlackListConstructor>
       constructPathsAndDevicePredicateUpdater(
-          final String database, final String tableName, final byte[] updateInfo) {
+          final String database,
+          final String tableName,
+          final byte[] updateInfo,
+          final BiFunction<Integer, String, Binary> attributeProvider) {
     final ByteBuffer buffer = ByteBuffer.wrap(updateInfo);
 
     // Device pattern list
@@ -168,12 +173,13 @@ public class DeleteDevice extends AbstractTraverseDevice {
 
     return new Pair<>(
         devicePatternList,
-        new DevicePredicateFilter(
+        new DeviceBlackListConstructor(
             filterLeafColumnTransformerList,
             filterOutputTransformer,
             database,
             tableName,
-            columnHeaderList));
+            columnHeaderList,
+            attributeProvider));
   }
 
   @Override

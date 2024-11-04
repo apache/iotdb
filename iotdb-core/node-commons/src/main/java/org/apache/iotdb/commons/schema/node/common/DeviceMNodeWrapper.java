@@ -193,12 +193,12 @@ public class DeviceMNodeWrapper<N extends IMNode<N>, BasicNode extends IInternal
   }
 
   @Override
-  public void setUseTemplate(boolean useTemplate) {
+  public void setUseTemplate(final boolean useTemplate) {
     basicMNode.getDeviceInfo().setUseTemplate(useTemplate);
   }
 
   @Override
-  public void setSchemaTemplateId(int schemaTemplateId) {
+  public void setSchemaTemplateId(final int schemaTemplateId) {
     basicMNode.getDeviceInfo().setSchemaTemplateId(schemaTemplateId);
   }
 
