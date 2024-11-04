@@ -2858,6 +2858,8 @@ public class Session implements ISession {
           defaultSessionConnection.insertTablet(request);
         } catch (RedirectException ignored) {
         }
+      } else {
+        throw e;
       }
     }
   }
@@ -4066,6 +4068,8 @@ public class Session implements ISession {
           insertConsumer.insert(defaultSessionConnection, insertReq);
         } catch (RedirectException ignored) {
         }
+      } else {
+        throw e;
       }
     }
   }
