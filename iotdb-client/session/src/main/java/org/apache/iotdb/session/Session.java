@@ -1931,8 +1931,11 @@ public class Session implements ISession {
             measurementsList.get(i).toString());
       }
     }
-
-    insertByGroup(recordsGroup, SessionConnection::insertRecords);
+    if (recordsGroup.size() == 1) {
+      insertOnce(recordsGroup, SessionConnection::insertRecords);
+    } else {
+      insertByGroup(recordsGroup, SessionConnection::insertRecords);
+    }
   }
 
   private TSInsertStringRecordsReq filterAndGenTSInsertStringRecordsReq(
@@ -2618,7 +2621,11 @@ public class Session implements ISession {
             measurementsList.get(i));
       }
     }
-    insertByGroup(recordsGroup, SessionConnection::insertRecords);
+    if (recordsGroup.size() == 1) {
+      insertOnce(recordsGroup, SessionConnection::insertRecords);
+    } else {
+      insertByGroup(recordsGroup, SessionConnection::insertRecords);
+    }
   }
 
   private TSInsertRecordsReq filterAndGenTSInsertRecordsReq(
@@ -2785,27 +2792,10 @@ public class Session implements ISession {
 
   private void insertRelationalTabletWithLeaderCache(Tablet tablet)
       throws IoTDBConnectionException, StatementExecutionException {
+    Map<SessionConnection, Tablet> relationalTabletGroup = new HashMap<>();
     if (tableModelDeviceIdToEndpoint.isEmpty()) {
-      TSInsertTabletReq request = genTSInsertTabletReq(tablet, false, false);
-      request.setWriteToTable(true);
-      request.setColumnCategories(
-          tablet.getColumnTypes().stream()
-              .map(t -> (byte) t.ordinal())
-              .collect(Collectors.toList()));
-      try {
-        defaultSessionConnection.insertTablet(request);
-      } catch (RedirectException e) {
-        List<TEndPoint> endPointList = e.getEndPointList();
-        Map<IDeviceID, TEndPoint> endPointMap = new HashMap<>();
-        for (int i = 0; i < endPointList.size(); i++) {
-          if (endPointList.get(i) != null) {
-            endPointMap.put(tablet.getDeviceID(i), endPointList.get(i));
-          }
-        }
-        endPointMap.forEach(this::handleRedirection);
-      }
+      relationalTabletGroup.put(defaultSessionConnection, tablet);
     } else {
-      Map<SessionConnection, Tablet> relationalTabletGroup = new HashMap<>();
       for (int i = 0; i < tablet.rowSize; i++) {
         IDeviceID iDeviceID = tablet.getDeviceID(i);
         final SessionConnection connection = getSessionConnection(iDeviceID);
@@ -2832,7 +2822,43 @@ public class Session implements ISession {
               return v;
             });
       }
+    }
+    if (relationalTabletGroup.size() == 1) {
+      insertRelationalTabletOnce(relationalTabletGroup);
+    } else {
       insertRelationalTabletByGroup(relationalTabletGroup);
+    }
+  }
+
+  private void insertRelationalTabletOnce(Map<SessionConnection, Tablet> relationalTabletGroup)
+      throws IoTDBConnectionException, StatementExecutionException {
+    Map.Entry<SessionConnection, Tablet> entry = relationalTabletGroup.entrySet().iterator().next();
+    SessionConnection connection = entry.getKey();
+    Tablet tablet = entry.getValue();
+    TSInsertTabletReq request = genTSInsertTabletReq(tablet, false, false);
+    request.setWriteToTable(true);
+    request.setColumnCategories(
+        tablet.getColumnTypes().stream().map(t -> (byte) t.ordinal()).collect(Collectors.toList()));
+    try {
+      connection.insertTablet(request);
+    } catch (RedirectException e) {
+      List<TEndPoint> endPointList = e.getEndPointList();
+      Map<IDeviceID, TEndPoint> endPointMap = new HashMap<>();
+      for (int i = 0; i < endPointList.size(); i++) {
+        if (endPointList.get(i) != null) {
+          endPointMap.put(tablet.getDeviceID(i), endPointList.get(i));
+        }
+      }
+      endPointMap.forEach(this::handleRedirection);
+    } catch (IoTDBConnectionException e) {
+      if (endPointToSessionConnection != null && endPointToSessionConnection.size() > 1) {
+        // remove the broken session
+        removeBrokenSessionConnection(connection);
+        try {
+          defaultSessionConnection.insertTablet(request);
+        } catch (RedirectException ignored) {
+        }
+      }
     }
   }
 
@@ -3058,7 +3084,11 @@ public class Session implements ISession {
       updateTSInsertTabletsReq(request, entry.getValue(), sorted, isAligned);
     }
 
-    insertByGroup(tabletGroup, SessionConnection::insertTablets);
+    if (tabletGroup.size() == 1) {
+      insertOnce(tabletGroup, SessionConnection::insertTablets);
+    } else {
+      insertByGroup(tabletGroup, SessionConnection::insertTablets);
+    }
   }
 
   private TSInsertTabletsReq genTSInsertTabletsReq(
@@ -4018,8 +4048,30 @@ public class Session implements ISession {
     defaultSessionConnection.createTimeseriesUsingSchemaTemplate(request);
   }
 
+  private <T> void insertOnce(
+      Map<SessionConnection, T> insertGroup, InsertConsumer<T> insertConsumer)
+      throws IoTDBConnectionException, StatementExecutionException {
+    Map.Entry<SessionConnection, T> entry = insertGroup.entrySet().iterator().next();
+    SessionConnection connection = entry.getKey();
+    T insertReq = entry.getValue();
+    try {
+      insertConsumer.insert(connection, insertReq);
+    } catch (RedirectException e) {
+      e.getDeviceEndPointMap().forEach(this::handleRedirection);
+    } catch (IoTDBConnectionException e) {
+      if (endPointToSessionConnection != null && endPointToSessionConnection.size() > 1) {
+        // remove the broken session
+        removeBrokenSessionConnection(connection);
+        try {
+          insertConsumer.insert(defaultSessionConnection, insertReq);
+        } catch (RedirectException ignored) {
+        }
+      }
+    }
+  }
+
   /**
-   * @param recordsGroup connection to record map
+   * @param insertGroup connection to request map
    * @param insertConsumer insert function
    * @param <T>
    *     <ul>
@@ -4032,18 +4084,18 @@ public class Session implements ISession {
     "squid:S3776"
   }) // ignore Cognitive Complexity of methods should not be too high
   private <T> void insertByGroup(
-      Map<SessionConnection, T> recordsGroup, InsertConsumer<T> insertConsumer)
+      Map<SessionConnection, T> insertGroup, InsertConsumer<T> insertConsumer)
       throws IoTDBConnectionException, StatementExecutionException {
     List<CompletableFuture<Void>> completableFutures =
-        recordsGroup.entrySet().stream()
+        insertGroup.entrySet().stream()
             .map(
                 entry -> {
                   SessionConnection connection = entry.getKey();
-                  T recordsReq = entry.getValue();
+                  T insertReq = entry.getValue();
                   return CompletableFuture.runAsync(
                       () -> {
                         try {
-                          insertConsumer.insert(connection, recordsReq);
+                          insertConsumer.insert(connection, insertReq);
                         } catch (RedirectException e) {
                           e.getDeviceEndPointMap().forEach(this::handleRedirection);
                         } catch (StatementExecutionException e) {
@@ -4052,7 +4104,7 @@ public class Session implements ISession {
                           // remove the broken session
                           removeBrokenSessionConnection(connection);
                           try {
-                            insertConsumer.insert(defaultSessionConnection, recordsReq);
+                            insertConsumer.insert(defaultSessionConnection, insertReq);
                           } catch (IoTDBConnectionException | StatementExecutionException ex) {
                             throw new CompletionException(ex);
                           } catch (RedirectException ignored) {
