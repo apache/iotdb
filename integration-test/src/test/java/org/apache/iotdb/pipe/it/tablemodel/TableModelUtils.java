@@ -77,7 +77,7 @@ public class TableModelUtils {
     }
   }
 
-  public static void insertData(
+  public static boolean insertData(
       String dataBaseName, String tableName, int start, int end, BaseEnv baseEnv) {
     List<String> list = new ArrayList<>(end - start + 1);
     for (int i = start; i < end; ++i) {
@@ -89,11 +89,12 @@ public class TableModelUtils {
     list.add("flush");
     if (!TestUtils.tryExecuteNonQueriesWithRetry(
         dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list)) {
-      fail();
+      return false;
     }
+    return true;
   }
 
-  public static void insertData(
+  public static boolean insertData(
       String dataBaseName,
       String tableName,
       int start,
@@ -124,8 +125,9 @@ public class TableModelUtils {
     list.add("flush");
     if (!TestUtils.tryExecuteNonQueriesWithRetry(
         dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list)) {
-      fail();
+      return false;
     }
+    return true;
   }
 
   public static boolean insertDataNotThrowError(
@@ -141,7 +143,7 @@ public class TableModelUtils {
         dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list);
   }
 
-  public static void insertData(
+  public static boolean insertData(
       String dataBaseName,
       String tableName,
       int start,
@@ -158,11 +160,12 @@ public class TableModelUtils {
     list.add("flush");
     if (!TestUtils.tryExecuteNonQueriesOnSpecifiedDataNodeWithRetry(
         baseEnv, wrapper, list, dataBaseName, BaseEnv.TABLE_SQL_DIALECT)) {
-      fail();
+      return false;
     }
+    return true;
   }
 
-  public static void insertDataByTablet(
+  public static boolean insertDataByTablet(
       String dataBaseName,
       String tableName,
       int start,
@@ -174,17 +177,19 @@ public class TableModelUtils {
     try (final IPooledSession session = sessionPool.getPooledSession()) {
       session.executeNonQueryStatement("use " + dataBaseName);
       session.insertTablet(tablet);
-      //      session.executeNonQueryStatement("flush");
+      session.executeNonQueryStatement("flush");
+      return true;
     } catch (Exception e) {
       e.printStackTrace();
-      fail();
+      return false;
     }
   }
 
   public static void deleteData(
       String dataBaseName, String tableName, int start, int end, BaseEnv baseEnv) {
     List<String> list = new ArrayList<>(end - start + 1);
-    list.add(String.format("delete from %s where time between (%s,%s)", tableName, start, end));
+    list.add(
+        String.format("delete from %s where time >= %s and time <= %s", tableName, start, end));
     list.add("flush");
     if (!TestUtils.tryExecuteNonQueriesWithRetry(
         dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list)) {
