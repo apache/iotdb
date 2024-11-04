@@ -400,12 +400,13 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
 
           return cacheEntryGroup;
         });
+    cacheStats.decreaseMemoryUsage(usedMemorySize.get());
   }
 
   @Override
   public void invalidate(
       final Predicate<FK> firstKeyChecker, final Predicate<SK> secondKeyChecker) {
-    int estimateSize = 0;
+    final AtomicInteger estimateSize = new AtomicInteger(0);
     for (final FK firstKey : firstKeyMap.getAllKeys()) {
       if (!firstKeyChecker.test(firstKey)) {
         continue;
@@ -419,13 +420,22 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
 
         if (cacheEntryManager.invalid(entry.getValue())) {
           entryGroup.removeCacheEntry(entry.getKey());
-          estimateSize +=
+          estimateSize.addAndGet(
               sizeComputer.computeSecondKeySize(entry.getKey())
-                  + sizeComputer.computeValueSize(entry.getValue().getValue());
+                  + sizeComputer.computeValueSize(entry.getValue().getValue()));
         }
       }
+      firstKeyMap.compute(
+          firstKey,
+          (fk, sk) -> {
+            if (sk.isEmpty()) {
+              estimateSize.getAndAdd(sizeComputer.computeFirstKeySize(firstKey));
+              return null;
+            }
+            return sk;
+          });
     }
-    cacheStats.decreaseMemoryUsage(estimateSize);
+    cacheStats.decreaseMemoryUsage(estimateSize.get());
   }
 
   /**
@@ -474,6 +484,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
       return map;
     }
 
+    // Copied list, deletion-safe
     List<K> getAllKeys() {
       List<K> res = new ArrayList<>();
       Arrays.stream(maps)
