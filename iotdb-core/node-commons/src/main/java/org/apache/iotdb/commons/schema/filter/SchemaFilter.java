@@ -54,7 +54,7 @@ public abstract class SchemaFilter {
     }
   }
 
-  public static void serialize(final SchemaFilter schemaFilter, final OutputStream outputStream)
+  public static void serialize(final SchemaFilter schemaFilter, final DataOutputStream outputStream)
       throws IOException {
     if (schemaFilter == null) {
       ReadWriteIOUtils.write(SchemaFilterType.NULL.getCode(), outputStream);
