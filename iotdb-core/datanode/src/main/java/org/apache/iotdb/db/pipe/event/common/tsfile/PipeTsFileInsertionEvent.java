@@ -501,13 +501,26 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     if (memoryManager.isEnough4TabletParsing()) {
       return;
     }
+
+    final long memoryCheckIntervalMs =
+        PipeConfig.getInstance().getPipeTsFileParserCheckMemoryEnoughIntervalMs();
     final long startTime = System.currentTimeMillis();
     while (!memoryManager.isEnough4TabletParsing()) {
-      Thread.sleep(PipeConfig.getInstance().getPipeTsFileParserCheckMemoryEnoughIntervalMs());
+      Thread.sleep(memoryCheckIntervalMs);
     }
-    LOGGER.info(
-        "Wait for resource enough for parsing for {} seconds.",
-        (System.currentTimeMillis() - startTime) / 1000.0);
+
+    final double waitTimeSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
+    if (waitTimeSeconds > 1.0) {
+      LOGGER.info(
+          "Wait for resource enough for parsing {} for {} seconds.",
+          resource != null ? resource.getTsFilePath() : "tsfile",
+          waitTimeSeconds);
+    } else if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "Wait for resource enough for parsing {} for {} seconds.",
+          resource != null ? resource.getTsFilePath() : "tsfile",
+          waitTimeSeconds);
+    }
   }
 
   /** The method is used to prevent circular replication in PipeConsensus */
