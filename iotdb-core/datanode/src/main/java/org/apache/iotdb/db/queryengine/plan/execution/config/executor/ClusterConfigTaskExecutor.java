@@ -144,6 +144,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
@@ -3558,10 +3559,17 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> deleteDevice(
-      final DeleteDevice deleteDevice, final String queryId) {
+      final DeleteDevice deleteDevice, final String queryId, final SessionInfo sessionInfo) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+
+      final ByteArrayOutputStream stream = new ByteArrayOutputStream();
+      try (final DataOutputStream outputStream = new DataOutputStream(stream)) {
+        deleteDevice.serializeAttributes(outputStream, sessionInfo);
+      } catch (final IOException ignored) {
+        // ByteArrayOutputStream won't throw IOException
+      }
 
       final TSStatus tsStatus =
           sendAlterReq2ConfigNode(
@@ -3569,7 +3577,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               deleteDevice.getTableName(),
               queryId,
               AlterOrDropTableOperationType.DELETE_DEVICE,
-              new byte[0],
+              stream.toByteArray(),
               client);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {

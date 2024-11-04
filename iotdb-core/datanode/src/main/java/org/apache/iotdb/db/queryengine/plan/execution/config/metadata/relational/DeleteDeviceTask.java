@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational;
 
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
@@ -29,15 +30,18 @@ import com.google.common.util.concurrent.ListenableFuture;
 public class DeleteDeviceTask implements IConfigTask {
   private final DeleteDevice deleteDevice;
   private final String queryId;
+  private final SessionInfo sessionInfo;
 
-  public DeleteDeviceTask(final DeleteDevice deleteDevice, final String queryId) {
+  public DeleteDeviceTask(
+      final DeleteDevice deleteDevice, final String queryId, final SessionInfo sessionInfo) {
     this.deleteDevice = deleteDevice;
     this.queryId = queryId;
+    this.sessionInfo = sessionInfo;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.deleteDevice(deleteDevice, queryId);
+    return configTaskExecutor.deleteDevice(deleteDevice, queryId, sessionInfo);
   }
 }

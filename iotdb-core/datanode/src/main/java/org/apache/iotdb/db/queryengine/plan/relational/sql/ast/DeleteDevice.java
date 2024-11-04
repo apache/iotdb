@@ -19,12 +19,49 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
+
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.util.List;
+import java.util.Objects;
+
 import static com.google.common.base.MoreObjects.toStringHelper;
 
 public class DeleteDevice extends AbstractTraverseDevice {
 
   public DeleteDevice(final NodeLocation location, final Table table, final Expression where) {
     super(location, table, where);
+  }
+
+  public void serializeAttributes(final DataOutputStream stream, final SessionInfo sessionInfo)
+      throws IOException {
+    ReadWriteIOUtils.write(idDeterminedFilterList.size(), stream);
+    for (final List<SchemaFilter> filterList : idDeterminedFilterList) {
+      ReadWriteIOUtils.write(filterList.size(), stream);
+      for (final SchemaFilter filter : filterList) {
+        SchemaFilter.serialize(filter, stream);
+      }
+    }
+
+    ReadWriteIOUtils.write(idFuzzyPredicate == null ? (byte) 0 : (byte) 1, stream);
+    if (idFuzzyPredicate != null) {
+      Expression.serialize(idFuzzyPredicate, stream);
+    }
+
+    ReadWriteIOUtils.write(columnHeaderList.size(), stream);
+    for (final ColumnHeader columnHeader : columnHeaderList) {
+      columnHeader.serialize(stream);
+    }
+
+    ReadWriteIOUtils.write(Objects.nonNull(sessionInfo), stream);
+    if (Objects.nonNull(sessionInfo)) {
+      sessionInfo.serialize(stream);
+    }
   }
 
   @Override

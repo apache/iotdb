@@ -496,7 +496,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
             Collections.emptyMap(),
             WarningCollector.NOOP)
         .analyze(node);
-    return new DeleteDeviceTask(node, context.getQueryId().getId());
+    return new DeleteDeviceTask(node, context.getQueryId().getId(), context.getSession());
   }
 
   @Override

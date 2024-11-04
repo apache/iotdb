@@ -36,8 +36,8 @@ import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -53,7 +53,7 @@ public abstract class SchemaFilter {
     }
   }
 
-  public static void serialize(final SchemaFilter schemaFilter, final DataOutputStream outputStream)
+  public static void serialize(final SchemaFilter schemaFilter, final OutputStream outputStream)
       throws IOException {
     if (schemaFilter == null) {
       ReadWriteIOUtils.write(SchemaFilterType.NULL.getCode(), outputStream);
@@ -134,5 +134,5 @@ public abstract class SchemaFilter {
 
   protected abstract void serialize(final ByteBuffer byteBuffer);
 
-  protected abstract void serialize(final DataOutputStream stream) throws IOException;
+  protected abstract void serialize(final OutputStream stream) throws IOException;
 }
