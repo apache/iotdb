@@ -156,14 +156,14 @@ public class PipeTsFileResourceManager {
       segmentLock.unlock(hardlinkOrCopiedFile);
     }
 
-    // If the file is a tsfile, create a hardlink in pipe dir and will return it.
-    // otherwise, copy the file (.mod or .resource) to pipe dir and will return it.
-    final File resultFile =
-        isTsFile
-            ? FileUtils.createHardLink(file, hardlinkOrCopiedFile)
-            : FileUtils.copyFile(file, hardlinkOrCopiedFile);
-    segmentLock.lock(resultFile);
+    segmentLock.lock(hardlinkOrCopiedFile);
     try {
+      // If the file is a tsfile, create a hardlink in pipe dir and will return it.
+      // otherwise, copy the file (.mod or .resource) to pipe dir and will return it.
+      final File resultFile =
+          isTsFile
+              ? FileUtils.createHardLink(file, hardlinkOrCopiedFile)
+              : FileUtils.copyFile(file, hardlinkOrCopiedFile);
       // If the file is not a hardlink or copied file, and there is no related hardlink or copied
       // file in pipe dir, create a hardlink or copy it to pipe dir, maintain a reference count for
       // the hardlink or copied file, and return the hardlink or copied file.
@@ -171,7 +171,7 @@ public class PipeTsFileResourceManager {
           resultFile.getPath(), new PipeTsFileResource(resultFile, isTsFile, tsFileResource));
       return resultFile;
     } finally {
-      segmentLock.unlock(resultFile);
+      segmentLock.unlock(hardlinkOrCopiedFile);
     }
   }
 
