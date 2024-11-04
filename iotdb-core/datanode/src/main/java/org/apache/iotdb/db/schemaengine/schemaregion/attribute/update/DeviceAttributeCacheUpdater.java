@@ -125,7 +125,17 @@ public class DeviceAttributeCacheUpdater {
   }
 
   public void invalidate(final String tableName) {
-    attributeUpdateMap.forEach((location, container) -> {});
+    attributeUpdateMap.forEach(
+        (location, container) -> {
+          final long size = container.invalidate(tableName);
+          releaseMemory(size);
+          updateContainerStatistics.computeIfPresent(
+              location,
+              (k, v) -> {
+                v.decreaseEntrySize(size);
+                return v;
+              });
+        });
   }
 
   public Pair<Long, Map<TDataNodeLocation, byte[]>> getAttributeUpdateInfo(

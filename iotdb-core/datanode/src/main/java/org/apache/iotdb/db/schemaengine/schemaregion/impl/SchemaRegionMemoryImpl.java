@@ -1525,6 +1525,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throws MetadataException {
     if (mtree.deleteTableDevice(
         deleteTableDeviceNode.getTableName(), deviceAttributeStore::removeAttribute)) {
+      deviceAttributeCacheUpdater.invalidate(deleteTableDeviceNode.getTableName());
       writeToMLog(deleteTableDeviceNode);
     }
   }
