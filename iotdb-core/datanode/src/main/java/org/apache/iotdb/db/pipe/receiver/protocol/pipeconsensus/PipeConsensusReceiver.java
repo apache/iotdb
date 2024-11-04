@@ -427,6 +427,10 @@ public class PipeConsensusReceiver {
       // loaded file. Since the writing file writer has already been closed, it will throw a Stream
       // Close exception.
       writingFileWriter.close();
+      // Sync here is necessary to ensure that the data is written to the disk. Or data region may
+      // load the file before the data is written to the disk and cause unexpected behavior after
+      // system restart. (e.g., empty file in data region's data directory)
+      writingFileWriter.getFD().sync();
       tsFileWriter.setWritingFileWriter(null);
 
       // writingFile will be deleted after load if no exception occurs
