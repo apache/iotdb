@@ -23,7 +23,7 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-import org.apache.iotdb.confignode.procedure.state.schema.DropTableColumnState;
+import org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -31,83 +31,84 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Objects;
 
-// TODO
-public class DropTableColumnProcedure
-    extends AbstractAlterOrDropTableProcedure<DropTableColumnState> {
+public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<DeleteDevicesState> {
+  private byte[] filterBytes;
 
-  private String columnName;
-
-  public DropTableColumnProcedure() {
+  public DeleteDevicesProcedure() {
     super();
   }
 
-  public DropTableColumnProcedure(
+  public DeleteDevicesProcedure(
       final String database,
       final String tableName,
       final String queryId,
-      final String columnName) {
+      final byte[] filterBytes) {
     super(database, tableName, queryId);
-    this.columnName = columnName;
-  }
-
-  @Override
-  protected String getActionMessage() {
-    return "drop table column";
+    this.filterBytes = filterBytes;
   }
 
   @Override
   protected Flow executeFromState(
-      final ConfigNodeProcedureEnv configNodeProcedureEnv,
-      final DropTableColumnState dropTableColumnState)
+      final ConfigNodeProcedureEnv env, final DeleteDevicesState deleteDevicesState)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
     return null;
   }
 
   @Override
   protected void rollbackState(
-      final ConfigNodeProcedureEnv configNodeProcedureEnv,
-      final DropTableColumnState dropTableColumnState)
+      final ConfigNodeProcedureEnv env, final DeleteDevicesState deleteDevicesState)
       throws IOException, InterruptedException, ProcedureException {}
 
   @Override
-  protected DropTableColumnState getState(final int stateId) {
+  protected DeleteDevicesState getState(final int stateId) {
     return null;
   }
 
   @Override
-  protected int getStateId(final DropTableColumnState dropTableColumnState) {
+  protected int getStateId(final DeleteDevicesState deleteDevicesState) {
     return 0;
   }
 
   @Override
-  protected DropTableColumnState getInitialState() {
+  protected DeleteDevicesState getInitialState() {
+    return null;
+  }
+
+  @Override
+  protected String getActionMessage() {
+    // Not used
     return null;
   }
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.DROP_TABLE_COLUMN_PROCEDURE.getTypeCode());
+    stream.writeShort(ProcedureType.DELETE_DEVICES_PROCEDURE.getTypeCode());
     super.serialize(stream);
 
-    ReadWriteIOUtils.write(columnName, stream);
+    ReadWriteIOUtils.write(filterBytes.length, stream);
+    stream.write(filterBytes);
   }
 
   @Override
   public void deserialize(final ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
 
-    this.columnName = ReadWriteIOUtils.readString(byteBuffer);
+    byte[] bytes = new byte[ReadWriteIOUtils.readInt(byteBuffer)];
+    byteBuffer.get(bytes);
+    filterBytes = bytes;
   }
 
   @Override
   public boolean equals(final Object o) {
-    return super.equals(o) && Objects.equals(columnName, ((DropTableColumnProcedure) o).columnName);
+    return super.equals(o)
+        && Arrays.equals(this.filterBytes, ((DeleteDevicesProcedure) o).filterBytes);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), columnName);
+    return Objects.hash(super.hashCode(), Arrays.hashCode(filterBytes));
   }
 }

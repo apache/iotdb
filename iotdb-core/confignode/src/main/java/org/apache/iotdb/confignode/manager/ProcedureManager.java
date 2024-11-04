@@ -88,6 +88,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AbstractAlterOrDropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.DeleteDevicesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
@@ -1559,6 +1560,16 @@ public class ProcedureManager {
         new DropTableProcedure(req.database, req.tableName, req.queryId));
   }
 
+  public TSStatus deleteDevices(final TAlterOrDropTableReq req) {
+    return executeWithoutDuplicate(
+        req.database,
+        null,
+        req.tableName,
+        req.queryId,
+        ProcedureType.DELETE_DEVICES_PROCEDURE,
+        new DeleteDevicesProcedure(req.database, req.tableName, req.queryId, req.getUpdateInfo()));
+  }
+
   private TSStatus executeWithoutDuplicate(
       final String database,
       final TsTable table,
@@ -1619,6 +1630,7 @@ public class ProcedureManager {
         case RENAME_TABLE_COLUMN_PROCEDURE:
         case DROP_TABLE_COLUMN_PROCEDURE:
         case DROP_TABLE_PROCEDURE:
+        case DELETE_DEVICES_PROCEDURE:
           final AbstractAlterOrDropTableProcedure<?> alterTableProcedure =
               (AbstractAlterOrDropTableProcedure<?>) procedure;
           if (type == thisType && queryId.equals(alterTableProcedure.getQueryId())) {
