@@ -157,12 +157,7 @@ public class PipeTsFileResourceManager {
             .get(hardlinkOrCopiedFile.getPath())
             .getFile();
       }
-    } finally {
-      segmentLock.unlock(hardlinkOrCopiedFile);
-    }
 
-    segmentLock.lock(hardlinkOrCopiedFile);
-    try {
       // If the file is a tsfile, create a hardlink in pipe dir and will return it.
       // otherwise, copy the file (.mod or .resource) to pipe dir and will return it.
       final File resultFile =
