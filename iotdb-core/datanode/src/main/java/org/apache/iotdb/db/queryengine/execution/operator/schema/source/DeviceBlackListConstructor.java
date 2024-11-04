@@ -55,7 +55,7 @@ public class DeviceBlackListConstructor extends DevicePredicateHandler {
 
   public void handleDeviceNode(final IDeviceMNode<IMemMNode> node) {
     if (withoutFilter()) {
-      node.preDeactivateTemplate();
+      node.preDeactivateSelfOrTemplate();
     }
     final ShowDevicesResult result =
         new ShowDevicesResult(
@@ -69,7 +69,7 @@ public class DeviceBlackListConstructor extends DevicePredicateHandler {
     nodes.add(node);
     if (hasComputedResult()) {
       for (final Integer index : indexes) {
-        nodes.get(index).preDeactivateTemplate();
+        nodes.get(index).preDeactivateSelfOrTemplate();
       }
       nodes.clear();
       super.clear();

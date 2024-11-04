@@ -943,7 +943,7 @@ public class MTreeBelowSGMemoryImpl {
               if (entry.getValue().contains(node.getSchemaTemplateId())) {
                 resultTemplateSetInfo.put(
                     node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
-                node.preDeactivateTemplate();
+                node.preDeactivateSelfOrTemplate();
               }
             }
           }) {
@@ -963,10 +963,10 @@ public class MTreeBelowSGMemoryImpl {
 
             protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
               if (entry.getValue().contains(node.getSchemaTemplateId())
-                  && node.isPreDeactivateTemplate()) {
+                  && node.isPreDeactivateSelfOrTemplate()) {
                 resultTemplateSetInfo.put(
                     node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
-                node.rollbackPreDeactivateTemplate();
+                node.rollbackPreDeactivateSelfOrTemplate();
               }
             }
           }) {
@@ -986,7 +986,7 @@ public class MTreeBelowSGMemoryImpl {
 
             protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
               if (entry.getValue().contains(node.getSchemaTemplateId())
-                  && node.isPreDeactivateTemplate()) {
+                  && node.isPreDeactivateSelfOrTemplate()) {
                 resultTemplateSetInfo.put(
                     node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
                 regionStatistics.deactivateTemplate(node.getSchemaTemplateId());

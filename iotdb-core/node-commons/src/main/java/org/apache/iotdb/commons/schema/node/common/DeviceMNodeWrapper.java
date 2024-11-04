@@ -213,17 +213,17 @@ public class DeviceMNodeWrapper<N extends IMNode<N>, BasicNode extends IInternal
   }
 
   @Override
-  public boolean isPreDeactivateTemplate() {
+  public boolean isPreDeactivateSelfOrTemplate() {
     return basicMNode.getDeviceInfo().isPreDeactivateSelfOrTemplate();
   }
 
   @Override
-  public void preDeactivateTemplate() {
+  public void preDeactivateSelfOrTemplate() {
     basicMNode.getDeviceInfo().preDeactivateSelfOrTemplate();
   }
 
   @Override
-  public void rollbackPreDeactivateTemplate() {
+  public void rollbackPreDeactivateSelfOrTemplate() {
     basicMNode.getDeviceInfo().rollbackPreDeactivateSelfOrTemplate();
   }
 
