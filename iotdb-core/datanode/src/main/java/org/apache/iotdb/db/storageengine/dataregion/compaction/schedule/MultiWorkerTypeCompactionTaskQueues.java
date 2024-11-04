@@ -25,7 +25,6 @@ import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.DefaultCompactionTaskComparatorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.worker.CompactionWorkerType;
-import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -51,24 +50,23 @@ public class MultiWorkerTypeCompactionTaskQueues {
   public MultiWorkerTypeCompactionTaskQueues() {
     queues.add(candidateNormalCompactionTaskQueue);
     queues.add(candidateLightweightCompactionTaskQueue);
-    registerPollLastHook(
+    candidateNormalCompactionTaskQueue.registerPollLastHooks(
         AbstractCompactionTask::resetCompactionCandidateStatusForAllSourceFiles,
         AbstractCompactionTask::handleTaskCleanup);
+    candidateLightweightCompactionTaskQueue.registerPollLastHooks(
+        (task) -> {
+          try {
+            candidateNormalCompactionTaskQueue.put(task);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
+        });
     workerQueueMap.put(
         CompactionWorkerType.NORMAL_TASK_WORKER,
         Arrays.asList(candidateLightweightCompactionTaskQueue, candidateNormalCompactionTaskQueue));
     workerQueueMap.put(
         CompactionWorkerType.LIGHTWEIGHT_TASK_WORKER,
         Collections.singletonList(candidateLightweightCompactionTaskQueue));
-  }
-
-  private void registerPollLastHook(
-      FixedPriorityBlockingQueue.PollLastHook<AbstractCompactionTask>... pollLastHooks) {
-    for (FixedPriorityBlockingQueue.PollLastHook pollLastHook : pollLastHooks) {
-      for (CompactionTaskQueue queue : queues) {
-        queue.regsitPollLastHook(pollLastHook);
-      }
-    }
   }
 
   public AbstractCompactionTask tryTakeCompactionTask(CompactionWorkerType workerType)

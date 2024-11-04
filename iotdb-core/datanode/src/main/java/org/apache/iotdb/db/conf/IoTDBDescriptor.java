@@ -2048,7 +2048,8 @@ public class IoTDBDescriptor {
                 "lightweight_compaction_thread_count",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
                     "lightweight_compaction_thread_count")));
-    if (newConfigNormalCompactionThreadCount <= 0) {
+    if (newConfigNormalCompactionThreadCount <= 0
+        || newConfigLightweightCompactionThreadCount <= 0) {
       LOGGER.error("compaction_thread_count must greater than 0");
       return false;
     }

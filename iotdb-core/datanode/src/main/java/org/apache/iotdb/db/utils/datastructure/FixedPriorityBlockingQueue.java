@@ -103,15 +103,17 @@ public class FixedPriorityBlockingQueue<T> {
   }
 
   /**
-   * Add a hook for this queue. If an element is kicked out because the queue's size exceed the
+   * Add hooks for this queue. If an element is kicked out because the queue's size exceed the
    * largest value, the hook will apply to this element. Notice, multiple hooks can be added to a
    * queue, and all of them will be applied to the element kicked out. The order in which they are
    * applied depends on the order in which they were registered.
    *
-   * @param hook
+   * @param hooks
    */
-  public void regsitPollLastHook(PollLastHook<T> hook) {
-    this.pollLastHookList.add(hook);
+  public void registerPollLastHooks(PollLastHook<T>... hooks) {
+    for (PollLastHook<T> hook : hooks) {
+      this.pollLastHookList.add(hook);
+    }
   }
 
   public boolean contains(T element) {
