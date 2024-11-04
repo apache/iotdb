@@ -64,7 +64,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
 
   @Override
   protected DeleteDevicesState getState(final int stateId) {
-    return null;
+    return DeleteDevicesState.CONSTRUCT_BLACK_LIST;
   }
 
   @Override
