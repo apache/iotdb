@@ -36,7 +36,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecu
 import org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructTableDeviceBlackListReq;
-import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
+import org.apache.iotdb.mpp.rpc.thrift.TRollbackOrDeleteTableDeviceInBlackListReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -234,15 +234,15 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
       final ConfigNodeProcedureEnv env, final DeleteDevicesState deleteDevicesState)
       throws IOException, InterruptedException, ProcedureException {
     if (deleteDevicesState == CONSTRUCT_BLACK_LIST) {
-      final TableRegionTaskExecutor<TRollbackSchemaBlackListReq> rollbackStateTask =
-          new TableRegionTaskExecutor<>(
+      new TableRegionTaskExecutor<>(
               "roll back table device black list",
               env,
               env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
-              CnToDnAsyncRequestType.ROLLBACK_SCHEMA_BLACK_LIST,
+              CnToDnAsyncRequestType.ROLLBACK_TABLE_DEVICE_BLACK_LIST,
               (dataNodeLocation, consensusGroupIdList) ->
-                  new TRollbackSchemaBlackListReq(consensusGroupIdList, patternTreeBytes));
-      rollbackStateTask.execute();
+                  new TRollbackOrDeleteTableDeviceInBlackListReq(
+                      consensusGroupIdList, tableName, ByteBuffer.wrap(filterBytes)))
+          .execute();
     }
   }
 

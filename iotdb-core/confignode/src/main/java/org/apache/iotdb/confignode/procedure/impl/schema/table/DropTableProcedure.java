@@ -175,7 +175,6 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
               "delete data for drop table",
               env,
               relatedDataRegionGroup,
-              true,
               CnToDnAsyncRequestType.DELETE_DATA_FOR_DROP_TABLE,
               ((dataNodeLocation, consensusGroupIdList) ->
                   new TDeleteDataOrDevicesForDropTableReq(
@@ -211,7 +210,6 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
               "delete devices for drop table",
               env,
               relatedSchemaRegionGroup,
-              true,
               CnToDnAsyncRequestType.DELETE_DEVICES_FOR_DROP_TABLE,
               ((dataNodeLocation, consensusGroupIdList) ->
                   new TDeleteDataOrDevicesForDropTableReq(

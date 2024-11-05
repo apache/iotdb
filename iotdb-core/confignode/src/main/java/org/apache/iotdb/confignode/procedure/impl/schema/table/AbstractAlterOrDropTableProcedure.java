@@ -173,15 +173,9 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
         final String taskName,
         final ConfigNodeProcedureEnv env,
         final Map<TConsensusGroupId, TRegionReplicaSet> targetRegionGroup,
-        final boolean executeOnAllReplicaset,
         final CnToDnAsyncRequestType dataNodeRequestType,
         final BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
-      super(
-          env,
-          targetRegionGroup,
-          executeOnAllReplicaset,
-          dataNodeRequestType,
-          dataNodeRequestGenerator);
+      super(env, targetRegionGroup, true, dataNodeRequestType, dataNodeRequestGenerator);
       this.taskName = taskName;
     }
 
