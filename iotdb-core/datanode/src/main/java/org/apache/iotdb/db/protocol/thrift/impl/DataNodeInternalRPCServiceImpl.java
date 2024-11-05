@@ -143,6 +143,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.Ta
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDevicesInBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.RollbackTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableSchemaQueryWriteVisitor;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
@@ -243,6 +245,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionMigrateResult;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
+import org.apache.iotdb.mpp.rpc.thrift.TRollbackOrDeleteTableDeviceInBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackViewSchemaBlackListReq;
@@ -1607,6 +1610,34 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             });
     executionResult.setMessage(String.valueOf(preDeletedNum.get()));
     return executionResult;
+  }
+
+  @Override
+  public TSStatus rollbackTableDeviceBlackList(
+      final TRollbackOrDeleteTableDeviceInBlackListReq req) {
+    return executeInternalSchemaTask(
+        req.getSchemaRegionIdList(),
+        consensusGroupId ->
+            new RegionWriteExecutor()
+                .execute(
+                    new SchemaRegionId(consensusGroupId.getId()),
+                    new RollbackTableDevicesBlackListNode(
+                        new PlanNodeId(""), req.getTableName(), req.getFilterInfo()))
+                .getStatus());
+  }
+
+  @Override
+  public TSStatus deleteTableDeviceInBlackList(
+      final TRollbackOrDeleteTableDeviceInBlackListReq req) {
+    return executeInternalSchemaTask(
+        req.getSchemaRegionIdList(),
+        consensusGroupId ->
+            new RegionWriteExecutor()
+                .execute(
+                    new SchemaRegionId(consensusGroupId.getId()),
+                    new DeleteTableDevicesInBlackListNode(
+                        new PlanNodeId(""), req.getTableName(), req.getFilterInfo()))
+                .getStatus());
   }
 
   public TTestConnectionResp submitTestConnectionTask(TNodeLocations nodeLocations) {

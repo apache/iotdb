@@ -236,7 +236,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
     if (deleteDevicesState == CONSTRUCT_BLACK_LIST) {
       final TableRegionTaskExecutor<TRollbackSchemaBlackListReq> rollbackStateTask =
           new TableRegionTaskExecutor<>(
-              "roll back schema engine black list",
+              "roll back table device black list",
               env,
               env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
               CnToDnAsyncRequestType.ROLLBACK_SCHEMA_BLACK_LIST,
