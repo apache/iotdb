@@ -107,7 +107,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
           }
         case CLEAN_DATANODE_SCHEMA_CACHE:
           LOGGER.info("Invalidate cache of devices in {}.{}", database, tableName);
-          invalidateCache(env);
+          // TODO
           break;
         case DELETE_DATA:
           LOGGER.info("Delete data of devices in {}.{}", database, tableName);

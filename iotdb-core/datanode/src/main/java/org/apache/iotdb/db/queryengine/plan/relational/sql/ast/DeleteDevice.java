@@ -63,7 +63,7 @@ public class DeleteDevice extends AbstractTraverseDevice {
   }
 
   public void serializePatternInfo(final DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(idDeterminedFilterList.size(), stream);
+    ReadWriteIOUtils.write(getIdDeterminedFilterList().size(), stream);
     for (final List<SchemaFilter> filterList : idDeterminedFilterList) {
       ReadWriteIOUtils.write(filterList.size(), stream);
       for (final SchemaFilter filter : filterList) {
