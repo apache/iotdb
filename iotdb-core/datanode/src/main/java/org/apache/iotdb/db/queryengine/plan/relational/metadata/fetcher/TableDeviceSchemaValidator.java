@@ -87,7 +87,7 @@ public class TableDeviceSchemaValidator {
         validateDeviceSchemaInCache(
             schemaValidation, deviceIdList, attributeKeyList, attributeValueList);
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.warn("{} devices are missing", validateResult.missingDeviceIndexList.size());
+      LOGGER.debug("{} devices are missing", validateResult.missingDeviceIndexList.size());
     }
 
     if (!validateResult.missingDeviceIndexList.isEmpty()) {
