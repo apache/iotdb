@@ -19,13 +19,22 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
+import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
+
+import java.util.Collections;
 
 public class DeleteDeviceTask implements IConfigTask {
   private final DeleteDevice deleteDevice;
@@ -43,5 +52,21 @@ public class DeleteDeviceTask implements IConfigTask {
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.deleteDevice(deleteDevice, queryId, sessionInfo);
+  }
+
+  public static void buildTSBlock(
+      final long deviceNum, final SettableFuture<ConfigTaskResult> future) {
+    final TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT64));
+    builder.getTimeColumnBuilder().writeLong(0L);
+    builder.getColumnBuilder(0).writeLong(deviceNum);
+    builder.declarePosition();
+    future.set(
+        new ConfigTaskResult(
+            TSStatusCode.SUCCESS_STATUS,
+            builder.build(),
+            new DatasetHeader(
+                Collections.singletonList(
+                    new ColumnHeader(IoTDBConstant.COLUMN_DELETED_DEVICE_NUM, TSDataType.INT64)),
+                true)));
   }
 }

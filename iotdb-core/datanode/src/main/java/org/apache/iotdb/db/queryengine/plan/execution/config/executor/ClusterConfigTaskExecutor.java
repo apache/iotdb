@@ -175,6 +175,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTTLTas
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTriggersTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowVariablesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.ShowModelsTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DeleteDeviceTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesDetailsTask;
@@ -3568,7 +3569,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       final ByteArrayOutputStream patternStream = new ByteArrayOutputStream();
       try (final DataOutputStream outputStream = new DataOutputStream(patternStream)) {
-        deleteDevice.serializeFilterInfo(outputStream, sessionInfo);
+        deleteDevice.serializePatternInfo(outputStream);
       } catch (final IOException ignored) {
         // ByteArrayOutputStream won't throw IOException
       }
@@ -3589,32 +3590,35 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               ByteBuffer.wrap(filterStream.toByteArray()));
 
       TDeleteTableDeviceResp resp;
-      TSStatus status;
       do {
         try {
           resp = client.deleteDevice(req);
-          status = resp.getStatus();
         } catch (final TTransportException e) {
           if (e.getType() == TTransportException.TIMED_OUT
               || e.getCause() instanceof SocketTimeoutException) {
             // time out mainly caused by slow execution, wait until
-            status = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+            resp =
+                new TDeleteTableDeviceResp(
+                    RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK));
           } else {
             throw e;
           }
         }
         // keep waiting until task ends
-      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == status.getCode());
+      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode()
+          == resp.getStatus().getCode());
 
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == status.getCode()) {
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+        DeleteDeviceTask.buildTSBlock(resp.getDeletedNum(), future);
       } else {
         LOGGER.warn(
             "Failed to delete devices from table {}.{}, status is {}.",
             deleteDevice.getDatabase(),
             deleteDevice.getTableName(),
-            status);
-        future.setException(new IoTDBException(status.getMessage(), status.getCode()));
+            resp.getStatus());
+        future.setException(
+            new IoTDBException(resp.getStatus().getMessage(), resp.getStatus().getCode()));
       }
     } catch (final ClientManagerException | TException e) {
       future.setException(e);
