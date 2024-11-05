@@ -408,6 +408,10 @@ public class PipeConsensusReceiver {
 
       final String fileAbsolutePath = writingFile.getAbsolutePath();
 
+      // Sync here is necessary to ensure that the data is written to the disk. Or data region may
+      // load the file before the data is written to the disk and cause unexpected behavior after
+      // system restart. (e.g., empty file in data region's data directory)
+      writingFileWriter.getFD().sync();
       // 1. The writing file writer must be closed, otherwise it may cause concurrent errors during
       // the process of loading tsfile when parsing tsfile.
       //
@@ -473,7 +477,7 @@ public class PipeConsensusReceiver {
       // If the writing file is not sealed successfully, the writing file will be deleted.
       // All pieces of the writing file and its mod (if exists) should be retransmitted by the
       // sender.
-      closeCurrentWritingFileWriter(tsFileWriter);
+      closeCurrentWritingFileWriter(tsFileWriter, false);
       deleteCurrentWritingFile(tsFileWriter);
     }
   }
@@ -524,6 +528,10 @@ public class PipeConsensusReceiver {
         }
       }
 
+      // Sync here is necessary to ensure that the data is written to the disk. Or data region may
+      // load the file before the data is written to the disk and cause unexpected behavior after
+      // system restart. (e.g., empty file in data region's data directory)
+      writingFileWriter.getFD().sync();
       // 1. The writing file writer must be closed, otherwise it may cause concurrent errors during
       // the process of loading tsfile when parsing tsfile.
       //
@@ -582,7 +590,7 @@ public class PipeConsensusReceiver {
       // If the writing file is not sealed successfully, the writing file will be deleted.
       // All pieces of the writing file and its mod(if exists) should be retransmitted by the
       // sender.
-      closeCurrentWritingFileWriter(tsFileWriter);
+      closeCurrentWritingFileWriter(tsFileWriter, false);
       // Clear the directory instead of only deleting the referenced files in seal request
       // to avoid previously undeleted file being redundant when transferring multi files
       IoTDBReceiverAgent.cleanPipeReceiverDir(receiverFileDirWithIdSuffix.get());
@@ -777,10 +785,14 @@ public class PipeConsensusReceiver {
     return !offsetCorrect;
   }
 
-  private void closeCurrentWritingFileWriter(PipeConsensusTsFileWriter tsFileWriter) {
+  private void closeCurrentWritingFileWriter(
+      PipeConsensusTsFileWriter tsFileWriter, boolean fsyncAfterClose) {
     if (tsFileWriter.getWritingFileWriter() != null) {
       try {
         tsFileWriter.getWritingFileWriter().close();
+        if (fsyncAfterClose) {
+          tsFileWriter.getWritingFileWriter().getFD().sync();
+        }
         LOGGER.info(
             "PipeConsensus-PipeName-{}: Current writing file writer {} was closed.",
             consensusPipeName,
@@ -861,7 +873,7 @@ public class PipeConsensusReceiver {
         fileName,
         tsFileWriter.getWritingFile() == null ? "null" : tsFileWriter.getWritingFile().getPath());
 
-    closeCurrentWritingFileWriter(tsFileWriter);
+    closeCurrentWritingFileWriter(tsFileWriter, !isSingleFile);
     // If there are multiple files we can not delete the current file
     // instead they will be deleted after seal request
     if (tsFileWriter.getWritingFile() != null && isSingleFile) {
