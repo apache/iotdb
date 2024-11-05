@@ -698,6 +698,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_ts_file_deduplication_window_seconds",
                 String.valueOf(config.getSubscriptionTsFileDeduplicationWindowSeconds()))));
+    config.setSubscriptionTsFileSlicerCheckMemoryEnoughIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_ts_file_slicer_check_memory_enough_interval_ms",
+                String.valueOf(config.getSubscriptionTsFileSlicerCheckMemoryEnoughIntervalMs()))));
 
     config.setSubscriptionMetaSyncerInitialSyncDelayMinutes(
         Long.parseLong(

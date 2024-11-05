@@ -292,6 +292,7 @@ public class CommonConfig {
   private long subscriptionReadFileBufferSize = 8 * MB;
   private long subscriptionReadTabletBufferSize = 8 * MB;
   private long subscriptionTsFileDeduplicationWindowSeconds = 120; // 120s
+  private volatile long subscriptionTsFileSlicerCheckMemoryEnoughIntervalMs = 10L;
 
   private long subscriptionMetaSyncerInitialSyncDelayMinutes = 3;
   private long subscriptionMetaSyncerSyncIntervalMinutes = 3;
@@ -1344,6 +1345,16 @@ public class CommonConfig {
       long subscriptionTsFileDeduplicationWindowSeconds) {
     this.subscriptionTsFileDeduplicationWindowSeconds =
         subscriptionTsFileDeduplicationWindowSeconds;
+  }
+
+  public long getSubscriptionTsFileSlicerCheckMemoryEnoughIntervalMs() {
+    return subscriptionTsFileSlicerCheckMemoryEnoughIntervalMs;
+  }
+
+  public void setSubscriptionTsFileSlicerCheckMemoryEnoughIntervalMs(
+      long subscriptionTsFileSlicerCheckMemoryEnoughIntervalMs) {
+    this.subscriptionTsFileSlicerCheckMemoryEnoughIntervalMs =
+        subscriptionTsFileSlicerCheckMemoryEnoughIntervalMs;
   }
 
   public long getSubscriptionMetaSyncerInitialSyncDelayMinutes() {

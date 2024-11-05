@@ -58,7 +58,7 @@ public abstract class SubscriptionEventExtendableResponse
   }
 
   @Override
-  public void fetchNextResponse() throws IOException {
+  public void fetchNextResponse() throws Exception {
     prefetchRemainingResponses();
     if (Objects.isNull(poll())) {
       LOGGER.warn(

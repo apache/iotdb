@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.subscription.event.response;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
 import org.apache.iotdb.db.subscription.event.cache.CachedSubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
@@ -67,7 +69,8 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
   }
 
   @Override
-  public void prefetchRemainingResponses() throws IOException {
+  public void prefetchRemainingResponses()
+      throws SubscriptionException, IOException, InterruptedException {
     if (hasNoMore) {
       return;
     }
@@ -104,7 +107,7 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
   }
 
   private synchronized Optional<CachedSubscriptionPollResponse> generateNextTsFileResponse()
-      throws IOException {
+      throws SubscriptionException, IOException, InterruptedException {
     final SubscriptionPollResponse previousResponse = peekLast();
     if (Objects.isNull(previousResponse)) {
       LOGGER.warn(
@@ -137,7 +140,7 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
   }
 
   private @NonNull CachedSubscriptionPollResponse generateResponseWithPieceOrSealPayload(
-      final long writingOffset) throws IOException {
+      final long writingOffset) throws SubscriptionException, IOException, InterruptedException {
     final long tsFileLength = tsFile.length();
     if (writingOffset >= tsFileLength) {
       // generate subscription poll response with seal payload
@@ -159,6 +162,7 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
       bufferSize = readFileBufferSize;
     }
 
+    waitForResourceEnough4Slicing();
     try (final RandomAccessFile reader = new RandomAccessFile(tsFile, "r")) {
       reader.seek(writingOffset);
 
@@ -183,6 +187,33 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
               commitContext);
       response.setMemoryBlock(memoryBlock);
       return response;
+    }
+  }
+
+  private void waitForResourceEnough4Slicing() throws InterruptedException {
+    final PipeMemoryManager memoryManager = PipeDataNodeResourceManager.memory();
+    if (memoryManager.isEnough4TsFileSlicing()) {
+      return;
+    }
+
+    final long memoryCheckIntervalMs =
+        PipeConfig.getInstance().getPipeTsFileParserCheckMemoryEnoughIntervalMs();
+    final long startTime = System.currentTimeMillis();
+    while (!memoryManager.isEnough4TsFileSlicing()) {
+      Thread.sleep(memoryCheckIntervalMs);
+    }
+
+    final double waitTimeSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
+    if (waitTimeSeconds > 1.0) {
+      LOGGER.info(
+          "Wait for resource enough for slicing tsfile {} for {} seconds.",
+          tsFile,
+          waitTimeSeconds);
+    } else if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "Wait for resource enough for slicing tsfile {} for {} seconds.",
+          tsFile,
+          waitTimeSeconds);
     }
   }
 }
