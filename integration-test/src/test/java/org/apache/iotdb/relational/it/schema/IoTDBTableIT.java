@@ -386,6 +386,11 @@ public class IoTDBTableIT {
           "count(devices),",
           Collections.singleton("0,"));
 
+      // Test successful data deletion
+      statement.execute(
+          "insert into table2(region_id, plant_id, color, temperature, speed) values(1, 1, 1, 1, 1)");
+      TestUtils.assertResultSetSize(statement.executeQuery("select * from table2"), 1);
+
       try {
         statement.executeQuery("describe test3.table3");
         fail();
