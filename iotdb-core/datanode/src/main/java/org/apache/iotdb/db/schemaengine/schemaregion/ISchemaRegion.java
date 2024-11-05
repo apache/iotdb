@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDevicesInBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.RollbackTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
@@ -349,7 +350,7 @@ public interface ISchemaRegion {
       throws MetadataException;
 
   void deleteTableDevicesInBlackList(
-      final RollbackTableDevicesBlackListNode rollbackTableDevicesBlackListNode)
+      final DeleteTableDevicesInBlackListNode rollbackTableDevicesBlackListNode)
       throws MetadataException;
 
   // endregion

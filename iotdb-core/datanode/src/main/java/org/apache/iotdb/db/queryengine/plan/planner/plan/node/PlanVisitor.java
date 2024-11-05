@@ -128,6 +128,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNod
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDevicesInBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.RollbackTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
@@ -553,6 +554,11 @@ public abstract class PlanVisitor<R, C> {
 
   public R visitRollbackTableDevicesBlackList(
       final RollbackTableDevicesBlackListNode node, final C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitDeleteTableDevicesInBlackList(
+      final DeleteTableDevicesInBlackListNode node, final C context) {
     return visitPlan(node, context);
   }
 

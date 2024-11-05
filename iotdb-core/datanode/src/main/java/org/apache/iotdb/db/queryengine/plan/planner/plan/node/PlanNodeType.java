@@ -252,6 +252,7 @@ public enum PlanNodeType {
   TABLE_DEVICE_LOCATION_ADD((short) 909),
   CONSTRUCT_TABLE_DEVICES_BLACK_LIST((short) 910),
   ROLLBACK_TABLE_DEVICES_BLACK_LIST((short) 911),
+  DELETE_TABLE_DEVICES_IN_BLACK_LIST((short) 912),
 
   TABLE_SCAN_NODE((short) 1000),
   TABLE_FILTER_NODE((short) 1001),
@@ -561,6 +562,8 @@ public enum PlanNodeType {
         return ConstructTableDevicesBlackListNode.deserialize(buffer);
       case 911:
         return RollbackTableDevicesBlackListNode.deserialize(buffer);
+      case 912:
+        return DeleteTableDeviceInBlackListNode.deserialize(buffer);
       case 1000:
         return org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode
             .deserialize(buffer);
