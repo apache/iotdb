@@ -43,7 +43,7 @@ public class RollbackTableDevicesBlackListNode extends AbstractTableDevicesDelet
 
   @Override
   public PlanNode clone() {
-    return new RollbackTableDevicesBlackListNode(id, tableName, updateBytes);
+    return new RollbackTableDevicesBlackListNode(id, tableName, patternInfo);
   }
 
   @Override

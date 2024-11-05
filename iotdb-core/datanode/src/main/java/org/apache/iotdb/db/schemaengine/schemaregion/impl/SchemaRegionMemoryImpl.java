@@ -1538,20 +1538,27 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public long constructTableDevicesBlackList(
       final ConstructTableDevicesBlackListNode constructTableDevicesBlackListNode)
       throws MetadataException {
-    final Pair<List<PartialPath>, DeviceBlackListConstructor> pair =
-        DeleteDevice.constructPathsAndDevicePredicateUpdater(
+    final List<PartialPath> paths =
+        DeleteDevice.constructPaths(
             PathUtils.unQualifyDatabaseName(storageGroupFullPath),
             constructTableDevicesBlackListNode.getTableName(),
-            constructTableDevicesBlackListNode.getUpdateBytes(),
+            constructTableDevicesBlackListNode.getPatternInfo());
+    final DeviceBlackListConstructor constructor =
+        DeleteDevice.constructDevicePredicateUpdater(
+            PathUtils.unQualifyDatabaseName(storageGroupFullPath),
+            constructTableDevicesBlackListNode.getTableName(),
+            constructTableDevicesBlackListNode.getPatternInfo(),
             (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name),
             regionStatistics);
-    try (final DeviceBlackListConstructor constructor = pair.getRight()) {
-      for (final PartialPath pattern : pair.getLeft()) {
+    try {
+      for (final PartialPath pattern : paths) {
         mtree.constructTableDeviceBlackList(pattern, constructor);
       }
+    } finally {
+      constructor.close();
     }
     writeToMLog(constructTableDevicesBlackListNode);
-    return pair.getRight().getPreDeletedNum();
+    return constructor.getPreDeletedNum();
   }
 
   @Override
@@ -1562,7 +1569,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         DeleteDevice.constructPaths(
             PathUtils.unQualifyDatabaseName(storageGroupFullPath),
             rollbackTableDevicesBlackListNode.getTableName(),
-            rollbackTableDevicesBlackListNode.getUpdateBytes());
+            rollbackTableDevicesBlackListNode.getPatternInfo());
     for (final PartialPath pattern : paths) {
       mtree.rollbackTableDeviceBlackList(pattern);
     }
@@ -1577,7 +1584,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         DeleteDevice.constructPaths(
             PathUtils.unQualifyDatabaseName(storageGroupFullPath),
             rollbackTableDevicesBlackListNode.getTableName(),
-            rollbackTableDevicesBlackListNode.getUpdateBytes());
+            rollbackTableDevicesBlackListNode.getPatternInfo());
     for (final PartialPath pattern : paths) {
       mtree.deleteTableDevicesInBlackList(
           pattern, deviceAttributeStore::removeAttribute, deviceAttributeCacheUpdater::invalidate);

@@ -62,6 +62,7 @@ import static org.apache.iotdb.rpc.TSStatusCode.TABLE_ALREADY_EXISTS;
 
 public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<DeleteDevicesState> {
   private static final Logger LOGGER = LoggerFactory.getLogger(DeleteDevicesProcedure.class);
+  private byte[] patternBytes;
   private byte[] filterBytes;
 
   // Transient
@@ -78,8 +79,10 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
       final String database,
       final String tableName,
       final String queryId,
+      final byte[] patternBytes,
       final byte[] filterBytes) {
     super(database, tableName, queryId);
+    this.patternBytes = patternBytes;
     this.filterBytes = filterBytes;
   }
 
@@ -170,7 +173,10 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
         CnToDnAsyncRequestType.CONSTRUCT_TABLE_DEVICE_BLACK_LIST,
         ((dataNodeLocation, consensusGroupIdList) ->
             new TConstructTableDeviceBlackListReq(
-                new ArrayList<>(consensusGroupIdList), tableName, ByteBuffer.wrap(filterBytes)))) {
+                new ArrayList<>(consensusGroupIdList),
+                tableName,
+                ByteBuffer.wrap(patternBytes),
+                ByteBuffer.wrap(filterBytes)))) {
       @Override
       protected List<TConsensusGroupId> processResponseOfOneDataNode(
           final TDataNodeLocation dataNodeLocation,
@@ -270,6 +276,8 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
     stream.writeShort(ProcedureType.DELETE_DEVICES_PROCEDURE.getTypeCode());
     super.serialize(stream);
 
+    ReadWriteIOUtils.write(patternBytes.length, stream);
+    stream.write(patternBytes);
     ReadWriteIOUtils.write(filterBytes.length, stream);
     stream.write(filterBytes);
   }
@@ -278,19 +286,22 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
   public void deserialize(final ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
 
-    byte[] bytes = new byte[ReadWriteIOUtils.readInt(byteBuffer)];
-    byteBuffer.get(bytes);
-    filterBytes = bytes;
+    patternBytes = new byte[ReadWriteIOUtils.readInt(byteBuffer)];
+    byteBuffer.get(patternBytes);
+    filterBytes = new byte[ReadWriteIOUtils.readInt(byteBuffer)];
+    byteBuffer.get(filterBytes);
   }
 
   @Override
   public boolean equals(final Object o) {
     return super.equals(o)
+        && Arrays.equals(this.patternBytes, ((DeleteDevicesProcedure) o).patternBytes)
         && Arrays.equals(this.filterBytes, ((DeleteDevicesProcedure) o).filterBytes);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), Arrays.hashCode(filterBytes));
+    return Objects.hash(
+        super.hashCode(), Arrays.hashCode(patternBytes), Arrays.hashCode(filterBytes));
   }
 }

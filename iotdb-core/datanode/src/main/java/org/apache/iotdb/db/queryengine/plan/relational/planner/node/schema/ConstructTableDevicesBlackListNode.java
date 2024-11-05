@@ -30,20 +30,32 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nonnull;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class ConstructTableDevicesBlackListNode extends AbstractTableDevicesDeletionNode {
   public static final ConstructTableDevicesBlackListNode MOCK_INSTANCE =
-      new ConstructTableDevicesBlackListNode(new PlanNodeId(""), null, new byte[0]);
+      new ConstructTableDevicesBlackListNode(new PlanNodeId(""), null, new byte[0], new byte[0]);
+
+  private final byte[] filterInfo;
 
   public ConstructTableDevicesBlackListNode(
-      final PlanNodeId id, final String tableName, final @Nonnull byte[] updateBytes) {
-    super(id, tableName, updateBytes);
+      final PlanNodeId id,
+      final String tableName,
+      final @Nonnull byte[] patternInfo,
+      final @Nonnull byte[] filterInfo) {
+    super(id, tableName, patternInfo);
+    this.filterInfo = filterInfo;
+  }
+
+  public byte[] getFilterInfo() {
+    return filterInfo;
   }
 
   @Override
   public PlanNode clone() {
-    return new ConstructTableDevicesBlackListNode(id, tableName, updateBytes);
+    return new ConstructTableDevicesBlackListNode(id, tableName, patternInfo, filterInfo);
   }
 
   @Override
@@ -53,10 +65,26 @@ public class ConstructTableDevicesBlackListNode extends AbstractTableDevicesDele
 
   public static ConstructTableDevicesBlackListNode deserialize(final ByteBuffer buffer) {
     final String tableName = ReadWriteIOUtils.readString(buffer);
-    final byte[] updateBytes = new byte[ReadWriteIOUtils.readInt(buffer)];
-    buffer.get(updateBytes);
+    final byte[] patternInfo = new byte[ReadWriteIOUtils.readInt(buffer)];
+    buffer.get(patternInfo);
+    final byte[] filterInfo = new byte[ReadWriteIOUtils.readInt(buffer)];
+    buffer.get(filterInfo);
     final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
-    return new ConstructTableDevicesBlackListNode(planNodeId, tableName, updateBytes);
+    return new ConstructTableDevicesBlackListNode(planNodeId, tableName, patternInfo, filterInfo);
+  }
+
+  @Override
+  protected void serializeAttributes(final ByteBuffer byteBuffer) {
+    super.serialize(byteBuffer);
+    ReadWriteIOUtils.write(filterInfo.length, byteBuffer);
+    byteBuffer.put(filterInfo);
+  }
+
+  @Override
+  protected void serializeAttributes(final DataOutputStream stream) throws IOException {
+    super.serialize(stream);
+    ReadWriteIOUtils.write(filterInfo.length, stream);
+    stream.write(filterInfo);
   }
 
   @Override

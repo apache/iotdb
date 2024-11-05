@@ -1595,7 +1595,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                       .execute(
                           new SchemaRegionId(consensusGroupId.getId()),
                           new ConstructTableDevicesBlackListNode(
-                              new PlanNodeId(""), req.getTableName(), req.getFilterInfo()))
+                              new PlanNodeId(""),
+                              req.getTableName(),
+                              req.getPatternInfo(),
+                              req.getFilterInfo()))
                       .getStatus();
               if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
                 preDeletedNum.getAndAdd(Long.parseLong(status.getMessage()));

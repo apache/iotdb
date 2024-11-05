@@ -36,21 +36,21 @@ import java.util.List;
 abstract class AbstractTableDevicesDeletionNode extends PlanNode implements ISchemaRegionPlan {
 
   protected final String tableName;
-  protected final byte[] updateBytes;
+  protected final byte[] patternInfo;
 
   protected AbstractTableDevicesDeletionNode(
-      final PlanNodeId id, final String tableName, final @Nonnull byte[] updateBytes) {
+      final PlanNodeId id, final String tableName, final @Nonnull byte[] filterInfo) {
     super(id);
     this.tableName = tableName;
-    this.updateBytes = updateBytes;
+    this.patternInfo = filterInfo;
   }
 
   public String getTableName() {
     return tableName;
   }
 
-  public byte[] getUpdateBytes() {
-    return updateBytes;
+  public byte[] getPatternInfo() {
+    return patternInfo;
   }
 
   @Override
@@ -77,15 +77,15 @@ abstract class AbstractTableDevicesDeletionNode extends PlanNode implements ISch
   protected void serializeAttributes(final ByteBuffer byteBuffer) {
     getType().serialize(byteBuffer);
     ReadWriteIOUtils.write(tableName, byteBuffer);
-    ReadWriteIOUtils.write(updateBytes.length, byteBuffer);
-    byteBuffer.put(updateBytes);
+    ReadWriteIOUtils.write(patternInfo.length, byteBuffer);
+    byteBuffer.put(patternInfo);
   }
 
   @Override
   protected void serializeAttributes(final DataOutputStream stream) throws IOException {
     getType().serialize(stream);
     ReadWriteIOUtils.write(tableName, stream);
-    ReadWriteIOUtils.write(updateBytes.length, stream);
-    stream.write(updateBytes);
+    ReadWriteIOUtils.write(patternInfo.length, stream);
+    stream.write(patternInfo);
   }
 }

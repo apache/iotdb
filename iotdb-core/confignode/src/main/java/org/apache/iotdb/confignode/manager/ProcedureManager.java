@@ -1584,7 +1584,11 @@ public class ProcedureManager {
         }
         procedure =
             new DeleteDevicesProcedure(
-                req.database, req.tableName, req.queryId, req.getFilterInfo());
+                req.database,
+                req.tableName,
+                req.queryId,
+                req.getPatternInfo(),
+                req.getFilterInfo());
         procedureId = this.executor.submitProcedure(procedure);
       }
     }

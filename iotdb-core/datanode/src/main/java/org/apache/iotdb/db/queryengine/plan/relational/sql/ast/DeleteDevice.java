@@ -39,7 +39,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -109,36 +108,20 @@ public class DeleteDevice extends AbstractTraverseDevice {
     return TableDeviceQuerySource.getDevicePatternList(database, tableName, idDeterminedFilterList);
   }
 
-  public static Pair<List<PartialPath>, DeviceBlackListConstructor>
-      constructPathsAndDevicePredicateUpdater(
-          final String database,
-          final String tableName,
-          final byte[] updateInfo,
-          final BiFunction<Integer, String, Binary> attributeProvider,
-          final MemSchemaRegionStatistics regionStatistics) {
+  public static DeviceBlackListConstructor constructDevicePredicateUpdater(
+      final String database,
+      final String tableName,
+      final byte[] updateInfo,
+      final BiFunction<Integer, String, Binary> attributeProvider,
+      final MemSchemaRegionStatistics regionStatistics) {
     final ByteBuffer buffer = ByteBuffer.wrap(updateInfo);
 
-    // Device pattern list
-    int size = ReadWriteIOUtils.readInt(buffer);
-    final List<List<SchemaFilter>> idDeterminedFilterList = new ArrayList<>(size);
-    for (int i = 0; i < size; i++) {
-      final int singleSize = ReadWriteIOUtils.readInt(buffer);
-      idDeterminedFilterList.add(new ArrayList<>(singleSize));
-      for (int k = 0; k < singleSize; k++) {
-        idDeterminedFilterList.get(i).add(SchemaFilter.deserialize(buffer));
-      }
-    }
-
-    final List<PartialPath> devicePatternList =
-        TableDeviceQuerySource.getDevicePatternList(database, tableName, idDeterminedFilterList);
-
-    // Device updater
     Expression predicate = null;
     if (buffer.get() == 1) {
       predicate = Expression.deserialize(buffer);
     }
 
-    size = ReadWriteIOUtils.readInt(buffer);
+    final int size = ReadWriteIOUtils.readInt(buffer);
     final List<ColumnHeader> columnHeaderList = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       columnHeaderList.add(ColumnHeader.deserialize(buffer));
@@ -193,16 +176,14 @@ public class DeleteDevice extends AbstractTraverseDevice {
                     metadata))
             : null;
 
-    return new Pair<>(
-        devicePatternList,
-        new DeviceBlackListConstructor(
-            filterLeafColumnTransformerList,
-            filterOutputTransformer,
-            database,
-            tableName,
-            columnHeaderList,
-            attributeProvider,
-            regionStatistics));
+    return new DeviceBlackListConstructor(
+        filterLeafColumnTransformerList,
+        filterOutputTransformer,
+        database,
+        tableName,
+        columnHeaderList,
+        attributeProvider,
+        regionStatistics);
   }
 
   @Override
