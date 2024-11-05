@@ -475,7 +475,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   /////////////////////////// TsFileInsertionEvent ///////////////////////////
 
   @Override
-  public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
+  public Iterable<TabletInsertionEvent> toTabletInsertionEvents() throws PipeException {
     try {
       if (!waitForTsFileClose()) {
         LOGGER.warn(

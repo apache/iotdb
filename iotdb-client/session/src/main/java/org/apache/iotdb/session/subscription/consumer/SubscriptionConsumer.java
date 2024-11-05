@@ -705,7 +705,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     long writingOffset = fileWriter.length();
     while (true) {
       timer.update();
-      if (timer.isExpired()) {
+      if (timer.isExpired(TIMER_DELTA_MS)) {
         final String errorMessage =
             String.format(
                 "timeout while poll file %s with commit context: %s, consumer: %s",
@@ -881,7 +881,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     int nextOffset = ((TabletsPayload) initialResponse.getPayload()).getNextOffset();
     while (true) {
       timer.update();
-      if (timer.isExpired()) {
+      if (timer.isExpired(TIMER_DELTA_MS)) {
         final String errorMessage =
             String.format(
                 "timeout while poll tablets with commit context: %s, consumer: %s",

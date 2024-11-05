@@ -20,6 +20,7 @@
 package org.apache.iotdb.pipe.api.event.dml.insertion;
 
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 /**
  * {@link TsFileInsertionEvent} is used to define the event of writing TsFile. Event data stores in
@@ -33,5 +34,5 @@ public interface TsFileInsertionEvent extends Event, AutoCloseable {
    *
    * @return {@code Iterable<TabletInsertionEvent>} the list of {@link TabletInsertionEvent}
    */
-  Iterable<TabletInsertionEvent> toTabletInsertionEvents();
+  Iterable<TabletInsertionEvent> toTabletInsertionEvents() throws PipeException;
 }

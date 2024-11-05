@@ -196,24 +196,29 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
       return;
     }
 
+    final long startTime = System.currentTimeMillis();
+    long lastRecordTime = startTime;
+
     final long memoryCheckIntervalMs =
         PipeConfig.getInstance().getPipeTsFileParserCheckMemoryEnoughIntervalMs();
-    final long startTime = System.currentTimeMillis();
     while (!memoryManager.isEnough4TsFileSlicing()) {
       Thread.sleep(memoryCheckIntervalMs);
-    }
 
-    final double waitTimeSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
-    if (waitTimeSeconds > 1.0) {
-      LOGGER.info(
-          "Wait for resource enough for slicing tsfile {} for {} seconds.",
-          tsFile,
-          waitTimeSeconds);
-    } else if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug(
-          "Wait for resource enough for slicing tsfile {} for {} seconds.",
-          tsFile,
-          waitTimeSeconds);
+      final long currentTime = System.currentTimeMillis();
+      final double elapsedRecordTimeSeconds = (currentTime - lastRecordTime) / 1000.0;
+      final double waitTimeSeconds = (currentTime - startTime) / 1000.0;
+      if (elapsedRecordTimeSeconds > 1.0) {
+        LOGGER.info(
+            "Wait for resource enough for slicing tsfile {} for {} seconds.",
+            tsFile,
+            waitTimeSeconds);
+        lastRecordTime = currentTime;
+      } else if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "Wait for resource enough for slicing tsfile {} for {} seconds.",
+            tsFile,
+            waitTimeSeconds);
+      }
     }
   }
 }
