@@ -160,10 +160,11 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
     }
 
     final Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
-        env.getConfigManager().getRelatedSchemaRegionGroup(patternTree);
+        env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, true);
 
     if (relatedSchemaRegionGroup.isEmpty()) {
       deletedDevicesNum = 0;
+      return;
     }
     final List<TSStatus> successResult = new ArrayList<>();
     new DataNodeRegionTaskExecutor<TConstructTableDeviceBlackListReq, TSStatus>(
@@ -229,11 +230,23 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
             : 0;
   }
 
+  private void deleteData(final ConfigNodeProcedureEnv env) {
+    new TableRegionTaskExecutor<>(
+            "delete data for table device",
+            env,
+            env.getConfigManager().getRelatedDataRegionGroup(patternTree, true),
+            CnToDnAsyncRequestType.DELETE_DATA_FOR_TABLE_DEVICE,
+            (dataNodeLocation, consensusGroupIdList) ->
+                new TRollbackOrDeleteTableDeviceInBlackListReq(
+                    consensusGroupIdList, tableName, ByteBuffer.wrap(filterBytes)))
+        .execute();
+  }
+
   private void deleteDeviceSchema(final ConfigNodeProcedureEnv env) {
     new TableRegionTaskExecutor<>(
             "roll back table device black list",
             env,
-            env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
+            env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, true),
             CnToDnAsyncRequestType.DELETE_TABLE_DEVICE_IN_BLACK_LIST,
             (dataNodeLocation, consensusGroupIdList) ->
                 new TRollbackOrDeleteTableDeviceInBlackListReq(
@@ -249,7 +262,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
       new TableRegionTaskExecutor<>(
               "roll back table device black list",
               env,
-              env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
+              env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, true),
               CnToDnAsyncRequestType.ROLLBACK_TABLE_DEVICE_BLACK_LIST,
               (dataNodeLocation, consensusGroupIdList) ->
                   new TRollbackOrDeleteTableDeviceInBlackListReq(

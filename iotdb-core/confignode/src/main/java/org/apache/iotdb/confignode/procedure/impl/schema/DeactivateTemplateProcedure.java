@@ -193,8 +193,8 @@ public class DeactivateTemplateProcedure
     return preDeletedNum;
   }
 
-  private void invalidateCache(ConfigNodeProcedureEnv env) {
-    // if no target timeseres, return directly
+  private void invalidateCache(final ConfigNodeProcedureEnv env) {
+    // if no target timeseries, return directly
     if (!timeSeriesPatternTree.isEmpty()) {
       Map<Integer, TDataNodeLocation> dataNodeLocationMap =
           env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
