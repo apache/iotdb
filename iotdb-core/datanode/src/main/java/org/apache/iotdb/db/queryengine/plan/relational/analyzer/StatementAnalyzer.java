@@ -300,7 +300,8 @@ public class StatementAnalyzer {
           || node instanceof FetchDevice
           || node instanceof ShowDevice
           || node instanceof CountDevice
-          || node instanceof Update) {
+          || node instanceof Update
+          || node instanceof DeleteDevice) {
         return returnScope;
       }
       checkState(
