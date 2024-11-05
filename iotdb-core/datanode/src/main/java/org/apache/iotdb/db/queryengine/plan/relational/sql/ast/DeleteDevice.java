@@ -91,8 +91,8 @@ public class DeleteDevice extends AbstractTraverseDevice {
   }
 
   public static List<PartialPath> constructPaths(
-      final String database, final String tableName, final byte[] updateInfo) {
-    final ByteBuffer buffer = ByteBuffer.wrap(updateInfo);
+      final String database, final String tableName, final byte[] patternInfo) {
+    final ByteBuffer buffer = ByteBuffer.wrap(patternInfo);
 
     // Device pattern list
     int size = ReadWriteIOUtils.readInt(buffer);

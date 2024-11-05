@@ -3339,7 +3339,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         LOGGER.warn(
             "Failed to rename table to {} from table {}.{}, status is {}.",
             targetName,
-            PathUtils.unQualifyDatabaseName(database),
+            database,
             sourceName,
             tsStatus);
         future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
@@ -3378,10 +3378,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else {
         LOGGER.warn(
-            "Failed to add column to table {}.{}, status is {}.",
-            PathUtils.unQualifyDatabaseName(database),
-            tableName,
-            tsStatus);
+            "Failed to add column to table {}.{}, status is {}.", database, tableName, tsStatus);
         future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
       }
     } catch (final ClientManagerException | TException e) {
@@ -3430,7 +3427,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             "Failed to rename column from {} to {} for table {}.{}, status is {}.",
             oldName,
             newName,
-            PathUtils.unQualifyDatabaseName(database),
+            database,
             tableName,
             tsStatus);
         future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
@@ -3478,7 +3475,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         LOGGER.warn(
             "Failed to drop column {} for table {}.{}, status is {}.",
             columnName,
-            PathUtils.unQualifyDatabaseName(database),
+            database,
             tableName,
             tsStatus);
         future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
@@ -3523,7 +3520,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         LOGGER.warn(
             "Failed to set properties {} to table {}.{}, status is {}.",
             properties,
-            PathUtils.unQualifyDatabaseName(database),
+            database,
             tableName,
             tsStatus);
         future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
@@ -3554,11 +3551,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           || (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == tsStatus.getCode() && ifExists)) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else {
-        LOGGER.warn(
-            "Failed to drop table {}.{}, status is {}.",
-            PathUtils.unQualifyDatabaseName(database),
-            tableName,
-            tsStatus);
+        LOGGER.warn("Failed to drop table {}.{}, status is {}.", database, tableName, tsStatus);
         future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
       }
     } catch (final ClientManagerException | TException e) {
@@ -3616,7 +3609,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           == resp.getStatus().getCode());
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
         DeleteDeviceTask.buildTSBlock(resp.getDeletedNum(), future);
       } else {
         LOGGER.warn(
@@ -3640,7 +3632,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final AlterOrDropTableOperationType type,
       final byte[] updateInfo,
       final ConfigNodeClient client)
-      throws ClientManagerException, TException {
+      throws TException {
     TSStatus tsStatus;
     final TAlterOrDropTableReq req = new TAlterOrDropTableReq();
     req.setDatabase(database);

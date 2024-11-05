@@ -450,7 +450,8 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitDeleteDevice(final DeleteDevice node, final Optional<Scope> context) {
-      queryContext.setQueryType(QueryType.WRITE);
+      // Actually write, but will return the result
+      queryContext.setQueryType(QueryType.READ);
       analyzeTraverseDevice(node, context, node.getWhere().isPresent());
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
