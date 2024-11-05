@@ -880,16 +880,6 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
     int nextOffset = ((TabletsPayload) initialResponse.getPayload()).getNextOffset();
     while (true) {
-      timer.update();
-      if (timer.isExpired(TIMER_DELTA_MS)) {
-        final String errorMessage =
-            String.format(
-                "timeout while poll tablets with commit context: %s, consumer: %s",
-                commitContext, this);
-        LOGGER.warn(errorMessage);
-        throw new SubscriptionRuntimeNonCriticalException(errorMessage);
-      }
-
       if (nextOffset < 0) {
         if (!Objects.equals(tablets.size(), -nextOffset)) {
           final String errorMessage =
@@ -900,6 +890,16 @@ abstract class SubscriptionConsumer implements AutoCloseable {
           throw new SubscriptionRuntimeNonCriticalException(errorMessage);
         }
         return Optional.of(new SubscriptionMessage(commitContext, tablets));
+      }
+
+      timer.update();
+      if (timer.isExpired(TIMER_DELTA_MS)) {
+        final String errorMessage =
+            String.format(
+                "timeout while poll tablets with commit context: %s, consumer: %s",
+                commitContext, this);
+        LOGGER.warn(errorMessage);
+        throw new SubscriptionRuntimeNonCriticalException(errorMessage);
       }
 
       final List<SubscriptionPollResponse> responses =
