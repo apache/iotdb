@@ -46,7 +46,10 @@ public class SubscriptionBrokerAgent {
   //////////////////////////// provided for subscription agent ////////////////////////////
 
   public List<SubscriptionEvent> poll(
-      final ConsumerConfig consumerConfig, final Set<String> topicNames, final long maxBytes) {
+      final ConsumerConfig consumerConfig,
+      final Set<String> topicNames,
+      final long timeoutMs,
+      final long maxBytes) {
     final String consumerGroupId = consumerConfig.getConsumerGroupId();
     final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
@@ -58,13 +61,14 @@ public class SubscriptionBrokerAgent {
     }
     // TODO: currently we fetch messages from all topics
     final String consumerId = consumerConfig.getConsumerId();
-    return broker.poll(consumerId, topicNames, maxBytes);
+    return broker.poll(consumerId, topicNames, timeoutMs, maxBytes);
   }
 
   public List<SubscriptionEvent> pollTsFile(
       final ConsumerConfig consumerConfig,
       final SubscriptionCommitContext commitContext,
-      final long writingOffset) {
+      final long writingOffset,
+      final long timeoutMs) {
     final String consumerGroupId = consumerConfig.getConsumerGroupId();
     final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
@@ -75,13 +79,14 @@ public class SubscriptionBrokerAgent {
       throw new SubscriptionException(errorMessage);
     }
     final String consumerId = consumerConfig.getConsumerId();
-    return broker.pollTsFile(consumerId, commitContext, writingOffset);
+    return broker.pollTsFile(consumerId, commitContext, writingOffset, timeoutMs);
   }
 
   public List<SubscriptionEvent> pollTablets(
       final ConsumerConfig consumerConfig,
       final SubscriptionCommitContext commitContext,
-      final int offset) {
+      final int offset,
+      final long timeoutMs) {
     final String consumerGroupId = consumerConfig.getConsumerGroupId();
     final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
@@ -92,7 +97,7 @@ public class SubscriptionBrokerAgent {
       throw new SubscriptionException(errorMessage);
     }
     final String consumerId = consumerConfig.getConsumerId();
-    return broker.pollTablets(consumerId, commitContext, offset);
+    return broker.pollTablets(consumerId, commitContext, offset, timeoutMs);
   }
 
   /**

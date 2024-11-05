@@ -351,6 +351,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     final List<SubscriptionEvent> events;
     final SubscriptionPollRequest request = req.getRequest();
+    final long timeoutMs = request.getTimeoutMs();
     final long maxBytes = (long) (request.getMaxBytes() * POLL_PAYLOAD_SIZE_EXCEED_THRESHOLD);
     try {
       final short requestType = request.getRequestType();
@@ -359,17 +360,17 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           case POLL:
             events =
                 handlePipeSubscribePollInternal(
-                    consumerConfig, (PollPayload) request.getPayload(), maxBytes);
+                    consumerConfig, (PollPayload) request.getPayload(), timeoutMs, maxBytes);
             break;
           case POLL_FILE:
             events =
                 handlePipeSubscribePollTsFileInternal(
-                    consumerConfig, (PollFilePayload) request.getPayload());
+                    consumerConfig, (PollFilePayload) request.getPayload(), timeoutMs);
             break;
           case POLL_TABLETS:
             events =
                 handlePipeSubscribePollTabletsInternal(
-                    consumerConfig, (PollTabletsPayload) request.getPayload());
+                    consumerConfig, (PollTabletsPayload) request.getPayload(), timeoutMs);
             break;
           default:
             events = null;
@@ -465,7 +466,10 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   }
 
   private List<SubscriptionEvent> handlePipeSubscribePollInternal(
-      final ConsumerConfig consumerConfig, final PollPayload messagePayload, final long maxBytes) {
+      final ConsumerConfig consumerConfig,
+      final PollPayload messagePayload,
+      final long timeoutMs,
+      final long maxBytes) {
     final Set<String> subscribedTopicNames =
         SubscriptionAgent.consumer()
             .getTopicNamesSubscribedByConsumer(
@@ -477,20 +481,31 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     // filter unsubscribed topics
     topicNames.removeIf((topicName) -> !subscribedTopicNames.contains(topicName));
-    return SubscriptionAgent.broker().poll(consumerConfig, topicNames, maxBytes);
+    return SubscriptionAgent.broker().poll(consumerConfig, topicNames, timeoutMs, maxBytes);
   }
 
   private List<SubscriptionEvent> handlePipeSubscribePollTsFileInternal(
-      final ConsumerConfig consumerConfig, final PollFilePayload messagePayload) {
+      final ConsumerConfig consumerConfig,
+      final PollFilePayload messagePayload,
+      final long timeoutMs) {
     return SubscriptionAgent.broker()
         .pollTsFile(
-            consumerConfig, messagePayload.getCommitContext(), messagePayload.getWritingOffset());
+            consumerConfig,
+            messagePayload.getCommitContext(),
+            messagePayload.getWritingOffset(),
+            timeoutMs);
   }
 
   private List<SubscriptionEvent> handlePipeSubscribePollTabletsInternal(
-      final ConsumerConfig consumerConfig, final PollTabletsPayload messagePayload) {
+      final ConsumerConfig consumerConfig,
+      final PollTabletsPayload messagePayload,
+      final long timeoutMs) {
     return SubscriptionAgent.broker()
-        .pollTablets(consumerConfig, messagePayload.getCommitContext(), messagePayload.getOffset());
+        .pollTablets(
+            consumerConfig,
+            messagePayload.getCommitContext(),
+            messagePayload.getOffset(),
+            timeoutMs);
   }
 
   private TPipeSubscribeResp handlePipeSubscribeCommit(final PipeSubscribeCommitReq req) {

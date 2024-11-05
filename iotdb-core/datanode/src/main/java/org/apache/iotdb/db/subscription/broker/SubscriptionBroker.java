@@ -87,7 +87,10 @@ public class SubscriptionBroker {
   //////////////////////////// provided for SubscriptionBrokerAgent ////////////////////////////
 
   public List<SubscriptionEvent> poll(
-      final String consumerId, final Set<String> topicNames, final long maxBytes) {
+      final String consumerId,
+      final Set<String> topicNames,
+      final long timeoutMs,
+      final long maxBytes) {
     final List<SubscriptionEvent> events = new ArrayList<>();
     for (final String topicName : topicNames) {
       final SubscriptionPrefetchingQueue prefetchingQueue =
@@ -125,7 +128,8 @@ public class SubscriptionBroker {
             brokerId);
         continue;
       }
-      final SubscriptionEvent event = prefetchingQueue.poll(consumerId);
+      // TODO: more precise timeout
+      final SubscriptionEvent event = prefetchingQueue.poll(consumerId, timeoutMs);
       if (Objects.nonNull(event)) {
         events.add(event);
       }
@@ -146,7 +150,8 @@ public class SubscriptionBroker {
   public List<SubscriptionEvent> pollTsFile(
       final String consumerId,
       final SubscriptionCommitContext commitContext,
-      final long writingOffset) {
+      final long writingOffset,
+      final long timeoutMs) {
     final String topicName = commitContext.getTopicName();
     final SubscriptionPrefetchingQueue prefetchingQueue =
         topicNameToPrefetchingQueue.get(topicName);
@@ -175,7 +180,7 @@ public class SubscriptionBroker {
     }
     final SubscriptionEvent event =
         ((SubscriptionPrefetchingTsFileQueue) prefetchingQueue)
-            .pollTsFile(consumerId, commitContext, writingOffset);
+            .pollTsFile(consumerId, commitContext, writingOffset, timeoutMs);
     if (Objects.nonNull(event)) {
       // only one SubscriptionEvent polled currently
       return Collections.singletonList(event);
@@ -184,7 +189,10 @@ public class SubscriptionBroker {
   }
 
   public List<SubscriptionEvent> pollTablets(
-      final String consumerId, final SubscriptionCommitContext commitContext, final int offset) {
+      final String consumerId,
+      final SubscriptionCommitContext commitContext,
+      final int offset,
+      final long timeoutMs) {
     final String topicName = commitContext.getTopicName();
     final SubscriptionPrefetchingQueue prefetchingQueue =
         topicNameToPrefetchingQueue.get(topicName);
@@ -213,7 +221,7 @@ public class SubscriptionBroker {
     }
     final SubscriptionEvent event =
         ((SubscriptionPrefetchingTabletQueue) prefetchingQueue)
-            .pollTablets(consumerId, commitContext, offset);
+            .pollTablets(consumerId, commitContext, offset, timeoutMs);
     if (Objects.nonNull(event)) {
       // only one SubscriptionEvent polled currently
       return Collections.singletonList(event);

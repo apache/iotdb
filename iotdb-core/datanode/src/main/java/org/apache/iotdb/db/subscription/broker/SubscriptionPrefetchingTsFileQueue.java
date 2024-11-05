@@ -64,10 +64,13 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   public SubscriptionEvent pollTsFile(
       final String consumerId,
       final SubscriptionCommitContext commitContext,
-      final long writingOffset) {
+      final long writingOffset,
+      final long timeoutMs) {
     acquireReadLock();
     try {
-      return isClosed() ? null : pollTsFileInternal(consumerId, commitContext, writingOffset);
+      return isClosed()
+          ? null
+          : pollTsFileInternal(consumerId, commitContext, writingOffset, timeoutMs);
     } finally {
       releaseReadLock();
     }
@@ -76,7 +79,8 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   public @NonNull SubscriptionEvent pollTsFileInternal(
       final String consumerId,
       final SubscriptionCommitContext commitContext,
-      final long writingOffset) {
+      final long writingOffset,
+      final long timeoutMs) {
     final AtomicReference<SubscriptionEvent> eventRef = new AtomicReference<>();
     inFlightEvents.compute(
         new Pair<>(consumerId, commitContext),
@@ -206,25 +210,22 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
 
           // 3. Poll tsfile piece or tsfile seal
           try {
-            ev.fetchNextResponse();
+            executeReceiverSubtask(
+                () -> {
+                  ev.fetchNextResponse();
+                  return null;
+                },
+                timeoutMs);
+            ev.recordLastPolledTimestamp();
+            eventRef.set(ev);
           } catch (final Exception e) {
-            LOGGER.warn(
-                "Exception occurred when SubscriptionPrefetchingTsFileQueue {} transferring file (with event {}) to consumer {}",
-                this,
-                ev,
-                consumerId,
-                e);
             final String errorMessage =
                 String.format(
-                    "Exception occurred when SubscriptionPrefetchingTsFileQueue %s transferring file (with event %s) to consumer %s: %s",
-                    this, ev, consumerId, e);
+                    "exception occurred when fetching next response: %s, consumer id: %s, commit context: %s, writing offset: %s, prefetching queue: %s",
+                    e, consumerId, commitContext, writingOffset, this);
             LOGGER.warn(errorMessage);
             eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
-            return ev;
           }
-
-          ev.recordLastPolledTimestamp();
-          eventRef.set(ev);
 
           return ev;
         });

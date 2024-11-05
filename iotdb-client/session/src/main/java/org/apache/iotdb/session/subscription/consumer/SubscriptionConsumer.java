@@ -579,7 +579,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
         final List<SubscriptionMessage> currentMessages = new ArrayList<>();
         try {
           currentResponses.clear();
-          currentResponses = pollInternal(topicNames);
+          currentResponses = pollInternal(topicNames, timer.remainingMs());
           for (final SubscriptionPollResponse response : currentResponses) {
             final short responseType = response.getResponseType();
             if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
@@ -715,7 +715,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       }
 
       final List<SubscriptionPollResponse> responses =
-          pollFileInternal(commitContext, writingOffset);
+          pollFileInternal(commitContext, writingOffset, timer.remainingMs());
 
       // It's agreed that the server will always return at least one response, even in case of
       // failure.
@@ -903,7 +903,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       }
 
       final List<SubscriptionPollResponse> responses =
-          pollTabletsInternal(commitContext, nextOffset);
+          pollTabletsInternal(commitContext, nextOffset, timer.remainingMs());
 
       // It's agreed that the server will always return at least one response, even in case of
       // failure.
@@ -972,8 +972,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     }
   }
 
-  private List<SubscriptionPollResponse> pollInternal(final Set<String> topicNames)
-      throws SubscriptionException {
+  private List<SubscriptionPollResponse> pollInternal(
+      final Set<String> topicNames, final long timeoutMs) throws SubscriptionException {
     providers.acquireReadLock();
     try {
       final SubscriptionProvider provider = providers.getNextAvailableProvider();
@@ -988,7 +988,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       }
       // ignore SubscriptionConnectionException to improve poll auto retry
       try {
-        return provider.poll(topicNames);
+        return provider.poll(topicNames, timeoutMs);
       } catch (final SubscriptionConnectionException ignored) {
         return Collections.emptyList();
       }
@@ -998,7 +998,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   private List<SubscriptionPollResponse> pollFileInternal(
-      final SubscriptionCommitContext commitContext, final long writingOffset)
+      final SubscriptionCommitContext commitContext, final long writingOffset, final long timeoutMs)
       throws SubscriptionException {
     final int dataNodeId = commitContext.getDataNodeId();
     providers.acquireReadLock();
@@ -1015,7 +1015,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       }
       // ignore SubscriptionConnectionException to improve poll auto retry
       try {
-        return provider.pollFile(commitContext, writingOffset);
+        return provider.pollFile(commitContext, writingOffset, timeoutMs);
       } catch (final SubscriptionConnectionException ignored) {
         return Collections.emptyList();
       }
@@ -1025,7 +1025,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   private List<SubscriptionPollResponse> pollTabletsInternal(
-      final SubscriptionCommitContext commitContext, final int offset)
+      final SubscriptionCommitContext commitContext, final int offset, final long timeoutMs)
       throws SubscriptionException {
     final int dataNodeId = commitContext.getDataNodeId();
     providers.acquireReadLock();
@@ -1042,7 +1042,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       }
       // ignore SubscriptionConnectionException to improve poll auto retry
       try {
-        return provider.pollTablets(commitContext, offset);
+        return provider.pollTablets(commitContext, offset, timeoutMs);
       } catch (final SubscriptionConnectionException ignored) {
         return Collections.emptyList();
       }

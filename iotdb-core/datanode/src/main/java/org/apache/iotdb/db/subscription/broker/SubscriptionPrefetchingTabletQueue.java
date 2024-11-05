@@ -60,17 +60,23 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
   /////////////////////////////// poll ///////////////////////////////
 
   public SubscriptionEvent pollTablets(
-      final String consumerId, final SubscriptionCommitContext commitContext, final int offset) {
+      final String consumerId,
+      final SubscriptionCommitContext commitContext,
+      final int offset,
+      final long timeoutMs) {
     acquireReadLock();
     try {
-      return isClosed() ? null : pollTabletsInternal(consumerId, commitContext, offset);
+      return isClosed() ? null : pollTabletsInternal(consumerId, commitContext, offset, timeoutMs);
     } finally {
       releaseReadLock();
     }
   }
 
   private @NonNull SubscriptionEvent pollTabletsInternal(
-      final String consumerId, final SubscriptionCommitContext commitContext, final int offset) {
+      final String consumerId,
+      final SubscriptionCommitContext commitContext,
+      final int offset,
+      final long timeoutMs) {
     final AtomicReference<SubscriptionEvent> eventRef = new AtomicReference<>();
     inFlightEvents.compute(
         new Pair<>(consumerId, commitContext),
@@ -145,13 +151,22 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
 
           // 3. Poll next tablets
           try {
-            ev.fetchNextResponse();
-          } catch (final Exception ignored) {
-            // no exceptions will be thrown
+            executeReceiverSubtask(
+                () -> {
+                  ev.fetchNextResponse();
+                  return null;
+                },
+                timeoutMs);
+            ev.recordLastPolledTimestamp();
+            eventRef.set(ev);
+          } catch (final Exception e) {
+            final String errorMessage =
+                String.format(
+                    "exception occurred when fetching next response: %s, consumer id: %s, commit context: %s, offset: %s, prefetching queue: %s",
+                    e, consumerId, commitContext, offset, this);
+            LOGGER.warn(errorMessage);
+            eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
           }
-
-          ev.recordLastPolledTimestamp();
-          eventRef.set(ev);
 
           return ev;
         });

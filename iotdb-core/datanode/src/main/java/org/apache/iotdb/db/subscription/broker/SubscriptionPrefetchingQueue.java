@@ -23,11 +23,13 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.agent.task.execution.PipeSubtaskExecutorManager;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeEventBatches;
+import org.apache.iotdb.db.subscription.task.subtask.SubscriptionReceiverSubtask;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -160,23 +162,40 @@ public abstract class SubscriptionPrefetchingQueue {
     lock.writeLock().unlock();
   }
 
+  /////////////////////////////// subtask ///////////////////////////////
+
+  protected void executeReceiverSubtask(
+      final SubscriptionReceiverSubtask subtask, final long timeoutMs) throws Exception {
+    PipeSubtaskExecutorManager.getInstance()
+        .getSubscriptionExecutor()
+        .executeReceiverSubtask(subtask, timeoutMs);
+  }
+
   /////////////////////////////// poll ///////////////////////////////
 
-  public SubscriptionEvent poll(final String consumerId) {
+  public SubscriptionEvent poll(final String consumerId, final long timeoutMs) {
     acquireReadLock();
     try {
-      return isClosed() ? null : pollInternal(consumerId);
+      return isClosed() ? null : pollInternal(consumerId, timeoutMs);
     } finally {
       releaseReadLock();
     }
   }
 
-  public SubscriptionEvent pollInternal(final String consumerId) {
+  public SubscriptionEvent pollInternal(final String consumerId, final long timeoutMs) {
     states.markPollRequest();
 
     if (prefetchingQueue.isEmpty()) {
       states.markMissingPrefetch();
-      tryPrefetch();
+      try {
+        executeReceiverSubtask(
+            () -> {
+              tryPrefetch();
+              return null;
+            },
+            timeoutMs);
+      } catch (final Exception ignored) {
+      }
     }
 
     if (prefetchingQueue.isEmpty()) {

@@ -32,14 +32,14 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
 
 public abstract class PipeSubtaskExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSubtaskExecutor.class);
 
-  private static final ExecutorService subtaskCallbackListeningExecutor =
-      IoTDBThreadPoolFactory.newSingleThreadExecutor(
+  private static final ScheduledExecutorService subtaskCallbackListeningExecutor =
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
           ThreadName.PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL.getName());
   protected final ListeningExecutorService subtaskWorkerThreadPoolExecutor;
 
@@ -74,9 +74,11 @@ public abstract class PipeSubtaskExecutor {
 
     registeredIdSubtaskMapper.put(subtask.getTaskID(), subtask);
     subtask.bindExecutors(
-        subtaskWorkerThreadPoolExecutor,
-        subtaskCallbackListeningExecutor,
-        new PipeSubtaskScheduler(this));
+        subtaskWorkerThreadPoolExecutor, subtaskCallbackListeningExecutor, schedulerSupplier(this));
+  }
+
+  protected PipeSubtaskScheduler schedulerSupplier(final PipeSubtaskExecutor executor) {
+    return new PipeSubtaskScheduler(executor);
   }
 
   public final synchronized void start(final String subTaskID) {
