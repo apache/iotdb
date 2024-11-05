@@ -399,6 +399,11 @@ public class CnToDnInternalServiceAsyncRequestManager
             client.constructTableDeviceBlackList(
                 (TConstructTableDeviceBlackListReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
+        CnToDnAsyncRequestType.ROLLBACK_TABLE_DEVICE_BLACK_LIST,
+        (req, client, handler) ->
+            client.constructTableDeviceBlackList(
+                (TConstructTableDeviceBlackListReq) req, (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
         CnToDnAsyncRequestType.CLEAN_DATA_NODE_CACHE,
         (req, client, handler) ->
             client.cleanDataNodeCache(
