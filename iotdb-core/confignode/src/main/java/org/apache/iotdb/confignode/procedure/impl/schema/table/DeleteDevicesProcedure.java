@@ -169,7 +169,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
     new DataNodeRegionTaskExecutor<TConstructTableDeviceBlackListReq, TSStatus>(
         env,
         relatedSchemaRegionGroup,
-        true,
+        false,
         CnToDnAsyncRequestType.CONSTRUCT_TABLE_DEVICE_BLACK_LIST,
         ((dataNodeLocation, consensusGroupIdList) ->
             new TConstructTableDeviceBlackListReq(

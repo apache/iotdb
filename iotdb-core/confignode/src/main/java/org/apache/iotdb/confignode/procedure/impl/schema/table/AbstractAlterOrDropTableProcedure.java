@@ -175,7 +175,7 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
         final Map<TConsensusGroupId, TRegionReplicaSet> targetRegionGroup,
         final CnToDnAsyncRequestType dataNodeRequestType,
         final BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
-      super(env, targetRegionGroup, true, dataNodeRequestType, dataNodeRequestGenerator);
+      super(env, targetRegionGroup, false, dataNodeRequestType, dataNodeRequestGenerator);
       this.taskName = taskName;
     }
 
