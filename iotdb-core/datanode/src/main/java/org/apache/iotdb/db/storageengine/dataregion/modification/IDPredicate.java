@@ -190,12 +190,12 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
 
     @Override
     public void deserialize(InputStream stream) throws IOException {
-      Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(stream);
+      deviceID = Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(stream);
     }
 
     @Override
     public void deserialize(ByteBuffer buffer) {
-      Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(buffer);
+      deviceID = Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(buffer);
     }
 
     @Override

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -156,11 +157,15 @@ public class RelationalDeleteDataNode extends SearchNode implements WALEntryValu
       modEntries.add((TableDeletionEntry) ModEntry.createFrom(byteBuffer));
     }
 
+    ProgressIndex deserializedIndex = ProgressIndexType.deserializeFrom(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
 
     // DeleteDataNode has no child
     int ignoredChildrenSize = ReadWriteIOUtils.readInt(byteBuffer);
-    return new RelationalDeleteDataNode(planNodeId, modEntries);
+    RelationalDeleteDataNode relationalDeleteDataNode = new RelationalDeleteDataNode(planNodeId,
+        modEntries);
+    relationalDeleteDataNode.setProgressIndex(deserializedIndex);
+    return relationalDeleteDataNode;
   }
 
   public ByteBuffer serializeToDAL() {
@@ -199,7 +204,7 @@ public class RelationalDeleteDataNode extends SearchNode implements WALEntryValu
 
   @Override
   public PlanNodeType getType() {
-    return PlanNodeType.DELETE_DATA;
+    return PlanNodeType.RELATIONAL_DELETE_DATA;
   }
 
   @SuppressWarnings({"java:S2975", "java:S1182"})
@@ -229,7 +234,7 @@ public class RelationalDeleteDataNode extends SearchNode implements WALEntryValu
 
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
-    buffer.putShort(PlanNodeType.DELETE_DATA.getNodeType());
+    buffer.putShort(PlanNodeType.RELATIONAL_DELETE_DATA.getNodeType());
     buffer.putLong(searchIndex);
     try {
       ReadWriteForEncodingUtils.writeVarInt(modEntries.size(), buffer);
@@ -281,13 +286,12 @@ public class RelationalDeleteDataNode extends SearchNode implements WALEntryValu
     }
     final RelationalDeleteDataNode that = (RelationalDeleteDataNode) obj;
     return this.getPlanNodeId().equals(that.getPlanNodeId())
-        && Objects.equals(this.modEntries, that.modEntries)
-        && Objects.equals(this.progressIndex, that.progressIndex);
+        && Objects.equals(this.modEntries, that.modEntries);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(getPlanNodeId(), modEntries, progressIndex);
+    return Objects.hash(getPlanNodeId(), modEntries);
   }
 
   public String toString() {
