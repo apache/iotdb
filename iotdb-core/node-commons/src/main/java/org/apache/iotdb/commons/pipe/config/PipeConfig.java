@@ -54,6 +54,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeHardLinkWALEnabled();
   }
 
+  public boolean getPipeFileReceiverFsyncEnabled() {
+    return COMMON_CONFIG.getPipeFileReceiverFsyncEnabled();
+  }
+
   /////////////////////////////// Tablet ///////////////////////////////
 
   public int getPipeDataStructureTabletRowSize() {
@@ -339,6 +343,7 @@ public class PipeConfig {
     LOGGER.info("PipeHardlinkTsFileDirName: {}", getPipeHardlinkTsFileDirName());
     LOGGER.info("PipeHardlinkWALDirName: {}", getPipeHardlinkWALDirName());
     LOGGER.info("PipeHardLinkWALEnabled: {}", getPipeHardLinkWALEnabled());
+    LOGGER.info("PipeFileReceiverFsyncEnabled: {}", getPipeFileReceiverFsyncEnabled());
 
     LOGGER.info("PipeDataStructureTabletRowSize: {}", getPipeDataStructureTabletRowSize());
     LOGGER.info("PipeDataStructureTabletSizeInBytes: {}", getPipeDataStructureTabletSizeInBytes());
