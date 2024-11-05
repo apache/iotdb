@@ -58,6 +58,8 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDC
 import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 import static org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState.CLEAN_DATANODE_SCHEMA_CACHE;
 import static org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState.CONSTRUCT_BLACK_LIST;
+import static org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState.DELETE_DATA;
+import static org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState.DELETE_DEVICE_SCHEMA;
 import static org.apache.iotdb.rpc.TSStatusCode.TABLE_ALREADY_EXISTS;
 
 public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<DeleteDevicesState> {
@@ -107,6 +109,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
           }
         case CLEAN_DATANODE_SCHEMA_CACHE:
           LOGGER.info("Invalidate cache of devices in {}.{}", database, tableName);
+          setNextState(DELETE_DATA);
           // TODO
           break;
         case DELETE_DATA:
@@ -243,6 +246,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
                     ByteBuffer.wrap(patternBytes),
                     ByteBuffer.wrap(filterBytes)))
         .execute();
+    setNextState(DELETE_DEVICE_SCHEMA);
   }
 
   private void deleteDeviceSchema(final ConfigNodeProcedureEnv env) {

@@ -75,14 +75,14 @@ public class ConstructTableDevicesBlackListNode extends AbstractTableDevicesDele
 
   @Override
   protected void serializeAttributes(final ByteBuffer byteBuffer) {
-    super.serialize(byteBuffer);
+    super.serializeAttributes(byteBuffer);
     ReadWriteIOUtils.write(filterInfo.length, byteBuffer);
     byteBuffer.put(filterInfo);
   }
 
   @Override
   protected void serializeAttributes(final DataOutputStream stream) throws IOException {
-    super.serialize(stream);
+    super.serializeAttributes(stream);
     ReadWriteIOUtils.write(filterInfo.length, stream);
     stream.write(filterInfo);
   }
