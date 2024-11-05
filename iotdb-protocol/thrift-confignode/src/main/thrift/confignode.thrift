@@ -1052,7 +1052,7 @@ struct TDeleteTableDeviceReq {
 
 struct TDeleteTableDeviceResp {
    1: required common.TSStatus status
-   2: required i64 deletedNum
+   2: optional i64 deletedNum
 }
 
 struct TShowTableResp {

@@ -123,6 +123,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
@@ -1560,14 +1562,43 @@ public class ProcedureManager {
         new DropTableProcedure(req.database, req.tableName, req.queryId));
   }
 
-  public TSStatus deleteDevices(final TAlterOrDropTableReq req) {
-    return executeWithoutDuplicate(
-        req.database,
-        null,
-        req.tableName,
-        req.queryId,
-        ProcedureType.DELETE_DEVICES_PROCEDURE,
-        new DeleteDevicesProcedure(req.database, req.tableName, req.queryId, req.getUpdateInfo()));
+  public TDeleteTableDeviceResp deleteDevices(final TDeleteTableDeviceReq req) {
+    long procedureId;
+    DeleteDevicesProcedure procedure = null;
+    synchronized (this) {
+      final Pair<Long, Boolean> procedureIdDuplicatePair =
+          checkDuplicateTableTask(
+              req.database,
+              null,
+              req.tableName,
+              req.queryId,
+              ProcedureType.DELETE_DEVICES_PROCEDURE);
+      procedureId = procedureIdDuplicatePair.getLeft();
+
+      if (procedureId == -1) {
+        if (Boolean.TRUE.equals(procedureIdDuplicatePair.getRight())) {
+          return new TDeleteTableDeviceResp(
+              RpcUtils.getStatus(
+                  TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
+                  "Some other task is operating table with same name."));
+        }
+        procedure =
+            new DeleteDevicesProcedure(
+                req.database, req.tableName, req.queryId, req.getFilterInfo());
+        procedureId = this.executor.submitProcedure(procedure);
+      }
+    }
+    executor.getResultOrProcedure(procedureId);
+    final List<TSStatus> procedureStatus = new ArrayList<>();
+    if (waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus)) {
+      if (Objects.isNull(procedure)) {
+        procedure = ((DeleteDevicesProcedure) executor.getResultOrProcedure(procedureId));
+      }
+      return new TDeleteTableDeviceResp(StatusUtils.OK)
+          .setDeletedNum(Objects.nonNull(procedure) ? procedure.getDeletedDevicesNum() : -1);
+    } else {
+      return new TDeleteTableDeviceResp(procedureStatus.get(0));
+    }
   }
 
   private TSStatus executeWithoutDuplicate(
