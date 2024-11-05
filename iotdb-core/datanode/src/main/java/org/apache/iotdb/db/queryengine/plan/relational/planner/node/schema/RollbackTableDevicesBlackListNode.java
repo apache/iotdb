@@ -33,8 +33,8 @@ import javax.annotation.Nonnull;
 import java.nio.ByteBuffer;
 
 public class RollbackTableDevicesBlackListNode extends AbstractTableDevicesDeletionNode {
-  public static final ConstructTableDevicesBlackListNode MOCK_INSTANCE =
-      new ConstructTableDevicesBlackListNode(new PlanNodeId(""), null, new byte[0]);
+  public static final RollbackTableDevicesBlackListNode MOCK_INSTANCE =
+      new RollbackTableDevicesBlackListNode(new PlanNodeId(""), null, new byte[0]);
 
   public RollbackTableDevicesBlackListNode(
       final PlanNodeId id, final String tableName, final @Nonnull byte[] updateBytes) {
