@@ -227,7 +227,7 @@ public class UnsealedTsFileRecoverPerformerTest {
     // check file existence
     assertTrue(file.exists());
     assertTrue(new File(FILE_NAME.concat(TsFileResource.RESOURCE_SUFFIX)).exists());
-    assertTrue(ModificationFile.getCompactionMods(new File(FILE_NAME)).exists());
+    assertTrue(ModificationFile.getNormalMods(new File(FILE_NAME)).exists());
   }
 
   private void generateCrashedFile(File tsFile) throws IOException, WriteProcessException {

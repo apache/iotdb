@@ -1808,6 +1808,7 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       forceCloseAllWorkingTsFileProcessors();
       waitClosingTsFileProcessorFinished();
+
       // normally, mergingModification is just need to be closed by after a merge task is finished.
       // we close it here just for IT test.
       closeAllResources();
@@ -2008,7 +2009,6 @@ public class DataRegion implements IDataRegionForQuery {
       }
       WritingMetrics.getInstance().recordActiveTimePartitionCount(-1);
     } finally {
-      writeUnlock();
       writeUnlock();
     }
   }
@@ -2507,7 +2507,9 @@ public class DataRegion implements IDataRegionForQuery {
   private boolean canSkipDelete(TsFileResource tsFileResource, ModEntry deletion) {
     long fileStartTime = tsFileResource.getTimeIndex().getMinStartTime();
     long fileEndTime =
-        tsFileResource.isClosed() ? tsFileResource.getTimeIndex().getMaxEndTime() : Long.MAX_VALUE;
+        tsFileResource.isClosed() || !tsFileResource.isSeq()
+            ? tsFileResource.getTimeIndex().getMaxEndTime()
+            : Long.MAX_VALUE;
 
     if (!ModificationUtils.overlap(
         deletion.getStartTime(), deletion.getEndTime(), fileStartTime, fileEndTime)) {

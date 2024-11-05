@@ -35,6 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
+import org.apache.iotdb.db.utils.ModificationUtils;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
@@ -259,12 +260,7 @@ public class SettleSelectorImpl implements ISettleSelector {
   /** Check whether the device is completely deleted by mods or not. */
   private boolean isDeviceDeletedByMods(
       Collection<ModEntry> modifications, IDeviceID device, long startTime, long endTime) {
-    for (ModEntry modification : modifications) {
-      if (modification.affects(device, startTime, endTime)) {
-        return true;
-      }
-    }
-    return false;
+    return ModificationUtils.isAllDeletedByMods(modifications, device, startTime, endTime);
   }
 
   private List<SettleCompactionTask> createTask(

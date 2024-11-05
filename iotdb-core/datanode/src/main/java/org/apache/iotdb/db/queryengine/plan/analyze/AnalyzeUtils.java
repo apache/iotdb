@@ -355,8 +355,8 @@ public class AnalyzeUtils {
       throw new SemanticException("Table " + tableName + " not found");
     }
 
-    List<Expression> disjunctiveNormalForms = toDisjunctiveNormalForms(
-        node.getWhere().orElse(null));
+    List<Expression> disjunctiveNormalForms =
+        toDisjunctiveNormalForms(node.getWhere().orElse(null));
     List<TableDeletionEntry> tableDeletionEntries = new ArrayList<>();
     for (Expression disjunctiveNormalForm : disjunctiveNormalForms) {
       tableDeletionEntries.add(parsePredicate(disjunctiveNormalForm, table));
@@ -370,8 +370,8 @@ public class AnalyzeUtils {
    *
    * <p>For example: ( A | B ) & ( C | D ) => ( A & C ) | ( A & D ) | ( B & C ) | ( B & D)
    *
-   * <p>Returns the original expression if the expression is null or if the
-   * distribution will expand the expression by too much.
+   * <p>Returns the original expression if the expression is null or if the distribution will expand
+   * the expression by too much.
    */
   public static List<Expression> toDisjunctiveNormalForms(Expression expression) {
     if (expression == null) {
@@ -387,7 +387,9 @@ public class AnalyzeUtils {
           if (results == null) {
             results = toDisjunctiveNormalForms(term);
           } else {
-            results = crossProductOfDisjunctiveNormalForms(results, toDisjunctiveNormalForms(term), Operator.AND);
+            results =
+                crossProductOfDisjunctiveNormalForms(
+                    results, toDisjunctiveNormalForms(term), Operator.AND);
           }
         }
         return results;
@@ -406,8 +408,8 @@ public class AnalyzeUtils {
     }
   }
 
-  private static List<Expression> crossProductOfDisjunctiveNormalForms(List<Expression> leftList, List<Expression> rightList,
-      Operator operator) {
+  private static List<Expression> crossProductOfDisjunctiveNormalForms(
+      List<Expression> leftList, List<Expression> rightList, Operator operator) {
     List<Expression> results = new ArrayList<>();
     for (Expression leftExp : leftList) {
       List<Expression> terms = new ArrayList<>();
@@ -432,7 +434,8 @@ public class AnalyzeUtils {
 
   private static TableDeletionEntry parsePredicate(Expression expression, TsTable table) {
     if (expression == null) {
-      return new TableDeletionEntry(new DeletionPredicate(table.getTableName()),
+      return new TableDeletionEntry(
+          new DeletionPredicate(table.getTableName()),
           new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE, true).toTsFileTimeRange());
     }
 
@@ -454,7 +457,8 @@ public class AnalyzeUtils {
       predicate.setIdPredicate(idPredicate);
     }
 
-    return new TableDeletionEntry(new DeletionPredicate(table.getTableName()),
+    return new TableDeletionEntry(
+        new DeletionPredicate(table.getTableName()),
         new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE, true).toTsFileTimeRange());
   }
 

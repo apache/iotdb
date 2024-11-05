@@ -394,7 +394,7 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
     resource1
         .getNewModFile()
         .write(
-            new TreeDeletionEntry(new MeasurementPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
+            new TreeDeletionEntry(new MeasurementPath("root.**"), Long.MIN_VALUE, Long.MAX_VALUE));
     resource1.getNewModFile().close();
     seqResources.add(resource1);
     TsFileResource resource2 =
@@ -403,7 +403,7 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
     resource2
         .getNewModFile()
         .write(
-            new TreeDeletionEntry(new MeasurementPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
+            new TreeDeletionEntry(new MeasurementPath("root.**"), Long.MIN_VALUE, Long.MAX_VALUE));
     resource2.getNewModFile().close();
     seqResources.add(resource2);
 
@@ -429,8 +429,7 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
             "1-1-0-0.tsfile", new TimeRange[] {new TimeRange(100, 200)}, true, "d1", "d2");
     resource1
         .getNewModFile()
-        .write(
-            new TreeDeletionEntry(new MeasurementPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
+        .write(new TreeDeletionEntry(new MeasurementPath("root.**"), Long.MAX_VALUE));
     resource1.getNewModFile().close();
     seqResources.add(resource1);
     TsFileResource resource2 =
@@ -454,8 +453,7 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
             "5-5-0-0.tsfile", new TimeRange[] {new TimeRange(900, 1000)}, true, "d1", "d4");
     resource5
         .getNewModFile()
-        .write(
-            new TreeDeletionEntry(new MeasurementPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
+        .write(new TreeDeletionEntry(new MeasurementPath("root.**"), Long.MAX_VALUE));
     resource5.getNewModFile().close();
     seqResources.add(resource5);
 

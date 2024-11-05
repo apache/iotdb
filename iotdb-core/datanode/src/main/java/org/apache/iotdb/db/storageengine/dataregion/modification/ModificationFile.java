@@ -81,6 +81,26 @@ public class ModificationFile implements AutoCloseable {
         channel = FileChannel.open(file.toPath(), CREATE, APPEND);
       }
       entry.serialize(fileOutputStream);
+      fileOutputStream.flush();
+      channel.force(false);
+    } finally {
+      lock.writeLock().unlock();
+    }
+  }
+
+  @SuppressWarnings("java:S2093") // cannot use try-with-resource, should not close here
+  public void write(List<ModEntry> entries) throws IOException {
+    lock.writeLock().lock();
+    try {
+      if (fileOutputStream == null) {
+        fileOutputStream =
+            new BufferedOutputStream(Files.newOutputStream(file.toPath(), CREATE, APPEND));
+        channel = FileChannel.open(file.toPath(), CREATE, APPEND);
+      }
+      for (ModEntry entry : entries) {
+        entry.serialize(fileOutputStream);
+      }
+      fileOutputStream.flush();
       channel.force(false);
     } finally {
       lock.writeLock().unlock();
@@ -256,9 +276,7 @@ public class ModificationFile implements AutoCloseable {
               pathModificationMap.entrySet();
           for (Map.Entry<PartialPath, List<ModEntry>> modificationEntry : modificationsEntrySet) {
             List<ModEntry> settledModifications = sortAndMerge(modificationEntry.getValue());
-            for (ModEntry settledModification : settledModifications) {
-              compactedModificationFile.write(settledModification);
-            }
+            compactedModificationFile.write(settledModifications);
             allSettledModifications.addAll(settledModifications);
           }
         } catch (IOException e) {

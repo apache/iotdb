@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 
 import com.google.common.collect.ImmutableList;
 
@@ -30,7 +30,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
@@ -106,8 +105,7 @@ public class Delete extends Statement {
     return tableDeletionEntries;
   }
 
-  public void setTableDeletionEntries(
-      List<TableDeletionEntry> tableDeletionEntries) {
+  public void setTableDeletionEntries(List<TableDeletionEntry> tableDeletionEntries) {
     this.tableDeletionEntries = tableDeletionEntries;
   }
 

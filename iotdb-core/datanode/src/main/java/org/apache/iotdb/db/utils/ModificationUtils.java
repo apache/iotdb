@@ -351,18 +351,26 @@ public class ModificationUtils {
     return modifications;
   }
 
+  public static boolean canMerge(TimeRange left, TimeRange right) {
+    // [1,3] can merge with [4, 5]
+    // [1,3] cannot merge with [5,6]
+    // [Long.MIN,3] can merge with [Long.MIN, 5]
+    long extendedRightMin = right.getMin() == Long.MIN_VALUE ? right.getMin() : right.getMin() - 1;
+    return extendedRightMin <= left.getMax();
+  }
+
   public static List<ModEntry> sortAndMerge(List<ModEntry> modifications) {
     modifications.sort(null);
     List<ModEntry> result = new ArrayList<>();
     if (!modifications.isEmpty()) {
       ModEntry current = modifications.get(0).clone();
       for (int i = 1; i < modifications.size(); i++) {
-        ModEntry del = modifications.get(i);
-        if (current.getTimeRange().intersects(del.getTimeRange())) {
-          current.getTimeRange().merge(del.getTimeRange());
+        ModEntry next = modifications.get(i);
+        if (canMerge(current.getTimeRange(), next.getTimeRange())) {
+          current.getTimeRange().merge(next.getTimeRange());
         } else {
           result.add(current);
-          current = del.clone();
+          current = next.clone();
         }
       }
       result.add(current);
