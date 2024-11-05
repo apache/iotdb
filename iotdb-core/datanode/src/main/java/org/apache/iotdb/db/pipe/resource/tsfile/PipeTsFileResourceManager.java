@@ -314,9 +314,9 @@ public class PipeTsFileResourceManager {
 
   public void pinTsFileResource(final TsFileResource resource, final boolean withMods)
       throws IOException {
-      increaseFileReference(resource.getTsFile(), true, resource);
-      if (withMods && resource.newModFileExists()) {
-        increaseFileReference(resource.getNewModFile().getFile(), false, null);
+    increaseFileReference(resource.getTsFile(), true, resource);
+    if (withMods && resource.newModFileExists()) {
+      increaseFileReference(resource.getNewModFile().getFile(), false, null);
     }
   }
 

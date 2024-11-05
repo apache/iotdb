@@ -162,8 +162,8 @@ public class RelationalDeleteDataNode extends SearchNode implements WALEntryValu
 
     // DeleteDataNode has no child
     int ignoredChildrenSize = ReadWriteIOUtils.readInt(byteBuffer);
-    RelationalDeleteDataNode relationalDeleteDataNode = new RelationalDeleteDataNode(planNodeId,
-        modEntries);
+    RelationalDeleteDataNode relationalDeleteDataNode =
+        new RelationalDeleteDataNode(planNodeId, modEntries);
     relationalDeleteDataNode.setProgressIndex(deserializedIndex);
     return relationalDeleteDataNode;
   }
