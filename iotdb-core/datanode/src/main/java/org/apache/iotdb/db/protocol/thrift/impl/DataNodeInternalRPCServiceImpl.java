@@ -187,7 +187,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCleanDataNodeCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListWithTemplateReq;
-import org.apache.iotdb.mpp.rpc.thrift.TConstructTableDeviceBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructViewSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
@@ -245,7 +244,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionMigrateResult;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
-import org.apache.iotdb.mpp.rpc.thrift.TRollbackOrDeleteTableDeviceInBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackViewSchemaBlackListReq;
@@ -256,6 +254,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
+import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceBlackListDeletionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDirectDeletionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
@@ -1585,11 +1585,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus constructTableDeviceBlackList(final TConstructTableDeviceBlackListReq req) {
+  public TSStatus constructTableDeviceBlackList(final TTableDeviceDirectDeletionReq req) {
     final AtomicLong preDeletedNum = new AtomicLong(0);
     final TSStatus executionResult =
         executeSchemaBlackListTask(
-            req.getSchemaRegionIdList(),
+            req.getRegionIdList(),
             consensusGroupId -> {
               final TSStatus status =
                   new RegionWriteExecutor()
@@ -1611,8 +1611,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus rollbackTableDeviceBlackList(
-      final TRollbackOrDeleteTableDeviceInBlackListReq req) {
+  public TSStatus rollbackTableDeviceBlackList(final TTableDeviceBlackListDeletionReq req) {
     return executeInternalSchemaTask(
         req.getSchemaRegionIdList(),
         consensusGroupId ->
@@ -1620,13 +1619,22 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 .execute(
                     new SchemaRegionId(consensusGroupId.getId()),
                     new RollbackTableDevicesBlackListNode(
-                        new PlanNodeId(""), req.getTableName(), req.getFilterInfo()))
+                        new PlanNodeId(""), req.getTableName(), req.getPatternInfo()))
                 .getStatus());
   }
 
   @Override
-  public TSStatus deleteTableDeviceInBlackList(
-      final TRollbackOrDeleteTableDeviceInBlackListReq req) {
+  public TSStatus deleteDataForTableDevice(final TTableDeviceDirectDeletionReq req) {
+    return executeInternalSchemaTask(
+        req.getRegionIdList(),
+        consensusGroupId -> {
+          // TODO
+          return StatusUtils.OK;
+        });
+  }
+
+  @Override
+  public TSStatus deleteTableDeviceInBlackList(final TTableDeviceBlackListDeletionReq req) {
     return executeInternalSchemaTask(
         req.getSchemaRegionIdList(),
         consensusGroupId ->
@@ -1634,7 +1642,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 .execute(
                     new SchemaRegionId(consensusGroupId.getId()),
                     new DeleteTableDevicesInBlackListNode(
-                        new PlanNodeId(""), req.getTableName(), req.getFilterInfo()))
+                        new PlanNodeId(""), req.getTableName(), req.getPatternInfo()))
                 .getStatus());
   }
 

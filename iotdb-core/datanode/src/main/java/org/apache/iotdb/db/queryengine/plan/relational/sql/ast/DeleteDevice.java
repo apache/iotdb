@@ -111,10 +111,10 @@ public class DeleteDevice extends AbstractTraverseDevice {
   public static DeviceBlackListConstructor constructDevicePredicateUpdater(
       final String database,
       final String tableName,
-      final byte[] updateInfo,
+      final byte[] filterInfo,
       final BiFunction<Integer, String, Binary> attributeProvider,
       final MemSchemaRegionStatistics regionStatistics) {
-    final ByteBuffer buffer = ByteBuffer.wrap(updateInfo);
+    final ByteBuffer buffer = ByteBuffer.wrap(filterInfo);
 
     Expression predicate = null;
     if (buffer.get() == 1) {

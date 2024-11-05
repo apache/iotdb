@@ -53,7 +53,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCleanDataNodeCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListWithTemplateReq;
-import org.apache.iotdb.mpp.rpc.thrift.TConstructTableDeviceBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructViewSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
@@ -86,10 +85,11 @@ import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
-import org.apache.iotdb.mpp.rpc.thrift.TRollbackOrDeleteTableDeviceInBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackViewSchemaBlackListReq;
+import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceBlackListDeletionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDirectDeletionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
@@ -398,19 +398,22 @@ public class CnToDnInternalServiceAsyncRequestManager
         CnToDnAsyncRequestType.CONSTRUCT_TABLE_DEVICE_BLACK_LIST,
         (req, client, handler) ->
             client.constructTableDeviceBlackList(
-                (TConstructTableDeviceBlackListReq) req, (DataNodeTSStatusRPCHandler) handler));
+                (TTableDeviceDirectDeletionReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.ROLLBACK_TABLE_DEVICE_BLACK_LIST,
         (req, client, handler) ->
             client.rollbackTableDeviceBlackList(
-                (TRollbackOrDeleteTableDeviceInBlackListReq) req,
-                (DataNodeTSStatusRPCHandler) handler));
+                (TTableDeviceBlackListDeletionReq) req, (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.DELETE_DATA_FOR_TABLE_DEVICE,
+        (req, client, handler) ->
+            client.deleteDataForTableDevice(
+                (TTableDeviceDirectDeletionReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.DELETE_TABLE_DEVICE_IN_BLACK_LIST,
         (req, client, handler) ->
             client.deleteTableDeviceInBlackList(
-                (TRollbackOrDeleteTableDeviceInBlackListReq) req,
-                (DataNodeTSStatusRPCHandler) handler));
+                (TTableDeviceBlackListDeletionReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.CLEAN_DATA_NODE_CACHE,
         (req, client, handler) ->

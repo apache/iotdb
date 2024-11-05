@@ -37,8 +37,8 @@ public class DeleteTableDevicesInBlackListNode extends AbstractTableDevicesDelet
       new DeleteTableDevicesInBlackListNode(new PlanNodeId(""), null, new byte[0]);
 
   public DeleteTableDevicesInBlackListNode(
-      final PlanNodeId id, final String tableName, final @Nonnull byte[] updateBytes) {
-    super(id, tableName, updateBytes);
+      final PlanNodeId id, final String tableName, final @Nonnull byte[] patternInfo) {
+    super(id, tableName, patternInfo);
   }
 
   @Override

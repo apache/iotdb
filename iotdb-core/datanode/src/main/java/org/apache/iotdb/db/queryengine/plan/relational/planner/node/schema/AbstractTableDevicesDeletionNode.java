@@ -39,10 +39,10 @@ abstract class AbstractTableDevicesDeletionNode extends PlanNode implements ISch
   protected final byte[] patternInfo;
 
   protected AbstractTableDevicesDeletionNode(
-      final PlanNodeId id, final String tableName, final @Nonnull byte[] filterInfo) {
+      final PlanNodeId id, final String tableName, final @Nonnull byte[] patternInfo) {
     super(id);
     this.tableName = tableName;
-    this.patternInfo = filterInfo;
+    this.patternInfo = patternInfo;
   }
 
   public String getTableName() {

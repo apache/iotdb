@@ -35,8 +35,8 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecutor;
 import org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.mpp.rpc.thrift.TConstructTableDeviceBlackListReq;
-import org.apache.iotdb.mpp.rpc.thrift.TRollbackOrDeleteTableDeviceInBlackListReq;
+import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceBlackListDeletionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDirectDeletionReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -167,13 +167,13 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
       return;
     }
     final List<TSStatus> successResult = new ArrayList<>();
-    new DataNodeRegionTaskExecutor<TConstructTableDeviceBlackListReq, TSStatus>(
+    new DataNodeRegionTaskExecutor<TTableDeviceDirectDeletionReq, TSStatus>(
         env,
         relatedSchemaRegionGroup,
         false,
         CnToDnAsyncRequestType.CONSTRUCT_TABLE_DEVICE_BLACK_LIST,
         ((dataNodeLocation, consensusGroupIdList) ->
-            new TConstructTableDeviceBlackListReq(
+            new TTableDeviceDirectDeletionReq(
                 new ArrayList<>(consensusGroupIdList),
                 tableName,
                 ByteBuffer.wrap(patternBytes),
@@ -237,8 +237,11 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
             env.getConfigManager().getRelatedDataRegionGroup(patternTree, true),
             CnToDnAsyncRequestType.DELETE_DATA_FOR_TABLE_DEVICE,
             (dataNodeLocation, consensusGroupIdList) ->
-                new TRollbackOrDeleteTableDeviceInBlackListReq(
-                    consensusGroupIdList, tableName, ByteBuffer.wrap(filterBytes)))
+                new TTableDeviceDirectDeletionReq(
+                    consensusGroupIdList,
+                    tableName,
+                    ByteBuffer.wrap(patternBytes),
+                    ByteBuffer.wrap(filterBytes)))
         .execute();
   }
 
@@ -249,7 +252,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
             env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, true),
             CnToDnAsyncRequestType.DELETE_TABLE_DEVICE_IN_BLACK_LIST,
             (dataNodeLocation, consensusGroupIdList) ->
-                new TRollbackOrDeleteTableDeviceInBlackListReq(
+                new TTableDeviceBlackListDeletionReq(
                     consensusGroupIdList, tableName, ByteBuffer.wrap(filterBytes)))
         .execute();
   }
@@ -265,7 +268,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
               env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, true),
               CnToDnAsyncRequestType.ROLLBACK_TABLE_DEVICE_BLACK_LIST,
               (dataNodeLocation, consensusGroupIdList) ->
-                  new TRollbackOrDeleteTableDeviceInBlackListReq(
+                  new TTableDeviceBlackListDeletionReq(
                       consensusGroupIdList, tableName, ByteBuffer.wrap(filterBytes)))
           .execute();
     }

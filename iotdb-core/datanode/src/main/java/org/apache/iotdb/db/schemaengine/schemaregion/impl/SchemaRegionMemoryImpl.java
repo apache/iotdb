@@ -1548,7 +1548,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         DeleteDevice.constructDevicePredicateUpdater(
             PathUtils.unQualifyDatabaseName(storageGroupFullPath),
             constructTableDevicesBlackListNode.getTableName(),
-            constructTableDevicesBlackListNode.getPatternInfo(),
+            constructTableDevicesBlackListNode.getFilterInfo(),
             (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name),
             regionStatistics);
     try {
