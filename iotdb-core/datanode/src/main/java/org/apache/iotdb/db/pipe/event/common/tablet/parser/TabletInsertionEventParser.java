@@ -57,8 +57,6 @@ public abstract class TabletInsertionEventParser {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TabletInsertionEventParser.class);
 
-  private static final LocalDate EMPTY_LOCALDATE = LocalDate.of(1000, 1, 1);
-
   protected final PipeTaskMeta pipeTaskMeta; // used to report progress
   protected final EnrichedEvent
       sourceEvent; // used to report progress and filter value columns by time range
@@ -451,7 +449,7 @@ public abstract class TabletInsertionEventParser {
 
             for (int i = 0; i < rowIndexList.size(); ++i) {
               if (originNullValueColumnBitmap.isMarked(rowIndexList.get(i))) {
-                valueColumns[i] = EMPTY_LOCALDATE;
+                valueColumns[i] = LocalDate.MIN;
                 nullValueColumnBitmap.mark(i);
               } else {
                 valueColumns[i] = dateValueColumns[rowIndexList.get(i)];
@@ -465,7 +463,7 @@ public abstract class TabletInsertionEventParser {
                     : (int[]) originValueColumn;
             for (int i = 0; i < rowIndexList.size(); ++i) {
               if (originNullValueColumnBitmap.isMarked(rowIndexList.get(i))) {
-                valueColumns[i] = EMPTY_LOCALDATE;
+                valueColumns[i] = LocalDate.MIN;
                 nullValueColumnBitmap.mark(i);
               } else {
                 valueColumns[i] =
