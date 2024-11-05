@@ -68,10 +68,7 @@ public class RelationalDeleteDataNode extends SearchNode implements WALEntryValu
 
   public RelationalDeleteDataNode(PlanNodeId id, Delete delete) {
     super(id);
-    this.modEntries =
-        Collections.singletonList(
-            new TableDeletionEntry(
-                delete.getPredicate(), delete.getTimeRange().toTsFileTimeRange()));
+    this.modEntries = delete.getTableDeletionEntries();
     this.replicaSets = delete.getReplicaSets();
   }
 

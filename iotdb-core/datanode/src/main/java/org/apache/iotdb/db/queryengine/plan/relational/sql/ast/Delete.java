@@ -30,6 +30,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
@@ -40,8 +41,7 @@ public class Delete extends Statement {
   @Nullable private final Expression where;
 
   // generated after analysis
-  private TimeRange timeRange;
-  private DeletionPredicate predicate;
+  private List<TableDeletionEntry> tableDeletionEntries;
   private String databaseName;
   private Collection<TRegionReplicaSet> replicaSets;
 
@@ -102,20 +102,13 @@ public class Delete extends Statement {
     return toStringHelper(this).add("table", table.getName()).add("where", where).toString();
   }
 
-  public TimeRange getTimeRange() {
-    return timeRange;
+  public List<TableDeletionEntry> getTableDeletionEntries() {
+    return tableDeletionEntries;
   }
 
-  public void setTimeRange(TimeRange timeRange) {
-    this.timeRange = timeRange;
-  }
-
-  public DeletionPredicate getPredicate() {
-    return predicate;
-  }
-
-  public void setPredicate(DeletionPredicate predicate) {
-    this.predicate = predicate;
+  public void setTableDeletionEntries(
+      List<TableDeletionEntry> tableDeletionEntries) {
+    this.tableDeletionEntries = tableDeletionEntries;
   }
 
   public String getDatabaseName() {

@@ -53,6 +53,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredica
 import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.And;
 import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.SegmentExactMatch;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -336,6 +337,7 @@ public class AnalyzeUtils {
     }
   }
 
+  @SuppressWarnings("java:S3655") // optional is checked
   private static void validateSchema(Delete node, MPPQueryContext queryContext) {
     String tableName = node.getTable().getName().getSuffix();
     String databaseName;
@@ -353,36 +355,107 @@ public class AnalyzeUtils {
       throw new SemanticException("Table " + tableName + " not found");
     }
 
-    parsePredicate(node, table);
+    List<Expression> disjunctiveNormalForms = toDisjunctiveNormalForms(
+        node.getWhere().orElse(null));
+    List<TableDeletionEntry> tableDeletionEntries = new ArrayList<>();
+    for (Expression disjunctiveNormalForm : disjunctiveNormalForms) {
+      tableDeletionEntries.add(parsePredicate(disjunctiveNormalForm, table));
+    }
+
+    node.setTableDeletionEntries(tableDeletionEntries);
   }
 
-  private static void parsePredicate(Delete node, TsTable table) {
-    if (!node.getWhere().isPresent()) {
-      node.setPredicate(new DeletionPredicate(table.getTableName()));
-      node.setTimeRange(new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE, true));
-      return;
+  /**
+   * Convert to a disjunctive normal forms.
+   *
+   * <p>For example: ( A | B ) & ( C | D ) => ( A & C ) | ( A & D ) | ( B & C ) | ( B & D)
+   *
+   * <p>Returns the original expression if the expression is null or if the
+   * distribution will expand the expression by too much.
+   */
+  public static List<Expression> toDisjunctiveNormalForms(Expression expression) {
+    if (expression == null) {
+      return Collections.singletonList(expression);
+    }
+
+    if (expression instanceof LogicalExpression) {
+      LogicalExpression logicalExpression = (LogicalExpression) expression;
+      if (logicalExpression.getOperator() == Operator.AND) {
+        // ( A | B ) & ( C | D ) => ( A & C ) | ( A & D ) | ( B & C ) | ( B & D)
+        List<Expression> results = null;
+        for (Expression term : logicalExpression.getTerms()) {
+          if (results == null) {
+            results = toDisjunctiveNormalForms(term);
+          } else {
+            results = crossProductOfDisjunctiveNormalForms(results, toDisjunctiveNormalForms(term), Operator.AND);
+          }
+        }
+        return results;
+      } else if (logicalExpression.getOperator() == Operator.OR) {
+        // ( A | B ) | ( C | D ) => A | B | C | D
+        List<Expression> results = new ArrayList<>();
+        for (Expression term : logicalExpression.getTerms()) {
+          results.addAll(toDisjunctiveNormalForms(term));
+        }
+        return results;
+      } else {
+        throw new SemanticException("Unsupported operator: " + logicalExpression.getOperator());
+      }
+    } else {
+      return Collections.singletonList(expression);
+    }
+  }
+
+  private static List<Expression> crossProductOfDisjunctiveNormalForms(List<Expression> leftList, List<Expression> rightList,
+      Operator operator) {
+    List<Expression> results = new ArrayList<>();
+    for (Expression leftExp : leftList) {
+      List<Expression> terms = new ArrayList<>();
+      if (leftExp instanceof LogicalExpression) {
+        terms.addAll(((LogicalExpression) leftExp).getTerms());
+      } else {
+        terms.add(leftExp);
+      }
+
+      for (Expression rightExp : rightList) {
+        if (rightExp instanceof LogicalExpression) {
+          terms.addAll(((LogicalExpression) rightExp).getTerms());
+        } else {
+          terms.add(rightExp);
+        }
+
+        results.add(new LogicalExpression(operator, results));
+      }
+    }
+    return results;
+  }
+
+  private static TableDeletionEntry parsePredicate(Expression expression, TsTable table) {
+    if (expression == null) {
+      return new TableDeletionEntry(new DeletionPredicate(table.getTableName()),
+          new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE, true).toTsFileTimeRange());
     }
 
     Queue<Expression> expressionQueue = new LinkedList<>();
-    expressionQueue.add(node.getWhere().get());
+    expressionQueue.add(expression);
     DeletionPredicate predicate = new DeletionPredicate(table.getTableName());
     IDPredicate idPredicate = null;
     TimeRange timeRange = new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE, true);
     while (!expressionQueue.isEmpty()) {
-      Expression expression = expressionQueue.remove();
-      if (expression instanceof LogicalExpression) {
-        parseAndPredicate(((LogicalExpression) expression), expressionQueue);
-      } else if (expression instanceof ComparisonExpression) {
+      Expression currExp = expressionQueue.remove();
+      if (currExp instanceof LogicalExpression) {
+        parseAndPredicate(((LogicalExpression) currExp), expressionQueue);
+      } else if (currExp instanceof ComparisonExpression) {
         idPredicate =
-            parseComparison(((ComparisonExpression) expression), timeRange, idPredicate, table);
+            parseComparison(((ComparisonExpression) currExp), timeRange, idPredicate, table);
       }
     }
     if (idPredicate != null) {
       predicate.setIdPredicate(idPredicate);
     }
 
-    node.setPredicate(predicate);
-    node.setTimeRange(timeRange);
+    return new TableDeletionEntry(new DeletionPredicate(table.getTableName()),
+        new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE, true).toTsFileTimeRange());
   }
 
   private static void parseAndPredicate(
