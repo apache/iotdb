@@ -232,7 +232,7 @@ public class DeactivateTemplateProcedure
               "delete data",
               env,
               relatedDataRegionGroup,
-              true,
+              false,
               CnToDnAsyncRequestType.DELETE_DATA_FOR_DELETE_SCHEMA,
               ((dataNodeLocation, consensusGroupIdList) ->
                   new TDeleteDataForDeleteSchemaReq(

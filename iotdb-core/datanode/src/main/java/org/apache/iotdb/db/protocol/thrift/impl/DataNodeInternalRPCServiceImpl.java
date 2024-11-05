@@ -681,25 +681,23 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus deleteDataForDeleteSchema(TDeleteDataForDeleteSchemaReq req) {
-    PathPatternTree patternTree =
-        PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
-    List<MeasurementPath> pathList = patternTree.getAllPathPatterns(true);
+  public TSStatus deleteDataForDeleteSchema(final TDeleteDataForDeleteSchemaReq req) {
+    final List<MeasurementPath> pathList =
+        PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()))
+            .getAllPathPatterns(true);
     return executeInternalSchemaTask(
         req.getDataRegionIdList(),
-        consensusGroupId -> {
-          RegionWriteExecutor executor = new RegionWriteExecutor();
-          return executor
-              .execute(
-                  new DataRegionId(consensusGroupId.getId()),
-                  req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()
-                      ? new PipeEnrichedDeleteDataNode(
-                          new DeleteDataNode(
-                              new PlanNodeId(""), pathList, Long.MIN_VALUE, Long.MAX_VALUE))
-                      : new DeleteDataNode(
-                          new PlanNodeId(""), pathList, Long.MIN_VALUE, Long.MAX_VALUE))
-              .getStatus();
-        });
+        consensusGroupId ->
+            new RegionWriteExecutor()
+                .execute(
+                    new DataRegionId(consensusGroupId.getId()),
+                    req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()
+                        ? new PipeEnrichedDeleteDataNode(
+                            new DeleteDataNode(
+                                new PlanNodeId(""), pathList, Long.MIN_VALUE, Long.MAX_VALUE))
+                        : new DeleteDataNode(
+                            new PlanNodeId(""), pathList, Long.MIN_VALUE, Long.MAX_VALUE))
+                .getStatus());
   }
 
   @Override
