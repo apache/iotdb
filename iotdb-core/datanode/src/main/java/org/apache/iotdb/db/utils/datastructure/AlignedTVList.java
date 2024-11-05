@@ -504,7 +504,7 @@ public abstract class AlignedTVList extends TVList {
     if (allValueColDeletedMap != null && allValueColDeletedMap.isMarked(rowIndex)) {
       return true;
     }
-    if (timeColDeletedMap != null && timeColDeletedMap.isMarked(getValueIndex(rowIndex))) {
+    if (isTimeDeleted(rowIndex)) {
       return true;
     }
     if (values.get(columnIndex) == null) {
@@ -1005,15 +1005,14 @@ public abstract class AlignedTVList extends TVList {
           && allValueColDeletedMap.isMarked(getValueIndex(sortedRowIndex))) {
         continue;
       }
-      if (timeColDeletedMap != null && timeColDeletedMap.isMarked(getValueIndex(sortedRowIndex))) {
+      if (isTimeDeleted(sortedRowIndex)) {
         continue;
       }
       int nextRowIndex = sortedRowIndex + 1;
       while (nextRowIndex < rowCount
           && ((allValueColDeletedMap != null
                   && allValueColDeletedMap.isMarked(getValueIndex(nextRowIndex)))
-              || (timeColDeletedMap != null
-                  && timeColDeletedMap.isMarked(getValueIndex(nextRowIndex))))) {
+              || (isTimeDeleted(nextRowIndex)))) {
         nextRowIndex++;
       }
       long timestamp = getTime(sortedRowIndex);
@@ -1047,8 +1046,7 @@ public abstract class AlignedTVList extends TVList {
         // skip empty row
         if ((allValueColDeletedMap != null
                 && allValueColDeletedMap.isMarked(getValueIndex(sortedRowIndex)))
-            || (timeColDeletedMap != null
-                && timeColDeletedMap.isMarked(getValueIndex(sortedRowIndex)))) {
+            || (isTimeDeleted(sortedRowIndex))) {
           continue;
         }
         // skip time duplicated or totally deleted rows
@@ -1410,6 +1408,14 @@ public abstract class AlignedTVList extends TVList {
 
   public BitMap getTimeColDeletedMap() {
     return timeColDeletedMap;
+  }
+
+  public boolean isTimeDeleted(int rowIndex) {
+    int bitmapIndex = getValueIndex(rowIndex);
+    if (timeColDeletedMap == null || timeColDeletedMap.getSize() <= bitmapIndex) {
+      return false;
+    }
+    return timeColDeletedMap.isMarked(bitmapIndex);
   }
 
   public BitMap getAllValueColDeletedMap() {

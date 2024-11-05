@@ -484,6 +484,46 @@ public class IoTDBDeletionTableIT {
     }
   }
 
+  @Test
+  public void testDeleteTable() throws SQLException {
+    int testNum = 12;
+    prepareData(testNum);
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+
+      statement.execute("DROP TABLE vehicle" + testNum);
+
+      try (ResultSet set = statement.executeQuery("SELECT * FROM vehicle" + testNum)) {
+        fail("Exception expected");
+      } catch (SQLException e) {
+        assertEquals("701: Table 'test.vehicle12' does not exist", e.getMessage());
+      }
+
+      statement.execute(
+          String.format(
+              "CREATE TABLE vehicle%d(deviceId STRING ID, s0 INT32 MEASUREMENT, s1 INT64 MEASUREMENT, s2 FLOAT MEASUREMENT, s3 TEXT MEASUREMENT, s4 BOOLEAN MEASUREMENT)",
+              testNum));
+
+      try (ResultSet set = statement.executeQuery("SELECT * FROM vehicle" + testNum)) {
+        assertFalse(set.next());
+      }
+
+      prepareData(testNum);
+
+      statement.execute("DELETE FROM vehicle" + testNum + " WHERE time <= 150");
+
+      try (ResultSet set = statement.executeQuery("SELECT * FROM vehicle" + testNum)) {
+        int cnt = 0;
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(250, cnt);
+      }
+    }
+    cleanData(testNum);
+  }
+
   private static void prepareSeries() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
@@ -502,7 +542,7 @@ public class IoTDBDeletionTableIT {
       statement.execute("use test");
       statement.execute(
           String.format(
-              "CREATE TABLE vehicle%d(deviceId STRING ID, s0 INT32 MEASUREMENT, s1 INT64 MEASUREMENT, s2 FLOAT MEASUREMENT, s3 TEXT MEASUREMENT, s4 BOOLEAN MEASUREMENT)",
+              "CREATE TABLE IF NOT EXISTS vehicle%d(deviceId STRING ID, s0 INT32 MEASUREMENT, s1 INT64 MEASUREMENT, s2 FLOAT MEASUREMENT, s3 TEXT MEASUREMENT, s4 BOOLEAN MEASUREMENT)",
               testNum));
 
       // prepare BufferWrite file

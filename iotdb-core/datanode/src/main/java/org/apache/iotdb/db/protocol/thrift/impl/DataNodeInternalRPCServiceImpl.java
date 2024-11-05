@@ -138,6 +138,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedNonWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
@@ -159,6 +160,8 @@ import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairTaskStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.settle.SettleRequestHandler;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeThrottleQuotaManager;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
@@ -265,6 +268,7 @@ import com.google.common.collect.ImmutableList;
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -1561,10 +1565,15 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus deleteDataForDropTable(final TDeleteDataOrDevicesForDropTableReq req) {
     return executeInternalSchemaTask(
         req.getRegionIdList(),
-        consensusGroupId -> {
-          // TODO
-          return StatusUtils.OK;
-        });
+        consensusGroupId -> new RegionWriteExecutor()
+            .execute(
+                new DataRegionId(consensusGroupId.getId()),
+                new RelationalDeleteDataNode(
+                    new PlanNodeId(""),
+                    new TableDeletionEntry(
+                        new DeletionPredicate(req.getTableName()),
+                        new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE))))
+            .getStatus());
   }
 
   @Override

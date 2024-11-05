@@ -338,7 +338,6 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
     BitMap allValueColDeletedMap;
     allValueColDeletedMap = ignoreAllNullRows ? list.getAllValueColDeletedMap() : null;
-    BitMap timeColDeletedMap = list.getTimeColDeletedMap();
     boolean[] timeDuplicateInfo = null;
     List<Integer> pageRange = new ArrayList<>();
     int range = 0;
@@ -357,8 +356,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       while (nextRowIndex < list.rowCount()
           && ((allValueColDeletedMap != null
                   && allValueColDeletedMap.isMarked(list.getValueIndex(nextRowIndex)))
-              || (timeColDeletedMap != null
-                  && timeColDeletedMap.isMarked(list.getValueIndex(nextRowIndex))))) {
+              || list.isTimeDeleted(nextRowIndex))) {
         nextRowIndex++;
       }
       if (nextRowIndex != list.rowCount() && time == list.getTime(nextRowIndex)) {
@@ -391,8 +389,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
           // skip empty row
           if (((allValueColDeletedMap != null
                   && allValueColDeletedMap.isMarked(list.getValueIndex(sortedRowIndex)))
-              || (timeColDeletedMap != null
-                  && timeColDeletedMap.isMarked(list.getValueIndex(sortedRowIndex))))) {
+              || (list.isTimeDeleted(sortedRowIndex)))) {
             continue;
           }
           // skip time duplicated rows
@@ -470,8 +467,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
         // skip empty row
         if (((allValueColDeletedMap != null
                 && allValueColDeletedMap.isMarked(list.getValueIndex(sortedRowIndex)))
-            || (timeColDeletedMap != null
-                && timeColDeletedMap.isMarked(list.getValueIndex(sortedRowIndex))))) {
+            || (list.isTimeDeleted(sortedRowIndex)))) {
           continue;
         }
         if (Objects.isNull(timeDuplicateInfo) || !timeDuplicateInfo[sortedRowIndex]) {
