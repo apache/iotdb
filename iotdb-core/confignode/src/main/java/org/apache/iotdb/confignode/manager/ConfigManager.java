@@ -2589,8 +2589,6 @@ public class ConfigManager implements IManager {
           return procedureManager.alterTableDropColumn(req);
         case DROP_TABLE:
           return procedureManager.dropTable(req);
-        case DELETE_DEVICE:
-          return procedureManager.deleteDevices(req);
         default:
           throw new IllegalArgumentException();
       }

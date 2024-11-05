@@ -81,6 +81,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
@@ -3564,31 +3566,55 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
 
-      final ByteArrayOutputStream stream = new ByteArrayOutputStream();
-      try (final DataOutputStream outputStream = new DataOutputStream(stream)) {
-        deleteDevice.serializeAttributes(outputStream, sessionInfo);
+      final ByteArrayOutputStream patternStream = new ByteArrayOutputStream();
+      try (final DataOutputStream outputStream = new DataOutputStream(patternStream)) {
+        deleteDevice.serializeFilterInfo(outputStream, sessionInfo);
       } catch (final IOException ignored) {
         // ByteArrayOutputStream won't throw IOException
       }
 
-      final TSStatus tsStatus =
-          sendAlterReq2ConfigNode(
+      final ByteArrayOutputStream filterStream = new ByteArrayOutputStream();
+      try (final DataOutputStream outputStream = new DataOutputStream(filterStream)) {
+        deleteDevice.serializeFilterInfo(outputStream, sessionInfo);
+      } catch (final IOException ignored) {
+        // ByteArrayOutputStream won't throw IOException
+      }
+
+      final TDeleteTableDeviceReq req =
+          new TDeleteTableDeviceReq(
               deleteDevice.getDatabase(),
               deleteDevice.getTableName(),
               queryId,
-              AlterOrDropTableOperationType.DELETE_DEVICE,
-              stream.toByteArray(),
-              client);
+              ByteBuffer.wrap(patternStream.toByteArray()),
+              ByteBuffer.wrap(filterStream.toByteArray()));
 
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
+      TDeleteTableDeviceResp resp;
+      TSStatus status;
+      do {
+        try {
+          resp = client.deleteDevice(req);
+          status = resp.getStatus();
+        } catch (final TTransportException e) {
+          if (e.getType() == TTransportException.TIMED_OUT
+              || e.getCause() instanceof SocketTimeoutException) {
+            // time out mainly caused by slow execution, wait until
+            status = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+          } else {
+            throw e;
+          }
+        }
+        // keep waiting until task ends
+      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == status.getCode());
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == status.getCode()) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else {
         LOGGER.warn(
             "Failed to delete devices from table {}.{}, status is {}.",
             deleteDevice.getDatabase(),
             deleteDevice.getTableName(),
-            tsStatus);
-        future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
+            status);
+        future.setException(new IoTDBException(status.getMessage(), status.getCode()));
       }
     } catch (final ClientManagerException | TException e) {
       future.setException(e);

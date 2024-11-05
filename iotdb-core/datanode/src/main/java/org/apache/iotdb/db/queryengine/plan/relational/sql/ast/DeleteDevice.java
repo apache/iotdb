@@ -63,8 +63,7 @@ public class DeleteDevice extends AbstractTraverseDevice {
     super(location, table, where);
   }
 
-  public void serializeAttributes(final DataOutputStream stream, final SessionInfo sessionInfo)
-      throws IOException {
+  public void serializePatternInfo(final DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(idDeterminedFilterList.size(), stream);
     for (final List<SchemaFilter> filterList : idDeterminedFilterList) {
       ReadWriteIOUtils.write(filterList.size(), stream);
@@ -72,7 +71,10 @@ public class DeleteDevice extends AbstractTraverseDevice {
         SchemaFilter.serialize(filter, stream);
       }
     }
+  }
 
+  public void serializeFilterInfo(final DataOutputStream stream, final SessionInfo sessionInfo)
+      throws IOException {
     ReadWriteIOUtils.write(idFuzzyPredicate == null ? (byte) 0 : (byte) 1, stream);
     if (idFuzzyPredicate != null) {
       Expression.serialize(idFuzzyPredicate, stream);
