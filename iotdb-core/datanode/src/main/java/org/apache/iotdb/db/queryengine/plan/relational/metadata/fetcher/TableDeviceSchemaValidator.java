@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
-import java.util.Arrays;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -42,6 +41,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -80,8 +80,11 @@ public class TableDeviceSchemaValidator {
     final List<Object[]> attributeValueList = schemaValidation.getAttributeValueList();
 
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("Validating device schema {}.{} and other {} devices", schemaValidation.getTableName(),
-          Arrays.toString(deviceIdList.get(0)), deviceIdList.size() - 1);
+      LOGGER.debug(
+          "Validating device schema {}.{} and other {} devices",
+          schemaValidation.getTableName(),
+          Arrays.toString(deviceIdList.get(0)),
+          deviceIdList.size() - 1);
     }
     ValidateResult validateResult =
         validateDeviceSchemaInCache(

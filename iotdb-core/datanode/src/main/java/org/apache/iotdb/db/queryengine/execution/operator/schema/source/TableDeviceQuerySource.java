@@ -248,11 +248,14 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
 
   @Override
   public boolean hasSchemaStatistic(final ISchemaRegion schemaRegion) {
-    return false;
+    return (Objects.isNull(idDeterminedPredicateList)
+            || idDeterminedPredicateList.isEmpty()
+            || idDeterminedPredicateList.stream().allMatch(List::isEmpty))
+        && Objects.isNull(filter);
   }
 
   @Override
   public long getSchemaStatistic(final ISchemaRegion schemaRegion) {
-    return 0;
+    return schemaRegion.getSchemaRegionStatistics().getTableDevicesNumber(tableName);
   }
 }

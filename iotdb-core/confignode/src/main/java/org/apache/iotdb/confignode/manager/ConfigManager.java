@@ -783,7 +783,8 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSchemaPartitionTableResp getSchemaPartition(final PathPatternTree patternTree) {
+  public TSchemaPartitionTableResp getSchemaPartition(
+      final PathPatternTree patternTree, final boolean isTableModel) {
     // Construct empty response
 
     final TSStatus status = confirmLeader();
@@ -795,7 +796,7 @@ public class ConfigManager implements IManager {
     // Build GetSchemaPartitionPlan
     final Map<String, Set<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
     final List<PartialPath> relatedPaths = patternTree.getAllPathPatterns();
-    final List<String> allDatabases = getClusterSchemaManager().getDatabaseNames();
+    final List<String> allDatabases = getClusterSchemaManager().getDatabaseNames(isTableModel);
     final List<PartialPath> allDatabasePaths = new ArrayList<>();
     for (final String database : allDatabases) {
       try {
@@ -849,8 +850,8 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSchemaPartitionTableResp getOrCreateSchemaPartition(PathPatternTree patternTree) {
-
+  public TSchemaPartitionTableResp getOrCreateSchemaPartition(
+      final PathPatternTree patternTree, final boolean isTableModel) {
     TSStatus status = confirmLeader();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // Construct empty response
@@ -859,7 +860,7 @@ public class ConfigManager implements IManager {
     }
 
     List<IDeviceID> devicePaths = patternTree.getAllDevicePatterns();
-    List<String> databases = getClusterSchemaManager().getDatabaseNames();
+    List<String> databases = getClusterSchemaManager().getDatabaseNames(isTableModel);
 
     // Build GetOrCreateSchemaPartitionPlan
     Map<String, Set<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
@@ -2381,17 +2382,22 @@ public class ConfigManager implements IManager {
    * Get all related schemaRegion which may contains the timeseries matched by given patternTree.
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup(
-      PathPatternTree patternTree) {
-    Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
-        getSchemaPartition(patternTree).getSchemaPartitionTable();
+      final PathPatternTree patternTree) {
+    return getRelatedSchemaRegionGroup(patternTree, false);
+  }
 
-    List<TRegionReplicaSet> allRegionReplicaSets = getPartitionManager().getAllReplicaSets();
-    Set<TConsensusGroupId> groupIdSet =
+  public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup(
+      final PathPatternTree patternTree, final boolean isTableModel) {
+    final Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
+        getSchemaPartition(patternTree, isTableModel).getSchemaPartitionTable();
+
+    final List<TRegionReplicaSet> allRegionReplicaSets = getPartitionManager().getAllReplicaSets();
+    final Set<TConsensusGroupId> groupIdSet =
         schemaPartitionTable.values().stream()
             .flatMap(m -> m.values().stream())
             .collect(Collectors.toSet());
-    Map<TConsensusGroupId, TRegionReplicaSet> filteredRegionReplicaSets = new HashMap<>();
-    for (TRegionReplicaSet regionReplicaSet : allRegionReplicaSets) {
+    final Map<TConsensusGroupId, TRegionReplicaSet> filteredRegionReplicaSets = new HashMap<>();
+    for (final TRegionReplicaSet regionReplicaSet : allRegionReplicaSets) {
       if (groupIdSet.contains(regionReplicaSet.getRegionId())) {
         filteredRegionReplicaSets.put(regionReplicaSet.getRegionId(), regionReplicaSet);
       }
@@ -2404,13 +2410,13 @@ public class ConfigManager implements IManager {
    * patternTree
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedDataRegionGroup(
-      PathPatternTree patternTree) {
+      final PathPatternTree patternTree, final boolean isTableModel) {
     // Get all databases and slots by getting schemaengine partition
-    Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
-        getSchemaPartition(patternTree).getSchemaPartitionTable();
+    final Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
+        getSchemaPartition(patternTree, isTableModel).getSchemaPartitionTable();
 
     // Construct request for getting data partition
-    Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap = new HashMap<>();
+    final Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap = new HashMap<>();
     schemaPartitionTable.forEach(
         (key, value) -> {
           Map<TSeriesPartitionSlot, TTimeSlotList> slotListMap = new HashMap<>();
@@ -2424,13 +2430,13 @@ public class ConfigManager implements IManager {
         });
 
     // Get all data partitions
-    GetDataPartitionPlan getDataPartitionPlan = new GetDataPartitionPlan(partitionSlotsMap);
-    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
+    final GetDataPartitionPlan getDataPartitionPlan = new GetDataPartitionPlan(partitionSlotsMap);
+    final Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
         dataPartitionTable = getDataPartition(getDataPartitionPlan).getDataPartitionTable();
 
     // Get all region replicaset of target data partitions
-    List<TRegionReplicaSet> allRegionReplicaSets = getPartitionManager().getAllReplicaSets();
-    Set<TConsensusGroupId> groupIdSet =
+    final List<TRegionReplicaSet> allRegionReplicaSets = getPartitionManager().getAllReplicaSets();
+    final Set<TConsensusGroupId> groupIdSet =
         dataPartitionTable.values().stream()
             .flatMap(
                 tSeriesPartitionSlotMapMap ->
@@ -2440,8 +2446,8 @@ public class ConfigManager implements IManager {
                                 tTimePartitionSlotListMap.values().stream()
                                     .flatMap(Collection::stream)))
             .collect(Collectors.toSet());
-    Map<TConsensusGroupId, TRegionReplicaSet> filteredRegionReplicaSets = new HashMap<>();
-    for (TRegionReplicaSet regionReplicaSet : allRegionReplicaSets) {
+    final Map<TConsensusGroupId, TRegionReplicaSet> filteredRegionReplicaSets = new HashMap<>();
+    for (final TRegionReplicaSet regionReplicaSet : allRegionReplicaSets) {
       if (groupIdSet.contains(regionReplicaSet.getRegionId())) {
         filteredRegionReplicaSets.put(regionReplicaSet.getRegionId(), regionReplicaSet);
       }

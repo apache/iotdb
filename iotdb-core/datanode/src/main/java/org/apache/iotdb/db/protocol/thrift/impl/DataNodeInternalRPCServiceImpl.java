@@ -1565,15 +1565,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus deleteDataForDropTable(final TDeleteDataOrDevicesForDropTableReq req) {
     return executeInternalSchemaTask(
         req.getRegionIdList(),
-        consensusGroupId -> new RegionWriteExecutor()
-            .execute(
-                new DataRegionId(consensusGroupId.getId()),
-                new RelationalDeleteDataNode(
-                    new PlanNodeId(""),
-                    new TableDeletionEntry(
-                        new DeletionPredicate(req.getTableName()),
-                        new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE))))
-            .getStatus());
+        consensusGroupId ->
+            new RegionWriteExecutor()
+                .execute(
+                    new DataRegionId(consensusGroupId.getId()),
+                    new RelationalDeleteDataNode(
+                        new PlanNodeId(""),
+                        new TableDeletionEntry(
+                            new DeletionPredicate(req.getTableName()),
+                            new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE))))
+                .getStatus());
   }
 
   @Override
