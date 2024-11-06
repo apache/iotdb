@@ -241,14 +241,17 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
     final DataNodeAsyncRequestContext<TInvalidateMatchedSchemaCacheReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
             CnToDnAsyncRequestType.INVALIDATE_MATCHED_TABLE_DEVICE_CACHE,
-            new TInvalidateMatchedSchemaCacheReq(patternTreeBytes),
+            new TTableDeviceDeletionWithPatternReq(),
             dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (final TSStatus status : statusMap.values()) {
       // All dataNodes must clear the related schemaEngine cache
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error("Failed to invalidate schemaEngine cache of timeSeries {}", requestMessage);
+        LOGGER.error(
+            "Failed to invalidate schemaEngine cache of devices in table {}.{}",
+            database,
+            tableName);
         setFailure(
             new ProcedureException(new MetadataException("Invalidate schemaEngine cache failed")));
         return;

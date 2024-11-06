@@ -353,6 +353,11 @@ struct TTableDeviceDeletionWithPatternReq {
   3: required binary patternInfo
 }
 
+struct TTableDeviceInvalidateCacheReq {
+  1: required string tableName
+  2: required binary patternInfo
+}
+
 struct TTsFilePieceReq {
     1: required binary body
     2: required string uuid
@@ -1108,7 +1113,7 @@ service IDataNodeRPCService {
   /**
    * Delete data for table devices
    */
-  common.TSStatus invalidateMatchedTableDeviceCache(TTableDeviceDeletionWithPatternReq req)
+  common.TSStatus invalidateMatchedTableDeviceCache(TTableDeviceInvalidateCacheReq req)
 
   /**
    * Delete data for table devices
