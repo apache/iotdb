@@ -129,7 +129,11 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
 
       // Send requests to all targetNodes
       final int finalRetry = retry;
-      requestContext.getNodeLocationMap().forEach((requestId, nodeLocation) -> sendAsyncRequest(requestContext, requestId, nodeLocation, finalRetry));
+      requestContext
+          .getNodeLocationMap()
+          .forEach(
+              (requestId, nodeLocation) ->
+                  sendAsyncRequest(requestContext, requestId, nodeLocation, finalRetry));
 
       // Wait for this batch of asynchronous RPC requests finish
       try {
