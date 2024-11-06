@@ -487,9 +487,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   }
 
   private List<SubscriptionEvent> handlePipeSubscribePollRequest(
-      final ConsumerConfig consumerConfig,
-      final PollPayload messagePayload,
-      final long maxBytes) {
+      final ConsumerConfig consumerConfig, final PollPayload messagePayload, final long maxBytes) {
     final Set<String> subscribedTopicNames =
         SubscriptionAgent.consumer()
             .getTopicNamesSubscribedByConsumer(
@@ -505,23 +503,16 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   }
 
   private List<SubscriptionEvent> handlePipeSubscribePollTsFileRequest(
-      final ConsumerConfig consumerConfig,
-      final PollFilePayload messagePayload) {
+      final ConsumerConfig consumerConfig, final PollFilePayload messagePayload) {
     return SubscriptionAgent.broker()
         .pollTsFile(
-            consumerConfig,
-            messagePayload.getCommitContext(),
-            messagePayload.getWritingOffset());
+            consumerConfig, messagePayload.getCommitContext(), messagePayload.getWritingOffset());
   }
 
   private List<SubscriptionEvent> handlePipeSubscribePollTabletsRequest(
-      final ConsumerConfig consumerConfig,
-      final PollTabletsPayload messagePayload) {
+      final ConsumerConfig consumerConfig, final PollTabletsPayload messagePayload) {
     return SubscriptionAgent.broker()
-        .pollTablets(
-            consumerConfig,
-            messagePayload.getCommitContext(),
-            messagePayload.getOffset());
+        .pollTablets(consumerConfig, messagePayload.getCommitContext(), messagePayload.getOffset());
   }
 
   private TPipeSubscribeResp handlePipeSubscribeCommit(final PipeSubscribeCommitReq req) {
