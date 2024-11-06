@@ -38,10 +38,8 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecu
 import org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
-import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternAndFilterReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternReq;
-import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternAndFilterReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;

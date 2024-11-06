@@ -1625,6 +1625,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
+  public TSStatus invalidateMatchedTableDeviceCache(final TTableDeviceDeletionWithPatternReq req) {
+    return null;
+  }
+
+  @Override
   public TSStatus deleteDataForTableDevice(final TTableDeviceDeletionWithPatternAndFilterReq req) {
     return executeInternalSchemaTask(
         req.getRegionIdList(),
