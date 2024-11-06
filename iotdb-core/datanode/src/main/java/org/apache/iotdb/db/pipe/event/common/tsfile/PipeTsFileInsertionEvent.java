@@ -526,7 +526,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
             waitTimeSeconds);
       }
 
-      if (waitTimeSeconds > timeoutMs * 1000) {
+      if (waitTimeSeconds * 1000 > timeoutMs) {
         throw new InterruptedException();
       }
     }

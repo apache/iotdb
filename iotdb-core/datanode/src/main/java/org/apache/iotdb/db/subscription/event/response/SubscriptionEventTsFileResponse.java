@@ -221,7 +221,7 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
             waitTimeSeconds);
       }
 
-      if (waitTimeSeconds > timeoutMs * 1000) {
+      if (waitTimeSeconds * 1000 > timeoutMs) {
         throw new InterruptedException();
       }
     }

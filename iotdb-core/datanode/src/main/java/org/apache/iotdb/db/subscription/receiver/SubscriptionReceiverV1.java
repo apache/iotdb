@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
@@ -161,7 +162,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   public long remainingMs() {
     final PollTimer pollTimer = pollTimerThreadLocal.get();
     if (Objects.isNull(pollTimer)) {
-      return Long.MAX_VALUE;
+      return SubscriptionConfig.getInstance().getSubscriptionDefaultTimeoutInMs();
     }
     return pollTimer.remainingMs();
   }
