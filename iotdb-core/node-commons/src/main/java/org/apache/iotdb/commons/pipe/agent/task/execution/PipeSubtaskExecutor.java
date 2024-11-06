@@ -166,7 +166,9 @@ public abstract class PipeSubtaskExecutor {
   }
 
   protected final boolean hasAvailableThread() {
-    return getAvailableThreadCount() > 0;
+    // TODO: temporarily disable async receiver subtask execution
+    return false;
+    // return getAvailableThreadCount() > 0;
   }
 
   private int getAvailableThreadCount() {

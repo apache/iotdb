@@ -148,7 +148,7 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
           try {
             executeReceiverSubtask(
                 () -> {
-                  ev.fetchNextResponse();
+                  ev.fetchNextResponse(offset);
                   return null;
                 },
                 SubscriptionAgent.receiver().remainingMs());

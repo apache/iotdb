@@ -528,7 +528,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       }
 
       if (waitTimeSeconds * 1000 > timeoutMs) {
-        throw new InterruptedException();
+        // should contain 'TimeoutException' in exception message
+        throw new InterruptedException(
+            String.format("TimeoutException: Waited %s seconds", waitTimeSeconds));
       }
     }
   }

@@ -224,8 +224,8 @@ public class SubscriptionEvent {
     response.prefetchRemainingResponses();
   }
 
-  public void fetchNextResponse() throws Exception {
-    response.fetchNextResponse();
+  public void fetchNextResponse(final long offset) throws Exception {
+    response.fetchNextResponse(offset);
   }
 
   //////////////////////////// byte buffer ////////////////////////////

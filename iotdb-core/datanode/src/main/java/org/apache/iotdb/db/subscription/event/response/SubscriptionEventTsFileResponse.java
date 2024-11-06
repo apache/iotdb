@@ -70,13 +70,18 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
   }
 
   @Override
-  public void prefetchRemainingResponses()
-      throws SubscriptionException, IOException, InterruptedException {
-    if (hasNoMore) {
-      return;
-    }
+  public void prefetchRemainingResponses() {
+    // do nothing
+  }
 
-    generateNextTsFileResponse().ifPresent(super::offer);
+  @Override
+  public void fetchNextResponse(final long offset) throws Exception {
+    generateNextTsFileResponse(offset).ifPresent(super::offer);
+    if (Objects.isNull(poll())) {
+      LOGGER.warn(
+          "SubscriptionEventTsFileResponse {} is empty when fetching next response (broken invariant)",
+          this);
+    }
   }
 
   @Override
@@ -105,6 +110,11 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
             SubscriptionPollResponseType.FILE_INIT.getType(),
             new FileInitPayload(tsFile.getName()),
             commitContext));
+  }
+
+  private synchronized Optional<CachedSubscriptionPollResponse> generateNextTsFileResponse(
+      final long offset) throws SubscriptionException, IOException, InterruptedException {
+    return Optional.of(generateResponseWithPieceOrSealPayload(offset));
   }
 
   private synchronized Optional<CachedSubscriptionPollResponse> generateNextTsFileResponse()
@@ -222,7 +232,10 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
       }
 
       if (waitTimeSeconds * 1000 > timeoutMs) {
-        throw new InterruptedException();
+        // should contain 'TimeoutException' in exception message
+        // see org.apache.iotdb.rpc.subscription.exception.SubscriptionTimeoutException.KEYWORD
+        throw new InterruptedException(
+            String.format("TimeoutException: Waited %s seconds", waitTimeSeconds));
       }
     }
   }

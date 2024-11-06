@@ -30,7 +30,7 @@ public interface SubscriptionEventResponse<E> {
 
   void prefetchRemainingResponses() throws Exception;
 
-  void fetchNextResponse() throws Exception;
+  void fetchNextResponse(final long offset) throws Exception;
 
   /////////////////////////////// byte buffer ///////////////////////////////
 

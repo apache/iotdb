@@ -144,16 +144,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
                 eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
                 return ev;
               }
-              // check offset
-              if (writingOffset != 0) {
-                final String errorMessage =
-                    String.format(
-                        "inconsistent offset, current: %s, incoming: %s, consumer: %s, file name: %s, prefetching queue: %s",
-                        0, writingOffset, consumerId, fileName, this);
-                LOGGER.warn(errorMessage);
-                eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
-                return ev;
-              }
+              // no need to check offset for resume from breakpoint
               break;
             case FILE_PIECE:
               // check file name
@@ -209,7 +200,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
           try {
             executeReceiverSubtask(
                 () -> {
-                  ev.fetchNextResponse();
+                  ev.fetchNextResponse(writingOffset);
                   return null;
                 },
                 SubscriptionAgent.receiver().remainingMs());
