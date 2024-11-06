@@ -546,16 +546,20 @@ public class TableDeviceSchemaCache {
     }
   }
 
+  // The fuzzy filters are not considered because:
+  // 1. We can actually invalidate more cache entries than we need.
+  // 2. Constructing the filterOperators may require some time and complication
+  // 3. The fuzzy filters may contain attributes, which may not exist or be stale
   public void invalidate(
-      final String database, final String tableName, final List<PartialPath> idFilters) {
+      final String database, final String tableName, final List<PartialPath> patterns) {
     readWriteLock.writeLock().lock();
     try {
       final TableId firstKey = new TableId(database, tableName);
-      if (idFilters.isEmpty()) {
+      if (patterns.isEmpty()) {
         dualKeyCache.invalidate(firstKey);
       } else {
         final List<PartialPath> multiMatchList =
-            idFilters.stream()
+            patterns.stream()
                 .filter(
                     idFilter -> {
                       if (!idFilter.hasWildcard()) {
