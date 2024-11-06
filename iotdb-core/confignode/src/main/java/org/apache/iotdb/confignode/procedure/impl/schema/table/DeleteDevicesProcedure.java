@@ -257,7 +257,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
             CnToDnAsyncRequestType.DELETE_TABLE_DEVICE_IN_BLACK_LIST,
             (dataNodeLocation, consensusGroupIdList) ->
                 new TTableDeviceBlackListDeletionReq(
-                    consensusGroupIdList, tableName, ByteBuffer.wrap(filterBytes)))
+                    consensusGroupIdList, tableName, ByteBuffer.wrap(patternBytes)))
         .execute();
   }
 
@@ -273,7 +273,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
               CnToDnAsyncRequestType.ROLLBACK_TABLE_DEVICE_BLACK_LIST,
               (dataNodeLocation, consensusGroupIdList) ->
                   new TTableDeviceBlackListDeletionReq(
-                      consensusGroupIdList, tableName, ByteBuffer.wrap(filterBytes)))
+                      consensusGroupIdList, tableName, ByteBuffer.wrap(patternBytes)))
           .execute();
     }
   }
