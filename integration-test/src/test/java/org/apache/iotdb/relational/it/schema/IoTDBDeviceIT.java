@@ -231,12 +231,8 @@ public class IoTDBDeviceIT {
           statement.executeQuery("show devices from table0 offset 1 limit 1"), 1);
 
       // Test delete devices
-      TestUtils.assertResultSetEqual(
-          statement.executeQuery(
-              "delete devices from table0 where substring(region_id, 1, 1) in ('1', '3') and 1 + 1 = 2"),
-          "num_of_deleted_devices,",
-          Collections.singleton("1,"));
-
+      statement.execute(
+          "delete devices from table0 where substring(region_id, 1, 1) in ('1', '3') and 1 + 1 = 2");
       TestUtils.assertResultSetSize(statement.executeQuery("show devices from table0"), 1);
 
       // Test successfully invalidate cache
