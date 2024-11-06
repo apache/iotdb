@@ -331,7 +331,7 @@ struct TUpdateTableReq {
 }
 
 struct TInvalidateTableCacheReq {
-  1: required string database,
+  1: required string database
   2: required string tableName
 }
 
@@ -354,8 +354,9 @@ struct TTableDeviceDeletionWithPatternReq {
 }
 
 struct TTableDeviceInvalidateCacheReq {
-  1: required string tableName
-  2: required binary patternInfo
+  1: required string database
+  2: required string tableName
+  3: required binary patternInfo
 }
 
 struct TTsFilePieceReq {

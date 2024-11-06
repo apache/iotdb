@@ -241,7 +241,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
     final DataNodeAsyncRequestContext<TTableDeviceInvalidateCacheReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
             CnToDnAsyncRequestType.INVALIDATE_MATCHED_TABLE_DEVICE_CACHE,
-            new TTableDeviceInvalidateCacheReq(tableName, ByteBuffer.wrap(patternBytes)),
+            new TTableDeviceInvalidateCacheReq(database, tableName, ByteBuffer.wrap(patternBytes)),
             dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
