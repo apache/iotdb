@@ -519,6 +519,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
             "Wait for resource enough for parsing {} for {} seconds.",
             resource != null ? resource.getTsFilePath() : "tsfile",
             waitTimeSeconds);
+        lastRecordTime = currentTime;
       } else if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
             "Wait for resource enough for parsing {} for {} seconds.",
