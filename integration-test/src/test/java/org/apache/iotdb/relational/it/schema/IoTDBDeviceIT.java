@@ -229,6 +229,20 @@ public class IoTDBDeviceIT {
           "insert into table0(region_id, plant_id, device_id, model, temperature, humidity) values('2', '5', '3', 'A', 37.6, 111.1)");
       TestUtils.assertResultSetSize(
           statement.executeQuery("show devices from table0 offset 1 limit 1"), 1);
+
+      // Test delete devices
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "delete devices from table0 where substring(region_id, 1, 1) in ('1', '2') and 1 + 1 = 2"),
+          "num_of_deleted_devices,",
+          Collections.singleton("1,"));
+
+      TestUtils.assertResultSetSize(statement.executeQuery("show devices from table0"), 1);
+
+      // Test successfully invalidate cache
+      statement.execute(
+          "insert into table0(region_id, plant_id, device_id, model, temperature, humidity) values('1', '5', '3', 'A', 37.6, 111.1)");
+      TestUtils.assertResultSetSize(statement.executeQuery("show devices from table0"), 2);
     }
   }
 }
