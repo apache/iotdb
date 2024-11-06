@@ -427,7 +427,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
     // Check data on receiver
     TableModelUtils.assertData("test", "test", 0, 100, receiverEnv);
     HashSet<String> expectedResults = new HashSet();
-    expectedResults.add("test,1,1,604800000");
+    expectedResults.add("test,1,1,604800000,");
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
         "show databases",

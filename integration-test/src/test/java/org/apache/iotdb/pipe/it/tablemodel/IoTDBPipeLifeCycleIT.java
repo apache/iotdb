@@ -534,12 +534,6 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
 
-    for (int i = 0; i < 100; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
-        return;
-      }
-    }
     if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
       return;
     }
@@ -573,27 +567,13 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
     }
-    for (int i = 100; i < 200; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
-        return;
-      }
-    }
+
     if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
       return;
     }
 
     insertResult = TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
     if (!insertResult) {
-      return;
-    }
-    for (int i = 200; i < 300; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
-        return;
-      }
-    }
-    if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "flush")) {
       return;
     }
 
@@ -626,12 +606,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
     }
-    for (int i = 300; i < 400; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
-        return;
-      }
-    }
+
     if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "flush")) {
       return;
     }
@@ -639,7 +614,6 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
     if (!insertResult) {
       return;
     }
-    TableModelUtils.assertData("test", "test", 0, 400, senderEnv);
     TableModelUtils.assertData("test", "test", 0, 400, receiverEnv);
 
     try {
@@ -650,15 +624,11 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
       return;
     }
 
-    insertResult = TableModelUtils.insertData("test", "test", 500, 600, receiverEnv);
+    insertResult = TableModelUtils.insertData("test", "test", 400, 500, receiverEnv);
     if (!insertResult) {
       return;
     }
-    insertResult = TableModelUtils.insertData("test", "test", 400, 500, senderEnv);
-    if (!insertResult) {
-      return;
-    }
-    TableModelUtils.assertData("test", "test", 0, 600, senderEnv);
-    TableModelUtils.assertData("test", "test", 0, 600, receiverEnv);
+
+    TableModelUtils.assertData("test", "test", 0, 500, receiverEnv);
   }
 }

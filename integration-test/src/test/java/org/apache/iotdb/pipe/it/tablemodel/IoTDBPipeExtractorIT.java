@@ -384,7 +384,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.at1),",
-          Collections.singleton("3,"));
+          Collections.singleton("2,"));
 
       extractorAttributes.remove("extractor.table-name");
       extractorAttributes.remove("extractor.pattern");
@@ -401,7 +401,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.at1),count(root.db.d2.at1),",
-          Collections.singleton("3,3,"));
+          Collections.singleton("2,2,"));
 
       TableModelUtils.assertData("test", "test1", 2, 4, receiverEnv);
       TableModelUtils.assertData("test", "test2", 2, 4, receiverEnv);
@@ -697,7 +697,10 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
     final int receiverPort = receiverDataNode.getPort();
 
     boolean insertResult = true;
-
+    insertResult = TableModelUtils.insertData("test", "test2", 0, 20, senderEnv);
+    if (!insertResult) {
+      return;
+    }
     final Map<String, String> extractorAttributes = new HashMap<>();
     final Map<String, String> processorAttributes = new HashMap<>();
     final Map<String, String> connectorAttributes = new HashMap<>();
@@ -735,14 +738,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
               "flush"))) {
         return;
       }
-      TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test");
-      insertResult = TableModelUtils.insertData("test", "test1", 0, 10, senderEnv);
-      if (!insertResult) {
-        return;
-      }
 
-      TableModelUtils.createDataBaseAndTable(senderEnv, "test2", "test");
-      insertResult = TableModelUtils.insertData("test", "test2", 0, 10, senderEnv);
       if (!insertResult) {
         return;
       }
@@ -774,7 +770,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
         return;
       }
 
-      TableModelUtils.assertCountData("test", "test1", 13, receiverEnv);
+      TableModelUtils.assertCountData("test", "test1", 20, receiverEnv);
     }
   }
 

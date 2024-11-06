@@ -29,7 +29,7 @@ import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema;
+import org.apache.iotdb.itbase.category.MultiClusterIT2TableModel;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -50,7 +50,7 @@ import java.util.Map;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2AutoCreateSchema.class})
+@Category({MultiClusterIT2TableModel.class})
 public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelTestIT {
 
   @Override
@@ -175,12 +175,12 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelTestI
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
           Arrays.asList(
-              "insert into root.db.d1(time, s1) values (now(), 3)",
-              "insert into root.db.d1(time, s1) values (now(), 4)",
-              "insert into root.db.d1(time, s1) values (now(), 5)",
-              "insert into root.db.d1(time, s1) values (now(), 6)",
-              "insert into root.db.d1(time, s1) values (now(), 7)",
-              "insert into root.db.d1(time, s1) values (now(), 8)",
+              "insert into root.db.d1(time, s1) values (3, 3)",
+              "insert into root.db.d1(time, s1) values (4, 4)",
+              "insert into root.db.d1(time, s1) values (5, 5)",
+              "insert into root.db.d1(time, s1) values (6, 6)",
+              "insert into root.db.d1(time, s1) values (7, 7)",
+              "insert into root.db.d1(time, s1) values (8, 8)",
               "flush"))) {
         return;
       }
