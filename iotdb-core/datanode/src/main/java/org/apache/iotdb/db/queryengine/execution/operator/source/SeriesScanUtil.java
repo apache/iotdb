@@ -183,15 +183,18 @@ public class SeriesScanUtil implements Accountable {
     // differentiate the data of tree model and table model.
     if (context.isIgnoreAllNullRows()) {
       ttl = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
+      scanOptions.setTTL(ttl);
     } else {
-      String databaseName = dataSource.getDatabaseName();
-      ttl =
-          databaseName == null
-              ? Long.MAX_VALUE
-              : DataNodeTTLCache.getInstance()
-                  .getTTLForTable(databaseName, deviceID.getTableName());
+      if (scanOptions.timeFilterNeedUpdatedByTll()) {
+        String databaseName = dataSource.getDatabaseName();
+        ttl =
+            databaseName == null
+                ? Long.MAX_VALUE
+                : DataNodeTTLCache.getInstance()
+                    .getTTLForTable(databaseName, deviceID.getTableName());
+        scanOptions.setTTL(ttl);
+      }
     }
-    scanOptions.setTTL(ttl);
 
     // init file index
     orderUtils.setCurSeqFileIndex(dataSource);

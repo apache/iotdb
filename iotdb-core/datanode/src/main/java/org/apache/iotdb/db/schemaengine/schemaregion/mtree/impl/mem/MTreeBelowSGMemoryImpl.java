@@ -78,6 +78,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -99,6 +100,7 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -191,13 +193,19 @@ public class MTreeBelowSGMemoryImpl {
       final SchemaRegionMemMetric metric,
       final Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
       final Consumer<IDeviceMNode<IMemMNode>> deviceProcess,
+      final BiConsumer<IDeviceMNode<IMemMNode>, String> tableDeviceProcess,
       final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter,
       final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> attributeGetter)
       throws IOException, IllegalPathException {
     return new MTreeBelowSGMemoryImpl(
         PartialPath.getDatabasePath(storageGroupFullPath),
         MemMTreeStore.loadFromSnapshot(
-            snapshotDir, measurementProcess, deviceProcess, regionStatistics, metric),
+            snapshotDir,
+            measurementProcess,
+            deviceProcess,
+            tableDeviceProcess,
+            regionStatistics,
+            metric),
         tagGetter,
         attributeGetter,
         regionStatistics);
@@ -1039,7 +1047,7 @@ public class MTreeBelowSGMemoryImpl {
   @SuppressWarnings("java:S2095")
   public ISchemaReader<IDeviceSchemaInfo> getDeviceReader(
       final IShowDevicesPlan showDevicesPlan,
-      final BiFunction<Integer, String, String> attributeProvider)
+      final BiFunction<Integer, String, Binary> attributeProvider)
       throws MetadataException {
     final EntityCollector<IDeviceSchemaInfo, IMemMNode> collector =
         new EntityCollector<IDeviceSchemaInfo, IMemMNode>(
@@ -1117,7 +1125,7 @@ public class MTreeBelowSGMemoryImpl {
 
   // Used for device query/fetch with filters during show device or table query
   public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
-      final PartialPath pattern, final BiFunction<Integer, String, String> attributeProvider)
+      final PartialPath pattern, final BiFunction<Integer, String, Binary> attributeProvider)
       throws MetadataException {
 
     final EntityCollector<IDeviceSchemaInfo, IMemMNode> collector =
@@ -1169,7 +1177,7 @@ public class MTreeBelowSGMemoryImpl {
   public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
       final String table,
       final List<Object[]> devicePathList,
-      final BiFunction<Integer, String, String> attributeProvider) {
+      final BiFunction<Integer, String, Binary> attributeProvider) {
     return new ISchemaReader<IDeviceSchemaInfo>() {
 
       final Iterator<Object[]> deviceIdIterator = devicePathList.listIterator();
@@ -1566,7 +1574,7 @@ public class MTreeBelowSGMemoryImpl {
         final TableDeviceInfo<IMemMNode> deviceInfo = new TableDeviceInfo<>();
         deviceInfo.setAttributePointer(attributePointerGetter.getAsInt());
         entityMNode.getAsInternalMNode().setDeviceInfo(deviceInfo);
-        regionStatistics.addDevice();
+        regionStatistics.addTableDevice(tableName);
       }
     }
   }
@@ -1621,6 +1629,7 @@ public class MTreeBelowSGMemoryImpl {
       collector.traverse();
     }
     storageGroupMNode.deleteChild(tableName);
+    regionStatistics.resetTableDevice(tableName);
     store.releaseMemory(memoryReleased.get());
     return true;
   }

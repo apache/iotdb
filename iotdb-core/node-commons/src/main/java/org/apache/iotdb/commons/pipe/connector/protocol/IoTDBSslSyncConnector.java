@@ -123,6 +123,8 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
             trustStorePwd,
             useLeaderCache,
             loadBalanceStrategy,
+            username,
+            password,
             shouldReceiverConvertOnTypeMismatch,
             loadTsFileStrategy);
   }
@@ -132,8 +134,12 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
       final boolean useSSL,
       final String trustStorePath,
       final String trustStorePwd,
+      /* The following parameters are used locally. */
       final boolean useLeaderCache,
       final String loadBalanceStrategy,
+      /* The following parameters are used to handshake with the receiver. */
+      final String username,
+      final String password,
       final boolean shouldReceiverConvertOnTypeMismatch,
       final String loadTsFileStrategy);
 

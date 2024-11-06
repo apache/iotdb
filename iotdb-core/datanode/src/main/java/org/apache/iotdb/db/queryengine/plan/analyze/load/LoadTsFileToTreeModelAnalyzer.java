@@ -53,18 +53,18 @@ import java.util.Objects;
 public class LoadTsFileToTreeModelAnalyzer extends LoadTsFileAnalyzer {
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileToTreeModelAnalyzer.class);
 
-  private final SchemaAutoCreatorAndVerifier schemaAutoCreatorAndVerifier;
+  private final TreeSchemaAutoCreatorAndVerifier schemaAutoCreatorAndVerifier;
 
   public LoadTsFileToTreeModelAnalyzer(
       LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
     super(loadTsFileStatement, context);
-    this.schemaAutoCreatorAndVerifier = new SchemaAutoCreatorAndVerifier(this);
+    this.schemaAutoCreatorAndVerifier = new TreeSchemaAutoCreatorAndVerifier(this);
   }
 
   public LoadTsFileToTreeModelAnalyzer(
       LoadTsFile loadTsFileTableStatement, MPPQueryContext context) {
     super(loadTsFileTableStatement, context);
-    this.schemaAutoCreatorAndVerifier = new SchemaAutoCreatorAndVerifier(this);
+    this.schemaAutoCreatorAndVerifier = new TreeSchemaAutoCreatorAndVerifier(this);
   }
 
   @Override

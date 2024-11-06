@@ -25,7 +25,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.TimeRange;
@@ -83,6 +82,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
       boolean outputEndTime,
       GroupByTimeParameter groupByTimeParameter,
       long maxReturnSize,
+      long cachedRawDataSize,
       boolean canUseStatistics) {
     this.sourceId = sourceId;
     this.operatorContext = context;
@@ -93,8 +93,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     this.aggregators = aggregators;
     this.timeRangeIterator = timeRangeIterator;
 
-    this.cachedRawDataSize =
-        (1L + subSensorSize) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    this.cachedRawDataSize = cachedRawDataSize;
     this.maxReturnSize = maxReturnSize;
     this.outputEndTime = outputEndTime;
     this.canUseStatistics = canUseStatistics;

@@ -39,6 +39,7 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -72,22 +73,32 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
 
   private final LoadBalancer loadBalancer;
 
-  private final boolean shouldReceiverConvertOnTypeMismatch;
-
-  private final String loadTsFileStrategy;
-
   public IoTDBDataNodeAsyncClientManager(
       List<TEndPoint> endPoints,
+      /* The following parameters are used locally. */
       boolean useLeaderCache,
       String loadBalanceStrategy,
+      /* The following parameters are used to handshake with the receiver. */
+      String username,
+      String password,
       boolean shouldReceiverConvertOnTypeMismatch,
       String loadTsFileStrategy) {
-    super(endPoints, useLeaderCache);
+    super(
+        endPoints,
+        useLeaderCache,
+        username,
+        password,
+        shouldReceiverConvertOnTypeMismatch,
+        loadTsFileStrategy);
 
     endPointSet = new HashSet<>(endPoints);
 
     receiverAttributes =
-        String.format("%s-%s", shouldReceiverConvertOnTypeMismatch, loadTsFileStrategy);
+        String.format(
+            "%s-%s-%s",
+            Base64.getEncoder().encodeToString((username + ":" + password).getBytes()),
+            shouldReceiverConvertOnTypeMismatch,
+            loadTsFileStrategy);
     synchronized (IoTDBDataNodeAsyncClientManager.class) {
       if (!ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.containsKey(receiverAttributes)) {
         ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.putIfAbsent(
@@ -118,9 +129,6 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
             loadBalanceStrategy);
         loadBalancer = new RoundRobinLoadBalancer();
     }
-
-    this.shouldReceiverConvertOnTypeMismatch = shouldReceiverConvertOnTypeMismatch;
-    this.loadTsFileStrategy = loadTsFileStrategy;
   }
 
   public AsyncPipeDataTransferServiceClient borrowClient() throws Exception {
@@ -234,6 +242,8 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
           Boolean.toString(shouldReceiverConvertOnTypeMismatch));
       params.put(
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY, loadTsFileStrategy);
+      params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME, username);
+      params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD, password);
 
       client.setTimeoutDynamically(PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs());
       client.pipeTransfer(PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(params), callback);

@@ -216,6 +216,7 @@ struct TDatabaseSchema {
 // Schema
 struct TSchemaPartitionReq {
   1: required binary pathPatternTree
+  2: optional bool isTableModel
 }
 
 struct TSchemaPartitionTableResp {

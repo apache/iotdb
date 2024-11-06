@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -61,7 +62,7 @@ public class UpdateClearContainer implements UpdateContainer {
   public long updateAttribute(
       final String tableName,
       final String[] deviceId,
-      final Map<String, String> updatedAttributes) {
+      final Map<String, Binary> updatedAttributes) {
     return tableNames.add(tableName) ? RamUsageEstimator.sizeOf(tableName) : 0;
   }
 

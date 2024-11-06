@@ -36,7 +36,6 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 public class TableDeviceQueryScanNode extends AbstractTableDeviceQueryNode {
-  private final long offset;
 
   // -1 when unlimited
   private final long limit;
@@ -49,7 +48,6 @@ public class TableDeviceQueryScanNode extends AbstractTableDeviceQueryNode {
       final Expression idFuzzyPredicate,
       final List<ColumnHeader> columnHeaderList,
       final TDataNodeLocation senderLocation,
-      final long offset,
       final long limit) {
     super(
         planNodeId,
@@ -59,12 +57,7 @@ public class TableDeviceQueryScanNode extends AbstractTableDeviceQueryNode {
         idFuzzyPredicate,
         columnHeaderList,
         senderLocation);
-    this.offset = offset;
     this.limit = limit;
-  }
-
-  public long getOffset() {
-    return offset;
   }
 
   public long getLimit() {
@@ -91,21 +84,18 @@ public class TableDeviceQueryScanNode extends AbstractTableDeviceQueryNode {
         idFuzzyPredicate,
         columnHeaderList,
         senderLocation,
-        offset,
         limit);
   }
 
   @Override
   protected void serializeAttributes(final ByteBuffer byteBuffer) {
     super.serializeAttributes(byteBuffer);
-    ReadWriteIOUtils.write(offset, byteBuffer);
     ReadWriteIOUtils.write(limit, byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(final DataOutputStream stream) throws IOException {
     super.serializeAttributes(stream);
-    ReadWriteIOUtils.write(offset, stream);
     ReadWriteIOUtils.write(limit, stream);
   }
 

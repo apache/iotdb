@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.pipe.receiver;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
@@ -53,6 +54,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
 
 /**
  * {@link IoTDBFileReceiver} is the parent class of receiver on both configNode and DataNode,
@@ -67,6 +70,11 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   private static final AtomicLong RECEIVER_ID_GENERATOR = new AtomicLong(0);
   protected final AtomicLong receiverId = new AtomicLong(0);
 
+  protected String username = CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
+  protected String password = CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
+
+  private static final boolean IS_FSYNC_ENABLED =
+      PipeConfig.getInstance().getPipeFileReceiverFsyncEnabled();
   private File writingFile;
   private RandomAccessFile writingFileWriter;
 
@@ -242,6 +250,17 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
               loadTsFileStrategyString));
     }
 
+    final String usernameString =
+        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME);
+    if (usernameString != null) {
+      username = usernameString;
+    }
+    final String passwordString =
+        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD);
+    if (passwordString != null) {
+      password = passwordString;
+    }
+
     // Handle the handshake request as a v1 request.
     // Here we construct a fake "dataNode" request to valid from v1 validation logic, though
     // it may not require the actual type of the v1 request.
@@ -321,7 +340,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
         fileName,
         writingFile == null ? "null" : writingFile.getPath());
 
-    closeCurrentWritingFileWriter();
+    closeCurrentWritingFileWriter(!isSingleFile);
     // If there are multiple files we can not delete the current file
     // instead they will be deleted after seal request
     if (writingFile != null && isSingleFile) {
@@ -356,9 +375,12 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     return writingFile != null && writingFile.getName().equals(fileName);
   }
 
-  private void closeCurrentWritingFileWriter() {
+  private void closeCurrentWritingFileWriter(final boolean fsyncAfterClose) {
     if (writingFileWriter != null) {
       try {
+        if (IS_FSYNC_ENABLED && fsyncAfterClose) {
+          writingFileWriter.getFD().sync();
+        }
         writingFileWriter.close();
         LOGGER.info(
             "Receiver id = {}: Current writing file writer {} was closed.",
@@ -451,6 +473,12 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
       final String fileAbsolutePath = writingFile.getAbsolutePath();
 
+      // Sync here is necessary to ensure that the data is written to the disk. Or data region may
+      // load the file before the data is written to the disk and cause unexpected behavior after
+      // system restart. (e.g., empty file in data region's data directory)
+      if (IS_FSYNC_ENABLED) {
+        writingFileWriter.getFD().sync();
+      }
       // 1. The writing file writer must be closed, otherwise it may cause concurrent errors during
       // the process of loading tsfile when parsing tsfile.
       //
@@ -492,7 +520,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       // If the writing file is not sealed successfully, the writing file will be deleted.
       // All pieces of the writing file and its mod (if exists) should be retransmitted by the
       // sender.
-      closeCurrentWritingFileWriter();
+      closeCurrentWritingFileWriter(false);
       deleteCurrentWritingFile();
     }
   }
@@ -527,6 +555,12 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
         }
       }
 
+      // Sync here is necessary to ensure that the data is written to the disk. Or data region may
+      // load the file before the data is written to the disk and cause unexpected behavior after
+      // system restart. (e.g., empty file in data region's data directory)
+      if (IS_FSYNC_ENABLED) {
+        writingFileWriter.getFD().sync();
+      }
       // 1. The writing file writer must be closed, otherwise it may cause concurrent errors during
       // the process of loading tsfile when parsing tsfile.
       //
@@ -567,7 +601,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       // If the writing file is not sealed successfully, the writing file will be deleted.
       // All pieces of the writing file and its mod(if exists) should be retransmitted by the
       // sender.
-      closeCurrentWritingFileWriter();
+      closeCurrentWritingFileWriter(false);
       // Clear the directory instead of only deleting the referenced files in seal request
       // to avoid previously undeleted file being redundant when transferring multi files
       IoTDBReceiverAgent.cleanPipeReceiverDir(receiverFileDirWithIdSuffix.get());

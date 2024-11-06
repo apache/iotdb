@@ -19,14 +19,7 @@
 
 package org.apache.iotdb.db.subscription.event.pipe;
 
-import java.io.File;
-
 public class SubscriptionPipeEmptyEvent implements SubscriptionPipeEvents {
-
-  @Override
-  public File getTsFile() {
-    return null;
-  }
 
   @Override
   public void ack() {}

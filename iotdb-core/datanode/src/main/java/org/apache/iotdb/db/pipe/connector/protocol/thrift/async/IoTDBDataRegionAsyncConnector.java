@@ -121,6 +121,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
                 Arrays.asList(SINK_LEADER_CACHE_ENABLE_KEY, CONNECTOR_LEADER_CACHE_ENABLE_KEY),
                 CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE),
             loadBalanceStrategy,
+            username,
+            password,
             shouldReceiverConvertOnTypeMismatch,
             loadTsFileStrategy);
 

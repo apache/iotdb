@@ -34,6 +34,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TimeColumn;
+import org.apache.tsfile.utils.Binary;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -47,7 +48,7 @@ public class DeviceAttributeUpdater extends DevicePredicateHandler {
   private final List<ColumnTransformer> commonTransformerList;
   private final List<LeafColumnTransformer> projectLeafColumnTransformerList;
   private final List<ColumnTransformer> projectOutputTransformerList;
-  final BiFunction<Integer, String, String> attributeProvider;
+  final BiFunction<Integer, String, Binary> attributeProvider;
   private final TriConsumer<String[], Integer, Object[]> attributeUpdater;
   private final TsBlockBuilder filterTsBlockBuilder;
   private final List<Integer> attributePointers = new ArrayList<>();
@@ -63,7 +64,7 @@ public class DeviceAttributeUpdater extends DevicePredicateHandler {
       final List<ColumnHeader> columnHeaderList,
       final List<LeafColumnTransformer> projectLeafColumnTransformerList,
       final List<ColumnTransformer> projectOutputTransformerList,
-      final BiFunction<Integer, String, String> attributeProvider,
+      final BiFunction<Integer, String, Binary> attributeProvider,
       final TriConsumer<String[], Integer, Object[]> attributeUpdater) {
     super(
         filterLeafColumnTransformerList,
