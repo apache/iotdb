@@ -248,8 +248,12 @@ public abstract class TabletInsertionEventParser {
         final BitMap bitMap = new BitMap(this.timestampColumn.length);
         if (Objects.isNull(originValueColumns[i])
             || Objects.isNull(originValueColumnDataTypes[i])) {
-          this.valueColumns[filteredColumnIndex] = null;
-          bitMap.markAll();
+          fillNullValue(
+              originValueColumnDataTypes[i],
+              this.valueColumns,
+              bitMap,
+              filteredColumnIndex,
+              rowIndexList.size());
         } else {
           this.valueColumns[filteredColumnIndex] =
               filterValueColumnsByRowIndexList(
@@ -350,8 +354,12 @@ public abstract class TabletInsertionEventParser {
         final BitMap bitMap = new BitMap(this.timestampColumn.length);
         if (Objects.isNull(originValueColumns[i])
             || Objects.isNull(originValueColumnDataTypes[i])) {
-          this.valueColumns[filteredColumnIndex] = null;
-          bitMap.markAll();
+          fillNullValue(
+              originValueColumnDataTypes[i],
+              this.valueColumns,
+              bitMap,
+              filteredColumnIndex,
+              rowIndexList.size());
         } else {
           this.valueColumns[filteredColumnIndex] =
               filterValueColumnsByRowIndexList(
@@ -565,6 +573,47 @@ public abstract class TabletInsertionEventParser {
           }
           return valueColumns;
         }
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Data type %s is not supported.", type));
+    }
+  }
+
+  private void fillNullValue(
+      final TSDataType type,
+      final Object[] valueColumns,
+      final BitMap nullValueColumnBitmap,
+      final int columnIndex,
+      final int rowSize) {
+    nullValueColumnBitmap.markAll();
+    if (Objects.isNull(type)) {
+      return;
+    }
+    switch (type) {
+      case TIMESTAMP:
+      case INT64:
+        valueColumns[columnIndex] = new long[rowSize];
+        break;
+      case INT32:
+        valueColumns[columnIndex] = new int[rowSize];
+        break;
+      case DOUBLE:
+        valueColumns[columnIndex] = new double[rowSize];
+        break;
+      case FLOAT:
+        valueColumns[columnIndex] = new float[rowSize];
+        break;
+      case BOOLEAN:
+        valueColumns[columnIndex] = new boolean[rowSize];
+        break;
+      case DATE:
+        valueColumns[columnIndex] = new LocalDate[rowSize];
+        break;
+      case TEXT:
+      case BLOB:
+      case STRING:
+        valueColumns[columnIndex] = new Binary[rowSize];
+        break;
       default:
         throw new UnSupportedDataTypeException(
             String.format("Data type %s is not supported.", type));
