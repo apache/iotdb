@@ -28,6 +28,8 @@ public interface HashAggregationBuilder extends AutoCloseable {
 
   void updateMemory();
 
+  void reset();
+
   @Override
   void close();
 }

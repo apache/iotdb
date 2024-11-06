@@ -45,7 +45,7 @@ import static org.apache.iotdb.db.queryengine.execution.operator.source.relation
 
 public class InMemoryHashAggregationBuilder implements HashAggregationBuilder {
   private final int[] groupByChannels;
-  private final GroupByHash groupByHash;
+  private GroupByHash groupByHash;
   private final List<Type> groupByOutputTypes;
   private final List<GroupedAggregator> groupedAggregators;
   private final boolean partial;
@@ -56,6 +56,9 @@ public class InMemoryHashAggregationBuilder implements HashAggregationBuilder {
 
   private Iterator<Integer> groupIds;
   private final TsBlockBuilder pageBuilder;
+
+  private final int expectedGroups;
+  private final Optional<Integer> hashChannel;
 
   public InMemoryHashAggregationBuilder(
       List<GroupedAggregator> groupedAggregators,
@@ -102,6 +105,9 @@ public class InMemoryHashAggregationBuilder implements HashAggregationBuilder {
     this.updateMemory = updateMemory;
 
     this.pageBuilder = new TsBlockBuilder(buildTypes());
+
+    this.expectedGroups = expectedGroups;
+    this.hashChannel = hashChannel;
   }
 
   @Override
@@ -123,6 +129,18 @@ public class InMemoryHashAggregationBuilder implements HashAggregationBuilder {
   @Override
   public void updateMemory() {
     //  updateMemory.update();
+  }
+
+  @Override
+  public void reset() {
+    // TODO reset of GroupByHash
+    groupByHash =
+        createGroupByHash(
+            groupByOutputTypes, hashChannel.isPresent(), expectedGroups, updateMemory);
+    groupedAggregators.forEach(GroupedAggregator::reset);
+    full = false;
+    groupIds = null;
+    pageBuilder.reset();
   }
 
   @Override

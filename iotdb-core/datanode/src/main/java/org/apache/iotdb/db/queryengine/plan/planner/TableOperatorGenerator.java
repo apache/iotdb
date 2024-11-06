@@ -78,6 +78,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAggregator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.HashAggregationOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.StreamingAggregationOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.StreamingHashAggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -139,6 +141,7 @@ import org.apache.iotdb.db.utils.datastructure.SortKey;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
@@ -1400,15 +1403,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       Operator child,
       TypeProvider typeProvider,
       OperatorContext operatorContext) {
-    ImmutableList.Builder<GroupedAggregator> aggregatorBuilder = new ImmutableList.Builder<>();
     Map<Symbol, Integer> childLayout =
         makeLayoutFromOutputSymbols(node.getChild().getOutputSymbols());
-
-    node.getAggregations()
-        .forEach(
-            (k, v) ->
-                aggregatorBuilder.add(
-                    buildGroupByAggregator(childLayout, k, v, node.getStep(), typeProvider)));
 
     List<Integer> groupByChannels = getChannelsForSymbols(node.getGroupingKeys(), childLayout);
     List<Type> groupByTypes =
@@ -1417,8 +1413,55 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             .collect(toImmutableList());
 
     if (node.isStreamable()) {
-      /*return new StreamingAggregationOperator;*/
+      if (groupByTypes.size() == node.getPreGroupedSymbols().size()) {
+        ImmutableList.Builder<TableAggregator> aggregatorBuilder = new ImmutableList.Builder<>();
+        node.getAggregations()
+            .forEach(
+                (k, v) ->
+                    aggregatorBuilder.add(
+                        buildAggregator(childLayout, k, v, node.getStep(), typeProvider, true)));
+
+        return new StreamingAggregationOperator(
+            operatorContext,
+            child,
+            groupByTypes,
+            groupByChannels,
+            aggregatorBuilder.build(),
+            Long.MAX_VALUE,
+            false,
+            Long.MAX_VALUE);
+      }
+
+      ImmutableList.Builder<GroupedAggregator> aggregatorBuilder = new ImmutableList.Builder<>();
+      node.getAggregations()
+          .forEach(
+              (k, v) ->
+                  aggregatorBuilder.add(
+                      buildGroupByAggregator(childLayout, k, v, node.getStep(), typeProvider)));
+      Set<Symbol> preGroupingKeys = ImmutableSet.copyOf(node.getPreGroupedSymbols());
+
+      return new StreamingHashAggregationOperator(
+          operatorContext,
+          child,
+          node.getGroupingKeys().stream()
+              .map(preGroupingKeys::contains)
+              .collect(Collectors.toList()),
+          groupByTypes,
+          groupByChannels,
+          aggregatorBuilder.build(),
+          node.getStep(),
+          64,
+          Long.MAX_VALUE,
+          false,
+          Long.MAX_VALUE);
     }
+
+    ImmutableList.Builder<GroupedAggregator> aggregatorBuilder = new ImmutableList.Builder<>();
+    node.getAggregations()
+        .forEach(
+            (k, v) ->
+                aggregatorBuilder.add(
+                    buildGroupByAggregator(childLayout, k, v, node.getStep(), typeProvider)));
 
     return new HashAggregationOperator(
         operatorContext,
@@ -1427,7 +1470,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         groupByChannels,
         aggregatorBuilder.build(),
         node.getStep(),
-        10_000,
+        64,
         Long.MAX_VALUE,
         false,
         Long.MAX_VALUE);
