@@ -102,7 +102,7 @@ public class LoadCache {
         configManager.getNodeManager().getRegisteredDataNodes(),
         configManager.getNodeManager().getRegisteredAINodes());
     initRegionGroupHeartbeatCache(
-        configManager.getClusterSchemaManager().getDatabaseNames().stream()
+        configManager.getClusterSchemaManager().getDatabaseNames(null).stream()
             .collect(
                 Collectors.toMap(
                     database -> database,

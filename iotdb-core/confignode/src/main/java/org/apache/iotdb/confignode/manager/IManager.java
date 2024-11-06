@@ -416,7 +416,8 @@ public interface IManager {
    *
    * @return TSchemaPartitionResp
    */
-  TSchemaPartitionTableResp getSchemaPartition(PathPatternTree patternTree);
+  TSchemaPartitionTableResp getSchemaPartition(
+      final PathPatternTree patternTree, final boolean isTableModel);
 
   /**
    * Get SchemaPartition with <databaseName, seriesSlot>.
@@ -430,7 +431,8 @@ public interface IManager {
    *
    * @return TSchemaPartitionResp
    */
-  TSchemaPartitionTableResp getOrCreateSchemaPartition(PathPatternTree patternTree);
+  TSchemaPartitionTableResp getOrCreateSchemaPartition(
+      final PathPatternTree patternTree, final boolean isTableModel);
 
   /**
    * Get or create SchemaPartition with <databaseName, seriesSlot>.

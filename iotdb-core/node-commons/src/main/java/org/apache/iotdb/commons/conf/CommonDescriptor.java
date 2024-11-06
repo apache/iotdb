@@ -266,6 +266,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_hardlink_wal_enabled",
                 Boolean.toString(config.getPipeHardLinkWALEnabled()))));
+    config.setPipeFileReceiverFsyncEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_file_receiver_fsync_enabled",
+                Boolean.toString(config.getPipeFileReceiverFsyncEnabled()))));
 
     config.setPipeDataStructureTabletRowSize(
         Integer.parseInt(
@@ -561,6 +566,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_memory_expander_interval_seconds",
                 String.valueOf(config.getPipeMemoryExpanderIntervalSeconds()))));
+    config.setPipeTsFileParserCheckMemoryEnoughIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_tsfile_parser_check_memory_enough_interval_ms",
+                String.valueOf(config.getPipeTsFileParserCheckMemoryEnoughIntervalMs()))));
     config.setPipeLeaderCacheMemoryUsagePercentage(
         Float.parseFloat(
             properties.getProperty(

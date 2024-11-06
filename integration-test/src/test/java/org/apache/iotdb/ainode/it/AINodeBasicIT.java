@@ -179,6 +179,8 @@ public class AINodeBasicIT {
   public void callInferenceTest() {
     String sql = "CALL INFERENCE(identity, \"select s0,s1,s2 from root.AI.data\")";
     String sql2 = "CALL INFERENCE(identity, \"select s2,s0,s1 from root.AI.data\")";
+    String sql3 =
+        "CALL INFERENCE(_NaiveForecaster, \"select s0 from root.AI.data\", predict_length=3)";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
@@ -215,6 +217,17 @@ public class AINodeBasicIT {
         }
         assertEquals(7, count);
       }
+
+      try (ResultSet resultSet = statement.executeQuery(sql3)) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        checkHeader(resultSetMetaData, "output0,output1,output2");
+        int count = 0;
+        while (resultSet.next()) {
+          count++;
+        }
+        assertEquals(3, count);
+      }
+
     } catch (SQLException e) {
       fail(e.getMessage());
     }
