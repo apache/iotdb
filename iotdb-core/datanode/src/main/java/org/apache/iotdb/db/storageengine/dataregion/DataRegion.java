@@ -163,6 +163,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
@@ -180,6 +181,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.IntToLongFunction;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet.SEQUENCE_TSFILE;
@@ -2564,50 +2566,71 @@ public class DataRegion implements IDataRegionForQuery {
 
   private void deleteDataInSealedFiles(Collection<TsFileResource> sealedTsFiles, ModEntry deletion)
       throws IOException {
-    for (TsFileResource tsFileResource : sealedTsFiles) {
-      if (canSkipDelete(tsFileResource, deletion)) {
-        continue;
+    List<Exception> exceptions =
+        sealedTsFiles.parallelStream()
+            .map(tsFileResource -> deleteDataInSealedFile(tsFileResource, deletion))
+            .filter(Objects::nonNull)
+            .collect(Collectors.toList());
+
+    if (!exceptions.isEmpty()) {
+      if (exceptions.size() == 1) {
+        throw new IOException(exceptions.get(0));
+      } else {
+        exceptions.forEach(e -> logger.error("Fail to write modEntry {} to files", deletion, e));
+        throw new IOException(
+            "Multiple errors occurred while writing mod files, see logs for details.");
       }
+    }
+  }
 
-      ModificationFile modFile = tsFileResource.getNewModFile();
-      long originSize = -1;
-      synchronized (modFile) {
-        try {
-          originSize = modFile.getSize();
-          // delete data in sealed file
-          if (tsFileResource.isCompacting()) {
-            // write deletion into compaction modification file
-            tsFileResource.getCompactionModFile().write(deletion);
-            // write deletion into modification file to enable read during compaction
-            modFile.write(deletion);
-            // remember to close mod file
-            tsFileResource.getCompactionModFile().close();
-            modFile.close();
-          } else {
-            // write deletion into modification file
-            boolean modFileExists = modFile.exists();
+  private Exception deleteDataInSealedFile(TsFileResource tsFileResource, ModEntry deletion) {
+    if (canSkipDelete(tsFileResource, deletion)) {
+      return null;
+    }
 
-            modFile.write(deletion);
+    ModificationFile modFile = tsFileResource.getNewModFile();
+    long originSize = -1;
+    synchronized (modFile) {
+      try {
+        originSize = modFile.getSize();
+        // delete data in sealed file
+        if (tsFileResource.isCompacting()) {
+          // write deletion into compaction modification file
+          tsFileResource.getCompactionModFile().write(deletion);
+          // write deletion into modification file to enable read during compaction
+          modFile.write(deletion);
+          // remember to close mod file
+          tsFileResource.getCompactionModFile().close();
+          modFile.close();
+        } else {
+          // write deletion into modification file
+          boolean modFileExists = modFile.exists();
 
-            // remember to close mod file
-            modFile.close();
+          modFile.write(deletion);
 
-            if (!modFileExists) {
-              FileMetrics.getInstance().increaseModFileNum(1);
-            }
+          // remember to close mod file
+          modFile.close();
 
-            // The file size may be smaller than the original file, so the increment here may be
-            // negative
-            FileMetrics.getInstance().increaseModFileSize(modFile.getSize() - originSize);
+          if (!modFileExists) {
+            FileMetrics.getInstance().increaseModFileNum(1);
           }
-        } catch (Throwable t) {
-          if (originSize != -1) {
-            modFile.truncate(originSize);
-          }
-          throw t;
+
+          // The file size may be smaller than the original file, so the increment here may be
+          // negative
+          FileMetrics.getInstance().increaseModFileSize(modFile.getSize() - originSize);
         }
-        logger.info("[Deletion] Deletion with {} written into mods file:{}.", deletion, modFile);
+      } catch (Exception t) {
+        if (originSize != -1) {
+          try {
+            modFile.truncate(originSize);
+          } catch (IOException e) {
+            return e;
+          }
+        }
+        return t;
       }
+      logger.info("[Deletion] Deletion with {} written into mods file:{}.", deletion, modFile);
+      return null;
     }
   }
 
