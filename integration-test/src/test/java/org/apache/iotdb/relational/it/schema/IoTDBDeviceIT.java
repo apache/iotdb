@@ -233,7 +233,7 @@ public class IoTDBDeviceIT {
       // Test delete devices
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
-              "delete devices from table0 where substring(region_id, 1, 1) in ('1', '2') and 1 + 1 = 2"),
+              "delete devices from table0 where substring(region_id, 1, 1) in ('1', '3') and 1 + 1 = 2"),
           "num_of_deleted_devices,",
           Collections.singleton("1,"));
 
