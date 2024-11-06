@@ -27,6 +27,7 @@ import org.apache.iotdb.db.pipe.agent.task.execution.PipeSubtaskExecutorManager;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeEventBatches;
 import org.apache.iotdb.db.subscription.task.subtask.SubscriptionReceiverSubtask;
@@ -173,16 +174,16 @@ public abstract class SubscriptionPrefetchingQueue {
 
   /////////////////////////////// poll ///////////////////////////////
 
-  public SubscriptionEvent poll(final String consumerId, final long timeoutMs) {
+  public SubscriptionEvent poll(final String consumerId) {
     acquireReadLock();
     try {
-      return isClosed() ? null : pollInternal(consumerId, timeoutMs);
+      return isClosed() ? null : pollInternal(consumerId);
     } finally {
       releaseReadLock();
     }
   }
 
-  public SubscriptionEvent pollInternal(final String consumerId, final long timeoutMs) {
+  public SubscriptionEvent pollInternal(final String consumerId) {
     states.markPollRequest();
 
     if (prefetchingQueue.isEmpty()) {
@@ -193,7 +194,7 @@ public abstract class SubscriptionPrefetchingQueue {
               tryPrefetch();
               return null;
             },
-            timeoutMs);
+            SubscriptionAgent.receiver().remainingMs());
       } catch (final Exception ignored) {
       }
     }

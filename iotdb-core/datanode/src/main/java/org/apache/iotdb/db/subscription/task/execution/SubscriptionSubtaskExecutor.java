@@ -54,11 +54,16 @@ public class SubscriptionSubtaskExecutor extends PipeConnectorSubtaskExecutor {
 
   public void executeReceiverSubtask(
       final SubscriptionReceiverSubtask subtask, final long timeoutMs) throws Exception {
+    if (!super.hasAvailableThread()) {
+      subtask.call(); // non-strict timeout
+      return;
+    }
+
     submittedReceiverSubtasks.incrementAndGet();
     try {
       final Future<Void> future = subtaskWorkerThreadPoolExecutor.submit(subtask);
       try {
-        future.get(timeoutMs, TimeUnit.MILLISECONDS);
+        future.get(timeoutMs, TimeUnit.MILLISECONDS); // strict timeout
       } catch (final InterruptedException e) {
         Thread.currentThread().interrupt(); // restore interrupted state
         future.cancel(true);

@@ -41,6 +41,8 @@ public abstract class PipeSubtaskExecutor {
   private static final ScheduledExecutorService subtaskCallbackListeningExecutor =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
           ThreadName.PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL.getName());
+
+  protected final WrappedThreadPoolExecutor underlyingThreadPool;
   protected final ListeningExecutorService subtaskWorkerThreadPoolExecutor;
 
   private final Map<String, PipeSubtask> registeredIdSubtaskMapper;
@@ -50,13 +52,13 @@ public abstract class PipeSubtaskExecutor {
 
   protected PipeSubtaskExecutor(
       final int corePoolSize, final ThreadName threadName, final boolean disableLogInThreadPool) {
-    final WrappedThreadPoolExecutor executor =
+    underlyingThreadPool =
         (WrappedThreadPoolExecutor)
             IoTDBThreadPoolFactory.newFixedThreadPool(corePoolSize, threadName.getName());
     if (disableLogInThreadPool) {
-      executor.disableErrorLog();
+      underlyingThreadPool.disableErrorLog();
     }
-    subtaskWorkerThreadPoolExecutor = MoreExecutors.listeningDecorator(executor);
+    subtaskWorkerThreadPoolExecutor = MoreExecutors.listeningDecorator(underlyingThreadPool);
 
     registeredIdSubtaskMapper = new ConcurrentHashMap<>();
 
@@ -161,5 +163,13 @@ public abstract class PipeSubtaskExecutor {
 
   public final int getRunningSubtaskNumber() {
     return runningSubtaskNumber;
+  }
+
+  protected final boolean hasAvailableThread() {
+    return getAvailableThreadCount() > 0;
+  }
+
+  private int getAvailableThreadCount() {
+    return underlyingThreadPool.getCorePoolSize() - underlyingThreadPool.getActiveCount();
   }
 }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
@@ -60,23 +61,17 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
   /////////////////////////////// poll ///////////////////////////////
 
   public SubscriptionEvent pollTablets(
-      final String consumerId,
-      final SubscriptionCommitContext commitContext,
-      final int offset,
-      final long timeoutMs) {
+      final String consumerId, final SubscriptionCommitContext commitContext, final int offset) {
     acquireReadLock();
     try {
-      return isClosed() ? null : pollTabletsInternal(consumerId, commitContext, offset, timeoutMs);
+      return isClosed() ? null : pollTabletsInternal(consumerId, commitContext, offset);
     } finally {
       releaseReadLock();
     }
   }
 
   private @NonNull SubscriptionEvent pollTabletsInternal(
-      final String consumerId,
-      final SubscriptionCommitContext commitContext,
-      final int offset,
-      final long timeoutMs) {
+      final String consumerId, final SubscriptionCommitContext commitContext, final int offset) {
     final AtomicReference<SubscriptionEvent> eventRef = new AtomicReference<>();
     inFlightEvents.compute(
         new Pair<>(consumerId, commitContext),
@@ -156,7 +151,7 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
                   ev.fetchNextResponse();
                   return null;
                 },
-                timeoutMs);
+                SubscriptionAgent.receiver().remainingMs());
             ev.recordLastPolledTimestamp();
             eventRef.set(ev);
           } catch (final Exception e) {

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.event.cache.CachedSubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
@@ -162,7 +163,7 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
       bufferSize = readFileBufferSize;
     }
 
-    waitForResourceEnough4Slicing();
+    waitForResourceEnough4Slicing(SubscriptionAgent.receiver().remainingMs());
     try (final RandomAccessFile reader = new RandomAccessFile(tsFile, "r")) {
       reader.seek(writingOffset);
 
@@ -190,7 +191,7 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
     }
   }
 
-  private void waitForResourceEnough4Slicing() throws InterruptedException {
+  private void waitForResourceEnough4Slicing(final long timeoutMs) throws InterruptedException {
     final PipeMemoryManager memoryManager = PipeDataNodeResourceManager.memory();
     if (memoryManager.isEnough4TsFileSlicing()) {
       return;
@@ -218,6 +219,10 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
             "Wait for resource enough for slicing tsfile {} for {} seconds.",
             tsFile,
             waitTimeSeconds);
+      }
+
+      if (waitTimeSeconds > timeoutMs * 1000) {
+        throw new InterruptedException();
       }
     }
   }

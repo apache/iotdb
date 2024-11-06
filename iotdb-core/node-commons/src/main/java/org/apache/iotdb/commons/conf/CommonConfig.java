@@ -288,7 +288,7 @@ public class CommonConfig {
   private int subscriptionPrefetchTsFileBatchMaxDelayInMs = 5000; // 5s
   private long subscriptionPrefetchTsFileBatchMaxSizeInBytes = 80 * MB;
   private int subscriptionPollMaxBlockingTimeMs = 500;
-  private int subscriptionSerializeMaxBlockingTimeMs = 100;
+  private int subscriptionDefaultTimeoutInMs = 10_000; // 10s
   private long subscriptionLaunchRetryIntervalMs = 1000;
   private int subscriptionRecycleUncommittedEventIntervalMs = 600000; // 600s
   private long subscriptionReadFileBufferSize = 8 * MB;
@@ -1304,13 +1304,12 @@ public class CommonConfig {
     this.subscriptionPollMaxBlockingTimeMs = subscriptionPollMaxBlockingTimeMs;
   }
 
-  public int getSubscriptionSerializeMaxBlockingTimeMs() {
-    return subscriptionSerializeMaxBlockingTimeMs;
+  public int getSubscriptionDefaultTimeoutInMs() {
+    return subscriptionDefaultTimeoutInMs;
   }
 
-  public void setSubscriptionSerializeMaxBlockingTimeMs(
-      int subscriptionSerializeMaxBlockingTimeMs) {
-    this.subscriptionSerializeMaxBlockingTimeMs = subscriptionSerializeMaxBlockingTimeMs;
+  public void setSubscriptionDefaultTimeoutInMs(final int subscriptionDefaultTimeoutInMs) {
+    this.subscriptionDefaultTimeoutInMs = subscriptionDefaultTimeoutInMs;
   }
 
   public long getSubscriptionLaunchRetryIntervalMs() {

@@ -75,7 +75,7 @@ public class SubscriptionConnectorSubtask extends PipeConnectorSubtask {
 
   @Override
   protected void registerCallbackHookAfterSubmit(final ListenableFuture<Boolean> future) {
-    // TODO: config
+    // TODO: timeout config
     final ListenableFuture<Boolean> nextFuture =
         Futures.withTimeout(future, Duration.ofSeconds(10), subtaskCallbackListeningExecutor);
     Futures.addCallback(nextFuture, this, subtaskCallbackListeningExecutor);

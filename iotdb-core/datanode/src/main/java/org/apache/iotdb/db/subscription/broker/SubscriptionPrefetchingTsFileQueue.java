@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTsFilePlainEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -64,13 +65,10 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   public SubscriptionEvent pollTsFile(
       final String consumerId,
       final SubscriptionCommitContext commitContext,
-      final long writingOffset,
-      final long timeoutMs) {
+      final long writingOffset) {
     acquireReadLock();
     try {
-      return isClosed()
-          ? null
-          : pollTsFileInternal(consumerId, commitContext, writingOffset, timeoutMs);
+      return isClosed() ? null : pollTsFileInternal(consumerId, commitContext, writingOffset);
     } finally {
       releaseReadLock();
     }
@@ -79,8 +77,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   public @NonNull SubscriptionEvent pollTsFileInternal(
       final String consumerId,
       final SubscriptionCommitContext commitContext,
-      final long writingOffset,
-      final long timeoutMs) {
+      final long writingOffset) {
     final AtomicReference<SubscriptionEvent> eventRef = new AtomicReference<>();
     inFlightEvents.compute(
         new Pair<>(consumerId, commitContext),
@@ -215,7 +212,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
                   ev.fetchNextResponse();
                   return null;
                 },
-                timeoutMs);
+                SubscriptionAgent.receiver().remainingMs());
             ev.recordLastPolledTimestamp();
             eventRef.set(ev);
           } catch (final Exception e) {
