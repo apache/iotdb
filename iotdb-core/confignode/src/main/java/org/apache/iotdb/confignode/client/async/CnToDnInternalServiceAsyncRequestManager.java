@@ -90,6 +90,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackViewSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternAndFilterReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternReq;
+import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
@@ -408,8 +409,8 @@ public class CnToDnInternalServiceAsyncRequestManager
     actionMapBuilder.put(
         CnToDnAsyncRequestType.INVALIDATE_MATCHED_TABLE_DEVICE_CACHE,
         (req, client, handler) ->
-            client.rollbackTableDeviceBlackList(
-                (TTableDeviceDeletionWithPatternReq) req, (DataNodeTSStatusRPCHandler) handler));
+            client.invalidateMatchedTableDeviceCache(
+                (TTableDeviceInvalidateCacheReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.DELETE_DATA_FOR_TABLE_DEVICE,
         (req, client, handler) ->

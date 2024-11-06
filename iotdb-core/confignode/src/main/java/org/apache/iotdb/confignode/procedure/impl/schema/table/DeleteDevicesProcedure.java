@@ -37,9 +37,9 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecutor;
 import org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternAndFilterReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternReq;
+import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceInvalidateCacheReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -238,10 +238,10 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
   private void invalidateCache(final ConfigNodeProcedureEnv env) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    final DataNodeAsyncRequestContext<TInvalidateMatchedSchemaCacheReq, TSStatus> clientHandler =
+    final DataNodeAsyncRequestContext<TTableDeviceInvalidateCacheReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
             CnToDnAsyncRequestType.INVALIDATE_MATCHED_TABLE_DEVICE_CACHE,
-            new TTableDeviceDeletionWithPatternReq(),
+            new TTableDeviceInvalidateCacheReq(tableName, ByteBuffer.wrap(patternBytes)),
             dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
