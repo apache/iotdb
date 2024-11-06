@@ -120,6 +120,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTableP
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RollbackPreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
@@ -518,6 +519,8 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.setTableProperties((SetTablePropertiesPlan) physicalPlan);
       case PreDeleteTable:
         return clusterSchemaInfo.preDeleteTable((PreDeleteTablePlan) physicalPlan);
+      case RollbackPreDeleteTable:
+        return clusterSchemaInfo.rollbackPreDeleteTable((RollbackPreDeleteTablePlan) physicalPlan);
       case DropTable:
         return clusterSchemaInfo.dropTable((DropTablePlan) physicalPlan);
       case CreatePipeV2:

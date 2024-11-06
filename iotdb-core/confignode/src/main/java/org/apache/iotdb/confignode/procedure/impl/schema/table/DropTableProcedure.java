@@ -32,6 +32,7 @@ import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncReques
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.table.DropTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RollbackPreDeleteTablePlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -236,13 +237,20 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
 
   @Override
   protected boolean isRollbackSupported(final DropTableState state) {
-    return false;
+    return state == DropTableState.CHECK_AND_INVALIDATE_TABLE;
   }
 
   @Override
   protected void rollbackState(
-      final ConfigNodeProcedureEnv configNodeProcedureEnv, final DropTableState dropTableState)
+      final ConfigNodeProcedureEnv env, final DropTableState dropTableState)
       throws IOException, InterruptedException, ProcedureException {
+    LOGGER.info("Start rollback pre delete table {}.{}", database, table.getTableName());
+    final TSStatus status =
+        SchemaUtils.executeInConsensusLayer(
+            new RollbackPreDeleteTablePlan(database, tableName), env, LOGGER);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+    }
     // Do nothing
   }
 

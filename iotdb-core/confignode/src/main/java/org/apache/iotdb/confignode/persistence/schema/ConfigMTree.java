@@ -698,6 +698,14 @@ public class ConfigMTree {
     tableNode.setStatus(TableNodeStatus.PRE_DELETE);
   }
 
+  public void rollbackPreDeleteTable(final PartialPath database, final String tableName)
+      throws MetadataException {
+    final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    if (databaseNode.hasChild(tableName)) {
+      ((ConfigTableNode) databaseNode.getChild(tableName)).setStatus(TableNodeStatus.USING);
+    }
+  }
+
   public void dropTable(final PartialPath database, final String tableName)
       throws MetadataException {
     final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();

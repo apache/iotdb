@@ -54,6 +54,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTableP
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RollbackPreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
@@ -1085,6 +1086,19 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     databaseReadWriteLock.writeLock().lock();
     try {
       mTree.preDeleteTable(
+          getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName());
+      return RpcUtils.SUCCESS_STATUS;
+    } catch (final MetadataException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  public TSStatus rollbackPreDeleteTable(final RollbackPreDeleteTablePlan plan) {
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      mTree.rollbackPreDeleteTable(
           getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName());
       return RpcUtils.SUCCESS_STATUS;
     } catch (final MetadataException e) {

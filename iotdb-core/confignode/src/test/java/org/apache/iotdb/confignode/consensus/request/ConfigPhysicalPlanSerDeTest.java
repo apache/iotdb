@@ -125,6 +125,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTableP
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RollbackPreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
@@ -1241,6 +1242,19 @@ public class ConfigPhysicalPlanSerDeTest {
             ConfigPhysicalPlan.Factory.create(preDeleteTablePlan.serializeToByteBuffer());
     Assert.assertEquals(preDeleteTablePlan.getDatabase(), preDeleteTablePlan1.getDatabase());
     Assert.assertEquals(preDeleteTablePlan.getTableName(), preDeleteTablePlan1.getTableName());
+  }
+
+  @Test
+  public void RollbackPreDeleteTablePlanTest() throws IOException {
+    final RollbackPreDeleteTablePlan rollbackPreDeleteTablePlan =
+        new RollbackPreDeleteTablePlan("root.database1", "table1");
+    final RollbackPreDeleteTablePlan rollbackPreDeleteTablePlan1 =
+        (RollbackPreDeleteTablePlan)
+            ConfigPhysicalPlan.Factory.create(rollbackPreDeleteTablePlan.serializeToByteBuffer());
+    Assert.assertEquals(
+        rollbackPreDeleteTablePlan.getDatabase(), rollbackPreDeleteTablePlan1.getDatabase());
+    Assert.assertEquals(
+        rollbackPreDeleteTablePlan.getTableName(), rollbackPreDeleteTablePlan1.getTableName());
   }
 
   @Test

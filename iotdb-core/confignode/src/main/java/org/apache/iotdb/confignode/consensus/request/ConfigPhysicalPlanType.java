@@ -164,7 +164,8 @@ public enum ConfigPhysicalPlanType {
   FetchTable((short) 856),
   RenameTableColumn((short) 857),
   PreDeleteTable((short) 858),
-  DropTable((short) 859),
+  RollbackPreDeleteTable((short) 859),
+  DropTable((short) 860),
 
   /** Deprecated types for sync, restored them for upgrade. */
   @Deprecated
