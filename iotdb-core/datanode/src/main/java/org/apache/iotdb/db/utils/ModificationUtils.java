@@ -32,6 +32,7 @@ import org.apache.tsfile.utils.Pair;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 public class ModificationUtils {
@@ -360,7 +361,7 @@ public class ModificationUtils {
   }
 
   public static List<ModEntry> sortAndMerge(List<ModEntry> modifications) {
-    modifications.sort(null);
+    modifications.sort(Comparator.comparing(ModEntry::getTimeRange));
     List<ModEntry> result = new ArrayList<>();
     if (!modifications.isEmpty()) {
       ModEntry current = modifications.get(0).clone();
