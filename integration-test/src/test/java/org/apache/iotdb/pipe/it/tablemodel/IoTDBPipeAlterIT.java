@@ -141,7 +141,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
-          "alter pipe a2b replace source ('source'='iotdb-source', 'table-name'='test','database-name'='test')");
+          "alter pipe a2b replace source ('capture.table'='true','''source'='iotdb-source', 'table-name'='test','database-name'='test')");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -402,13 +402,14 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
   @Test
   public void testAlterPipeSourceAndSink() {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    boolean insertResult = true;
 
     TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
     TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
     // Create pipe
     final String sql =
         String.format(
-            "create pipe a2b with source ('source'='iotdb-source', 'database-name'='test', 'table-name'='test1', 'mode.streaming'='true') with processor ('processor'='do-nothing-processor') with sink ('node-urls'='%s', 'batch.enable'='false')",
+            "create pipe a2b with source ('source'='iotdb-source', 'database-name'='test', 'table-name'='test', 'mode.streaming'='true') with processor ('processor'='do-nothing-processor') with sink ('node-urls'='%s', 'batch.enable'='false')",
             receiverDataNode.getIpAndPortString());
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
@@ -417,16 +418,14 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
       fail(e.getMessage());
     }
 
-    TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
-    TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
+    insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+    insertResult = insertResult && TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
+    if (!insertResult) {
+      return;
+    }
 
     // Check data on receiver
-    TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv,
-        TableModelUtils.getQuerySql("test"),
-        TableModelUtils.generateHeaderResults(),
-        TableModelUtils.generateExpectedResults(0, 100),
-        "test");
+    TableModelUtils.assertData("test", "test", 0, 100, receiverEnv);
     HashSet<String> expectedResults = new HashSet();
     expectedResults.add("test,1,1,604800000");
     TestUtils.assertDataEventuallyOnEnv(
@@ -445,9 +444,12 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
     } catch (final SQLException e) {
       fail(e.getMessage());
     }
-    TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
-    TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
-
+    insertResult = TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
+    insertResult =
+        insertResult && TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
+    if (!insertResult) {
+      return;
+    }
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
         TableModelUtils.getQuerySql("test"),

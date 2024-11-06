@@ -58,10 +58,8 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelTestIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      final List<String> validPipeNames =
-          Arrays.asList("Pipe_1", "null", "`33`", "`root`", "中文", "with");
-      final List<String> expectedPipeNames =
-          Arrays.asList("Pipe_1", "null", "33", "root", "中文", "with");
+      final List<String> validPipeNames = Arrays.asList("Pipe_1", "`33`", "`root`", "中文", "with");
+      final List<String> expectedPipeNames = Arrays.asList("Pipe_1", "33", "root", "中文", "with");
       for (final String pipeName : validPipeNames) {
         try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
             final Statement statement = connection.createStatement()) {

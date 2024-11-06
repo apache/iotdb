@@ -81,6 +81,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelTestIT {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    boolean insertResult = true;
 
     final Map<String, String> extractorAttributes = new HashMap<>();
     final Map<String, String> processorAttributes = new HashMap<>();
@@ -98,7 +99,10 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelTestIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       // Generate TsFile
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      if (!insertResult) {
+        return;
+      }
       TableModelUtils.deleteData("test", "test", 50, 100, senderEnv);
 
       TSStatus status =

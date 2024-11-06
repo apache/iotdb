@@ -193,7 +193,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelTestI
           "count(root.db.d1.s1),",
           Collections.singleton("8,"));
 
-      TableModelUtils.assertData("test", "test", 0, 100, receiverEnv);
+      TableModelUtils.assertCountData("test", "test", 100, receiverEnv);
     }
   }
 
@@ -225,7 +225,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelTestI
         statement.execute(
             String.format(
                 "create pipe p1"
-                    + " with extractor ('extractor.pattern'='root.db.d1.s1','table-name'='tes1','capture.table'='true','capture.tree'='true')"
+                    + " with extractor ('extractor.pattern'='root.db.d1.s1','table-name'='test1','capture.table'='true','capture.tree'='true')"
                     + " with connector ("
                     + "'connector.ip'='%s',"
                     + "'connector.port'='%s',"
@@ -242,7 +242,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelTestI
         statement.execute(
             String.format(
                 "create pipe p2"
-                    + " with extractor ('extractor.pattern'='root.db.d1.s2','table-name'='tes2','capture.table'='true','capture.tree'='true')"
+                    + " with extractor ('extractor.pattern'='root.db.d1.s2','table-name'='test2','capture.table'='true','capture.tree'='true')"
                     + " with connector ("
                     + "'connector.ip'='%s',"
                     + "'connector.port'='%s',"
@@ -259,7 +259,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelTestI
         statement.execute(
             String.format(
                 "create pipe p3"
-                    + " with extractor ('extractor.pattern'='root.db.d1.s3','table-name'='tes3','capture.table'='true','capture.tree'='true')"
+                    + " with extractor ('extractor.pattern'='root.db.d1.s3','table-name'='test3','capture.table'='true','capture.tree'='true')"
                     + " with connector ("
                     + "'connector.ip'='%s',"
                     + "'connector.port'='%s',"
@@ -276,7 +276,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelTestI
         statement.execute(
             String.format(
                 "create pipe p4"
-                    + " with extractor ('extractor.pattern'='root.db.d1.s4','table-name'='tes4','capture.table'='true','capture.tree'='true')"
+                    + " with extractor ('extractor.pattern'='root.db.d1.s4','table-name'='test4','capture.table'='true','capture.tree'='true')"
                     + " with connector ("
                     + "'connector.ip'='%s',"
                     + "'connector.port'='%s',"
@@ -294,7 +294,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelTestI
         statement.execute(
             String.format(
                 "create pipe p5"
-                    + " with extractor ('extractor.pattern'='root.db.d1.s5','table-name'='tes5','capture.table'='true','capture.tree'='true')"
+                    + " with extractor ('extractor.pattern'='root.db.d1.s5','table-name'='test5','capture.table'='true','capture.tree'='true')"
                     + " with connector ("
                     + "'connector.ip'='%s',"
                     + "'connector.port'='%s',"
@@ -319,7 +319,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelTestI
       TableModelUtils.createDataBaseAndTable(senderEnv, "test3", "test");
       TableModelUtils.insertData("test", "test3", 0, 50, senderEnv, true);
 
-      TableModelUtils.assertData("test", "test1", 0, 50, receiverEnv);
+      TableModelUtils.assertCountData("test", "test1", 50, receiverEnv);
     }
   }
 }

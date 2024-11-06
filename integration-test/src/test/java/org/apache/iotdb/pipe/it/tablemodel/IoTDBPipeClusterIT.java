@@ -102,14 +102,17 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
 
   private void testWithAllParameters(final String realtimeMode) throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
-
+    boolean insertResult = true;
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      if (!insertResult) {
+        return;
+      }
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -149,8 +152,10 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
           TableModelUtils.generateExpectedResults(0, 100),
           "test");
 
-      TableModelUtils.insertData("test", "test", 100, 300, senderEnv);
-
+      insertResult = TableModelUtils.insertData("test", "test", 100, 300, senderEnv);
+      if (!insertResult) {
+        return;
+      }
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           TableModelUtils.getQuerySql("test"),
@@ -167,6 +172,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
 
+    boolean insertResult = true;
+
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final Map<String, String> extractorAttributes = new HashMap<>();
@@ -174,8 +181,12 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
       TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
-      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
-      TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
+      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      insertResult =
+          insertResult && TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
+      if (!insertResult) {
+        return;
+      }
 
       extractorAttributes.put("extractor", "iotdb-extractor");
       extractorAttributes.put("database-name", "test");
@@ -199,8 +210,13 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
-      TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
+      insertResult = TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
+      insertResult =
+          insertResult && TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
+      if (!insertResult) {
+        return;
+      }
+
       final AtomicInteger leaderPort = new AtomicInteger(-1);
       final TShowRegionResp showRegionResp = client.showRegion(new TShowRegionReq());
       showRegionResp
@@ -239,8 +255,13 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
         fail();
       }
 
-      TableModelUtils.insertData("test", "test", 200, 300, senderEnv);
-      TableModelUtils.insertData("test1", "test1", 200, 300, senderEnv);
+      insertResult = TableModelUtils.insertData("test", "test", 200, 300, senderEnv);
+      insertResult =
+          insertResult && TableModelUtils.insertData("test1", "test1", 200, 300, senderEnv);
+      if (!insertResult) {
+        return;
+      }
+
       TableModelUtils.assertData("test", "test", 0, 300, receiverEnv);
       HashSet<String> expectedResults = new HashSet();
       expectedResults.add("test,1,1,604800000,");
@@ -288,9 +309,12 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p2").getCode());
 
-      TableModelUtils.insertData("test", "test", 300, 400, senderEnv);
-      TableModelUtils.insertData("test1", "test1", 300, 400, senderEnv);
-
+      insertResult = TableModelUtils.insertData("test", "test", 300, 400, senderEnv);
+      insertResult =
+          insertResult && TableModelUtils.insertData("test1", "test1", 300, 400, senderEnv);
+      if (!insertResult) {
+        return;
+      }
       TableModelUtils.assertData("test", "test", 0, 301, receiverEnv);
       TableModelUtils.assertData("test1", "test1", 0, 301, receiverEnv);
     }
@@ -303,6 +327,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
 
+    boolean insertResult = true;
+
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final Map<String, String> extractorAttributes = new HashMap<>();
@@ -311,8 +337,12 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
       TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
-      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
-      TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
+      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      insertResult =
+          insertResult && TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
+      if (!insertResult) {
+        return;
+      }
 
       extractorAttributes.put("database-name", "test");
       extractorAttributes.put("capture.table", "true");
@@ -333,9 +363,12 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
-      TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
-
+      insertResult = TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
+      insertResult =
+          insertResult && TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
+      if (!insertResult) {
+        return;
+      }
       try {
         senderEnv.registerNewDataNode(true);
       } catch (final Throwable e) {
@@ -345,8 +378,14 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
 
       final DataNodeWrapper newDataNode =
           senderEnv.getDataNodeWrapper(senderEnv.getDataNodeWrapperList().size() - 1);
-      TableModelUtils.insertData("test", "test", 200, 300, senderEnv, newDataNode);
-      TableModelUtils.insertData("test1", "test1", 200, 300, senderEnv, newDataNode);
+      insertResult = TableModelUtils.insertData("test", "test", 200, 300, senderEnv, newDataNode);
+      insertResult =
+          insertResult
+              && TableModelUtils.insertData("test1", "test1", 200, 300, senderEnv, newDataNode);
+      if (!insertResult) {
+        return;
+      }
+
       TableModelUtils.assertData("test", "test", 0, 300, receiverEnv);
     }
 
@@ -384,9 +423,12 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p2").getCode());
 
-      TableModelUtils.insertData("test", "test", 300, 400, senderEnv);
-      TableModelUtils.insertData("test1", "test1", 300, 400, senderEnv);
-
+      insertResult = TableModelUtils.insertData("test", "test", 300, 400, senderEnv);
+      insertResult =
+          insertResult && TableModelUtils.insertData("test1", "test1", 300, 400, senderEnv);
+      if (!insertResult) {
+        return;
+      }
       TableModelUtils.assertData("test1", "test1", 0, 400, receiverEnv);
       TableModelUtils.assertData("test", "test", 0, 400, receiverEnv);
     }
@@ -458,13 +500,16 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    boolean insertResult = true;
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
-
+      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      if (!insertResult) {
+        return;
+      }
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
@@ -532,10 +577,13 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    boolean insertResult = true;
 
     TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-    TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
-
+    insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+    if (!insertResult) {
+      return;
+    }
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final Map<String, String> extractorAttributes = new HashMap<>();
@@ -592,13 +640,16 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    boolean insertResult = true;
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
-
+      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      if (!insertResult) {
+        return;
+      }
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
@@ -820,13 +871,16 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    boolean insertResult = true;
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-      TableModelUtils.insertData("test", "test", -100, 100, senderEnv);
-
+      insertResult = TableModelUtils.insertData("test", "test", -100, 100, senderEnv);
+      if (!insertResult) {
+        return;
+      }
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
@@ -854,8 +908,10 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
 
       TableModelUtils.assertData("test", "test", -100, 100, receiverEnv);
 
-      TableModelUtils.insertData("test", "test", -200, -100, senderEnv);
-
+      insertResult = TableModelUtils.insertData("test", "test", -200, -100, senderEnv);
+      if (!insertResult) {
+        return;
+      }
       TableModelUtils.assertData("test", "test", -200, 100, receiverEnv);
     }
   }

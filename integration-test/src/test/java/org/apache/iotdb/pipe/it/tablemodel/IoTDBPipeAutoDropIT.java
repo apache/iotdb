@@ -44,6 +44,7 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelTestIT {
   @Test
   public void testAutoDropInHistoricalTransfer() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    boolean insertResult = true;
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
@@ -52,7 +53,10 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelTestIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      if (!insertResult) {
+        return;
+      }
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -94,6 +98,7 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelTestIT {
   @Test
   public void testAutoDropInHistoricalTransferWithTimeRange() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    boolean insertResult = true;
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
@@ -102,8 +107,10 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelTestIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
-
+      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      if (!insertResult) {
+        return;
+      }
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();

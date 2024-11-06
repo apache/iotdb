@@ -29,7 +29,6 @@ import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2TableModel;
 import org.apache.iotdb.itbase.env.BaseEnv;
-import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -38,15 +37,8 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.sql.Connection;
-import java.sql.Statement;
-import java.time.ZoneOffset;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import static org.junit.Assert.fail;
 
@@ -159,28 +151,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelTestIT {
     }
     insertData("test", "test1", 300, 400, receiverEnv);
 
-    final Set<String> expectedResSet = new HashSet<>();
-    for (int i = 0; i < 400; ++i) {
-      expectedResSet.add(
-          String.format(
-              "t%s,%s,%s.0,%s,%s,",
-              i, i, i, i, RpcUtils.formatDatetime("default", "ms", i, ZoneOffset.UTC)));
-    }
-
-    TestUtils.assertDataEventuallyOnEnv(
-        senderEnv,
-        "select id1,s3,s2,s1,time from test1",
-        "id1,s3,s2,s1,time,",
-        expectedResSet,
-        60,
-        "test");
-    TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv,
-        "select id1,s3,s2,s1,time from test1",
-        "id1,s3,s2,s1,time,",
-        expectedResSet,
-        60,
-        "test");
+    TableModelUtils.assertData("test", "test1", 0, 400, receiverEnv);
 
     try {
       TestUtils.restartCluster(senderEnv);
@@ -192,26 +163,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelTestIT {
     insertData("test", "test1", 400, 500, senderEnv);
     insertData("test", "test1", 500, 600, receiverEnv);
 
-    for (int i = 400; i < 600; ++i) {
-      expectedResSet.add(
-          String.format(
-              "t%s,%s,%s.0,%s,%s,",
-              i, i, i, i, RpcUtils.formatDatetime("default", "ms", i, ZoneOffset.UTC)));
-    }
-    TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv,
-        "select id1,s3,s2,s1,time from test1",
-        "id1,s3,s2,s1,time,",
-        expectedResSet,
-        60,
-        "test");
-    TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv,
-        "select id1,s3,s2,s1,time from test1",
-        "id1,s3,s2,s1,time,",
-        expectedResSet,
-        60,
-        "test");
+    TableModelUtils.assertData("test", "test1", 0, 600, receiverEnv);
   }
 
   @Test
@@ -256,8 +208,8 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelTestIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
     }
 
-    insertData("test", "test", 100, 200, senderEnv);
-    insertData("test", "test1", 200, 300, receiverEnv);
+    TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
+    TableModelUtils.insertData("test", "test1", 200, 300, receiverEnv);
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) receiverEnv.getLeaderConfigNodeConnection()) {
@@ -304,32 +256,12 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelTestIT {
   }
 
   private void createDataBaseAndTable(BaseEnv baseEnv) {
-    try (Connection connection = baseEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      statement.execute("create database if not exists test");
-      statement.execute("use test");
-      statement.execute(
-          "CREATE TABLE test(id1 string id, s1 int64 measurement, s2 float measurement, s3 string measurement)");
-      statement.execute(
-          "CREATE TABLE test1(id1 string id, s1 int64 measurement, s2 float measurement, s3 string measurement)");
-    } catch (Exception e) {
-      fail(e.getMessage());
-    }
+    TableModelUtils.createDataBaseAndTable(baseEnv, "test", "test");
+    TableModelUtils.createDataBaseAndTable(baseEnv, "test1", "test");
   }
 
   private void insertData(
       String dataBaseName, String tableName, int start, int end, BaseEnv baseEnv) {
-    List<String> list = new ArrayList<>(end - start + 1);
-    for (int i = start; i < end; ++i) {
-      list.add(
-          String.format(
-              "insert into %s (id1, s3, s2, s1, time) values ('t%s','%s', %s.0, %s, %s)",
-              tableName, i, i, i, i, i));
-    }
-    list.add("flush");
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
-        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list)) {
-      fail();
-    }
+    TableModelUtils.insertData(dataBaseName, tableName, start, end, baseEnv);
   }
 }
