@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.subscription.task.subtask;
 
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.agent.task.subtask.connector.PipeConnectorSubtask;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -75,9 +76,12 @@ public class SubscriptionConnectorSubtask extends PipeConnectorSubtask {
 
   @Override
   protected void registerCallbackHookAfterSubmit(final ListenableFuture<Boolean> future) {
-    // TODO: timeout config
     final ListenableFuture<Boolean> nextFuture =
-        Futures.withTimeout(future, Duration.ofSeconds(10), subtaskCallbackListeningExecutor);
+        Futures.withTimeout(
+            future,
+            Duration.ofSeconds(
+                SubscriptionConfig.getInstance().getSubscriptionDefaultTimeoutInMs()),
+            subtaskCallbackListeningExecutor);
     Futures.addCallback(nextFuture, this, subtaskCallbackListeningExecutor);
   }
 

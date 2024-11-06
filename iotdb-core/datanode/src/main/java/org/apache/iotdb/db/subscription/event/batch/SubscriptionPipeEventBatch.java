@@ -97,7 +97,7 @@ public abstract class SubscriptionPipeEventBatch {
       onTabletInsertionEvent((TabletInsertionEvent) event);
       enrichedEvents.add(event);
     } else if (event instanceof TsFileInsertionEvent) {
-      onTsFileInsertionEvent((TsFileInsertionEvent) event); // TODO: maybe stuck here
+      onTsFileInsertionEvent((TsFileInsertionEvent) event);
       enrichedEvents.add(event);
     } else {
       LOGGER.warn(
