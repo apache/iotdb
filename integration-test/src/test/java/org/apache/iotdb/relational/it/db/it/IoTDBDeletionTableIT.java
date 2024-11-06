@@ -56,7 +56,7 @@ public class IoTDBDeletionTableIT {
 
   private String insertTemplate =
       "INSERT INTO test.vehicle%d(time, deviceId, s0,s1,s2,s3,s4"
-          + ") VALUES(%d,'d0',%d,%d,%f,%s,%b)";
+          + ") VALUES(%d,'d%d',%d,%d,%f,%s,%b)";
   private String deleteAllTemplate = "DROP TABLE IF EXISTS vehicle%d";
 
   @BeforeClass
@@ -117,20 +117,6 @@ public class IoTDBDeletionTableIT {
       }
 
       try {
-        statement.execute("DELETE FROM vehicle1  WHERE time < 10 or time > 30");
-        fail("should not reach here!");
-      } catch (SQLException e) {
-        assertEquals("701: Only support AND operator in deletion", e.getMessage());
-      }
-
-      try {
-        statement.execute("DELETE FROM vehicle1  WHERE time < 10 or deviceId = 'd0'");
-        fail("should not reach here!");
-      } catch (SQLException e) {
-        assertEquals("701: Only support AND operator in deletion", e.getMessage());
-      }
-
-      try {
         statement.execute("DELETE FROM vehicle1  WHERE time < 10 and deviceId > 'd0'");
         fail("should not reach here!");
       } catch (SQLException e) {
@@ -165,14 +151,17 @@ public class IoTDBDeletionTableIT {
 
   @Test
   public void test() throws SQLException {
-    prepareData(2);
+    int testId = 2;
+    prepareData(testId, 1);
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use test");
 
-      statement.execute("DELETE FROM vehicle2 WHERE time <= 150");
+      // init [1, 400]
 
-      try (ResultSet set = statement.executeQuery("SELECT * FROM vehicle2")) {
+      // remain [151, 400]
+      statement.execute("DELETE FROM vehicle" + testId + " WHERE time <= 150");
+      try (ResultSet set = statement.executeQuery("SELECT * FROM vehicle" + testId)) {
         int cnt = 0;
         while (set.next()) {
           cnt++;
@@ -180,9 +169,10 @@ public class IoTDBDeletionTableIT {
         assertEquals(250, cnt);
       }
 
-      statement.execute("DELETE FROM vehicle2 WHERE time <= 300");
+      // remain [301, 400]
+      statement.execute("DELETE FROM vehicle" + testId + " WHERE time <= 300");
 
-      try (ResultSet set = statement.executeQuery("SELECT s0 FROM vehicle2")) {
+      try (ResultSet set = statement.executeQuery("SELECT s0 FROM vehicle" + testId)) {
         int cnt = 0;
         while (set.next()) {
           cnt++;
@@ -190,17 +180,28 @@ public class IoTDBDeletionTableIT {
         assertEquals(100, cnt);
       }
 
-      statement.execute("DELETE FROM vehicle2 WHERE time <= 350");
+      // remain [351, 400]
+      statement.execute("DELETE FROM vehicle" + testId + " WHERE time <= 350");
 
-      try (ResultSet set = statement.executeQuery("SELECT s1,s2,s3 FROM vehicle2")) {
+      try (ResultSet set = statement.executeQuery("SELECT s1,s2,s3 FROM vehicle" + testId)) {
         int cnt = 0;
         while (set.next()) {
           cnt++;
         }
         assertEquals(50, cnt);
       }
+
+      // remain [361, 380]
+      statement.execute("DELETE FROM vehicle" + testId + "  WHERE time <= 360 or time > 380");
+      try (ResultSet set = statement.executeQuery("SELECT s1,s2,s3 FROM vehicle" + testId)) {
+        int cnt = 0;
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(20, cnt);
+      }
     }
-    cleanData(2);
+    cleanData(testId);
   }
 
   @Test
@@ -229,36 +230,39 @@ public class IoTDBDeletionTableIT {
 
   @Test
   public void testRangeDelete() throws SQLException {
-    prepareData(4);
+    prepareData(4, 1);
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use test");
 
+      // [1, 400] -> [1, 299]
       statement.execute("DELETE FROM vehicle4 WHERE time >= 300");
       try (ResultSet set = statement.executeQuery("SELECT s0 FROM vehicle4")) {
         int cnt = 0;
         while (set.next()) {
           cnt++;
         }
-        assertEquals(300, cnt);
+        assertEquals(299, cnt);
       }
 
+      // [1, 299] -> [151, 299]
       statement.execute("DELETE FROM vehicle4 WHERE time <= 150");
       try (ResultSet set = statement.executeQuery("SELECT s1 FROM vehicle4")) {
         int cnt = 0;
         while (set.next()) {
           cnt++;
         }
-        assertEquals(150, cnt);
+        assertEquals(149, cnt);
       }
 
+      // [151, 299] -> [251, 299]
       statement.execute("DELETE FROM vehicle4 WHERE time > 50 and time <= 250");
       try (ResultSet set = statement.executeQuery("SELECT * FROM vehicle4")) {
         int cnt = 0;
         while (set.next()) {
           cnt++;
         }
-        assertEquals(100, cnt);
+        assertEquals(49, cnt);
       }
     }
     cleanData(4);
@@ -266,7 +270,7 @@ public class IoTDBDeletionTableIT {
 
   @Test
   public void testFullDeleteWithoutWhereClause() throws SQLException {
-    prepareData(5);
+    prepareData(5, 1);
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use test");
@@ -287,7 +291,7 @@ public class IoTDBDeletionTableIT {
 
   @Test
   public void testDeleteWithSpecificDevice() throws SQLException {
-    prepareData(6);
+    prepareData(6, 1);
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use test");
@@ -318,6 +322,7 @@ public class IoTDBDeletionTableIT {
   @Test
   public void testDelFlushingMemtable() throws SQLException {
     int testNum = 7;
+    int deviceId = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use test");
@@ -328,7 +333,8 @@ public class IoTDBDeletionTableIT {
 
       for (int i = 1; i <= 10000; i++) {
         statement.execute(
-            String.format(insertTemplate, testNum, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
+            String.format(
+                insertTemplate, testNum, i, deviceId, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
 
       statement.execute("DELETE FROM vehicle7 WHERE time > 1500 and time <= 9000");
@@ -346,6 +352,7 @@ public class IoTDBDeletionTableIT {
   @Test
   public void testDelMultipleFlushingMemtable() throws SQLException {
     int testNum = 8;
+    int deviceId = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use test");
@@ -356,14 +363,16 @@ public class IoTDBDeletionTableIT {
 
       for (int i = 1; i <= 1000; i++) {
         statement.execute(
-            String.format(insertTemplate, testNum, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
+            String.format(
+                insertTemplate, testNum, i, deviceId, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
 
       statement.execute("DELETE FROM vehicle8 WHERE time > 150 and time <= 300");
       statement.execute("DELETE FROM vehicle8 WHERE time > 300 and time <= 400");
       for (int i = 1001; i <= 2000; i++) {
         statement.execute(
-            String.format(insertTemplate, testNum, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
+            String.format(
+                insertTemplate, testNum, i, deviceId, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
 
       statement.execute("DELETE FROM vehicle8 WHERE time > 500 and time <= 800");
@@ -484,12 +493,11 @@ public class IoTDBDeletionTableIT {
       }
     }
   }
-
-  @Ignore
+  
   @Test
   public void testDeleteTable() throws SQLException {
     int testNum = 12;
-    prepareData(testNum);
+    prepareData(testNum, 1);
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use test");
@@ -511,7 +519,7 @@ public class IoTDBDeletionTableIT {
         assertFalse(set.next());
       }
 
-      prepareData(testNum);
+      prepareData(testNum, 1);
 
       statement.execute("DELETE FROM vehicle" + testNum + " WHERE time <= 150");
 
@@ -521,6 +529,36 @@ public class IoTDBDeletionTableIT {
           cnt++;
         }
         assertEquals(250, cnt);
+      }
+    }
+    cleanData(testNum);
+  }
+
+  @Test
+  public void testMultiDevice() throws SQLException {
+    int testNum = 13;
+    prepareData(testNum, 2);
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+
+      // init d0[1, 400] d1[1, 400]
+
+      // remain d1[10, 400]
+      statement.execute("DELETE FROM vehicle" + testNum + "  WHERE time < 10 or deviceId = 'd0'");
+
+      try (ResultSet set =
+          statement.executeQuery("SELECT * FROM vehicle" + testNum + " where deviceId = 'd1'")) {
+        int cnt = 0;
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(391, cnt);
+      }
+
+      try (ResultSet set =
+          statement.executeQuery("SELECT * FROM vehicle" + testNum + " where deviceId = 'd0'")) {
+        assertFalse(set.next());
       }
     }
     cleanData(testNum);
@@ -538,7 +576,7 @@ public class IoTDBDeletionTableIT {
     }
   }
 
-  private void prepareData(int testNum) throws SQLException {
+  private void prepareData(int testNum, int deviceNum) throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use test");
@@ -547,27 +585,40 @@ public class IoTDBDeletionTableIT {
               "CREATE TABLE IF NOT EXISTS vehicle%d(deviceId STRING ID, s0 INT32 MEASUREMENT, s1 INT64 MEASUREMENT, s2 FLOAT MEASUREMENT, s3 TEXT MEASUREMENT, s4 BOOLEAN MEASUREMENT)",
               testNum));
 
-      // prepare BufferWrite file
-      for (int i = 201; i <= 300; i++) {
-        statement.execute(
-            String.format(insertTemplate, testNum, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
+      for (int d = 0; d < deviceNum; d++) {
+        // prepare seq file
+        for (int i = 201; i <= 300; i++) {
+          statement.execute(
+              String.format(
+                  insertTemplate, testNum, i, d, i, i, (double) i, "'" + i + "'", i % 2 == 0));
+        }
+      }
+
+      statement.execute("flush");
+
+      for (int d = 0; d < deviceNum; d++) {
+        // prepare unseq File
+        for (int i = 1; i <= 100; i++) {
+          statement.execute(
+              String.format(
+                  insertTemplate, testNum, i, d, i, i, (double) i, "'" + i + "'", i % 2 == 0));
+        }
       }
       statement.execute("flush");
-      // prepare Unseq-File
-      for (int i = 1; i <= 100; i++) {
-        statement.execute(
-            String.format(insertTemplate, testNum, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
-      }
-      statement.execute("flush");
-      // prepare BufferWrite cache
-      for (int i = 301; i <= 400; i++) {
-        statement.execute(
-            String.format(insertTemplate, testNum, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
-      }
-      // prepare Overflow cache
-      for (int i = 101; i <= 200; i++) {
-        statement.execute(
-            String.format(insertTemplate, testNum, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
+
+      for (int d = 0; d < deviceNum; d++) {
+        // prepare BufferWrite cache
+        for (int i = 301; i <= 400; i++) {
+          statement.execute(
+              String.format(
+                  insertTemplate, testNum, i, d, i, i, (double) i, "'" + i + "'", i % 2 == 0));
+        }
+        // prepare Overflow cache
+        for (int i = 101; i <= 200; i++) {
+          statement.execute(
+              String.format(
+                  insertTemplate, testNum, i, d, i, i, (double) i, "'" + i + "'", i % 2 == 0));
+        }
       }
     }
   }

@@ -374,37 +374,33 @@ public class AnalyzeUtils {
    * the expression by too much.
    */
   public static List<Expression> toDisjunctiveNormalForms(Expression expression) {
-    if (expression == null) {
+    if (!(expression instanceof LogicalExpression)) {
       return Collections.singletonList(expression);
     }
 
-    if (expression instanceof LogicalExpression) {
-      LogicalExpression logicalExpression = (LogicalExpression) expression;
-      if (logicalExpression.getOperator() == Operator.AND) {
-        // ( A | B ) & ( C | D ) => ( A & C ) | ( A & D ) | ( B & C ) | ( B & D)
-        List<Expression> results = null;
-        for (Expression term : logicalExpression.getTerms()) {
-          if (results == null) {
-            results = toDisjunctiveNormalForms(term);
-          } else {
-            results =
-                crossProductOfDisjunctiveNormalForms(
-                    results, toDisjunctiveNormalForms(term), Operator.AND);
-          }
+    LogicalExpression logicalExpression = (LogicalExpression) expression;
+    if (logicalExpression.getOperator() == Operator.AND) {
+      // ( A | B ) & ( C | D ) => ( A & C ) | ( A & D ) | ( B & C ) | ( B & D)
+      List<Expression> results = null;
+      for (Expression term : logicalExpression.getTerms()) {
+        if (results == null) {
+          results = toDisjunctiveNormalForms(term);
+        } else {
+          results =
+              crossProductOfDisjunctiveNormalForms(
+                  results, toDisjunctiveNormalForms(term), Operator.AND);
         }
-        return results;
-      } else if (logicalExpression.getOperator() == Operator.OR) {
-        // ( A | B ) | ( C | D ) => A | B | C | D
-        List<Expression> results = new ArrayList<>();
-        for (Expression term : logicalExpression.getTerms()) {
-          results.addAll(toDisjunctiveNormalForms(term));
-        }
-        return results;
-      } else {
-        throw new SemanticException("Unsupported operator: " + logicalExpression.getOperator());
       }
+      return results;
+    } else if (logicalExpression.getOperator() == Operator.OR) {
+      // ( A | B ) | ( C | D ) => A | B | C | D
+      List<Expression> results = new ArrayList<>();
+      for (Expression term : logicalExpression.getTerms()) {
+        results.addAll(toDisjunctiveNormalForms(term));
+      }
+      return results;
     } else {
-      return Collections.singletonList(expression);
+      throw new SemanticException("Unsupported operator: " + logicalExpression.getOperator());
     }
   }
 
@@ -426,7 +422,7 @@ public class AnalyzeUtils {
           terms.add(rightExp);
         }
 
-        results.add(new LogicalExpression(operator, results));
+        results.add(new LogicalExpression(operator, terms));
       }
     }
     return results;
@@ -457,9 +453,7 @@ public class AnalyzeUtils {
       predicate.setIdPredicate(idPredicate);
     }
 
-    return new TableDeletionEntry(
-        new DeletionPredicate(table.getTableName()),
-        new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE, true).toTsFileTimeRange());
+    return new TableDeletionEntry(predicate, timeRange.toTsFileTimeRange());
   }
 
   private static void parseAndPredicate(
