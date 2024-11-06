@@ -28,6 +28,8 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -35,8 +37,11 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecutor;
 import org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceBlackListDeletionReq;
-import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDirectDeletionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternReq;
+import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternAndFilterReq;
+import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternReq;
+import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternAndFilterReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -109,8 +114,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
           }
         case CLEAN_DATANODE_SCHEMA_CACHE:
           LOGGER.info("Invalidate cache of devices in {}.{}", database, tableName);
-          setNextState(DELETE_DATA);
-          // TODO
+          invalidateCache(env);
           break;
         case DELETE_DATA:
           LOGGER.info("Delete data of devices in {}.{}", database, tableName);
@@ -170,13 +174,13 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
       return;
     }
     final List<TSStatus> successResult = new ArrayList<>();
-    new DataNodeRegionTaskExecutor<TTableDeviceDirectDeletionReq, TSStatus>(
+    new DataNodeRegionTaskExecutor<TTableDeviceDeletionWithPatternAndFilterReq, TSStatus>(
         env,
         relatedSchemaRegionGroup,
         false,
         CnToDnAsyncRequestType.CONSTRUCT_TABLE_DEVICE_BLACK_LIST,
         ((dataNodeLocation, consensusGroupIdList) ->
-            new TTableDeviceDirectDeletionReq(
+            new TTableDeviceDeletionWithPatternAndFilterReq(
                 new ArrayList<>(consensusGroupIdList),
                 tableName,
                 ByteBuffer.wrap(patternBytes),
@@ -233,6 +237,29 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
             : 0;
   }
 
+  private void invalidateCache(final ConfigNodeProcedureEnv env) {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
+    final DataNodeAsyncRequestContext<TInvalidateMatchedSchemaCacheReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
+            CnToDnAsyncRequestType.INVALIDATE_MATCHED_TABLE_DEVICE_CACHE,
+            new TInvalidateMatchedSchemaCacheReq(patternTreeBytes),
+            dataNodeLocationMap);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
+    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
+    for (final TSStatus status : statusMap.values()) {
+      // All dataNodes must clear the related schemaEngine cache
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.error("Failed to invalidate schemaEngine cache of timeSeries {}", requestMessage);
+        setFailure(
+            new ProcedureException(new MetadataException("Invalidate schemaEngine cache failed")));
+        return;
+      }
+    }
+
+    setNextState(DELETE_DATA);
+  }
+
   private void deleteData(final ConfigNodeProcedureEnv env) {
     new TableRegionTaskExecutor<>(
             "delete data for table device",
@@ -240,7 +267,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
             env.getConfigManager().getRelatedDataRegionGroup(patternTree, true),
             CnToDnAsyncRequestType.DELETE_DATA_FOR_TABLE_DEVICE,
             (dataNodeLocation, consensusGroupIdList) ->
-                new TTableDeviceDirectDeletionReq(
+                new TTableDeviceDeletionWithPatternAndFilterReq(
                     consensusGroupIdList,
                     tableName,
                     ByteBuffer.wrap(patternBytes),
@@ -256,7 +283,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
             env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, true),
             CnToDnAsyncRequestType.DELETE_TABLE_DEVICE_IN_BLACK_LIST,
             (dataNodeLocation, consensusGroupIdList) ->
-                new TTableDeviceBlackListDeletionReq(
+                new TTableDeviceDeletionWithPatternReq(
                     consensusGroupIdList, tableName, ByteBuffer.wrap(patternBytes)))
         .execute();
   }
@@ -272,7 +299,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
               env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, true),
               CnToDnAsyncRequestType.ROLLBACK_TABLE_DEVICE_BLACK_LIST,
               (dataNodeLocation, consensusGroupIdList) ->
-                  new TTableDeviceBlackListDeletionReq(
+                  new TTableDeviceDeletionWithPatternReq(
                       consensusGroupIdList, tableName, ByteBuffer.wrap(patternBytes)))
           .execute();
     }

@@ -254,8 +254,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
-import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceBlackListDeletionReq;
-import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDirectDeletionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternAndFilterReq;
+import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
@@ -1585,7 +1585,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus constructTableDeviceBlackList(final TTableDeviceDirectDeletionReq req) {
+  public TSStatus constructTableDeviceBlackList(
+      final TTableDeviceDeletionWithPatternAndFilterReq req) {
     final AtomicLong preDeletedNum = new AtomicLong(0);
     final TSStatus executionResult =
         executeSchemaBlackListTask(
@@ -1611,7 +1612,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus rollbackTableDeviceBlackList(final TTableDeviceBlackListDeletionReq req) {
+  public TSStatus rollbackTableDeviceBlackList(final TTableDeviceDeletionWithPatternReq req) {
     return executeInternalSchemaTask(
         req.getSchemaRegionIdList(),
         consensusGroupId ->
@@ -1624,7 +1625,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus deleteDataForTableDevice(final TTableDeviceDirectDeletionReq req) {
+  public TSStatus deleteDataForTableDevice(final TTableDeviceDeletionWithPatternAndFilterReq req) {
     return executeInternalSchemaTask(
         req.getRegionIdList(),
         consensusGroupId -> {
@@ -1634,7 +1635,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus deleteTableDeviceInBlackList(final TTableDeviceBlackListDeletionReq req) {
+  public TSStatus deleteTableDeviceInBlackList(final TTableDeviceDeletionWithPatternReq req) {
     return executeInternalSchemaTask(
         req.getSchemaRegionIdList(),
         consensusGroupId ->
