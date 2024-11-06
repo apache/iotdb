@@ -404,6 +404,39 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   }
 
   @Override
+  public void invalidate(final FK firstKey, final Predicate<SK> secondKeyChecker) {
+    final AtomicInteger estimateSize = new AtomicInteger(0);
+    firstKeyMap.compute(
+        firstKey,
+        (key, cacheEntryGroup) -> {
+          if (cacheEntryGroup == null) {
+            // has been removed by other threads
+            return null;
+          }
+
+          for (final Iterator<Map.Entry<SK, T>> it = cacheEntryGroup.getAllCacheEntries();
+              it.hasNext(); ) {
+            final Map.Entry<SK, T> entry = it.next();
+            if (cacheEntryManager.invalidate(entry.getValue())) {
+              cacheEntryGroup.removeCacheEntry(entry.getKey());
+              estimateSize.addAndGet(
+                  sizeComputer.computeSecondKeySize(entry.getKey())
+                      + sizeComputer.computeValueSize(entry.getValue().getValue()));
+            }
+          }
+
+          if (cacheEntryGroup.isEmpty()) {
+            estimateSize.getAndAdd(sizeComputer.computeFirstKeySize(firstKey));
+            return null;
+          }
+
+          return cacheEntryGroup;
+        });
+
+    cacheStats.decreaseMemoryUsage(estimateSize.get());
+  }
+
+  @Override
   public void invalidate(
       final Predicate<FK> firstKeyChecker, final Predicate<SK> secondKeyChecker) {
     final AtomicInteger estimateSize = new AtomicInteger(0);

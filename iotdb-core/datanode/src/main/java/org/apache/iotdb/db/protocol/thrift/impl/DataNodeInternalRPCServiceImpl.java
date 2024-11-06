@@ -146,6 +146,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Delet
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDevicesInBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.RollbackTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableSchemaQueryWriteVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
@@ -1629,7 +1630,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus invalidateMatchedTableDeviceCache(final TTableDeviceInvalidateCacheReq req) {
     DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
     try {
-      TableDeviceSchemaCache.getInstance().invalidate(req.getDatabase(), req.getTableName());
+      TableDeviceSchemaCache.getInstance()
+          .invalidate(
+              req.getDatabase(),
+              req.getTableName(),
+              DeleteDevice.constructPaths(
+                  req.getDatabase(), req.getTableName(), req.getPatternInfo()));
       return StatusUtils.OK;
     } finally {
       DataNodeSchemaLockManager.getInstance().releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
