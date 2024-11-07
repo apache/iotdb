@@ -844,8 +844,7 @@ public class IoTConsensusServerImpl {
   }
 
   public long getSyncLag() {
-    long minSyncIndex = getMinSyncIndex();
-    return getSearchIndex() - minSyncIndex;
+    return getSearchIndex() - getMinFlushedSyncIndex();
   }
 
   public IoTConsensusConfig getConfig() {
