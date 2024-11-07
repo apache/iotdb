@@ -71,7 +71,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
       extractorAttributes.put("capture.tree", "true");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
+      connectorAttributes.put("connector.batch.enable", "true");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
       connectorAttributes.put("connector.realtime-first", "false");
@@ -110,7 +110,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
     testSinkFormat("tablet");
   }
 
-  // not support table model
+  // table model not support
   @Ignore
   @Test
   public void testSinkTsFileFormat() throws Exception {
@@ -149,7 +149,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
       extractorAttributes.put("capture.tree", "true");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
+      connectorAttributes.put("connector.batch.enable", "true");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
       connectorAttributes.put("connector.format", format);

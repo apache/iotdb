@@ -58,8 +58,10 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelTestIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      final List<String> validPipeNames = Arrays.asList("Pipe_1", "`33`", "`root`", "中文", "with");
-      final List<String> expectedPipeNames = Arrays.asList("Pipe_1", "33", "root", "中文", "with");
+      final List<String> validPipeNames =
+          Arrays.asList("Pipe_1", "\"`33`\"", "root", "\"`中文`\"", "\"`with`\"");
+      final List<String> expectedPipeNames =
+          Arrays.asList("Pipe_1", "`33`", "root", "`中文`", "`with`");
       for (final String pipeName : validPipeNames) {
         try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
             final Statement statement = connection.createStatement()) {
@@ -95,7 +97,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelTestIT {
       }
 
       for (final String pipeName : validPipeNames) {
-        try (final Connection connection = senderEnv.getConnection();
+        try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
             final Statement statement = connection.createStatement()) {
           statement.execute(String.format("drop pipe %s", pipeName));
         } catch (SQLException e) {
@@ -521,7 +523,6 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelTestIT {
       }
 
       final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
-      System.out.println(showPipeResult.size());
       Assert.assertEquals(2, showPipeResult.size());
     }
   }
