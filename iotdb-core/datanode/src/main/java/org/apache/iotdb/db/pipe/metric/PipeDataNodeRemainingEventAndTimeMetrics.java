@@ -122,7 +122,11 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     // The metric is global thus the regionId is omitted
     final String pipeID = extractor.getPipeName() + "_" + extractor.getCreationTime();
     remainingEventAndTimeOperatorMap
-        .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
+        .computeIfAbsent(
+            pipeID,
+            k ->
+                new PipeDataNodeRemainingEventAndTimeOperator(
+                    extractor.getPipeName(), extractor.getCreationTime()))
         .register(extractor);
     if (Objects.nonNull(metricService)) {
       createMetrics(pipeID);
@@ -249,7 +253,8 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
       final String pipeName, final long creationTime) {
     final PipeDataNodeRemainingEventAndTimeOperator operator =
         remainingEventAndTimeOperatorMap.computeIfAbsent(
-            pipeName + "_" + creationTime, k -> new PipeDataNodeRemainingEventAndTimeOperator());
+            pipeName + "_" + creationTime,
+            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime));
     return new Pair<>(operator.getRemainingEvents(), operator.getRemainingTime());
   }
 

@@ -167,7 +167,6 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
   //////////////////////////// Register & deregister (pipe integration) ////////////////////////////
 
   void register(final IoTDBSchemaRegionExtractor extractor) {
-    setNameAndCreationTime(extractor.getPipeName(), extractor.getCreationTime());
     schemaRegionExtractors.add(extractor);
   }
 
