@@ -71,7 +71,7 @@ public class ConfigTableNode implements IConfigMNode {
   }
 
   public void addPreDeletedColumn(final String column) {
-    tableNodeInfo.addPreDeleteColumn(column);
+    tableNodeInfo.addPreDeletedColumn(column);
   }
 
   public void removePreDeletedColumn(final String column) {

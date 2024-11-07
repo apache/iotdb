@@ -62,7 +62,7 @@ public class ConfigTableInfo extends BasicMNodeInfo {
     return preDeletedColumns;
   }
 
-  public void addPreDeleteColumn(final String column) {
+  public void addPreDeletedColumn(final String column) {
     preDeletedColumns.add(column);
   }
 
