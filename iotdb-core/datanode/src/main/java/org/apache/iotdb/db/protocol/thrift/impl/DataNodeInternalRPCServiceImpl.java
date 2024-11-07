@@ -1520,7 +1520,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.TIMESERIES_VS_TABLE);
         try {
           Pair<String, TsTable> pair =
-              TsTableInternalRPCUtil.deserializeSingleTsTable(req.getTableInfo());
+              TsTableInternalRPCUtil.deserializeSingleTsTableWithDatabase(req.getTableInfo());
           DataNodeTableCache.getInstance().preUpdateTable(pair.left, pair.right);
         } finally {
           DataNodeSchemaLockManager.getInstance()

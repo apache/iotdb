@@ -2568,7 +2568,7 @@ public class ConfigManager implements IManager {
     final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       final Pair<String, TsTable> pair =
-          TsTableInternalRPCUtil.deserializeSingleTsTable(tableInfo.array());
+          TsTableInternalRPCUtil.deserializeSingleTsTableWithDatabase(tableInfo.array());
       return procedureManager.createTable(pair.left, pair.right);
     } else {
       return status;

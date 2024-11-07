@@ -3207,7 +3207,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         try {
           tsStatus =
               configNodeClient.createTable(
-                  ByteBuffer.wrap(TsTableInternalRPCUtil.serializeSingleTsTable(database, table)));
+                  ByteBuffer.wrap(
+                      TsTableInternalRPCUtil.serializeSingleTsTableWithDatabase(database, table)));
         } catch (final TTransportException e) {
           if (e.getType() == TTransportException.TIMED_OUT
               || e.getCause() instanceof SocketTimeoutException) {

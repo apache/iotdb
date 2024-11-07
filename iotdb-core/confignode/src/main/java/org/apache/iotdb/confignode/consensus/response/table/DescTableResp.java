@@ -21,8 +21,11 @@ package org.apache.iotdb.confignode.consensus.response.table;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.confignode.rpc.thrift.TDescTableResp;
 import org.apache.iotdb.consensus.common.DataSet;
 
+import java.util.Objects;
 import java.util.Set;
 
 public class DescTableResp implements DataSet {
@@ -35,5 +38,12 @@ public class DescTableResp implements DataSet {
     this.status = status;
     this.table = table;
     this.preDeletedColumns = preDeletedColumns;
+  }
+
+  public TDescTableResp convertToTDescTableResp() {
+    final TDescTableResp resp =
+        new TDescTableResp(status)
+            .setTableInfo(TsTableInternalRPCUtil.serializeSingleTsTable(table));
+    return Objects.nonNull(preDeletedColumns) ? resp.setPreDeletedColumns(preDeletedColumns) : resp;
   }
 }

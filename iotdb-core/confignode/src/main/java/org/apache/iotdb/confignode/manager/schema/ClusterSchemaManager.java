@@ -1092,7 +1092,7 @@ public class ClusterSchemaManager {
               configManager
                   .getConsensusManager()
                   .read(new DescTablePlan(database, tableName, isDetails)))
-          .convertToTShowTableResp();
+          .convertToTDescTableResp();
     } catch (final ConsensusException e) {
       LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
       final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
