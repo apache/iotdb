@@ -269,8 +269,8 @@ public class TsFileResource implements PersistentResource {
     ReadWriteIOUtils.write(maxPlanIndex, outputStream);
     ReadWriteIOUtils.write(minPlanIndex, outputStream);
 
-    if (exclusiveModFile != null && exclusiveModFile.exists()) {
-      String modFileName = exclusiveModFile.getFile().getName();
+    if (sharedModFile != null && sharedModFile.exists()) {
+      String modFileName = sharedModFile.getFile().getName();
       ReadWriteIOUtils.write(modFileName, outputStream);
     } else {
       // make the first "inputStream.available() > 0" in deserialize() happy.
