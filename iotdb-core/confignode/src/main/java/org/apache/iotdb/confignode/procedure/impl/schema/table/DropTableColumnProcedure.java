@@ -74,7 +74,7 @@ public class DropTableColumnProcedure
 
   @Override
   protected DropTableColumnState getState(final int stateId) {
-    return null;
+    return DropTableColumnState.values()[stateId];
   }
 
   @Override
@@ -84,7 +84,7 @@ public class DropTableColumnProcedure
 
   @Override
   protected DropTableColumnState getInitialState() {
-    return null;
+    return DropTableColumnState.CHECK_AND_INVALIDATE_COLUMN;
   }
 
   @Override
