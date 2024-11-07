@@ -28,15 +28,22 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -561,6 +568,56 @@ public class IoTDBDeletionTableIT {
       }
     }
     cleanData(testNum);
+  }
+
+  @Ignore
+  @Test
+  public void testDeletionPerformance() throws SQLException, IOException {
+    int fileNumMax = 10000;
+    int fileNumStep = 100;
+    int deletionRepetitions = 10;
+    List<Integer> fileNumsRecorded = new ArrayList<>();
+    List<Long> timeConsumptionNsRecorded = new ArrayList<>();
+
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET CONFIGURATION enable_seq_space_compaction='false'");
+
+      statement.execute("create database if not exists test");
+      statement.execute("use test");
+
+      statement.execute("create table table1(deviceId STRING ID, s0 INT32 MEASUREMENT)");
+
+      for (int i = 1; i <= fileNumMax; i++) {
+        statement.execute(
+            String.format("INSERT INTO test.table1(time, deviceId, s0) VALUES(%d,'d0',%d)", i, i));
+        statement.execute("FLUSH");
+
+        if (i % fileNumStep == 0) {
+          long start = System.nanoTime();
+          for (int j = 0; j < deletionRepetitions; j++) {
+            statement.execute("DELETE FROM test.table1 WHERE deviceId = 'd0'");
+          }
+          long end = System.nanoTime();
+          fileNumsRecorded.add(i);
+          long timeConsumption = (end - start) / deletionRepetitions;
+          timeConsumptionNsRecorded.add(timeConsumption);
+
+          System.out.println(i + "," + timeConsumption);
+        }
+      }
+    }
+
+    try (BufferedWriter writer = new BufferedWriter(new FileWriter("test.txt"))) {
+      writer.write(
+          fileNumsRecorded.stream().map(i -> Integer.toString(i)).collect(Collectors.joining(",")));
+      writer.write("\n");
+      writer.write(
+          timeConsumptionNsRecorded.stream()
+              .map(i -> Long.toString(i))
+              .collect(Collectors.joining(",")));
+      writer.flush();
+    }
   }
 
   private static void prepareSeries() {

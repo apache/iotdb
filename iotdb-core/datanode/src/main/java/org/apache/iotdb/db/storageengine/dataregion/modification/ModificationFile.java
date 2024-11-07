@@ -82,7 +82,6 @@ public class ModificationFile implements AutoCloseable {
       }
       entry.serialize(fileOutputStream);
       fileOutputStream.flush();
-      channel.force(false);
     } finally {
       lock.writeLock().unlock();
     }
@@ -101,7 +100,6 @@ public class ModificationFile implements AutoCloseable {
         entry.serialize(fileOutputStream);
       }
       fileOutputStream.flush();
-      channel.force(false);
     } finally {
       lock.writeLock().unlock();
     }

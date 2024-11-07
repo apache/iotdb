@@ -2566,11 +2566,28 @@ public class DataRegion implements IDataRegionForQuery {
 
   private void deleteDataInSealedFiles(Collection<TsFileResource> sealedTsFiles, ModEntry deletion)
       throws IOException {
-    List<Exception> exceptions =
-        sealedTsFiles.parallelStream()
-            .map(tsFileResource -> deleteDataInSealedFile(tsFileResource, deletion))
-            .filter(Objects::nonNull)
-            .collect(Collectors.toList());
+    Set<ModificationFile> involvedModificationFiles = new HashSet<>();
+    for (TsFileResource sealedTsFile : sealedTsFiles) {
+      if (canSkipDelete(sealedTsFile, deletion)) {
+        continue;
+      }
+
+      if (sealedTsFile.isCompacting()) {
+        involvedModificationFiles.add(sealedTsFile.getCompactionModFile());
+      }
+      involvedModificationFiles.add(sealedTsFile.getNewModFile());
+    }
+
+    List<Exception> exceptions = involvedModificationFiles.parallelStream().map(modFile -> {
+      try {
+        modFile.write(deletion);
+        modFile.close();
+      } catch (Exception e) {
+        return e;
+      }
+      return null;
+    }).collect(Collectors.toList());
+
 
     if (!exceptions.isEmpty()) {
       if (exceptions.size() == 1) {
@@ -2580,57 +2597,6 @@ public class DataRegion implements IDataRegionForQuery {
         throw new IOException(
             "Multiple errors occurred while writing mod files, see logs for details.");
       }
-    }
-  }
-
-  private Exception deleteDataInSealedFile(TsFileResource tsFileResource, ModEntry deletion) {
-    if (canSkipDelete(tsFileResource, deletion)) {
-      return null;
-    }
-
-    ModificationFile modFile = tsFileResource.getNewModFile();
-    long originSize = -1;
-    synchronized (modFile) {
-      try {
-        originSize = modFile.getSize();
-        // delete data in sealed file
-        if (tsFileResource.isCompacting()) {
-          // write deletion into compaction modification file
-          tsFileResource.getCompactionModFile().write(deletion);
-          // write deletion into modification file to enable read during compaction
-          modFile.write(deletion);
-          // remember to close mod file
-          tsFileResource.getCompactionModFile().close();
-          modFile.close();
-        } else {
-          // write deletion into modification file
-          boolean modFileExists = modFile.exists();
-
-          modFile.write(deletion);
-
-          // remember to close mod file
-          modFile.close();
-
-          if (!modFileExists) {
-            FileMetrics.getInstance().increaseModFileNum(1);
-          }
-
-          // The file size may be smaller than the original file, so the increment here may be
-          // negative
-          FileMetrics.getInstance().increaseModFileSize(modFile.getSize() - originSize);
-        }
-      } catch (Exception t) {
-        if (originSize != -1) {
-          try {
-            modFile.truncate(originSize);
-          } catch (IOException e) {
-            return e;
-          }
-        }
-        return t;
-      }
-      logger.info("[Deletion] Deletion with {} written into mods file:{}.", deletion, modFile);
-      return null;
     }
   }
 
