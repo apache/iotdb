@@ -47,6 +47,7 @@ public class DropTableColumnProcedure
   private static final Logger LOGGER = LoggerFactory.getLogger(DropTableColumnProcedure.class);
 
   private String columnName;
+  private boolean isAttributeColumn;
 
   public DropTableColumnProcedure() {
     super();
@@ -123,6 +124,7 @@ public class DropTableColumnProcedure
         SchemaUtils.executeInConsensusLayer(
             new PreDeleteColumnPlan(database, tableName, columnName), env, LOGGER);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      isAttributeColumn = status.isSetMessage();
       setNextState(DropTableColumnState.INVALIDATE_CACHE);
     } else {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
@@ -172,6 +174,7 @@ public class DropTableColumnProcedure
     super.serialize(stream);
 
     ReadWriteIOUtils.write(columnName, stream);
+    ReadWriteIOUtils.write(isAttributeColumn, stream);
   }
 
   @Override
@@ -179,15 +182,18 @@ public class DropTableColumnProcedure
     super.deserialize(byteBuffer);
 
     this.columnName = ReadWriteIOUtils.readString(byteBuffer);
+    this.isAttributeColumn = ReadWriteIOUtils.readBool(byteBuffer);
   }
 
   @Override
   public boolean equals(final Object o) {
-    return super.equals(o) && Objects.equals(columnName, ((DropTableColumnProcedure) o).columnName);
+    return super.equals(o)
+        && Objects.equals(columnName, ((DropTableColumnProcedure) o).columnName)
+        && Objects.equals(isAttributeColumn, ((DropTableColumnProcedure) o).isAttributeColumn);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), columnName);
+    return Objects.hash(super.hashCode(), columnName, isAttributeColumn);
   }
 }
