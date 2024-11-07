@@ -64,7 +64,7 @@ public class PipeNowFunctionIT extends AbstractPipeDualAutoIT {
 
       extractorAttributes.put("source.start-time", "now");
       extractorAttributes.put("source.end-time", "now");
-      extractorAttributes.put("source.history-start-time", "now");
+      extractorAttributes.put("source.history.start-time", "now");
       extractorAttributes.put("source.history-end-time", "now");
       extractorAttributes.put("source.history.enable", "true");
 
@@ -83,7 +83,7 @@ public class PipeNowFunctionIT extends AbstractPipeDualAutoIT {
       extractorAttributes.clear();
       extractorAttributes.put("start-time", "now");
       extractorAttributes.put("end-time", "now");
-      extractorAttributes.put("history-start-time", "now");
+      extractorAttributes.put("history.start-time", "now");
       extractorAttributes.put("history-end-time", "now");
       extractorAttributes.put("history.enable", "true");
 
@@ -97,7 +97,7 @@ public class PipeNowFunctionIT extends AbstractPipeDualAutoIT {
       extractorAttributes.clear();
       extractorAttributes.put("extractor.start-time", "now");
       extractorAttributes.put("extractor.end-time", "now");
-      extractorAttributes.put("extractor.history-start-time", "now");
+      extractorAttributes.put("extractor.history.start-time", "now");
       extractorAttributes.put("extractor.history-end-time", "now");
       extractorAttributes.put("history.enable", "true");
 
@@ -122,7 +122,7 @@ public class PipeNowFunctionIT extends AbstractPipeDualAutoIT {
       extractorAttributes.clear();
       extractorAttributes.put("extractor.start-time", "now");
       extractorAttributes.put("extractor.end-time", "now");
-      extractorAttributes.put("extractor.history-start-time", "now");
+      extractorAttributes.put("extractor.history.start-time", "now");
       extractorAttributes.put("extractor.history-end-time", "now");
       client.alterPipe(
           new TAlterPipeReq()
@@ -141,7 +141,7 @@ public class PipeNowFunctionIT extends AbstractPipeDualAutoIT {
       extractorAttributes.clear();
       extractorAttributes.put("start-time", "now");
       extractorAttributes.put("end-time", "now");
-      extractorAttributes.put("history-start-time", "now");
+      extractorAttributes.put("history.start-time", "now");
       extractorAttributes.put("history-end-time", "now");
       client.alterPipe(
           new TAlterPipeReq()
@@ -179,7 +179,7 @@ public class PipeNowFunctionIT extends AbstractPipeDualAutoIT {
                 + "'extractor.history.enable'='true',"
                 + "'source.start-time'='now',"
                 + "'source.end-time'='now',"
-                + "'source.history-start-time'='now',"
+                + "'source.history.start-time'='now',"
                 + "'source.history-end-time'='now')"
                 + " with connector ("
                 + "'connector'='iotdb-thrift-connector',"
@@ -201,7 +201,7 @@ public class PipeNowFunctionIT extends AbstractPipeDualAutoIT {
                 + "'extractor.history.enable'='true',"
                 + "'start-time'='now',"
                 + "'end-time'='now',"
-                + "'history-start-time'='now',"
+                + "'history.start-time'='now',"
                 + "'history-end-time'='now')"
                 + " with connector ("
                 + "'connector'='iotdb-thrift-connector',"
@@ -223,7 +223,7 @@ public class PipeNowFunctionIT extends AbstractPipeDualAutoIT {
                 + "'extractor.history.enable'='true',"
                 + "'extractor.start-time'='now',"
                 + "'extractor.end-time'='now',"
-                + "'extractor.history-start-time'='now',"
+                + "'extractor.history.start-time'='now',"
                 + "'extractor.history-end-time'='now')"
                 + " with connector ("
                 + "'connector'='iotdb-thrift-connector',"
@@ -244,7 +244,7 @@ public class PipeNowFunctionIT extends AbstractPipeDualAutoIT {
             + "'history.enable'='true',"
             + "'start-time'='now',"
             + "'end-time'='now',"
-            + "'history-start-time'='now',"
+            + "'history.start-time'='now',"
             + "'history-end-time'='now')";
     try (final Connection connection = senderEnv.getConnection(dialect);
         final Statement statement = connection.createStatement()) {
@@ -259,7 +259,7 @@ public class PipeNowFunctionIT extends AbstractPipeDualAutoIT {
             + "'extractor.history.enable'='true',"
             + "'extractor.start-time'='now',"
             + "'extractor.end-time'='now',"
-            + "'extractor.history-start-time'='now',"
+            + "'extractor.history.start-time'='now',"
             + "'extractor.history-end-time'='now')";
     try (final Connection connection = senderEnv.getConnection(dialect);
         final Statement statement = connection.createStatement()) {
@@ -274,7 +274,7 @@ public class PipeNowFunctionIT extends AbstractPipeDualAutoIT {
             + "'extractor.history.enable'='true',"
             + "'source.start-time'='now',"
             + "'source.end-time'='now',"
-            + "'source.history-start-time'='now',"
+            + "'source.history.start-time'='now',"
             + "'source.history-end-time'='now')";
     try (final Connection connection = senderEnv.getConnection(dialect);
         final Statement statement = connection.createStatement()) {
