@@ -93,7 +93,7 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
           break;
         case INVALIDATE_CACHE:
           LOGGER.info(
-              "Invalidating cache for table {}.{} when invalidating cache", database, tableName);
+              "Invalidating cache for table {}.{} when dropping table", database, tableName);
           invalidateCache(env);
           break;
         case DELETE_DATA:

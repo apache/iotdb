@@ -27,6 +27,8 @@ import org.apache.iotdb.confignode.procedure.state.schema.DropTableColumnState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -35,6 +37,8 @@ import java.util.Objects;
 
 public class DropTableColumnProcedure
     extends AbstractAlterOrDropTableProcedure<DropTableColumnState> {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(DropTableColumnProcedure.class);
 
   private String columnName;
 
@@ -60,17 +64,66 @@ public class DropTableColumnProcedure
 
   @Override
   protected Flow executeFromState(
-      final ConfigNodeProcedureEnv configNodeProcedureEnv,
-      final DropTableColumnState dropTableColumnState)
+      final ConfigNodeProcedureEnv env, final DropTableColumnState state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
-    return null;
+    final long startTime = System.currentTimeMillis();
+    try {
+      switch (state) {
+        case CHECK_AND_INVALIDATE_COLUMN:
+          LOGGER.info(
+              "Check and invalidate column {} in {}.{} when dropping column",
+              columnName,
+              database,
+              table.getTableName());
+          checkTableExistence(env);
+          break;
+        case INVALIDATE_CACHE:
+          LOGGER.info(
+              "Invalidating cache for column {} in {}.{} when dropping column",
+              columnName,
+              database,
+              table.getTableName());
+          preCreateTable(env);
+          break;
+        case EXECUTE_ON_REGION:
+          LOGGER.info(
+              "Executing on region for column {} in {}.{} when dropping column",
+              columnName,
+              database,
+              table.getTableName());
+          preReleaseTable(env);
+          break;
+        case DROP_COLUMN:
+          LOGGER.info("Dropping column {} in {}.{} on configNode", columnName, database, tableName);
+          validateTimeSeriesExistence(env);
+          return Flow.NO_MORE_STATE;
+        default:
+          setFailure(new ProcedureException("Unrecognized CreateTableState " + state));
+          return Flow.NO_MORE_STATE;
+      }
+      return Flow.HAS_MORE_STATE;
+    } finally {
+      LOGGER.info(
+          "DropTableColumn-{}.{}-{} costs {}ms",
+          database,
+          table.getTableName(),
+          state,
+          (System.currentTimeMillis() - startTime));
+    }
+  }
+
+  @Override
+  protected boolean isRollbackSupported(final DropTableColumnState state) {
+    return false;
   }
 
   @Override
   protected void rollbackState(
       final ConfigNodeProcedureEnv configNodeProcedureEnv,
-      final DropTableColumnState dropTableColumnState)
-      throws IOException, InterruptedException, ProcedureException {}
+      final DropTableColumnState dropTableState)
+      throws IOException, InterruptedException, ProcedureException {
+    // Do nothing
+  }
 
   @Override
   protected DropTableColumnState getState(final int stateId) {
@@ -79,7 +132,7 @@ public class DropTableColumnProcedure
 
   @Override
   protected int getStateId(final DropTableColumnState dropTableColumnState) {
-    return 0;
+    return dropTableColumnState.ordinal();
   }
 
   @Override
