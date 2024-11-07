@@ -67,7 +67,7 @@ public class BatchCompactionPlan {
             chunk.getData(),
             chunk.getDeleteIntervalList(),
             chunk.getChunkStatistic(),
-            chunk.getDecryptor()));
+            chunk.getEncryptParam()));
     cachedTimeChunkSize += chunk.getHeader().getDataSize();
   }
 
