@@ -107,6 +107,10 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
     tableDeviceNumber.compute(table, (tableName, num) -> Objects.nonNull(num) ? num + 1 : 1L);
   }
 
+  public void decreaseTableDevice(final String table, final long decrease) {
+    tableDeviceNumber.computeIfPresent(table, (tableName, num) -> num - decrease);
+  }
+
   public void resetTableDevice(final String table) {
     tableDeviceNumber.computeIfPresent(table, (tableName, num) -> 0L);
   }

@@ -32,8 +32,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
@@ -336,6 +338,9 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> dropTable(
       final String database, final String tableName, final String queryId, final boolean ifExists);
+
+  SettableFuture<ConfigTaskResult> deleteDevice(
+      final DeleteDevice deleteDevice, final String queryId, final SessionInfo sessionInfo);
 
   SettableFuture<ConfigTaskResult> showVersion();
 

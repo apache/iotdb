@@ -545,15 +545,15 @@ public class IoTDBStatement implements Statement {
     throw new SQLException(NOT_SUPPORT_EXECUTE_UPDATE);
   }
 
-  private int executeUpdateSQL(String sql) throws TException, IoTDBSQLException {
-    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
-    TSExecuteStatementResp execResp = client.executeUpdateStatement(execReq);
+  private int executeUpdateSQL(final String sql) throws TException, IoTDBSQLException {
+    final TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
+    final TSExecuteStatementResp execResp = client.executeUpdateStatement(execReq);
     if (execResp.isSetQueryId()) {
       queryId = execResp.getQueryId();
     }
     try {
       RpcUtils.verifySuccess(execResp.getStatus());
-    } catch (StatementExecutionException e) {
+    } catch (final StatementExecutionException e) {
       throw new IoTDBSQLException(e.getMessage(), execResp.getStatus());
     }
     return 0;

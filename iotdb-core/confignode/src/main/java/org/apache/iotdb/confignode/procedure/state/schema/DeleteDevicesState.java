@@ -17,11 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.schemaengine.schemaregion;
+package org.apache.iotdb.confignode.procedure.state.schema;
 
-public interface ISchemaRegionPlan {
-
-  SchemaRegionPlanType getPlanType();
-
-  <R, C> R accept(final SchemaRegionPlanVisitor<R, C> visitor, final C context);
+public enum DeleteDevicesState {
+  CHECK_TABLE_EXISTENCE,
+  CONSTRUCT_BLACK_LIST,
+  CLEAN_DATANODE_SCHEMA_CACHE,
+  DELETE_DATA,
+  DELETE_DEVICE_SCHEMA
 }

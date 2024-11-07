@@ -420,7 +420,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     final Map<Symbol, List<InputLocation>> outputMappings = new LinkedHashMap<>();
     int tsBlockIndex = 0;
     for (final PlanNode childNode : children) {
-
       int valueColumnIndex = 0;
       for (final Symbol columnName : childNode.getOutputSymbols()) {
         outputMappings

@@ -43,14 +43,14 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
   protected final ColumnTransformer filterOutputTransformer;
   private final List<TSDataType> inputDataTypes;
   private final String database;
-  private final String tableName;
+  protected final String tableName;
   private final List<ColumnHeader> columnHeaderList;
 
   // Batch logic
-  private static final int DEFAULT_MAX_TS_BLOCK_SIZE_IN_BYTES =
-      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+  protected static final int DEFAULT_MAX_TS_BLOCK_LINE_NUMBER =
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
   protected final List<IDeviceSchemaInfo> deviceSchemaBatch =
-      new ArrayList<>(DEFAULT_MAX_TS_BLOCK_SIZE_IN_BYTES);
+      new ArrayList<>(DEFAULT_MAX_TS_BLOCK_LINE_NUMBER);
 
   protected final List<Integer> indexes = new ArrayList<>();
   protected TsBlock curBlock;
@@ -73,7 +73,7 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
 
   public void addBatch(final IDeviceSchemaInfo deviceSchemaInfo) {
     deviceSchemaBatch.add(deviceSchemaInfo);
-    if (deviceSchemaBatch.size() >= DEFAULT_MAX_TS_BLOCK_SIZE_IN_BYTES) {
+    if (deviceSchemaBatch.size() >= DEFAULT_MAX_TS_BLOCK_LINE_NUMBER) {
       prepareBatchResult();
     }
   }
