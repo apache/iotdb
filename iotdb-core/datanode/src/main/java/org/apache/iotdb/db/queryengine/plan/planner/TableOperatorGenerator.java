@@ -1508,6 +1508,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   private Comparator<SortKey> genGroupKeyComparator(
       List<Type> groupTypes, List<Integer> groupByChannels) {
     return getComparatorForTable(
+        // SortOrder is not sensitive here, the comparator is just used to judge equality.
         groupTypes.stream().map(k -> ASC_NULLS_LAST).collect(Collectors.toList()),
         groupByChannels,
         groupTypes.stream().map(InternalTypeManager::getTSDataType).collect(Collectors.toList()));
