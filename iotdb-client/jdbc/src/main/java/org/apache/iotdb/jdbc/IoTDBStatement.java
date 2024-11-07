@@ -30,6 +30,7 @@ import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
 import org.apache.tsfile.common.conf.TSFileConfig;
 
@@ -765,5 +766,13 @@ public class IoTDBStatement implements Statement {
 
   public int getTimeFactor() {
     return connection.getTimeFactor();
+  }
+
+  public String getSqlDialect() {
+    if (connection != null && StringUtils.isNotBlank(connection.getSqlDialect())) {
+      return connection.getSqlDialect().toLowerCase();
+    } else {
+      return "tree";
+    }
   }
 }
