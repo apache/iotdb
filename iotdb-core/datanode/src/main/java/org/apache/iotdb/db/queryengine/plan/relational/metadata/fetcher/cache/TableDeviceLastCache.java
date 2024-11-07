@@ -105,6 +105,10 @@ public class TableDeviceLastCache {
                   .tryGetInternColumnName(database, tableName, measurement)
               : measurement;
 
+      // Removing table measurement, do not put cache
+      if (Objects.isNull(finalMeasurement)) {
+        continue;
+      }
       final TimeValuePair newPair = isInvalidate ? null : PLACEHOLDER_TIME_VALUE_PAIR;
 
       measurement2CachedLastMap.compute(

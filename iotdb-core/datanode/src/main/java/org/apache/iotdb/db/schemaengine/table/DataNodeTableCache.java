@@ -386,7 +386,7 @@ public class DataNodeTableCache implements ITableCache {
           .getColumnSchema(columnName)
           .getColumnName();
     } catch (final Exception e) {
-      return columnName;
+      return null;
     }
   }
 

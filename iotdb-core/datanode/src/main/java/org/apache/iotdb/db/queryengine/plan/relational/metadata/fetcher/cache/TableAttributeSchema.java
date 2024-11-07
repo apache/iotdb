@@ -48,6 +48,10 @@ public class TableAttributeSchema implements IDeviceSchema {
           if (v != Binary.EMPTY_VALUE) {
             if (!attributeMap.containsKey(k)) {
               k = DataNodeTableCache.getInstance().tryGetInternColumnName(database, tableName, k);
+              // Removing attribute column, do not put cache
+              if (Objects.isNull(k)) {
+                return;
+              }
             }
             final Binary previousValue = attributeMap.put(k, v);
             final long newValueSize = UpdateDetailContainer.sizeOf(v);
