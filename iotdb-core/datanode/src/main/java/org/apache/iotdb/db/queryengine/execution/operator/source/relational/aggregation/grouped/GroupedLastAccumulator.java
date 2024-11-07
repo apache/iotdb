@@ -188,8 +188,10 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
   @Override
   public void addIntermediate(int[] groupIds, Column argument) {
     checkArgument(
-        argument instanceof BinaryColumn || argument instanceof RunLengthEncodedColumn,
-        "intermediate input and output should be BinaryColumn");
+        argument instanceof BinaryColumn
+            || (argument instanceof RunLengthEncodedColumn
+                && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
+        "intermediate input and output of Last should be BinaryColumn");
 
     for (int i = 0; i < groupIds.length; i++) {
       if (argument.isNull(i)) {
@@ -242,7 +244,7 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
   public void evaluateIntermediate(int groupId, ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of should be BinaryColumn");
+        "intermediate input and output of Last should be BinaryColumn");
     if (maxTimes.get(groupId) == Long.MIN_VALUE) {
       columnBuilder.appendNull();
     } else {

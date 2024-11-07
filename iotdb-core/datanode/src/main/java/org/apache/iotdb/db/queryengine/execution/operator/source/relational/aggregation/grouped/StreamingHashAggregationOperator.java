@@ -27,8 +27,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.builder.InMemoryHashAggregationBuilder;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.db.utils.datastructure.SortKey;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.primitives.Ints;
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.Column;
@@ -37,15 +37,16 @@ import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory.NOOP;
-import static org.apache.iotdb.db.queryengine.plan.relational.utils.TypeUtil.rowNotDistinctFromRow;
 
 public class StreamingHashAggregationOperator extends AbstractOperator {
   private static final long INSTANCE_SIZE =
@@ -55,7 +56,6 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
 
   private final Operator child;
 
-  private final Type[] preGroupedTypes;
   private final int[] preGroupedChannels;
 
   // used for build result
@@ -74,7 +74,8 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
   private boolean finished = false;
 
   // cached current group to judge row equality and construct preGroupedColumn in result
-  private TsBlock currentGroup;
+  private SortKey currentGroup;
+  private final Comparator<SortKey> groupKeyComparator;
 
   // more than one Blocks may be produced:
   // 1. more than one group in input block
@@ -84,9 +85,12 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
   public StreamingHashAggregationOperator(
       OperatorContext operatorContext,
       Operator child,
-      List<Boolean> isPreGroupedList,
-      List<Type> groupByTypes,
-      List<Integer> groupByChannels,
+      List<Integer> preGroupedChannels,
+      List<Integer> preGroupedIndexInResult,
+      List<Type> unPreGroupedTypes,
+      List<Integer> unPreGroupedChannels,
+      List<Integer> unPreGroupedIndexInResult,
+      Comparator<SortKey> groupKeyComparator,
       List<GroupedAggregator> aggregators,
       AggregationNode.Step step,
       int expectedGroups,
@@ -96,33 +100,17 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
     this.operatorContext = operatorContext;
     this.child = child;
 
-    ImmutableList.Builder<Type> preGroupedTypesBuilder = new ImmutableList.Builder<>();
-    ImmutableList.Builder<Integer> preGroupedChannelsBuilder = new ImmutableList.Builder<>();
-    ImmutableList.Builder<Integer> preGroupedIndexInResultBuilder = new ImmutableList.Builder<>();
-    ImmutableList.Builder<Type> unPreGroupedTypesBuilder = new ImmutableList.Builder<>();
-    ImmutableList.Builder<Integer> unPreGroupedChannelsBuilder = new ImmutableList.Builder<>();
-    ImmutableList.Builder<Integer> unPreGroupedIndexInResultBuilder = new ImmutableList.Builder<>();
-    for (int i = 0; i < isPreGroupedList.size(); i++) {
-      if (isPreGroupedList.get(i)) {
-        preGroupedTypesBuilder.add(groupByTypes.get(i));
-        preGroupedChannelsBuilder.add(groupByChannels.get(i));
-        preGroupedIndexInResultBuilder.add(i);
-      } else {
-        unPreGroupedTypesBuilder.add(groupByTypes.get(i));
-        unPreGroupedChannelsBuilder.add(groupByChannels.get(i));
-        unPreGroupedIndexInResultBuilder.add(i);
-      }
-    }
-    this.preGroupedTypes = preGroupedTypesBuilder.build().toArray(new Type[0]);
-    this.preGroupedChannels = Ints.toArray(preGroupedChannelsBuilder.build());
-    List<Type> unPreGroupedTypes = unPreGroupedTypesBuilder.build();
-    List<Integer> unPreGroupedChannelList = unPreGroupedChannelsBuilder.build();
+    this.preGroupedChannels = Ints.toArray(preGroupedChannels);
+    this.preGroupedIndexInResult = Ints.toArray(preGroupedIndexInResult);
+    this.unPreGroupedIndexInResult = Ints.toArray(unPreGroupedIndexInResult);
 
-    this.preGroupedIndexInResult = Ints.toArray(preGroupedIndexInResultBuilder.build());
-    this.unPreGroupedIndexInResult = Ints.toArray(unPreGroupedIndexInResultBuilder.build());
+    this.groupKeyComparator = groupKeyComparator;
 
     this.valueColumnsCount = aggregators.size();
-    this.resultColumnsCount = groupByTypes.size() + aggregators.size();
+    this.resultColumnsCount =
+        this.preGroupedIndexInResult.length
+            + this.unPreGroupedIndexInResult.length
+            + aggregators.size();
     checkArgument(!spillEnabled, "spill is not supported");
     aggregationBuilder =
         new InMemoryHashAggregationBuilder(
@@ -130,7 +118,7 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
             step,
             expectedGroups,
             unPreGroupedTypes,
-            unPreGroupedChannelList,
+            unPreGroupedChannels,
             Optional.empty(),
             operatorContext,
             maxPartialMemory,
@@ -179,12 +167,14 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
     } else {
       // last evaluate
       if (currentGroup != null) {
-        evaluateAndFlushGroup(currentGroup, 0);
+        evaluateAndFlushGroup(currentGroup.tsBlock, currentGroup.rowIndex);
         currentGroup = null;
       }
       finished = true;
       closeAggregationBuilder();
     }
+    checkState(!outputs.isEmpty(), "outputs should always not be empty here");
+
     resultTsBlock = outputs.removeFirst();
     return checkTsBlockSizeAndGetResult();
   }
@@ -192,12 +182,10 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
   private void processInput(TsBlock page) {
     requireNonNull(page, "page is null");
 
-    Column[] groupByPage = page.getColumns(preGroupedChannels);
     if (currentGroup != null) {
-      if (!rowNotDistinctFromRow(
-          preGroupedTypes, 0, currentGroup.getColumns(preGroupedChannels), 0, groupByPage)) {
+      if (groupKeyComparator.compare(currentGroup, new SortKey(page, 0)) != 0) {
         // page starts with new group, so flush it
-        evaluateAndFlushGroup(currentGroup, 0);
+        evaluateAndFlushGroup(currentGroup.tsBlock, currentGroup.rowIndex);
       }
       currentGroup = null;
     }
@@ -205,7 +193,7 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
     int startPosition = 0;
     while (true) {
       // may be equal to page.getPositionCount() if the end is not found in this page
-      int nextGroupStart = findNextGroupStart(startPosition, groupByPage);
+      int nextGroupStart = findNextGroupStart(startPosition, page);
       addRowsToAggregationBuilder(page, startPosition, nextGroupStart - 1);
 
       if (nextGroupStart < page.getPositionCount()) {
@@ -215,7 +203,7 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
       } else {
         // late materialization requires that page being locally stored is materialized before the
         // next one is fetched
-        currentGroup = page.getRegion(page.getPositionCount() - 1, 1);
+        currentGroup = new SortKey(page, page.getPositionCount() - 1);
         return;
       }
     }
@@ -266,10 +254,10 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
     resetAggregationBuilder();
   }
 
-  private int findNextGroupStart(int startPosition, Column[] page) {
-    int positionCount = page[0].getPositionCount();
+  private int findNextGroupStart(int startPosition, TsBlock page) {
+    int positionCount = page.getPositionCount();
     for (int i = startPosition + 1; i < positionCount; i++) {
-      if (!rowNotDistinctFromRow(preGroupedTypes, startPosition, page, i, page)) {
+      if (groupKeyComparator.compare(new SortKey(page, startPosition), new SortKey(page, i)) != 0) {
         return i;
       }
     }

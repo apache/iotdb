@@ -56,7 +56,7 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
   @Override
   public PlanNode optimize(PlanNode plan, PlanOptimizer.Context context) {
     if (!(context.getAnalysis().getStatement() instanceof Query)
-        || !context.getAnalysis().isAggregationQuery()) {
+        || !context.getAnalysis().containsAggregationQuery()) {
       return plan;
     }
 

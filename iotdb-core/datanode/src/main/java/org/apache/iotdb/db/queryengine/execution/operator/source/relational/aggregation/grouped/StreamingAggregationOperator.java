@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAggregator;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
+import org.apache.iotdb.db.utils.datastructure.SortKey;
 
 import com.google.common.primitives.Ints;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -37,6 +38,7 @@ import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.LinkedList;
 import java.util.List;
@@ -44,9 +46,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.queryengine.plan.relational.utils.TypeUtil.appendTo;
-import static org.apache.iotdb.db.queryengine.plan.relational.utils.TypeUtil.rowNotDistinctFromRow;
 
 public class StreamingAggregationOperator extends AbstractOperator {
   private static final long INSTANCE_SIZE =
@@ -58,7 +59,6 @@ public class StreamingAggregationOperator extends AbstractOperator {
 
   private final List<TableAggregator> aggregators;
 
-  private final Type[] groupByTypes;
   private final int[] groupByChannels;
 
   private final TsBlockBuilder resultBuilder;
@@ -67,7 +67,8 @@ public class StreamingAggregationOperator extends AbstractOperator {
   private boolean finished = false;
 
   // cached current group to judge row equality
-  private TsBlock currentGroup;
+  private SortKey currentGroup;
+  private final Comparator<SortKey> groupKeyComparator;
 
   // more than one group in input block
   private final Deque<TsBlock> outputs = new LinkedList<>();
@@ -77,14 +78,15 @@ public class StreamingAggregationOperator extends AbstractOperator {
       Operator child,
       List<Type> groupByTypes,
       List<Integer> groupByChannels,
+      Comparator<SortKey> groupKeyComparator,
       List<TableAggregator> aggregators,
       long maxPartialMemory,
       boolean spillEnabled,
       long unSpillMemoryLimit) {
     this.operatorContext = operatorContext;
     this.child = child;
-    this.groupByTypes = groupByTypes.toArray(new Type[0]);
     this.groupByChannels = Ints.toArray(groupByChannels);
+    this.groupKeyComparator = groupKeyComparator;
     this.aggregators = aggregators;
     this.resultBuilder =
         new TsBlockBuilder(
@@ -132,11 +134,13 @@ public class StreamingAggregationOperator extends AbstractOperator {
     } else {
       // last evaluate
       if (currentGroup != null) {
-        evaluateAndFlushGroup(currentGroup, 0, true);
+        evaluateAndFlushGroup(currentGroup.tsBlock, currentGroup.rowIndex, true);
         currentGroup = null;
       }
       finished = true;
     }
+    checkState(!outputs.isEmpty(), "outputs should always not be empty here");
+
     resultTsBlock = outputs.removeFirst();
     return checkTsBlockSizeAndGetResult();
   }
@@ -144,12 +148,10 @@ public class StreamingAggregationOperator extends AbstractOperator {
   private void processInput(TsBlock page) {
     requireNonNull(page, "page is null");
 
-    Column[] groupByPage = page.getColumns(groupByChannels);
     if (currentGroup != null) {
-      if (!rowNotDistinctFromRow(
-          groupByTypes, 0, currentGroup.getColumns(groupByChannels), 0, groupByPage)) {
+      if (groupKeyComparator.compare(currentGroup, new SortKey(page, 0)) != 0) {
         // page starts with new group, so flush it
-        evaluateAndFlushGroup(currentGroup, 0, false);
+        evaluateAndFlushGroup(currentGroup.tsBlock, currentGroup.rowIndex, false);
       }
       currentGroup = null;
     }
@@ -157,7 +159,7 @@ public class StreamingAggregationOperator extends AbstractOperator {
     int startPosition = 0;
     while (true) {
       // may be equal to page.getPositionCount() if the end is not found in this page
-      int nextGroupStart = findNextGroupStart(startPosition, groupByPage);
+      int nextGroupStart = findNextGroupStart(startPosition, page);
       addRowsToAggregators(page, startPosition, nextGroupStart - 1);
 
       if (nextGroupStart < page.getPositionCount()) {
@@ -167,7 +169,7 @@ public class StreamingAggregationOperator extends AbstractOperator {
       } else {
         // late materialization requires that page being locally stored is materialized before the
         // next one is fetched
-        currentGroup = page.getRegion(page.getPositionCount() - 1, 1);
+        currentGroup = new SortKey(page, page.getPositionCount() - 1);
         return;
       }
     }
@@ -188,38 +190,34 @@ public class StreamingAggregationOperator extends AbstractOperator {
 
   private void evaluateAndFlushGroup(TsBlock page, int position, boolean lastCalculate) {
     resultBuilder.declarePosition();
-    for (int i = 0; i < groupByTypes.length; i++) {
+    for (int i = 0; i < groupByChannels.length; i++) {
       Column input = page.getColumn(groupByChannels[i]);
-      Type type = groupByTypes[i];
-      appendTo(type, input, position, resultColumnsBuilder[i]);
+      if (input.isNull(position)) {
+        resultColumnsBuilder[i].appendNull();
+      } else {
+        resultColumnsBuilder[i].write(input, position);
+      }
     }
-    int offset = groupByTypes.length;
+    int offset = groupByChannels.length;
     for (int i = 0; i < aggregators.size(); i++) {
       aggregators.get(i).evaluate(resultColumnsBuilder[offset + i]);
     }
 
     if (lastCalculate || resultBuilder.isFull()) {
-      Column[] result = new Column[resultColumnsBuilder.length];
-      for (int i = 0; i < resultColumnsBuilder.length; i++) {
-        result[i] = resultColumnsBuilder[i].build();
-      }
-
       outputs.add(
-          TsBlock.wrapBlocksWithoutCopy(
-              resultBuilder.getPositionCount(),
+          resultBuilder.build(
               new RunLengthEncodedColumn(
-                  TableScanOperator.TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount()),
-              result));
+                  TableScanOperator.TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount())));
       resultBuilder.reset();
     }
 
     resetAggregationBuilder();
   }
 
-  private int findNextGroupStart(int startPosition, Column[] page) {
-    int positionCount = page[0].getPositionCount();
+  private int findNextGroupStart(int startPosition, TsBlock page) {
+    int positionCount = page.getPositionCount();
     for (int i = startPosition + 1; i < positionCount; i++) {
-      if (!rowNotDistinctFromRow(groupByTypes, startPosition, page, i, page)) {
+      if (groupKeyComparator.compare(new SortKey(page, startPosition), new SortKey(page, i)) != 0) {
         return i;
       }
     }

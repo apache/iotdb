@@ -238,8 +238,10 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
   @Override
   public void addIntermediate(int[] groupIds, Column argument) {
     checkArgument(
-        argument instanceof BinaryColumn || argument instanceof RunLengthEncodedColumn,
-        "intermediate input and output of LastBy should be BinaryColumn");
+        argument instanceof BinaryColumn
+            || (argument instanceof RunLengthEncodedColumn
+                && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
+        "intermediate input and output of FirstBy should be BinaryColumn");
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {

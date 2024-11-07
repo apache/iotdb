@@ -239,7 +239,9 @@ public class GroupedLastByAccumulator implements GroupedAccumulator {
   @Override
   public void addIntermediate(int[] groupIds, Column argument) {
     checkArgument(
-        argument instanceof BinaryColumn || argument instanceof RunLengthEncodedColumn,
+        argument instanceof BinaryColumn
+            || (argument instanceof RunLengthEncodedColumn
+                && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
         "intermediate input and output of LastBy should be BinaryColumn");
 
     for (int i = 0; i < argument.getPositionCount(); i++) {

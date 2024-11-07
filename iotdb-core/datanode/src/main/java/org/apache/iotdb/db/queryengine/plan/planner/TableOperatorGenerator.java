@@ -1432,6 +1432,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             child,
             groupByTypes,
             groupByChannels,
+            genGroupKeyComparator(groupByTypes, groupByChannels),
             aggregatorBuilder.build(),
             Long.MAX_VALUE,
             false,
@@ -1444,16 +1445,38 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               (k, v) ->
                   aggregatorBuilder.add(
                       buildGroupByAggregator(childLayout, k, v, node.getStep(), typeProvider)));
-      Set<Symbol> preGroupingKeys = ImmutableSet.copyOf(node.getPreGroupedSymbols());
 
+      Set<Symbol> preGroupedKeys = ImmutableSet.copyOf(node.getPreGroupedSymbols());
+      List<Symbol> groupingKeys = node.getGroupingKeys();
+      ImmutableList.Builder<Type> preGroupedTypesBuilder = new ImmutableList.Builder<>();
+      ImmutableList.Builder<Integer> preGroupedChannelsBuilder = new ImmutableList.Builder<>();
+      ImmutableList.Builder<Integer> preGroupedIndexInResultBuilder = new ImmutableList.Builder<>();
+      ImmutableList.Builder<Type> unPreGroupedTypesBuilder = new ImmutableList.Builder<>();
+      ImmutableList.Builder<Integer> unPreGroupedChannelsBuilder = new ImmutableList.Builder<>();
+      ImmutableList.Builder<Integer> unPreGroupedIndexInResultBuilder =
+          new ImmutableList.Builder<>();
+      for (int i = 0; i < groupByTypes.size(); i++) {
+        if (preGroupedKeys.contains(groupingKeys.get(i))) {
+          preGroupedTypesBuilder.add(groupByTypes.get(i));
+          preGroupedChannelsBuilder.add(groupByChannels.get(i));
+          preGroupedIndexInResultBuilder.add(i);
+        } else {
+          unPreGroupedTypesBuilder.add(groupByTypes.get(i));
+          unPreGroupedChannelsBuilder.add(groupByChannels.get(i));
+          unPreGroupedIndexInResultBuilder.add(i);
+        }
+      }
+
+      List<Integer> preGroupedChannels = preGroupedChannelsBuilder.build();
       return new StreamingHashAggregationOperator(
           operatorContext,
           child,
-          node.getGroupingKeys().stream()
-              .map(preGroupingKeys::contains)
-              .collect(Collectors.toList()),
-          groupByTypes,
-          groupByChannels,
+          preGroupedChannels,
+          preGroupedIndexInResultBuilder.build(),
+          unPreGroupedTypesBuilder.build(),
+          unPreGroupedChannelsBuilder.build(),
+          unPreGroupedIndexInResultBuilder.build(),
+          genGroupKeyComparator(preGroupedTypesBuilder.build(), preGroupedChannels),
           aggregatorBuilder.build(),
           node.getStep(),
           64,
@@ -1480,6 +1503,14 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         Long.MAX_VALUE,
         false,
         Long.MAX_VALUE);
+  }
+
+  private Comparator<SortKey> genGroupKeyComparator(
+      List<Type> groupTypes, List<Integer> groupByChannels) {
+    return getComparatorForTable(
+        groupTypes.stream().map(k -> ASC_NULLS_LAST).collect(Collectors.toList()),
+        groupByChannels,
+        groupTypes.stream().map(InternalTypeManager::getTSDataType).collect(Collectors.toList()));
   }
 
   private static List<Integer> getChannelsForSymbols(
