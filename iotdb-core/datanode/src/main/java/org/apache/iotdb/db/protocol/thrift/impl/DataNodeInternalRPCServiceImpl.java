@@ -1581,8 +1581,19 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus invalidateCacheForDropColumn(final TInvalidateColumnCacheReq req) {
-    return null;
+  public TSStatus invalidateColumnCache(final TInvalidateColumnCacheReq req) {
+    DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
+    try {
+      TableDeviceSchemaCache.getInstance()
+          .invalidate(
+              req.getDatabase(),
+              req.getTableName(),
+              req.getColumnName(),
+              req.isIsAttributeColumn());
+      return StatusUtils.OK;
+    } finally {
+      DataNodeSchemaLockManager.getInstance().releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
+    }
   }
 
   public TTestConnectionResp submitTestConnectionTask(TNodeLocations nodeLocations) {

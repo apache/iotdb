@@ -541,6 +541,21 @@ public class TableDeviceSchemaCache {
     }
   }
 
+  public void invalidate(
+      final String database,
+      final String tableName,
+      final String columnName,
+      final boolean isAttributeColumn) {
+    readWriteLock.writeLock().lock();
+    try {
+      // Table cache's invalidate must be guarded by this lock
+      DataNodeTableCache.getInstance().invalid(database, tableName, columnName);
+      dualKeyCache.invalidate(new TableId(database, tableName));
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
   public void invalidateLastCache() {
     readWriteLock.writeLock().lock();
     try {

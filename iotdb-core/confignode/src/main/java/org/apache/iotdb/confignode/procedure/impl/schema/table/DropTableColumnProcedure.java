@@ -69,8 +69,6 @@ public class DropTableColumnProcedure
     this.columnName = columnName;
   }
 
-  // Check and pre(>1 measurement) -> pre re + commit -> data -> commit CN(non-rollback-able)
-  // Check and pre -> pre re -> SR -> CN -> commit Re(rollback-able)
   @Override
   protected String getActionMessage() {
     return "drop table column";
