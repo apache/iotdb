@@ -29,7 +29,10 @@ public class ConfigTableInfo extends BasicMNodeInfo {
 
   private TableNodeStatus status;
 
-  public ConfigTableInfo(String name) {
+  // This shall be only one because concurrent modifications of one table is not allowed
+  private String preDeletedColumn;
+
+  public ConfigTableInfo(final String name) {
     super(name);
   }
 
@@ -37,7 +40,7 @@ public class ConfigTableInfo extends BasicMNodeInfo {
     return table;
   }
 
-  public void setTable(TsTable table) {
+  public void setTable(final TsTable table) {
     this.table = table;
   }
 
@@ -45,8 +48,16 @@ public class ConfigTableInfo extends BasicMNodeInfo {
     return status;
   }
 
-  public void setStatus(TableNodeStatus status) {
+  public void setStatus(final TableNodeStatus status) {
     this.status = status;
+  }
+
+  public String getPreDeletedColumn() {
+    return preDeletedColumn;
+  }
+
+  public void setPreDeleteColumn(final String column) {
+    preDeletedColumn = column;
   }
 
   @Override

@@ -80,7 +80,7 @@ public class DropTableColumnProcedure
               "Check and invalidate column {} in {}.{} when dropping column",
               columnName,
               database,
-              table.getTableName());
+              tableName);
           checkAndPreDeleteColumn(env);
           break;
         case INVALIDATE_CACHE:
@@ -88,7 +88,7 @@ public class DropTableColumnProcedure
               "Invalidating cache for column {} in {}.{} when dropping column",
               columnName,
               database,
-              table.getTableName());
+              tableName);
           preCreateTable(env);
           break;
         case EXECUTE_ON_REGION:
@@ -96,7 +96,7 @@ public class DropTableColumnProcedure
               "Executing on region for column {} in {}.{} when dropping column",
               columnName,
               database,
-              table.getTableName());
+              tableName);
           preReleaseTable(env);
           break;
         case DROP_COLUMN:

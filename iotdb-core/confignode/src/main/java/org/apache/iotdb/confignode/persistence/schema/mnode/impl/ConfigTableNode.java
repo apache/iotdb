@@ -42,7 +42,7 @@ public class ConfigTableNode implements IConfigMNode {
 
   private transient String fullPath;
 
-  private ConfigTableInfo tableNodeInfo;
+  private final ConfigTableInfo tableNodeInfo;
 
   public ConfigTableNode(final IConfigMNode parent, final String name) {
     this.parent = parent;
@@ -63,6 +63,14 @@ public class ConfigTableNode implements IConfigMNode {
 
   public void setStatus(final TableNodeStatus status) {
     tableNodeInfo.setStatus(status);
+  }
+
+  public String getPreDeletedColumn() {
+    return tableNodeInfo.getPreDeletedColumn();
+  }
+
+  public void setPreDeleteColumn(final String column) {
+    tableNodeInfo.setPreDeleteColumn(column);
   }
 
   @Override
