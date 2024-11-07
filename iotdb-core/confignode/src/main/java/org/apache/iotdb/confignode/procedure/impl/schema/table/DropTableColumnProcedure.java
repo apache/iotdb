@@ -19,12 +19,18 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
+import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.state.schema.DropTableColumnState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -75,7 +81,7 @@ public class DropTableColumnProcedure
               columnName,
               database,
               table.getTableName());
-          checkTableExistence(env);
+          checkAndPreDeleteColumn(env);
           break;
         case INVALIDATE_CACHE:
           LOGGER.info(
@@ -95,7 +101,7 @@ public class DropTableColumnProcedure
           break;
         case DROP_COLUMN:
           LOGGER.info("Dropping column {} in {}.{} on configNode", columnName, database, tableName);
-          validateTimeSeriesExistence(env);
+          dropColumn(env);
           return Flow.NO_MORE_STATE;
         default:
           setFailure(new ProcedureException("Unrecognized CreateTableState " + state));
@@ -109,6 +115,26 @@ public class DropTableColumnProcedure
           table.getTableName(),
           state,
           (System.currentTimeMillis() - startTime));
+    }
+  }
+
+  private void checkAndPreDeleteColumn(final ConfigNodeProcedureEnv env) {
+    final TSStatus status =
+        SchemaUtils.executeInConsensusLayer(
+            new PreDeleteColumnPlan(database, tableName, columnName), env, LOGGER);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      setNextState(DropTableColumnState.INVALIDATE_CACHE);
+    } else {
+      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+    }
+  }
+
+  private void dropColumn(final ConfigNodeProcedureEnv env) {
+    final TSStatus status =
+        SchemaUtils.executeInConsensusLayer(
+            new CommitDeleteColumnPlan(database, tableName, columnName), env, LOGGER);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }
   }
 
