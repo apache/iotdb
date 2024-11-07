@@ -960,6 +960,12 @@ public class DataRegion implements IDataRegionForQuery {
               lastFlushTimeMap.getMemSize(partitionId),
               false);
     }
+    for (TsFileResource tsFileResource : resourceList) {
+      if (tsFileResource.isUseSharedModFile()) {
+        // set a future so that other may know when the mod file is recovered
+        tsFileResource.setSharedModFileFuture(new CompletableFuture<>());
+      }
+    }
     return () -> {
       for (TsFileResource tsFileResource : resourceList) {
         try (SealedTsFileRecoverPerformer recoverPerformer =

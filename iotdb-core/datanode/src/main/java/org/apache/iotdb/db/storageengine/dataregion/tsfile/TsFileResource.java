@@ -83,6 +83,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -125,6 +126,8 @@ public class TsFileResource implements PersistentResource {
   private ITimeIndex timeIndex;
 
   private Future<ModificationFile> exclusiveModFileFuture;
+  // this future suggest when the async recovery ends
+  private CompletableFuture<ModificationFile> sharedModFileFuture;
 
   private ModFileManagement modFileManagement;
 
@@ -132,6 +135,7 @@ public class TsFileResource implements PersistentResource {
   private volatile ModificationFile exclusiveModFile;
 
   private volatile ModificationFile sharedModFile;
+  private long shardModFileOffset;
 
   private final boolean useSharedModFile = false;
 
@@ -270,8 +274,9 @@ public class TsFileResource implements PersistentResource {
     ReadWriteIOUtils.write(minPlanIndex, outputStream);
 
     if (sharedModFile != null && sharedModFile.exists()) {
-      String modFileName = sharedModFile.getFile().getName();
-      ReadWriteIOUtils.write(modFileName, outputStream);
+      String modFilePath = sharedModFile.getFile().getAbsolutePath();
+      ReadWriteIOUtils.write(modFilePath, outputStream);
+      ReadWriteIOUtils.write(shardModFileOffset, outputStream);
     } else {
       // make the first "inputStream.available() > 0" in deserialize() happy.
       //
@@ -303,10 +308,15 @@ public class TsFileResource implements PersistentResource {
       minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
 
       if (inputStream.available() > 0) {
-        String modFileName = ReadWriteIOUtils.readString(inputStream);
-        if (modFileName != null) {
-          File modF = new File(file.getParentFile(), modFileName);
-          sharedModFile = new ModificationFile(modF);
+        String modFilePath = ReadWriteIOUtils.readString(inputStream);
+        if (!modFilePath.isEmpty()) {
+          shardModFileOffset = ReadWriteIOUtils.readLong(inputStream);
+        }
+        if (modFileManagement != null) {
+          sharedModFile = modFileManagement.recover(modFilePath, this);
+          if (sharedModFileFuture != null) {
+            sharedModFileFuture.complete(sharedModFile);
+          }
         }
       }
 
@@ -357,7 +367,7 @@ public class TsFileResource implements PersistentResource {
   }
 
   public boolean anyModFileExists() {
-    return getExclusiveModFile().exists() || sharedModFile != null && sharedModFile.exists();
+    return getExclusiveModFile().exists() || getSharedModFile() != null && sharedModFile.exists();
   }
 
   public void link(TsFileResource target) throws IOException {
@@ -390,20 +400,22 @@ public class TsFileResource implements PersistentResource {
   }
 
   public long getTotalModSizeInByte() {
-    return getExclusiveModFile().getSize() + (sharedModFile != null ? sharedModFile.getSize() : 0);
+    return getExclusiveModFile().getSize()
+        + (getSharedModFile() != null ? sharedModFile.getSize() : 0);
   }
 
   private void serializedSharedModFile() throws IOException {
     serialize();
   }
 
-  private synchronized ModificationFile prepareModFileForWrite() {
-    if (sharedModFile != null) {
-      return sharedModFile;
+  private synchronized ModificationFile prepareModFileForWrite() throws IOException {
+    if (getSharedModFile() != null) {
+      return getSharedModFile();
     }
 
     if (useSharedModFile) {
       sharedModFile = modFileManagement.allocateFor(this);
+      shardModFileOffset = sharedModFile.getFileLength();
       try {
         serializedSharedModFile();
       } catch (IOException e) {
@@ -415,9 +427,9 @@ public class TsFileResource implements PersistentResource {
     return getExclusiveModFile();
   }
 
-  public ModificationFile getModFileForWrite() {
-    if (sharedModFile != null) {
-      return sharedModFile;
+  public ModificationFile getModFileForWrite() throws IOException {
+    if (getSharedModFile() != null) {
+      return getSharedModFile();
     }
     if (exclusiveModFile != null && !useSharedModFile) {
       return exclusiveModFile;
@@ -427,6 +439,21 @@ public class TsFileResource implements PersistentResource {
   }
 
   public ModificationFile getSharedModFile() {
+    if (!useSharedModFile) {
+      return null;
+    }
+    if (sharedModFile != null) {
+      return sharedModFile;
+    }
+    if (sharedModFileFuture != null) {
+      try {
+        return sharedModFileFuture.get();
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      } catch (ExecutionException e) {
+        LOGGER.error("Failed to get shared mod file", e);
+      }
+    }
     return sharedModFile;
   }
 
@@ -469,7 +496,7 @@ public class TsFileResource implements PersistentResource {
   }
 
   public void removeCompactionModFile() throws IOException {
-    if (compactionModFileExists()) {
+    if (compactionModFileExists() && !useSharedModFile) {
       getCompactionModFile().remove();
     }
     compactionModFile = null;
@@ -705,7 +732,7 @@ public class TsFileResource implements PersistentResource {
     }
     exclusiveModFile = null;
 
-    if (sharedModFile != null && modFileManagement != null) {
+    if (getSharedModFile() != null && modFileManagement != null) {
       modFileManagement.releaseFor(this, sharedModFile);
     }
 
@@ -1355,7 +1382,7 @@ public class TsFileResource implements PersistentResource {
 
       Iterator<ModEntry> sharedIterator = null;
       try {
-        sharedIterator = sharedModFile != null ? sharedModFile.getModIterator(0) : null;
+        sharedIterator = getSharedModFile() != null ? sharedModFile.getModIterator(0) : null;
       } catch (IOException e) {
         LOGGER.warn("Failed to read mods from {} for {}", exclusiveModFile, this, e);
       }
@@ -1403,5 +1430,21 @@ public class TsFileResource implements PersistentResource {
               oldModFile.remove();
               return newMFile;
             });
+  }
+
+  public TsFileResource getPrev() {
+    return prev;
+  }
+
+  public TsFileResource getNext() {
+    return next;
+  }
+
+  public void setSharedModFileFuture(CompletableFuture<ModificationFile> sharedModFileFuture) {
+    this.sharedModFileFuture = sharedModFileFuture;
+  }
+
+  public boolean isUseSharedModFile() {
+    return useSharedModFile;
   }
 }

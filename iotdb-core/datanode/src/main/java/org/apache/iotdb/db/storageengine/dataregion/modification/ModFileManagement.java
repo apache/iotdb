@@ -21,8 +21,14 @@ package org.apache.iotdb.db.storageengine.dataregion.modification;
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
-public interface ModFileManagement {
-  ModificationFile allocateFor(TsFileResource tsFileResource);
+import java.io.IOException;
 
-  void releaseFor(TsFileResource tsFileResource, ModificationFile modificationFile);
+public interface ModFileManagement {
+
+  ModificationFile recover(String modFilePath, TsFileResource tsFileResource) throws IOException;
+
+  ModificationFile allocateFor(TsFileResource tsFileResource) throws IOException;
+
+  void releaseFor(TsFileResource tsFileResource, ModificationFile modificationFile)
+      throws IOException;
 }

@@ -141,6 +141,15 @@ public class ModificationFile implements AutoCloseable {
     return file;
   }
 
+  public long getFileLength() throws IOException {
+    lock.readLock().lock();
+    try {
+      return file.length();
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
   public static String composeFileName(long levelNum, long modFileNum) {
     return levelNum + "-" + modFileNum + FILE_SUFFIX;
   }
