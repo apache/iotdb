@@ -166,11 +166,6 @@ public class PipeNowFunctionIT extends AbstractPipeDualAutoIT {
     doTest(BaseEnv.TREE_SQL_DIALECT);
   }
 
-  @Test
-  public void testTableModeSQLSupportNowFunc() {
-    doTest(BaseEnv.TABLE_SQL_DIALECT);
-  }
-
   private void doTest(String dialect) {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 

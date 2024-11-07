@@ -22,17 +22,22 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 
 import org.apache.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
 public class PipeFunctionSupport {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeFunctionSupport.class);
 
   public static void applyNowFunctionToExtractorAttributes(
       final Map<String, String> extractorAttributes,
       final String sourceKey,
       final String extractorKey,
       final long currentTime) {
-    final Pair<String, String> pair = getKetAndValue(extractorAttributes, sourceKey, extractorKey);
+    final Pair<String, String> pair =
+        getExtractorAttributesKeyAndValue(extractorAttributes, sourceKey, extractorKey);
 
     if (pair == null) {
       return;
@@ -42,7 +47,7 @@ public class PipeFunctionSupport {
     }
   }
 
-  private static Pair<String, String> getKetAndValue(
+  private static Pair<String, String> getExtractorAttributesKeyAndValue(
       final Map<String, String> extractorAttributes,
       final String sourceKey,
       final String extractorKey) {
@@ -53,8 +58,15 @@ public class PipeFunctionSupport {
     }
 
     // "source.".length() == 7
-    key = sourceKey.substring(7);
-    value = extractorAttributes.get(key);
+    try {
+      key = sourceKey.substring(7);
+      value = extractorAttributes.get(key);
+    } catch (Exception e) {
+      LOGGER.warn(
+          "The prefix of sourceKey is not 'source.'. Please check the parameters passed in: {}",
+          sourceKey,
+          e);
+    }
     if (value != null) {
       return new Pair<>(key, value);
     }
