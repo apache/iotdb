@@ -28,11 +28,11 @@ import java.util.Map;
 public class PipeFunctionSupport {
 
   public static void applyNowFunctionToExtractorAttributes(
-      Map<String, String> extractorAttributes,
-      String sourceKey,
-      String extractorKey,
-      long currentTime) {
-    Pair<String, String> pair = getKetAndValue(extractorAttributes, sourceKey, extractorKey);
+      final Map<String, String> extractorAttributes,
+      final String sourceKey,
+      final String extractorKey,
+      final long currentTime) {
+    final Pair<String, String> pair = getKetAndValue(extractorAttributes, sourceKey, extractorKey);
 
     if (pair == null) {
       return;
@@ -43,18 +43,22 @@ public class PipeFunctionSupport {
   }
 
   private static Pair<String, String> getKetAndValue(
-      Map<String, String> extractorAttributes, String sourceKey, String extractorKey) {
+      final Map<String, String> extractorAttributes,
+      final String sourceKey,
+      final String extractorKey) {
     String key = sourceKey;
     String value = extractorAttributes.get(key);
     if (value != null) {
       return new Pair<>(key, value);
     }
+
     // "source.".length() == 7
     key = sourceKey.substring(7);
     value = extractorAttributes.get(key);
     if (value != null) {
       return new Pair<>(key, value);
     }
+
     key = extractorKey;
     value = extractorAttributes.get(key);
     if (value != null) {
@@ -63,7 +67,7 @@ public class PipeFunctionSupport {
     return null;
   }
 
-  private static boolean isNowFunction(String value) {
+  private static boolean isNowFunction(final String value) {
     return PipeExtractorConstant.NOW_TIME_VALUE.equalsIgnoreCase(value.trim());
   }
 }

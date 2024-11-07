@@ -62,7 +62,7 @@ public class CreatePipeTask implements IConfigTask {
     return configTaskExecutor.createPipe(createPipeStatement);
   }
 
-  private void applyNowFunctionToExtractorAttributes(Map<String, String> attributes) {
+  private void applyNowFunctionToExtractorAttributes(final Map<String, String> attributes) {
     final long currentTime =
         CommonDateTimeUtils.convertMilliTimeWithPrecision(
             System.currentTimeMillis(),
