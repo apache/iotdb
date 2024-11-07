@@ -846,7 +846,7 @@ public class ConfigMTree {
       throw new SemanticException("Dropping id or time column is not supported.");
     }
 
-    node.setPreDeleteColumn(columnName);
+    node.addPreDeletedColumn(columnName);
     return columnSchema.getColumnCategory() == TsTableColumnCategory.ATTRIBUTE;
   }
 
@@ -859,7 +859,7 @@ public class ConfigMTree {
       final TsTable table = node.getTable();
       if (Objects.nonNull(table.getColumnSchema(columnName))) {
         table.removeColumnSchema(columnName);
-        node.setPreDeleteColumn(null);
+        node.removePreDeletedColumn(columnName);
       }
     }
   }
@@ -933,7 +933,11 @@ public class ConfigMTree {
     ReadWriteIOUtils.write(tableNode.getName(), outputStream);
     tableNode.getTable().serialize(outputStream);
     tableNode.getStatus().serialize(outputStream);
-    ReadWriteIOUtils.write(tableNode.getPreDeletedColumn(), outputStream);
+    final Set<String> preDeletedColumns = tableNode.getPreDeletedColumns();
+    ReadWriteIOUtils.write(preDeletedColumns.size(), outputStream);
+    for (final String column : preDeletedColumns) {
+      ReadWriteIOUtils.write(column, outputStream);
+    }
   }
 
   public void deserialize(final InputStream inputStream) throws IOException {
@@ -1016,10 +1020,15 @@ public class ConfigMTree {
     return databaseMNode.getAsMNode();
   }
 
-  private IConfigMNode deserializeTableMNode(InputStream inputStream) throws IOException {
-    ConfigTableNode tableNode = new ConfigTableNode(null, ReadWriteIOUtils.readString(inputStream));
+  private IConfigMNode deserializeTableMNode(final InputStream inputStream) throws IOException {
+    final ConfigTableNode tableNode =
+        new ConfigTableNode(null, ReadWriteIOUtils.readString(inputStream));
     tableNode.setTable(TsTable.deserialize(inputStream));
     tableNode.setStatus(TableNodeStatus.deserialize(inputStream));
+    final int size = ReadWriteIOUtils.readInt(inputStream);
+    for (int i = 0; i < size; ++i) {
+      tableNode.addPreDeletedColumn(ReadWriteIOUtils.readString(inputStream));
+    }
     return tableNode;
   }
 

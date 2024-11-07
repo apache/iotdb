@@ -23,14 +23,20 @@ import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.BasicMNodeInfo;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
+import java.util.HashSet;
+import java.util.Set;
+
 public class ConfigTableInfo extends BasicMNodeInfo {
 
+  private static final int SET_SIZE = (int) RamUsageEstimator.shallowSizeOfInstance(HashSet.class);
   private TsTable table;
 
   private TableNodeStatus status;
 
   // This shall be only one because concurrent modifications of one table is not allowed
-  private String preDeletedColumn;
+  private final Set<String> preDeletedColumns = new HashSet<>();
 
   public ConfigTableInfo(final String name) {
     super(name);
@@ -52,16 +58,27 @@ public class ConfigTableInfo extends BasicMNodeInfo {
     this.status = status;
   }
 
-  public String getPreDeletedColumn() {
-    return preDeletedColumn;
+  public Set<String> getPreDeletedColumns() {
+    return preDeletedColumns;
   }
 
-  public void setPreDeleteColumn(final String column) {
-    preDeletedColumn = column;
+  public void addPreDeleteColumn(final String column) {
+    preDeletedColumns.add(column);
+  }
+
+  public void removePreDeletedColumn(final String column) {
+    preDeletedColumns.remove(column);
   }
 
   @Override
   public int estimateSize() {
-    return 1 + 8 + table.getColumnNum() * 30;
+    return 1
+        + 8
+        + table.getColumnNum() * 30
+        + 8
+        + SET_SIZE
+        + preDeletedColumns.stream()
+            .map(column -> (int) RamUsageEstimator.sizeOf(column))
+            .reduce(0, Integer::sum);
   }
 }
