@@ -585,7 +585,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
             } catch (final IOException e) {
               LOGGER.warn(
                   "Pipe: failed to pin TsFileResource {}",
-                  ((TsFileResource) resource).getTsFilePath());
+                  ((TsFileResource) resource).getTsFilePath(),
+                  e);
               return true;
             }
           });
