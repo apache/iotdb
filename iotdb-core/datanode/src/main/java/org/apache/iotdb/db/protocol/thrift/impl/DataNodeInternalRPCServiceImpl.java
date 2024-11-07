@@ -196,6 +196,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TDeactivateTemplateReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeleteColumnDataReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataOrDevicesForDropTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
@@ -1596,7 +1597,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
   }
 
-  public TTestConnectionResp submitTestConnectionTask(TNodeLocations nodeLocations) {
+  @Override
+  public TSStatus deleteColumnData(final TDeleteColumnDataReq req) {
+    return null;
+  }
+
+  public TTestConnectionResp submitTestConnectionTask(final TNodeLocations nodeLocations) {
     return new TTestConnectionResp(
         new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
         Stream.of(
@@ -1609,13 +1615,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   private static <Location, RequestType> List<TTestConnectionResult> testConnections(
-      List<Location> nodeLocations,
-      Function<Location, Integer> getId,
-      Function<Location, TEndPoint> getEndPoint,
-      TServiceType serviceType,
-      RequestType requestType,
-      Consumer<AsyncRequestContext<Object, TSStatus, RequestType, Location>> sendRequest) {
-    TSender sender =
+      final List<Location> nodeLocations,
+      final Function<Location, Integer> getId,
+      final Function<Location, TEndPoint> getEndPoint,
+      final TServiceType serviceType,
+      final RequestType requestType,
+      final Consumer<AsyncRequestContext<Object, TSStatus, RequestType, Location>> sendRequest) {
+    final TSender sender =
         new TSender()
             .setDataNodeLocation(
                 IoTDBDescriptor.getInstance().getConfig().generateLocalDataNodeLocation());

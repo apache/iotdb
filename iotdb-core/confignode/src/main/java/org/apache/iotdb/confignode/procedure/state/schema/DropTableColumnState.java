@@ -22,6 +22,6 @@ package org.apache.iotdb.confignode.procedure.state.schema;
 public enum DropTableColumnState {
   CHECK_AND_INVALIDATE_COLUMN,
   INVALIDATE_CACHE,
-  EXECUTE_ON_REGION,
+  EXECUTE_ON_REGIONS,
   DROP_COLUMN,
 }

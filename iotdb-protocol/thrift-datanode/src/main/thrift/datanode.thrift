@@ -342,6 +342,13 @@ struct TInvalidateColumnCacheReq {
   4: required bool isAttributeColumn
 }
 
+struct TDeleteColumnDataReq {
+  1: required list<common.TConsensusGroupId> regionIdList
+  2: required string tableName,
+  3: required string columnName,
+  4: required bool isAttributeColumn
+}
+
 struct TDeleteDataOrDevicesForDropTableReq {
   1: required list<common.TConsensusGroupId> regionIdList
   2: required string tableName
@@ -1093,6 +1100,12 @@ service IDataNodeRPCService {
    * Invalidate cache for drop column
    */
   common.TSStatus invalidateColumnCache(TInvalidateColumnCacheReq req)
+
+  /**
+   * Delete column data for drop column
+   */
+  common.TSStatus deleteColumnData(TDeleteColumnDataReq req)
+
 
   common.TTestConnectionResp submitTestConnectionTask(common.TNodeLocations nodeLocations)
 

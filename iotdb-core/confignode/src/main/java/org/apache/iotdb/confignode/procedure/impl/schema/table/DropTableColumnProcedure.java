@@ -19,10 +19,14 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
@@ -35,6 +39,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.state.schema.DropTableColumnState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.mpp.rpc.thrift.TDeleteColumnDataReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateColumnCacheReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -42,11 +47,16 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Objects;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 
 public class DropTableColumnProcedure
     extends AbstractAlterOrDropTableProcedure<DropTableColumnState> {
@@ -97,13 +107,13 @@ public class DropTableColumnProcedure
               tableName);
           invalidateCache(env);
           break;
-        case EXECUTE_ON_REGION:
+        case EXECUTE_ON_REGIONS:
           LOGGER.info(
               "Executing on region for column {} in {}.{} when dropping column",
               columnName,
               database,
               tableName);
-          preReleaseTable(env);
+          executeOnRegions(env);
           break;
         case DROP_COLUMN:
           LOGGER.info("Dropping column {} in {}.{} on configNode", columnName, database, tableName);
@@ -165,7 +175,46 @@ public class DropTableColumnProcedure
       }
     }
 
-    setNextState(DropTableColumnState.EXECUTE_ON_REGION);
+    setNextState(DropTableColumnState.EXECUTE_ON_REGIONS);
+  }
+
+  private void executeOnRegions(final ConfigNodeProcedureEnv env) {
+    final PathPatternTree patternTree = new PathPatternTree();
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    final PartialPath path;
+    try {
+      path = new PartialPath(new String[] {ROOT, database.substring(5), tableName});
+      patternTree.appendPathPattern(path);
+      patternTree.appendPathPattern(path.concatAsMeasurementPath(MULTI_LEVEL_PATH_WILDCARD));
+      patternTree.serialize(dataOutputStream);
+    } catch (final IOException e) {
+      LOGGER.warn("failed to serialize request for table {}.{}", database, table.getTableName(), e);
+    }
+
+    final Map<TConsensusGroupId, TRegionReplicaSet> relatedRegionGroup =
+        isAttributeColumn
+            ? env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, true)
+            : env.getConfigManager().getRelatedDataRegionGroup(patternTree, true);
+
+    // TODO
+    if (!relatedRegionGroup.isEmpty()) {
+      new DropTableProcedure.DropTableRegionTaskExecutor<>(
+              "delete data for drop table",
+              env,
+              relatedRegionGroup,
+              true,
+              CnToDnAsyncRequestType.DELETE_COLUMN_DATA,
+              ((dataNodeLocation, consensusGroupIdList) ->
+                  new TDeleteColumnDataReq(
+                      new ArrayList<>(consensusGroupIdList),
+                      tableName,
+                      columnName,
+                      isAttributeColumn)))
+          .execute();
+    }
+
+    setNextState(DropTableColumnState.DROP_COLUMN);
   }
 
   private void dropColumn(final ConfigNodeProcedureEnv env) {
