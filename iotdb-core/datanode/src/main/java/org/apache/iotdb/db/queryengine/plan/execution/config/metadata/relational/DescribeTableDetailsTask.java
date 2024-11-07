@@ -37,6 +37,7 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class DescribeTableDetailsTask extends AbstractTableTask {
@@ -51,9 +52,11 @@ public class DescribeTableDetailsTask extends AbstractTableTask {
   }
 
   public static void buildTsBlock(
-      final TsTable table, final SettableFuture<ConfigTaskResult> future) {
+      final TsTable table,
+      final Set<String> preDeletedColumns,
+      final SettableFuture<ConfigTaskResult> future) {
     final List<TSDataType> outputDataTypes =
-        ColumnHeaderConstant.describeTableColumnHeaders.stream()
+        ColumnHeaderConstant.describeTableDetailsColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
 
@@ -70,10 +73,16 @@ public class DescribeTableDetailsTask extends AbstractTableTask {
           .getColumnBuilder(2)
           .writeBinary(
               new Binary(columnSchema.getColumnCategory().name(), TSFileConfig.STRING_CHARSET));
+      builder
+          .getColumnBuilder(3)
+          .writeBinary(
+              new Binary(
+                  preDeletedColumns.contains(columnSchema.getColumnName()) ? "PRE_DELETE" : "USING",
+                  TSFileConfig.STRING_CHARSET));
       builder.declarePosition();
     }
 
-    final DatasetHeader datasetHeader = DatasetHeaderFactory.getDescribeTableHeader();
+    final DatasetHeader datasetHeader = DatasetHeaderFactory.getDescribeTableDetailsHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }
