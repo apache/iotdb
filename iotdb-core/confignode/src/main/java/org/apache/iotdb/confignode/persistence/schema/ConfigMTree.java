@@ -60,6 +60,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -259,9 +260,10 @@ public class ConfigMTree {
    * @param scope traversing scope
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
-  public int getDatabaseNum(PartialPath pathPattern, PathPatternTree scope, boolean isPrefixMatch)
+  public int getDatabaseNum(
+      final PartialPath pathPattern, final PathPatternTree scope, final boolean isPrefixMatch)
       throws MetadataException {
-    try (DatabaseCounter<IConfigMNode> counter =
+    try (final DatabaseCounter<IConfigMNode> counter =
         new DatabaseCounter<>(root, pathPattern, store, isPrefixMatch, scope)) {
       return (int) counter.count();
     }
@@ -303,9 +305,9 @@ public class ConfigMTree {
    * device], return the MNode of root.sg Get database node, the give path don't need to be database
    * path.
    */
-  public IDatabaseMNode<IConfigMNode> getDatabaseNodeByPath(PartialPath path)
+  public IDatabaseMNode<IConfigMNode> getDatabaseNodeByPath(final PartialPath path)
       throws MetadataException {
-    String[] nodes = path.getNodes();
+    final String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
     }
@@ -830,12 +832,7 @@ public class ConfigMTree {
   public boolean preDeleteColumn(
       final PartialPath database, final String tableName, final String columnName)
       throws MetadataException {
-    final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
-    if (!databaseNode.hasChild(tableName)) {
-      throw new TableNotExistsException(
-          database.getFullPath().substring(ROOT.length() + 1), tableName);
-    }
-    final ConfigTableNode node = ((ConfigTableNode) databaseNode.getChild(tableName));
+    final ConfigTableNode node = getTableNode(database, tableName);
     final TsTableColumnSchema columnSchema = node.getTable().getColumnSchema(columnName);
     if (Objects.isNull(columnSchema)) {
       throw new ColumnNotExistsException(
@@ -853,25 +850,34 @@ public class ConfigMTree {
   public void commitDeleteColumn(
       final PartialPath database, final String tableName, final String columnName)
       throws MetadataException {
-    final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
-    if (databaseNode.hasChild(tableName)) {
-      final ConfigTableNode node = ((ConfigTableNode) databaseNode.getChild(tableName));
-      final TsTable table = node.getTable();
-      if (Objects.nonNull(table.getColumnSchema(columnName))) {
-        table.removeColumnSchema(columnName);
-        node.removePreDeletedColumn(columnName);
-      }
+    final ConfigTableNode node = getTableNode(database, tableName);
+    final TsTable table = getTable(database, tableName);
+    if (Objects.nonNull(table.getColumnSchema(columnName))) {
+      table.removeColumnSchema(columnName);
+      node.removePreDeletedColumn(columnName);
     }
+  }
+
+  public TsTable getUsingTableSchema(final PartialPath database, final String tableName)
+      throws MetadataException {
+    final ConfigTableNode node = getTableNode(database, tableName);
+    if (node.getPreDeletedColumns().isEmpty()) {
+      return node.getTable();
+    }
+    final TsTable newTable = TsTable.deserialize(ByteBuffer.wrap(node.getTable().serialize()));
+    node.getPreDeletedColumns().forEach(newTable::removeColumnSchema);
+    return newTable;
+  }
+
+  public Pair<TsTable, Set<String>> getTableSchemaDetails(
+      final PartialPath database, final String tableName) throws MetadataException {
+    final ConfigTableNode node = getTableNode(database, tableName);
+    return new Pair<>(node.getTable(), node.getPreDeletedColumns());
   }
 
   private TsTable getTable(final PartialPath database, final String tableName)
       throws MetadataException {
-    final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
-    if (!databaseNode.hasChild(tableName)) {
-      throw new TableNotExistsException(
-          database.getFullPath().substring(ROOT.length() + 1), tableName);
-    }
-    return ((ConfigTableNode) databaseNode.getChild(tableName)).getTable();
+    return getTableNode(database, tableName).getTable();
   }
 
   public Optional<TsTable> getTableIfExists(final PartialPath database, final String tableName)
@@ -882,6 +888,16 @@ public class ConfigMTree {
     }
     final ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
     return Optional.of(tableNode.getTable());
+  }
+
+  private ConfigTableNode getTableNode(final PartialPath database, final String tableName)
+      throws MetadataException {
+    final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    if (!databaseNode.hasChild(tableName)) {
+      throw new TableNotExistsException(
+          database.getFullPath().substring(ROOT.length() + 1), tableName);
+    }
+    return ((ConfigTableNode) databaseNode.getChild(tableName));
   }
 
   // endregion
