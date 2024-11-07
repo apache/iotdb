@@ -1261,11 +1261,14 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public TSStatus preDeleteColumn(final PreDeleteColumnPlan plan) {
     databaseReadWriteLock.writeLock().lock();
     try {
-      mTree.preDeleteColumn(
+      final TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      if (mTree.preDeleteColumn(
           getQualifiedDatabasePartialPath(plan.getDatabase()),
           plan.getTableName(),
-          plan.getColumnName());
-      return RpcUtils.SUCCESS_STATUS;
+          plan.getColumnName())) {
+        status.setMessage("");
+      }
+      return status;
     } catch (final MetadataException e) {
       LOGGER.warn(e.getMessage(), e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());

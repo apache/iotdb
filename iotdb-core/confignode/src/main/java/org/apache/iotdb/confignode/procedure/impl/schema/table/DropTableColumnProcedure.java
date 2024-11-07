@@ -89,7 +89,7 @@ public class DropTableColumnProcedure
               columnName,
               database,
               tableName);
-          preCreateTable(env);
+          invalidateCache(env);
           break;
         case EXECUTE_ON_REGION:
           LOGGER.info(

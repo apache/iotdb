@@ -825,7 +825,9 @@ public class ConfigMTree {
         });
   }
 
-  public void preDeleteColumn(
+  // Return true if removed column is an attribute column
+  // false if measurement column
+  public boolean preDeleteColumn(
       final PartialPath database, final String tableName, final String columnName)
       throws MetadataException {
     final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
@@ -839,11 +841,13 @@ public class ConfigMTree {
       throw new ColumnNotExistsException(
           PathUtils.unQualifyDatabaseName(database.getFullPath()), tableName, columnName);
     }
-    if (columnSchema.getColumnCategory() == TsTableColumnCategory.ID) {
-      throw new SemanticException("Dropping id column is unsupported yet.");
+    if (columnSchema.getColumnCategory() == TsTableColumnCategory.ID
+        || columnSchema.getColumnCategory() == TsTableColumnCategory.TIME) {
+      throw new SemanticException("Dropping id column is unsupported.");
     }
 
     node.setPreDeleteColumn(columnName);
+    return columnSchema.getColumnCategory() == TsTableColumnCategory.ATTRIBUTE;
   }
 
   public void commitDeleteColumn(
