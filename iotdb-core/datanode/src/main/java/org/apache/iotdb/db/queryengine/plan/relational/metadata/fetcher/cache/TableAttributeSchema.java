@@ -62,12 +62,24 @@ public class TableAttributeSchema implements IDeviceSchema {
                         : RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY + newValueSize));
           } else {
             attributeMap.remove(k);
-            diff.addAndGet((int) (-RamUsageEstimator.sizeOf(k) - UpdateDetailContainer.sizeOf(v)));
+            diff.addAndGet(
+                (int)
+                    (-RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+                        - UpdateDetailContainer.sizeOf(v)));
           }
         });
     // Typically the "update" and "invalidate" won't be concurrently called
     // Here we reserve the check for consistency and potential safety
     return diff.get();
+  }
+
+  public int removeAttribute(final String attribute) {
+    final Binary previousValue = attributeMap.remove(attribute);
+    return Objects.nonNull(previousValue)
+        ? (int)
+            -(RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+                + UpdateDetailContainer.sizeOf(previousValue))
+        : 0;
   }
 
   public Map<String, Binary> getAttributeMap() {
