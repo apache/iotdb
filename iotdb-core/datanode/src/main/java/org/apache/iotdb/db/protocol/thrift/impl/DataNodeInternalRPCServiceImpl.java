@@ -142,6 +142,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDev
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableAttributeColumnDropNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableSchemaQueryWriteVisitor;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
@@ -1599,7 +1600,18 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus deleteColumnData(final TDeleteColumnDataReq req) {
-    return null;
+    // TODO: Execute on data region
+    return executeInternalSchemaTask(
+        req.getRegionIdList(),
+        consensusGroupId ->
+            req.isIsAttributeColumn()
+                ? new RegionWriteExecutor()
+                    .execute(
+                        new SchemaRegionId(consensusGroupId.getId()),
+                        new TableAttributeColumnDropNode(
+                            new PlanNodeId(""), req.getTableName(), req.getColumnName()))
+                    .getStatus()
+                : null);
   }
 
   public TTestConnectionResp submitTestConnectionTask(final TNodeLocations nodeLocations) {
