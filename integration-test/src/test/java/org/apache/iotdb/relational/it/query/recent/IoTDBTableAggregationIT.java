@@ -3608,6 +3608,26 @@ public class IoTDBTableAggregationIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+
+    expectedHeader = new String[] {"time"};
+    retArray =
+        new String[] {
+          "2024-09-24T06:15:30.000Z,",
+          "2024-09-24T06:15:31.000Z,",
+          "2024-09-24T06:15:35.000Z,",
+          "2024-09-24T06:15:36.000Z,",
+          "2024-09-24T06:15:40.000Z,",
+          "2024-09-24T06:15:41.000Z,",
+          "2024-09-24T06:15:46.000Z,",
+          "2024-09-24T06:15:50.000Z,",
+          "2024-09-24T06:15:51.000Z,",
+          "2024-09-24T06:15:55.000Z,"
+        };
+    tableResultSetEqualTest(
+        "select time from table1 group by time order by time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
   }
 
   @Test

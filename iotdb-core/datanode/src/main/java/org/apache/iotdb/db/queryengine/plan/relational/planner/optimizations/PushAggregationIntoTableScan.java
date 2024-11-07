@@ -172,10 +172,10 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
                               && !(assignments.get(groupingKey) instanceof SymbolReference
                                   || isDateBinFunctionOfTime(
                                       assignments.get(groupingKey), dateBinFunctionsOfTime))
-                          || tableScanNode.isMeasurementColumn(groupingKey))
+                          || tableScanNode.isMeasurementOrTimeColumn(groupingKey))
           || dateBinFunctionsOfTime.size() > 1) {
-        // If expr except date_bin(time) or Measurement column appears in groupingKeys, we don't
-        // push down;
+        // If expr except date_bin(time), Measurement column, or Time column appears in
+        // groupingKeys, we don't push down;
         // Attention: Now we also don't push down if there are more than one date_bin function
         // appear in groupingKeys.
 
