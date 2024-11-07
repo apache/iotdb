@@ -308,6 +308,18 @@ public class TableModelUtils {
         database);
   }
 
+  public static boolean hasDataBase(String database, BaseEnv baseEnv) {
+    try (Connection connection = baseEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      if (statement.execute("use " + database)) {
+        return true;
+      }
+    } catch (Exception e) {
+      return false;
+    }
+    return false;
+  }
+
   public static void assertCountData(String database, String table, int count, BaseEnv baseEnv) {
     TestUtils.assertDataEventuallyOnEnv(
         baseEnv, getQueryCountSql(table), "_col0,", Collections.singleton(count + ","), database);

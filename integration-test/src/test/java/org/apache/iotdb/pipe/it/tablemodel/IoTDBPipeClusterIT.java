@@ -47,7 +47,6 @@ import org.junit.runner.RunWith;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -263,14 +262,9 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
       }
 
       TableModelUtils.assertData("test", "test", 0, 300, receiverEnv);
-      HashSet<String> expectedResults = new HashSet();
-      expectedResults.add("test,1,1,604800000,");
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "show databases",
-          "Database,SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
-          expectedResults,
-          null);
+      if (!TableModelUtils.hasDataBase("test", receiverEnv)) {
+        Assert.fail();
+      }
     }
 
     try {

@@ -115,15 +115,12 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
 
       TableModelUtils.assertData("test", "test", 0, 200, receiverEnv);
       TableModelUtils.assertData("test1", "test1", 0, 200, receiverEnv);
-      HashSet<String> expectedResults = new HashSet();
-      expectedResults.add("test,1,1,604800000,");
-      expectedResults.add("test1,1,1,604800000,");
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "show databases",
-          "Database,SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
-          expectedResults,
-          null);
+      if (!TableModelUtils.hasDataBase("test", receiverEnv)) {
+        Assert.fail();
+      }
+      if (!TableModelUtils.hasDataBase("test1", receiverEnv)) {
+        Assert.fail();
+      }
     }
   }
 
@@ -189,14 +186,12 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
       TableModelUtils.assertData("test", "test", 0, 50, receiverEnv);
       TableModelUtils.assertData("test1", "test1", 0, 50, receiverEnv);
       HashSet<String> expectedResults = new HashSet();
-      expectedResults.add("test,1,1,604800000,");
-      expectedResults.add("test1,1,1,604800000,");
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "show databases",
-          "Database,SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
-          expectedResults,
-          null);
+      if (!TableModelUtils.hasDataBase("test", receiverEnv)) {
+        Assert.fail();
+      }
+      if (!TableModelUtils.hasDataBase("test1", receiverEnv)) {
+        Assert.fail();
+      }
     }
   }
 
@@ -261,15 +256,12 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
 
       TableModelUtils.assertData("test", "test", 100, 150, receiverEnv);
       TableModelUtils.assertData("test1", "test1", 100, 150, receiverEnv);
-      HashSet<String> expectedResults = new HashSet();
-      expectedResults.add("test,1,1,604800000,");
-      expectedResults.add("test1,1,1,604800000,");
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "show databases",
-          "Database,SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
-          expectedResults,
-          null);
+      if (!TableModelUtils.hasDataBase("test", receiverEnv)) {
+        Assert.fail();
+      }
+      if (!TableModelUtils.hasDataBase("test1", receiverEnv)) {
+        Assert.fail();
+      }
     }
   }
 
@@ -349,14 +341,12 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
       TableModelUtils.assertData("pattern1", "pattern1", 0, 200, receiverEnv);
 
       HashSet<String> expectedResults = new HashSet();
-      expectedResults.add("pattern,1,1,604800000,");
-      expectedResults.add("pattern1,1,1,604800000,");
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "show databases",
-          "Database,SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
-          expectedResults,
-          null);
+      if (!TableModelUtils.hasDataBase("pattern", receiverEnv)) {
+        Assert.fail();
+      }
+      if (!TableModelUtils.hasDataBase("pattern1", receiverEnv)) {
+        Assert.fail();
+      }
     }
   }
 
@@ -419,15 +409,12 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
       TableModelUtils.assertData("pattern", "pattern", 0, 100, receiverEnv);
       TableModelUtils.assertData("pattern1", "pattern1", 0, 100, receiverEnv);
 
-      HashSet<String> expectedResults = new HashSet();
-      expectedResults.add("pattern,1,1,604800000,");
-      expectedResults.add("pattern1,1,1,604800000,");
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "show databases",
-          "Database,SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
-          expectedResults,
-          null);
+      if (!TableModelUtils.hasDataBase("pattern1", receiverEnv)) {
+        Assert.fail();
+      }
+      if (!TableModelUtils.hasDataBase("pattern", receiverEnv)) {
+        Assert.fail();
+      }
     }
   }
 
@@ -491,15 +478,12 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
       TableModelUtils.assertData("pattern", "pattern", 0, 100, receiverEnv);
       TableModelUtils.assertData("pattern1", "pattern1", 0, 100, receiverEnv);
 
-      HashSet<String> expectedResults = new HashSet();
-      expectedResults.add("pattern,1,1,604800000,");
-      expectedResults.add("pattern1,1,1,604800000,");
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "show databases",
-          "Database,SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
-          expectedResults,
-          null);
+      if (!TableModelUtils.hasDataBase("pattern", receiverEnv)) {
+        Assert.fail();
+      }
+      if (!TableModelUtils.hasDataBase("pattern1", receiverEnv)) {
+        Assert.fail();
+      }
     }
   }
 

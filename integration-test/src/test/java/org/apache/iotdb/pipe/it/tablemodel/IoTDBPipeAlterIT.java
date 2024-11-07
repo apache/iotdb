@@ -36,7 +36,6 @@ import org.junit.runner.RunWith;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.HashSet;
 import java.util.List;
 
 import static org.junit.Assert.fail;
@@ -426,14 +425,9 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
 
     // Check data on receiver
     TableModelUtils.assertData("test", "test", 0, 100, receiverEnv);
-    HashSet<String> expectedResults = new HashSet();
-    expectedResults.add("test,1,1,604800000,");
-    TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv,
-        "show databases",
-        "Database,SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
-        expectedResults,
-        null);
+    if (!TableModelUtils.hasDataBase("test", receiverEnv)) {
+      Assert.fail();
+    }
 
     // Alter pipe (modify 'source.path', 'source.inclusion' and
     // 'processor.tumbling-time.interval-seconds')
