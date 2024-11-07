@@ -397,7 +397,7 @@ public class IoTDBPreparedStatementTest {
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
     verify(client).executeStatementV2(argument.capture());
     assertEquals(
-        "INSERT INTO root.ln.wf01.wt02(time,a,b,c,d,e,f) VALUES(2020-01-01T10:10:10,false,123,123234345,123.423,-1323.0,\"abc\")",
+        "INSERT INTO root.ln.wf01.wt02(time,a,b,c,d,e,f) VALUES(2020-01-01T10:10:10,false,123,123234345,123.423,-1323.0,'abc')",
         argument.getValue().getStatement());
   }
 }
