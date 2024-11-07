@@ -49,7 +49,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaRep
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
-import org.apache.iotdb.confignode.consensus.request.write.table.DropTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
@@ -1094,7 +1094,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
   }
 
-  public TSStatus dropTable(final DropTablePlan plan) {
+  public TSStatus dropTable(final CommitDeleteTablePlan plan) {
     databaseReadWriteLock.writeLock().lock();
     try {
       mTree.dropTable(getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName());

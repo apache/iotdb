@@ -21,12 +21,13 @@ package org.apache.iotdb.confignode.consensus.request.write.table;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
-public class DropTablePlan extends AbstractTablePlan {
-  public DropTablePlan() {
-    super(ConfigPhysicalPlanType.DropTable);
+public class PreDeleteColumnPlan extends AbstractTableColumnPlan {
+  public PreDeleteColumnPlan() {
+    super(ConfigPhysicalPlanType.PreDeleteColumn);
   }
 
-  public DropTablePlan(final String database, final String tableName) {
-    super(ConfigPhysicalPlanType.DropTable, database, tableName);
+  public PreDeleteColumnPlan(
+      final String database, final String tableName, final String columnName) {
+    super(ConfigPhysicalPlanType.PreDeleteColumn, database, tableName, columnName);
   }
 }

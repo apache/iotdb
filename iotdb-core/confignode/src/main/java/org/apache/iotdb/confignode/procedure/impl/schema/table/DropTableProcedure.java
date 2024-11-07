@@ -30,7 +30,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
-import org.apache.iotdb.confignode.consensus.request.write.table.DropTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -228,7 +228,8 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
 
   private void dropTable(final ConfigNodeProcedureEnv env) {
     final TSStatus status =
-        SchemaUtils.executeInConsensusLayer(new DropTablePlan(database, tableName), env, LOGGER);
+        SchemaUtils.executeInConsensusLayer(
+            new CommitDeleteTablePlan(database, tableName), env, LOGGER);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }

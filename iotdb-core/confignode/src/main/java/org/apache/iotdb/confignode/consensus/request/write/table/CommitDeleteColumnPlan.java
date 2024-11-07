@@ -17,11 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.state.schema;
+package org.apache.iotdb.confignode.consensus.request.write.table;
 
-public enum DropTableColumnState {
-  CHECK_AND_INVALIDATE_COLUMN,
-  INVALIDATE_CACHE,
-  EXECUTE_ON_REGION,
-  DROP_COLUMN,
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+
+public class CommitDeleteColumnPlan extends AbstractTableColumnPlan {
+
+  public CommitDeleteColumnPlan() {
+    super(ConfigPhysicalPlanType.CommitDeleteColumn);
+  }
+
+  public CommitDeleteColumnPlan(
+      final String database, final String tableName, final String columnName) {
+    super(ConfigPhysicalPlanType.CommitDeleteColumn, database, tableName, columnName);
+  }
 }
