@@ -475,6 +475,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   /////////////////////////// TsFileInsertionEvent ///////////////////////////
 
   @Override
+  public Iterable<TabletInsertionEvent> toTabletInsertionEvents() throws PipeException {
+    return toTabletInsertionEvents(Long.MAX_VALUE);
+  }
+
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents(final long timeoutMs)
       throws PipeException {
     try {

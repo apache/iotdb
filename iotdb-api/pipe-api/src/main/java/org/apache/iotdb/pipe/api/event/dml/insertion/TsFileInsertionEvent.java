@@ -34,17 +34,5 @@ public interface TsFileInsertionEvent extends Event, AutoCloseable {
    *
    * @return {@code Iterable<TabletInsertionEvent>} the list of {@link TabletInsertionEvent}
    */
-  default Iterable<TabletInsertionEvent> toTabletInsertionEvents() throws PipeException {
-    return toTabletInsertionEvents(Long.MAX_VALUE);
-  }
-
-  /**
-   * The method is used to convert the {@link TsFileInsertionEvent} into several {@link
-   * TabletInsertionEvent}s.
-   *
-   * @param timeoutMs the maximum time in milliseconds to wait for the conversion process to
-   *     complete
-   * @return {@code Iterable<TabletInsertionEvent>} the list of {@link TabletInsertionEvent}
-   */
-  Iterable<TabletInsertionEvent> toTabletInsertionEvents(final long timeoutMs) throws PipeException;
+  Iterable<TabletInsertionEvent> toTabletInsertionEvents() throws PipeException;
 }
