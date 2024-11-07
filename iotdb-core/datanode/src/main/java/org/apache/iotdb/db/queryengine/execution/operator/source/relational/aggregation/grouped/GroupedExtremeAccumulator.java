@@ -256,6 +256,34 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
   @Override
   public void prepareFinal() {}
 
+  @Override
+  public void reset() {
+    inits.reset();
+    switch (seriesDataType) {
+      case INT32:
+        intValues.reset();
+        return;
+      case INT64:
+        longValues.reset();
+        return;
+      case FLOAT:
+        floatValues.reset();
+        return;
+      case DOUBLE:
+        doubleValues.reset();
+        return;
+      case TEXT:
+      case STRING:
+      case BLOB:
+      case BOOLEAN:
+      case DATE:
+      case TIMESTAMP:
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type : %s", seriesDataType));
+    }
+  }
+
   private void addIntInput(int[] groupIds, Column valueColumn) {
     for (int i = 0; i < groupIds.length; i++) {
       if (!valueColumn.isNull(i)) {

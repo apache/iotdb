@@ -524,10 +524,9 @@ public class TableDistributedPlanGenerator
     }
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
     OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
-    // TODO add back while implementing StreamingAggregationOperator
-    //    if (childOrdering != null) {
-    //      nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
-    //    }
+    if (childOrdering != null) {
+      nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
+    }
 
     if (childrenNodes.size() == 1) {
       node.setChild(childrenNodes.get(0));
@@ -552,10 +551,9 @@ public class TableDistributedPlanGenerator
                           intermediate.getStep(),
                           intermediate.getHashSymbol(),
                           intermediate.getGroupIdSymbol());
-                  // TODO add back while implementing StreamingAggregationOperator
-                  //                  if (node.isStreamable()) {
-                  //                    nodeOrderingMap.put(planNodeId, childOrdering);
-                  //                  }
+                  if (node.isStreamable()) {
+                    nodeOrderingMap.put(planNodeId, childOrdering);
+                  }
                   return aggregationNode;
                 })
             .collect(Collectors.toList());

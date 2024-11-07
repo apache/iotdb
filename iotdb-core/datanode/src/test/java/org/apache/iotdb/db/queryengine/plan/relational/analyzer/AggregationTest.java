@@ -43,6 +43,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.expression;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.filter;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.mergeSort;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.singleGroupingSet;
@@ -152,7 +153,7 @@ public class AggregationTest {
                         ImmutableSet.of("time", "tag1", "tag2", "tag3", "s1", "s2"))))));
 
     //                               - Exchange
-    // Output - Project - Agg(FINAL) - Collect - Agg(PARTIAL) - TableScan
+    // Output - Project - Agg(FINAL) - MergeSort - Agg(PARTIAL) - TableScan
     //                               - Exchange
     assertPlan(
         planTester.getFragmentPlan(0),
@@ -166,7 +167,7 @@ public class AggregationTest {
                     ImmutableList.of("tag1", "tag2", "tag3"), // Streamable
                     Optional.empty(),
                     FINAL,
-                    collect(
+                    mergeSort(
                         exchange(),
                         aggregation(
                             singleGroupingSet("s1", "tag1", "tag2", "tag3", "time"),
