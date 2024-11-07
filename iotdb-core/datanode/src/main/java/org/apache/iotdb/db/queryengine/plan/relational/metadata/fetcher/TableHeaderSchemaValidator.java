@@ -252,7 +252,7 @@ public class TableHeaderSchemaValidator {
         return new AttributeColumnSchema(columnName, dataType);
       case TIME:
         throw new SemanticException(
-            "Create table statement shall not specify column category TIME");
+            "Create table or add column statement shall not specify column category TIME");
       case MEASUREMENT:
         return new MeasurementColumnSchema(
             columnName,
