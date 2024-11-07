@@ -26,6 +26,7 @@ import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionPipeTimeoutException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionPollTimeoutException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeNonCriticalException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionTimeoutException;
@@ -695,6 +696,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     try (final RandomAccessFile fileWriter = new RandomAccessFile(file, "rw")) {
       return Optional.of(pollFileInternal(commitContext, fileName, file, fileWriter, timer));
     } catch (final Exception e) {
+      if (!(e instanceof SubscriptionPollTimeoutException)) {
+        inFlightFilesCommitContextSet.remove(commitContext);
+      }
       // construct temporary message to nack
       nack(
           Collections.singletonList(
@@ -719,6 +723,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
         commitContext,
         writingOffset);
 
+    fileWriter.seek(writingOffset);
     while (true) {
       timer.update();
       if (timer.isExpired(TIMER_DELTA_MS)) {
@@ -868,7 +873,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
                       "Timeout occurred when SubscriptionConsumer %s polling file %s with commit context %s, record writing offset %s for subsequent poll",
                       this, file.getAbsolutePath(), commitContext, writingOffset);
               LOGGER.info(message);
-              throw new SubscriptionRuntimeNonCriticalException(message);
+              throw new SubscriptionPollTimeoutException(message);
             } else {
               LOGGER.warn(
                   "Error occurred when SubscriptionConsumer {} polling file {} with commit context {}: {}, critical: {}",
