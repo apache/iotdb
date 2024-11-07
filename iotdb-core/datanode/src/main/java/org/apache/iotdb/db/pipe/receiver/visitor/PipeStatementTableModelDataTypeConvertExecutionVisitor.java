@@ -26,6 +26,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.table.TsFileInsertionEventTableParser;
 import org.apache.iotdb.db.pipe.receiver.transform.statement.PipeTableModelConvertedInsertRowStatement;
 import org.apache.iotdb.db.pipe.receiver.transform.statement.PipeTableModelConvertedInsertTabletStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
@@ -62,7 +63,7 @@ public class PipeStatementTableModelDataTypeConvertExecutionVisitor
   }
 
   @Override
-  protected Optional<TSStatus> executeConvert(LoadTsFileStatement loadTsFileStatement) {
+  protected Optional<TSStatus> executeConvert(final LoadTsFileStatement loadTsFileStatement) {
     for (final File file : loadTsFileStatement.getTsFiles()) {
       try (final TsFileInsertionEventTableParser container =
           new TsFileInsertionEventTableParser(
@@ -73,8 +74,9 @@ public class PipeStatementTableModelDataTypeConvertExecutionVisitor
               null,
               null)) {
 
-        Iterable<TabletInsertionEvent> tabletInsertionEvents = container.toTabletInsertionEvents();
-        for (TabletInsertionEvent tabletInsertionEvent : tabletInsertionEvents) {
+        final Iterable<TabletInsertionEvent> tabletInsertionEvents =
+            container.toTabletInsertionEvents();
+        for (final TabletInsertionEvent tabletInsertionEvent : tabletInsertionEvents) {
           final PipeRawTabletInsertionEvent rawTabletInsertionEvent =
               (PipeRawTabletInsertionEvent) tabletInsertionEvent;
 
@@ -97,7 +99,7 @@ public class PipeStatementTableModelDataTypeConvertExecutionVisitor
             return Optional.empty();
           }
         }
-      } catch (IOException e) {
+      } catch (final IOException e) {
         LOGGER.warn(
             "Failed to convert data type for LoadTsFileStatement: {}.", loadTsFileStatement, e);
         return Optional.empty();
@@ -156,5 +158,25 @@ public class PipeStatementTableModelDataTypeConvertExecutionVisitor
 
     return tryExecute(
         new PipeTableModelConvertedInsertTabletStatement(insertTabletStatement, databaseName));
+  }
+
+  @Override
+  public Optional<TSStatus> visitInsertMultiTablets(
+      final InsertMultiTabletsStatement insertMultiTabletsStatement, final TSStatus status) {
+    if (insertMultiTabletsStatement.getInsertTabletStatementList() == null
+        || insertMultiTabletsStatement.getInsertTabletStatementList().isEmpty()) {
+      return Optional.empty();
+    }
+
+    final InsertMultiTabletsStatement convertedInsertMultiTabletsStatement =
+        new InsertMultiTabletsStatement();
+    convertedInsertMultiTabletsStatement.setInsertTabletStatementList(
+        insertMultiTabletsStatement.getInsertTabletStatementList().stream()
+            .map(
+                (insertTabletStatement ->
+                    new PipeTableModelConvertedInsertTabletStatement(
+                        insertTabletStatement, databaseName)))
+            .collect(Collectors.toList()));
+    return tryExecute(convertedInsertMultiTabletsStatement);
   }
 }
