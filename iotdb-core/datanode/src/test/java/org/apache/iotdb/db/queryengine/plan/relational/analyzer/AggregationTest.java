@@ -288,6 +288,26 @@ public class AggregationTest {
                             "testdb.table1",
                             ImmutableList.of("tag1", "s2"),
                             ImmutableSet.of("tag1", "s2")))))));
+
+    // don't push down when time appears in group by
+    logicalQueryPlan =
+        planTester.createPlan(
+            "SELECT count(s2) FROM table1 group by tag1, tag2, tag3, attr1, time");
+    assertPlan(
+        logicalQueryPlan,
+        output(
+            project(
+                aggregation(
+                    singleGroupingSet("tag1", "tag2", "tag3", "attr1", "time"),
+                    ImmutableMap.of(
+                        Optional.empty(), aggregationFunction("count", ImmutableList.of("s2"))),
+                    ImmutableList.of("tag1", "tag2", "tag3", "attr1"), // Streamable
+                    Optional.empty(),
+                    SINGLE,
+                    tableScan(
+                        "testdb.table1",
+                        ImmutableList.of("time", "tag1", "tag2", "tag3", "attr1", "s2"),
+                        ImmutableSet.of("time", "tag1", "tag2", "tag3", "attr1", "s2"))))));
   }
 
   @Test
@@ -588,22 +608,6 @@ public class AggregationTest {
             "testdb.table1",
             ImmutableList.of("tag1", "tag2", "tag3", "attr1", "date_bin$gid", "count_0"),
             ImmutableSet.of("tag1", "tag2", "tag3", "attr1", "time", "s2")));
-
-    logicalQueryPlan =
-        planTester.createPlan(
-            "SELECT count(s2) FROM table1 group by tag1, tag2, tag3, attr1, time");
-    assertPlan(
-        logicalQueryPlan,
-        output(
-            project(
-                aggregationTableScan(
-                    singleGroupingSet("tag1", "tag2", "tag3", "attr1", "time"),
-                    ImmutableList.of("tag1", "tag2", "tag3", "attr1"), // Streamable
-                    Optional.empty(),
-                    SINGLE,
-                    "testdb.table1",
-                    ImmutableList.of("tag1", "tag2", "tag3", "attr1", "time", "count"),
-                    ImmutableSet.of("tag1", "tag2", "tag3", "attr1", "time", "s2")))));
 
     // Global Aggregation or partialPushDown Aggregation with only one deviceEntry
 
