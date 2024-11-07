@@ -263,9 +263,9 @@ public class CompactionWithAllNullRowsTest extends AbstractCompactionTest {
       writer.endFile();
     }
     resource1
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath(deviceID, ""), Long.MAX_VALUE));
-    resource1.getNewModFile().close();
+    resource1.getModFileForWrite().close();
     seqResources.add(resource1);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, getPerformer(), 0);
@@ -290,11 +290,19 @@ public class CompactionWithAllNullRowsTest extends AbstractCompactionTest {
       writer.endChunkGroup();
       writer.endFile();
     }
-    resource1.getNewModFile().write(new TreeDeletionEntry(new MeasurementPath(deviceID, "s0"), 11));
-    resource1.getNewModFile().write(new TreeDeletionEntry(new MeasurementPath(deviceID, "s1"), 11));
-    resource1.getNewModFile().write(new TreeDeletionEntry(new MeasurementPath(deviceID, "s2"), 11));
-    resource1.getNewModFile().write(new TreeDeletionEntry(new MeasurementPath(deviceID, "s3"), 11));
-    resource1.getNewModFile().close();
+    resource1
+        .getModFileForWrite()
+        .write(new TreeDeletionEntry(new MeasurementPath(deviceID, "s0"), 11));
+    resource1
+        .getModFileForWrite()
+        .write(new TreeDeletionEntry(new MeasurementPath(deviceID, "s1"), 11));
+    resource1
+        .getModFileForWrite()
+        .write(new TreeDeletionEntry(new MeasurementPath(deviceID, "s2"), 11));
+    resource1
+        .getModFileForWrite()
+        .write(new TreeDeletionEntry(new MeasurementPath(deviceID, "s3"), 11));
+    resource1.getModFileForWrite().close();
     seqResources.add(resource1);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, getPerformer(), 0);

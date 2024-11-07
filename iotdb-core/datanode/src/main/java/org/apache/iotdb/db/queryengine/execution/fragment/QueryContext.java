@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
@@ -91,8 +90,7 @@ public class QueryContext {
       return false;
     }
 
-    ModificationFile modFile = tsFileResource.getNewModFile();
-    if (!modFile.exists()) {
+    if (!tsFileResource.anyModFileExists()) {
       nonExistentModFiles.add(tsFileResource.getTsFileID());
       return false;
     }
@@ -101,7 +99,7 @@ public class QueryContext {
 
   private PatternTreeMap<ModEntry, ModsSerializer> getAllModifications(TsFileResource resource) {
     return fileModCache.computeIfAbsent(
-        resource.getNewModFile().getFile().getPath(),
+        resource.getTsFilePath(),
         k -> {
           PatternTreeMap<ModEntry, ModsSerializer> modifications =
               PatternTreeMapFactory.getModsPatternTreeMap();

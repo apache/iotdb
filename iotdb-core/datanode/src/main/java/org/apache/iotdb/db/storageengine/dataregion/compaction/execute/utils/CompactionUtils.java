@@ -188,7 +188,7 @@ public class CompactionUtils {
             resource.getTsFile().length(),
             resource.isSeq(),
             resource.getTsFile().getName());
-    if (resource.newModFileExists()) {
+    if (resource.anyModFileExists()) {
       FileMetrics.getInstance().increaseModFileNum(1);
       FileMetrics.getInstance().increaseModFileSize(resource.getTotalModSizeInByte());
     }
@@ -197,7 +197,7 @@ public class CompactionUtils {
   private static void updateOneTargetMods(TsFileResource targetFile, Set<ModEntry> modifications)
       throws IOException {
     if (!modifications.isEmpty()) {
-      try (ModificationFile modificationFile = targetFile.getNewModFile()) {
+      try (ModificationFile modificationFile = targetFile.getExclusiveModFile()) {
         for (ModEntry modification : modifications) {
           modificationFile.write(modification);
         }

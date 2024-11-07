@@ -206,7 +206,7 @@ public class SnapshotTaker {
         createHardLink(
             new File(snapshotTsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
             new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
-        if (resource.newModFileExists()) {
+        if (resource.anyModFileExists()) {
           copyFile(
               ModificationFile.getNormalMods(snapshotTsFile),
               ModificationFile.getNormalMods(tsFile));

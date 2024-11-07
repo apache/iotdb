@@ -378,9 +378,9 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
     for (int i = 0; i < filesAfterCompaction.size(); i++) {
       TsFileResource resource = filesAfterCompaction.get(i);
       if (i == 8) {
-        Assert.assertTrue(resource.newModFileExists());
+        Assert.assertTrue(resource.anyModFileExists());
       } else {
-        Assert.assertFalse(resource.newModFileExists());
+        Assert.assertFalse(resource.anyModFileExists());
       }
       Assert.assertFalse(resource.compactionModFileExists());
     }
@@ -392,19 +392,19 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
         generateSingleNonAlignedSeriesFile(
             "1-1-0-0.tsfile", new TimeRange[] {new TimeRange(100, 200)}, true, "d1", "d2");
     resource1
-        .getNewModFile()
+        .getModFileForWrite()
         .write(
             new TreeDeletionEntry(new MeasurementPath("root.**"), Long.MIN_VALUE, Long.MAX_VALUE));
-    resource1.getNewModFile().close();
+    resource1.getModFileForWrite().close();
     seqResources.add(resource1);
     TsFileResource resource2 =
         generateSingleNonAlignedSeriesFile(
             "2-2-0-0.tsfile", new TimeRange[] {new TimeRange(300, 400)}, true, "d3", "d4");
     resource2
-        .getNewModFile()
+        .getModFileForWrite()
         .write(
             new TreeDeletionEntry(new MeasurementPath("root.**"), Long.MIN_VALUE, Long.MAX_VALUE));
-    resource2.getNewModFile().close();
+    resource2.getModFileForWrite().close();
     seqResources.add(resource2);
 
     NewSizeTieredCompactionSelector selector =
@@ -428,9 +428,9 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
         generateSingleNonAlignedSeriesFile(
             "1-1-0-0.tsfile", new TimeRange[] {new TimeRange(100, 200)}, true, "d1", "d2");
     resource1
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.**"), Long.MAX_VALUE));
-    resource1.getNewModFile().close();
+    resource1.getModFileForWrite().close();
     seqResources.add(resource1);
     TsFileResource resource2 =
         generateSingleNonAlignedSeriesFile(
@@ -440,9 +440,9 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
         generateSingleNonAlignedSeriesFile(
             "3-3-0-0.tsfile", new TimeRange[] {new TimeRange(500, 600)}, true, "d1", "d3");
     resource3
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.**"), Long.MAX_VALUE));
-    resource3.getNewModFile().close();
+    resource3.getModFileForWrite().close();
     seqResources.add(resource3);
     TsFileResource resource4 =
         generateSingleNonAlignedSeriesFile(
@@ -452,9 +452,9 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
         generateSingleNonAlignedSeriesFile(
             "5-5-0-0.tsfile", new TimeRange[] {new TimeRange(900, 1000)}, true, "d1", "d4");
     resource5
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.**"), Long.MAX_VALUE));
-    resource5.getNewModFile().close();
+    resource5.getModFileForWrite().close();
     seqResources.add(resource5);
 
     IoTDBDescriptor.getInstance()

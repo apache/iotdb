@@ -1168,7 +1168,7 @@ public class InnerSeqCompactionWithFastPerformerTest {
       TsFileResource resource = sourceResources.get(i);
       resource.resetModFile();
       Assert.assertTrue(resource.getCompactionModFile().exists());
-      Assert.assertTrue(resource.newModFileExists());
+      Assert.assertTrue(resource.anyModFileExists());
       if (i < 2) {
         Assert.assertEquals(3, resource.getAllModEntries().size());
         Assert.assertEquals(2, resource.getCompactionModFile().getAllMods().size());
@@ -1183,14 +1183,14 @@ public class InnerSeqCompactionWithFastPerformerTest {
     task.start();
     for (TsFileResource resource : sourceResources) {
       Assert.assertFalse(resource.getTsFile().exists());
-      Assert.assertFalse(resource.newModFileExists());
+      Assert.assertFalse(resource.anyModFileExists());
       Assert.assertFalse(resource.getCompactionModFile().exists());
     }
 
     TsFileResource resource =
         TsFileNameGenerator.increaseInnerCompactionCnt(sourceResources.get(0));
     resource.resetModFile();
-    Assert.assertTrue(resource.newModFileExists());
+    Assert.assertTrue(resource.anyModFileExists());
     Assert.assertEquals(2, resource.getAllModEntries().size());
     Assert.assertFalse(resource.getCompactionModFile().exists());
   }

@@ -163,7 +163,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
@@ -500,7 +499,7 @@ public class DataRegion implements IDataRegionForQuery {
                     true,
                     resource.getTsFile().getName());
             resource.upgradeModFile(upgradeModFileThreadPool);
-            if (resource.newModFileExists()) {
+            if (resource.anyModFileExists()) {
               FileMetrics.getInstance().increaseModFileNum(1);
               FileMetrics.getInstance().increaseModFileSize(resource.getTotalModSizeInByte());
             }
@@ -533,7 +532,7 @@ public class DataRegion implements IDataRegionForQuery {
                     resource.getTsFile().getName());
           }
           resource.upgradeModFile(upgradeModFileThreadPool);
-          if (resource.newModFileExists()) {
+          if (resource.anyModFileExists()) {
             FileMetrics.getInstance().increaseModFileNum(1);
             FileMetrics.getInstance().increaseModFileSize(resource.getTotalModSizeInByte());
           }
@@ -1819,9 +1818,9 @@ public class DataRegion implements IDataRegionForQuery {
       tsFileResourceList.forEach(
           x -> {
             FileMetrics.getInstance().deleteTsFile(x.isSeq(), Collections.singletonList(x));
-            if (x.newModFileExists()) {
+            if (x.getExclusiveModFile().exists()) {
               FileMetrics.getInstance().decreaseModFileNum(1);
-              FileMetrics.getInstance().decreaseModFileSize(x.getNewModFile().getSize());
+              FileMetrics.getInstance().decreaseModFileSize(x.getExclusiveModFile().getSize());
             }
           });
       deleteAllSGFolders(TierManager.getInstance().getAllFilesFolders());
@@ -2004,9 +2003,9 @@ public class DataRegion implements IDataRegionForQuery {
                 resource.getTsFileSize(),
                 resource.isSeq(),
                 resource.getTsFile().getName());
-        if (resource.newModFileExists()) {
+        if (resource.getExclusiveModFile().exists()) {
           FileMetrics.getInstance().increaseModFileNum(1);
-          FileMetrics.getInstance().increaseModFileSize(resource.getNewModFile().getSize());
+          FileMetrics.getInstance().increaseModFileSize(resource.getExclusiveModFile().getSize());
         }
       }
       WritingMetrics.getInstance().recordActiveTimePartitionCount(-1);
@@ -2575,19 +2574,22 @@ public class DataRegion implements IDataRegionForQuery {
       if (sealedTsFile.isCompacting()) {
         involvedModificationFiles.add(sealedTsFile.getCompactionModFile());
       }
-      involvedModificationFiles.add(sealedTsFile.getNewModFile());
+      involvedModificationFiles.add(sealedTsFile.getModFileForWrite());
     }
 
-    List<Exception> exceptions = involvedModificationFiles.parallelStream().map(modFile -> {
-      try {
-        modFile.write(deletion);
-        modFile.close();
-      } catch (Exception e) {
-        return e;
-      }
-      return null;
-    }).collect(Collectors.toList());
-
+    List<Exception> exceptions =
+        involvedModificationFiles.parallelStream()
+            .map(
+                modFile -> {
+                  try {
+                    modFile.write(deletion);
+                    modFile.close();
+                  } catch (Exception e) {
+                    return e;
+                  }
+                  return null;
+                })
+            .collect(Collectors.toList());
 
     if (!exceptions.isEmpty()) {
       if (exceptions.size() == 1) {
@@ -2608,7 +2610,7 @@ public class DataRegion implements IDataRegionForQuery {
 
     // can be deleted by mods.
     for (TsFileResource tsFileResource : deletedByMods) {
-      ModificationFile modFile = tsFileResource.getNewModFile();
+      ModificationFile modFile = tsFileResource.getModFileForWrite();
       if (tsFileResource.isClosed()) {
         long originSize = -1;
         try {

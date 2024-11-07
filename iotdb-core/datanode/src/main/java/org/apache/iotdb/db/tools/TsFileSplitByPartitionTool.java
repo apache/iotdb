@@ -102,7 +102,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
     String file = oldTsFile.getAbsolutePath();
     reader = new TsFileSequenceReader(file);
     partitionWriterMap = new HashMap<>();
-    if (resourceToBeRewritten.newModFileExists()) {
+    if (resourceToBeRewritten.anyModFileExists()) {
       oldModification = resourceToBeRewritten.getAllModEntries();
       modsIterator = oldModification.iterator();
     }

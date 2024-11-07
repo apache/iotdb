@@ -177,9 +177,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
             true);
     seqResources.add(seqResource1);
     seqResource1
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.testsg.d0", "s2"), Long.MAX_VALUE));
-    seqResource1.getNewModFile().close();
+    seqResource1.getModFileForWrite().close();
 
     TsFileResource seqResource2 =
         generateSingleAlignedSeriesFile(
@@ -218,9 +218,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
             true);
     seqResources.add(seqResource1);
     seqResource1
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.testsg.d0", "s2"), Long.MAX_VALUE));
-    seqResource1.getNewModFile().close();
+    seqResource1.getModFileForWrite().close();
 
     TsFileResource seqResource2 =
         generateSingleAlignedSeriesFile(
@@ -303,9 +303,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
             true);
     seqResources.add(seqResource1);
     seqResource1
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.testsg.d0", "s2"), 250000));
-    seqResource1.getNewModFile().close();
+    seqResource1.getModFileForWrite().close();
 
     TsFileResource seqResource2 =
         generateSingleAlignedSeriesFile(
@@ -345,9 +345,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
             true);
     seqResources.add(seqResource1);
     seqResource1
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.testsg.d0", "s2"), 25000));
-    seqResource1.getNewModFile().close();
+    seqResource1.getModFileForWrite().close();
 
     TsFileResource seqResource2 =
         generateSingleAlignedSeriesFile(
@@ -401,12 +401,12 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
             Arrays.asList(false, false, true),
             true);
     seqResource2
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.testsg.d0", "s0"), 75000));
     seqResource2
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.testsg.d0", "s1"), 75000));
-    seqResource2.getNewModFile().close();
+    seqResource2.getModFileForWrite().close();
     seqResources.add(seqResource2);
     CompactionTaskSummary summary = new CompactionTaskSummary();
     TsFileResource targetResource = performCompaction(summary);
@@ -436,9 +436,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
             true);
     seqResources.add(seqResource1);
     seqResource1
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.testsg.d0", "s2"), 15000));
-    seqResource1.getNewModFile().close();
+    seqResource1.getModFileForWrite().close();
 
     TsFileResource seqResource2 =
         generateSingleAlignedSeriesFile(

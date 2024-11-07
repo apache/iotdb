@@ -282,7 +282,7 @@ public class CompactionFileGeneratorUtils {
     if (isCompactionMods) {
       modificationFile = targetTsFileResource.getCompactionModFile();
     } else {
-      modificationFile = targetTsFileResource.getNewModFile();
+      modificationFile = targetTsFileResource.getModFileForWrite();
     }
     for (Entry<String, Pair<Long, Long>> toDeleteTimeseriesAndTimeEntry :
         toDeleteTimeseriesAndTime.entrySet()) {

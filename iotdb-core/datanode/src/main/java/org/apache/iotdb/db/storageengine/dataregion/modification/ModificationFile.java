@@ -88,7 +88,7 @@ public class ModificationFile implements AutoCloseable {
   }
 
   @SuppressWarnings("java:S2093") // cannot use try-with-resource, should not close here
-  public void write(List<ModEntry> entries) throws IOException {
+  public void write(List<? extends ModEntry> entries) throws IOException {
     lock.writeLock().lock();
     try {
       if (fileOutputStream == null) {

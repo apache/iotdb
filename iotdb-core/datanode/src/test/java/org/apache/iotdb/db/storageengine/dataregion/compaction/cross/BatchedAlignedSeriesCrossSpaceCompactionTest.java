@@ -179,9 +179,9 @@ public class BatchedAlignedSeriesCrossSpaceCompactionTest extends AbstractCompac
             true);
 
     seqResource1
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.testsg.d0", "*"), 200000));
-    seqResource1.getNewModFile().close();
+    seqResource1.getModFileForWrite().close();
     seqResources.add(seqResource1);
 
     TsFileResource seqResource2 =
@@ -343,12 +343,12 @@ public class BatchedAlignedSeriesCrossSpaceCompactionTest extends AbstractCompac
             Arrays.asList(false, false, false),
             true);
     seqResource1
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.testsg.d0", "s0"), 15));
     seqResource1
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.testsg.d0", "s2"), 20));
-    seqResource1.getNewModFile().close();
+    seqResource1.getModFileForWrite().close();
     seqResources.add(seqResource1);
 
     TsFileResource seqResource2 =

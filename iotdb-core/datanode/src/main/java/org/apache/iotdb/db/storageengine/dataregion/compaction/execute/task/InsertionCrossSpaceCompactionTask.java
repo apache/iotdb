@@ -290,8 +290,8 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
         || !targetFile.tsFileExists()
         || !targetFile.resourceFileExists()
         || (unseqFileToInsert != null
-            && unseqFileToInsert.newModFileExists()
-            && !targetFile.newModFileExists())
+            && unseqFileToInsert.anyModFileExists()
+            && !targetFile.anyModFileExists())
         || failToPassValidation;
   }
 

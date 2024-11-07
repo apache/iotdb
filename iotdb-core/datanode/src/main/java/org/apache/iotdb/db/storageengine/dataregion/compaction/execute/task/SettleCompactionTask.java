@@ -69,7 +69,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     partiallyDirtyFiles.forEach(
         x -> {
           partiallyDirtyFileSize += x.getTsFileSize();
-          totalModsFileSize += x.getNewModFile().getSize();
+          totalModsFileSize += x.getTotalModSizeInByte();
         });
     this.hashCode = this.toString().hashCode();
   }

@@ -487,9 +487,9 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
       writer.endFile();
     }
     seqFile1
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.testsg.d1.s1"), Long.MAX_VALUE));
-    seqFile1.getNewModFile().close();
+    seqFile1.getModFileForWrite().close();
     TsFileResource seqFile2 = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile2)) {
       writer.startChunkGroup("d1");
@@ -502,9 +502,9 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
       writer.endFile();
     }
     seqFile2
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.testsg.d1.**"), Long.MAX_VALUE));
-    seqFile2.getNewModFile().close();
+    seqFile2.getModFileForWrite().close();
     TsFileResource seqFile3 = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile3)) {
       writer.startChunkGroup("d1");
@@ -517,9 +517,9 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
       writer.endFile();
     }
     seqFile3
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.testsg.d1.**"), Long.MAX_VALUE));
-    seqFile3.getNewModFile().close();
+    seqFile3.getModFileForWrite().close();
     seqResources.add(seqFile1);
     seqResources.add(seqFile2);
     seqResources.add(seqFile3);
@@ -542,9 +542,9 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
       writer.endFile();
     }
     seqFile1
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.testsg.d1.**"), Long.MAX_VALUE));
-    seqFile1.getNewModFile().close();
+    seqFile1.getModFileForWrite().close();
     TsFileResource seqFile2 = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile2)) {
       writer.startChunkGroup("d1");
@@ -554,9 +554,9 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
       writer.endFile();
     }
     seqFile2
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.testsg.d1.**"), Long.MAX_VALUE));
-    seqFile2.getNewModFile().close();
+    seqFile2.getModFileForWrite().close();
     TsFileResource seqFile3 = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile3)) {
       writer.startChunkGroup("d1");
@@ -566,9 +566,9 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
       writer.endFile();
     }
     seqFile3
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.testsg.d1.**"), Long.MAX_VALUE));
-    seqFile3.getNewModFile().close();
+    seqFile3.getModFileForWrite().close();
     seqResources.add(seqFile1);
     seqResources.add(seqFile2);
     seqResources.add(seqFile3);
@@ -591,9 +591,9 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
       writer.endFile();
     }
     seqFile1
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.**"), Long.MAX_VALUE));
-    seqFile1.getNewModFile().close();
+    seqFile1.getModFileForWrite().close();
     TsFileResource seqFile2 = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile2)) {
       writer.startChunkGroup("d1");
@@ -603,9 +603,9 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
       writer.endFile();
     }
     seqFile2
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.**"), Long.MAX_VALUE));
-    seqFile2.getNewModFile().close();
+    seqFile2.getModFileForWrite().close();
     TsFileResource seqFile3 = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile3)) {
       writer.startChunkGroup("d1");
@@ -615,9 +615,9 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
       writer.endFile();
     }
     seqFile3
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.testsg.**"), Long.MAX_VALUE));
-    seqFile3.getNewModFile().close();
+    seqFile3.getModFileForWrite().close();
     seqResources.add(seqFile1);
     seqResources.add(seqFile2);
     seqResources.add(seqFile3);
@@ -643,9 +643,9 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
       writer.endFile();
     }
     seqFile1
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.**"), Long.MAX_VALUE));
-    seqFile1.getNewModFile().close();
+    seqFile1.getModFileForWrite().close();
     TsFileResource seqFile2 = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile2)) {
       writer.startChunkGroup("d1");
@@ -658,9 +658,9 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
       writer.endFile();
     }
     seqFile2
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.**"), Long.MAX_VALUE));
-    seqFile2.getNewModFile().close();
+    seqFile2.getModFileForWrite().close();
     TsFileResource seqFile3 = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile3)) {
       writer.startChunkGroup("d1");
@@ -673,9 +673,9 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
       writer.endFile();
     }
     seqFile3
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.testsg.**"), Long.MAX_VALUE));
-    seqFile3.getNewModFile().close();
+    seqFile3.getModFileForWrite().close();
     seqResources.add(seqFile1);
     seqResources.add(seqFile2);
     seqResources.add(seqFile3);

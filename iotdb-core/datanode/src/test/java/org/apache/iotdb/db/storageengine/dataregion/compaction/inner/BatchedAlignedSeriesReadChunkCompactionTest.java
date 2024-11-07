@@ -183,9 +183,9 @@ public class BatchedAlignedSeriesReadChunkCompactionTest extends AbstractCompact
             true);
     seqResources.add(seqResource1);
     seqResource1
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.testsg.d0", "s2"), Long.MAX_VALUE));
-    seqResource1.getNewModFile().close();
+    seqResource1.getModFileForWrite().close();
 
     TsFileResource seqResource2 =
         generateSingleAlignedSeriesFile(
@@ -227,9 +227,9 @@ public class BatchedAlignedSeriesReadChunkCompactionTest extends AbstractCompact
             true);
     seqResources.add(seqResource1);
     seqResource1
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.testsg.d0", "s2"), Long.MAX_VALUE));
-    seqResource1.getNewModFile().close();
+    seqResource1.getModFileForWrite().close();
 
     TsFileResource seqResource2 =
         generateSingleAlignedSeriesFile(
@@ -318,9 +318,9 @@ public class BatchedAlignedSeriesReadChunkCompactionTest extends AbstractCompact
             true);
     seqResources.add(seqResource1);
     seqResource1
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.testsg.d0", "s2"), 250000));
-    seqResource1.getNewModFile().close();
+    seqResource1.getModFileForWrite().close();
 
     TsFileResource seqResource2 =
         generateSingleAlignedSeriesFile(
@@ -364,9 +364,9 @@ public class BatchedAlignedSeriesReadChunkCompactionTest extends AbstractCompact
             true);
     seqResources.add(seqResource1);
     seqResource1
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.testsg.d0", "s2"), 25000));
-    seqResource1.getNewModFile().close();
+    seqResource1.getModFileForWrite().close();
 
     TsFileResource seqResource2 =
         generateSingleAlignedSeriesFile(
@@ -448,9 +448,9 @@ public class BatchedAlignedSeriesReadChunkCompactionTest extends AbstractCompact
             true);
     seqResources.add(seqResource1);
     seqResource1
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.testsg.d0", "s2"), 15000));
-    seqResource1.getNewModFile().close();
+    seqResource1.getModFileForWrite().close();
 
     TsFileResource seqResource2 =
         generateSingleAlignedSeriesFile(

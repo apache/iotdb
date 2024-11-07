@@ -351,7 +351,7 @@ public class CompactionTaskComparatorTest {
     FakedTsFileResource fakedTsFileResource =
         new FakedTsFileResource(new File(targetFileName), 100);
     fakedTsFileResource
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.test.d1"), 1));
     compactionTaskQueue.put(
         new SettleCompactionTask(

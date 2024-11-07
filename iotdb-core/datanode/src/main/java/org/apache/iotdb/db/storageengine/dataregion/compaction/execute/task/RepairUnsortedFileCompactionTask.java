@@ -169,7 +169,7 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
       CompactionUtils.combineModsInInnerCompaction(
           filesView.sourceFilesInCompactionPerformer, filesView.targetFilesInPerformer);
     } else {
-      if (sourceFile.newModFileExists()) {
+      if (sourceFile.anyModFileExists()) {
         Files.createLink(
             ModificationFile.getNormalMods(filesView.targetFilesInPerformer.get(0).getTsFile())
                 .toPath(),

@@ -567,7 +567,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
       writer.endChunkGroup();
       writer.endFile();
     }
-    ModificationFile modFile = seqResource2.getNewModFile();
+    ModificationFile modFile = seqResource2.getModFileForWrite();
     ModEntry writedModification =
         new TreeDeletionEntry(new MeasurementPath("root.testsg.d1.s1"), 15);
     modFile.write(writedModification);
@@ -588,7 +588,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     TsFileResource targetResource = tsFileManager.getTsFileList(false).get(0);
     Assert.assertTrue(TsFileResourceUtils.validateTsFileDataCorrectness(targetResource));
     Assert.assertTrue(TsFileResourceUtils.validateTsFileResourceCorrectness(targetResource));
-    Assert.assertTrue(targetResource.newModFileExists());
+    Assert.assertTrue(targetResource.anyModFileExists());
     Assert.assertEquals(1, targetResource.getAllModEntries().size());
     ModEntry modification = targetResource.getAllModEntries().iterator().next();
     Assert.assertEquals(writedModification.getEndTime(), modification.getEndTime());

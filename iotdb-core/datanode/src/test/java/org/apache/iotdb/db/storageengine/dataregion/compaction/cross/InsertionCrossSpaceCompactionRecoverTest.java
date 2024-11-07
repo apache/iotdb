@@ -155,12 +155,12 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     Assert.assertTrue(unseqResource1.getTsFile().exists());
     Assert.assertTrue(
         new File(unseqResource1.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
-    Assert.assertTrue(unseqResource1.newModFileExists());
+    Assert.assertTrue(unseqResource1.anyModFileExists());
     Assert.assertFalse(unseqResource1.getCompactionModFile().exists());
 
     Assert.assertFalse(targetFile.tsFileExists());
     Assert.assertFalse(targetFile.resourceFileExists());
-    Assert.assertFalse(targetFile.newModFileExists());
+    Assert.assertFalse(targetFile.anyModFileExists());
   }
 
   @Test
@@ -233,7 +233,7 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
       Files.createLink(
           new File(targetTsFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath(),
           new File(sourceTsFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath());
-      if (unseqResource1.newModFileExists()) {
+      if (unseqResource1.anyModFileExists()) {
         Files.createLink(
             ModificationFile.getNormalMods(targetTsFile).toPath(),
             ModificationFile.getNormalMods(sourceTsFile).toPath());
@@ -246,12 +246,12 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     Assert.assertFalse(unseqResource1.getTsFile().exists());
     Assert.assertFalse(
         new File(unseqResource1.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
-    Assert.assertFalse(unseqResource1.newModFileExists());
+    Assert.assertFalse(unseqResource1.anyModFileExists());
     Assert.assertFalse(unseqResource1.getCompactionModFile().exists());
 
     Assert.assertTrue(targetFile.tsFileExists());
     Assert.assertTrue(targetFile.resourceFileExists());
-    Assert.assertFalse(targetFile.newModFileExists());
+    Assert.assertFalse(targetFile.anyModFileExists());
   }
 
   @Test
@@ -327,7 +327,7 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
       Files.createLink(
           new File(targetTsFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath(),
           new File(sourceTsFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath());
-      if (unseqResource1.newModFileExists()) {
+      if (unseqResource1.anyModFileExists()) {
         Files.createLink(
             ModificationFile.getNormalMods(targetTsFile).toPath(),
             ModificationFile.getNormalMods(sourceTsFile).toPath());
@@ -340,12 +340,12 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     Assert.assertFalse(unseqResource1.getTsFile().exists());
     Assert.assertFalse(
         new File(unseqResource1.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
-    Assert.assertFalse(unseqResource1.newModFileExists());
+    Assert.assertFalse(unseqResource1.anyModFileExists());
     Assert.assertFalse(unseqResource1.getCompactionModFile().exists());
 
     Assert.assertTrue(targetFile.tsFileExists());
     Assert.assertTrue(targetFile.resourceFileExists());
-    Assert.assertTrue(targetFile.newModFileExists());
+    Assert.assertTrue(targetFile.anyModFileExists());
   }
 
   @Test
@@ -423,12 +423,12 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     Assert.assertTrue(unseqResource1.getTsFile().exists());
     Assert.assertTrue(
         new File(unseqResource1.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
-    Assert.assertTrue(unseqResource1.newModFileExists());
+    Assert.assertTrue(unseqResource1.anyModFileExists());
     Assert.assertFalse(unseqResource1.getCompactionModFile().exists());
 
     Assert.assertFalse(targetFile.tsFileExists());
     Assert.assertFalse(targetFile.resourceFileExists());
-    Assert.assertFalse(targetFile.newModFileExists());
+    Assert.assertFalse(targetFile.anyModFileExists());
   }
 
   private TsFileResource createTsFileResource(String name, boolean seq) {

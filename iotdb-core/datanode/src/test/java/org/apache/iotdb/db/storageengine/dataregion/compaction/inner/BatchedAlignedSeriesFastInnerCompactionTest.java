@@ -253,9 +253,9 @@ public class BatchedAlignedSeriesFastInnerCompactionTest extends AbstractCompact
             Arrays.asList(false, false, false),
             false);
     unseqResource2
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.testsg.d0", "s2"), Long.MAX_VALUE));
-    unseqResource2.getNewModFile().close();
+    unseqResource2.getModFileForWrite().close();
     unseqResources.add(unseqResource2);
 
     TsFileResource targetResource = performCompaction();
@@ -394,9 +394,9 @@ public class BatchedAlignedSeriesFastInnerCompactionTest extends AbstractCompact
             Arrays.asList(false, false, false),
             false);
     unseqResource1
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.testsg.d0", "s2"), 150));
-    unseqResource1.getNewModFile().close();
+    unseqResource1.getModFileForWrite().close();
     unseqResources.add(unseqResource1);
 
     TsFileResource unseqResource2 =
@@ -409,9 +409,9 @@ public class BatchedAlignedSeriesFastInnerCompactionTest extends AbstractCompact
             Arrays.asList(false, false, false),
             false);
     unseqResource2
-        .getNewModFile()
+        .getModFileForWrite()
         .write(new TreeDeletionEntry(new MeasurementPath("root.testsg.d0", "s2"), 400));
-    unseqResource2.getNewModFile().close();
+    unseqResource2.getModFileForWrite().close();
     unseqResources.add(unseqResource2);
 
     TsFileResource targetResource = performCompaction();

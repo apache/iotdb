@@ -670,7 +670,7 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
         new MockModiFicationFile(
             ModificationFile.getNormalMods(seqResources.get(0).getTsFile()).getPath());
     mockModiFicationFile.write(new TreeDeletionEntry(new MeasurementPath("root.a.b"), 1));
-    seqResources.get(0).setNewModFile(mockModiFicationFile);
+    seqResources.get(0).setExclusiveModFile(mockModiFicationFile);
     SizeTieredCompactionSelector selector =
         new SizeTieredCompactionSelector(
             "", "", 0, true, tsFileManager, new CompactionScheduleContext());
@@ -694,7 +694,7 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
         new MockModiFicationFile(
             ModificationFile.getNormalMods(seqResources.get(0).getTsFile()).getPath());
     mockModiFicationFile.write(new TreeDeletionEntry(new MeasurementPath("root.a.b"), 1));
-    seqResources.get(0).setNewModFile(mockModiFicationFile);
+    seqResources.get(0).setExclusiveModFile(mockModiFicationFile);
     seqResources.get(0).setStatusForTest(TsFileResourceStatus.COMPACTING);
     SizeTieredCompactionSelector selector =
         new SizeTieredCompactionSelector(

@@ -1617,8 +1617,8 @@ public class TsFileProcessor {
       while (iterator.hasNext()) {
         Pair<ModEntry, IMemTable> entry = iterator.next();
         if (entry.right.equals(memTableToFlush)) {
-          this.tsFileResource.getNewModFile().write(entry.left);
-          tsFileResource.getNewModFile().close();
+          this.tsFileResource.getModFileForWrite().write(entry.left);
+          tsFileResource.getModFileForWrite().close();
           iterator.remove();
           logger.info("[Deletion] Deletion : {} written when flush memtable", entry.left);
         }
