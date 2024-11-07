@@ -31,6 +31,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
+import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.apache.iotdb.relational.it.db.it.IoTDBMultiIDsWithAttributesTableIT.buildHeaders;
 
@@ -3643,6 +3644,14 @@ public class IoTDBTableAggregationIT {
         "select mode(type), mode(s1),mode(s2),mode(s3),mode(s4),mode(s5),mode(s6),mode(s7),mode(s8),mode(s9),mode(s10) from table1 group by city",
         expectedHeader,
         retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void exceptionTest() {
+    tableAssertTestFail(
+        "select s1 from table1 where s2 in (select s2 from table1)",
+        "701: Only TableSubquery is supported now",
         DATABASE_NAME);
   }
 }

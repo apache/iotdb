@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
+
 import javax.annotation.Nullable;
 
 public abstract class AstVisitor<R, C> {
@@ -260,7 +262,7 @@ public abstract class AstVisitor<R, C> {
   }
 
   protected R visitSubqueryExpression(SubqueryExpression node, C context) {
-    return visitExpression(node, context);
+    throw new SemanticException("Only TableSubquery is supported now");
   }
 
   protected R visitSortItem(SortItem node, C context) {
