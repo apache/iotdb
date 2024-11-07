@@ -101,6 +101,11 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   @Override
   public SchemaPartition getSchemaPartition(final PathPatternTree patternTree) {
+    return getSchemaPartitionWithModel(patternTree, false);
+  }
+
+  private SchemaPartition getSchemaPartitionWithModel(
+      final PathPatternTree patternTree, final boolean isTableModel) {
     try (final ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       patternTree.constructTree();
@@ -110,7 +115,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
       if (null == schemaPartition) {
         final TSchemaPartitionTableResp schemaPartitionTableResp =
-            client.getSchemaPartitionTable(constructSchemaPartitionReq(patternTree));
+            client.getSchemaPartitionTable(constructSchemaPartitionReq(patternTree, isTableModel));
         if (schemaPartitionTableResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           schemaPartition = parseSchemaPartitionTableResp(schemaPartitionTableResp);
@@ -142,7 +147,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
       if (null == schemaPartition) {
         final TSchemaPartitionTableResp schemaPartitionTableResp =
-            client.getOrCreateSchemaPartitionTable(constructSchemaPartitionReq(patternTree));
+            client.getOrCreateSchemaPartitionTable(constructSchemaPartitionReq(patternTree, false));
         if (schemaPartitionTableResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           schemaPartition = parseSchemaPartitionTableResp(schemaPartitionTableResp);
@@ -363,7 +368,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     } catch (final IllegalPathException e) {
       throw new SemanticException(e);
     }
-    return getSchemaPartition(patternTree);
+    return getSchemaPartitionWithModel(patternTree, true);
   }
 
   /** split data partition query param by database */
@@ -399,9 +404,10 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     return result;
   }
 
-  private TSchemaPartitionReq constructSchemaPartitionReq(final PathPatternTree patternTree) {
+  private TSchemaPartitionReq constructSchemaPartitionReq(
+      final PathPatternTree patternTree, final boolean isTableModel) {
     try {
-      return new TSchemaPartitionReq(patternTree.serialize());
+      return new TSchemaPartitionReq(patternTree.serialize()).setIsTableModel(isTableModel);
     } catch (IOException e) {
       throw new StatementAnalyzeException("An error occurred when serializing pattern tree");
     }
@@ -510,8 +516,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
           regionReplicaMap.computeIfAbsent(entry1.getKey(), k -> new HashMap<>());
       for (final Map.Entry<TSeriesPartitionSlot, TConsensusGroupId> entry2 :
           entry1.getValue().entrySet()) {
-        TSeriesPartitionSlot seriesPartitionSlot = entry2.getKey();
-        TConsensusGroupId consensusGroupId = entry2.getValue();
+        final TSeriesPartitionSlot seriesPartitionSlot = entry2.getKey();
+        final TConsensusGroupId consensusGroupId = entry2.getValue();
         result1.put(seriesPartitionSlot, partitionCache.getRegionReplicaSet(consensusGroupId));
       }
     }

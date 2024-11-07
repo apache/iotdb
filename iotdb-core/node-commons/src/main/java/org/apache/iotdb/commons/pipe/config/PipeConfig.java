@@ -54,6 +54,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeHardLinkWALEnabled();
   }
 
+  public boolean getPipeFileReceiverFsyncEnabled() {
+    return COMMON_CONFIG.getPipeFileReceiverFsyncEnabled();
+  }
+
   /////////////////////////////// Tablet ///////////////////////////////
 
   public int getPipeDataStructureTabletRowSize() {
@@ -298,6 +302,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeMemoryExpanderIntervalSeconds();
   }
 
+  public long getPipeTsFileParserCheckMemoryEnoughIntervalMs() {
+    return COMMON_CONFIG.getPipeTsFileParserCheckMemoryEnoughIntervalMs();
+  }
+
   /////////////////////////////// TwoStage ///////////////////////////////
 
   public long getTwoStageAggregateMaxCombinerLiveTimeInMs() {
@@ -335,6 +343,7 @@ public class PipeConfig {
     LOGGER.info("PipeHardlinkTsFileDirName: {}", getPipeHardlinkTsFileDirName());
     LOGGER.info("PipeHardlinkWALDirName: {}", getPipeHardlinkWALDirName());
     LOGGER.info("PipeHardLinkWALEnabled: {}", getPipeHardLinkWALEnabled());
+    LOGGER.info("PipeFileReceiverFsyncEnabled: {}", getPipeFileReceiverFsyncEnabled());
 
     LOGGER.info("PipeDataStructureTabletRowSize: {}", getPipeDataStructureTabletRowSize());
     LOGGER.info("PipeDataStructureTabletSizeInBytes: {}", getPipeDataStructureTabletSizeInBytes());
@@ -450,6 +459,9 @@ public class PipeConfig {
         "PipeMemoryAllocateForTsFileSequenceReaderInBytes: {}",
         getPipeMemoryAllocateForTsFileSequenceReaderInBytes());
     LOGGER.info("PipeMemoryExpanderIntervalSeconds: {}", getPipeMemoryExpanderIntervalSeconds());
+    LOGGER.info(
+        "PipeTsFileParserCheckMemoryEnoughIntervalMs: {}",
+        getPipeTsFileParserCheckMemoryEnoughIntervalMs());
 
     LOGGER.info(
         "TwoStageAggregateMaxCombinerLiveTimeInMs: {}",

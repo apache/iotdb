@@ -45,13 +45,15 @@ import org.slf4j.LoggerFactory;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Files;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.ENTITY_MNODE_TYPE;
@@ -115,15 +117,19 @@ public class MemMTreeSnapshotUtil {
   }
 
   public static IMemMNode loadSnapshot(
-      File snapshotDir,
-      Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
-      Consumer<IDeviceMNode<IMemMNode>> deviceProcess,
-      MemSchemaRegionStatistics regionStatistics)
+      final File snapshotDir,
+      final Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
+      final Consumer<IDeviceMNode<IMemMNode>> deviceProcess,
+      final BiConsumer<IDeviceMNode<IMemMNode>, String> tableDeviceProcess,
+      final MemSchemaRegionStatistics regionStatistics)
       throws IOException {
-    File snapshot = SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.MTREE_SNAPSHOT);
-    try (BufferedInputStream inputStream = new BufferedInputStream(new FileInputStream(snapshot))) {
-      return deserializeFrom(inputStream, measurementProcess, deviceProcess, regionStatistics);
-    } catch (Throwable e) {
+    final File snapshot =
+        SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.MTREE_SNAPSHOT);
+    try (final BufferedInputStream inputStream =
+        new BufferedInputStream(Files.newInputStream(snapshot.toPath()))) {
+      return deserializeFrom(
+          inputStream, measurementProcess, deviceProcess, tableDeviceProcess, regionStatistics);
+    } catch (final Throwable e) {
       // This method is only invoked during recovery. If failed, the memory usage should be cleared
       // since the loaded schema will not be used.
       regionStatistics.clear();
@@ -165,24 +171,28 @@ public class MemMTreeSnapshotUtil {
   }
 
   private static IMemMNode deserializeFrom(
-      InputStream inputStream,
-      Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
-      Consumer<IDeviceMNode<IMemMNode>> deviceProcess,
-      MemSchemaRegionStatistics regionStatistics)
+      final InputStream inputStream,
+      final Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
+      final Consumer<IDeviceMNode<IMemMNode>> deviceProcess,
+      final BiConsumer<IDeviceMNode<IMemMNode>, String> tableDeviceProcess,
+      final MemSchemaRegionStatistics regionStatistics)
       throws IOException {
     byte version = ReadWriteIOUtils.readByte(inputStream);
-    return inorderDeserialize(inputStream, measurementProcess, deviceProcess, regionStatistics);
+    return inorderDeserialize(
+        inputStream, measurementProcess, deviceProcess, tableDeviceProcess, regionStatistics);
   }
 
   private static IMemMNode inorderDeserialize(
-      InputStream inputStream,
-      Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
-      Consumer<IDeviceMNode<IMemMNode>> deviceProcess,
-      MemSchemaRegionStatistics regionStatistics)
+      final InputStream inputStream,
+      final Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
+      final Consumer<IDeviceMNode<IMemMNode>> deviceProcess,
+      final BiConsumer<IDeviceMNode<IMemMNode>, String> tableDeviceProcess,
+      final MemSchemaRegionStatistics regionStatistics)
       throws IOException {
-    MNodeDeserializer deserializer = new MNodeDeserializer();
-    Deque<IMemMNode> ancestors = new ArrayDeque<>();
-    Deque<Integer> restChildrenNum = new ArrayDeque<>();
+    final MNodeDeserializer deserializer = new MNodeDeserializer();
+    final Deque<IMemMNode> ancestors = new ArrayDeque<>();
+    final Deque<Integer> restChildrenNum = new ArrayDeque<>();
+    final AtomicReference<String> tableRef = new AtomicReference<>();
     deserializeMNode(
         ancestors,
         restChildrenNum,
@@ -190,9 +200,11 @@ public class MemMTreeSnapshotUtil {
         inputStream,
         measurementProcess,
         deviceProcess,
-        regionStatistics);
+        tableDeviceProcess,
+        regionStatistics,
+        tableRef);
     int childrenNum;
-    IMemMNode root = ancestors.peek();
+    final IMemMNode root = ancestors.peek();
     while (!ancestors.isEmpty()) {
       childrenNum = restChildrenNum.pop();
       if (childrenNum == 0) {
@@ -206,28 +218,35 @@ public class MemMTreeSnapshotUtil {
             inputStream,
             measurementProcess,
             deviceProcess,
-            regionStatistics);
+            tableDeviceProcess,
+            regionStatistics,
+            tableRef);
       }
     }
     return root;
   }
 
   private static void deserializeMNode(
-      Deque<IMemMNode> ancestors,
-      Deque<Integer> restChildrenNum,
-      MNodeDeserializer deserializer,
-      InputStream inputStream,
-      Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
-      Consumer<IDeviceMNode<IMemMNode>> deviceProcess,
-      MemSchemaRegionStatistics regionStatistics)
+      final Deque<IMemMNode> ancestors,
+      final Deque<Integer> restChildrenNum,
+      final MNodeDeserializer deserializer,
+      final InputStream inputStream,
+      final Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
+      final Consumer<IDeviceMNode<IMemMNode>> deviceProcess,
+      final BiConsumer<IDeviceMNode<IMemMNode>, String> tableDeviceProcess,
+      final MemSchemaRegionStatistics regionStatistics,
+      final AtomicReference<String> currentTableName)
       throws IOException {
-    byte type = ReadWriteIOUtils.readByte(inputStream);
-    IMemMNode node;
-    int childrenNum;
+    final byte type = ReadWriteIOUtils.readByte(inputStream);
+    final IMemMNode node;
+    final int childrenNum;
     switch (type) {
       case INTERNAL_MNODE_TYPE:
         childrenNum = ReadWriteIOUtils.readInt(inputStream);
         node = deserializer.deserializeInternalMNode(inputStream);
+        if (ancestors.size() == 1) {
+          currentTableName.set(node.getName());
+        }
         break;
       case STORAGE_GROUP_MNODE_TYPE:
         childrenNum = ReadWriteIOUtils.readInt(inputStream);
@@ -256,7 +275,11 @@ public class MemMTreeSnapshotUtil {
       case TABLE_MNODE_TYPE:
         childrenNum = ReadWriteIOUtils.readInt(inputStream);
         node = deserializer.deserializeTableDeviceMNode(inputStream);
+        if (ancestors.size() == 1) {
+          currentTableName.set(node.getName());
+        }
         deviceProcess.accept(node.getAsDeviceMNode());
+        tableDeviceProcess.accept(node.getAsDeviceMNode(), currentTableName.get());
         break;
       default:
         throw new IOException("Unrecognized MNode type " + type);

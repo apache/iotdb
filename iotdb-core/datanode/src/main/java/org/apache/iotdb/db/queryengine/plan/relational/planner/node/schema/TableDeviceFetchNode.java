@@ -82,8 +82,9 @@ public class TableDeviceFetchNode extends TableDeviceSourceNode {
   }
 
   public PlanNode cloneForDistribution() {
+    // The id is not used, only for requireNonNull
     return new TableDeviceFetchNode(
-        null, database, tableName, new ArrayList<>(), null, columnHeaderList, senderLocation);
+        id, database, tableName, new ArrayList<>(), null, columnHeaderList, senderLocation);
   }
 
   @Override
