@@ -19,8 +19,13 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -30,6 +35,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.state.schema.DropTableColumnState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.mpp.rpc.thrift.TInvalidateColumnCacheReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -39,6 +45,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Map;
 import java.util.Objects;
 
 public class DropTableColumnProcedure
@@ -129,6 +136,38 @@ public class DropTableColumnProcedure
     } else {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }
+  }
+
+  private void invalidateCache(final ConfigNodeProcedureEnv env) {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
+    final DataNodeAsyncRequestContext<TInvalidateColumnCacheReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
+            CnToDnAsyncRequestType.INVALIDATE_COLUMN_CACHE,
+            new TInvalidateColumnCacheReq(database, tableName, columnName, isAttributeColumn),
+            dataNodeLocationMap);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
+    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
+    for (final TSStatus status : statusMap.values()) {
+      // All dataNodes must clear the related schemaEngine cache
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.error(
+            "Failed to invalidate {} column {}'s cache of table {}.{}",
+            isAttributeColumn ? "attribute" : "measurement",
+            columnName,
+            database,
+            tableName);
+        setFailure(
+            new ProcedureException(
+                new MetadataException(
+                    String.format(
+                        "Invalidate column %s cache failed for table %s.%s",
+                        columnName, database, tableName))));
+        return;
+      }
+    }
+
+    setNextState(DropTableColumnState.EXECUTE_ON_REGION);
   }
 
   private void dropColumn(final ConfigNodeProcedureEnv env) {

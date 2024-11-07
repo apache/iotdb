@@ -214,6 +214,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceInfoResp;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TInvalidateColumnCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateTableCacheReq;
@@ -1577,6 +1578,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                     new SchemaRegionId(consensusGroupId.getId()),
                     new DeleteTableDeviceNode(new PlanNodeId(""), req.getTableName()))
                 .getStatus());
+  }
+
+  @Override
+  public TSStatus invalidateCacheForDropColumn(final TInvalidateColumnCacheReq req) {
+    return null;
   }
 
   public TTestConnectionResp submitTestConnectionTask(TNodeLocations nodeLocations) {
