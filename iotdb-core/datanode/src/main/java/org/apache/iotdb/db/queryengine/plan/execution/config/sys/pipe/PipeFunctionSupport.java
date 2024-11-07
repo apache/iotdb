@@ -21,13 +21,13 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe;
 
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 
-import jdk.internal.net.http.common.Pair;
+import org.apache.tsfile.utils.Pair;
 
 import java.util.Map;
 
 public class PipeFunctionSupport {
 
-  public static void applyNowFunctionToAttributes(
+  public static void applyNowFunctionToExtractorAttributes(
       Map<String, String> extractorAttributes,
       String sourceKey,
       String extractorKey,
@@ -37,8 +37,8 @@ public class PipeFunctionSupport {
     if (pair == null) {
       return;
     }
-    if (equalsNowFunction(pair.second)) {
-      extractorAttributes.put(pair.first, String.valueOf(currentTime));
+    if (isNowFunction(pair.right)) {
+      extractorAttributes.replace(pair.left, String.valueOf(currentTime));
     }
   }
 
@@ -60,17 +60,10 @@ public class PipeFunctionSupport {
     if (value != null) {
       return new Pair<>(key, value);
     }
-    // "extractor.".length() == 7
-    key = extractorKey.substring(10);
-    value = extractorAttributes.get(key);
-    if (value != null) {
-      return new Pair<>(key, value);
-    }
     return null;
   }
 
-  private static boolean equalsNowFunction(String value) {
-    String time = value.replace("//s+", "").toLowerCase();
-    return PipeExtractorConstant.NOW_TIME_VALUE.equals(time);
+  private static boolean isNowFunction(String value) {
+    return PipeExtractorConstant.NOW_TIME_VALUE.equalsIgnoreCase(value.trim());
   }
 }

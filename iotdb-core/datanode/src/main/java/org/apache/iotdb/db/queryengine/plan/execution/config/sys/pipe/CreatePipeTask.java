@@ -38,6 +38,8 @@ public class CreatePipeTask implements IConfigTask {
   private final CreatePipeStatement createPipeStatement;
 
   public CreatePipeTask(CreatePipeStatement createPipeStatement) {
+    // support now() function
+    applyNowFunctionToExtractorAttributes(createPipeStatement.getExtractorAttributes());
     this.createPipeStatement = createPipeStatement;
   }
 
@@ -47,7 +49,7 @@ public class CreatePipeTask implements IConfigTask {
     createPipeStatement.setIfNotExists(createPipe.hasIfNotExistsCondition());
 
     // support now() function
-    applyNowFunctionToAttributes(createPipe.getExtractorAttributes());
+    applyNowFunctionToExtractorAttributes(createPipe.getExtractorAttributes());
 
     createPipeStatement.setExtractorAttributes(createPipe.getExtractorAttributes());
     createPipeStatement.setProcessorAttributes(createPipe.getProcessorAttributes());
@@ -60,32 +62,32 @@ public class CreatePipeTask implements IConfigTask {
     return configTaskExecutor.createPipe(createPipeStatement);
   }
 
-  private void applyNowFunctionToAttributes(Map<String, String> attributes) {
+  private void applyNowFunctionToExtractorAttributes(Map<String, String> attributes) {
     final long currentTime =
         CommonDateTimeUtils.convertMilliTimeWithPrecision(
             System.currentTimeMillis(),
             CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
 
     // support now() function
-    PipeFunctionSupport.applyNowFunctionToAttributes(
+    PipeFunctionSupport.applyNowFunctionToExtractorAttributes(
         attributes,
         PipeExtractorConstant.SOURCE_START_TIME_KEY,
         PipeExtractorConstant.EXTRACTOR_START_TIME_KEY,
         currentTime);
 
-    PipeFunctionSupport.applyNowFunctionToAttributes(
+    PipeFunctionSupport.applyNowFunctionToExtractorAttributes(
         attributes,
         PipeExtractorConstant.SOURCE_END_TIME_KEY,
         PipeExtractorConstant.EXTRACTOR_END_TIME_KEY,
         currentTime);
 
-    PipeFunctionSupport.applyNowFunctionToAttributes(
+    PipeFunctionSupport.applyNowFunctionToExtractorAttributes(
         attributes,
         PipeExtractorConstant.SOURCE_HISTORY_START_TIME_KEY,
         PipeExtractorConstant.EXTRACTOR_HISTORY_START_TIME_KEY,
         currentTime);
 
-    PipeFunctionSupport.applyNowFunctionToAttributes(
+    PipeFunctionSupport.applyNowFunctionToExtractorAttributes(
         attributes,
         PipeExtractorConstant.SOURCE_HISTORY_END_TIME_KEY,
         PipeExtractorConstant.EXTRACTOR_HISTORY_END_TIME_KEY,
