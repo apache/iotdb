@@ -3240,7 +3240,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> describeTable(
-      final String database, final String tableName) {
+      final String database, final String tableName, final boolean isDetails) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
     if (table == null) {
