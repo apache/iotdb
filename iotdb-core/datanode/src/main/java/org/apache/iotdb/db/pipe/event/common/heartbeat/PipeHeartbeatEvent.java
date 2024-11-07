@@ -85,7 +85,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     if (Objects.nonNull(pipeName)) {
       PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-          .increaseHeartbeatEventCount(pipeName + "_" + creationTime);
+          .increaseHeartbeatEventCount(pipeName, creationTime);
     }
     return true;
   }
@@ -96,7 +96,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
     // not the event copied and passed to the extractor
     if (Objects.nonNull(pipeName)) {
       PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-          .decreaseHeartbeatEventCount(pipeName + "_" + creationTime);
+          .decreaseHeartbeatEventCount(pipeName, creationTime);
       if (shouldPrintMessage && LOGGER.isDebugEnabled()) {
         LOGGER.debug(this.toString());
       }

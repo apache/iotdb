@@ -129,39 +129,51 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     }
   }
 
-  public void increaseTabletEventCount(final String pipeID) {
+  public void increaseTabletEventCount(final String pipeName, final long creationTime) {
     remainingEventAndTimeOperatorMap
-        .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
+        .computeIfAbsent(
+            pipeName + "_" + creationTime,
+            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
         .increaseTabletEventCount();
   }
 
-  public void decreaseTabletEventCount(final String pipeID) {
+  public void decreaseTabletEventCount(final String pipeName, final long creationTime) {
     remainingEventAndTimeOperatorMap
-        .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
+        .computeIfAbsent(
+            pipeName + "_" + creationTime,
+            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
         .decreaseTabletEventCount();
   }
 
-  public void increaseTsFileEventCount(final String pipeID) {
+  public void increaseTsFileEventCount(final String pipeName, final long creationTime) {
     remainingEventAndTimeOperatorMap
-        .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
+        .computeIfAbsent(
+            pipeName + "_" + creationTime,
+            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
         .increaseTsFileEventCount();
   }
 
-  public void decreaseTsFileEventCount(final String pipeID) {
+  public void decreaseTsFileEventCount(final String pipeName, final long creationTime) {
     remainingEventAndTimeOperatorMap
-        .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
+        .computeIfAbsent(
+            pipeName + "_" + creationTime,
+            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
         .decreaseTsFileEventCount();
   }
 
-  public void increaseHeartbeatEventCount(final String pipeID) {
+  public void increaseHeartbeatEventCount(final String pipeName, final long creationTime) {
     remainingEventAndTimeOperatorMap
-        .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
+        .computeIfAbsent(
+            pipeName + "_" + creationTime,
+            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
         .increaseHeartbeatEventCount();
   }
 
-  public void decreaseHeartbeatEventCount(final String pipeID) {
+  public void decreaseHeartbeatEventCount(final String pipeName, final long creationTime) {
     remainingEventAndTimeOperatorMap
-        .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
+        .computeIfAbsent(
+            pipeName + "_" + creationTime,
+            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
         .decreaseHeartbeatEventCount();
   }
 
