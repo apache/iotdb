@@ -895,8 +895,8 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   @Override
   public void setString(int parameterIndex, String x) {
     // if the sql is an insert statement and the value is not a string literal, add single quotes
-    // The table model only supports single quotes, the tree model sql both single and double quotes. Therefore this method only judges
-    // based on single quotes
+    // The table model only supports single quotes, the tree model sql both single and double
+    // quotes. Therefore this method only judges based on single quotes
     if (sql.trim().toUpperCase().startsWith("INSERT") && !x.startsWith("'") && !x.endsWith("'")) {
       this.parameters.put(parameterIndex, "'" + x + "'");
     } else {
