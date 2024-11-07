@@ -125,6 +125,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
@@ -1313,5 +1315,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap) {
     return configManager.fetchTables(fetchTableMap);
+  }
+
+  @Override
+  public TDeleteTableDeviceResp deleteDevice(final TDeleteTableDeviceReq req) {
+    return configManager.deleteDevice(req);
   }
 }

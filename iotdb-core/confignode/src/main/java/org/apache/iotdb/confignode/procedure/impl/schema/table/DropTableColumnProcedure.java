@@ -33,6 +33,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+// TODO
 public class DropTableColumnProcedure
     extends AbstractAlterOrDropTableProcedure<DropTableColumnState> {
 

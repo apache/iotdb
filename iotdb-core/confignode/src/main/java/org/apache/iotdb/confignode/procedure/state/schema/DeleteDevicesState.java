@@ -17,29 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational;
+package org.apache.iotdb.confignode.procedure.state.schema;
 
-import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
-
-abstract class AbstractAlterOrDropTableTask implements IConfigTask {
-
-  protected final String database;
-
-  protected final String tableName;
-
-  protected final String queryId;
-
-  protected final boolean tableIfExists;
-
-  protected AbstractAlterOrDropTableTask(
-      final String database,
-      final String tableName,
-      final String queryId,
-      final boolean tableIfExists) {
-    this.database = PathUtils.qualifyDatabaseName(database);
-    this.tableName = tableName;
-    this.queryId = queryId;
-    this.tableIfExists = tableIfExists;
-  }
+public enum DeleteDevicesState {
+  CHECK_TABLE_EXISTENCE,
+  CONSTRUCT_BLACK_LIST,
+  CLEAN_DATANODE_SCHEMA_CACHE,
+  DELETE_DATA,
+  DELETE_DEVICE_SCHEMA
 }

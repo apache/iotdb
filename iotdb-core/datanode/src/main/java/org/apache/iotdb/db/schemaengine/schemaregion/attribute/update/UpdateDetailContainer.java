@@ -44,6 +44,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+// Note that all the writings to the containers are guarded by the schema region lock.
+// The readings are guarded byt the concurrent segment lock, thus there is no need
+// to worry about the concurrent safety.
 @ThreadSafe
 public class UpdateDetailContainer implements UpdateContainer {
 
@@ -122,6 +125,46 @@ public class UpdateDetailContainer implements UpdateContainer {
       // ByteArrayOutputStream won't throw IOException
     }
     return outputStream.toByteArray();
+  }
+
+  @Override
+  public long invalidate(final String tableName) {
+    final AtomicLong result = new AtomicLong(0);
+    handleTableRemoval(tableName, result);
+    return result.get();
+  }
+
+  // pathNodes.length >= 3
+  @Override
+  public long invalidate(final @Nonnull String[] pathNodes) {
+    final AtomicLong result = new AtomicLong(0);
+    updateMap.compute(
+        pathNodes[2],
+        (name, value) -> {
+          if (Objects.isNull(value)) {
+            return null;
+          }
+          value.compute(
+              Arrays.asList(pathNodes).subList(3, pathNodes.length),
+              (device, attributes) -> {
+                if (Objects.nonNull(attributes)) {
+                  result.addAndGet(
+                      RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+                          + sizeOfList(device)
+                          + sizeOfMapEntries(attributes));
+                }
+                return null;
+              });
+          if (value.isEmpty()) {
+            result.addAndGet(
+                RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+                    + RamUsageEstimator.sizeOf(name)
+                    + MAP_SIZE);
+            return null;
+          }
+          return value;
+        });
+    return 0;
   }
 
   private void serializeWithLimit(
@@ -253,24 +296,22 @@ public class UpdateDetailContainer implements UpdateContainer {
     } else {
       ((UpdateClearContainer) commitContainer)
           .getTableNames()
-          .forEach(
-              tableName -> {
-                final ConcurrentMap<List<String>, ConcurrentMap<String, Binary>> deviceMap =
-                    updateMap.remove(tableName);
-                if (Objects.nonNull(deviceMap)) {
-                  result.addAndGet(
-                      deviceMap.size()
-                              * (RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY + MAP_SIZE)
-                          + deviceMap.entrySet().stream()
-                              .mapToLong(
-                                  entry ->
-                                      sizeOfList(entry.getKey())
-                                          + sizeOfMapEntries(entry.getValue()))
-                              .reduce(0, Long::sum));
-                }
-              });
+          .forEach(tableName -> handleTableRemoval(tableName, result));
     }
     return new Pair<>(result.get(), updateMap.isEmpty());
+  }
+
+  private void handleTableRemoval(final String tableName, final AtomicLong result) {
+    final ConcurrentMap<List<String>, ConcurrentMap<String, Binary>> deviceMap =
+        updateMap.remove(tableName);
+    if (Objects.nonNull(deviceMap)) {
+      result.addAndGet(
+          deviceMap.size() * (RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY + MAP_SIZE)
+              + deviceMap.entrySet().stream()
+                  .mapToLong(
+                      entry -> sizeOfList(entry.getKey()) + sizeOfMapEntries(entry.getValue()))
+                  .reduce(0, Long::sum));
+    }
   }
 
   private static long sizeOfList(final @Nonnull List<String> input) {
