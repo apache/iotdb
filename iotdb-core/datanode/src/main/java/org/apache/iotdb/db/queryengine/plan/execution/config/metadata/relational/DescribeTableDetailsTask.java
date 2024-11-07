@@ -39,9 +39,8 @@ import org.apache.tsfile.utils.Binary;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class DescribeTableTask extends AbstractTableTask {
-
-  public DescribeTableTask(final String database, final String tableName) {
+public class DescribeTableDetailsTask extends AbstractTableTask {
+  public DescribeTableDetailsTask(final String database, final String tableName) {
     super(database, tableName);
   }
 
