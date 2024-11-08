@@ -45,6 +45,7 @@ import org.junit.Test;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -878,7 +879,7 @@ public class SessionCacheLeaderTest {
     Tablet tablet2 = new Tablet(allDeviceIds.get(2), schemaList, 100);
     Tablet tablet3 = new Tablet(allDeviceIds.get(3), schemaList, 100);
 
-    Map<String, Tablet> tabletMap = new HashMap<>();
+    Map<String, Tablet> tabletMap = new LinkedHashMap<>();
     tabletMap.put(allDeviceIds.get(1), tablet1);
     tabletMap.put(allDeviceIds.get(2), tablet2);
     tabletMap.put(allDeviceIds.get(3), tablet3);
