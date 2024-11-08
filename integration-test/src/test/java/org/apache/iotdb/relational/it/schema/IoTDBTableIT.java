@@ -382,7 +382,7 @@ public class IoTDBTableIT {
       dataTypes = new String[] {"TIMESTAMP", "STRING", "STRING", "FLOAT", "DOUBLE"};
       categories = new String[] {"TIME", "ID", "ID", "MEASUREMENT", "MEASUREMENT"};
       final String[] statuses = new String[] {"USING", "USING", "USING", "USING", "USING"};
-      try (final ResultSet resultSet = statement.executeQuery("describe test1.table2 details")) {
+      try (final ResultSet resultSet = statement.executeQuery("describe table2 details")) {
         int cnt = 0;
         ResultSetMetaData metaData = resultSet.getMetaData();
         assertEquals(describeTableColumnHeaders.size(), metaData.getColumnCount());
@@ -419,7 +419,7 @@ public class IoTDBTableIT {
       try {
         statement.execute("alter table table2 drop column speed");
       } catch (final SQLException e) {
-        assertEquals("616: Column speed in table 'shit.table2' does not exist.", e.getMessage());
+        assertEquals("616: Column speed in table 'test2.table2' does not exist.", e.getMessage());
       }
 
       try {
