@@ -118,7 +118,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
                 PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet));
     if (Objects.nonNull(pipeName)) {
       PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-          .increaseTabletEventCount(pipeName + "_" + creationTime);
+          .increaseTabletEventCount(pipeName, creationTime);
     }
     return true;
   }
@@ -127,7 +127,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     if (Objects.nonNull(pipeName)) {
       PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-          .decreaseTabletEventCount(pipeName + "_" + creationTime);
+          .decreaseTabletEventCount(pipeName, creationTime);
     }
     allocatedMemoryBlock.close();
 
