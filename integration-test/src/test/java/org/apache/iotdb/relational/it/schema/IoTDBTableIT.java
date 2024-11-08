@@ -371,10 +371,48 @@ public class IoTDBTableIT {
       }
 
       statement.execute(
-          "insert into table2(region_id, plant_id, color, temperature, speed) values(1, 1, 1, 1, 1)");
+          "insert into table2(region_id, plant_id, color, temperature, speed) values(1, 1, 1, 1, 1, 1)");
 
+      // Test drop column
       statement.execute("alter table table2 drop column color");
+
+      columnNames = new String[] {"time", "region_id", "plant_id", "temperature", "speed"};
+      dataTypes = new String[] {"TIMESTAMP", "STRING", "STRING", "FLOAT", "DOUBLE"};
+      categories = new String[] {"TIME", "ID", "ID", "MEASUREMENT", "MEASUREMENT"};
+      final String[] statuses = new String[] {"USING", "USING", "USING", "USING", "USING"};
+      try (final ResultSet resultSet = statement.executeQuery("describe test1.table2 details")) {
+        int cnt = 0;
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(describeTableColumnHeaders.size(), metaData.getColumnCount());
+        for (int i = 0; i < describeTableColumnHeaders.size(); i++) {
+          assertEquals(
+              describeTableColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
+        }
+        while (resultSet.next()) {
+          assertEquals(columnNames[cnt], resultSet.getString(1));
+          assertEquals(dataTypes[cnt], resultSet.getString(2));
+          assertEquals(categories[cnt], resultSet.getString(3));
+          assertEquals(statuses[cnt], resultSet.getString(4));
+          cnt++;
+        }
+        assertEquals(columnNames.length, cnt);
+      }
+
       statement.execute("alter table table2 drop column speed");
+
+      try {
+        statement.executeQuery("select color from table2");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("701: Column 'color' cannot be resolved", e.getMessage());
+      }
+
+      try {
+        statement.executeQuery("select speed from table2");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("701: Column 'speed' cannot be resolved", e.getMessage());
+      }
 
       statement.execute("drop table table2");
       try {
