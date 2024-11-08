@@ -128,7 +128,7 @@ public class DropTableColumnProcedure
       LOGGER.info(
           "DropTableColumn-{}.{}-{} costs {}ms",
           database,
-          table.getTableName(),
+          tableName,
           state,
           (System.currentTimeMillis() - startTime));
     }
