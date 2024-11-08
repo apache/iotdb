@@ -1539,7 +1539,15 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public void dropTableAttribute(final TableAttributeColumnDropNode dropTableAttributeNode)
       throws MetadataException {
-    writeToMLog(dropTableAttributeNode);
+    if (mtree.dropTableAttribute(
+        dropTableAttributeNode.getTableName(),
+        pointer ->
+            deviceAttributeStore.removeAttribute(
+                pointer, dropTableAttributeNode.getColumnName()))) {
+      deviceAttributeCacheUpdater.invalidate(
+          dropTableAttributeNode.getTableName(), dropTableAttributeNode.getColumnName());
+      writeToMLog(dropTableAttributeNode);
+    }
   }
 
   @Override

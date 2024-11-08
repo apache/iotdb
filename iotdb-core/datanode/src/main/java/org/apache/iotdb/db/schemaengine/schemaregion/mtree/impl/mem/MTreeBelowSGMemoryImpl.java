@@ -1732,5 +1732,31 @@ public class MTreeBelowSGMemoryImpl {
     return true;
   }
 
+  public boolean dropTableAttribute(final String tableName, final IntConsumer attributeDropper)
+      throws MetadataException {
+    if (!store.hasChild(storageGroupMNode, tableName)) {
+      return false;
+    }
+    final AtomicInteger memoryReleased = new AtomicInteger(0);
+    try (final EntityUpdater<IMemMNode> updater =
+        new EntityUpdater<IMemMNode>(
+            storageGroupMNode,
+            new PartialPath(new String[] {storageGroupMNode.getName(), tableName}),
+            this.store,
+            true,
+            SchemaConstant.ALL_MATCH_SCOPE) {
+          @Override
+          protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
+            attributeDropper.accept(
+                ((TableDeviceInfo<IMemMNode>) node.getAsDeviceMNode().getDeviceInfo())
+                    .getAttributePointer());
+          }
+        }) {
+      updater.update();
+    }
+    store.releaseMemory(memoryReleased.get());
+    return true;
+  }
+
   // endregion
 }
