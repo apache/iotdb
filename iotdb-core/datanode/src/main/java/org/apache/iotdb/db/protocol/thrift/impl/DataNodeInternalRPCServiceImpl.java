@@ -1697,7 +1697,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                         new TableAttributeColumnDropNode(
                             new PlanNodeId(""), req.getTableName(), req.getColumnName()))
                     .getStatus()
-                : null);
+                : StatusUtils.OK);
   }
 
   public TTestConnectionResp submitTestConnectionTask(final TNodeLocations nodeLocations) {
