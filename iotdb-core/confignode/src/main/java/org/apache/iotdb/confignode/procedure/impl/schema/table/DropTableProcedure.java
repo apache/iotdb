@@ -36,7 +36,6 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecutor;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.state.schema.DropTableState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
@@ -51,11 +50,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
-import java.util.function.BiFunction;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
@@ -175,11 +171,10 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
         env.getConfigManager().getRelatedDataRegionGroup(patternTree, true);
 
     if (!relatedDataRegionGroup.isEmpty()) {
-      new DropTableRegionTaskExecutor<>(
+      new TableRegionTaskExecutor<>(
               "delete data for drop table",
               env,
               relatedDataRegionGroup,
-              true,
               CnToDnAsyncRequestType.DELETE_DATA_FOR_DROP_TABLE,
               ((dataNodeLocation, consensusGroupIdList) ->
                   new TDeleteDataOrDevicesForDropTableReq(
@@ -211,11 +206,10 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
         env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, true);
 
     if (!relatedSchemaRegionGroup.isEmpty()) {
-      new DropTableRegionTaskExecutor<>(
+      new TableRegionTaskExecutor<>(
               "delete devices for drop table",
               env,
               relatedSchemaRegionGroup,
-              true,
               CnToDnAsyncRequestType.DELETE_DEVICES_FOR_DROP_TABLE,
               ((dataNodeLocation, consensusGroupIdList) ->
                   new TDeleteDataOrDevicesForDropTableReq(
@@ -265,67 +259,5 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
   public void serialize(final DataOutputStream stream) throws IOException {
     stream.writeShort(ProcedureType.DROP_TABLE_PROCEDURE.getTypeCode());
     super.serialize(stream);
-  }
-
-  private class DropTableRegionTaskExecutor<Q> extends DataNodeRegionTaskExecutor<Q, TSStatus> {
-
-    private final String taskName;
-
-    DropTableRegionTaskExecutor(
-        final String taskName,
-        final ConfigNodeProcedureEnv env,
-        final Map<TConsensusGroupId, TRegionReplicaSet> targetDataRegionGroup,
-        final boolean executeOnAllReplicaset,
-        final CnToDnAsyncRequestType dataNodeRequestType,
-        final BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
-      super(
-          env,
-          targetDataRegionGroup,
-          executeOnAllReplicaset,
-          dataNodeRequestType,
-          dataNodeRequestGenerator);
-      this.taskName = taskName;
-    }
-
-    @Override
-    protected List<TConsensusGroupId> processResponseOfOneDataNode(
-        final TDataNodeLocation dataNodeLocation,
-        final List<TConsensusGroupId> consensusGroupIdList,
-        final TSStatus response) {
-      final List<TConsensusGroupId> failedRegionList = new ArrayList<>();
-      if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return failedRegionList;
-      }
-
-      if (response.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-        final List<TSStatus> subStatus = response.getSubStatus();
-        for (int i = 0; i < subStatus.size(); i++) {
-          if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            failedRegionList.add(consensusGroupIdList.get(i));
-          }
-        }
-      } else {
-        failedRegionList.addAll(consensusGroupIdList);
-      }
-      return failedRegionList;
-    }
-
-    @Override
-    protected void onAllReplicasetFailure(
-        final TConsensusGroupId consensusGroupId,
-        final Set<TDataNodeLocation> dataNodeLocationSet) {
-      setFailure(
-          new ProcedureException(
-              new MetadataException(
-                  String.format(
-                      "Drop table %s.%s failed when [%s] because failed to execute in all replicaset of %s %s. Failure nodes: %s",
-                      database,
-                      tableName,
-                      taskName,
-                      consensusGroupId.type,
-                      consensusGroupId.id,
-                      dataNodeLocationSet))));
-      interruptTask();
-    }
   }
 }

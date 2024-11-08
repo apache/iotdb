@@ -1042,6 +1042,19 @@ struct TAlterOrDropTableReq {
     5: required binary updateInfo
 }
 
+struct TDeleteTableDeviceReq {
+    1: required string database
+    2: required string tableName
+    3: required string queryId
+    4: required binary patternInfo
+    5: required binary filterInfo
+}
+
+struct TDeleteTableDeviceResp {
+   1: required common.TSStatus status
+   2: optional i64 deletedNum
+}
+
 struct TShowTableResp {
    1: required common.TSStatus status
    2: optional list<TTableInfo> tableInfoList
@@ -1796,5 +1809,7 @@ service IConfigNodeRPCService {
   TShowTableResp showTables(string database, bool isDetails)
 
   TFetchTableResp fetchTables(map<string, set<string>> fetchTableMap)
+
+  TDeleteTableDeviceResp deleteDevice(TDeleteTableDeviceReq req)
 }
 

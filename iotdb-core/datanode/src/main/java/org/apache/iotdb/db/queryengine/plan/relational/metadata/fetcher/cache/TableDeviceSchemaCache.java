@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.ExtendedPartialPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -48,6 +49,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -56,6 +58,9 @@ import java.util.OptionalLong;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.ToIntFunction;
+import java.util.stream.Collectors;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 /**
  * The {@link TableDeviceSchemaCache} caches some of the devices and their: attributes of tables /
@@ -536,6 +541,56 @@ public class TableDeviceSchemaCache {
       // Table cache's invalidate must be guarded by this lock
       DataNodeTableCache.getInstance().invalid(database, tableName);
       dualKeyCache.invalidate(new TableId(database, tableName));
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
+  // The fuzzy filters are not considered because:
+  // 1. We can actually invalidate more cache entries than we need.
+  // 2. Constructing the filterOperators may require some time and complication
+  // 3. The fuzzy filters may contain attributes, which may not exist or be stale
+  public void invalidate(
+      final String database, final String tableName, final List<PartialPath> patterns) {
+    readWriteLock.writeLock().lock();
+    try {
+      final TableId firstKey = new TableId(database, tableName);
+      if (patterns.isEmpty()) {
+        dualKeyCache.invalidate(firstKey);
+      } else {
+        final List<PartialPath> multiMatchList =
+            patterns.stream()
+                .filter(
+                    idFilter -> {
+                      if (!idFilter.hasWildcard()) {
+                        final IDeviceID deviceId =
+                            IDeviceID.Factory.DEFAULT_FACTORY.create(
+                                Arrays.copyOfRange(
+                                    idFilter.getNodes(), 2, idFilter.getNodeLength()));
+                        dualKeyCache.invalidate(firstKey, deviceId);
+                        return false;
+                      }
+                      return true;
+                    })
+                .collect(Collectors.toList());
+
+        dualKeyCache.invalidate(
+            firstKey,
+            deviceId -> {
+              final String[] segments = (String[]) deviceId.getSegments();
+              for (int i = 1; i < segments.length; ++i) {
+                for (final PartialPath path : multiMatchList) {
+                  final int pathIndex = i + 2;
+                  if (path.getNodes()[pathIndex].equals(segments[i])
+                      || path.getNodes()[pathIndex].equals(ONE_LEVEL_PATH_WILDCARD)
+                          && ((ExtendedPartialPath) path).match(pathIndex, segments[i])) {
+                    return true;
+                  }
+                }
+              }
+              return false;
+            });
+      }
     } finally {
       readWriteLock.writeLock().unlock();
     }
