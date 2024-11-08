@@ -164,6 +164,52 @@ public class UpdateDetailContainer implements UpdateContainer {
           }
           return value;
         });
+    return result.get();
+  }
+
+  @Override
+  public long invalidate(final String tableName, final String attributeName) {
+    final AtomicLong result = new AtomicLong(0);
+    updateMap.compute(
+        tableName,
+        (name, value) -> {
+          if (Objects.isNull(value)) {
+            result.addAndGet(
+                RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+                    + RamUsageEstimator.sizeOf(name)
+                    + MAP_SIZE);
+            value = new ConcurrentHashMap<>();
+          }
+          value.compute(
+              Arrays.asList(deviceId),
+              (device, attributes) -> {
+                if (Objects.isNull(attributes)) {
+                  result.addAndGet(
+                      RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+                          + sizeOfList(device)
+                          + MAP_SIZE);
+                  attributes = new ConcurrentHashMap<>();
+                }
+                for (final Map.Entry<String, Binary> updateAttribute :
+                    updatedAttributes.entrySet()) {
+                  attributes.compute(
+                      updateAttribute.getKey(),
+                      (k, v) -> {
+                        if (Objects.isNull(v)) {
+                          result.addAndGet(
+                              RamUsageEstimator.sizeOf(k)
+                                  + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY);
+                        }
+                        result.addAndGet(
+                            sizeOf(updateAttribute.getValue())
+                                - (Objects.nonNull(v) ? sizeOf(v) : 0));
+                        return updateAttribute.getValue();
+                      });
+                }
+                return attributes;
+              });
+          return value;
+        });
     return 0;
   }
 
