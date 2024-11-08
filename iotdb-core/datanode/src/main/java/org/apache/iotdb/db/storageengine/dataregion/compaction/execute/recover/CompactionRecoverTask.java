@@ -274,26 +274,26 @@ public class CompactionRecoverTask {
   private boolean deleteFile(TsFileIdentifier tsFileIdentifier) {
     boolean success = true;
     // delete tsfile
-    File file = tsFileIdentifier.getFileFromDataDirs();
-    if (!checkAndDeleteFile(file)) {
+    File tsFile = tsFileIdentifier.getFileFromDataDirs();
+    if (!checkAndDeleteFile(tsFile)) {
       success = false;
     }
 
     // delete resource file
-    file = getFileFromDataDirs(tsFileIdentifier.getFilePath() + TsFileResource.RESOURCE_SUFFIX);
-    if (!checkAndDeleteFile(file)) {
+    File resourceFile = getFileFromDataDirs(tsFileIdentifier.getFilePath() + TsFileResource.RESOURCE_SUFFIX);
+    if (!checkAndDeleteFile(resourceFile)) {
       success = false;
     }
 
     // delete mods file
-    file = getFileFromDataDirs(ModificationFile.getExclusiveMods(file).getPath());
-    if (!checkAndDeleteFile(file)) {
+    File exclusiveModFile = getFileFromDataDirs(ModificationFile.getExclusiveMods(new File(tsFileIdentifier.getFilePath())).getPath());
+    if (!checkAndDeleteFile(exclusiveModFile)) {
       success = false;
     }
 
     // delete compaction mods file
-    file = getFileFromDataDirs(ModificationFile.getCompactionMods(file).getPath());
-    if (!checkAndDeleteFile(file)) {
+    File compactionModFile = getFileFromDataDirs(ModificationFile.getCompactionMods(new File(tsFileIdentifier.getFilePath())).getPath());
+    if (!checkAndDeleteFile(compactionModFile)) {
       success = false;
     }
 

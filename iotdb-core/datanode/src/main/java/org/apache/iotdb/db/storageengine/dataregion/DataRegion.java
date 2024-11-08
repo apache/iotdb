@@ -964,7 +964,7 @@ public class DataRegion implements IDataRegionForQuery {
     for (TsFileResource tsFileResource : resourceList) {
       if (tsFileResource.isUseSharedModFile()) {
         // set a future so that other may know when the mod file is recovered
-        tsFileResource.setSharedModFileFuture(new CompletableFuture<>());
+        tsFileResource.setSharedModFilePathFuture(new CompletableFuture<>());
       }
     }
     return () -> {

@@ -661,7 +661,6 @@ public class IoTDBDeletionTableIT {
             while (resultSet.next()) {
               // just iterate the set
             }
-            resultSet.close();
           }
           long end = System.nanoTime();
           long timeConsumption = (end - start) / readRepetitions;
