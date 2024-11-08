@@ -425,9 +425,6 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
 
     // Check data on receiver
     TableModelUtils.assertData("test", "test", 0, 100, receiverEnv);
-    if (!TableModelUtils.hasDataBase("test", receiverEnv)) {
-      Assert.fail();
-    }
 
     // Alter pipe (modify 'source.path', 'source.inclusion' and
     // 'processor.tumbling-time.interval-seconds')

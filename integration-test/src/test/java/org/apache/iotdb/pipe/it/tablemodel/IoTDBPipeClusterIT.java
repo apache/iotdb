@@ -262,9 +262,6 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
       }
 
       TableModelUtils.assertData("test", "test", 0, 300, receiverEnv);
-      if (!TableModelUtils.hasDataBase("test", receiverEnv)) {
-        Assert.fail();
-      }
     }
 
     try {

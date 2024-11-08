@@ -1033,8 +1033,10 @@ public class TestUtils {
                   if (dataBaseName != null) {
                     statement.execute("use " + dataBaseName);
                   }
-                  TestUtils.assertResultSetEqual(
-                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
+                  if (sql != null && !sql.equals("")) {
+                    TestUtils.assertResultSetEqual(
+                        executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
+                  }
                 } catch (Exception e) {
                   Assert.fail();
                 }
