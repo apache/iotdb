@@ -134,6 +134,10 @@ public class DeviceAttributeCacheUpdater {
     invalidate(container -> container.invalidate(pathNodes));
   }
 
+  public void invalidate(final String tableName, final String attributeName) {
+    invalidate(container -> container.invalidate(tableName, attributeName));
+  }
+
   private void invalidate(final ToLongFunction<UpdateContainer> updateFunction) {
     attributeUpdateMap.forEach(
         (location, container) -> {
