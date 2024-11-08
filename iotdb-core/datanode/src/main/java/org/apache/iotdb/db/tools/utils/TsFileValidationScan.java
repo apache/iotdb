@@ -352,7 +352,6 @@ public class TsFileValidationScan extends TsFileSequenceScan {
     return badFileNum;
   }
 
-  @TestOnly
   public void setBadFileNum(int badFileNum) {
     this.badFileNum = badFileNum;
   }

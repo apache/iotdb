@@ -94,7 +94,6 @@ public interface ISchemaRegion {
 
   void forceMlog();
 
-  @TestOnly
   ISchemaRegionStatistics getSchemaRegionStatistics();
 
   ISchemaRegionMetric getSchemaRegionMetric();

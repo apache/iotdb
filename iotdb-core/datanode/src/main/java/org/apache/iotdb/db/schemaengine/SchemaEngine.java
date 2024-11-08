@@ -444,7 +444,6 @@ public class SchemaEngine {
     }
   }
 
-  @TestOnly
   public ISchemaEngineStatistics getSchemaEngineStatistics() {
     return schemaEngineStatistics;
   }

@@ -37,6 +37,5 @@ public interface NodeAllocationStrategy {
   /** Get all wal nodes num. Not thread-safe, used for metrics only. */
   int getNodesNum();
 
-  @TestOnly
   void clear();
 }

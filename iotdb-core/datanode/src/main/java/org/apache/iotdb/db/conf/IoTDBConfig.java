@@ -3133,7 +3133,6 @@ public class IoTDBConfig {
     return cachedMNodeSizeInPBTreeMode;
   }
 
-  @TestOnly
   public void setCachedMNodeSizeInPBTreeMode(int cachedMNodeSizeInPBTreeMode) {
     this.cachedMNodeSizeInPBTreeMode = cachedMNodeSizeInPBTreeMode;
   }

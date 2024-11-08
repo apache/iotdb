@@ -294,7 +294,6 @@ public abstract class InsertNode extends SearchNode {
   public abstract long getMinTime();
 
   // region partial insert
-  @TestOnly
   public void markFailedMeasurement(int index) {
     throw new UnsupportedOperationException();
   }

@@ -309,7 +309,6 @@ public class WALManager implements IService {
     }
   }
 
-  @TestOnly
   public void clear() {
     totalDiskUsage.set(0);
     walNodesManager.clear();
