@@ -190,11 +190,9 @@ public class DeviceAttributeCacheUpdater {
     final Set<TDataNodeLocation> shrunkNodes = node.getShrunkNodes();
     targetDataNodeLocations.removeAll(shrunkNodes);
     shrunkNodes.forEach(this::removeLocation);
-    updateContainerStatistics.keySet().removeAll(shrunkNodes);
 
-    final TDataNodeLocation leaderLocation = node.getLeaderLocation();
     if (version.get() == node.getVersion()) {
-      removeLocation(leaderLocation);
+      removeLocation(node.getLeaderLocation());
     }
 
     node.getCommitMap()
@@ -233,6 +231,7 @@ public class DeviceAttributeCacheUpdater {
               ? updateContainerStatistics.get(location).getContainerSize()
               : ((UpdateClearContainer) attributeUpdateMap.get(location)).ramBytesUsed());
       attributeUpdateMap.remove(location);
+      updateContainerStatistics.remove(location);
     }
   }
 
