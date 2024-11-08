@@ -43,6 +43,7 @@ import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.showTablesColumnHeaders;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -195,7 +196,8 @@ public class IoTDBTableIT {
         fail();
       } catch (final SQLException e) {
         assertEquals(
-            "701: Create table statement shall not specify column category TIME", e.getMessage());
+            "701: Create table or add column statement shall not specify column category TIME",
+            e.getMessage());
       }
 
       try {
@@ -412,6 +414,18 @@ public class IoTDBTableIT {
         fail();
       } catch (final SQLException e) {
         assertEquals("701: Column 'speed' cannot be resolved", e.getMessage());
+      }
+
+      try {
+        statement.execute("alter table table2 drop column speed");
+      } catch (final SQLException e) {
+        assertEquals("616: Column speed in table 'shit.table2' does not exist.", e.getMessage());
+      }
+
+      try {
+        statement.execute("alter table table2 drop column time");
+      } catch (final SQLException e) {
+        assertTrue(e.getMessage().contains("Dropping id or time column is not supported."));
       }
 
       statement.execute("drop table table2");
