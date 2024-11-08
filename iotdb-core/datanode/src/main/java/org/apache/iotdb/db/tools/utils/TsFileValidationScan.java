@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.tools.utils;
 
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
