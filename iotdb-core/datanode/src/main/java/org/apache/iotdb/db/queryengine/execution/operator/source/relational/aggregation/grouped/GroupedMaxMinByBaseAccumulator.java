@@ -30,6 +30,9 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.BinaryColumn;
+import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
+import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -37,6 +40,7 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.util.Collections;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.tsfile.utils.BytesUtils.boolToBytes;
 import static org.apache.tsfile.utils.BytesUtils.doubleToBytes;
 import static org.apache.tsfile.utils.BytesUtils.floatToBytes;
@@ -257,6 +261,67 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
   public void prepareFinal() {}
 
   @Override
+  public void reset() {
+    inits.reset();
+    xNulls.reset();
+    switch (xDataType) {
+      case INT32:
+      case DATE:
+        xIntValues.reset();
+        break;
+      case INT64:
+      case TIMESTAMP:
+        xLongValues.reset();
+        break;
+      case FLOAT:
+        xFloatValues.reset();
+        break;
+      case DOUBLE:
+        xDoubleValues.reset();
+        break;
+      case TEXT:
+      case BLOB:
+      case STRING:
+        xBinaryValues.reset();
+        break;
+      case BOOLEAN:
+        xBooleanValues.reset();
+        break;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type : %s", xDataType));
+    }
+
+    switch (yDataType) {
+      case INT32:
+      case DATE:
+        yIntValues.reset();
+        break;
+      case INT64:
+      case TIMESTAMP:
+        yLongValues.reset();
+        break;
+      case FLOAT:
+        yFloatValues.reset();
+        break;
+      case DOUBLE:
+        yDoubleValues.reset();
+        break;
+      case TEXT:
+      case BLOB:
+      case STRING:
+        yBinaryValues.reset();
+        break;
+      case BOOLEAN:
+        yBooleanValues.reset();
+        break;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type : %s", yDataType));
+    }
+  }
+
+  @Override
   public void addInput(int[] groupIds, Column[] arguments) {
     switch (yDataType) {
       case INT32:
@@ -289,6 +354,11 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
 
   @Override
   public void addIntermediate(int[] groupIds, Column argument) {
+    checkArgument(
+        argument instanceof BinaryColumn
+            || (argument instanceof RunLengthEncodedColumn
+                && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
+        "intermediate input and output of MaxBy or MinBy should be BinaryColumn");
 
     for (int i = 0; i < groupIds.length; i++) {
       if (argument.isNull(i)) {
@@ -302,6 +372,10 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
 
   @Override
   public void evaluateIntermediate(int groupId, ColumnBuilder columnBuilder) {
+    checkArgument(
+        columnBuilder instanceof BinaryColumnBuilder,
+        "intermediate input and output of Mode should be BinaryColumn");
+
     if (!inits.get(groupId)) {
       columnBuilder.appendNull();
       return;

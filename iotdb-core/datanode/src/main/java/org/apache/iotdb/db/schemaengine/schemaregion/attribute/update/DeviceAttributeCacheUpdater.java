@@ -124,6 +124,35 @@ public class DeviceAttributeCacheUpdater {
         });
   }
 
+  public void invalidate(final String tableName) {
+    attributeUpdateMap.forEach(
+        (location, container) -> {
+          final long size = container.invalidate(tableName);
+          releaseMemory(size);
+          updateContainerStatistics.computeIfPresent(
+              location,
+              (k, v) -> {
+                v.decreaseEntrySize(size);
+                return v;
+              });
+        });
+  }
+
+  // root.database.table.[deviceNodes]
+  public void invalidate(final String[] pathNodes) {
+    attributeUpdateMap.forEach(
+        (location, container) -> {
+          final long size = container.invalidate(pathNodes);
+          releaseMemory(size);
+          updateContainerStatistics.computeIfPresent(
+              location,
+              (k, v) -> {
+                v.decreaseEntrySize(size);
+                return v;
+              });
+        });
+  }
+
   public Pair<Long, Map<TDataNodeLocation, byte[]>> getAttributeUpdateInfo(
       final @Nonnull AtomicInteger limit, final @Nonnull AtomicBoolean hasRemaining) {
     // Note that the "updateContainerStatistics" is unsafe to use here for whole read of detail

@@ -33,9 +33,11 @@ abstract class AbstractAlterOrDropTableTask implements IConfigTask {
   protected final boolean tableIfExists;
 
   protected AbstractAlterOrDropTableTask(
-      String database, final String tableName, final String queryId, final boolean tableIfExists) {
-    database = PathUtils.qualifyDatabaseName(database);
-    this.database = database;
+      final String database,
+      final String tableName,
+      final String queryId,
+      final boolean tableIfExists) {
+    this.database = PathUtils.qualifyDatabaseName(database);
     this.tableName = tableName;
     this.queryId = queryId;
     this.tableIfExists = tableIfExists;

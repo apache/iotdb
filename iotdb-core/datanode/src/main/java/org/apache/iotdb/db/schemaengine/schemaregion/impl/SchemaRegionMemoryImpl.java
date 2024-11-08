@@ -44,6 +44,7 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceAttributeUpdater;
+import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceBlackListConstructor;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource;
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
@@ -52,11 +53,15 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDevicesInBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.RollbackTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
@@ -1525,8 +1530,67 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throws MetadataException {
     if (mtree.deleteTableDevice(
         deleteTableDeviceNode.getTableName(), deviceAttributeStore::removeAttribute)) {
+      deviceAttributeCacheUpdater.invalidate(deleteTableDeviceNode.getTableName());
       writeToMLog(deleteTableDeviceNode);
     }
+  }
+
+  @Override
+  public long constructTableDevicesBlackList(
+      final ConstructTableDevicesBlackListNode constructTableDevicesBlackListNode)
+      throws MetadataException {
+    final List<PartialPath> paths =
+        DeleteDevice.constructPaths(
+            PathUtils.unQualifyDatabaseName(storageGroupFullPath),
+            constructTableDevicesBlackListNode.getTableName(),
+            constructTableDevicesBlackListNode.getPatternInfo());
+    final DeviceBlackListConstructor constructor =
+        DeleteDevice.constructDevicePredicateUpdater(
+            PathUtils.unQualifyDatabaseName(storageGroupFullPath),
+            constructTableDevicesBlackListNode.getTableName(),
+            constructTableDevicesBlackListNode.getFilterInfo(),
+            (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name),
+            regionStatistics);
+    try {
+      for (final PartialPath pattern : paths) {
+        mtree.constructTableDeviceBlackList(pattern, constructor);
+      }
+    } finally {
+      constructor.close();
+    }
+    writeToMLog(constructTableDevicesBlackListNode);
+    return constructor.getPreDeletedNum();
+  }
+
+  @Override
+  public void rollbackTableDevicesBlackList(
+      final RollbackTableDevicesBlackListNode rollbackTableDevicesBlackListNode)
+      throws MetadataException {
+    final List<PartialPath> paths =
+        DeleteDevice.constructPaths(
+            PathUtils.unQualifyDatabaseName(storageGroupFullPath),
+            rollbackTableDevicesBlackListNode.getTableName(),
+            rollbackTableDevicesBlackListNode.getPatternInfo());
+    for (final PartialPath pattern : paths) {
+      mtree.rollbackTableDeviceBlackList(pattern);
+    }
+    writeToMLog(rollbackTableDevicesBlackListNode);
+  }
+
+  @Override
+  public void deleteTableDevicesInBlackList(
+      final DeleteTableDevicesInBlackListNode rollbackTableDevicesBlackListNode)
+      throws MetadataException {
+    final List<PartialPath> paths =
+        DeleteDevice.constructPaths(
+            PathUtils.unQualifyDatabaseName(storageGroupFullPath),
+            rollbackTableDevicesBlackListNode.getTableName(),
+            rollbackTableDevicesBlackListNode.getPatternInfo());
+    for (final PartialPath pattern : paths) {
+      mtree.deleteTableDevicesInBlackList(
+          pattern, deviceAttributeStore::removeAttribute, deviceAttributeCacheUpdater::invalidate);
+    }
+    writeToMLog(rollbackTableDevicesBlackListNode);
   }
 
   @Override
@@ -1865,6 +1929,42 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         final DeleteTableDeviceNode deleteTableDevicePlan, final SchemaRegionMemoryImpl context) {
       try {
         deleteTableDevice(deleteTableDevicePlan);
+        return RecoverOperationResult.SUCCESS;
+      } catch (final MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
+    public RecoverOperationResult visitConstructTableDevicesBlackList(
+        final ConstructTableDevicesBlackListNode constructTableDevicesBlackListPlan,
+        final SchemaRegionMemoryImpl context) {
+      try {
+        constructTableDevicesBlackList(constructTableDevicesBlackListPlan);
+        return RecoverOperationResult.SUCCESS;
+      } catch (final MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
+    public RecoverOperationResult visitRollbackTableDevicesBlackList(
+        final RollbackTableDevicesBlackListNode constructTableDevicesBlackListPlan,
+        final SchemaRegionMemoryImpl context) {
+      try {
+        rollbackTableDevicesBlackList(constructTableDevicesBlackListPlan);
+        return RecoverOperationResult.SUCCESS;
+      } catch (final MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
+    public RecoverOperationResult visitDeleteTableDevicesInBlackList(
+        final DeleteTableDevicesInBlackListNode deleteTableDevicesInBlackListPlan,
+        final SchemaRegionMemoryImpl context) {
+      try {
+        deleteTableDevicesInBlackList(deleteTableDevicesInBlackListPlan);
         return RecoverOperationResult.SUCCESS;
       } catch (final MetadataException e) {
         return new RecoverOperationResult(e);

@@ -331,13 +331,32 @@ struct TUpdateTableReq {
 }
 
 struct TInvalidateTableCacheReq {
-  1: required string database,
+  1: required string database
   2: required string tableName
 }
 
 struct TDeleteDataOrDevicesForDropTableReq {
   1: required list<common.TConsensusGroupId> regionIdList
   2: required string tableName
+}
+
+struct TTableDeviceDeletionWithPatternAndFilterReq {
+  1: required list<common.TConsensusGroupId> regionIdList
+  2: required string tableName
+  3: required binary patternInfo
+  4: required binary filterInfo
+}
+
+struct TTableDeviceDeletionWithPatternReq {
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required string tableName
+  3: required binary patternInfo
+}
+
+struct TTableDeviceInvalidateCacheReq {
+  1: required string database
+  2: required string tableName
+  3: required binary patternInfo
 }
 
 struct TTsFilePieceReq {
@@ -1081,6 +1100,31 @@ service IDataNodeRPCService {
   * Delete devices for drop table
   */
   common.TSStatus deleteDevicesForDropTable(TDeleteDataOrDevicesForDropTableReq req)
+
+  /**
+   * Construct table device black list
+   */
+  common.TSStatus constructTableDeviceBlackList(TTableDeviceDeletionWithPatternAndFilterReq req)
+
+  /**
+   * Rollback table device black list
+   */
+  common.TSStatus rollbackTableDeviceBlackList(TTableDeviceDeletionWithPatternReq req)
+
+  /**
+   * Delete data for table devices
+   */
+  common.TSStatus invalidateMatchedTableDeviceCache(TTableDeviceInvalidateCacheReq req)
+
+  /**
+   * Delete data for table devices
+   */
+  common.TSStatus deleteDataForTableDevice(TTableDeviceDeletionWithPatternAndFilterReq req)
+
+  /**
+   * Delete table devices in black list
+   */
+  common.TSStatus deleteTableDeviceInBlackList(TTableDeviceDeletionWithPatternReq req)
 
   common.TTestConnectionResp submitTestConnectionTask(common.TNodeLocations nodeLocations)
 
