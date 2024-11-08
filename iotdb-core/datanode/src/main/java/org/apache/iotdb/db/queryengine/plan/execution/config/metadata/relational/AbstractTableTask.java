@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational;
 
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 
 abstract class AbstractTableTask implements IConfigTask {
@@ -28,8 +27,7 @@ abstract class AbstractTableTask implements IConfigTask {
 
   protected final String tableName;
 
-  protected AbstractTableTask(String database, final String tableName) {
-    database = PathUtils.qualifyDatabaseName(database);
+  protected AbstractTableTask(final String database, final String tableName) {
     this.database = database;
     this.tableName = tableName;
   }

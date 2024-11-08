@@ -448,7 +448,7 @@ public class IoTDBTableIT {
         statement.executeQuery("describe test3.table3");
         fail();
       } catch (final SQLException e) {
-        assertEquals("550: Table 'test3.table3' does not exist.", e.getMessage());
+        assertEquals("500: Unknown database test3", e.getMessage());
       }
 
       statement.execute("drop database test1");
