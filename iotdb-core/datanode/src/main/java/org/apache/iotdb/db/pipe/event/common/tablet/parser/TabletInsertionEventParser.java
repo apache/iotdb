@@ -158,8 +158,12 @@ public abstract class TabletInsertionEventParser {
         final BitMap bitMap = new BitMap(this.timestampColumn.length);
         if (Objects.isNull(originValueColumns[i])
             || Objects.isNull(originValueColumnDataTypes[i])) {
-          this.valueColumns[filteredColumnIndex] = null;
-          bitMap.markAll();
+          fillNullValue(
+              originValueColumnDataTypes[i],
+              this.valueColumns,
+              bitMap,
+              filteredColumnIndex,
+              rowIndexList.size());
         } else {
           this.valueColumns[filteredColumnIndex] =
               filterValueColumnsByRowIndexList(
