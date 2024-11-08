@@ -373,7 +373,7 @@ public class IoTDBTableIT {
       }
 
       statement.execute(
-          "insert into table2(region_id, plant_id, color, temperature, speed) values(1, 1, 1, 1, 1, 1)");
+          "insert into table2(region_id, plant_id, color, temperature, speed) values(1, 1, 1, 1, 1)");
 
       // Test drop column
       statement.execute("alter table table2 drop column color");
