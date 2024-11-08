@@ -189,16 +189,11 @@ public class DeviceAttributeCacheUpdater {
   public void commit(final TableDeviceAttributeCommitUpdateNode node) {
     final Set<TDataNodeLocation> shrunkNodes = node.getShrunkNodes();
     targetDataNodeLocations.removeAll(shrunkNodes);
-    shrunkNodes.forEach(
-        location -> {
-          if (attributeUpdateMap.containsKey(location)) {
-            removeLocation(location);
-          }
-        });
+    shrunkNodes.forEach(this::removeLocation);
     updateContainerStatistics.keySet().removeAll(shrunkNodes);
 
     final TDataNodeLocation leaderLocation = node.getLeaderLocation();
-    if (version.get() == node.getVersion() && attributeUpdateMap.containsKey(leaderLocation)) {
+    if (version.get() == node.getVersion()) {
       removeLocation(leaderLocation);
     }
 
