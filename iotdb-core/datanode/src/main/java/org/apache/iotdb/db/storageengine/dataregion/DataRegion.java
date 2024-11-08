@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion;
 
-import java.util.Objects;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
@@ -164,6 +163,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
@@ -2596,7 +2596,8 @@ public class DataRegion implements IDataRegionForQuery {
                   }
                   return null;
                 })
-            .filter(Objects::nonNull).collect(Collectors.toList());
+            .filter(Objects::nonNull)
+            .collect(Collectors.toList());
 
     if (!exceptions.isEmpty()) {
       if (exceptions.size() == 1) {
