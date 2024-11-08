@@ -107,11 +107,6 @@ public class FlushManager implements FlushManagerMBean, IService {
 
       tsFileProcessor.flushOneMemTable();
       tsFileProcessor.setManagedByFlushManager(false);
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            "Flush Thread re-register TSProcessor {} to the queue.",
-            tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());
-      }
       registerTsFileProcessor(tsFileProcessor);
     }
   }
@@ -125,32 +120,17 @@ public class FlushManager implements FlushManagerMBean, IService {
   public Future<?> registerTsFileProcessor(TsFileProcessor tsFileProcessor) {
     synchronized (tsFileProcessor) {
       if (tsFileProcessor.isManagedByFlushManager()) {
-        LOGGER.debug(
-            "{} is already in the flushPool, the given processor flushMemtable number = {}",
-            tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath(),
-            tsFileProcessor.getFlushingMemTableSize());
+        return CompletableFuture.completedFuture(null);
       } else {
         if (tsFileProcessor.getFlushingMemTableSize() > 0) {
           tsFileProcessorQueue.add(tsFileProcessor);
-          if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug(
-                "{} begin to submit a flush thread, flushing memtable size: {}, queue size: {}",
-                tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath(),
-                tsFileProcessor.getFlushingMemTableSize(),
-                tsFileProcessorQueue.size());
-          }
           tsFileProcessor.setManagedByFlushManager(true);
           return flushPool.submit(new FlushThread());
         } else {
-          if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug(
-                "No flushing memetable to do, register TsProcessor {} failed.",
-                tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());
-          }
+          return CompletableFuture.completedFuture(null);
         }
       }
     }
-    return CompletableFuture.completedFuture(null);
   }
 
   private FlushManager() {}

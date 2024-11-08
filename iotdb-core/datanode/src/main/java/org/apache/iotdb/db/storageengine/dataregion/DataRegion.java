@@ -1663,39 +1663,6 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   /**
-   * close one tsfile processor
-   *
-   * @param sequence whether this tsfile processor is sequence or not
-   * @param tsFileProcessor tsfile processor
-   */
-  public void syncCloseOneTsFileProcessor(boolean sequence, TsFileProcessor tsFileProcessor) {
-    synchronized (closeStorageGroupCondition) {
-      try {
-        asyncCloseOneTsFileProcessor(sequence, tsFileProcessor);
-        long startTime = System.currentTimeMillis();
-        while (closingSequenceTsFileProcessor.contains(tsFileProcessor)
-            || closingUnSequenceTsFileProcessor.contains(tsFileProcessor)) {
-          closeStorageGroupCondition.wait(60_000);
-          if (System.currentTimeMillis() - startTime > 60_000) {
-            logger.warn(
-                "{} has spent {}s to wait for closing one tsfile.",
-                databaseName + "-" + this.dataRegionId,
-                (System.currentTimeMillis() - startTime) / 1000);
-          }
-        }
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        logger.error(
-            "syncCloseOneTsFileProcessor error occurs while waiting for closing the storage "
-                + "group {}",
-            databaseName + "-" + dataRegionId,
-            e);
-      }
-    }
-    WritingMetrics.getInstance().recordManualFlushMemTableCount(1);
-  }
-
-  /**
    * close one tsfile processor, thread-safety should be ensured by caller
    *
    * @param sequence whether this tsfile processor is sequence or not
@@ -1709,11 +1676,13 @@ public class DataRegion implements IDataRegionForQuery {
         || tsFileProcessor.alreadyMarkedClosing()) {
       return CompletableFuture.completedFuture(null);
     }
-    TsFileResource resource = tsFileProcessor.getTsFileResource();
     Future<?> future;
     if (sequence) {
       closingSequenceTsFileProcessor.add(tsFileProcessor);
       future = tsFileProcessor.asyncClose();
+      if (future.isDone()) {
+        closingSequenceTsFileProcessor.remove(tsFileProcessor);
+      }
 
       workSequenceTsFileProcessors.remove(tsFileProcessor.getTimeRangeId());
       // if unsequence files don't contain this time range id, we should remove it's version
@@ -1724,6 +1693,9 @@ public class DataRegion implements IDataRegionForQuery {
     } else {
       closingUnSequenceTsFileProcessor.add(tsFileProcessor);
       future = tsFileProcessor.asyncClose();
+      if (future.isDone()) {
+        closingUnSequenceTsFileProcessor.remove(tsFileProcessor);
+      }
 
       workUnsequenceTsFileProcessors.remove(tsFileProcessor.getTimeRangeId());
       // if sequence files don't contain this time range id, we should remove it's version
@@ -1732,6 +1704,7 @@ public class DataRegion implements IDataRegionForQuery {
         timePartitionIdVersionControllerMap.remove(tsFileProcessor.getTimeRangeId());
       }
     }
+    TsFileResource resource = tsFileProcessor.getTsFileResource();
     logger.info(
         "Async close tsfile: {}, file start time: {}, file end time: {}",
         resource.getTsFile().getAbsolutePath(),
@@ -1908,7 +1881,41 @@ public class DataRegion implements IDataRegionForQuery {
       }
     } catch (InterruptedException | ExecutionException e) {
       logger.error(
-          "CloseFileNodeCondition error occurs while waiting for closing the storage " + "group {}",
+          "CloseFileNodeCondition error occurs while waiting for closing tsfile processors of {}",
+          databaseName + "-" + dataRegionId,
+          e);
+      Thread.currentThread().interrupt();
+    }
+  }
+
+  public void syncCloseWorkingTsFileProcessors(boolean sequence) {
+    try {
+      writeLock("syncCloseWorkingTsFileProcessors");
+      List<Future<?>> tsFileProcessorsClosingFutures = new ArrayList<>();
+      int count = 0;
+      try {
+        // to avoid concurrent modification problem, we need a new array list
+        for (TsFileProcessor tsFileProcessor :
+            new ArrayList<>(
+                sequence
+                    ? workSequenceTsFileProcessors.values()
+                    : workUnsequenceTsFileProcessors.values())) {
+          tsFileProcessorsClosingFutures.add(
+              asyncCloseOneTsFileProcessor(sequence, tsFileProcessor));
+          count++;
+        }
+      } finally {
+        writeUnlock();
+      }
+      WritingMetrics.getInstance().recordManualFlushMemTableCount(count);
+      for (Future<?> f : tsFileProcessorsClosingFutures) {
+        if (f != null) {
+          f.get();
+        }
+      }
+    } catch (InterruptedException | ExecutionException e) {
+      logger.error(
+          "CloseFileNodeCondition error occurs while waiting for closing tsfile processors of {}",
           databaseName + "-" + dataRegionId,
           e);
       Thread.currentThread().interrupt();
@@ -3044,86 +3051,6 @@ public class DataRegion implements IDataRegionForQuery {
       return newVersion;
     }
     return Math.max(oldVersion, newVersion);
-  }
-
-  /**
-   * If the historical versions of a file is a sub-set of the given file's, (close and) remove it to
-   * reduce unnecessary merge. Only used when the file sender and the receiver share the same file
-   * close policy. Warning: DO NOT REMOVE
-   */
-  @SuppressWarnings("unused")
-  public void removeFullyOverlapFiles(TsFileResource resource) {
-    writeLock("removeFullyOverlapFiles");
-    try {
-      Iterator<TsFileResource> iterator = tsFileManager.getIterator(true);
-      removeFullyOverlapFiles(resource, iterator, true);
-
-      iterator = tsFileManager.getIterator(false);
-      removeFullyOverlapFiles(resource, iterator, false);
-    } finally {
-      writeUnlock();
-    }
-  }
-
-  private void removeFullyOverlapFiles(
-      TsFileResource newTsFile, Iterator<TsFileResource> iterator, boolean isSeq) {
-    while (iterator.hasNext()) {
-      TsFileResource existingTsFile = iterator.next();
-      if (newTsFile.isPlanRangeCovers(existingTsFile)
-          && !newTsFile.getTsFile().equals(existingTsFile.getTsFile())
-          && existingTsFile.tryWriteLock()) {
-        logger.info(
-            "{} is covered by {}: [{}, {}], [{}, {}], remove it",
-            existingTsFile,
-            newTsFile,
-            existingTsFile.minPlanIndex,
-            existingTsFile.maxPlanIndex,
-            newTsFile.minPlanIndex,
-            newTsFile.maxPlanIndex);
-        // if we fail to lock the file, it means it is being queried or merged and we will not
-        // wait until it is free, we will just leave it to the next merge
-        try {
-          removeFullyOverlapFile(existingTsFile, iterator, isSeq);
-        } catch (Exception e) {
-          logger.error(
-              "Something gets wrong while removing FullyOverlapFiles: {}",
-              existingTsFile.getTsFile().getAbsolutePath(),
-              e);
-        } finally {
-          existingTsFile.writeUnlock();
-        }
-      }
-    }
-  }
-
-  /**
-   * Remove the given {@link TsFileResource}. If the corresponding {@link TsFileProcessor} is in the
-   * working status, close it before remove the related resource files. maybe time-consuming for
-   * closing a tsfile.
-   */
-  private void removeFullyOverlapFile(
-      TsFileResource tsFileResource, Iterator<TsFileResource> iterator, boolean isSeq) {
-    logger.info(
-        "Removing a covered file {}, closed: {}", tsFileResource, tsFileResource.isClosed());
-    if (!tsFileResource.isClosed()) {
-      try {
-        // also remove the TsFileProcessor if the overlapped file is not closed
-        long timePartition = tsFileResource.getTimePartition();
-        Map<Long, TsFileProcessor> fileProcessorMap =
-            isSeq ? workSequenceTsFileProcessors : workUnsequenceTsFileProcessors;
-        TsFileProcessor tsFileProcessor = fileProcessorMap.get(timePartition);
-        if (tsFileProcessor != null && tsFileProcessor.getTsFileResource() == tsFileResource) {
-          // have to take some time to close the tsFileProcessor
-          tsFileProcessor.syncClose();
-          fileProcessorMap.remove(timePartition);
-        }
-      } catch (Exception e) {
-        logger.error("Cannot close {}", tsFileResource, e);
-      }
-    }
-    tsFileManager.remove(tsFileResource, isSeq);
-    iterator.remove();
-    tsFileResource.remove();
   }
 
   private long getAndSetNewVersion(long timePartitionId, TsFileResource tsFileResource) {
