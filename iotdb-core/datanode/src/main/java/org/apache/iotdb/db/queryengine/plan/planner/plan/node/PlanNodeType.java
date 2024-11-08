@@ -124,6 +124,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Creat
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDevicesInBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.RollbackTableDevicesBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableAttributeColumnDropNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
@@ -254,6 +255,7 @@ public enum PlanNodeType {
   CONSTRUCT_TABLE_DEVICES_BLACK_LIST((short) 910),
   ROLLBACK_TABLE_DEVICES_BLACK_LIST((short) 911),
   DELETE_TABLE_DEVICES_IN_BLACK_LIST((short) 912),
+  TABLE_ATTRIBUTE_COLUMN_DROP((short) 913),
 
   TABLE_SCAN_NODE((short) 1000),
   TABLE_FILTER_NODE((short) 1001),
@@ -565,6 +567,8 @@ public enum PlanNodeType {
         return RollbackTableDevicesBlackListNode.deserialize(buffer);
       case 912:
         return DeleteTableDevicesInBlackListNode.deserialize(buffer);
+      case 913:
+        return TableAttributeColumnDropNode.deserialize(buffer);
       case 1000:
         return org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode
             .deserialize(buffer);

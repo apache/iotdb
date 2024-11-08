@@ -83,7 +83,7 @@ public class TableAttributeColumnDropNode extends PlanNode implements ISchemaReg
 
   @Override
   public PlanNodeType getType() {
-    return PlanNodeType.DELETE_TABLE_DEVICE;
+    return PlanNodeType.TABLE_ATTRIBUTE_COLUMN_DROP;
   }
 
   @Override
@@ -109,16 +109,16 @@ public class TableAttributeColumnDropNode extends PlanNode implements ISchemaReg
 
   @Override
   public <R, C> R accept(final PlanVisitor<R, C> visitor, final C context) {
-    return visitor.visitDeleteTableDevice(this, context);
+    return visitor.visitTableAttributeColumnDrop(this, context);
   }
 
   @Override
   public SchemaRegionPlanType getPlanType() {
-    return SchemaRegionPlanType.DELETE_TABLE_DEVICE;
+    return SchemaRegionPlanType.DROP_TABLE_ATTRIBUTE;
   }
 
   @Override
   public <R, C> R accept(final SchemaRegionPlanVisitor<R, C> visitor, final C context) {
-    return visitor.visitDeleteTableDevice(this, context);
+    return visitor.visitDropTableAttribute(this, context);
   }
 }

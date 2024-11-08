@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Creat
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDevicesInBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.RollbackTableDevicesBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableAttributeColumnDropNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
@@ -118,6 +119,8 @@ public class SchemaRegionWritePlanFactory {
         return RollbackTableDevicesBlackListNode.MOCK_INSTANCE;
       case DELETE_TABLE_DEVICES_IN_BLACK_LIST:
         return DeleteTableDevicesInBlackListNode.MOCK_INSTANCE;
+      case DROP_TABLE_ATTRIBUTE:
+        return TableAttributeColumnDropNode.MOCK_INSTANCE;
       default:
         throw new UnsupportedOperationException(
             String.format(
