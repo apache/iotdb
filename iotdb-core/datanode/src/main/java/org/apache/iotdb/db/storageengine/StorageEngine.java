@@ -90,6 +90,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -231,7 +232,7 @@ public class StorageEngine implements IService {
       for (DataRegionId dataRegionId : entry.getValue()) {
         Callable<Void> recoverDataRegionTask =
             () -> {
-              DataRegion dataRegion = null;
+              DataRegion dataRegion;
               try {
                 dataRegion = buildNewDataRegion(sgName, dataRegionId);
               } catch (DataRegionException e) {
@@ -265,7 +266,7 @@ public class StorageEngine implements IService {
       }
       String sgName = sgDir.getName();
       List<DataRegionId> dataRegionIdList = new ArrayList<>();
-      for (File dataRegionDir : sgDir.listFiles()) {
+      for (File dataRegionDir : Objects.requireNonNull(sgDir.listFiles())) {
         if (!dataRegionDir.isDirectory()) {
           continue;
         }
@@ -443,21 +444,21 @@ public class StorageEngine implements IService {
    * build a new data region
    *
    * @param dataRegionId data region id e.g. 1
-   * @param logicalStorageGroupName database name e.g. root.sg1
+   * @param databaseName database name e.g. root.sg1
    */
-  public DataRegion buildNewDataRegion(String logicalStorageGroupName, DataRegionId dataRegionId)
+  public DataRegion buildNewDataRegion(String databaseName, DataRegionId dataRegionId)
       throws DataRegionException {
     DataRegion dataRegion;
     LOGGER.info(
         "construct a data region instance, the database is {}, Thread is {}",
-        logicalStorageGroupName,
+        databaseName,
         Thread.currentThread().getId());
     dataRegion =
         new DataRegion(
-            systemDir + File.separator + logicalStorageGroupName,
+            systemDir + File.separator + databaseName,
             String.valueOf(dataRegionId.getId()),
             fileFlushPolicy,
-            logicalStorageGroupName);
+            databaseName);
     WRITING_METRICS.createFlushingMemTableStatusMetrics(dataRegionId);
     WRITING_METRICS.createDataRegionMemoryCostMetrics(dataRegion);
     WRITING_METRICS.createActiveMemtableCounterMetrics(dataRegionId);
@@ -691,7 +692,7 @@ public class StorageEngine implements IService {
 
   /**
    * Add a listener to listen flush start/end events. Notice that this addition only applies to
-   * TsFileProcessors created afterwards.
+   * TsFileProcessors created afterward.
    */
   public void registerFlushListener(FlushListener listener) {
     customFlushListeners.add(listener);
@@ -699,7 +700,7 @@ public class StorageEngine implements IService {
 
   /**
    * Add a listener to listen file close events. Notice that this addition only applies to
-   * TsFileProcessors created afterwards.
+   * TsFileProcessors created afterward.
    */
   public void registerCloseFileListener(CloseFileListener listener) {
     customCloseFileListeners.add(listener);
@@ -716,24 +717,24 @@ public class StorageEngine implements IService {
 
   // When registering a new region, the coordinator needs to register the corresponding region with
   // the local storage before adding the corresponding consensusGroup to the consensus layer
-  public DataRegion createDataRegion(DataRegionId regionId, String sg) throws DataRegionException {
+  public void createDataRegion(DataRegionId regionId, String databaseName)
+      throws DataRegionException {
     makeSureNoOldRegion(regionId);
     AtomicReference<DataRegionException> exceptionAtomicReference = new AtomicReference<>(null);
-    DataRegion dataRegion =
-        dataRegionMap.computeIfAbsent(
-            regionId,
-            x -> {
-              try {
-                return buildNewDataRegion(sg, x);
-              } catch (DataRegionException e) {
-                exceptionAtomicReference.set(e);
-              }
-              return null;
-            });
+    dataRegionMap.computeIfAbsent(
+        regionId,
+        region -> {
+          try {
+            return buildNewDataRegion(databaseName, region);
+          } catch (DataRegionException e) {
+            exceptionAtomicReference.set(e);
+          }
+          return null;
+        });
+
     if (exceptionAtomicReference.get() != null) {
       throw exceptionAtomicReference.get();
     }
-    return dataRegion;
   }
 
   public void deleteDataRegion(DataRegionId regionId) {
@@ -959,7 +960,7 @@ public class StorageEngine implements IService {
     return status;
   }
 
-  /** reboot timed flush sequence/unsequence memetable thread */
+  /** reboot timed flush sequence/unsequence memtable thread */
   public void rebootTimedService() throws ShutdownException {
     LOGGER.info("Start rebooting all timed service.");
 
