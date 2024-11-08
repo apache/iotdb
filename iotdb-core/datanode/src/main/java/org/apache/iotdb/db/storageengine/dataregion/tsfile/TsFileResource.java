@@ -309,13 +309,13 @@ public class TsFileResource implements PersistentResource {
 
       if (inputStream.available() > 0) {
         String modFilePath = ReadWriteIOUtils.readString(inputStream);
-        if (!modFilePath.isEmpty()) {
+        if (modFilePath != null && !modFilePath.isEmpty()) {
           shardModFileOffset = ReadWriteIOUtils.readLong(inputStream);
-        }
-        if (modFileManagement != null) {
-          sharedModFile = modFileManagement.recover(modFilePath, this);
-          if (sharedModFileFuture != null) {
-            sharedModFileFuture.complete(sharedModFile);
+          if (modFileManagement != null) {
+            sharedModFile = modFileManagement.recover(modFilePath, this);
+            if (sharedModFileFuture != null) {
+              sharedModFileFuture.complete(sharedModFile);
+            }
           }
         }
       }
