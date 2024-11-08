@@ -181,7 +181,7 @@ public class TableModelUtils {
       int end,
       BaseEnv baseEnv,
       boolean allowNullValue) {
-    final Tablet tablet = createTablet(tableName, start, end, allowNullValue);
+    final Tablet tablet = generateTablet(tableName, start, end, allowNullValue);
     ISessionPool sessionPool = baseEnv.getSessionPool(1, "table");
     try (final IPooledSession session = sessionPool.getPooledSession()) {
       session.executeNonQueryStatement("use " + dataBaseName);
@@ -346,7 +346,8 @@ public class TableModelUtils {
     }
   }
 
-  public static Tablet createTablet(String tableName, int start, int end, boolean allowNullValue) {
+  public static Tablet generateTablet(
+      String tableName, int start, int end, boolean allowNullValue) {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s0", TSDataType.STRING));
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
