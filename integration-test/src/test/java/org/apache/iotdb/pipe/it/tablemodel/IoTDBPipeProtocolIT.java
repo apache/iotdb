@@ -407,6 +407,8 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelTestIT {
 
       connectorAttributes.put("connector", connectorName);
       connectorAttributes.put("connector.batch.enable", "false");
+      connectorAttributes.put("connector.batch.max-delay-seconds", "1");
+      connectorAttributes.put("connector.batch.size-bytes", "2048");
       connectorAttributes.put("connector.node-urls", nodeUrlsBuilder.toString());
 
       extractorAttributes.put("capture.table", "true");

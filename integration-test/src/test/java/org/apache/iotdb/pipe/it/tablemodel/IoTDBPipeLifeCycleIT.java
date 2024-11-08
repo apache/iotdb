@@ -238,7 +238,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("capture.table", "true");
-      extractorAttributes.put("extractor.mode", "file");
+      extractorAttributes.put("mode.streaming", "false");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
