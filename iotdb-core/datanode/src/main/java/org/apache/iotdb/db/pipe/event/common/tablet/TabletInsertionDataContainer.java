@@ -59,6 +59,8 @@ public class TabletInsertionDataContainer {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TabletInsertionDataContainer.class);
 
+  private static final LocalDate EMPTY_LOCALDATE = LocalDate.of(1000, 1, 1);
+
   private final PipeTaskMeta pipeTaskMeta; // used to report progress
   private final EnrichedEvent
       sourceEvent; // used to report progress and filter value columns by time range
@@ -174,8 +176,12 @@ public class TabletInsertionDataContainer {
         this.valueColumnTypes[filteredColumnIndex] = originValueColumnTypes[i];
         final BitMap bitMap = new BitMap(this.timestampColumn.length);
         if (Objects.isNull(originValueColumns[i]) || Objects.isNull(originValueColumnTypes[i])) {
-          this.valueColumns[filteredColumnIndex] = null;
-          bitMap.markAll();
+          fillNullValue(
+              originValueColumnTypes[i],
+              this.valueColumns,
+              bitMap,
+              filteredColumnIndex,
+              rowIndexList.size());
         } else {
           this.valueColumns[filteredColumnIndex] =
               filterValueColumnsByRowIndexList(
@@ -257,8 +263,12 @@ public class TabletInsertionDataContainer {
         this.valueColumnTypes[filteredColumnIndex] = originValueColumnTypes[i];
         final BitMap bitMap = new BitMap(this.timestampColumn.length);
         if (Objects.isNull(originValueColumns[i]) || Objects.isNull(originValueColumnTypes[i])) {
-          this.valueColumns[filteredColumnIndex] = null;
-          bitMap.markAll();
+          fillNullValue(
+              originValueColumnTypes[i],
+              this.valueColumns,
+              bitMap,
+              filteredColumnIndex,
+              rowIndexList.size());
         } else {
           this.valueColumns[filteredColumnIndex] =
               filterValueColumnsByRowIndexList(
@@ -348,8 +358,12 @@ public class TabletInsertionDataContainer {
         this.valueColumnTypes[filteredColumnIndex] = originValueColumnTypes[i];
         final BitMap bitMap = new BitMap(this.timestampColumn.length);
         if (Objects.isNull(originValueColumns[i]) || Objects.isNull(originValueColumnTypes[i])) {
-          this.valueColumns[filteredColumnIndex] = null;
-          bitMap.markAll();
+          fillNullValue(
+              originValueColumnTypes[i],
+              this.valueColumns,
+              bitMap,
+              filteredColumnIndex,
+              rowIndexList.size());
         } else {
           this.valueColumns[filteredColumnIndex] =
               filterValueColumnsByRowIndexList(
@@ -479,7 +493,7 @@ public class TabletInsertionDataContainer {
 
             for (int i = 0; i < rowIndexList.size(); ++i) {
               if (originNullValueColumnBitmap.isMarked(rowIndexList.get(i))) {
-                valueColumns[i] = LocalDate.MIN;
+                valueColumns[i] = EMPTY_LOCALDATE;
                 nullValueColumnBitmap.mark(i);
               } else {
                 valueColumns[i] = dateValueColumns[rowIndexList.get(i)];
@@ -493,7 +507,7 @@ public class TabletInsertionDataContainer {
                     : (int[]) originValueColumn;
             for (int i = 0; i < rowIndexList.size(); ++i) {
               if (originNullValueColumnBitmap.isMarked(rowIndexList.get(i))) {
-                valueColumns[i] = LocalDate.MIN;
+                valueColumns[i] = EMPTY_LOCALDATE;
                 nullValueColumnBitmap.mark(i);
               } else {
                 valueColumns[i] =
@@ -593,6 +607,47 @@ public class TabletInsertionDataContainer {
           }
           return valueColumns;
         }
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Data type %s is not supported.", type));
+    }
+  }
+
+  private void fillNullValue(
+      final TSDataType type,
+      final Object[] valueColumns,
+      final BitMap nullValueColumnBitmap,
+      final int columnIndex,
+      final int rowSize) {
+    nullValueColumnBitmap.markAll();
+    if (Objects.isNull(type)) {
+      return;
+    }
+    switch (type) {
+      case TIMESTAMP:
+      case INT64:
+        valueColumns[columnIndex] = new long[rowSize];
+        break;
+      case INT32:
+        valueColumns[columnIndex] = new int[rowSize];
+        break;
+      case DOUBLE:
+        valueColumns[columnIndex] = new double[rowSize];
+        break;
+      case FLOAT:
+        valueColumns[columnIndex] = new float[rowSize];
+        break;
+      case BOOLEAN:
+        valueColumns[columnIndex] = new boolean[rowSize];
+        break;
+      case DATE:
+        valueColumns[columnIndex] = new LocalDate[rowSize];
+        break;
+      case TEXT:
+      case BLOB:
+      case STRING:
+        valueColumns[columnIndex] = new Binary[rowSize];
+        break;
       default:
         throw new UnSupportedDataTypeException(
             String.format("Data type %s is not supported.", type));
