@@ -69,6 +69,7 @@ public class ConfigRegionListeningFilter {
           new PartialPath("schema.database.drop"),
           Collections.singletonList(ConfigPhysicalPlanType.DeleteDatabase));
 
+      // Tree model
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.timeseries.template.create"),
           Collections.singletonList(ConfigPhysicalPlanType.CreateSchemaTemplate));
@@ -96,6 +97,20 @@ public class ConfigRegionListeningFilter {
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.timeseries.template.deactivate"),
           Collections.singletonList(ConfigPhysicalPlanType.PipeDeactivateTemplate));
+
+      // Table Model
+      OPTION_PLAN_MAP.put(
+          new PartialPath("schema.table.create"),
+          Collections.singletonList(ConfigPhysicalPlanType.CommitCreateTable));
+      OPTION_PLAN_MAP.put(
+          new PartialPath("schema.table.alter.addcolumn"),
+          Collections.singletonList(ConfigPhysicalPlanType.AddTableColumn));
+      OPTION_PLAN_MAP.put(
+          new PartialPath("schema.table.alter.setproperties"),
+          Collections.singletonList(ConfigPhysicalPlanType.SetTableProperties));
+      OPTION_PLAN_MAP.put(
+          new PartialPath("schema.table.drop"),
+          Collections.singletonList(ConfigPhysicalPlanType.DropTable));
 
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.ttl"), Collections.singletonList(ConfigPhysicalPlanType.SetTTL));
@@ -135,12 +150,12 @@ public class ConfigRegionListeningFilter {
           Collections.unmodifiableList(
               Arrays.asList(
                   ConfigPhysicalPlanType.RevokeUser, ConfigPhysicalPlanType.RevokeRoleFromUser)));
-    } catch (IllegalPathException ignore) {
+    } catch (final IllegalPathException ignore) {
       // There won't be any exceptions here
     }
   }
 
-  static boolean shouldPlanBeListened(ConfigPhysicalPlan plan) {
+  static boolean shouldPlanBeListened(final ConfigPhysicalPlan plan) {
     final ConfigPhysicalPlanType type = plan.getType();
 
     // Do not transfer roll back set template plan
@@ -156,15 +171,15 @@ public class ConfigRegionListeningFilter {
         || OPTION_PLAN_MAP.values().stream().anyMatch(types -> types.contains(type));
   }
 
-  public static Set<ConfigPhysicalPlanType> parseListeningPlanTypeSet(PipeParameters parameters)
-      throws IllegalPathException {
-    Set<ConfigPhysicalPlanType> planTypes = new HashSet<>();
-    Set<PartialPath> inclusionOptions =
+  public static Set<ConfigPhysicalPlanType> parseListeningPlanTypeSet(
+      final PipeParameters parameters) throws IllegalPathException {
+    final Set<ConfigPhysicalPlanType> planTypes = new HashSet<>();
+    final Set<PartialPath> inclusionOptions =
         parseOptions(
             parameters.getStringOrDefault(
                 Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
                 EXTRACTOR_INCLUSION_DEFAULT_VALUE));
-    Set<PartialPath> exclusionOptions =
+    final Set<PartialPath> exclusionOptions =
         parseOptions(
             parameters.getStringOrDefault(
                 Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
