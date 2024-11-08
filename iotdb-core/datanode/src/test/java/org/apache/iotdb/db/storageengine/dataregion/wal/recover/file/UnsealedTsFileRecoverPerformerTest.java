@@ -179,7 +179,7 @@ public class UnsealedTsFileRecoverPerformerTest {
     generateCrashedFile(file);
     assertTrue(file.exists());
     assertFalse(new File(FILE_NAME.concat(TsFileResource.RESOURCE_SUFFIX)).exists());
-    assertFalse(ModificationFile.getNormalMods(new File(FILE_NAME)).exists());
+    assertFalse(ModificationFile.getExclusiveMods(new File(FILE_NAME)).exists());
     // generate InsertRowPlan
     DeleteDataNode deleteDataNode =
         new DeleteDataNode(
@@ -227,7 +227,7 @@ public class UnsealedTsFileRecoverPerformerTest {
     // check file existence
     assertTrue(file.exists());
     assertTrue(new File(FILE_NAME.concat(TsFileResource.RESOURCE_SUFFIX)).exists());
-    assertTrue(ModificationFile.getNormalMods(new File(FILE_NAME)).exists());
+    assertTrue(ModificationFile.getExclusiveMods(new File(FILE_NAME)).exists());
   }
 
   private void generateCrashedFile(File tsFile) throws IOException, WriteProcessException {
@@ -343,7 +343,7 @@ public class UnsealedTsFileRecoverPerformerTest {
     generateCrashedFile(file);
     assertTrue(file.exists());
     assertFalse(new File(FILE_NAME.concat(TsFileResource.RESOURCE_SUFFIX)).exists());
-    assertFalse(ModificationFile.getNormalMods(new File(FILE_NAME)).exists());
+    assertFalse(ModificationFile.getExclusiveMods(new File(FILE_NAME)).exists());
     tsFileResource = new TsFileResource(file);
 
     int fakeMemTableId = 1;

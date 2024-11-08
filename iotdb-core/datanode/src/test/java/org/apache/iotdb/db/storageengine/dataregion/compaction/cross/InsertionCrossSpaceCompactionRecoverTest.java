@@ -235,8 +235,8 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
           new File(sourceTsFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath());
       if (unseqResource1.anyModFileExists()) {
         Files.createLink(
-            ModificationFile.getNormalMods(targetTsFile).toPath(),
-            ModificationFile.getNormalMods(sourceTsFile).toPath());
+            ModificationFile.getExclusiveMods(targetTsFile).toPath(),
+            ModificationFile.getExclusiveMods(sourceTsFile).toPath());
       }
     }
 
@@ -329,8 +329,8 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
           new File(sourceTsFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath());
       if (unseqResource1.anyModFileExists()) {
         Files.createLink(
-            ModificationFile.getNormalMods(targetTsFile).toPath(),
-            ModificationFile.getNormalMods(sourceTsFile).toPath());
+            ModificationFile.getExclusiveMods(targetTsFile).toPath(),
+            ModificationFile.getExclusiveMods(sourceTsFile).toPath());
       }
     }
 

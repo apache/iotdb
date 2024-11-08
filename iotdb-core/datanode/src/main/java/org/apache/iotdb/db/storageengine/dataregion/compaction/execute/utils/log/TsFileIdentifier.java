@@ -196,7 +196,7 @@ public class TsFileIdentifier {
       if (file.exists()
           || new File(file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists()
           || ModificationFileV1.getNormalMods(file).exists()
-          || ModificationFile.getNormalMods(file).exists()
+          || ModificationFile.getExclusiveMods(file).exists()
           || ModificationFile.getCompactionMods(file).exists()) {
         return file;
       }

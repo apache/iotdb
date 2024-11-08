@@ -572,7 +572,7 @@ public class IoTDBDeletionTableIT {
 
   @Ignore
   @Test
-  public void testDeletionPerformance() throws SQLException, IOException {
+  public void testDeletionWritePerformance() throws SQLException, IOException {
     int fileNumMax = 10000;
     int fileNumStep = 100;
     int deletionRepetitions = 10;
@@ -611,6 +611,71 @@ public class IoTDBDeletionTableIT {
     try (BufferedWriter writer = new BufferedWriter(new FileWriter("test.txt"))) {
       writer.write(
           fileNumsRecorded.stream().map(i -> Integer.toString(i)).collect(Collectors.joining(",")));
+      writer.write("\n");
+      writer.write(
+          timeConsumptionNsRecorded.stream()
+              .map(i -> Long.toString(i))
+              .collect(Collectors.joining(",")));
+      writer.flush();
+    }
+  }
+
+  // @Ignore
+  @Test
+  public void testDeletionReadPerformance() throws SQLException, IOException {
+    int fileNumMax = 100;
+    int pointNumPerFile = 100;
+    int deletionNumStep = 100;
+    int maxDeletionNum = 10000;
+    int readRepetitions = 5;
+    List<Integer> deletionNumsRecorded = new ArrayList<>();
+    List<Long> timeConsumptionNsRecorded = new ArrayList<>();
+
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET CONFIGURATION enable_seq_space_compaction='false'");
+
+      statement.execute("create database if not exists test");
+      statement.execute("use test");
+
+      statement.execute("create table table1(deviceId STRING ID, s0 INT32 MEASUREMENT)");
+
+      for (int i = 1; i <= fileNumMax; i++) {
+        for (int j = 0; j < pointNumPerFile; j++) {
+          long timestamp = (long) (i - 1) * pointNumPerFile + j;
+          statement.execute(
+              String.format(
+                  "INSERT INTO test.table1(time, deviceId, s0) VALUES(%d,'d0',%d)",
+                  timestamp, timestamp));
+        }
+        statement.execute("FLUSH");
+      }
+
+      for (int i = 1; i <= maxDeletionNum; i++) {
+        statement.execute("DELETE FROM test.table1 WHERE deviceId = 'd0'");
+        if (i % deletionNumStep == 0) {
+          long start = System.nanoTime();
+          for (int j = 0; j < readRepetitions; j++) {
+            ResultSet resultSet = statement.executeQuery("SELECT * FROM test.table1");
+            //noinspection StatementWithEmptyBody
+            while (resultSet.next()) {
+              // just iterate the set
+            }
+          }
+          long end = System.nanoTime();
+          long timeConsumption = (end - start) / readRepetitions;
+          timeConsumptionNsRecorded.add(timeConsumption);
+          deletionNumsRecorded.add(i);
+          System.out.println(i + "," + timeConsumption);
+        }
+      }
+    }
+
+    try (BufferedWriter writer = new BufferedWriter(new FileWriter("test.txt"))) {
+      writer.write(
+          deletionNumsRecorded.stream()
+              .map(i -> Integer.toString(i))
+              .collect(Collectors.joining(",")));
       writer.write("\n");
       writer.write(
           timeConsumptionNsRecorded.stream()

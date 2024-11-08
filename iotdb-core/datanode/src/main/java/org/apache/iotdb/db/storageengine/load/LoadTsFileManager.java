@@ -449,7 +449,7 @@ public class LoadTsFileManager {
         if (partitionInfo.getDataRegion().equals(dataRegion)) {
           final TsFileIOWriter writer = entry.getValue();
           if (!dataPartition2ModificationFile.containsKey(partitionInfo)) {
-            File newModificationFile = ModificationFile.getNormalMods(writer.getFile());
+            File newModificationFile = ModificationFile.getExclusiveMods(writer.getFile());
             if (!newModificationFile.createNewFile()) {
               LOGGER.error(
                   "Can not create ModificationFile {} for writing.", newModificationFile.getPath());

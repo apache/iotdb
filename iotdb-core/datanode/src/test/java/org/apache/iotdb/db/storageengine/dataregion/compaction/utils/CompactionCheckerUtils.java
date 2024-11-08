@@ -300,7 +300,8 @@ public class CompactionCheckerUtils {
         }
       }
 
-      Collection<ModEntry> modifications = ModificationFile.getNormalMods(mergedFile).getAllMods();
+      Collection<ModEntry> modifications =
+          ModificationFile.getExclusiveMods(mergedFile).getAllMods();
       for (ModEntry modification : modifications) {
         TreeDeletionEntry deletion = (TreeDeletionEntry) modification;
         if (mergedData.containsKey(deletion.getPathPattern().getFullPath())) {

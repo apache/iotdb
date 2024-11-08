@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -324,9 +323,8 @@ public class PipeTsFileResourceManager {
     final File pinnedFile = getHardlinkOrCopiedFileInPipeDir(resource.getTsFile());
     decreaseFileReference(pinnedFile);
 
-    final File modFile = ModificationFile.getNormalMods(pinnedFile);
-    if (modFile.exists()) {
-      decreaseFileReference(modFile);
+    if (resource.sharedModFileExists()) {
+      decreaseFileReference(resource.getSharedModFile().getFile());
     }
   }
 

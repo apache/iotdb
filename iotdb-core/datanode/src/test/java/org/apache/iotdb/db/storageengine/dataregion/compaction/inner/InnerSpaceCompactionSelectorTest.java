@@ -668,7 +668,7 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
     // mock modification file size must greater than 50M
     MockModiFicationFile mockModiFicationFile =
         new MockModiFicationFile(
-            ModificationFile.getNormalMods(seqResources.get(0).getTsFile()).getPath());
+            ModificationFile.getExclusiveMods(seqResources.get(0).getTsFile()).getPath());
     mockModiFicationFile.write(new TreeDeletionEntry(new MeasurementPath("root.a.b"), 1));
     seqResources.get(0).setExclusiveModFile(mockModiFicationFile);
     SizeTieredCompactionSelector selector =
@@ -692,7 +692,7 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
     // mock modification file size must greater than 50M
     MockModiFicationFile mockModiFicationFile =
         new MockModiFicationFile(
-            ModificationFile.getNormalMods(seqResources.get(0).getTsFile()).getPath());
+            ModificationFile.getExclusiveMods(seqResources.get(0).getTsFile()).getPath());
     mockModiFicationFile.write(new TreeDeletionEntry(new MeasurementPath("root.a.b"), 1));
     seqResources.get(0).setExclusiveModFile(mockModiFicationFile);
     seqResources.get(0).setStatusForTest(TsFileResourceStatus.COMPACTING);

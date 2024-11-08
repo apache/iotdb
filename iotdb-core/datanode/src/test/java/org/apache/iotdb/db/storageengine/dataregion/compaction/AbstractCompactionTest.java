@@ -775,8 +775,8 @@ public class AbstractCompactionTest {
     file.renameTo(new File(newFileName + TsFileResource.RESOURCE_SUFFIX));
 
     // rename mods file
-    file = ModificationFile.getNormalMods(resource.getTsFile());
-    file.renameTo(ModificationFile.getNormalMods(new File(newFileName)));
+    file = ModificationFile.getExclusiveMods(resource.getTsFile());
+    file.renameTo(ModificationFile.getExclusiveMods(new File(newFileName)));
   }
 
   protected TsFileResource generateSingleAlignedSeriesFile(

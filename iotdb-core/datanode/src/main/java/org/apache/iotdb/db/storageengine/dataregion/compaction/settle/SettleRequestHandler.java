@@ -135,8 +135,8 @@ public class SettleRequestHandler {
           return RpcUtils.getStatus(
               TSStatusCode.PATH_NOT_EXIST, "The specified file does not exist in " + path);
         }
-        File newModsFile = ModificationFile.getNormalMods(currentTsFile);
-        hasModsFiles |= newModsFile.exists();
+        File modFile = ModificationFile.getExclusiveMods(currentTsFile);
+        hasModsFiles |= modFile.exists();
 
         ConsistentSettleInfo currentInfo = calculateConsistentInfo(currentTsFile);
         if (!currentInfo.isValid) {

@@ -137,7 +137,7 @@ public class TsFileResource implements PersistentResource {
   private volatile ModificationFile sharedModFile;
   private long shardModFileOffset;
 
-  private final boolean useSharedModFile = false;
+  public static final boolean useSharedModFile = false;
 
   @SuppressWarnings("squid:S3077")
   private volatile ModificationFile compactionModFile;
@@ -366,8 +366,16 @@ public class TsFileResource implements PersistentResource {
     return file != null && file.exists();
   }
 
+  public boolean exclusiveModFileExists() {
+    return getExclusiveModFile().exists();
+  }
+
+  public boolean sharedModFileExists() {
+    return getSharedModFile() != null && sharedModFile.exists();
+  }
+
   public boolean anyModFileExists() {
-    return getExclusiveModFile().exists() || getSharedModFile() != null && sharedModFile.exists();
+    return exclusiveModFileExists() || sharedModFileExists();
   }
 
   public void link(TsFileResource target) throws IOException {
@@ -375,16 +383,19 @@ public class TsFileResource implements PersistentResource {
     Files.createLink(
         new File(target.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).toPath(),
         new File(this.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).toPath());
-    linkModFile(target.getTsFile());
+    linkModFile(target);
   }
 
-  public void linkModFile(File target) throws IOException {
-    if (!anyModFileExists()) {
-      return;
+  public void linkModFile(TsFileResource target) throws IOException {
+    if (exclusiveModFileExists()) {
+      Files.createLink(
+          ModificationFile.getExclusiveMods(target.getTsFile()).toPath(),
+          ModificationFile.getExclusiveMods(getTsFile()).toPath());
     }
-    Files.createLink(
-        ModificationFile.getNormalMods(target).toPath(),
-        ModificationFile.getNormalMods(getTsFile()).toPath());
+    if (sharedModFileExists()) {
+      modFileManagement.addReference(target, sharedModFile);
+      target.setSharedModFile(this.getSharedModFile(), false);
+    }
   }
 
   public boolean compactionModFileExists() {
@@ -408,19 +419,30 @@ public class TsFileResource implements PersistentResource {
     serialize();
   }
 
+  public void setSharedModFile(ModificationFile modFile, boolean serializeNow) {
+    if (modFile == null) {
+      return;
+    }
+
+    sharedModFile = modFile;
+    try {
+      shardModFileOffset = sharedModFile.getFileLength();
+      if (serializeNow) {
+        serializedSharedModFile();
+      }
+    } catch (IOException e) {
+      LOGGER.warn("Failed to serialize shared mod file", e);
+    }
+  }
+
   private synchronized ModificationFile prepareModFileForWrite() throws IOException {
     if (getSharedModFile() != null) {
       return getSharedModFile();
     }
 
     if (useSharedModFile) {
-      sharedModFile = modFileManagement.allocateFor(this);
-      shardModFileOffset = sharedModFile.getFileLength();
-      try {
-        serializedSharedModFile();
-      } catch (IOException e) {
-        LOGGER.warn("Failed to serialize shared mod file", e);
-      }
+      ModificationFile modificationFile = modFileManagement.allocateFor(this);
+      setSharedModFile(modificationFile, true);
       return sharedModFile;
     }
 
@@ -471,14 +493,15 @@ public class TsFileResource implements PersistentResource {
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             LOGGER.warn("Upgrading mod file interrupted", e);
-            exclusiveModFile = ModificationFile.getNormalMods(this);
+            exclusiveModFile = ModificationFile.getExclusiveMods(this);
           } catch (ExecutionException e) {
             LOGGER.warn("Cannot upgrade mod file", e);
-            exclusiveModFile = ModificationFile.getNormalMods(this);
+            exclusiveModFile = ModificationFile.getExclusiveMods(this);
           }
         } else {
-          exclusiveModFile = ModificationFile.getNormalMods(this);
+          exclusiveModFile = ModificationFile.getExclusiveMods(this);
         }
+        FileMetrics.getInstance().increaseModFileNum(1);
       }
     }
     return exclusiveModFile;
@@ -785,10 +808,10 @@ public class TsFileResource implements PersistentResource {
         fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX),
         fsFactory.getFile(targetDir, file.getName() + RESOURCE_SUFFIX));
 
-    if (anyModFileExists()) {
+    if (exclusiveModFileExists()) {
       fsFactory.moveFile(
           getExclusiveModFile().getFile(),
-          fsFactory.getFile(targetDir, ModificationFile.getNormalMods(file).getName()));
+          fsFactory.getFile(targetDir, ModificationFile.getExclusiveMods(file).getName()));
     }
   }
 
@@ -1418,10 +1441,10 @@ public class TsFileResource implements PersistentResource {
     exclusiveModFileFuture =
         upgradeModFileThreadPool.submit(
             () -> {
-              ModificationFile newMFile = ModificationFile.getNormalMods(this);
+              ModificationFile newMFile = ModificationFile.getExclusiveMods(this);
               newMFile.getFile().delete();
               try {
-                for (Modification oldMod : oldModFile.getModificationsIter()) {
+                for (Modification oldMod : oldModFile.getModifications()) {
                   newMFile.write(new TreeDeletionEntry((Deletion) oldMod));
                 }
               } finally {
@@ -1446,5 +1469,17 @@ public class TsFileResource implements PersistentResource {
 
   public boolean isUseSharedModFile() {
     return useSharedModFile;
+  }
+
+  public void setModFileManagement(ModFileManagement modFileManagement) {
+    this.modFileManagement = modFileManagement;
+  }
+
+  public ModFileManagement getModFileManagement() {
+    return modFileManagement;
+  }
+
+  public void setCompactionModFile(ModificationFile compactionModFile) {
+    this.compactionModFile = compactionModFile;
   }
 }

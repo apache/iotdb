@@ -31,4 +31,6 @@ public interface ModFileManagement {
 
   void releaseFor(TsFileResource tsFileResource, ModificationFile modificationFile)
       throws IOException;
+
+  void addReference(TsFileResource tsFileResource, ModificationFile modificationFile);
 }

@@ -35,6 +35,7 @@ import java.io.OutputStream;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -88,7 +89,7 @@ public class ModificationFile implements AutoCloseable {
   }
 
   @SuppressWarnings("java:S2093") // cannot use try-with-resource, should not close here
-  public void write(List<? extends ModEntry> entries) throws IOException {
+  public void write(Collection<? extends ModEntry> entries) throws IOException {
     lock.writeLock().lock();
     try {
       if (fileOutputStream == null) {
@@ -243,11 +244,11 @@ public class ModificationFile implements AutoCloseable {
     FileUtils.deleteFileOrDirectory(file);
   }
 
-  public static ModificationFile getNormalMods(TsFileResource tsFileResource) {
+  public static ModificationFile getExclusiveMods(TsFileResource tsFileResource) {
     return new ModificationFile(new File(tsFileResource.getTsFilePath() + FILE_SUFFIX));
   }
 
-  public static File getNormalMods(File tsFile) {
+  public static File getExclusiveMods(File tsFile) {
     return new File(tsFile.getPath() + FILE_SUFFIX);
   }
 

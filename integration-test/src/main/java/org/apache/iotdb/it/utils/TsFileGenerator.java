@@ -251,7 +251,7 @@ public class TsFileGenerator implements AutoCloseable {
   public void generateDeletion(final String device, final int number)
       throws IOException, IllegalPathException {
     try (final ModificationFile modificationFile =
-        new ModificationFile(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX)) {
+        new ModificationFile(ModificationFile.getExclusiveMods(tsFile))) {
       writer.flushAllChunkGroups();
       final TreeSet<Long> timeSet = device2TimeSet.get(device);
       if (timeSet.isEmpty()) {

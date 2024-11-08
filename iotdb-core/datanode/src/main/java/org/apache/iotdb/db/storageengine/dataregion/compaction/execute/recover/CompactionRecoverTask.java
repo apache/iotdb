@@ -286,15 +286,13 @@ public class CompactionRecoverTask {
     }
 
     // delete mods file
-    file = getFileFromDataDirs(tsFileIdentifier.getFilePath() + ModificationFile.FILE_SUFFIX);
+    file = getFileFromDataDirs(ModificationFile.getExclusiveMods(file).getPath());
     if (!checkAndDeleteFile(file)) {
       success = false;
     }
 
     // delete compaction mods file
-    file =
-        getFileFromDataDirs(
-            tsFileIdentifier.getFilePath() + ModificationFile.COMPACTION_FILE_SUFFIX);
+    file = getFileFromDataDirs(ModificationFile.getCompactionMods(file).getPath());
     if (!checkAndDeleteFile(file)) {
       success = false;
     }

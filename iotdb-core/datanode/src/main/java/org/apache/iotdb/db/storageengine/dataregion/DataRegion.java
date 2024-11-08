@@ -2617,50 +2617,32 @@ public class DataRegion implements IDataRegionForQuery {
     separateTsFileToDelete(modEntry, tsfileResourceList, deletedByMods, deletedByFiles);
 
     // can be deleted by mods.
+    Set<ModificationFile> involvedModificationFiles = new HashSet<>();
     for (TsFileResource tsFileResource : deletedByMods) {
-      ModificationFile modFile = tsFileResource.getModFileForWrite();
       if (tsFileResource.isClosed()) {
-        long originSize = -1;
-        try {
-          originSize = modFile.getSize();
-          // delete data in sealed file
-          if (tsFileResource.isCompacting()) {
-            // write deletion into compaction modification file
-            tsFileResource.getCompactionModFile().write(modEntry);
-            // write deletion into modification file to enable read during compaction
-            modFile.write(modEntry);
-            // remember to close mod file
-            tsFileResource.getCompactionModFile().close();
-            modFile.close();
-          } else {
-            // write deletion into modification file
-            boolean modFileExists = modFile.exists();
-
-            modFile.write(modEntry);
-
-            // remember to close mod file
-            modFile.close();
-
-            if (!modFileExists) {
-              FileMetrics.getInstance().increaseModFileNum(1);
-            }
-
-            // The file size may be smaller than the original file, so the increment here may be
-            // negative
-            FileMetrics.getInstance().increaseModFileSize(modFile.getSize() - originSize);
-          }
-        } catch (Throwable t) {
-          if (originSize != -1) {
-            modFile.truncate(originSize);
-          }
-          throw t;
+        if (tsFileResource.isCompacting()) {
+          involvedModificationFiles.add(tsFileResource.getCompactionModFile());
         }
-        logger.info(
-            "[Deletion] Deletion with path {} written into mods file:{}.", modFile, modFile);
+        involvedModificationFiles.add(tsFileResource.getModFileForWrite());
       } else {
         // delete data in memory of unsealed file
         tsFileResource.getProcessor().deleteDataInMemory(modEntry);
       }
+    }
+
+    for (ModificationFile involvedModificationFile : involvedModificationFiles) {
+      // delete data in sealed file
+      long originSize = involvedModificationFile.getSize();
+      involvedModificationFile.write(modEntry);
+      // The file size may be smaller than the original file, so the increment here may be
+      // negative
+      involvedModificationFile.close();
+      logger.info(
+          "[Deletion] Deletion with path {} written into mods file:{}.",
+          modEntry,
+          involvedModificationFile);
+      FileMetrics.getInstance()
+          .increaseModFileSize(involvedModificationFile.getSize() - originSize);
     }
 
     // can be deleted by files
@@ -3273,7 +3255,7 @@ public class DataRegion implements IDataRegionForQuery {
       File tsFileToLoad, File targetTsFile, boolean deleteOriginFile, TsFileResource tsFileResource)
       throws LoadFileException {
     final File oldModFileToLoad = ModificationFileV1.getNormalMods(tsFileToLoad);
-    final File newModFileToLoad = ModificationFile.getNormalMods(tsFileToLoad);
+    final File newModFileToLoad = ModificationFile.getExclusiveMods(tsFileToLoad);
     if (oldModFileToLoad.exists()) {
       final File oldTargetModFile = ModificationFileV1.getNormalMods(targetTsFile);
       moveModFile(oldModFileToLoad, oldTargetModFile, deleteOriginFile);
@@ -3283,7 +3265,7 @@ public class DataRegion implements IDataRegionForQuery {
         throw new LoadFileException(e);
       }
     } else if (newModFileToLoad.exists()) {
-      final File newTargetModFile = ModificationFile.getNormalMods(targetTsFile);
+      final File newTargetModFile = ModificationFile.getExclusiveMods(targetTsFile);
       moveModFile(newModFileToLoad, newTargetModFile, deleteOriginFile);
     }
   }

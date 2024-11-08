@@ -104,7 +104,7 @@ public class TsFileSplitTool {
   /* entry of tool */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void run() throws IOException {
-    if (ModificationFile.getNormalMods(new File(filename)).exists()) {
+    if (ModificationFile.getExclusiveMods(new File(filename)).exists()) {
       throw new IOException("Unsupported to split TsFile with modification currently.");
     }
 

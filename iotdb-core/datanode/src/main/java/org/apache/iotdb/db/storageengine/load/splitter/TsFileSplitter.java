@@ -367,7 +367,7 @@ public class TsFileSplitter {
 
   private void getAllModification(List<ModEntry> deletions) throws IOException {
     try (ModificationFile modificationFile =
-        new ModificationFile(ModificationFile.getNormalMods(tsFile))) {
+        new ModificationFile(ModificationFile.getExclusiveMods(tsFile))) {
       deletions.addAll(modificationFile.getAllMods());
     }
   }

@@ -129,6 +129,12 @@ public class CompactionUtils {
       List<TsFileResource> unseqResources,
       List<TsFileResource> targetResources)
       throws IOException {
+    if (TsFileResource.useSharedModFile) {
+      // when using the shared mod file, modifications generated during compaction will be
+      // directly written into shared mod file, so there is no need to concern the sources
+      return;
+    }
+
     Set<ModEntry> modifications = new HashSet<>();
     // get compaction mods from all source unseq files
     for (TsFileResource unseqFile : unseqResources) {
@@ -157,6 +163,9 @@ public class CompactionUtils {
    */
   public static void combineModsInInnerCompaction(
       Collection<TsFileResource> sourceFiles, TsFileResource targetTsFile) throws IOException {
+    if (TsFileResource.useSharedModFile) {
+      return;
+    }
     Set<ModEntry> modifications = new HashSet<>();
     for (TsFileResource mergeTsFile : sourceFiles) {
       try (ModificationFile sourceCompactionModificationFile = mergeTsFile.getCompactionModFile()) {
@@ -169,6 +178,9 @@ public class CompactionUtils {
   public static void combineModsInInnerCompaction(
       Collection<TsFileResource> sourceFiles, List<TsFileResource> targetTsFiles)
       throws IOException {
+    if (TsFileResource.useSharedModFile) {
+      return;
+    }
     Set<ModEntry> modifications = new HashSet<>();
     for (TsFileResource mergeTsFile : sourceFiles) {
       try (ModificationFile sourceCompactionModificationFile = mergeTsFile.getCompactionModFile()) {
@@ -197,7 +209,7 @@ public class CompactionUtils {
   private static void updateOneTargetMods(TsFileResource targetFile, Set<ModEntry> modifications)
       throws IOException {
     if (!modifications.isEmpty()) {
-      try (ModificationFile modificationFile = targetFile.getExclusiveModFile()) {
+      try (ModificationFile modificationFile = targetFile.getModFileForWrite()) {
         for (ModEntry modification : modifications) {
           modificationFile.write(modification);
         }

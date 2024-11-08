@@ -224,7 +224,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
         new File(targetTsFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath(),
         new File(sourceTsFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath());
 
-    unseqFileToInsert.linkModFile(targetTsFile);
+    unseqFileToInsert.linkModFile(targetFile);
 
     targetFile.setProgressIndex(unseqFileToInsert.getMaxProgressIndexAfterClose());
     targetFile.deserialize();
