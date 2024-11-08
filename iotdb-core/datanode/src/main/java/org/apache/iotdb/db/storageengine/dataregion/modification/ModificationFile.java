@@ -26,6 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.EOFException;
 import java.io.File;
@@ -175,7 +176,7 @@ public class ModificationFile implements AutoCloseable {
       if (!file.exists()) {
         return;
       }
-      this.inputStream = Files.newInputStream(file.toPath());
+      this.inputStream = new BufferedInputStream(Files.newInputStream(file.toPath()), 64 * 1024);
       long skipped = inputStream.skip(offset);
       if (skipped != offset) {
         LOGGER.warn(
