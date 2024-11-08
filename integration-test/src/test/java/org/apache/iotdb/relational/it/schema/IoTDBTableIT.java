@@ -40,6 +40,7 @@ import java.sql.Statement;
 import java.util.Collections;
 
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.describeTableColumnHeaders;
+import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.describeTableDetailsColumnHeaders;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.showTablesColumnHeaders;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -385,10 +386,11 @@ public class IoTDBTableIT {
       try (final ResultSet resultSet = statement.executeQuery("describe table2 details")) {
         int cnt = 0;
         ResultSetMetaData metaData = resultSet.getMetaData();
-        assertEquals(describeTableColumnHeaders.size(), metaData.getColumnCount());
-        for (int i = 0; i < describeTableColumnHeaders.size(); i++) {
+        assertEquals(describeTableDetailsColumnHeaders.size(), metaData.getColumnCount());
+        for (int i = 0; i < describeTableDetailsColumnHeaders.size(); i++) {
           assertEquals(
-              describeTableColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
+              describeTableDetailsColumnHeaders.get(i).getColumnName(),
+              metaData.getColumnName(i + 1));
         }
         while (resultSet.next()) {
           assertEquals(columnNames[cnt], resultSet.getString(1));
