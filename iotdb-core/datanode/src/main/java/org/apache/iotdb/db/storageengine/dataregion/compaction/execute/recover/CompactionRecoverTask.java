@@ -280,19 +280,24 @@ public class CompactionRecoverTask {
     }
 
     // delete resource file
-    File resourceFile = getFileFromDataDirs(tsFileIdentifier.getFilePath() + TsFileResource.RESOURCE_SUFFIX);
+    File resourceFile =
+        getFileFromDataDirs(tsFileIdentifier.getFilePath() + TsFileResource.RESOURCE_SUFFIX);
     if (!checkAndDeleteFile(resourceFile)) {
       success = false;
     }
 
     // delete mods file
-    File exclusiveModFile = getFileFromDataDirs(ModificationFile.getExclusiveMods(new File(tsFileIdentifier.getFilePath())).getPath());
+    File exclusiveModFile =
+        getFileFromDataDirs(
+            ModificationFile.getExclusiveMods(new File(tsFileIdentifier.getFilePath())).getPath());
     if (!checkAndDeleteFile(exclusiveModFile)) {
       success = false;
     }
 
     // delete compaction mods file
-    File compactionModFile = getFileFromDataDirs(ModificationFile.getCompactionMods(new File(tsFileIdentifier.getFilePath())).getPath());
+    File compactionModFile =
+        getFileFromDataDirs(
+            ModificationFile.getCompactionMods(new File(tsFileIdentifier.getFilePath())).getPath());
     if (!checkAndDeleteFile(compactionModFile)) {
       success = false;
     }
