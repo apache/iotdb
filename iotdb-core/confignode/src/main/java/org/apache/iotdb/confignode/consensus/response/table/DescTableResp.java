@@ -43,7 +43,10 @@ public class DescTableResp implements DataSet {
   public TDescTableResp convertToTDescTableResp() {
     final TDescTableResp resp =
         new TDescTableResp(status)
-            .setTableInfo(TsTableInternalRPCUtil.serializeSingleTsTable(table));
+            .setTableInfo(
+                Objects.nonNull(table)
+                    ? TsTableInternalRPCUtil.serializeSingleTsTable(table)
+                    : null);
     return Objects.nonNull(preDeletedColumns) ? resp.setPreDeletedColumns(preDeletedColumns) : resp;
   }
 }
