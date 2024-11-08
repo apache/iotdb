@@ -70,4 +70,9 @@ public class GroupedCountAccumulator implements GroupedAccumulator {
 
   @Override
   public void prepareFinal() {}
+
+  @Override
+  public void reset() {
+    countValues.reset();
+  }
 }

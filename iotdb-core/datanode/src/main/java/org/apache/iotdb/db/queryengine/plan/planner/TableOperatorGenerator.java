@@ -78,6 +78,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAggregator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.HashAggregationOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.StreamingAggregationOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.StreamingHashAggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -139,6 +141,7 @@ import org.apache.iotdb.db.utils.datastructure.SortKey;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
@@ -1405,15 +1408,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       Operator child,
       TypeProvider typeProvider,
       OperatorContext operatorContext) {
-    ImmutableList.Builder<GroupedAggregator> aggregatorBuilder = new ImmutableList.Builder<>();
     Map<Symbol, Integer> childLayout =
         makeLayoutFromOutputSymbols(node.getChild().getOutputSymbols());
-
-    node.getAggregations()
-        .forEach(
-            (k, v) ->
-                aggregatorBuilder.add(
-                    buildGroupByAggregator(childLayout, k, v, node.getStep(), typeProvider)));
 
     List<Integer> groupByChannels = getChannelsForSymbols(node.getGroupingKeys(), childLayout);
     List<Type> groupByTypes =
@@ -1422,8 +1418,78 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             .collect(toImmutableList());
 
     if (node.isStreamable()) {
-      /*return new StreamingAggregationOperator;*/
+      if (groupByTypes.size() == node.getPreGroupedSymbols().size()) {
+        ImmutableList.Builder<TableAggregator> aggregatorBuilder = new ImmutableList.Builder<>();
+        node.getAggregations()
+            .forEach(
+                (k, v) ->
+                    aggregatorBuilder.add(
+                        buildAggregator(childLayout, k, v, node.getStep(), typeProvider, true)));
+
+        return new StreamingAggregationOperator(
+            operatorContext,
+            child,
+            groupByTypes,
+            groupByChannels,
+            genGroupKeyComparator(groupByTypes, groupByChannels),
+            aggregatorBuilder.build(),
+            Long.MAX_VALUE,
+            false,
+            Long.MAX_VALUE);
+      }
+
+      ImmutableList.Builder<GroupedAggregator> aggregatorBuilder = new ImmutableList.Builder<>();
+      node.getAggregations()
+          .forEach(
+              (k, v) ->
+                  aggregatorBuilder.add(
+                      buildGroupByAggregator(childLayout, k, v, node.getStep(), typeProvider)));
+
+      Set<Symbol> preGroupedKeys = ImmutableSet.copyOf(node.getPreGroupedSymbols());
+      List<Symbol> groupingKeys = node.getGroupingKeys();
+      ImmutableList.Builder<Type> preGroupedTypesBuilder = new ImmutableList.Builder<>();
+      ImmutableList.Builder<Integer> preGroupedChannelsBuilder = new ImmutableList.Builder<>();
+      ImmutableList.Builder<Integer> preGroupedIndexInResultBuilder = new ImmutableList.Builder<>();
+      ImmutableList.Builder<Type> unPreGroupedTypesBuilder = new ImmutableList.Builder<>();
+      ImmutableList.Builder<Integer> unPreGroupedChannelsBuilder = new ImmutableList.Builder<>();
+      ImmutableList.Builder<Integer> unPreGroupedIndexInResultBuilder =
+          new ImmutableList.Builder<>();
+      for (int i = 0; i < groupByTypes.size(); i++) {
+        if (preGroupedKeys.contains(groupingKeys.get(i))) {
+          preGroupedTypesBuilder.add(groupByTypes.get(i));
+          preGroupedChannelsBuilder.add(groupByChannels.get(i));
+          preGroupedIndexInResultBuilder.add(i);
+        } else {
+          unPreGroupedTypesBuilder.add(groupByTypes.get(i));
+          unPreGroupedChannelsBuilder.add(groupByChannels.get(i));
+          unPreGroupedIndexInResultBuilder.add(i);
+        }
+      }
+
+      List<Integer> preGroupedChannels = preGroupedChannelsBuilder.build();
+      return new StreamingHashAggregationOperator(
+          operatorContext,
+          child,
+          preGroupedChannels,
+          preGroupedIndexInResultBuilder.build(),
+          unPreGroupedTypesBuilder.build(),
+          unPreGroupedChannelsBuilder.build(),
+          unPreGroupedIndexInResultBuilder.build(),
+          genGroupKeyComparator(preGroupedTypesBuilder.build(), preGroupedChannels),
+          aggregatorBuilder.build(),
+          node.getStep(),
+          64,
+          Long.MAX_VALUE,
+          false,
+          Long.MAX_VALUE);
     }
+
+    ImmutableList.Builder<GroupedAggregator> aggregatorBuilder = new ImmutableList.Builder<>();
+    node.getAggregations()
+        .forEach(
+            (k, v) ->
+                aggregatorBuilder.add(
+                    buildGroupByAggregator(childLayout, k, v, node.getStep(), typeProvider)));
 
     return new HashAggregationOperator(
         operatorContext,
@@ -1436,6 +1502,15 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         Long.MAX_VALUE,
         false,
         Long.MAX_VALUE);
+  }
+
+  private Comparator<SortKey> genGroupKeyComparator(
+      List<Type> groupTypes, List<Integer> groupByChannels) {
+    return getComparatorForTable(
+        // SortOrder is not sensitive here, the comparator is just used to judge equality.
+        groupTypes.stream().map(k -> ASC_NULLS_LAST).collect(Collectors.toList()),
+        groupByChannels,
+        groupTypes.stream().map(InternalTypeManager::getTSDataType).collect(Collectors.toList()));
   }
 
   private static List<Integer> getChannelsForSymbols(

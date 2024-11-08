@@ -26,6 +26,7 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
+import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -88,7 +89,9 @@ public class GroupedAvgAccumulator implements GroupedAccumulator {
   @Override
   public void addIntermediate(int[] groupIds, Column argument) {
     checkArgument(
-        argument instanceof BinaryColumn,
+        argument instanceof BinaryColumn
+            || (argument instanceof RunLengthEncodedColumn
+                && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
         "intermediate input and output of Avg should be BinaryColumn");
 
     for (int i = 0; i < groupIds.length; i++) {
@@ -174,4 +177,10 @@ public class GroupedAvgAccumulator implements GroupedAccumulator {
 
   @Override
   public void prepareFinal() {}
+
+  @Override
+  public void reset() {
+    countValues.reset();
+    sumValues.reset();
+  }
 }
