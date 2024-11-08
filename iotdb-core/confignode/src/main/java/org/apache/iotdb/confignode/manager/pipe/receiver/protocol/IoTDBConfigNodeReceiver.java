@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransf
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
-import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -61,7 +60,8 @@ import org.apache.iotdb.confignode.manager.pipe.receiver.visitor.PipeConfigPhysi
 import org.apache.iotdb.confignode.persistence.schema.CNPhysicalPlanGenerator;
 import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
 import org.apache.iotdb.confignode.persistence.schema.ConfignodeSnapshotParser;
-import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
@@ -299,15 +299,19 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             ? configManager.getTTLManager().unsetTTL((SetTTLPlan) plan, true)
             : configManager.getTTLManager().setTTL((SetTTLPlan) plan, true);
       case CommitCreateTable:
+        final String queryId = generatePseudoQueryId();
         return configManager
             .getProcedureManager()
-            .dropTable(
-                new TAlterOrDropTableReq(
+            .executeWithoutDuplicate(
+                ((CommitCreateTablePlan) plan).getDatabase(),
+                null,
+                ((CommitCreateTablePlan) plan).getTableName(),
+                queryId,
+                ProcedureType.DROP_TABLE_PROCEDURE,
+                new DropTableProcedure(
                     ((CommitCreateTablePlan) plan).getDatabase(),
                     ((CommitCreateTablePlan) plan).getTableName(),
-                    generatePseudoQueryId(),
-                    AlterOrDropTableOperationType.DROP_TABLE.getTypeValue(),
-                    null));
+                    queryId));
       case DropUser:
       case DropRole:
       case GrantRole:

@@ -1605,7 +1605,7 @@ public class ProcedureManager {
     }
   }
 
-  private TSStatus executeWithoutDuplicate(
+  public TSStatus executeWithoutDuplicate(
       final String database,
       final TsTable table,
       final String tableName,
