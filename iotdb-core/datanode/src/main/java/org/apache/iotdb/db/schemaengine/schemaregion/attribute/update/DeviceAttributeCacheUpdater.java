@@ -379,10 +379,9 @@ public class DeviceAttributeCacheUpdater {
     size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
       final TDataNodeLocation location = deserializeNodeLocationForAttributeUpdate(inputStream);
+      final boolean isDetails = ReadWriteIOUtils.readBool(inputStream);
       final UpdateContainer container =
-          ReadWriteIOUtils.readBool(inputStream)
-              ? new UpdateDetailContainer()
-              : new UpdateClearContainer();
+          isDetails ? new UpdateDetailContainer() : new UpdateClearContainer();
       container.deserialize(inputStream);
 
       // Update local cache for region migration
@@ -395,6 +394,9 @@ public class DeviceAttributeCacheUpdater {
         guard.handleContainer(databaseName, container);
       } else {
         attributeUpdateMap.put(location, container);
+        if (isDetails) {
+          updateContainerStatistics.put(location, new UpdateDetailContainerStatistics());
+        }
       }
     }
   }
