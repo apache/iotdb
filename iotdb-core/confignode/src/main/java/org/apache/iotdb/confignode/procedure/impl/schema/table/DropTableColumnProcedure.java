@@ -197,13 +197,11 @@ public class DropTableColumnProcedure
             ? env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, true)
             : env.getConfigManager().getRelatedDataRegionGroup(patternTree, true);
 
-    // TODO
     if (!relatedRegionGroup.isEmpty()) {
-      new DropTableProcedure.DropTableRegionTaskExecutor<>(
+      new TableRegionTaskExecutor<>(
               "delete data for drop table",
               env,
               relatedRegionGroup,
-              true,
               CnToDnAsyncRequestType.DELETE_COLUMN_DATA,
               ((dataNodeLocation, consensusGroupIdList) ->
                   new TDeleteColumnDataReq(
