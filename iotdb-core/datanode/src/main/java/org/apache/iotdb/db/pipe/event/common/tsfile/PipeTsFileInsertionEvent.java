@@ -247,7 +247,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       }
       if (Objects.nonNull(pipeName)) {
         PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-            .increaseTsFileEventCount(pipeName + "_" + creationTime);
+            .increaseTsFileEventCount(pipeName, creationTime);
       }
       return true;
     } catch (final Exception e) {
@@ -278,7 +278,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     } finally {
       if (Objects.nonNull(pipeName)) {
         PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-            .decreaseTsFileEventCount(pipeName + "_" + creationTime);
+            .decreaseTsFileEventCount(pipeName, creationTime);
       }
     }
   }

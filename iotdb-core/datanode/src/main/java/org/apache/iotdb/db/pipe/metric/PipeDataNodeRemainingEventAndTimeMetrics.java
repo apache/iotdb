@@ -122,46 +122,62 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     // The metric is global thus the regionId is omitted
     final String pipeID = extractor.getPipeName() + "_" + extractor.getCreationTime();
     remainingEventAndTimeOperatorMap
-        .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
+        .computeIfAbsent(
+            pipeID,
+            k ->
+                new PipeDataNodeRemainingEventAndTimeOperator(
+                    extractor.getPipeName(), extractor.getCreationTime()))
         .register(extractor);
     if (Objects.nonNull(metricService)) {
       createMetrics(pipeID);
     }
   }
 
-  public void increaseTabletEventCount(final String pipeID) {
+  public void increaseTabletEventCount(final String pipeName, final long creationTime) {
     remainingEventAndTimeOperatorMap
-        .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
+        .computeIfAbsent(
+            pipeName + "_" + creationTime,
+            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
         .increaseTabletEventCount();
   }
 
-  public void decreaseTabletEventCount(final String pipeID) {
+  public void decreaseTabletEventCount(final String pipeName, final long creationTime) {
     remainingEventAndTimeOperatorMap
-        .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
+        .computeIfAbsent(
+            pipeName + "_" + creationTime,
+            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
         .decreaseTabletEventCount();
   }
 
-  public void increaseTsFileEventCount(final String pipeID) {
+  public void increaseTsFileEventCount(final String pipeName, final long creationTime) {
     remainingEventAndTimeOperatorMap
-        .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
+        .computeIfAbsent(
+            pipeName + "_" + creationTime,
+            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
         .increaseTsFileEventCount();
   }
 
-  public void decreaseTsFileEventCount(final String pipeID) {
+  public void decreaseTsFileEventCount(final String pipeName, final long creationTime) {
     remainingEventAndTimeOperatorMap
-        .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
+        .computeIfAbsent(
+            pipeName + "_" + creationTime,
+            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
         .decreaseTsFileEventCount();
   }
 
-  public void increaseHeartbeatEventCount(final String pipeID) {
+  public void increaseHeartbeatEventCount(final String pipeName, final long creationTime) {
     remainingEventAndTimeOperatorMap
-        .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
+        .computeIfAbsent(
+            pipeName + "_" + creationTime,
+            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
         .increaseHeartbeatEventCount();
   }
 
-  public void decreaseHeartbeatEventCount(final String pipeID) {
+  public void decreaseHeartbeatEventCount(final String pipeName, final long creationTime) {
     remainingEventAndTimeOperatorMap
-        .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
+        .computeIfAbsent(
+            pipeName + "_" + creationTime,
+            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
         .decreaseHeartbeatEventCount();
   }
 
@@ -237,7 +253,8 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
       final String pipeName, final long creationTime) {
     final PipeDataNodeRemainingEventAndTimeOperator operator =
         remainingEventAndTimeOperatorMap.computeIfAbsent(
-            pipeName + "_" + creationTime, k -> new PipeDataNodeRemainingEventAndTimeOperator());
+            pipeName + "_" + creationTime,
+            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime));
     return new Pair<>(operator.getRemainingEvents(), operator.getRemainingTime());
   }
 
