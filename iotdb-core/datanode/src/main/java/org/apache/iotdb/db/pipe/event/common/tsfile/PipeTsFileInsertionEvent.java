@@ -518,7 +518,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final long currentTime = System.currentTimeMillis();
       final double elapsedRecordTimeSeconds = (currentTime - lastRecordTime) / 1000.0;
       final double waitTimeSeconds = (currentTime - startTime) / 1000.0;
-      if (elapsedRecordTimeSeconds > 1.0) {
+      if (elapsedRecordTimeSeconds > 10.0) {
         LOGGER.info(
             "Wait for resource enough for parsing {} for {} seconds.",
             resource != null ? resource.getTsFilePath() : "tsfile",
@@ -537,6 +537,13 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
             String.format("TimeoutException: Waited %s seconds", waitTimeSeconds));
       }
     }
+
+    final long currentTime = System.currentTimeMillis();
+    final double waitTimeSeconds = (currentTime - startTime) / 1000.0;
+    LOGGER.info(
+        "Wait for resource enough for parsing {} for {} seconds.",
+        resource != null ? resource.getTsFilePath() : "tsfile",
+        waitTimeSeconds);
   }
 
   /** The method is used to prevent circular replication in PipeConsensus */

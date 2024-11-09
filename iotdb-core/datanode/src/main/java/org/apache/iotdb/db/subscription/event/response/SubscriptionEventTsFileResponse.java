@@ -218,7 +218,7 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
       final long currentTime = System.currentTimeMillis();
       final double elapsedRecordTimeSeconds = (currentTime - lastRecordTime) / 1000.0;
       final double waitTimeSeconds = (currentTime - startTime) / 1000.0;
-      if (elapsedRecordTimeSeconds > 1.0) {
+      if (elapsedRecordTimeSeconds > 10.0) {
         LOGGER.info(
             "Wait for resource enough for slicing tsfile {} for {} seconds.",
             tsFile,
@@ -238,5 +238,10 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
             String.format("TimeoutException: Waited %s seconds", waitTimeSeconds));
       }
     }
+
+    final long currentTime = System.currentTimeMillis();
+    final double waitTimeSeconds = (currentTime - startTime) / 1000.0;
+    LOGGER.info(
+        "Wait for resource enough for slicing tsfile {} for {} seconds.", tsFile, waitTimeSeconds);
   }
 }
