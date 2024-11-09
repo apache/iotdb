@@ -189,17 +189,10 @@ public class DeviceAttributeCacheUpdater {
   public void commit(final TableDeviceAttributeCommitUpdateNode node) {
     final Set<TDataNodeLocation> shrunkNodes = node.getShrunkNodes();
     targetDataNodeLocations.removeAll(shrunkNodes);
-    shrunkNodes.forEach(
-        location -> {
-          if (attributeUpdateMap.containsKey(location)) {
-            removeLocation(location);
-          }
-        });
-    updateContainerStatistics.keySet().removeAll(shrunkNodes);
+    shrunkNodes.forEach(this::removeLocation);
 
-    final TDataNodeLocation leaderLocation = node.getLeaderLocation();
-    if (version.get() == node.getVersion() && attributeUpdateMap.containsKey(leaderLocation)) {
-      removeLocation(leaderLocation);
+    if (version.get() == node.getVersion()) {
+      removeLocation(node.getLeaderLocation());
     }
 
     node.getCommitMap()
@@ -238,6 +231,7 @@ public class DeviceAttributeCacheUpdater {
               ? updateContainerStatistics.get(location).getContainerSize()
               : ((UpdateClearContainer) attributeUpdateMap.get(location)).ramBytesUsed());
       attributeUpdateMap.remove(location);
+      updateContainerStatistics.remove(location);
     }
   }
 
@@ -385,10 +379,9 @@ public class DeviceAttributeCacheUpdater {
     size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
       final TDataNodeLocation location = deserializeNodeLocationForAttributeUpdate(inputStream);
+      final boolean isDetails = ReadWriteIOUtils.readBool(inputStream);
       final UpdateContainer container =
-          ReadWriteIOUtils.readBool(inputStream)
-              ? new UpdateDetailContainer()
-              : new UpdateClearContainer();
+          isDetails ? new UpdateDetailContainer() : new UpdateClearContainer();
       container.deserialize(inputStream);
 
       // Update local cache for region migration
@@ -401,6 +394,9 @@ public class DeviceAttributeCacheUpdater {
         guard.handleContainer(databaseName, container);
       } else {
         attributeUpdateMap.put(location, container);
+        if (isDetails) {
+          updateContainerStatistics.put(location, new UpdateDetailContainerStatistics());
+        }
       }
     }
   }
