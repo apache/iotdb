@@ -17,11 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.state.schema;
+package org.apache.iotdb.db.exception.metadata.table;
 
-public enum DropTableColumnState {
-  CHECK_AND_INVALIDATE_COLUMN,
-  INVALIDATE_CACHE,
-  EXECUTE_ON_REGIONS,
-  DROP_COLUMN,
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.rpc.TSStatusCode;
+
+public class ColumnNotExistsException extends MetadataException {
+  public ColumnNotExistsException(
+      final String database, final String tableName, final String columnName) {
+    super(
+        String.format(
+            "Column %s in table '%s.%s' does not exist.", columnName, database, tableName),
+        TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode());
+  }
 }

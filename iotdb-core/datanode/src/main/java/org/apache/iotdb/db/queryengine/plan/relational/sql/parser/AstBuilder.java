@@ -337,7 +337,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitDescTableStatement(final RelationalSqlParser.DescTableStatementContext ctx) {
-    return new DescribeTable(getLocation(ctx), getQualifiedName(ctx.table));
+    return new DescribeTable(
+        getLocation(ctx), getQualifiedName(ctx.table), Objects.nonNull(ctx.DETAILS()));
   }
 
   @Override

@@ -145,6 +145,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Const
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDevicesInBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.RollbackTableDevicesBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableAttributeColumnDropNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableSchemaQueryWriteVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
@@ -200,6 +201,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TDeactivateTemplateReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeleteColumnDataReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataOrDevicesForDropTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
@@ -218,6 +220,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceInfoResp;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TInvalidateColumnCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateTableCacheReq;
@@ -1527,7 +1530,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.TIMESERIES_VS_TABLE);
         try {
           Pair<String, TsTable> pair =
-              TsTableInternalRPCUtil.deserializeSingleTsTable(req.getTableInfo());
+              TsTableInternalRPCUtil.deserializeSingleTsTableWithDatabase(req.getTableInfo());
           DataNodeTableCache.getInstance().preUpdateTable(pair.left, pair.right);
         } finally {
           DataNodeSchemaLockManager.getInstance()
@@ -1665,7 +1668,39 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 .getStatus());
   }
 
-  public TTestConnectionResp submitTestConnectionTask(TNodeLocations nodeLocations) {
+  @Override
+  public TSStatus invalidateColumnCache(final TInvalidateColumnCacheReq req) {
+    DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
+    try {
+      TableDeviceSchemaCache.getInstance()
+          .invalidate(
+              req.getDatabase(),
+              req.getTableName(),
+              req.getColumnName(),
+              req.isIsAttributeColumn());
+      return StatusUtils.OK;
+    } finally {
+      DataNodeSchemaLockManager.getInstance().releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
+    }
+  }
+
+  @Override
+  public TSStatus deleteColumnData(final TDeleteColumnDataReq req) {
+    // TODO: Execute on data region
+    return executeInternalSchemaTask(
+        req.getRegionIdList(),
+        consensusGroupId ->
+            req.isIsAttributeColumn()
+                ? new RegionWriteExecutor()
+                    .execute(
+                        new SchemaRegionId(consensusGroupId.getId()),
+                        new TableAttributeColumnDropNode(
+                            new PlanNodeId(""), req.getTableName(), req.getColumnName()))
+                    .getStatus()
+                : StatusUtils.OK);
+  }
+
+  public TTestConnectionResp submitTestConnectionTask(final TNodeLocations nodeLocations) {
     return new TTestConnectionResp(
         new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
         Stream.of(
@@ -1678,13 +1713,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   private static <Location, RequestType> List<TTestConnectionResult> testConnections(
-      List<Location> nodeLocations,
-      Function<Location, Integer> getId,
-      Function<Location, TEndPoint> getEndPoint,
-      TServiceType serviceType,
-      RequestType requestType,
-      Consumer<AsyncRequestContext<Object, TSStatus, RequestType, Location>> sendRequest) {
-    TSender sender =
+      final List<Location> nodeLocations,
+      final Function<Location, Integer> getId,
+      final Function<Location, TEndPoint> getEndPoint,
+      final TServiceType serviceType,
+      final RequestType requestType,
+      final Consumer<AsyncRequestContext<Object, TSStatus, RequestType, Location>> sendRequest) {
+    final TSender sender =
         new TSender()
             .setDataNodeLocation(
                 IoTDBDescriptor.getInstance().getConfig().generateLocalDataNodeLocation());

@@ -50,6 +50,8 @@ public interface UpdateContainer {
 
   long invalidate(final String[] pathNodes);
 
+  long invalidate(final String tableName, final String attributeName);
+
   Pair<Long, Boolean> updateSelfByCommitContainer(final UpdateContainer commitContainer);
 
   void serialize(final OutputStream outputstream) throws IOException;

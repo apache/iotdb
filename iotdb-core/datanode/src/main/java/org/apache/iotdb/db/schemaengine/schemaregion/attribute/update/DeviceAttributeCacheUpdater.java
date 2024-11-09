@@ -60,6 +60,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.ToLongFunction;
 
 public class DeviceAttributeCacheUpdater {
   private static final Logger logger = LoggerFactory.getLogger(DeviceAttributeCacheUpdater.class);
@@ -125,24 +126,22 @@ public class DeviceAttributeCacheUpdater {
   }
 
   public void invalidate(final String tableName) {
-    attributeUpdateMap.forEach(
-        (location, container) -> {
-          final long size = container.invalidate(tableName);
-          releaseMemory(size);
-          updateContainerStatistics.computeIfPresent(
-              location,
-              (k, v) -> {
-                v.decreaseEntrySize(size);
-                return v;
-              });
-        });
+    invalidate(container -> container.invalidate(tableName));
   }
 
   // root.database.table.[deviceNodes]
   public void invalidate(final String[] pathNodes) {
+    invalidate(container -> container.invalidate(pathNodes));
+  }
+
+  public void invalidate(final String tableName, final String attributeName) {
+    invalidate(container -> container.invalidate(tableName, attributeName));
+  }
+
+  private void invalidate(final ToLongFunction<UpdateContainer> updateFunction) {
     attributeUpdateMap.forEach(
         (location, container) -> {
-          final long size = container.invalidate(pathNodes);
+          final long size = updateFunction.applyAsLong(container);
           releaseMemory(size);
           updateContainerStatistics.computeIfPresent(
               location,
