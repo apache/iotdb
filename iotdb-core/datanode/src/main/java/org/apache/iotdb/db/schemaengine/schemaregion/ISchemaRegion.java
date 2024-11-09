@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
@@ -94,7 +93,6 @@ public interface ISchemaRegion {
 
   void forceMlog();
 
-  @TestOnly
   ISchemaRegionStatistics getSchemaRegionStatistics();
 
   ISchemaRegionMetric getSchemaRegionMetric();
