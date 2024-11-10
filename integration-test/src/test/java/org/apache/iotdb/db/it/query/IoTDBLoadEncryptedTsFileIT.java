@@ -115,7 +115,8 @@ public class IoTDBLoadEncryptedTsFileIT {
       ResultSet resultSet = statement.executeQuery("select s1 from root.testsg1.d1");
       Assert.fail();
     } catch (Exception e) {
-      Assert.assertTrue(e.getMessage().contains(unrecognizedType));
+      Assert.assertTrue(
+          e.getMessage().contains("The encryption way of the TsFile is not supported."));
     }
   }
 

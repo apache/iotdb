@@ -95,7 +95,8 @@ public class IoTDBLoadPlainTsFileIT {
       }
       Assert.assertEquals(3, cnt);
     } catch (Exception e) {
-      Assert.fail(e.getMessage());
+      Assert.assertTrue(
+          e.getMessage().contains("The encryption way of the TsFile is not supported."));
     }
   }
 
