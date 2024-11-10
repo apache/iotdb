@@ -1763,7 +1763,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             "The available disk space is : {}, "
                 + "the total disk space is : {}, "
                 + "and the remaining disk usage ratio: {} is "
-                + "less than disk_spec_warning_threshold: {}, set system to readonly!",
+                + "less than disk_space_warning_threshold: {}, set system to readonly!",
             RamUsageEstimator.humanReadableUnits((long) availableDisk),
             RamUsageEstimator.humanReadableUnits((long) totalDisk),
             freeDiskRatio,
