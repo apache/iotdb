@@ -135,8 +135,6 @@ public class CompactionChunkReader {
     IDecryptor decryptor = IDecryptor.getDecryptor(encryptParam);
     ByteBuffer pageData =
         decryptAndUncompressPageData(pageHeader, unCompressor, compressedPageData, decryptor);
-    ;
-
     // decode page data
     TSDataType dataType = chunkHeader.getDataType();
     Decoder valueDecoder = Decoder.getDecoderByType(chunkHeader.getEncodingType(), dataType);
