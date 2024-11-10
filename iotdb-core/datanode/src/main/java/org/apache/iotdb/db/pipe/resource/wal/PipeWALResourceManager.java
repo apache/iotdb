@@ -74,6 +74,7 @@ public abstract class PipeWALResourceManager {
                 memtableIdToPipeWALResourceMap.size());
 
     try {
+      StringBuilder logBuilder = new StringBuilder();
       while (iterator.hasNext()) {
         final Map.Entry<Long, PipeWALResource> entry = iterator.next();
         final ReentrantLock lock =
@@ -84,16 +85,16 @@ public abstract class PipeWALResourceManager {
           if (entry.getValue().invalidateIfPossible()) {
             iterator.remove();
           } else {
-            logger.ifPresent(
-                l ->
-                    l.info(
-                        "WAL (memtableId {}) is still referenced {} times",
-                        entry.getKey(),
-                        entry.getValue().getReferenceCount()));
+            logBuilder.append(
+                String.format(
+                    "<%d %d times> ", entry.getKey(), entry.getValue().getReferenceCount()));
           }
         } finally {
           lock.unlock();
         }
+      }
+      if (logBuilder.length() > 0) {
+        logger.ifPresent(l -> l.info("WAL {}are still referenced", logBuilder));
       }
     } catch (final ConcurrentModificationException e) {
       LOGGER.error(
