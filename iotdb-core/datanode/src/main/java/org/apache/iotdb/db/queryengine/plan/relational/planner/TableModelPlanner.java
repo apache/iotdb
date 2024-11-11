@@ -81,14 +81,15 @@ public class TableModelPlanner implements IPlanner {
       asyncInternalServiceClientManager;
 
   public TableModelPlanner(
-      Statement statement,
-      SqlParser sqlParser,
-      Metadata metadata,
-      ExecutorService executor,
-      ExecutorService writeOperationExecutor,
-      ScheduledExecutorService scheduledExecutor,
-      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> syncInternalServiceClientManager,
-      IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
+      final Statement statement,
+      final SqlParser sqlParser,
+      final Metadata metadata,
+      final ExecutorService executor,
+      final ExecutorService writeOperationExecutor,
+      final ScheduledExecutorService scheduledExecutor,
+      final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
+          syncInternalServiceClientManager,
+      final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
           asyncInternalServiceClientManager) {
     this.statement = statement;
     this.sqlParser = sqlParser;
@@ -101,42 +102,39 @@ public class TableModelPlanner implements IPlanner {
   }
 
   @Override
-  public IAnalysis analyze(MPPQueryContext context) {
-    StatementAnalyzerFactory statementAnalyzerFactory =
-        new StatementAnalyzerFactory(metadata, sqlParser, accessControl);
-
-    Analyzer analyzer =
-        new Analyzer(
+  public IAnalysis analyze(final MPPQueryContext context) {
+    return new Analyzer(
             context,
             context.getSession(),
-            statementAnalyzerFactory,
+            new StatementAnalyzerFactory(metadata, sqlParser, accessControl),
             Collections.emptyList(),
             Collections.emptyMap(),
-            warningCollector);
-    return analyzer.analyze(statement);
+            warningCollector)
+        .analyze(statement);
   }
 
   @Override
-  public LogicalQueryPlan doLogicalPlan(IAnalysis analysis, MPPQueryContext context) {
+  public LogicalQueryPlan doLogicalPlan(final IAnalysis analysis, final MPPQueryContext context) {
     return new TableLogicalPlanner(
             context, metadata, context.getSession(), symbolAllocator, warningCollector)
         .plan((Analysis) analysis);
   }
 
   @Override
-  public DistributedQueryPlan doDistributionPlan(IAnalysis analysis, LogicalQueryPlan logicalPlan) {
+  public DistributedQueryPlan doDistributionPlan(
+      final IAnalysis analysis, final LogicalQueryPlan logicalPlan) {
     return new TableDistributedPlanner((Analysis) analysis, symbolAllocator, logicalPlan).plan();
   }
 
   @Override
   public IScheduler doSchedule(
-      IAnalysis analysis,
-      DistributedQueryPlan distributedPlan,
-      MPPQueryContext context,
-      QueryStateMachine stateMachine) {
-    IScheduler scheduler;
+      final IAnalysis analysis,
+      final DistributedQueryPlan distributedPlan,
+      final MPPQueryContext context,
+      final QueryStateMachine stateMachine) {
+    final IScheduler scheduler;
 
-    boolean isPipeEnrichedTsFileLoad =
+    final boolean isPipeEnrichedTsFileLoad =
         statement instanceof PipeEnriched
             && ((PipeEnriched) statement).getInnerStatement() instanceof LoadTsFile;
     if (statement instanceof LoadTsFile || isPipeEnrichedTsFileLoad) {
@@ -216,5 +214,5 @@ public class TableModelPlanner implements IPlanner {
     }
   }
 
-  private static class NopAccessControl implements AccessControl {}
+  public static class NopAccessControl implements AccessControl {}
 }

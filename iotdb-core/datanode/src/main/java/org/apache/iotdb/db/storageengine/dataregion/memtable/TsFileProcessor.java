@@ -2328,7 +2328,6 @@ public class TsFileProcessor {
         && (workMemTable == null || workMemTable.getTotalPointsNum() == 0);
   }
 
-  @TestOnly
   public IMemTable getWorkMemTable() {
     return workMemTable;
   }

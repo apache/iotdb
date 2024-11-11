@@ -193,6 +193,8 @@ public class CommonConfig {
 
   private boolean pipeHardLinkWALEnabled = false;
 
+  private boolean pipeFileReceiverFsyncEnabled = true;
+
   private int pipeRealTimeQueuePollHistoryThreshold = 100;
 
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor. */
@@ -565,14 +567,6 @@ public class CommonConfig {
     this.statusReason = statusReason;
   }
 
-  public NodeStatus getStatus() {
-    return status;
-  }
-
-  public void setStatus(NodeStatus status) {
-    this.status = status;
-  }
-
   public TEndPoint getTargetAINodeEndPoint() {
     return targetAINodeEndPoint;
   }
@@ -673,6 +667,14 @@ public class CommonConfig {
 
   public void setPipeHardLinkWALEnabled(boolean pipeHardLinkWALEnabled) {
     this.pipeHardLinkWALEnabled = pipeHardLinkWALEnabled;
+  }
+
+  public boolean getPipeFileReceiverFsyncEnabled() {
+    return pipeFileReceiverFsyncEnabled;
+  }
+
+  public void setPipeFileReceiverFsyncEnabled(boolean pipeFileReceiverFsyncEnabled) {
+    this.pipeFileReceiverFsyncEnabled = pipeFileReceiverFsyncEnabled;
   }
 
   public int getPipeDataStructureTabletRowSize() {

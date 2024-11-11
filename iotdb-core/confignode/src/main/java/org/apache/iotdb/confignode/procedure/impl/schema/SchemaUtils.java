@@ -226,7 +226,7 @@ public class SchemaUtils {
       final String database, final TsTable table, final ConfigManager configManager) {
     final TUpdateTableReq req = new TUpdateTableReq();
     req.setType(TsTableInternalRPCType.PRE_CREATE_OR_ADD_COLUMN.getOperationType());
-    req.setTableInfo(TsTableInternalRPCUtil.serializeSingleTsTable(database, table));
+    req.setTableInfo(TsTableInternalRPCUtil.serializeSingleTsTableWithDatabase(database, table));
 
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();

@@ -39,8 +39,8 @@ for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "^cn_internal_port"
 )
 
 if not defined cn_internal_port (
-  echo "cn_internal_port not found in the configuration file. Exiting."
-  exit /b 1
+  echo "WARNING: cn_internal_port not found in the configuration file. Using default value cn_internal_port = 10710"
+  set cn_internal_port=10710
 )
 
 echo "check whether the cn_internal_port is used..., port is %cn_internal_port%"
@@ -51,8 +51,8 @@ for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "cn_internal_address"
 )
 
 if not defined cn_internal_address (
-  echo "cn_internal_address not found in the configuration file. Exiting."
-  exit /b 1
+  echo "WARNING: cn_internal_address not found in the configuration file. Using default value cn_internal_address = 127.0.0.1"
+  set cn_internal_address=127.0.0.1
 )
 
 for /f "tokens=5" %%a in ('netstat /ano ^| findstr %cn_internal_address%:%cn_internal_port% ^| findstr LISTENING ') do (
