@@ -28,7 +28,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema;
-import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -163,10 +162,6 @@ public class PipeNowFunctionIT extends AbstractPipeDualAutoIT {
 
   @Test
   public void testTreeModeSQLSupportNowFunc() {
-    doTest(BaseEnv.TREE_SQL_DIALECT);
-  }
-
-  private void doTest(String dialect) {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     final String receiverIp = receiverDataNode.getIp();
@@ -187,7 +182,7 @@ public class PipeNowFunctionIT extends AbstractPipeDualAutoIT {
                 + "'connector.port'='%s',"
                 + "'connector.batch.enable'='false')",
             receiverIp, receiverPort);
-    try (final Connection connection = senderEnv.getConnection(dialect);
+    try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute(p1);
     } catch (final SQLException e) {
@@ -209,7 +204,7 @@ public class PipeNowFunctionIT extends AbstractPipeDualAutoIT {
                 + "'connector.port'='%s',"
                 + "'connector.batch.enable'='false')",
             receiverIp, receiverPort);
-    try (final Connection connection = senderEnv.getConnection(dialect);
+    try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute(p2);
     } catch (final SQLException e) {
@@ -231,7 +226,7 @@ public class PipeNowFunctionIT extends AbstractPipeDualAutoIT {
                 + "'connector.port'='%s',"
                 + "'connector.batch.enable'='false')",
             receiverIp, receiverPort);
-    try (final Connection connection = senderEnv.getConnection(dialect);
+    try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute(p3);
     } catch (final SQLException e) {
@@ -246,7 +241,7 @@ public class PipeNowFunctionIT extends AbstractPipeDualAutoIT {
             + "'end-time'='now',"
             + "'history.start-time'='now',"
             + "'history.end-time'='now')";
-    try (final Connection connection = senderEnv.getConnection(dialect);
+    try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute(alterP3);
     } catch (final SQLException e) {
@@ -261,7 +256,7 @@ public class PipeNowFunctionIT extends AbstractPipeDualAutoIT {
             + "'extractor.end-time'='now',"
             + "'extractor.history.start-time'='now',"
             + "'extractor.history.end-time'='now')";
-    try (final Connection connection = senderEnv.getConnection(dialect);
+    try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute(alterP3);
     } catch (final SQLException e) {
@@ -276,7 +271,7 @@ public class PipeNowFunctionIT extends AbstractPipeDualAutoIT {
             + "'source.end-time'='now',"
             + "'source.history.start-time'='now',"
             + "'source.history.end-time'='now')";
-    try (final Connection connection = senderEnv.getConnection(dialect);
+    try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute(alterP3);
     } catch (final SQLException e) {
