@@ -279,11 +279,29 @@ public class FileUtils {
   }
 
   public static File createHardLink(File sourceFile, File hardlink) throws IOException {
-    if (!hardlink.getParentFile().exists() && !hardlink.getParentFile().mkdirs()) {
-      throw new IOException(
-          String.format(
-              "failed to create hardlink %s for file %s: failed to create parent dir %s",
-              hardlink.getPath(), sourceFile.getPath(), hardlink.getParentFile().getPath()));
+    File parentDir = hardlink.getParentFile();
+    if (!parentDir.exists()) {
+      if (!parentDir.mkdirs()) {
+        if (!parentDir.canWrite()) {
+          LOGGER.info("No write permission for parent directory: {}", parentDir.getPath());
+        }
+        if (parentDir.isFile()) {
+          LOGGER.info("Parent path points to a file, not a directory: {}", parentDir.getPath());
+        }
+        if (parentDir.exists() && !parentDir.isDirectory()) {
+          LOGGER.info("Parent path exists but is not a directory: {}", parentDir.getPath());
+        }
+        if (parentDir.getParentFile() != null && !parentDir.getParentFile().canWrite()) {
+          LOGGER.info(
+              "No write permission for the parent of the parent directory: {}",
+              parentDir.getParentFile().getPath());
+        }
+
+        throw new IOException(
+            String.format(
+                "failed to create hardlink %s for file %s: failed to create parent dir %s",
+                hardlink.getPath(), sourceFile.getPath(), parentDir.getPath()));
+      }
     }
 
     final Path sourcePath = FileSystems.getDefault().getPath(sourceFile.getAbsolutePath());
