@@ -64,13 +64,15 @@ public class ModificationFile implements AutoCloseable {
 
   private static final long COMPACT_THRESHOLD = 1024 * 1024L;
   private boolean hasCompacted = false;
+  private boolean fileExists = false;
 
   public ModificationFile(String filePath) {
-    this.file = new File(filePath);
+    this(new File(filePath));
   }
 
   public ModificationFile(File file) {
     this.file = file;
+    fileExists = file.length() > 0;
   }
 
   @SuppressWarnings("java:S2093") // cannot use try-with-resource, should not close here
@@ -86,6 +88,9 @@ public class ModificationFile implements AutoCloseable {
       fileOutputStream.flush();
     } finally {
       lock.writeLock().unlock();
+    }
+    if (!fileExists) {
+      fileExists = true;
     }
   }
 
@@ -104,6 +109,9 @@ public class ModificationFile implements AutoCloseable {
       fileOutputStream.flush();
     } finally {
       lock.writeLock().unlock();
+    }
+    if (!fileExists) {
+      fileExists = true;
     }
   }
 
@@ -173,7 +181,7 @@ public class ModificationFile implements AutoCloseable {
     private ModEntry nextEntry;
 
     public ModIterator(long offset) throws IOException {
-      if (!file.exists()) {
+      if (!fileExists) {
         return;
       }
       this.inputStream = new BufferedInputStream(Files.newInputStream(file.toPath()), 64 * 1024);
@@ -237,12 +245,13 @@ public class ModificationFile implements AutoCloseable {
   }
 
   public boolean exists() {
-    return file.exists();
+    return fileExists;
   }
 
   public void remove() throws IOException {
     close();
     FileUtils.deleteFileOrDirectory(file);
+    fileExists = false;
   }
 
   public static ModificationFile getExclusiveMods(TsFileResource tsFileResource) {
