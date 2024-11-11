@@ -1796,7 +1796,6 @@ public class DataRegion implements IDataRegionForQuery {
   public void syncCloseAllWorkingTsFileProcessors() {
     try {
       List<Future<?>> tsFileProcessorsClosingFutures = asyncCloseAllWorkingTsFileProcessors();
-      waitClosingTsFileProcessorFinished();
       for (Future<?> f : tsFileProcessorsClosingFutures) {
         if (f != null) {
           f.get();
@@ -1884,6 +1883,12 @@ public class DataRegion implements IDataRegionForQuery {
         futures.add(asyncCloseOneTsFileProcessor(false, tsFileProcessor));
         count++;
       }
+      waitClosingTsFileProcessorFinished();
+    } catch (InterruptedException e) {
+      logger.error(
+          "CloseFileNodeCondition error occurs while waiting for closing tsfile processors of {}",
+          databaseName + "-" + dataRegionId,
+          e);
     } finally {
       writeUnlock();
     }
