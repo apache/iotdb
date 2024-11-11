@@ -151,10 +151,11 @@ public class RemoveDataNodeHandler {
               NodeType.DataNode, dataNodeId, new NodeHeartbeatSample(currentTime, nodeStatus));
 
       LOGGER.info(
-          "{}, Force update NodeCache: dataNodeId={}, nodeStatus={}",
+          "{}, Force update NodeCache: dataNodeId={}, nodeStatus={}, currentTime={}",
           REMOVE_DATANODE_PROCESS,
           dataNodeId,
-          nodeStatus);
+          nodeStatus,
+          currentTime);
 
       Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>> heartbeatSampleMap =
           new TreeMap<>();
