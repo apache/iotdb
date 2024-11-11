@@ -25,7 +25,6 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransform
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.TableDeviceInfo;
-import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl.ShowDevicesResult;
 
 import org.apache.ratis.util.function.TriConsumer;
 import org.apache.tsfile.block.column.Column;
@@ -44,11 +43,10 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator.constructFilteredTsBlock;
 
-public class DeviceAttributeUpdater extends DevicePredicateHandler {
+public class DeviceAttributeUpdater extends DeviceUpdater {
   private final List<ColumnTransformer> commonTransformerList;
   private final List<LeafColumnTransformer> projectLeafColumnTransformerList;
   private final List<ColumnTransformer> projectOutputTransformerList;
-  final BiFunction<Integer, String, Binary> attributeProvider;
   private final TriConsumer<String[], Integer, Object[]> attributeUpdater;
   private final TsBlockBuilder filterTsBlockBuilder;
   private final List<Integer> attributePointers = new ArrayList<>();
@@ -71,32 +69,22 @@ public class DeviceAttributeUpdater extends DevicePredicateHandler {
         filterOutputTransformer,
         database,
         tableName,
-        columnHeaderList);
+        columnHeaderList,
+        attributeProvider);
     this.commonTransformerList = commonTransformerList;
     this.projectLeafColumnTransformerList = projectLeafColumnTransformerList;
     this.projectOutputTransformerList = projectOutputTransformerList;
-    this.attributeProvider = attributeProvider;
     this.attributeUpdater = attributeUpdater;
     this.filterTsBlockBuilder = new TsBlockBuilder(filterOutputDataTypes);
   }
 
   public void handleDeviceNode(final IDeviceMNode<IMemMNode> node) {
-    final ShowDevicesResult result =
-        new ShowDevicesResult(
-            null,
-            node.isAlignedNullable(),
-            node.getSchemaTemplateId(),
-            node.getPartialPath().getNodes());
-    final int pointer = ((TableDeviceInfo<IMemMNode>) node.getDeviceInfo()).getAttributePointer();
-    result.setAttributeProvider(k -> attributeProvider.apply(pointer, k));
-    attributePointers.add(pointer);
-    addBatch(result);
-    if (hasComputedResult()) {
-      update();
-    }
+    attributePointers.add(
+        ((TableDeviceInfo<IMemMNode>) node.getDeviceInfo()).getAttributePointer());
+    super.handleDeviceNode(node);
   }
 
-  private void update() {
+  protected void update() {
     final TsBlock block = getFilterTsBlock();
 
     projectLeafColumnTransformerList.forEach(
@@ -149,10 +137,6 @@ public class DeviceAttributeUpdater extends DevicePredicateHandler {
 
   @Override
   public void close() {
-    prepareBatchResult();
-    if (hasComputedResult()) {
-      update();
-    }
     super.close();
     projectOutputTransformerList.forEach(ColumnTransformer::close);
   }

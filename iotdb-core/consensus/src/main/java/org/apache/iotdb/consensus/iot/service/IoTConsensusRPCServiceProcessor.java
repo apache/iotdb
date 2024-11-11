@@ -270,7 +270,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
     }
     TSStatus responseStatus;
     try {
-      impl.receiveSnapshotFragment(req.snapshotId, req.filePath, req.fileChunk);
+      impl.receiveSnapshotFragment(req.snapshotId, req.filePath, req.fileChunk, req.offset);
       responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (ConsensusGroupModifyPeerException e) {
       responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());

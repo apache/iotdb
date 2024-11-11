@@ -120,8 +120,10 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessag
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
-import org.apache.iotdb.confignode.consensus.request.write.table.DropTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
@@ -1244,12 +1246,42 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
-  public void DropTablePlanTest() throws IOException {
-    final DropTablePlan dropTablePlan = new DropTablePlan("root.database1", "table1");
-    final DropTablePlan dropTablePlan1 =
-        (DropTablePlan) ConfigPhysicalPlan.Factory.create(dropTablePlan.serializeToByteBuffer());
-    Assert.assertEquals(dropTablePlan.getDatabase(), dropTablePlan1.getDatabase());
-    Assert.assertEquals(dropTablePlan.getTableName(), dropTablePlan1.getTableName());
+  public void CommitDeleteTablePlanTest() throws IOException {
+    final CommitDeleteTablePlan commitDeleteTablePlan =
+        new CommitDeleteTablePlan("root.database1", "table1");
+    final CommitDeleteTablePlan commitDeleteTablePlan1 =
+        (CommitDeleteTablePlan)
+            ConfigPhysicalPlan.Factory.create(commitDeleteTablePlan.serializeToByteBuffer());
+    Assert.assertEquals(commitDeleteTablePlan.getDatabase(), commitDeleteTablePlan1.getDatabase());
+    Assert.assertEquals(
+        commitDeleteTablePlan.getTableName(), commitDeleteTablePlan1.getTableName());
+  }
+
+  @Test
+  public void PreDeleteColumnPlanTest() throws IOException {
+    final PreDeleteColumnPlan preDeleteColumnPlan =
+        new PreDeleteColumnPlan("root.database1", "table1", "measurement");
+    final PreDeleteColumnPlan preDeleteColumnPlan1 =
+        (PreDeleteColumnPlan)
+            ConfigPhysicalPlan.Factory.create(preDeleteColumnPlan.serializeToByteBuffer());
+    Assert.assertEquals(preDeleteColumnPlan.getDatabase(), preDeleteColumnPlan1.getDatabase());
+    Assert.assertEquals(preDeleteColumnPlan.getTableName(), preDeleteColumnPlan1.getTableName());
+    Assert.assertEquals(preDeleteColumnPlan.getColumnName(), preDeleteColumnPlan1.getColumnName());
+  }
+
+  @Test
+  public void CommitDeleteColumnPlanTest() throws IOException {
+    final CommitDeleteColumnPlan commitDeleteColumnPlan =
+        new CommitDeleteColumnPlan("root.database1", "table1", "measurement");
+    final CommitDeleteColumnPlan commitDeleteColumnPlan1 =
+        (CommitDeleteColumnPlan)
+            ConfigPhysicalPlan.Factory.create(commitDeleteColumnPlan.serializeToByteBuffer());
+    Assert.assertEquals(
+        commitDeleteColumnPlan.getDatabase(), commitDeleteColumnPlan1.getDatabase());
+    Assert.assertEquals(
+        commitDeleteColumnPlan.getTableName(), commitDeleteColumnPlan1.getTableName());
+    Assert.assertEquals(
+        commitDeleteColumnPlan.getColumnName(), commitDeleteColumnPlan1.getColumnName());
   }
 
   @Test

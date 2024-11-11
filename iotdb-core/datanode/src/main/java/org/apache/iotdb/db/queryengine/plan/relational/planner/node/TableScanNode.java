@@ -49,6 +49,7 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 
 public class TableScanNode extends SourceNode {
 
@@ -190,9 +191,11 @@ public class TableScanNode extends SourceNode {
         .collect(Collectors.toList());
   }
 
-  public boolean isMeasurementColumn(Symbol symbol) {
+  public boolean isMeasurementOrTimeColumn(Symbol symbol) {
     ColumnSchema columnSchema = assignments.get(symbol);
-    return columnSchema != null && columnSchema.getColumnCategory() == MEASUREMENT;
+    return columnSchema != null
+        && (columnSchema.getColumnCategory() == MEASUREMENT
+            || columnSchema.getColumnCategory() == TIME);
   }
 
   @Override

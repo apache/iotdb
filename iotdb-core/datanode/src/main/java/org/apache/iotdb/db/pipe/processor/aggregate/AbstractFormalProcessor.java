@@ -34,20 +34,23 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 public abstract class AbstractFormalProcessor implements PipeProcessor {
   @Override
   public final void process(
-      TabletInsertionEvent tabletInsertionEvent, EventCollector eventCollector) throws Exception {
+      final TabletInsertionEvent tabletInsertionEvent, final EventCollector eventCollector)
+      throws Exception {
     throw new UnsupportedOperationException(
         "The abstract formal processor does not support process events");
   }
 
   @Override
   public final void process(
-      TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector) throws Exception {
+      final TsFileInsertionEvent tsFileInsertionEvent, final EventCollector eventCollector)
+      throws Exception {
     throw new UnsupportedOperationException(
         "The abstract formal processor does not support process events");
   }
 
   @Override
-  public final void process(Event event, EventCollector eventCollector) throws Exception {
+  public final void process(final Event event, final EventCollector eventCollector)
+      throws Exception {
     throw new UnsupportedOperationException(
         "The abstract formal processor does not support process events");
   }

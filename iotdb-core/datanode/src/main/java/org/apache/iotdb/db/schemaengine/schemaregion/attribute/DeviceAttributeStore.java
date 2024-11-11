@@ -185,11 +185,22 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   }
 
   @Override
-  public Map<String, Binary> removeAttribute(final int pointer) {
+  public void removeAttribute(final int pointer) {
     releaseMemory(
         MAP_SIZE + UpdateDetailContainer.sizeOfMapEntries(deviceAttributeList.get(pointer)));
     deviceAttributeList.set(pointer, null);
-    return null;
+  }
+
+  @Override
+  public void removeAttribute(final int pointer, final String attributeName) {
+    final Map<String, Binary> attributeMap = deviceAttributeList.get(pointer);
+    if (Objects.isNull(attributeMap)) {
+      return;
+    }
+    final Binary value = attributeMap.remove(attributeName);
+    if (Objects.nonNull(value)) {
+      releaseMemory(UpdateDetailContainer.sizeOfMapEntries(deviceAttributeList.get(pointer)));
+    }
   }
 
   @Override

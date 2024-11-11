@@ -17,16 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.write.table;
+package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational;
 
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 
-public class DropTablePlan extends AbstractTablePlan {
-  public DropTablePlan() {
-    super(ConfigPhysicalPlanType.DropTable);
-  }
+abstract class AbstractTableTask implements IConfigTask {
 
-  public DropTablePlan(final String database, final String tableName) {
-    super(ConfigPhysicalPlanType.DropTable, database, tableName);
+  protected final String database;
+
+  protected final String tableName;
+
+  protected AbstractTableTask(final String database, final String tableName) {
+    this.database = database;
+    this.tableName = tableName;
   }
 }
