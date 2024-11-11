@@ -642,6 +642,10 @@ READONLY
     : R E A D O N L Y
     ;
 
+RECONSTRUCT
+    : R E C O N S T R U C T
+    ;
+
 REGEXP
     : R E G E X P
     ;

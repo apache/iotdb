@@ -64,7 +64,8 @@ ddlStatement
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
     | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes | showClusterId
-    | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList | migrateRegion | verifyConnection
+    | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList | migrateRegion | reconstructRegion
+    | verifyConnection
     // AINode
     | showAINodes | createModel | dropModel | showModels | callInference
     // Quota
@@ -534,6 +535,10 @@ getSeriesSlotList
 // ---- Migrate Region
 migrateRegion
     : MIGRATE REGION regionId=INTEGER_LITERAL FROM fromId=INTEGER_LITERAL TO toId=INTEGER_LITERAL
+    ;
+
+reconstructRegion
+    : RECONSTRUCT REGION regionId=INTEGER_LITERAL (COMMA regionId=INTEGER_LITERAL)* ON targetDataNodeId=INTEGER_LITERAL
     ;
 
 verifyConnection

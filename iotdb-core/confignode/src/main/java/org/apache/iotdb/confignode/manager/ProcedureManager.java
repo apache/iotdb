@@ -127,6 +127,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TReconstructRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -924,6 +925,10 @@ public class ProcedureManager {
     } finally {
       env.getSubmitRegionMigrateLock().unlock();
     }
+  }
+
+  public TSStatus reconstructRegion(TReconstructRegionReq reconstructRegionReq) {
+    return null;
   }
 
   // endregion

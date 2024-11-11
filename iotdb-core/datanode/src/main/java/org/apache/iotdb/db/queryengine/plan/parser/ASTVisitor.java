@@ -149,6 +149,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatem
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.MigrateRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ReconstructRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildPathsStatement;
@@ -227,6 +228,7 @@ import org.apache.iotdb.trigger.api.enums.TriggerType;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.BaseEncoding;
+import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.common.constant.TsFileConstant;
@@ -4176,6 +4178,17 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         Integer.parseInt(ctx.regionId.getText()),
         Integer.parseInt(ctx.fromId.getText()),
         Integer.parseInt(ctx.toId.getText()));
+  }
+
+  @Override
+  public Statement visitReconstructRegion(IoTDBSqlParser.ReconstructRegionContext ctx) {
+    int dataNodeId = Integer.parseInt(ctx.targetDataNodeId.getText());
+    List<Integer> regionIds =
+        ctx.INTEGER_LITERAL().stream()
+            .map(ParseTree::getText)
+            .map(Integer::parseInt)
+            .collect(Collectors.toList());
+    return new ReconstructRegionStatement(dataNodeId, regionIds);
   }
 
   @Override

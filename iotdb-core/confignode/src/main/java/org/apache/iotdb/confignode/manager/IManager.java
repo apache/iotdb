@@ -122,6 +122,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferResp;
+import org.apache.iotdb.confignode.rpc.thrift.TReconstructRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
@@ -809,6 +810,8 @@ public interface IManager {
   TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req);
 
   TSStatus migrateRegion(TMigrateRegionReq req);
+
+  TSStatus reconstructRegion(TReconstructRegionReq req);
 
   TSStatus createCQ(TCreateCQReq req);
 
