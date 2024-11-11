@@ -26,7 +26,6 @@ import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
-import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -40,31 +39,27 @@ import org.apache.tsfile.utils.Binary;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class DescribeTableTask implements IConfigTask {
+public class DescribeTableTask extends AbstractTableTask {
 
-  private final String database;
-
-  private final String tableName;
-
-  public DescribeTableTask(String database, String tableName) {
-    this.database = database;
-    this.tableName = tableName;
+  public DescribeTableTask(final String database, final String tableName) {
+    super(database, tableName);
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+  public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.describeTable(database, tableName);
+    return configTaskExecutor.describeTable(database, tableName, false);
   }
 
-  public static void buildTsBlock(TsTable table, SettableFuture<ConfigTaskResult> future) {
-    List<TSDataType> outputDataTypes =
+  public static void buildTsBlock(
+      final TsTable table, final SettableFuture<ConfigTaskResult> future) {
+    final List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.describeTableColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
 
-    TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    for (TsTableColumnSchema columnSchema : table.getColumnList()) {
+    final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
+    for (final TsTableColumnSchema columnSchema : table.getColumnList()) {
       builder.getTimeColumnBuilder().writeLong(0L);
       builder
           .getColumnBuilder(0)
@@ -79,7 +74,7 @@ public class DescribeTableTask implements IConfigTask {
       builder.declarePosition();
     }
 
-    DatasetHeader datasetHeader = DatasetHeaderFactory.getDescribeTableHeader();
+    final DatasetHeader datasetHeader = DatasetHeaderFactory.getDescribeTableHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }

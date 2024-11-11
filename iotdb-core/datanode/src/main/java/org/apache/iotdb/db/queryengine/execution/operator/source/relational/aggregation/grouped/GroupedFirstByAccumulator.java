@@ -169,6 +169,39 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
   public void prepareFinal() {}
 
   @Override
+  public void reset() {
+    yFirstTimes.reset();
+    inits.reset();
+    xNulls.reset();
+    switch (xDataType) {
+      case INT32:
+      case DATE:
+        xIntValues.reset();
+        break;
+      case INT64:
+      case TIMESTAMP:
+        xLongValues.reset();
+        break;
+      case FLOAT:
+        xFloatValues.reset();
+        break;
+      case DOUBLE:
+        xDoubleValues.reset();
+        break;
+      case TEXT:
+      case BLOB:
+      case STRING:
+        xBinaryValues.reset();
+        break;
+      case BOOLEAN:
+        xBooleanValues.reset();
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type : %s", xDataType));
+    }
+  }
+
+  @Override
   public void addInput(int[] groupIds, Column[] arguments) {
     checkArgument(arguments.length == 3, "Length of input Column[] for LastBy/FirstBy should be 3");
 
@@ -205,8 +238,10 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
   @Override
   public void addIntermediate(int[] groupIds, Column argument) {
     checkArgument(
-        argument instanceof BinaryColumn || argument instanceof RunLengthEncodedColumn,
-        "intermediate input and output of LastBy should be BinaryColumn");
+        argument instanceof BinaryColumn
+            || (argument instanceof RunLengthEncodedColumn
+                && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
+        "intermediate input and output of FirstBy should be BinaryColumn");
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {

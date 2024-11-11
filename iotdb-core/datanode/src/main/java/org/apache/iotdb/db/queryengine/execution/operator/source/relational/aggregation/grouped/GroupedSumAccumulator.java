@@ -149,4 +149,10 @@ public class GroupedSumAccumulator implements GroupedAccumulator {
 
   @Override
   public void prepareFinal() {}
+
+  @Override
+  public void reset() {
+    initResult.reset();
+    sumValues.reset();
+  }
 }
