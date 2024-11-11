@@ -130,23 +130,40 @@ public class RemoveDataNodeHandler {
 
     for (Map.Entry<Integer, TSStatus> entry :
         changeDataNodeStatusContext.getResponseMap().entrySet()) {
-      long currentTime = System.nanoTime();
-
       int dataNodeId = entry.getKey();
       NodeStatus nodeStatus = nodeStatusMap.get(dataNodeId);
       RegionStatus regionStatus = RegionStatus.valueOf(nodeStatus.getStatus());
+
+      if (!isSucceed(entry.getValue())) {
+        LOGGER.error(
+            "{}, Failed to change DataNode status, dataNodeId={}, nodeStatus={}",
+            REMOVE_DATANODE_PROCESS,
+            dataNodeId,
+            nodeStatus);
+        continue;
+      }
+
       // Force updating NodeStatus
+      long currentTime = System.nanoTime();
       configManager
           .getLoadManager()
           .forceUpdateNodeCache(
               NodeType.DataNode, dataNodeId, new NodeHeartbeatSample(currentTime, nodeStatus));
 
+      LOGGER.info(
+          "{}, Force update NodeCache: dataNodeId={}, nodeStatus={}, currentTime={}",
+          REMOVE_DATANODE_PROCESS,
+          dataNodeId,
+          nodeStatus,
+          currentTime);
+
       Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>> heartbeatSampleMap =
           new TreeMap<>();
+
       // Force update RegionStatus
       configManager
           .getPartitionManager()
-          .getAllReplicaSets(entry.getKey())
+          .getAllReplicaSets(dataNodeId)
           .forEach(
               replicaSet ->
                   heartbeatSampleMap.put(
@@ -276,14 +293,15 @@ public class RemoveDataNodeHandler {
         .sendAsyncRequestWithRetry(stopDataNodesContext);
 
     for (Map.Entry<Integer, TSStatus> entry : stopDataNodesContext.getResponseMap().entrySet()) {
-      configManager.getLoadManager().removeNodeCache(entry.getKey());
+      int dataNodeId = entry.getKey();
+      configManager.getLoadManager().removeNodeCache(dataNodeId);
       if (!isSucceed(entry.getValue())) {
         LOGGER.error(
             "{}, Stop Data Node meets error, error datanode: {}",
             REMOVE_DATANODE_PROCESS,
             entry.getValue());
       } else {
-        LOGGER.info("{}, Stop Data Node {} success.", REMOVE_DATANODE_PROCESS, entry.getKey());
+        LOGGER.info("{}, Stop Data Node {} success.", REMOVE_DATANODE_PROCESS, dataNodeId);
       }
     }
   }
