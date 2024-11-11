@@ -281,22 +281,9 @@ public class FileUtils {
   public static File createHardLink(File sourceFile, File hardlink) throws IOException {
     File parentDir = hardlink.getParentFile();
     if (!parentDir.exists()) {
-      if (!parentDir.mkdirs()) {
-        if (!parentDir.canWrite()) {
-          LOGGER.info("No write permission for parent directory: {}", parentDir.getPath());
-        }
-        if (parentDir.isFile()) {
-          LOGGER.info("Parent path points to a file, not a directory: {}", parentDir.getPath());
-        }
-        if (parentDir.exists() && !parentDir.isDirectory()) {
-          LOGGER.info("Parent path exists but is not a directory: {}", parentDir.getPath());
-        }
-        if (parentDir.getParentFile() != null && !parentDir.getParentFile().canWrite()) {
-          LOGGER.info(
-              "No write permission for the parent of the parent directory: {}",
-              parentDir.getParentFile().getPath());
-        }
-
+      LOGGER.warn(
+          "Failed to create parent directories for hardlink {}, creating them now.", hardlink);
+      if (!customMkdirs(parentDir)) {
         throw new IOException(
             String.format(
                 "failed to create hardlink %s for file %s: failed to create parent dir %s",
@@ -308,6 +295,48 @@ public class FileUtils {
     final Path linkPath = FileSystems.getDefault().getPath(hardlink.getAbsolutePath());
     Files.createLink(linkPath, sourcePath);
     return hardlink;
+  }
+
+  private static boolean customMkdirs(File dir) {
+    if (dir.exists()) {
+      LOGGER.warn("Directory already exists: {}", dir.getPath());
+      return false;
+    } else if (dir.mkdir()) {
+      LOGGER.warn("Successfully created directory: {}", dir.getPath());
+      return true;
+    } else {
+      File canonicalDir;
+      try {
+        canonicalDir = dir.getCanonicalFile();
+        LOGGER.warn("Canonical path of directory: {}", canonicalDir.getPath());
+      } catch (IOException e) {
+        LOGGER.warn(
+            "Failed to get canonical path for: {}. Reason: {}", dir.getPath(), e.getMessage());
+        return false;
+      }
+
+      File parentDir = canonicalDir.getParentFile();
+      if (parentDir != null) {
+        LOGGER.warn("Parent directory path: {}", parentDir.getPath());
+        if (customMkdirs(parentDir) || parentDir.exists()) {
+          if (canonicalDir.mkdir()) {
+            LOGGER.warn(
+                "Successfully created directory after parent creation: {}", canonicalDir.getPath());
+            return true;
+          } else {
+            LOGGER.warn(
+                "Failed to create directory after parent creation: {}", canonicalDir.getPath());
+            return false;
+          }
+        } else {
+          LOGGER.warn("Failed to create or find parent directory: {}", parentDir.getPath());
+          return false;
+        }
+      } else {
+        LOGGER.warn("Parent directory is null for: {}", dir.getPath());
+        return false;
+      }
+    }
   }
 
   public static File copyFile(File sourceFile, File targetFile) throws IOException {
