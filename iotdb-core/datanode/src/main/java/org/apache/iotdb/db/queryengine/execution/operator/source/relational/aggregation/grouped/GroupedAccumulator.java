@@ -31,4 +31,6 @@ public interface GroupedAccumulator {
   void evaluateFinal(int groupId, ColumnBuilder columnBuilder);
 
   void prepareFinal();
+
+  void reset();
 }

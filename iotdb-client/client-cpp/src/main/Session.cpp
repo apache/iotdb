@@ -2288,7 +2288,7 @@ bool Session::checkTemplateExists(const string& template_name) {
         return isExisted;
     }
     catch (const exception &e) {
-        if ( strstr(e.what(), "get template info error") != NULL ) {
+        if ( strstr(e.what(), "does not exist") != NULL ) {
             return false;
         }
         log_debug(e.what());

@@ -3975,7 +3975,6 @@ public class DataRegion implements IDataRegionForQuery {
     return lastFlushTimeMap;
   }
 
-  @TestOnly
   public TsFileManager getTsFileManager() {
     return tsFileManager;
   }

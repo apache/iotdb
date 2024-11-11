@@ -40,6 +40,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Objects;
 
 public class AddTableColumnProcedure
     extends AbstractAlterOrDropTableProcedure<AddTableColumnState> {
@@ -200,5 +201,16 @@ public class AddTableColumnProcedure
     super.deserialize(byteBuffer);
 
     this.addedColumnList = TsTableColumnSchemaUtil.deserializeColumnSchemaList(byteBuffer);
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    return super.equals(o)
+        && Objects.equals(this.addedColumnList, ((AddTableColumnProcedure) o).addedColumnList);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), addedColumnList);
   }
 }

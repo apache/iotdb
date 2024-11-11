@@ -332,7 +332,7 @@ public class IoTDBPreparedStatementTest {
   @SuppressWarnings("resource")
   @Test
   public void testInsertStatement2() throws Exception {
-    String sql = "INSERT INTO root.ln.wf01.wt01(time,a,b,c,d,e,f) VALUES(?,?,?,?,?,?,?)";
+    String sql = "INSERT INTO root.ln.wf01.wt01(time,a,b,c,d,e,f,g,h) VALUES(?,?,?,?,?,?,?,?,?)";
 
     IoTDBPreparedStatement ps =
         new IoTDBPreparedStatement(connection, client, sessionId, sql, zoneId);
@@ -343,13 +343,15 @@ public class IoTDBPreparedStatementTest {
     ps.setFloat(5, 123.423f);
     ps.setDouble(6, -1323.0);
     ps.setString(7, "\"abc\"");
+    ps.setString(8, "abc");
+    ps.setString(9, "'abc'");
     ps.execute();
 
     ArgumentCaptor<TSExecuteStatementReq> argument =
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
     verify(client).executeStatementV2(argument.capture());
     assertEquals(
-        "INSERT INTO root.ln.wf01.wt01(time,a,b,c,d,e,f) VALUES(2017-11-01T00:13:00,false,123,123234345,123.423,-1323.0,\"abc\")",
+        "INSERT INTO root.ln.wf01.wt01(time,a,b,c,d,e,f,g,h) VALUES(2017-11-01T00:13:00,false,123,123234345,123.423,-1323.0,\"abc\",'abc','abc')",
         argument.getValue().getStatement());
   }
 
@@ -395,7 +397,7 @@ public class IoTDBPreparedStatementTest {
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
     verify(client).executeStatementV2(argument.capture());
     assertEquals(
-        "INSERT INTO root.ln.wf01.wt02(time,a,b,c,d,e,f) VALUES(2020-01-01T10:10:10,false,123,123234345,123.423,-1323.0,\"abc\")",
+        "INSERT INTO root.ln.wf01.wt02(time,a,b,c,d,e,f) VALUES(2020-01-01T10:10:10,false,123,123234345,123.423,-1323.0,'abc')",
         argument.getValue().getStatement());
   }
 }
