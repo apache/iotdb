@@ -106,7 +106,10 @@ public class IoTDBRegionMigrateReliabilityITFramework {
 
   public static Consumer<KillPointContext> actionOfRestartCluster =
       context -> {
-        context.getEnv().getNodeWrapperList().parallelStream()
+        context
+            .getEnv()
+            .getNodeWrapperList()
+            .parallelStream()
             .forEach(AbstractNodeWrapper::stopForcibly);
         LOGGER.info("Cluster has been stopped");
         context.getEnv().getNodeWrapperList().parallelStream().forEach(AbstractNodeWrapper::start);
@@ -118,7 +121,7 @@ public class IoTDBRegionMigrateReliabilityITFramework {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
-        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS_V2)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
   }
