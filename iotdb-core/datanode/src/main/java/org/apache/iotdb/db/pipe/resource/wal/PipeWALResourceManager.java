@@ -87,7 +87,7 @@ public abstract class PipeWALResourceManager {
           } else {
             logBuilder.append(
                 String.format(
-                    "<%d %d times> ", entry.getKey(), entry.getValue().getReferenceCount()));
+                    "<%d , %d times> ", entry.getKey(), entry.getValue().getReferenceCount()));
           }
         } finally {
           lock.unlock();
