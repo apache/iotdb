@@ -1260,7 +1260,7 @@ public class MTreeBelowSGCachedImpl {
                 resultTemplateSetInfo.put(
                     node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
                 store.updateMNode(
-                    node.getAsMNode(), o -> o.getAsDeviceMNode().preDeactivateTemplate());
+                    node.getAsMNode(), o -> o.getAsDeviceMNode().preDeactivateSelfOrTemplate());
               }
             }
           }) {
@@ -1280,11 +1280,12 @@ public class MTreeBelowSGCachedImpl {
 
             protected void updateEntity(IDeviceMNode<ICachedMNode> node) throws MetadataException {
               if (entry.getValue().contains(node.getSchemaTemplateId())
-                  && node.isPreDeactivateTemplate()) {
+                  && node.isPreDeactivateSelfOrTemplate()) {
                 resultTemplateSetInfo.put(
                     node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
                 store.updateMNode(
-                    node.getAsMNode(), o -> o.getAsDeviceMNode().rollbackPreDeactivateTemplate());
+                    node.getAsMNode(),
+                    o -> o.getAsDeviceMNode().rollbackPreDeactivateSelfOrTemplate());
               }
             }
           }) {
@@ -1304,7 +1305,7 @@ public class MTreeBelowSGCachedImpl {
 
             protected void updateEntity(IDeviceMNode<ICachedMNode> node) throws MetadataException {
               if (entry.getValue().contains(node.getSchemaTemplateId())
-                  && node.isPreDeactivateTemplate()) {
+                  && node.isPreDeactivateSelfOrTemplate()) {
                 resultTemplateSetInfo.put(
                     node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
                 regionStatistics.deactivateTemplate(node.getSchemaTemplateId());

@@ -78,7 +78,8 @@ public class TsTableInternalRPCUtil {
     return result;
   }
 
-  public static byte[] serializeSingleTsTable(final String database, final TsTable table) {
+  public static byte[] serializeSingleTsTableWithDatabase(
+      final String database, final TsTable table) {
     final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {
       ReadWriteIOUtils.write(database, outputStream);
@@ -89,10 +90,30 @@ public class TsTableInternalRPCUtil {
     return outputStream.toByteArray();
   }
 
-  public static Pair<String, TsTable> deserializeSingleTsTable(final byte[] bytes) {
+  public static Pair<String, TsTable> deserializeSingleTsTableWithDatabase(final byte[] bytes) {
     final InputStream inputStream = new ByteArrayInputStream(bytes);
     try {
       return new Pair<>(ReadWriteIOUtils.readString(inputStream), TsTable.deserialize(inputStream));
+    } catch (final IOException ignored) {
+      // ByteArrayInputStream won't throw IOException
+    }
+    throw new IllegalStateException();
+  }
+
+  public static byte[] serializeSingleTsTable(final TsTable table) {
+    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try {
+      table.serialize(outputStream);
+    } catch (final IOException ignored) {
+      // ByteArrayOutputStream won't throw IOException
+    }
+    return outputStream.toByteArray();
+  }
+
+  public static TsTable deserializeSingleTsTable(final byte[] bytes) {
+    final InputStream inputStream = new ByteArrayInputStream(bytes);
+    try {
+      return TsTable.deserialize(inputStream);
     } catch (final IOException ignored) {
       // ByteArrayInputStream won't throw IOException
     }

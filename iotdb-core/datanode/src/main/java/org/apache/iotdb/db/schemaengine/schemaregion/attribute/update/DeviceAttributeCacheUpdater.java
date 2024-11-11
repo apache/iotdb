@@ -60,6 +60,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.ToLongFunction;
 
 public class DeviceAttributeCacheUpdater {
   private static final Logger logger = LoggerFactory.getLogger(DeviceAttributeCacheUpdater.class);
@@ -124,6 +125,33 @@ public class DeviceAttributeCacheUpdater {
         });
   }
 
+  public void invalidate(final String tableName) {
+    invalidate(container -> container.invalidate(tableName));
+  }
+
+  // root.database.table.[deviceNodes]
+  public void invalidate(final String[] pathNodes) {
+    invalidate(container -> container.invalidate(pathNodes));
+  }
+
+  public void invalidate(final String tableName, final String attributeName) {
+    invalidate(container -> container.invalidate(tableName, attributeName));
+  }
+
+  private void invalidate(final ToLongFunction<UpdateContainer> updateFunction) {
+    attributeUpdateMap.forEach(
+        (location, container) -> {
+          final long size = updateFunction.applyAsLong(container);
+          releaseMemory(size);
+          updateContainerStatistics.computeIfPresent(
+              location,
+              (k, v) -> {
+                v.decreaseEntrySize(size);
+                return v;
+              });
+        });
+  }
+
   public Pair<Long, Map<TDataNodeLocation, byte[]>> getAttributeUpdateInfo(
       final @Nonnull AtomicInteger limit, final @Nonnull AtomicBoolean hasRemaining) {
     // Note that the "updateContainerStatistics" is unsafe to use here for whole read of detail
@@ -160,17 +188,10 @@ public class DeviceAttributeCacheUpdater {
   public void commit(final TableDeviceAttributeCommitUpdateNode node) {
     final Set<TDataNodeLocation> shrunkNodes = node.getShrunkNodes();
     targetDataNodeLocations.removeAll(shrunkNodes);
-    shrunkNodes.forEach(
-        location -> {
-          if (attributeUpdateMap.containsKey(location)) {
-            removeLocation(location);
-          }
-        });
-    updateContainerStatistics.keySet().removeAll(shrunkNodes);
+    shrunkNodes.forEach(this::removeLocation);
 
-    final TDataNodeLocation leaderLocation = node.getLeaderLocation();
-    if (version.get() == node.getVersion() && attributeUpdateMap.containsKey(leaderLocation)) {
-      removeLocation(leaderLocation);
+    if (version.get() == node.getVersion()) {
+      removeLocation(node.getLeaderLocation());
     }
 
     node.getCommitMap()
@@ -209,6 +230,7 @@ public class DeviceAttributeCacheUpdater {
               ? updateContainerStatistics.get(location).getContainerSize()
               : ((UpdateClearContainer) attributeUpdateMap.get(location)).ramBytesUsed());
       attributeUpdateMap.remove(location);
+      updateContainerStatistics.remove(location);
     }
   }
 
@@ -356,10 +378,9 @@ public class DeviceAttributeCacheUpdater {
     size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
       final TDataNodeLocation location = deserializeNodeLocationForAttributeUpdate(inputStream);
+      final boolean isDetails = ReadWriteIOUtils.readBool(inputStream);
       final UpdateContainer container =
-          ReadWriteIOUtils.readBool(inputStream)
-              ? new UpdateDetailContainer()
-              : new UpdateClearContainer();
+          isDetails ? new UpdateDetailContainer() : new UpdateClearContainer();
       container.deserialize(inputStream);
 
       // Update local cache for region migration
@@ -372,6 +393,9 @@ public class DeviceAttributeCacheUpdater {
         guard.handleContainer(databaseName, container);
       } else {
         attributeUpdateMap.put(location, container);
+        if (isDetails) {
+          updateContainerStatistics.put(location, new UpdateDetailContainerStatistics());
+        }
       }
     }
   }

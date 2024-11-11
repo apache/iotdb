@@ -373,7 +373,7 @@ public class IoTConsensusServerImpl {
   }
 
   public void receiveSnapshotFragment(
-      String snapshotId, String originalFilePath, ByteBuffer fileChunk)
+      String snapshotId, String originalFilePath, ByteBuffer fileChunk, long fileOffset)
       throws ConsensusGroupModifyPeerException {
     try {
       String targetFilePath = calculateSnapshotPath(snapshotId, originalFilePath);
@@ -384,7 +384,7 @@ public class IoTConsensusServerImpl {
       }
       try (FileOutputStream fos = new FileOutputStream(targetFile.getAbsolutePath(), true);
           FileChannel channel = fos.getChannel()) {
-        channel.write(fileChunk.slice());
+        channel.write(fileChunk.slice(), fileOffset);
       }
     } catch (IOException e) {
       throw new ConsensusGroupModifyPeerException(

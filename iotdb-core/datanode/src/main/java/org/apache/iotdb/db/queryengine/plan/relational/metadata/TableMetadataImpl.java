@@ -626,18 +626,18 @@ public class TableMetadataImpl implements Metadata {
 
   @Override
   public boolean isAggregationFunction(
-      SessionInfo session, String functionName, AccessControl accessControl) {
+      final SessionInfo session, final String functionName, final AccessControl accessControl) {
     return TableBuiltinAggregationFunction.getNativeFunctionNames()
         .contains(functionName.toLowerCase(Locale.ENGLISH));
   }
 
   @Override
-  public Type getType(TypeSignature signature) throws TypeNotFoundException {
+  public Type getType(final TypeSignature signature) throws TypeNotFoundException {
     return typeManager.getType(signature);
   }
 
   @Override
-  public boolean canCoerce(Type from, Type to) {
+  public boolean canCoerce(final Type from, final Type to) {
     return true;
   }
 

@@ -51,7 +51,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
@@ -315,13 +317,13 @@ public class Coordinator {
   }
 
   private IQueryExecution createQueryExecutionForTableModel(
-      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
-      SqlParser sqlParser,
-      IClientSession clientSession,
-      MPPQueryContext queryContext,
-      Metadata metadata,
-      long timeOut,
-      long startTime) {
+      final org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
+      final SqlParser sqlParser,
+      final IClientSession clientSession,
+      final MPPQueryContext queryContext,
+      final Metadata metadata,
+      final long timeOut,
+      final long startTime) {
     queryContext.setTableQuery(true);
     queryContext.setTimeOut(timeOut);
     queryContext.setStartTime(startTime);
@@ -334,7 +336,9 @@ public class Coordinator {
         || statement instanceof ShowTables
         || statement instanceof AddColumn
         || statement instanceof SetProperties
+        || statement instanceof DropColumn
         || statement instanceof DropTable
+        || statement instanceof DeleteDevice
         || statement instanceof ShowCluster
         || statement instanceof ShowRegions
         || statement instanceof ShowDataNodes
@@ -360,7 +364,7 @@ public class Coordinator {
     if (statement instanceof WrappedInsertStatement) {
       ((WrappedInsertStatement) statement).setContext(queryContext);
     }
-    TableModelPlanner tableModelPlanner =
+    final TableModelPlanner tableModelPlanner =
         new TableModelPlanner(
             statement,
             sqlParser,

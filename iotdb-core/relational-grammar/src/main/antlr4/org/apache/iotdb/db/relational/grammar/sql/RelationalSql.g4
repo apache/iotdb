@@ -64,6 +64,7 @@ statement
     | insertStatement
     | updateStatement
     | deleteStatement
+    | deleteDeviceStatement
 
     // UDF Statement
     | showFunctionsStatement
@@ -175,7 +176,7 @@ showTableStatement
     ;
 
 descTableStatement
-    : (DESC | DESCRIBE) table=qualifiedName
+    : (DESC | DESCRIBE) table=qualifiedName (DETAILS)?
     ;
 
 alterTableStatement
@@ -220,7 +221,9 @@ updateStatement
     : UPDATE qualifiedName SET updateAssignment (',' updateAssignment)* (WHERE where=booleanExpression)?
     ;
 
-
+deleteDeviceStatement
+    : DELETE DEVICES FROM tableName=qualifiedName (WHERE booleanExpression)?
+    ;
 
 
 // -------------------------------------------- UDF Statement ----------------------------------------------------------

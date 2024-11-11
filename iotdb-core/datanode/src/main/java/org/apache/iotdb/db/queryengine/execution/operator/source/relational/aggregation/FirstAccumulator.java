@@ -94,7 +94,9 @@ public class FirstAccumulator implements TableAccumulator {
   @Override
   public void addIntermediate(Column argument) {
     checkArgument(
-        argument instanceof BinaryColumn || argument instanceof RunLengthEncodedColumn,
+        argument instanceof BinaryColumn
+            || (argument instanceof RunLengthEncodedColumn
+                && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
         "intermediate input and output of First should be BinaryColumn");
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
@@ -148,7 +150,7 @@ public class FirstAccumulator implements TableAccumulator {
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of Avg should be BinaryColumn");
+        "intermediate input and output of First should be BinaryColumn");
     if (!initResult) {
       columnBuilder.appendNull();
     } else {

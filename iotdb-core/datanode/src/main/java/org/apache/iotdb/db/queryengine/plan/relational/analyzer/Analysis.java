@@ -411,6 +411,10 @@ public class Analysis implements IAnalysis {
     return groupingSets.containsKey(NodeRef.of(node));
   }
 
+  public boolean containsAggregationQuery() {
+    return !groupingSets.isEmpty();
+  }
+
   public GroupingSetAnalysis getGroupingSets(QuerySpecification node) {
     return groupingSets.get(NodeRef.of(node));
   }
