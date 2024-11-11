@@ -137,7 +137,7 @@ public class TsFileResource implements PersistentResource {
   private volatile ModificationFile sharedModFile;
   private long shardModFileOffset;
 
-  public static final boolean useSharedModFile = false;
+  public static final boolean useSharedModFile = true;
 
   @SuppressWarnings("squid:S3077")
   private volatile ModificationFile compactionModFile;

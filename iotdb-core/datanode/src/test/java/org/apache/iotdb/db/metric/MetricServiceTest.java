@@ -59,6 +59,8 @@ public class MetricServiceTest {
   public void testMetricService() {
     metricConfig.setMetricLevel(MetricLevel.IMPORTANT);
     metricService = MetricService.getInstance();
+    // avoid being affected by other tests
+    metricService.clear();
     metricService.startService();
 
     // test metric service
