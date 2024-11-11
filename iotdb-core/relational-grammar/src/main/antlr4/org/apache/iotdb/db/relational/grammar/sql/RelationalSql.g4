@@ -176,7 +176,7 @@ showTableStatement
     ;
 
 descTableStatement
-    : (DESC | DESCRIBE) table=qualifiedName
+    : (DESC | DESCRIBE) table=qualifiedName (DETAILS)?
     ;
 
 alterTableStatement

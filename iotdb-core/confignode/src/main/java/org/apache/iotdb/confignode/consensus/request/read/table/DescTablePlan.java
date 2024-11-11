@@ -17,11 +17,32 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.state.schema;
+package org.apache.iotdb.confignode.consensus.request.read.table;
 
-public enum DropTableColumnState {
-  CHECK_AND_INVALIDATE_COLUMN,
-  INVALIDATE_CACHE,
-  EXECUTE_ON_REGIONS,
-  DROP_COLUMN,
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
+
+public class DescTablePlan extends ConfigPhysicalReadPlan {
+  private final String database;
+  private final String tableName;
+  private final boolean isDetails;
+
+  public DescTablePlan(final String database, final String tableName, final boolean isDetails) {
+    super(ConfigPhysicalPlanType.DescTable);
+    this.database = database;
+    this.tableName = tableName;
+    this.isDetails = isDetails;
+  }
+
+  public String getDatabase() {
+    return database;
+  }
+
+  public String getTableName() {
+    return tableName;
+  }
+
+  public boolean isDetails() {
+    return isDetails;
+  }
 }

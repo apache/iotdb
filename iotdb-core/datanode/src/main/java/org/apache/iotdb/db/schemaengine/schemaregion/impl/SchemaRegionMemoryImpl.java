@@ -58,6 +58,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Creat
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDevicesInBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.RollbackTableDevicesBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableAttributeColumnDropNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
@@ -1536,6 +1537,20 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
+  public void dropTableAttribute(final TableAttributeColumnDropNode dropTableAttributeNode)
+      throws MetadataException {
+    if (mtree.dropTableAttribute(
+        dropTableAttributeNode.getTableName(),
+        pointer ->
+            deviceAttributeStore.removeAttribute(
+                pointer, dropTableAttributeNode.getColumnName()))) {
+      deviceAttributeCacheUpdater.invalidate(
+          dropTableAttributeNode.getTableName(), dropTableAttributeNode.getColumnName());
+      writeToMLog(dropTableAttributeNode);
+    }
+  }
+
+  @Override
   public long constructTableDevicesBlackList(
       final ConstructTableDevicesBlackListNode constructTableDevicesBlackListNode)
       throws MetadataException {
@@ -1965,6 +1980,18 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         final SchemaRegionMemoryImpl context) {
       try {
         deleteTableDevicesInBlackList(deleteTableDevicesInBlackListPlan);
+        return RecoverOperationResult.SUCCESS;
+      } catch (final MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
+    public RecoverOperationResult visitDropTableAttribute(
+        final TableAttributeColumnDropNode dropTableAttributePlan,
+        final SchemaRegionMemoryImpl context) {
+      try {
+        dropTableAttribute(dropTableAttributePlan);
         return RecoverOperationResult.SUCCESS;
       } catch (final MetadataException e) {
         return new RecoverOperationResult(e);

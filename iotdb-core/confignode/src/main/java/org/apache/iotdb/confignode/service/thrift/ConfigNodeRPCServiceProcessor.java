@@ -128,6 +128,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDescTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
@@ -1310,6 +1311,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TShowTableResp showTables(final String database, final boolean isDetails) {
     return configManager.showTables(database, isDetails);
+  }
+
+  @Override
+  public TDescTableResp describeTable(
+      final String database, final String tableName, final boolean isDetails) {
+    return configManager.describeTable(database, tableName, isDetails);
   }
 
   @Override

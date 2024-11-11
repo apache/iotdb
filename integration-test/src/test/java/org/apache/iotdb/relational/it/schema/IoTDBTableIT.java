@@ -40,9 +40,11 @@ import java.sql.Statement;
 import java.util.Collections;
 
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.describeTableColumnHeaders;
+import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.describeTableDetailsColumnHeaders;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.showTablesColumnHeaders;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -195,7 +197,8 @@ public class IoTDBTableIT {
         fail();
       } catch (final SQLException e) {
         assertEquals(
-            "701: Create table statement shall not specify column category TIME", e.getMessage());
+            "701: Create table or add column statement shall not specify column category TIME",
+            e.getMessage());
       }
 
       try {
@@ -372,6 +375,61 @@ public class IoTDBTableIT {
 
       statement.execute(
           "insert into table2(region_id, plant_id, color, temperature, speed) values(1, 1, 1, 1, 1)");
+
+      // Test drop column
+      statement.execute("alter table table2 drop column color");
+
+      columnNames = new String[] {"time", "region_id", "plant_id", "temperature", "speed"};
+      dataTypes = new String[] {"TIMESTAMP", "STRING", "STRING", "FLOAT", "DOUBLE"};
+      categories = new String[] {"TIME", "ID", "ID", "MEASUREMENT", "MEASUREMENT"};
+      final String[] statuses = new String[] {"USING", "USING", "USING", "USING", "USING"};
+      try (final ResultSet resultSet = statement.executeQuery("describe table2 details")) {
+        int cnt = 0;
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(describeTableDetailsColumnHeaders.size(), metaData.getColumnCount());
+        for (int i = 0; i < describeTableDetailsColumnHeaders.size(); i++) {
+          assertEquals(
+              describeTableDetailsColumnHeaders.get(i).getColumnName(),
+              metaData.getColumnName(i + 1));
+        }
+        while (resultSet.next()) {
+          assertEquals(columnNames[cnt], resultSet.getString(1));
+          assertEquals(dataTypes[cnt], resultSet.getString(2));
+          assertEquals(categories[cnt], resultSet.getString(3));
+          assertEquals(statuses[cnt], resultSet.getString(4));
+          cnt++;
+        }
+        assertEquals(columnNames.length, cnt);
+      }
+
+      statement.execute("alter table table2 drop column speed");
+
+      try {
+        statement.executeQuery("select color from table2");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("701: Column 'color' cannot be resolved", e.getMessage());
+      }
+
+      try {
+        statement.executeQuery("select speed from table2");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("701: Column 'speed' cannot be resolved", e.getMessage());
+      }
+
+      try {
+        statement.execute("alter table table2 drop column speed");
+      } catch (final SQLException e) {
+        assertEquals("616: Column speed in table 'test2.table2' does not exist.", e.getMessage());
+      }
+
+      try {
+        statement.execute("alter table table2 drop column time");
+      } catch (final SQLException e) {
+        assertTrue(e.getMessage().contains("Dropping id or time column is not supported."));
+      }
+
       statement.execute("drop table table2");
       try {
         statement.executeQuery("describe table2");
@@ -390,7 +448,7 @@ public class IoTDBTableIT {
         statement.executeQuery("describe test3.table3");
         fail();
       } catch (final SQLException e) {
-        assertEquals("550: Table 'test3.table3' does not exist.", e.getMessage());
+        assertEquals("500: Unknown database test3", e.getMessage());
       }
 
       statement.execute("drop database test1");
