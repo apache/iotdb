@@ -302,6 +302,7 @@ public class ModificationFile implements AutoCloseable {
         }
         // remove origin mods file
         this.remove();
+        fileExists = true;
         // rename new mods file to origin name
         Files.move(new File(newModsFileName).toPath(), file.toPath());
         LOGGER.info("{} settle successful", file);
