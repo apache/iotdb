@@ -12,7 +12,7 @@ import java.util.function.Supplier;
 
 public class WorkProcessor<T> {
   Processor<T> process;
-  ProcessState<T> state = ProcessState.yielded();
+  ProcessState<T> state;
 
   WorkProcessor(Processor<T> processor) {
     this(processor, ProcessState.yielded());

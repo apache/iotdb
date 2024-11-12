@@ -5,7 +5,6 @@ import org.apache.iotdb.db.queryengine.processor.state.ProcessState;
 
 import java.util.function.BooleanSupplier;
 
-import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.processor.WorkProcessorUtils.getNextState;
 
 public class YieldingProcessor<T> implements Processor<T> {
@@ -14,8 +13,8 @@ public class YieldingProcessor<T> implements Processor<T> {
   boolean lastProcessYielded;
 
   public YieldingProcessor(WorkProcessor<T> processor, BooleanSupplier yieldSignal) {
-    this.processor = requireNonNull(processor, "processor is null");
-    this.yieldSignal = requireNonNull(yieldSignal, "yieldSignal is null");
+    this.processor = processor;
+    this.yieldSignal = yieldSignal;
   }
 
   @Override
