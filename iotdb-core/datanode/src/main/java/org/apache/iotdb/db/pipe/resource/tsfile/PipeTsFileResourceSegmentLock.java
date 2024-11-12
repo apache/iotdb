@@ -51,13 +51,13 @@ public class PipeTsFileResourceSegmentLock {
           lockSegmentSize = Math.min(SEGMENT_LOCK_MAX_SIZE, lockSegmentSize);
           lockSegmentSize = Math.max(SEGMENT_LOCK_MIN_SIZE, lockSegmentSize);
 
-          final ReentrantLock[] newLocks = new ReentrantLock[lockSegmentSize];
-          for (int i = 0; i < newLocks.length; i++) {
-            newLocks[i] = new ReentrantLock();
+          final ReentrantLock[] tmpLocks = new ReentrantLock[lockSegmentSize];
+          for (int i = 0; i < tmpLocks.length; i++) {
+            tmpLocks[i] = new ReentrantLock();
           }
 
           // publish this variable
-          locks = newLocks;
+          locks = tmpLocks;
         }
       }
     }
