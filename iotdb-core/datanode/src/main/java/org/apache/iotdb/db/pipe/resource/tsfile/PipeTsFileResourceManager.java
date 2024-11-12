@@ -80,7 +80,7 @@ public class PipeTsFileResourceManager {
                 PipeConfig.getInstance().getPipeTsFilePinMaxLogNumPerRound(),
                 PipeConfig.getInstance().getPipeTsFilePinMaxLogIntervalRounds(),
                 hardlinkOrCopiedFileToPipeTsFileResourceMap.size());
-    StringBuilder logBuilder = new StringBuilder();
+    final StringBuilder logBuilder = new StringBuilder();
     while (iterator.hasNext()) {
       final Map.Entry<String, PipeTsFileResource> entry = iterator.next();
 
