@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.confignode.persistence.pipe;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
@@ -36,6 +38,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
@@ -46,10 +49,12 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePla
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.OperateMultiplePipesPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
+import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeResourceManager;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleMetaChangeProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
@@ -558,6 +563,44 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
   }
 
+  public PipeMeta getPipeMetaByPipeNameWithFilter(final String pipeName) {
+    acquireReadLock();
+    try {
+      final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMetaByPipeName(pipeName);
+      if (pipeMeta == null) {
+        throw new PipeException(String.format(""));
+      }
+      final PipeParameters sourceAttribute = pipeMeta.getStaticMeta().getExtractorParameters();
+      if (isCaptureTable(sourceAttribute)) {
+        // todo support schemaRegion
+        // only support dataRegion
+        Map<String, List<TConsensusGroupId>> dataBaseToId =
+            ConfigNode.getInstance()
+                .getConfigManager()
+                .getPartitionManager()
+                .getAllRegionGroupIdMap(TConsensusGroupType.DataRegion);
+
+        if (dataBaseToId == null || dataBaseToId.isEmpty()) {
+          return pipeMeta;
+        }
+
+        final PipeMeta finalPipeMeta;
+        try {
+          finalPipeMeta = pipeMeta.deepCopy();
+        } catch (Exception ignore) {
+          return pipeMeta;
+        }
+
+        final String dataBasePattern = getDataBasePattern(sourceAttribute);
+        filterDataBase(dataBasePattern, dataBaseToId, finalPipeMeta);
+        return finalPipeMeta;
+      }
+      return pipeMeta;
+    } finally {
+      releaseReadLock();
+    }
+  }
+
   public boolean isEmpty() {
     acquireReadLock();
     try {
@@ -963,5 +1006,57 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   public long exceptionStoppedPipeCount() {
     return pipeMetaKeeper.exceptionStoppedPipeCount();
+  }
+
+  private void filterDataBase(
+      String dataBasePattern,
+      Map<String, List<TConsensusGroupId>> dataBaseToId,
+      PipeMeta finalPipeMeta) {
+    dataBaseToId.forEach(
+        (dataBaseName, tConsensusGroupIds) -> {
+          if (dataBaseName == null || tConsensusGroupIds == null || tConsensusGroupIds.isEmpty()) {
+            return;
+          }
+          boolean isTableModel = false;
+          try {
+            TDatabaseSchema schema =
+                ConfigNode.getInstance()
+                    .getConfigManager()
+                    .getClusterSchemaManager()
+                    .getDatabaseSchemaByName(dataBaseName);
+            isTableModel = schema != null && schema.isTableModel;
+          } catch (DatabaseNotExistsException ignore) {
+          }
+
+          if (isTableModel
+              && dataBaseName.length() > 5
+              && !dataBasePattern.matches(dataBaseName.substring(5))) {
+            tConsensusGroupIds.forEach(
+                id ->
+                    finalPipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().remove(id.id));
+          }
+        });
+  }
+
+  private boolean isCaptureTable(PipeParameters source) {
+    final boolean isTableMode =
+        source
+            .getStringOrDefault(
+                SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE)
+            .equals(SystemConstant.SQL_DIALECT_TABLE_VALUE);
+
+    return source.getBooleanOrDefault(
+        Arrays.asList(
+            PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
+            PipeExtractorConstant.SOURCE_CAPTURE_TABLE_KEY),
+        isTableMode);
+  }
+
+  private String getDataBasePattern(PipeParameters source) {
+    return source.getStringOrDefault(
+        Arrays.asList(
+            PipeExtractorConstant.EXTRACTOR_DATABASE_NAME_KEY,
+            PipeExtractorConstant.SOURCE_DATABASE_NAME_KEY),
+        ".*");
   }
 }

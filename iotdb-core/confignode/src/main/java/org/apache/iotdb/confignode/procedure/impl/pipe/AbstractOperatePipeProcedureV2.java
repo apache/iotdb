@@ -390,7 +390,11 @@ public abstract class AbstractOperatePipeProcedureV2
       throws IOException {
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
     for (PipeMeta pipeMeta : pipeTaskInfo.get().getPipeMetaList()) {
-      pipeMetaBinaryList.add(pipeMeta.serialize());
+      pipeMetaBinaryList.add(
+          pipeTaskInfo
+              .get()
+              .getPipeMetaByPipeNameWithFilter(pipeMeta.getStaticMeta().getPipeName())
+              .serialize());
     }
 
     return env.pushAllPipeMetaToDataNodes(pipeMetaBinaryList);
@@ -487,7 +491,7 @@ public abstract class AbstractOperatePipeProcedureV2
   protected Map<Integer, TPushPipeMetaResp> pushSinglePipeMetaToDataNodes(
       String pipeName, ConfigNodeProcedureEnv env) throws IOException {
     return env.pushSinglePipeMetaToDataNodes(
-        pipeTaskInfo.get().getPipeMetaByPipeName(pipeName).serialize());
+        pipeTaskInfo.get().getPipeMetaByPipeNameWithFilter(pipeName).serialize());
   }
 
   /**
