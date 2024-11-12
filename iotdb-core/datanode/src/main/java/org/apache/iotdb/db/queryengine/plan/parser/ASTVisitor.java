@@ -4188,6 +4188,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
             .map(ParseTree::getText)
             .map(Integer::parseInt)
             .collect(Collectors.toList());
+    regionIds.remove(regionIds.size() - 1);
     return new ReconstructRegionStatement(dataNodeId, regionIds);
   }
 

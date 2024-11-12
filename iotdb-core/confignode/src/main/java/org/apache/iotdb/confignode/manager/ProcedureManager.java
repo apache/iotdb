@@ -75,6 +75,8 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.task.DropPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.StartPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.StopPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.region.CreateRegionGroupsProcedure;
+import org.apache.iotdb.confignode.procedure.impl.region.ReconstructRegionProcedure;
+import org.apache.iotdb.confignode.procedure.impl.region.RegionMemberChangeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrationPlan;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterLogicalViewProcedure;
@@ -136,6 +138,7 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.ratis.util.AutoCloseableLock;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -656,8 +659,7 @@ public class ProcedureManager {
                     if (regionMigrateProcedure.isFinished()) {
                       return false;
                     }
-                    return removedDataNodesRegionSet.contains(
-                            regionMigrateProcedure.getConsensusGroupId())
+                    return removedDataNodesRegionSet.contains(regionMigrateProcedure.getRegionId())
                         || dataNodeLocations.contains(regionMigrateProcedure.getDestDataNode());
                   }
                   return false;
@@ -671,7 +673,7 @@ public class ProcedureManager {
                   + "The RegionMigrateProcedure is migrating the region %s to the DataNode %s. "
                   + "For further information, please search [pid%d] in log. ",
               conflictRegionMigrateProcedure.get().getProcId(),
-              ((RegionMigrateProcedure) conflictRegionMigrateProcedure.get()).getConsensusGroupId(),
+              ((RegionMigrateProcedure) conflictRegionMigrateProcedure.get()).getRegionId(),
               ((RegionMigrateProcedure) conflictRegionMigrateProcedure.get()).getDestDataNode(),
               conflictRegionMigrateProcedure.get().getProcId());
     }
@@ -726,9 +728,7 @@ public class ProcedureManager {
                 procedure -> {
                   if (procedure instanceof RegionMigrateProcedure) {
                     return !procedure.isFinished()
-                        && ((RegionMigrateProcedure) procedure)
-                            .getConsensusGroupId()
-                            .equals(regionGroupId);
+                        && ((RegionMigrateProcedure) procedure).getRegionId().equals(regionGroupId);
                   }
                   return false;
                 })
@@ -914,7 +914,7 @@ public class ProcedureManager {
               coordinatorForAddPeer,
               coordinatorForRemovePeer));
       LOGGER.info(
-          "Submit RegionMigrateProcedure successfully, Region: {}, Origin DataNode: {}, Dest DataNode: {}, Add Coordinator: {}, Remove Coordinator: {}",
+          "[MigrateRegion] Submit RegionMigrateProcedure successfully, Region: {}, Origin DataNode: {}, Dest DataNode: {}, Add Coordinator: {}, Remove Coordinator: {}",
           regionGroupId,
           originalDataNode,
           destDataNode,
@@ -928,27 +928,174 @@ public class ProcedureManager {
   }
 
   public TSStatus reconstructRegion(TReconstructRegionReq req) {
-    final TDataNodeLocation targetDataNode = configManager
-            .getNodeManager()
-            .getRegisteredDataNode(req.getDataNodeId())
-            .getLocation();
-    for (int x : req.getRegionIds()) {
-      TConsensusGroupId regionId = configManager
-                      .getPartitionManager()
-                      .generateTConsensusGroupIdByRegionId(x).orElseThrow(() -> new IllegalArgumentException("Region id " + x + " is invalid"));
-
-
-    }
     RegionMaintainHandler handler = env.getRegionMaintainHandler();
-    final TDataNodeLocation coordinator =
-            handler.filterDataNodeWithOtherRegionReplica(
-                            regionId,
-                            destDataNode,
-                            NodeStatus.Running,
-                            NodeStatus.Removing,
-                            NodeStatus.ReadOnly)
-                    .orElse(null);
-    this.executor.submitProcedure()
+    final TDataNodeLocation targetDataNode =
+        configManager.getNodeManager().getRegisteredDataNode(req.getDataNodeId()).getLocation();
+    try (AutoCloseableLock autoCloseableLock =
+        AutoCloseableLock.acquire(env.getSubmitRegionMigrateLock())) {
+      List<ReconstructRegionProcedure> procedures = new ArrayList<>();
+      for (int x : req.getRegionIds()) {
+        TConsensusGroupId regionId =
+            configManager
+                .getPartitionManager()
+                .generateTConsensusGroupIdByRegionId(x)
+                .orElseThrow(() -> new IllegalArgumentException("Region id " + x + " is invalid"));
+        final TDataNodeLocation coordinator =
+            handler
+                .filterDataNodeWithOtherRegionReplica(
+                    regionId,
+                    targetDataNode,
+                    NodeStatus.Running,
+                    NodeStatus.Removing,
+                    NodeStatus.ReadOnly)
+                .orElse(null);
+        TSStatus status = checkReconstructRegion(req, regionId, targetDataNode, coordinator);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
+        }
+        procedures.add(new ReconstructRegionProcedure(regionId, targetDataNode, coordinator));
+      }
+      // all checks pass, submit all procedures
+      procedures.forEach(
+          reconstructRegionProcedure -> {
+            this.executor.submitProcedure(reconstructRegionProcedure);
+            LOGGER.info(
+                "[ReconstructRegion] Submit ReconstructRegionProcedure successfully, {}",
+                reconstructRegionProcedure);
+          });
+    }
+    return RpcUtils.SUCCESS_STATUS;
+  }
+
+  private TSStatus checkReconstructRegion(
+      TReconstructRegionReq req,
+      TConsensusGroupId regionId,
+      TDataNodeLocation targetDataNode,
+      TDataNodeLocation coordinator) {
+    String failMessage = null;
+
+    ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
+    if (TConsensusGroupType.DataRegion == regionId.getType()
+        && conf.getDataReplicationFactor() == 1) {
+      failMessage =
+          String.format(
+              "You are trying to reconstruct data region %s. This region is a single replica and does not support region reconstruction.",
+              regionId.getId());
+    } else if (TConsensusGroupType.SchemaRegion == regionId.getType()
+        && conf.getSchemaReplicationFactor() == 1) {
+      failMessage =
+          String.format(
+              "You are trying to reconstruct schema region %s. This region is a single replica and does not support region reconstruction.",
+              regionId.getId());
+    } else if ((failMessage =
+            checkRegionMemberChangeProcedureDuplication(
+                regionId, "Submit reconstruct region procedure failed"))
+        != null) {
+      // need to do nothing more
+    } else if (targetDataNode == null) {
+      failMessage =
+          String.format(
+              "Submit ReconstructRegionProcedure failed, because cannot find target DataNode %d",
+              req.getDataNodeId());
+    } else if (coordinator == null) {
+      failMessage =
+          String.format(
+              "Submit ReconstructRegionProcedure failed, because there are no other DataNodes could be selected to perform the reconstruction process, "
+                  + "please check RegionGroup: %s by show regions sql command",
+              regionId);
+    } else if (configManager
+        .getPartitionManager()
+        .getAllReplicaSets(targetDataNode.getDataNodeId())
+        .stream()
+        .noneMatch(replicaSet -> replicaSet.getRegionId().equals(regionId))) {
+      failMessage =
+          String.format(
+              "Submit ReconstructRegionProcedure failed, because the target DataNode %s doesn't contain Region %s",
+              req.getDataNodeId(), regionId);
+    } else if (!configManager
+        .getNodeManager()
+        .filterDataNodeThroughStatus(NodeStatus.Running)
+        .stream()
+        .map(TDataNodeConfiguration::getLocation)
+        .map(TDataNodeLocation::getDataNodeId)
+        .collect(Collectors.toSet())
+        .contains(targetDataNode.getDataNodeId())) {
+      // Here we only check Running DataNode to implement migration, because removing nodes may not
+      // exist when add peer is performing
+      failMessage =
+          String.format(
+              "Submit ReconstructRegionProcedure failed, because the target DataNode %s is not in Running status.",
+              targetDataNode.getDataNodeId());
+    }
+
+    // 2. Check if the RegionMigrateProcedure has conflict with RemoveDataNodesProcedure
+    Optional<Procedure<ConfigNodeProcedureEnv>> conflictRemoveDataNodesProcedure =
+        getExecutor().getProcedures().values().stream()
+            .filter(
+                procedure -> {
+                  if (procedure instanceof RemoveDataNodesProcedure) {
+                    return !procedure.isFinished();
+                  }
+                  return false;
+                })
+            .findAny();
+
+    if (conflictRemoveDataNodesProcedure.isPresent()) {
+      RemoveDataNodeHandler removeDataNodeHandler = env.getRemoveDataNodeHandler();
+      List<TDataNodeLocation> removedDataNodes =
+          ((RemoveDataNodesProcedure) conflictRemoveDataNodesProcedure.get()).getRemovedDataNodes();
+      Set<TConsensusGroupId> removedDataNodesRegionSet =
+          removeDataNodeHandler.getRemovedDataNodesRegionSet(removedDataNodes);
+      if (removedDataNodesRegionSet.contains(regionId)) {
+        failMessage =
+            String.format(
+                "Submit ReconstructRegionProcedure failed, "
+                    + "because another RemoveDataNodesProcedure %s is already in processing which conflicts with this RegionMigrateProcedure. "
+                    + "The RemoveDataNodesProcedure is removing the DataNodes %s which contains the region %s. "
+                    + "For further information, please search [pid%d] in log. ",
+                conflictRemoveDataNodesProcedure.get().getProcId(),
+                removedDataNodes,
+                regionId,
+                conflictRemoveDataNodesProcedure.get().getProcId());
+      } else if (removedDataNodes.contains(targetDataNode)) {
+        failMessage =
+            String.format(
+                "Submit ReconstructRegionProcedure failed, "
+                    + "because another RemoveDataNodesProcedure %s is already in processing which conflicts with this RegionMigrateProcedure. "
+                    + "The RemoveDataNodesProcedure is removing the target DataNode %s. "
+                    + "For further information, please search [pid%d] in log. ",
+                conflictRemoveDataNodesProcedure.get().getProcId(),
+                targetDataNode,
+                conflictRemoveDataNodesProcedure.get().getProcId());
+      }
+    }
+
+    if (failMessage != null) {
+      LOGGER.warn(failMessage);
+      TSStatus failStatus = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+      failStatus.setMessage(failMessage);
+      return failStatus;
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  private String checkRegionMemberChangeProcedureDuplication(
+      TConsensusGroupId regionId, String failedMessagePrefix) {
+    List<? extends RegionMemberChangeProcedure<?>> otherRegionMemberChangeProcedures =
+        getExecutor().getProcedures().values().stream()
+            .filter(procedure -> !procedure.isFinished())
+            .filter(procedure -> procedure instanceof RegionMemberChangeProcedure)
+            .map(procedure -> (RegionMemberChangeProcedure<?>) procedure)
+            .filter(
+                regionMemberChangeProcedure ->
+                    regionId.equals(regionMemberChangeProcedure.getRegionId()))
+            .collect(Collectors.toList());
+    if (!otherRegionMemberChangeProcedures.isEmpty()) {
+      return String.format(
+          "%s, because region %d has some other region membership change procedures in progress, their procedure id is: %s",
+          failedMessagePrefix, regionId.getId(), otherRegionMemberChangeProcedures);
+    }
+    return null;
   }
 
   // endregion

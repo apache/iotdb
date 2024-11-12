@@ -21,32 +21,38 @@ package org.apache.iotdb.confignode.procedure.impl.region;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.ReconstructRegionState;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 public class ReconstructRegionProcedure
-    extends StateMachineProcedure<ConfigNodeProcedureEnv, ReconstructRegionState> {
+    extends RegionMemberChangeProcedure<ReconstructRegionState> {
   private static final Logger LOGGER = LoggerFactory.getLogger(ReconstructRegionProcedure.class);
 
-  private final TConsensusGroupId regionId;
-  private final TDataNodeLocation targetDataNode;
-  private final TDataNodeLocation coordinator;
+  private TDataNodeLocation targetDataNode;
+  private TDataNodeLocation coordinator;
+
+  public ReconstructRegionProcedure() {}
+  ;
 
   public ReconstructRegionProcedure(
       TConsensusGroupId regionId, TDataNodeLocation targetDataNode, TDataNodeLocation coordinator) {
-    this.regionId = regionId;
+    super(regionId);
     this.targetDataNode = targetDataNode;
     this.coordinator = coordinator;
   }
@@ -67,7 +73,7 @@ public class ReconstructRegionProcedure
           break;
         case REMOVE_REGION_PEER:
           addChildProcedure(new RemoveRegionPeerProcedure(regionId, coordinator, targetDataNode));
-          setNextState(ReconstructRegionState.REMOVE_REGION_PEER);
+          setNextState(ReconstructRegionState.CHECK_REMOVE_REGION_PEER);
           break;
         case CHECK_REMOVE_REGION_PEER:
           if (env.getConfigManager()
@@ -138,6 +144,47 @@ public class ReconstructRegionProcedure
   }
 
   @Override
+  protected void releaseLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
+    configNodeProcedureEnv.getSchedulerLock().lock();
+    try {
+      LOGGER.info("procedureId {} release lock.", getProcId());
+      if (configNodeProcedureEnv.getRegionMigrateLock().releaseLock(this)) {
+        configNodeProcedureEnv
+            .getRegionMigrateLock()
+            .wakeWaitingProcedures(configNodeProcedureEnv.getScheduler());
+      }
+    } finally {
+      configNodeProcedureEnv.getSchedulerLock().unlock();
+    }
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    stream.writeShort(ProcedureType.RECONSTRUCT_REGION_PROCEDURE.getTypeCode());
+    super.serialize(stream);
+    ThriftCommonsSerDeUtils.serializeTConsensusGroupId(regionId, stream);
+    ThriftCommonsSerDeUtils.serializeTDataNodeLocation(targetDataNode, stream);
+    ThriftCommonsSerDeUtils.serializeTDataNodeLocation(coordinator, stream);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer byteBuffer) {
+    super.deserialize(byteBuffer);
+    try {
+      regionId = ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(byteBuffer);
+      targetDataNode = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
+      coordinator = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
+    } catch (ThriftSerDeException e) {
+      LOGGER.warn(
+          "Error in deserialize {} (procID {}). This procedure will be ignored. It may belong to old version and cannot be used now.",
+          this.getClass(),
+          this.getProcId(),
+          e);
+      throw e;
+    }
+  }
+
+  @Override
   protected ReconstructRegionState getState(int stateId) {
     return ReconstructRegionState.values()[stateId];
   }
@@ -150,5 +197,14 @@ public class ReconstructRegionProcedure
   @Override
   protected ReconstructRegionState getInitialState() {
     return ReconstructRegionState.RECONSTRUCT_REGION_PREPARE;
+  }
+
+  @Override
+  public String toString() {
+    return super.toString()
+        + ", targetDataNode="
+        + targetDataNode.getDataNodeId()
+        + ", coordinator="
+        + coordinator.getDataNodeId();
   }
 }

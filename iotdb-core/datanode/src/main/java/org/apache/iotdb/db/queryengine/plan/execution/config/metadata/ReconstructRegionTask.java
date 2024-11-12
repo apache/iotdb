@@ -37,6 +37,6 @@ public class ReconstructRegionTask implements IConfigTask {
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return null;
+    return configTaskExecutor.reconstructRegion(reconstructRegionStatement);
   }
 }
