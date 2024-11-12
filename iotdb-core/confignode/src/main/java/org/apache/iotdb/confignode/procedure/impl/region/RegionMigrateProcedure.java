@@ -83,11 +83,13 @@ public class RegionMigrateProcedure
       switch (state) {
         case REGION_MIGRATE_PREPARE:
           LOGGER.info(
-              "[pid{}][MigrateRegion] started, region {} will be migrated from DataNode {} to {}.",
+              "[pid{}][MigrateRegion] started, region {} will be migrated from DataNode {}({}) to {}({}).",
               getProcId(),
               consensusGroupId.getId(),
               originalDataNode.getDataNodeId(),
-              destDataNode.getDataNodeId());
+              originalDataNode.getInternalEndPoint(),
+              destDataNode.getDataNodeId(),
+              destDataNode.getInternalEndPoint());
           setNextState(RegionTransitionState.ADD_REGION_PEER);
           break;
         case ADD_REGION_PEER:
@@ -100,7 +102,7 @@ public class RegionMigrateProcedure
               .getPartitionManager()
               .isDataNodeContainsRegion(destDataNode.getDataNodeId(), consensusGroupId)) {
             LOGGER.warn(
-                "[pid{}][MigrateRegion] sub-procedure AddRegionPeerProcedure fail, RegionMigrateProcedure will not continue",
+                "[pid{}][MigrateRegion] sub-procedure AddRegionPeerProcedure failed, RegionMigrateProcedure will not continue",
                 getProcId());
             return Flow.NO_MORE_STATE;
           }

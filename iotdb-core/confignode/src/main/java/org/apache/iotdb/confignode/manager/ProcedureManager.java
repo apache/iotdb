@@ -927,8 +927,28 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus reconstructRegion(TReconstructRegionReq reconstructRegionReq) {
-    return null;
+  public TSStatus reconstructRegion(TReconstructRegionReq req) {
+    final TDataNodeLocation targetDataNode = configManager
+            .getNodeManager()
+            .getRegisteredDataNode(req.getDataNodeId())
+            .getLocation();
+    for (int x : req.getRegionIds()) {
+      TConsensusGroupId regionId = configManager
+                      .getPartitionManager()
+                      .generateTConsensusGroupIdByRegionId(x).orElseThrow(() -> new IllegalArgumentException("Region id " + x + " is invalid"));
+
+
+    }
+    RegionMaintainHandler handler = env.getRegionMaintainHandler();
+    final TDataNodeLocation coordinator =
+            handler.filterDataNodeWithOtherRegionReplica(
+                            regionId,
+                            destDataNode,
+                            NodeStatus.Running,
+                            NodeStatus.Removing,
+                            NodeStatus.ReadOnly)
+                    .orElse(null);
+    this.executor.submitProcedure()
   }
 
   // endregion
