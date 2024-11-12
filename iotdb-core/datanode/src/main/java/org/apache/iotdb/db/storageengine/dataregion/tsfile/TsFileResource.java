@@ -307,16 +307,17 @@ public class TsFileResource implements PersistentResource {
       maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
       minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
 
+      String modFilePath = null;
       if (inputStream.available() > 0) {
-        String modFilePath = ReadWriteIOUtils.readString(inputStream);
+        modFilePath = ReadWriteIOUtils.readString(inputStream);
         if (modFilePath != null && !modFilePath.isEmpty()) {
           shardModFileOffset = ReadWriteIOUtils.readLong(inputStream);
-          if (sharedModFilePathFuture != null) {
-            sharedModFilePathFuture.complete(modFilePath);
-          } else {
-            sharedModFilePathFuture = CompletableFuture.completedFuture(modFilePath);
-          }
         }
+      }
+      if (sharedModFilePathFuture != null) {
+        sharedModFilePathFuture.complete(modFilePath);
+      } else {
+        sharedModFilePathFuture = CompletableFuture.completedFuture(modFilePath);
       }
 
       while (inputStream.available() > 0) {
@@ -469,7 +470,10 @@ public class TsFileResource implements PersistentResource {
     if (sharedModFilePathFuture != null) {
       try {
         if (modFileManagement != null) {
-          sharedModFile = modFileManagement.recover(sharedModFilePathFuture.get(), this);
+          String modFilePath = sharedModFilePathFuture.get();
+          if (modFilePath != null) {
+            sharedModFile = modFileManagement.recover(modFilePath, this);
+          }
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();

@@ -965,12 +965,14 @@ public class DataRegion implements IDataRegionForQuery {
       if (tsFileResource.isUseSharedModFile()) {
         // set a future so that other may know when the mod file is recovered
         tsFileResource.setSharedModFilePathFuture(new CompletableFuture<>());
+        logger.warn("{} mod file future is set", tsFileResource.getTsFilePath());
       }
     }
     return () -> {
       for (TsFileResource tsFileResource : resourceList) {
         try (SealedTsFileRecoverPerformer recoverPerformer =
             new SealedTsFileRecoverPerformer(tsFileResource)) {
+          logger.warn("{} start to recover", tsFileResource.getTsFilePath());
           recoverPerformer.recover();
           tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
         } catch (Throwable e) {
