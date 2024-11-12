@@ -300,14 +300,15 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p2").getCode());
 
-      insertResult = TableModelUtils.insertData("test", "test", 300, 400, senderEnv);
+      TableModelUtils.assertCountData("test1", "test1", 300, receiverEnv);
+
+      insertResult = TableModelUtils.insertData("test1", "test1", 300, 400, senderEnv);
       insertResult =
-          insertResult && TableModelUtils.insertData("test1", "test1", 300, 400, senderEnv);
+          insertResult && TableModelUtils.insertData("test", "test", 300, 400, senderEnv);
       if (!insertResult) {
         return;
       }
       TableModelUtils.assertCountData("test", "test", 301, receiverEnv);
-      TableModelUtils.assertCountData("test1", "test1", 301, senderEnv);
       TableModelUtils.assertCountData("test1", "test1", 301, receiverEnv);
     }
   }
@@ -414,6 +415,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p2").getCode());
+
+      TableModelUtils.assertCountData("test1", "test1", 300, senderEnv);
 
       insertResult = TableModelUtils.insertData("test", "test", 300, 400, senderEnv);
       insertResult =
