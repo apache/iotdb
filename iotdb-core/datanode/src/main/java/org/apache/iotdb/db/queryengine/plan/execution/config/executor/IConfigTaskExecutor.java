@@ -290,7 +290,8 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> createTable(
       final TsTable table, final String database, final boolean ifNotExists);
 
-  SettableFuture<ConfigTaskResult> describeTable(final String database, final String tableName);
+  SettableFuture<ConfigTaskResult> describeTable(
+      final String database, final String tableName, final boolean isDetails);
 
   SettableFuture<ConfigTaskResult> showTables(final String database, final boolean isDetails);
 

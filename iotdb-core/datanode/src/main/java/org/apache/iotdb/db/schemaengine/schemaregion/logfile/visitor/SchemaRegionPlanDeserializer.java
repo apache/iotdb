@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Creat
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDevicesInBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.RollbackTableDevicesBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableAttributeColumnDropNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
@@ -467,6 +468,12 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
         final DeleteTableDevicesInBlackListNode rollbackTableDevicesBlackListPlan,
         final ByteBuffer buffer) {
       return (DeleteTableDevicesInBlackListNode) PlanNodeType.deserialize(buffer);
+    }
+
+    @Override
+    public ISchemaRegionPlan visitDropTableAttribute(
+        final TableAttributeColumnDropNode dropTableAttributePlan, final ByteBuffer buffer) {
+      return (TableAttributeColumnDropNode) PlanNodeType.deserialize(buffer);
     }
   }
 }

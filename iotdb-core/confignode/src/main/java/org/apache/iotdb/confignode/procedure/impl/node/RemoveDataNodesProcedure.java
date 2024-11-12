@@ -154,7 +154,13 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
                     coordinatorForAddPeer,
                     coordinatorForRemovePeer);
             addChildProcedure(regionMigrateProcedure);
-            LOG.info("Submit child procedure {} for regionId {}", regionMigrateProcedure, regionId);
+            LOG.info(
+                "Submit RegionMigrateProcedure for regionId {}: removedDataNode={}, destDataNode={}, coordinatorForAddPeer={}, coordinatorForRemovePeer={}",
+                regionId,
+                removedDataNode,
+                destDataNode,
+                coordinatorForAddPeer,
+                coordinatorForRemovePeer);
           } else {
             LOG.error(
                 "{}, Cannot find target DataNode to migrate the region: {}",

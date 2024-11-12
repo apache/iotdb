@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.allocation;
 
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 
@@ -37,6 +36,5 @@ public interface NodeAllocationStrategy {
   /** Get all wal nodes num. Not thread-safe, used for metrics only. */
   int getNodesNum();
 
-  @TestOnly
   void clear();
 }
