@@ -1,10 +1,10 @@
-package org.apache.iotdb.db.queryengine.processor;
+package org.apache.iotdb.db.queryengine.workers;
 
-import org.apache.iotdb.db.queryengine.processor.process.BlockingProcessor;
-import org.apache.iotdb.db.queryengine.processor.process.Processor;
-import org.apache.iotdb.db.queryengine.processor.process.YieldingProcessor;
-import org.apache.iotdb.db.queryengine.processor.state.ProcessState;
-import org.apache.iotdb.db.queryengine.processor.state.TransformationState;
+import org.apache.iotdb.db.queryengine.workers.process.BlockingProcessor;
+import org.apache.iotdb.db.queryengine.workers.process.Processor;
+import org.apache.iotdb.db.queryengine.workers.process.YieldingProcessor;
+import org.apache.iotdb.db.queryengine.workers.state.ProcessState;
+import org.apache.iotdb.db.queryengine.workers.state.TransformationState;
 
 import com.google.common.util.concurrent.ListenableFuture;
 

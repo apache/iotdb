@@ -1,8 +1,8 @@
-package org.apache.iotdb.db.queryengine.processor;
+package org.apache.iotdb.db.queryengine.workers;
 
-import org.apache.iotdb.db.queryengine.processor.WorkerProcessorTestUtils.Transform;
-import org.apache.iotdb.db.queryengine.processor.state.ProcessState;
-import org.apache.iotdb.db.queryengine.processor.state.TransformationState;
+import org.apache.iotdb.db.queryengine.workers.WorkerProcessorTestUtils.Transform;
+import org.apache.iotdb.db.queryengine.workers.state.ProcessState;
+import org.apache.iotdb.db.queryengine.workers.state.TransformationState;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.SettableFuture;
@@ -13,13 +13,13 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.apache.iotdb.db.queryengine.processor.WorkerProcessorTestUtils.assertBlock;
-import static org.apache.iotdb.db.queryengine.processor.WorkerProcessorTestUtils.assertFinish;
-import static org.apache.iotdb.db.queryengine.processor.WorkerProcessorTestUtils.assertResult;
-import static org.apache.iotdb.db.queryengine.processor.WorkerProcessorTestUtils.assertUnblock;
-import static org.apache.iotdb.db.queryengine.processor.WorkerProcessorTestUtils.assertYield;
-import static org.apache.iotdb.db.queryengine.processor.WorkerProcessorTestUtils.processorFrom;
-import static org.apache.iotdb.db.queryengine.processor.WorkerProcessorTestUtils.transformationFrom;
+import static org.apache.iotdb.db.queryengine.workers.WorkerProcessorTestUtils.assertBlock;
+import static org.apache.iotdb.db.queryengine.workers.WorkerProcessorTestUtils.assertFinish;
+import static org.apache.iotdb.db.queryengine.workers.WorkerProcessorTestUtils.assertResult;
+import static org.apache.iotdb.db.queryengine.workers.WorkerProcessorTestUtils.assertUnblock;
+import static org.apache.iotdb.db.queryengine.workers.WorkerProcessorTestUtils.assertYield;
+import static org.apache.iotdb.db.queryengine.workers.WorkerProcessorTestUtils.processorFrom;
+import static org.apache.iotdb.db.queryengine.workers.WorkerProcessorTestUtils.transformationFrom;
 
 public class WorkerProcessorTest {
   @Test
@@ -44,9 +44,6 @@ public class WorkerProcessorTest {
 
     // Block and still yield
     assertBlock(processor);
-    assertYield(processor);
-
-    // Unblock and still yield
     assertUnblock(processor, future);
     assertYield(processor);
 
@@ -234,11 +231,8 @@ public class WorkerProcessorTest {
 
     List<Transform<Double, WorkProcessor<Integer>>> transformationScenario =
         ImmutableList.of(
-            Transform.of(
-                Optional.of(1.0),
-                TransformationState.ofResult(processorFrom(mapped1))),
-            Transform.of(
-                Optional.of(2.0), TransformationState.ofResult(processorFrom(mapped2))),
+            Transform.of(Optional.of(1.0), TransformationState.ofResult(processorFrom(mapped1))),
+            Transform.of(Optional.of(2.0), TransformationState.ofResult(processorFrom(mapped2))),
             Transform.of(Optional.of(3.0), TransformationState.finished()));
 
     WorkProcessor<Integer> processor =

@@ -1,11 +1,10 @@
-package org.apache.iotdb.db.queryengine.processor;
+package org.apache.iotdb.db.queryengine.workers;
 
-import org.apache.iotdb.db.queryengine.processor.process.Processor;
-import org.apache.iotdb.db.queryengine.processor.state.ProcessState;
+import org.apache.iotdb.db.queryengine.workers.process.Processor;
+import org.apache.iotdb.db.queryengine.workers.state.ProcessState;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-import java.util.Iterator;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -29,10 +28,6 @@ public class WorkProcessor<T> {
 
   static <T> WorkProcessor<T> fromIterable(Iterable<T> iterable) {
     return WorkProcessorUtils.fromIterator(iterable.iterator());
-  }
-
-  static <T> WorkProcessor<T> fromIterator(Iterator<T> iterator) {
-    return WorkProcessorUtils.fromIterator(iterator);
   }
 
   public boolean process() {

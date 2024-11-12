@@ -1,8 +1,9 @@
-package org.apache.iotdb.db.queryengine.processor;
+package org.apache.iotdb.db.queryengine.workers;
+
+import org.apache.iotdb.db.queryengine.workers.state.ProcessState;
+import org.apache.iotdb.db.queryengine.workers.state.TransformationState;
 
 import com.google.common.util.concurrent.SettableFuture;
-import org.apache.iotdb.db.queryengine.processor.state.ProcessState;
-import org.apache.iotdb.db.queryengine.processor.state.TransformationState;
 import org.junit.Assert;
 
 import java.util.Iterator;

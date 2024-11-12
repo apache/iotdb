@@ -1,12 +1,13 @@
-package org.apache.iotdb.db.queryengine.processor.process;
+package org.apache.iotdb.db.queryengine.workers.process;
+
+import org.apache.iotdb.db.queryengine.workers.WorkProcessor;
+import org.apache.iotdb.db.queryengine.workers.state.ProcessState;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.iotdb.db.queryengine.processor.WorkProcessor;
-import org.apache.iotdb.db.queryengine.processor.state.ProcessState;
 
 import java.util.function.Supplier;
 
-import static org.apache.iotdb.db.queryengine.processor.WorkProcessorUtils.getNextState;
+import static org.apache.iotdb.db.queryengine.workers.WorkProcessorUtils.getNextState;
 
 public class BlockingProcessor<T> implements Processor<T> {
   final WorkProcessor<T> processor;

@@ -1,11 +1,11 @@
-package org.apache.iotdb.db.queryengine.processor.process;
+package org.apache.iotdb.db.queryengine.workers.process;
 
-import org.apache.iotdb.db.queryengine.processor.WorkProcessor;
-import org.apache.iotdb.db.queryengine.processor.state.ProcessState;
+import org.apache.iotdb.db.queryengine.workers.WorkProcessor;
+import org.apache.iotdb.db.queryengine.workers.state.ProcessState;
 
 import java.util.function.BooleanSupplier;
 
-import static org.apache.iotdb.db.queryengine.processor.WorkProcessorUtils.getNextState;
+import static org.apache.iotdb.db.queryengine.workers.WorkProcessorUtils.getNextState;
 
 public class YieldingProcessor<T> implements Processor<T> {
   final WorkProcessor<T> processor;
