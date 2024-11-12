@@ -115,7 +115,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualManualIT {
           Arrays.asList(
               "create timeseries root.ln.wf02.wt01.temperature with datatype=INT64,encoding=PLAIN",
               "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
-              "insert into root.ln.wf02.wt01(time, temperature, status) values (1800000000000, 23, true)"))) {
+              "insert into root.ln.wf02.wt01(time, temperature, status) values (1800000000000, 23, true)",
+              "flush"))) {
         fail();
         return;
       }
