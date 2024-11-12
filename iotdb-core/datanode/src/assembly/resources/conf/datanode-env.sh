@@ -172,7 +172,7 @@ get_first_data_dir() {
     fi
 }
 
-if [ -f "iotdb-system.properties" ]; then
+if [ -f "${DATANODE_CONF_DIR}/iotdb-system.properties" ]; then
   	heap_dump_dir=$(get_first_data_dir "iotdb-system.properties")
 else
   	heap_dump_dir=$(get_first_data_dir "iotdb-datanode.properties")
