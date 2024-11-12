@@ -143,13 +143,13 @@ calculate_memory_sizes()
 }
 
 
+DATANODE_CONF_DIR="`dirname "$0"`"
 # find first dir of dn_data_dirs from properties file
 get_first_data_dir() {
-		DATANODE_CONF="`dirname "$0"`"
     local config_file="$1"
     local data_dir_value=""
 
-    data_dir_value=`sed '/^dn_data_dirs=/!d;s/.*=//' ${config_file} | tail -n 1`
+    data_dir_value=`sed '/^dn_data_dirs=/!d;s/.*=//' ${DATANODE_CONF_DIR}/${config_file} | tail -n 1`
 
     if [ -z "$data_dir_value" ]; then
         echo ""
@@ -168,7 +168,7 @@ get_first_data_dir() {
     if [[ "$first_dir" == /* ]]; then
         echo "$first_dir"
     else
-        echo "$DATANODE_CONF/../$first_dir"
+        echo "$DATANODE_CONF_DIR/../$first_dir"
     fi
 }
 
