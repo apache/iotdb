@@ -61,6 +61,9 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
+import static org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType.EQUAL;
+import static org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType.LESS_THAN;
+import static org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType.LESS_THAN_OR_EQUAL;
 import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DateType.DATE;
@@ -70,6 +73,7 @@ import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
 import static org.apache.tsfile.read.common.type.StringType.STRING;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
+import static org.apache.tsfile.read.common.type.UnknownType.UNKNOWN;
 
 public class TableMetadataImpl implements Metadata {
 
@@ -107,6 +111,14 @@ public class TableMetadataImpl implements Metadata {
   public Type getOperatorReturnType(OperatorType operatorType, List<? extends Type> argumentTypes)
       throws OperatorNotFoundException {
 
+    if (isCompareWithNull(argumentTypes)) {
+      if (operatorType.equals(EQUAL)
+          || operatorType.equals(LESS_THAN)
+          || operatorType.equals(LESS_THAN_OR_EQUAL)) {
+        return BOOLEAN;
+      }
+      return argumentTypes.get(0);
+    }
     switch (operatorType) {
       case ADD:
         if (!isTwoTypeCalculable(argumentTypes)
@@ -780,6 +792,10 @@ public class TableMetadataImpl implements Metadata {
     return TIMESTAMP.equals(type);
   }
 
+  public static boolean isUnknownType(Type type) {
+    return UNKNOWN.equals(type);
+  }
+
   public static boolean isIntegerNumber(Type type) {
     return INT32.equals(type) || INT64.equals(type);
   }
@@ -798,6 +814,15 @@ public class TableMetadataImpl implements Metadata {
     return (isNumericType(left) && isNumericType(right)) || (isCharType(left) && isCharType(right));
   }
 
+  public static boolean isCompareWithNull(List<? extends Type> argumentTypes) {
+    if (argumentTypes.size() != 2) {
+      return false;
+    }
+    Type left = argumentTypes.get(0);
+    Type right = argumentTypes.get(1);
+    return isNumericType(left) || isCharType(left) && isUnknownType(right);
+  }
+
   public static boolean isArithmeticType(Type type) {
     return INT32.equals(type)
         || INT64.equals(type)
@@ -814,5 +839,14 @@ public class TableMetadataImpl implements Metadata {
     Type left = argumentTypes.get(0);
     Type right = argumentTypes.get(1);
     return isArithmeticType(left) && isArithmeticType(right);
+  }
+
+  public static boolean isCalculateWithNull(List<? extends Type> argumentTypes) {
+    if (argumentTypes.size() != 2) {
+      return false;
+    }
+    Type left = argumentTypes.get(0);
+    Type right = argumentTypes.get(1);
+    return isArithmeticType(left) && isUnknownType(right);
   }
 }
