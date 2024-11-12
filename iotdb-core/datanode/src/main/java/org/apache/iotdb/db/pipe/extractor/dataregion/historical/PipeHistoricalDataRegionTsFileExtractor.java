@@ -465,15 +465,17 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                 .collect(Collectors.toList());
         resourceList.addAll(unsequenceTsFileResources);
 
-        resourceList.forEach(
+        resourceList.removeIf(
             resource -> {
               // Pin the resource, in case the file is removed by compaction or anything.
               // Will unpin it after the PipeTsFileInsertionEvent is created and pinned.
               try {
                 PipeDataNodeResourceManager.tsfile()
                     .pinTsFileResource(resource, shouldTransferModFile);
+                return false;
               } catch (final IOException e) {
-                LOGGER.warn("Pipe: failed to pin TsFileResource {}", resource.getTsFilePath());
+                LOGGER.warn("Pipe: failed to pin TsFileResource {}", resource.getTsFilePath(), e);
+                return true;
               }
             });
 
