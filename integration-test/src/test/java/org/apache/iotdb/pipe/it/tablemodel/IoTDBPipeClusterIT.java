@@ -306,8 +306,9 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
       if (!insertResult) {
         return;
       }
-      TableModelUtils.assertData("test", "test", 0, 301, receiverEnv);
-      TableModelUtils.assertData("test1", "test1", 0, 301, receiverEnv);
+      TableModelUtils.assertCountData("test", "test", 301, receiverEnv);
+      TableModelUtils.assertCountData("test1", "test1", 301, senderEnv);
+      TableModelUtils.assertCountData("test1", "test1", 301, receiverEnv);
     }
   }
 
@@ -420,8 +421,9 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
       if (!insertResult) {
         return;
       }
-      TableModelUtils.assertData("test1", "test1", 0, 400, receiverEnv);
-      TableModelUtils.assertData("test", "test", 0, 400, receiverEnv);
+      TableModelUtils.assertCountData("test", "test", 400, receiverEnv);
+      TableModelUtils.assertCountData("test1", "test1", 400, senderEnv);
+      TableModelUtils.assertCountData("test1", "test1", 400, receiverEnv);
     }
   }
 
