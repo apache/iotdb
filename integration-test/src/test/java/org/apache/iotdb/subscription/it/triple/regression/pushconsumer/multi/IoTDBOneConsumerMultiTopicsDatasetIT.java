@@ -125,7 +125,7 @@ public class IoTDBOneConsumerMultiTopicsDatasetIT extends AbstractSubscriptionRe
       timestamp += 2000;
     }
     session_src.insertTablet(tablet);
-    session_src.executeNonQueryStatement("flush");
+    awaitUntilFlush(sender);
   }
 
   @Test

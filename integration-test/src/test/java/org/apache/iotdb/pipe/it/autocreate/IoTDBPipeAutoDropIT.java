@@ -53,9 +53,10 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualAutoIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv, Arrays.asList("insert into root.db.d1(time, s1) values (1, 1)", "flush"))) {
+          senderEnv, Collections.singletonList("insert into root.db.d1(time, s1) values (1, 1)"))) {
         return;
       }
+      awaitUntilFlush(senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -105,10 +106,10 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualAutoIT {
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
           Arrays.asList(
-              "insert into root.db.d1(time, s1) values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)",
-              "flush"))) {
+              "insert into root.db.d1(time, s1) values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)"))) {
         return;
       }
+      awaitUntilFlush(senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();

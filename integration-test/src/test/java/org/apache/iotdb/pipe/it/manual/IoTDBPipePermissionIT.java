@@ -115,11 +115,11 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualManualIT {
           Arrays.asList(
               "create timeseries root.ln.wf02.wt01.temperature with datatype=INT64,encoding=PLAIN",
               "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
-              "insert into root.ln.wf02.wt01(time, temperature, status) values (1800000000000, 23, true)",
-              "flush"))) {
+              "insert into root.ln.wf02.wt01(time, temperature, status) values (1800000000000, 23, true)"))) {
         fail();
         return;
       }
+      awaitUntilFlush(senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();

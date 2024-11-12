@@ -202,6 +202,7 @@ public class IoTDBTestParamTopicIT extends AbstractSubscriptionRegressionIT {
     session_dest.executeNonQueryStatement("create timeseries " + database + ".d_1.s_0 int32;");
     session_src.executeNonQueryStatement(
         "insert into " + database + ".d_1(time, s_0) values(1677628800000,33);");
+    awaitUntilFlush(sender);
     consume_data(consumer, session_dest);
     check_count(1, "select count(s_0) from " + database + ".d_1;", "invalid date");
     consumer.unsubscribe("topic_error_path8");
