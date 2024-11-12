@@ -131,10 +131,14 @@ public class PipeWALHardlinkResourceManager extends PipeWALResourceManager {
   private static File createHardlink(final File sourceFile, final File hardlink)
       throws IOException {
     if (!hardlink.getParentFile().exists() && !hardlink.getParentFile().mkdirs()) {
-      throw new IOException(
-          String.format(
-              "failed to create hardlink %s for file %s: failed to create parent dir %s",
-              hardlink.getPath(), sourceFile.getPath(), hardlink.getParentFile().getPath()));
+      synchronized (PipeWALHardlinkResourceManager.class) {
+        if (!hardlink.getParentFile().exists() && !hardlink.getParentFile().mkdirs()) {
+          throw new IOException(
+              String.format(
+                  "failed to create hardlink %s for file %s: failed to create parent dir %s",
+                  hardlink.getPath(), sourceFile.getPath(), hardlink.getParentFile().getPath()));
+        }
+      }
     }
 
     final Path sourcePath = FileSystems.getDefault().getPath(sourceFile.getAbsolutePath());
