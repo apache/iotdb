@@ -1,9 +1,8 @@
 package org.apache.iotdb.db.queryengine.processor;
 
+import com.google.common.util.concurrent.SettableFuture;
 import org.apache.iotdb.db.queryengine.processor.state.ProcessState;
 import org.apache.iotdb.db.queryengine.processor.state.TransformationState;
-
-import com.google.common.util.concurrent.SettableFuture;
 import org.junit.Assert;
 
 import java.util.Iterator;
@@ -14,22 +13,21 @@ import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 
 import static java.lang.String.format;
-import static java.util.Objects.requireNonNull;
 
 public class WorkerProcessorTestUtils {
-  public static <T> void assertBlocks(WorkProcessor<T> processor) {
+  public static <T> void assertBlock(WorkProcessor<T> processor) {
     Assert.assertFalse(processor.process());
     Assert.assertTrue(processor.isBlocked());
     Assert.assertFalse(processor.isFinished());
     Assert.assertFalse(processor.process());
   }
 
-  public static <T, V> void assertUnblocks(WorkProcessor<T> processor, SettableFuture<V> future) {
+  public static <T, V> void assertUnblock(WorkProcessor<T> processor, SettableFuture<V> future) {
     future.set(null);
     Assert.assertFalse(processor.isBlocked());
   }
 
-  public static <T> void assertYields(WorkProcessor<T> processor) {
+  public static <T> void assertYield(WorkProcessor<T> processor) {
     Assert.assertFalse(processor.process());
     Assert.assertFalse(processor.isBlocked());
     Assert.assertFalse(processor.isFinished());
@@ -46,11 +44,20 @@ public class WorkerProcessorTestUtils {
     validator.accept(processor.getResult());
   }
 
-  public static <T> void assertFinishes(WorkProcessor<T> processor) {
+  public static <T> void assertFinish(WorkProcessor<T> processor) {
     Assert.assertTrue(processor.process());
     Assert.assertFalse(processor.isBlocked());
     Assert.assertTrue(processor.isFinished());
     Assert.assertTrue(processor.process());
+  }
+
+  public static <T> WorkProcessor<T> processorFrom(List<ProcessState<T>> states) {
+    Iterator<ProcessState<T>> iterator = states.iterator();
+    return WorkProcessorUtils.create(
+        () -> {
+          Assert.assertTrue(iterator.hasNext());
+          return iterator.next();
+        });
   }
 
   public static <T, R> Transformer<T, R> transformationFrom(List<Transform<T, R>> transformations) {
@@ -72,15 +79,6 @@ public class WorkerProcessorTestUtils {
     };
   }
 
-  public static <T> WorkProcessor<T> processorFrom(List<ProcessState<T>> states) {
-    Iterator<ProcessState<T>> iterator = states.iterator();
-    return WorkProcessorUtils.create(
-        () -> {
-          Assert.assertTrue(iterator.hasNext());
-          return iterator.next();
-        });
-  }
-
   public static class Transform<T, R> {
     private final Optional<T> from;
     private final TransformationState<R> to;
@@ -90,8 +88,8 @@ public class WorkerProcessorTestUtils {
     }
 
     private Transform(Optional<T> from, TransformationState<R> to) {
-      this.from = requireNonNull(from);
-      this.to = requireNonNull(to);
+      this.from = from;
+      this.to = to;
     }
 
     private TransformationState<R> transform(

@@ -6,32 +6,22 @@ import org.apache.iotdb.db.queryengine.processor.state.TransformationState;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.SettableFuture;
-import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.apache.iotdb.db.queryengine.processor.WorkerProcessorTestUtils.assertBlocks;
-import static org.apache.iotdb.db.queryengine.processor.WorkerProcessorTestUtils.assertFinishes;
+import static org.apache.iotdb.db.queryengine.processor.WorkerProcessorTestUtils.assertBlock;
+import static org.apache.iotdb.db.queryengine.processor.WorkerProcessorTestUtils.assertFinish;
 import static org.apache.iotdb.db.queryengine.processor.WorkerProcessorTestUtils.assertResult;
-import static org.apache.iotdb.db.queryengine.processor.WorkerProcessorTestUtils.assertUnblocks;
-import static org.apache.iotdb.db.queryengine.processor.WorkerProcessorTestUtils.assertYields;
+import static org.apache.iotdb.db.queryengine.processor.WorkerProcessorTestUtils.assertUnblock;
+import static org.apache.iotdb.db.queryengine.processor.WorkerProcessorTestUtils.assertYield;
+import static org.apache.iotdb.db.queryengine.processor.WorkerProcessorTestUtils.processorFrom;
 import static org.apache.iotdb.db.queryengine.processor.WorkerProcessorTestUtils.transformationFrom;
 
 public class WorkerProcessorTest {
-  public static <T> WorkProcessor<T> processorFrom(List<ProcessState<T>> states) {
-    Iterator<ProcessState<T>> iterator = states.iterator();
-    return new WorkProcessor<>(
-        () -> {
-          Assert.assertTrue(iterator.hasNext());
-          return iterator.next();
-        });
-  }
-
   @Test
   public void testYield() {
     SettableFuture<Void> future = SettableFuture.create();
@@ -39,36 +29,31 @@ public class WorkerProcessorTest {
     List<ProcessState<Integer>> baseScenario =
         ImmutableList.of(
             ProcessState.ofResult(1),
-            ProcessState.ofResult(2),
             ProcessState.blocked(future),
-            ProcessState.ofResult(3),
-            ProcessState.ofResult(4),
+            ProcessState.ofResult(2),
             ProcessState.finished());
 
     AtomicBoolean yieldSignal = new AtomicBoolean();
     WorkProcessor<Integer> processor = processorFrom(baseScenario).yielding(yieldSignal::get);
 
-    // no yield, process normally
     assertResult(processor, 1);
 
+    // Set yield
     yieldSignal.set(true);
-    assertYields(processor);
+    assertYield(processor);
 
-    // processor should progress since it yielded last time
-    assertResult(processor, 2);
+    // Block and still yield
+    assertBlock(processor);
+    assertYield(processor);
 
-    // yield signal is still set
-    assertYields(processor);
+    // Unblock and still yield
+    assertUnblock(processor, future);
+    assertYield(processor);
 
-    // base scenario future blocks
-    assertBlocks(processor);
-    assertUnblocks(processor, future);
-
-    // continue to process normally
     yieldSignal.set(false);
-    assertResult(processor, 3);
-    assertResult(processor, 4);
-    assertFinishes(processor);
+    // No yield
+    assertResult(processor, 2);
+    assertFinish(processor);
   }
 
   @Test
@@ -85,24 +70,23 @@ public class WorkerProcessorTest {
     AtomicReference<SettableFuture<Void>> phase2 = new AtomicReference<>(SettableFuture.create());
     WorkProcessor<Integer> processor = processorFrom(scenario).blocking(phase2::get);
 
-    // WorkProcessor.blocking future overrides phase1 future
-    assertBlocks(processor);
-    assertUnblocks(processor, phase2.get());
+    // phase2 blocking future overrides phase1
+    assertBlock(processor);
+    assertUnblock(processor, phase2.get());
+    assertBlock(processor);
+    assertUnblock(processor, phase1);
 
-    assertBlocks(processor);
-    assertUnblocks(processor, phase1);
-
-    // WorkProcessor.blocking overrides yielding
+    // blocking overrides yielding
     phase2.set(SettableFuture.create());
-    assertBlocks(processor);
-    assertUnblocks(processor, phase2.get());
+    assertBlock(processor);
+    assertUnblock(processor, phase2.get());
     assertResult(processor, 1);
 
-    // WorkProcessor.blocking overrides finishing
+    // blocking overrides finishing
     phase2.set(SettableFuture.create());
-    assertBlocks(processor);
-    assertUnblocks(processor, phase2.get());
-    assertFinishes(processor);
+    assertBlock(processor);
+    assertUnblock(processor, phase2.get());
+    assertFinish(processor);
   }
 
   @Test
@@ -120,14 +104,30 @@ public class WorkerProcessorTest {
     WorkProcessor<Integer> processor = processorFrom(scenario).finishWhen(finished::get);
 
     assertResult(processor, 1);
-    assertYields(processor);
-    assertBlocks(processor);
+    assertYield(processor);
+    assertBlock(processor);
 
+    // Blocking over finish
     finished.set(true);
-    assertBlocks(processor);
+    assertBlock(processor);
 
-    assertUnblocks(processor, future);
-    assertFinishes(processor);
+    // Finish immediately
+    assertUnblock(processor, future);
+    assertFinish(processor);
+  }
+
+  @Test
+  public void testMap() {
+    List<ProcessState<Integer>> baseScenario =
+        ImmutableList.of(
+            ProcessState.ofResult(1), ProcessState.ofResult(2), ProcessState.finished());
+
+    WorkProcessor<Double> processor = processorFrom(baseScenario).map(element -> 2. * element);
+
+    // Like .map() in stream API
+    assertResult(processor, 2.);
+    assertResult(processor, 4.);
+    assertFinish(processor);
   }
 
   @Test
@@ -143,117 +143,12 @@ public class WorkerProcessorTest {
                     WorkProcessor.fromIterable(
                         ImmutableList.of((Double) 2. * element, (Double) 3. * element)));
 
+    // Map to List<Integer> and then flatten to Integers
     assertResult(processor, 2.);
     assertResult(processor, 3.);
     assertResult(processor, 4.);
     assertResult(processor, 6.);
-    assertFinishes(processor);
-  }
-
-  @Test
-  public void testMap() {
-    List<ProcessState<Integer>> baseScenario =
-        ImmutableList.of(
-            ProcessState.ofResult(1), ProcessState.ofResult(2), ProcessState.finished());
-
-    WorkProcessor<Double> processor = processorFrom(baseScenario).map(element -> 2. * element);
-
-    assertResult(processor, 2.);
-    assertResult(processor, 4.);
-    assertFinishes(processor);
-  }
-
-  @Test
-  public void testFlatTransform() {
-    SettableFuture<Void> baseFuture = SettableFuture.create();
-    List<ProcessState<Double>> baseScenario =
-        ImmutableList.of(
-            ProcessState.ofResult(1.0),
-            ProcessState.blocked(baseFuture),
-            ProcessState.ofResult(2.0),
-            ProcessState.yielded(),
-            ProcessState.ofResult(3.0),
-            ProcessState.ofResult(4.0),
-            ProcessState.finished());
-
-    SettableFuture<Void> mappedFuture1 = SettableFuture.create();
-    List<ProcessState<Integer>> mappedScenario1 =
-        ImmutableList.of(
-            ProcessState.ofResult(1),
-            ProcessState.yielded(),
-            ProcessState.blocked(mappedFuture1),
-            ProcessState.ofResult(2),
-            ProcessState.finished());
-
-    List<ProcessState<Integer>> mappedScenario2 = ImmutableList.of(ProcessState.finished());
-
-    SettableFuture<Void> mappedFuture3 = SettableFuture.create();
-    List<ProcessState<Integer>> mappedScenario3 =
-        ImmutableList.of(ProcessState.blocked(mappedFuture3), ProcessState.finished());
-
-    List<ProcessState<Integer>> mappedScenario4 =
-        ImmutableList.of(ProcessState.ofResult(3), ProcessState.finished());
-
-    SettableFuture<Void> transformationFuture = SettableFuture.create();
-    List<Transform<Double, WorkProcessor<Integer>>> transformationScenario =
-        ImmutableList.of(
-            Transform.of(
-                Optional.of(1.0),
-                TransformationState.ofResult(processorFrom(mappedScenario1), false)),
-            Transform.of(
-                Optional.of(1.0),
-                TransformationState.ofResult(processorFrom(mappedScenario2), false)),
-            Transform.of(
-                Optional.of(1.0), TransformationState.ofResult(processorFrom(mappedScenario3))),
-            Transform.of(Optional.of(2.0), TransformationState.blocked(transformationFuture)),
-            Transform.of(
-                Optional.of(2.0), TransformationState.ofResult(processorFrom(mappedScenario4))),
-            Transform.of(Optional.of(3.0), TransformationState.finished()));
-
-    WorkProcessor<Integer> processor =
-        processorFrom(baseScenario).flatTransform(transformationFrom(transformationScenario));
-
-    // mappedScenario1.result 1
-    assertResult(processor, 1);
-
-    // mappedScenario1.yield
-    assertYields(processor);
-
-    // mappedScenario1.blocked
-    assertBlocks(processor);
-
-    // mappedScenario1 unblocks
-    assertUnblocks(processor, mappedFuture1);
-
-    // mappedScenario1 result 2
-    assertResult(processor, 2);
-
-    // mappedScenario3.blocked
-    assertBlocks(processor);
-
-    // mappedScenario3 unblocks
-    assertUnblocks(processor, mappedFuture3);
-
-    // base.blocked
-    assertBlocks(processor);
-
-    // base unblocks
-    assertUnblocks(processor, baseFuture);
-
-    // transformation.blocked
-    assertBlocks(processor);
-
-    // transformation unblocks
-    assertUnblocks(processor, transformationFuture);
-
-    // mappedScenario4 result 3
-    assertResult(processor, 3);
-
-    // base.yield
-    assertYields(processor);
-
-    // transformation finishes
-    assertFinishes(processor);
+    assertFinish(processor);
   }
 
   @Test
@@ -268,56 +163,112 @@ public class WorkerProcessorTest {
             ProcessState.ofResult(3),
             ProcessState.finished());
 
-    SettableFuture<Void> transformationFuture = SettableFuture.create();
-    List<Transform<Integer, String>> transformationScenario =
+    SettableFuture<Void> future = SettableFuture.create();
+    List<Transform<Integer, String>> transformation =
         ImmutableList.of(
             Transform.of(Optional.of(1), TransformationState.needsMoreData()),
             Transform.of(Optional.of(2), TransformationState.ofResult("foo")),
-            Transform.of(Optional.of(3), TransformationState.blocked(transformationFuture)),
+            Transform.of(Optional.of(3), TransformationState.blocked(future)),
             Transform.of(Optional.of(3), TransformationState.yielded()),
             Transform.of(Optional.of(3), TransformationState.ofResult("bar", false)),
-            Transform.of(Optional.of(3), TransformationState.ofResult("zoo", true)),
+            Transform.of(Optional.of(3), TransformationState.ofResult("baz", true)),
             Transform.of(Optional.empty(), TransformationState.ofResult("car", false)),
             Transform.of(Optional.empty(), TransformationState.finished()));
 
     WorkProcessor<String> processor =
-        processorFrom(baseScenario).transform(transformationFrom(transformationScenario));
+        processorFrom(baseScenario).transform(transformationFrom(transformation));
 
-    // before
-    Assert.assertFalse(processor.isBlocked());
-    Assert.assertFalse(processor.isFinished());
+    // Yield since we need more data
+    assertYield(processor);
 
-    // base.yield
-    assertYields(processor);
+    // Block and unblock from base
+    assertBlock(processor);
+    assertUnblock(processor, baseFuture);
 
-    // base.blocked
-    assertBlocks(processor);
-
-    // base unblock
-    assertUnblocks(processor, baseFuture);
-
-    // transformation.result foo
+    // Transform 2 -> "foo"
     assertResult(processor, "foo");
 
-    // transformation.blocked
-    assertBlocks(processor);
+    // Block and unblock in transformation state
+    assertBlock(processor);
+    assertUnblock(processor, future);
 
-    // transformation.unblock
-    assertUnblocks(processor, transformationFuture);
+    // Yield by transform
+    assertYield(processor);
 
-    // transformation.yield
-    assertYields(processor);
-
-    // transformation.result bar
+    // Transform 3 -> "bar"
     assertResult(processor, "bar");
 
-    // transformation.result zoo
-    assertResult(processor, "zoo");
+    // Transform 3 -> "baz"
+    assertResult(processor, "baz");
 
-    // transformation.result car
+    // Transform empty -> "car"
     assertResult(processor, "car");
 
-    // transformation.finished
-    assertFinishes(processor);
+    // Finish
+    assertFinish(processor);
+  }
+
+  @Test
+  public void testFlatTransform() {
+    SettableFuture<Void> baseFuture = SettableFuture.create();
+    List<ProcessState<Double>> baseScenario =
+        ImmutableList.of(
+            ProcessState.ofResult(1.0),
+            ProcessState.blocked(baseFuture),
+            ProcessState.ofResult(2.0),
+            ProcessState.yielded(),
+            ProcessState.ofResult(3.0),
+            ProcessState.finished());
+
+    SettableFuture<Void> mappedFuture = SettableFuture.create();
+    List<ProcessState<Integer>> mapped1 =
+        ImmutableList.of(
+            ProcessState.ofResult(1),
+            ProcessState.yielded(),
+            ProcessState.blocked(mappedFuture),
+            ProcessState.ofResult(2),
+            ProcessState.finished());
+
+    List<ProcessState<Integer>> mapped2 =
+        ImmutableList.of(ProcessState.ofResult(3), ProcessState.finished());
+
+    List<Transform<Double, WorkProcessor<Integer>>> transformationScenario =
+        ImmutableList.of(
+            Transform.of(
+                Optional.of(1.0),
+                TransformationState.ofResult(processorFrom(mapped1))),
+            Transform.of(
+                Optional.of(2.0), TransformationState.ofResult(processorFrom(mapped2))),
+            Transform.of(Optional.of(3.0), TransformationState.finished()));
+
+    WorkProcessor<Integer> processor =
+        processorFrom(baseScenario).flatTransform(transformationFrom(transformationScenario));
+
+    // 1 -> 1 in mapped1
+    assertResult(processor, 1);
+
+    // 1 -> yield in mapped1
+    assertYield(processor);
+
+    // 1 -> block in mapped1
+    assertBlock(processor);
+    assertUnblock(processor, mappedFuture);
+
+    // 1 -> 2 in mapped1
+    assertResult(processor, 2);
+    // mapped1 finish
+
+    // Block and unblock in base
+    assertBlock(processor);
+    assertUnblock(processor, baseFuture);
+
+    // 2 -> 3 in mapped2
+    assertResult(processor, 3);
+
+    // Yield in base
+    assertYield(processor);
+
+    // All finishes
+    assertFinish(processor);
   }
 }
