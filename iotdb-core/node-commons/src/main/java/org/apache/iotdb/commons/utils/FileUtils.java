@@ -105,12 +105,14 @@ public class FileUtils {
           sourceDir.getAbsolutePath());
       return false;
     }
-    if (!targetDir.exists()) {
-      if (!targetDir.mkdirs()) {
-        LOGGER.error(
-            "Failed to copy folder, because failed to create target folder[{}].",
-            targetDir.getAbsolutePath());
-        return false;
+    if (!targetDir.exists() && !targetDir.mkdirs()) {
+      synchronized (FileUtils.class) {
+        if (!targetDir.exists() && !targetDir.mkdirs()) {
+          LOGGER.error(
+              "Failed to copy folder, because failed to create target folder[{}].",
+              targetDir.getAbsolutePath());
+          return false;
+        }
       }
     } else if (!targetDir.isDirectory()) {
       LOGGER.error(
@@ -280,11 +282,13 @@ public class FileUtils {
 
   public static File createHardLink(File sourceFile, File hardlink) throws IOException {
     if (!hardlink.getParentFile().exists() && !hardlink.getParentFile().mkdirs()) {
-      if (!hardlink.getParentFile().exists()) {
-        throw new IOException(
-            String.format(
-                "failed to create hardlink %s for file %s: failed to create parent dir %s",
-                hardlink.getPath(), sourceFile.getPath(), hardlink.getParentFile().getPath()));
+      synchronized (FileUtils.class) {
+        if (!hardlink.getParentFile().exists() && !hardlink.getParentFile().mkdirs()) {
+          throw new IOException(
+              String.format(
+                  "failed to create hardlink %s for file %s: failed to create parent dir %s",
+                  hardlink.getPath(), sourceFile.getPath(), hardlink.getParentFile().getPath()));
+        }
       }
     }
 
@@ -296,11 +300,15 @@ public class FileUtils {
 
   public static File copyFile(File sourceFile, File targetFile) throws IOException {
     if (!targetFile.getParentFile().exists() && !targetFile.getParentFile().mkdirs()) {
-      if (!targetFile.getParentFile().exists()) {
-        throw new IOException(
-            String.format(
-                "failed to copy file %s to %s: failed to create parent dir %s",
-                sourceFile.getPath(), targetFile.getPath(), targetFile.getParentFile().getPath()));
+      synchronized (FileUtils.class) {
+        if (!targetFile.getParentFile().exists() && !targetFile.getParentFile().mkdirs()) {
+          throw new IOException(
+              String.format(
+                  "failed to copy file %s to %s: failed to create parent dir %s",
+                  sourceFile.getPath(),
+                  targetFile.getPath(),
+                  targetFile.getParentFile().getPath()));
+        }
       }
     }
 
