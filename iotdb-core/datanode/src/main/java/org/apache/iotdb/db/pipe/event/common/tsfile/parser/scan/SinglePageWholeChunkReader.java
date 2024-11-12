@@ -133,9 +133,7 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader {
       ByteBuffer compressedPageData,
       IDecryptor decryptor)
       throws IOException {
-    ByteBuffer finalBuffer = decrypt(decryptor, compressedPageData);
-    finalBuffer = uncompressPageData(pageHeader, unCompressor, finalBuffer);
-    return finalBuffer;
+    return uncompressPageData(pageHeader, unCompressor, decrypt(decryptor, compressedPageData));
   }
 
   public static ByteBuffer deserializePageData(
