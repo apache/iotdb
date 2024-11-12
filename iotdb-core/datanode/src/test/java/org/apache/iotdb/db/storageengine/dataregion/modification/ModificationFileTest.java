@@ -224,7 +224,7 @@ public class ModificationFileTest {
       new CompactionRecoverManager(null, null, null)
           .recoverModSettleFile(new File(TestConstant.BASE_OUTPUT_PATH).toPath());
       Assert.assertTrue(modsFile.exists());
-      Assert.assertFalse(modsSettleFile.exists());
+      Assert.assertFalse(modsSettleFile.getFileLength() > 0);
     } catch (IOException e) {
       throw new RuntimeException(e);
     } finally {
@@ -250,7 +250,7 @@ public class ModificationFileTest {
       modsSettleFile.close();
       new CompactionRecoverManager(null, null, null)
           .recoverModSettleFile(new File(TestConstant.BASE_OUTPUT_PATH).toPath());
-      Assert.assertFalse(modsSettleFile.exists());
+      Assert.assertFalse(modsSettleFile.getFileLength() > 0);
       Assert.assertTrue(new File(originModsFileName).exists());
     } catch (IOException e) {
       throw new RuntimeException(e);

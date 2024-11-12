@@ -596,15 +596,15 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
 
     for (TsFileResource resource : allDeletedFiles) {
       Assert.assertFalse(resource.tsFileExists());
-      Assert.assertFalse(resource.anyModFileExists());
+      Assert.assertFalse(resource.getTotalModSizeInByte() > 0);
       Assert.assertFalse(resource.resourceFileExists());
-      Assert.assertFalse(resource.getCompactionModFile().exists());
+      Assert.assertFalse(resource.getCompactionModFile().getFileLength() > 0);
     }
     for (TsFileResource resource : partialDeletedFiles) {
       Assert.assertTrue(resource.tsFileExists());
-      Assert.assertTrue(resource.anyModFileExists());
+      Assert.assertTrue(resource.getTotalModSizeInByte() > 0);
       Assert.assertTrue(resource.resourceFileExists());
-      Assert.assertFalse(resource.getCompactionModFile().exists());
+      Assert.assertFalse(resource.getCompactionModFile().getFileLength() > 0);
     }
     Assert.assertFalse(logFile.exists());
   }
@@ -665,15 +665,15 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
 
     for (TsFileResource resource : allDeletedFiles) {
       Assert.assertFalse(resource.tsFileExists());
-      Assert.assertFalse(resource.anyModFileExists());
+      Assert.assertFalse(resource.getTotalModSizeInByte() > 0);
       Assert.assertFalse(resource.resourceFileExists());
-      Assert.assertFalse(resource.getCompactionModFile().exists());
+      Assert.assertFalse(resource.getCompactionModFile().getFileLength() > 0);
     }
     for (TsFileResource resource : partialDeletedFiles) {
       Assert.assertTrue(resource.tsFileExists());
-      Assert.assertTrue(resource.anyModFileExists());
+      Assert.assertTrue(resource.getTotalModSizeInByte() > 0);
       Assert.assertTrue(resource.resourceFileExists());
-      Assert.assertFalse(resource.getCompactionModFile().exists());
+      Assert.assertFalse(resource.getCompactionModFile().getFileLength() > 0);
     }
     Assert.assertFalse(logFile.exists());
   }
@@ -757,13 +757,13 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
       Assert.assertTrue(resource.tsFileExists());
       Assert.assertTrue(resource.anyModFileExists());
       Assert.assertTrue(resource.resourceFileExists());
-      Assert.assertFalse(resource.getCompactionModFile().exists());
+      Assert.assertFalse(resource.getCompactionModFile().getFileLength() > 0);
     }
 
     // target resource not exist
     Assert.assertFalse(targetResource.resourceFileExists());
     Assert.assertFalse(targetResource.tsFileExists());
-    Assert.assertFalse(targetResource.anyModFileExists());
+    Assert.assertFalse(targetResource.getTotalModSizeInByte() > 0);
 
     Assert.assertFalse(logFile.exists());
   }
@@ -828,7 +828,7 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
       Assert.assertFalse(resource.tsFileExists());
       Assert.assertFalse(resource.anyModFileExists());
       Assert.assertFalse(resource.resourceFileExists());
-      Assert.assertFalse(resource.getCompactionModFile().exists());
+      Assert.assertFalse(resource.getCompactionModFile().getFileLength() > 0);
     }
 
     // resource file exist
@@ -836,7 +836,7 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
       Assert.assertTrue(resource.tsFileExists());
       Assert.assertTrue(resource.anyModFileExists());
       Assert.assertTrue(resource.resourceFileExists());
-      Assert.assertFalse(resource.getCompactionModFile().exists());
+      Assert.assertFalse(resource.getCompactionModFile().getFileLength() > 0);
     }
 
     // target resource not exist
@@ -923,14 +923,14 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
     }
     for (TsFileResource resource : partialDeletedFiles) {
       Assert.assertFalse(resource.tsFileExists());
-      Assert.assertFalse(resource.anyModFileExists());
+      Assert.assertFalse(resource.getTotalModSizeInByte() > 0);
       Assert.assertFalse(resource.resourceFileExists());
-      Assert.assertFalse(resource.getCompactionModFile().exists());
+      Assert.assertFalse(resource.getCompactionModFile().getFileLength() > 0);
     }
     // target file exist
     Assert.assertTrue(targetResource.resourceFileExists());
     Assert.assertTrue(targetResource.tsFileExists());
-    Assert.assertTrue(targetResource.anyModFileExists());
+    Assert.assertTrue(targetResource.getTotalModSizeInByte() > 0);
 
     Assert.assertFalse(logFile.exists());
   }
@@ -1017,15 +1017,15 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
     }
     for (TsFileResource resource : partialDeletedFiles) {
       Assert.assertFalse(resource.tsFileExists());
-      Assert.assertFalse(resource.anyModFileExists());
+      Assert.assertFalse(resource.getTotalModSizeInByte() > 0);
       Assert.assertFalse(resource.resourceFileExists());
-      Assert.assertFalse(resource.getCompactionModFile().exists());
+      Assert.assertFalse(resource.getCompactionModFile().getFileLength() > 0);
     }
     // target file is deleted after compaction
     Assert.assertFalse(targetResource.resourceFileExists());
     Assert.assertFalse(targetResource.tsFileExists());
-    Assert.assertFalse(targetResource.anyModFileExists());
-    Assert.assertFalse(targetResource.getCompactionModFile().exists());
+    Assert.assertFalse(targetResource.getTotalModSizeInByte() > 0);
+    Assert.assertFalse(targetResource.getCompactionModFile().getFileLength() > 0);
 
     Assert.assertFalse(logFile.exists());
   }

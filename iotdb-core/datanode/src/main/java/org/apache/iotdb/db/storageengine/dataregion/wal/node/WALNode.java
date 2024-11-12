@@ -173,10 +173,12 @@ public class WALNode implements IWALNode {
 
   @Override
   public WALFlushListener log(long memTableId, RelationalDeleteDataNode deleteDataNode) {
-    logger.debug(
-        "WAL node-{} logs relationalDeleteDataNode, the search index is {}.",
-        identifier,
-        deleteDataNode.getSearchIndex());
+    if (logger.isDebugEnabled()) {
+      logger.debug(
+          "WAL node-{} logs relationalDeleteDataNode, the search index is {}.",
+          identifier,
+          deleteDataNode.getSearchIndex());
+    }
     WALEntry walEntry = new WALInfoEntry(memTableId, deleteDataNode);
     return log(walEntry);
   }
