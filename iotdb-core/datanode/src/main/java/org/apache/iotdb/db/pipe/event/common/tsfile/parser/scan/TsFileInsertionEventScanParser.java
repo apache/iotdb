@@ -376,8 +376,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               == TsFileConstant.TIME_COLUMN_MASK) {
             timeChunkList.add(
                 new Chunk(
-                    chunkHeader,
-                    tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize())));
+                    chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize())));
             isMultiPageList.add(marker == MetaMarker.TIME_CHUNK_HEADER);
             break;
           }
@@ -442,8 +441,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
           valueChunkList.add(
               new Chunk(
-                  chunkHeader,
-                  tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize())));
+                  chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize())));
           currentMeasurements.add(
               new MeasurementSchema(chunkHeader.getMeasurementID(), chunkHeader.getDataType()));
           break;
