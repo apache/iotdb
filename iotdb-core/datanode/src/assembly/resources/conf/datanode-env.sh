@@ -161,7 +161,7 @@ get_first_data_dir() {
     if [[ "$data_dir_value" == *";"* ]]; then
         first_dir=$(echo "$data_dir_value" | cut -d';' -f1)
     fi
-    if [[ "first_dir" == *","* ]]; then
+    if [[ "$first_dir" == *","* ]]; then
         first_dir=$(echo "$first_dir" | cut -d',' -f1)
     fi
 
@@ -182,7 +182,7 @@ if [ -z "$heap_dump_dir" ]; then
   	heap_dump_dir="$(dirname "$0")/../data/datanode/data/"
 fi
 if [ ! -d "$heap_dump_dir" ]; then
-  mkdir -p "$heap_dump_dir"
+  	mkdir -p "$heap_dump_dir"
 fi
 
 # find java in JAVA_HOME
