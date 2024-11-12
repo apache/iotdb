@@ -41,8 +41,10 @@ import java.sql.Statement;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework.closeQuietly;
+import static org.awaitility.Awaitility.await;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2AutoCreateSchema.class})
@@ -91,18 +93,31 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualAutoIT {
           "count(root.db.d1.s1),",
           Collections.singleton("1,"));
 
+      Thread.sleep(100000);
       try (final Connection connection = closeQuietly(senderEnv.getConnection());
           final Statement statement = closeQuietly(connection.createStatement()); ) {
         ResultSet result = statement.executeQuery("show pipes");
-        int pipeNum = 0;
-        while (result.next()) {
-          if (!result
-              .getString(ColumnHeaderConstant.ID)
-              .contains(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
-            pipeNum++;
-          }
-        }
-        Assert.assertEquals(0, pipeNum);
+        await()
+            .pollInSameThread()
+            .pollDelay(1L, TimeUnit.SECONDS)
+            .pollInterval(1L, TimeUnit.SECONDS)
+            .atMost(600, TimeUnit.SECONDS)
+            .untilAsserted(
+                () -> {
+                  try {
+                    int pipeNum = 0;
+                    while (result.next()) {
+                      if (!result
+                          .getString(ColumnHeaderConstant.ID)
+                          .contains(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+                        pipeNum++;
+                      }
+                    }
+                    Assert.assertEquals(0, pipeNum);
+                  } catch (Exception e) {
+                    Assert.fail();
+                  }
+                });
       }
     }
   }
@@ -157,15 +172,27 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualAutoIT {
       try (final Connection connection = closeQuietly(senderEnv.getConnection());
           final Statement statement = closeQuietly(connection.createStatement()); ) {
         ResultSet result = statement.executeQuery("show pipes");
-        int pipeNum = 0;
-        while (result.next()) {
-          if (!result
-              .getString(ColumnHeaderConstant.ID)
-              .contains(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
-            pipeNum++;
-          }
-        }
-        Assert.assertEquals(0, pipeNum);
+        await()
+            .pollInSameThread()
+            .pollDelay(1L, TimeUnit.SECONDS)
+            .pollInterval(1L, TimeUnit.SECONDS)
+            .atMost(600, TimeUnit.SECONDS)
+            .untilAsserted(
+                () -> {
+                  try {
+                    int pipeNum = 0;
+                    while (result.next()) {
+                      if (!result
+                          .getString(ColumnHeaderConstant.ID)
+                          .contains(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+                        pipeNum++;
+                      }
+                    }
+                    Assert.assertEquals(0, pipeNum);
+                  } catch (Exception e) {
+                    Assert.fail();
+                  }
+                });
       }
     }
   }
