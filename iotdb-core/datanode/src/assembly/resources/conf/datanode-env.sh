@@ -161,8 +161,8 @@ get_first_data_dir() {
     if [[ "$data_dir_value" == *";"* ]]; then
         first_dir=$(echo "$data_dir_value" | cut -d';' -f1)
     fi
-    if [[ "$data_dir_value" == *","* ]]; then
-        first_dir=$(echo "$data_dir_value" | cut -d',' -f1)
+    if [[ "first_dir" == *","* ]]; then
+        first_dir=$(echo "$first_dir" | cut -d',' -f1)
     fi
 
     if [[ "$first_dir" == /* ]]; then
