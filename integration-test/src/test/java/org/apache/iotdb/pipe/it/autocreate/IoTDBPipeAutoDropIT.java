@@ -93,7 +93,6 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualAutoIT {
           "count(root.db.d1.s1),",
           Collections.singleton("1,"));
 
-      Thread.sleep(100000);
       try (final Connection connection = closeQuietly(senderEnv.getConnection());
           final Statement statement = closeQuietly(connection.createStatement()); ) {
         ResultSet result = statement.executeQuery("show pipes");
