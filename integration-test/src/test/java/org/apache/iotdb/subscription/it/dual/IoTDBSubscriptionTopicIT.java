@@ -116,7 +116,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
         session.executeNonQueryStatement(
             String.format("insert into root.db.t1(time, s1) values (%s, 1)", i));
       }
-      session.executeNonQueryStatement("flush");
+      awaitUntilFlush(senderEnv);
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -217,7 +217,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
         session.executeNonQueryStatement(
             String.format("insert into root.db.d2(time, s) values (%s, 1)", currentTime + i));
       }
-      session.executeNonQueryStatement("flush");
+      awaitUntilFlush(senderEnv);
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -312,7 +312,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     try (final ISession session = senderEnv.getSessionConnection()) {
       session.executeNonQueryStatement(
           "insert into root.db.d1 (time, at1) values (1000, 1), (1500, 2), (2000, 3), (2500, 4), (3000, 5)");
-      session.executeNonQueryStatement("flush");
+      awaitUntilFlush(senderEnv);
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -411,7 +411,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
         session.executeNonQueryStatement(
             String.format("insert into root.db.d1(time, s) values (%s, 1)", i));
       }
-      session.executeNonQueryStatement("flush");
+      awaitUntilFlush(senderEnv);
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -565,7 +565,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
         session.executeNonQueryStatement(
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
       }
-      session.executeNonQueryStatement("flush");
+      awaitUntilFlush(senderEnv);
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -610,7 +610,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                     session.executeNonQueryStatement(
                         String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
                   }
-                  session.executeNonQueryStatement("flush");
+                  awaitUntilFlush(senderEnv);
                 } catch (final Exception e) {
                   e.printStackTrace();
                   fail(e.getMessage());
@@ -713,7 +713,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
           "insert into root.db1.d1 (time, at1, at2) values (1000, 1, 2), (2000, 3, 4)");
       session.executeNonQueryStatement(
           "insert into root.db.d1 (time, at1, at2) values (3000, 1, 2), (4000, 3, 4)");
-      session.executeNonQueryStatement("flush");
+      awaitUntilFlush(senderEnv);
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -792,7 +792,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                     "insert into root.db1.d1 (time, at1, at2) values (1001, 1, 2), (2001, 3, 4)");
                 session.executeNonQueryStatement(
                     "insert into root.db.d1 (time, at1, at2) values (3001, 1, 2), (4001, 3, 4)");
-                session.executeNonQueryStatement("flush");
+                awaitUntilFlush(senderEnv);
               } catch (final Exception e) {
                 e.printStackTrace();
                 fail(e.getMessage());

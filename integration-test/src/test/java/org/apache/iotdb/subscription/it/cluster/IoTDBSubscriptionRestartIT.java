@@ -76,7 +76,7 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
         .getCommonConfig()
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS) // TODO: iotv2
         .setSchemaReplicationFactor(3)
         .setDataReplicationFactor(2);
 
@@ -171,7 +171,7 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
         session.executeNonQueryStatement(
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
       }
-      session.executeNonQueryStatement("flush");
+      awaitUntilFlush(EnvFactory.getEnv());
     } catch (final Throwable e) {
       e.printStackTrace();
       // Avoid failure
@@ -312,7 +312,7 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
         session.executeNonQueryStatement(
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
       }
-      session.executeNonQueryStatement("flush");
+      awaitUntilFlush(EnvFactory.getEnv());
     } catch (final Throwable e) {
       e.printStackTrace();
       // Avoid failure
@@ -387,7 +387,7 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
         session.executeNonQueryStatement(
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
       }
-      session.executeNonQueryStatement("flush");
+      awaitUntilFlush(EnvFactory.getEnv());
     } catch (final Throwable e) {
       e.printStackTrace();
       // Avoid failure
@@ -450,7 +450,7 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
         session.executeNonQueryStatement(
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
       }
-      session.executeNonQueryStatement("flush");
+      awaitUntilFlush(EnvFactory.getEnv());
     } catch (final Throwable e) {
       e.printStackTrace();
       // Avoid failure
@@ -511,7 +511,7 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
         session.executeNonQueryStatement(
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
       }
-      session.executeNonQueryStatement("flush");
+      awaitUntilFlush(EnvFactory.getEnv());
     } catch (final Throwable e) {
       e.printStackTrace();
       // Avoid failure

@@ -80,7 +80,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
         session.executeNonQueryStatement(
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
       }
-      session.executeNonQueryStatement("flush");
+      awaitUntilFlush(EnvFactory.getEnv());
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -195,7 +195,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
         session.executeNonQueryStatement(
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
       }
-      session.executeNonQueryStatement("flush");
+      awaitUntilFlush(EnvFactory.getEnv());
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -231,7 +231,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
         session.executeNonQueryStatement(
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
       }
-      session.executeNonQueryStatement("flush");
+      awaitUntilFlush(EnvFactory.getEnv());
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -286,7 +286,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
           session.executeNonQueryStatement(
               String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
         }
-        session.executeNonQueryStatement("flush");
+        awaitUntilFlush(EnvFactory.getEnv());
       }
 
       AWAIT.untilAsserted(
@@ -302,7 +302,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
           session.executeNonQueryStatement(
               String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
         }
-        session.executeNonQueryStatement("flush");
+        awaitUntilFlush(EnvFactory.getEnv());
       }
 
       AWAIT.untilAsserted(
@@ -330,7 +330,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
         session.executeNonQueryStatement(
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
       }
-      session.executeNonQueryStatement("flush");
+      awaitUntilFlush(EnvFactory.getEnv());
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

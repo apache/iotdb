@@ -85,7 +85,7 @@ public class IoTDBSubscriptionTimePrecisionIT extends AbstractSubscriptionDualIT
         session.executeNonQueryStatement(
             String.format("insert into root.db.d1(time, s2) values (%s, 1)", currentTime1 - i));
       }
-      session.executeNonQueryStatement("flush");
+      awaitUntilFlush(senderEnv);
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -123,7 +123,7 @@ public class IoTDBSubscriptionTimePrecisionIT extends AbstractSubscriptionDualIT
         session.executeNonQueryStatement(
             String.format("insert into root.db.d2(time, s1) values (%s, 1)", currentTime2 + i));
       }
-      session.executeNonQueryStatement("flush");
+      awaitUntilFlush(senderEnv);
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

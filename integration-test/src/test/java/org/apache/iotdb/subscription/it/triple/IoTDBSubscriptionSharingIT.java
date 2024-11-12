@@ -134,7 +134,7 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
         timestamp += 2000;
       }
       session.insertTablet(tablet);
-      session.executeNonQueryStatement("flush");
+      awaitUntilFlush(sender);
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
