@@ -33,6 +33,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -51,8 +52,8 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)")) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv, Arrays.asList("insert into root.db.d1(time, s1) values (1, 1)", "flush"))) {
         return;
       }
 
@@ -101,9 +102,11 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          "insert into root.db.d1(time, s1) values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)")) {
+          Arrays.asList(
+              "insert into root.db.d1(time, s1) values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)",
+              "flush"))) {
         return;
       }
 
