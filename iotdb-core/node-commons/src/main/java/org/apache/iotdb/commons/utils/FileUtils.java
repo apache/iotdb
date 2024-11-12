@@ -280,11 +280,9 @@ public class FileUtils {
 
   public static File createHardLink(File sourceFile, File hardlink) throws IOException {
     File parentDir = hardlink.getParentFile();
-    if (!parentDir.exists()) {
-      LOGGER.warn(
-          "Failed to create parent directories for hardlink {}, creating them now.", hardlink);
-      if (!customMkdirs(parentDir)) {
-        if (!parentDir.exists()) {
+    if (!parentDir.exists() && !customMkdirs(parentDir)) {
+      synchronized (FileUtils.class) {
+        if (!parentDir.exists() && !customMkdirs(parentDir)) {
           throw new IOException(
               String.format(
                   "failed to create hardlink %s for file %s: failed to create parent dir %s",
