@@ -596,7 +596,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
 
     // all compaction mods file of each source file should not exist
     for (int i = 0; i < seqResources.size(); i++) {
-      Assert.assertFalse(seqResources.get(i).getCompactionModFile().exists());
+      Assert.assertFalse(seqResources.get(i).getCompactionModFile().getFileLength() > 0);
     }
 
     // all mods file of each source file should exist
@@ -607,7 +607,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     }
 
     // mods file of the target file should not exist
-    Assert.assertFalse(targetResource.anyModFileExists());
+    Assert.assertFalse(targetResource.getTotalModSizeInByte() > 0);
 
     // compaction log file should not exist
     Assert.assertFalse(logFile.exists());
@@ -667,7 +667,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
 
     // all compaction mods file of each source file should not exist
     for (int i = 0; i < seqResources.size(); i++) {
-      Assert.assertFalse(seqResources.get(i).getCompactionModFile().exists());
+      Assert.assertFalse(seqResources.get(i).getCompactionModFile().getFileLength() > 0);
     }
 
     // all mods file of each source file should exist
@@ -746,8 +746,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
 
     // all compaction mods file and old mods file of each source file should not exist
     for (int i = 0; i < seqResources.size(); i++) {
-      Assert.assertFalse(seqResources.get(i).getCompactionModFile().exists());
-      Assert.assertFalse(seqResources.get(i).anyModFileExists());
+      Assert.assertFalse(seqResources.get(i).getCompactionModFile().getFileLength() > 0);
+      Assert.assertFalse(seqResources.get(i).getTotalModSizeInByte() > 0);
     }
 
     // mods file of the target file should exist
@@ -1261,8 +1261,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
       Assert.assertFalse(resource.getTsFile().exists());
       Assert.assertFalse(
           new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
-      Assert.assertFalse(resource.anyModFileExists());
-      Assert.assertFalse(resource.getCompactionModFile().exists());
+      Assert.assertFalse(resource.getTotalModSizeInByte() > 0);
+      Assert.assertFalse(resource.getCompactionModFile().getFileLength() > 0);
     }
     // the target file should be deleted
     Assert.assertFalse(targetResources.get(0).getTsFile().exists());
