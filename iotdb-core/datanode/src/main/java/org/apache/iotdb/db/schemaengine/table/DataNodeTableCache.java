@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
@@ -188,6 +189,17 @@ public class DataNodeTableCache implements ITableCache {
     try {
       databaseTableMap.remove(database);
       preUpdateTableMap.remove(database);
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
+  @TestOnly
+  public void invalidateAll() {
+    readWriteLock.writeLock().lock();
+    try {
+      databaseTableMap.clear();
+      preUpdateTableMap.clear();
     } finally {
       readWriteLock.writeLock().unlock();
     }

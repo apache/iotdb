@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
@@ -94,7 +95,7 @@ public class TableDeviceSchemaCache {
    * {@link IDeviceID}(translated), Map{@literal <}Measurement, Schema{@literal
    * >}/templateInfo{@literal >}
    */
-  private final IDualKeyCache<TableId, IDeviceID, TableDeviceCacheEntry> dualKeyCache;
+  private IDualKeyCache<TableId, IDeviceID, TableDeviceCacheEntry> dualKeyCache;
 
   private final Map<String, String> treeModelDatabasePool = new ConcurrentHashMap<>();
 
@@ -112,6 +113,22 @@ public class TableDeviceSchemaCache {
             .build();
 
     MetricService.getInstance().addMetricSet(new TableDeviceSchemaCacheMetrics(this));
+  }
+
+  @TestOnly
+  public void reinit() {
+    // some tests may want to change config.getDataNodeSchemaCacheEvictionPolicy() or
+    // config.getAllocateMemoryForSchemaCache(). However, if the cache is already initialized,
+    // the change of configs will be for nothing
+    dualKeyCache =
+        new DualKeyCacheBuilder<TableId, IDeviceID, TableDeviceCacheEntry>()
+            .cacheEvictionPolicy(
+                DualKeyCachePolicy.valueOf(config.getDataNodeSchemaCacheEvictionPolicy()))
+            .memoryCapacity(config.getAllocateMemoryForSchemaCache())
+            .firstKeySizeComputer(TableId::estimateSize)
+            .secondKeySizeComputer(deviceID -> (int) deviceID.ramBytesUsed())
+            .valueSizeComputer(TableDeviceCacheEntry::estimateSize)
+            .build();
   }
 
   public static TableDeviceSchemaCache getInstance() {
