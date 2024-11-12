@@ -563,12 +563,15 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
   }
 
-  public PipeMeta getPipeMetaByPipeNameWithFilter(final String pipeName) {
+  public PipeMeta getPipeMetaByPipeNameWithFilterInvalidConsensusGroup(final String pipeName) {
     acquireReadLock();
     try {
       final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMetaByPipeName(pipeName);
       if (pipeMeta == null) {
-        throw new PipeException(String.format(""));
+        throw new PipeException(
+            String.format(
+                "PipeMate of Pipe %s does not exist. Please enter the correct Pipe Name.",
+                pipeName));
       }
       final PipeParameters sourceAttribute = pipeMeta.getStaticMeta().getExtractorParameters();
       if (isCaptureTable(sourceAttribute)) {
@@ -592,7 +595,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
         }
 
         final String dataBasePattern = getDataBasePattern(sourceAttribute);
-        filterDataBase(dataBasePattern, dataBaseToId, finalPipeMeta);
+        filterInvalidConsensusGroup(dataBasePattern, dataBaseToId, finalPipeMeta);
         return finalPipeMeta;
       }
       return pipeMeta;
@@ -1008,7 +1011,9 @@ public class PipeTaskInfo implements SnapshotProcessor {
     return pipeMetaKeeper.exceptionStoppedPipeCount();
   }
 
-  private void filterDataBase(
+  //////////////////////////// Filter Invalid Consensus Group ////////////////////////////
+
+  private void filterInvalidConsensusGroup(
       String dataBasePattern,
       Map<String, List<TConsensusGroupId>> dataBaseToId,
       PipeMeta finalPipeMeta) {

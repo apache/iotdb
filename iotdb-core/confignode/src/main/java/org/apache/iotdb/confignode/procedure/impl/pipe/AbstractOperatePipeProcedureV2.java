@@ -393,7 +393,8 @@ public abstract class AbstractOperatePipeProcedureV2
       pipeMetaBinaryList.add(
           pipeTaskInfo
               .get()
-              .getPipeMetaByPipeNameWithFilter(pipeMeta.getStaticMeta().getPipeName())
+              .getPipeMetaByPipeNameWithFilterInvalidConsensusGroup(
+                  pipeMeta.getStaticMeta().getPipeName())
               .serialize());
     }
 
@@ -491,7 +492,10 @@ public abstract class AbstractOperatePipeProcedureV2
   protected Map<Integer, TPushPipeMetaResp> pushSinglePipeMetaToDataNodes(
       String pipeName, ConfigNodeProcedureEnv env) throws IOException {
     return env.pushSinglePipeMetaToDataNodes(
-        pipeTaskInfo.get().getPipeMetaByPipeNameWithFilter(pipeName).serialize());
+        pipeTaskInfo
+            .get()
+            .getPipeMetaByPipeNameWithFilterInvalidConsensusGroup(pipeName)
+            .serialize());
   }
 
   /**
