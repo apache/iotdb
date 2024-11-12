@@ -316,6 +316,16 @@ public class QueryStatistics {
         alignedTimeSeriesMetadataModificationCount.get(),
         alignedTimeSeriesMetadataModificationTime.get(),
         nonAlignedTimeSeriesMetadataModificationCount.get(),
-        nonAlignedTimeSeriesMetadataModificationTime.get());
+        nonAlignedTimeSeriesMetadataModificationTime.get(),
+        loadBloomFilterFromCacheCount.get(),
+        loadBloomFilterFromDiskCount.get(),
+        loadBloomFilterActualIOSize.get(),
+        loadBloomFilterTime.get(),
+        loadTimeSeriesMetadataFromCacheCount.get(),
+        loadTimeSeriesMetadataFromDiskCount.get(),
+        loadTimeSeriesMetadataActualIOSize.get(),
+        loadChunkFromCacheCount.get(),
+        loadChunkFromDiskCount.get(),
+        loadChunkActualIOSize.get());
   }
 }
