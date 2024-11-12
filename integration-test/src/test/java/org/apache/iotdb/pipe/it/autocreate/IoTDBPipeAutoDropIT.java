@@ -21,8 +21,10 @@ package org.apache.iotdb.pipe.it.autocreate;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema;
@@ -33,9 +35,14 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+
+import static org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework.closeQuietly;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2AutoCreateSchema.class})
@@ -84,11 +91,19 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualAutoIT {
           "count(root.db.d1.s1),",
           Collections.singleton("1,"));
 
-      TestUtils.assertDataEventuallyOnEnv(
-          senderEnv,
-          "show pipes",
-          "ID,CreationTime,State,PipeSource,PipeProcessor,PipeSink,ExceptionMessage,RemainingEventCount,EstimatedRemainingSeconds,",
-          Collections.emptySet());
+      try (final Connection connection = closeQuietly(senderEnv.getConnection());
+          final Statement statement = closeQuietly(connection.createStatement()); ) {
+        ResultSet result = statement.executeQuery("show pipes");
+        int pipeNum = 0;
+        while (result.next()) {
+          if (!result
+              .getString(ColumnHeaderConstant.ID)
+              .contains(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+            pipeNum++;
+          }
+        }
+        Assert.assertEquals(0, pipeNum);
+      }
     }
   }
 
@@ -139,11 +154,19 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualAutoIT {
           "count(root.db.d1.s1),",
           Collections.singleton("3,"));
 
-      TestUtils.assertDataEventuallyOnEnv(
-          senderEnv,
-          "show pipes",
-          "ID,CreationTime,State,PipeSource,PipeProcessor,PipeSink,ExceptionMessage,RemainingEventCount,EstimatedRemainingSeconds,",
-          Collections.emptySet());
+      try (final Connection connection = closeQuietly(senderEnv.getConnection());
+          final Statement statement = closeQuietly(connection.createStatement()); ) {
+        ResultSet result = statement.executeQuery("show pipes");
+        int pipeNum = 0;
+        while (result.next()) {
+          if (!result
+              .getString(ColumnHeaderConstant.ID)
+              .contains(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+            pipeNum++;
+          }
+        }
+        Assert.assertEquals(0, pipeNum);
+      }
     }
   }
 }
