@@ -641,12 +641,16 @@ public class TabletInsertionDataContainer {
         valueColumns[columnIndex] = new boolean[rowSize];
         break;
       case DATE:
-        valueColumns[columnIndex] = new LocalDate[rowSize];
+        final LocalDate[] dates = new LocalDate[rowSize];
+        Arrays.fill(dates, EMPTY_LOCALDATE);
+        valueColumns[columnIndex] = dates;
         break;
       case TEXT:
       case BLOB:
       case STRING:
-        valueColumns[columnIndex] = new Binary[rowSize];
+        final Binary[] columns = new Binary[rowSize];
+        Arrays.fill(columns, Binary.EMPTY_VALUE);
+        valueColumns[columnIndex] = columns;
         break;
       default:
         throw new UnSupportedDataTypeException(
