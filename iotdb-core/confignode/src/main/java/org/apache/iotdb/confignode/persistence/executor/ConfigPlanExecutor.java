@@ -45,6 +45,7 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotL
 import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePluginJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.table.DescTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.table.FetchTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.table.ShowTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
@@ -115,8 +116,10 @@ import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.Dr
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.runtime.TopicHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
-import org.apache.iotdb.confignode.consensus.request.write.table.DropTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
@@ -317,6 +320,8 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.showTables((ShowTablePlan) req);
       case FetchTable:
         return clusterSchemaInfo.fetchTables((FetchTablePlan) req);
+      case DescTable:
+        return clusterSchemaInfo.descTable((DescTablePlan) req);
       case GetTriggerTable:
         return triggerInfo.getTriggerTable((GetTriggerTablePlan) req);
       case GetTriggerLocation:
@@ -516,10 +521,14 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.renameTableColumn((RenameTableColumnPlan) physicalPlan);
       case SetTableProperties:
         return clusterSchemaInfo.setTableProperties((SetTablePropertiesPlan) physicalPlan);
+      case PreDeleteColumn:
+        return clusterSchemaInfo.preDeleteColumn((PreDeleteColumnPlan) physicalPlan);
+      case CommitDeleteColumn:
+        return clusterSchemaInfo.commitDeleteColumn((CommitDeleteColumnPlan) physicalPlan);
       case PreDeleteTable:
         return clusterSchemaInfo.preDeleteTable((PreDeleteTablePlan) physicalPlan);
-      case DropTable:
-        return clusterSchemaInfo.dropTable((DropTablePlan) physicalPlan);
+      case CommitDeleteTable:
+        return clusterSchemaInfo.dropTable((CommitDeleteTablePlan) physicalPlan);
       case CreatePipeV2:
         return pipeInfo.createPipe((CreatePipePlanV2) physicalPlan);
       case SetPipeStatusV2:

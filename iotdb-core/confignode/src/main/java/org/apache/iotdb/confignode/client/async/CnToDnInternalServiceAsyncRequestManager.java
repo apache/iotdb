@@ -61,6 +61,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreatePipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeactivateTemplateReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeleteColumnDataReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataOrDevicesForDropTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
@@ -71,6 +72,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TInvalidateColumnCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateTableCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
@@ -395,6 +397,16 @@ public class CnToDnInternalServiceAsyncRequestManager
         (req, client, handler) ->
             client.deleteDevicesForDropTable(
                 (TDeleteDataOrDevicesForDropTableReq) req, (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.INVALIDATE_COLUMN_CACHE,
+        (req, client, handler) ->
+            client.invalidateColumnCache(
+                (TInvalidateColumnCacheReq) req, (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.DELETE_COLUMN_DATA,
+        (req, client, handler) ->
+            client.deleteColumnData(
+                (TDeleteColumnDataReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.CONSTRUCT_TABLE_DEVICE_BLACK_LIST,
         (req, client, handler) ->

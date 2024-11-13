@@ -35,6 +35,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -164,7 +165,46 @@ public class UpdateDetailContainer implements UpdateContainer {
           }
           return value;
         });
-    return 0;
+    return result.get();
+  }
+
+  @Override
+  public long invalidate(final String tableName, final String attributeName) {
+    final AtomicLong result = new AtomicLong(0);
+    final long keyEntrySize =
+        RamUsageEstimator.sizeOf(attributeName) + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
+    updateMap.compute(
+        tableName,
+        (name, value) -> {
+          if (Objects.isNull(value)) {
+            return null;
+          }
+          for (final Iterator<Map.Entry<List<String>, ConcurrentMap<String, Binary>>> it =
+                  value.entrySet().iterator();
+              it.hasNext(); ) {
+            final Map.Entry<List<String>, ConcurrentMap<String, Binary>> entry = it.next();
+            final Binary attributeValue = entry.getValue().remove(attributeName);
+            if (Objects.nonNull(attributeValue)) {
+              result.addAndGet(keyEntrySize + sizeOf(attributeValue));
+            }
+            if (entry.getValue().isEmpty()) {
+              result.addAndGet(
+                  RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+                      + sizeOfList(entry.getKey())
+                      + MAP_SIZE);
+              it.remove();
+            }
+          }
+          if (value.isEmpty()) {
+            result.addAndGet(
+                RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+                    + RamUsageEstimator.sizeOf(name)
+                    + MAP_SIZE);
+            return null;
+          }
+          return value;
+        });
+    return result.get();
   }
 
   private void serializeWithLimit(

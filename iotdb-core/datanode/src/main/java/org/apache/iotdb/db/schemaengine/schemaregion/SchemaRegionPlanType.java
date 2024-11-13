@@ -60,6 +60,7 @@ public enum SchemaRegionPlanType {
   CONSTRUCT_TABLE_DEVICES_BLACK_LIST((byte) 105),
   ROLLBACK_TABLE_DEVICES_BLACK_LIST((byte) 106),
   DELETE_TABLE_DEVICES_IN_BLACK_LIST((byte) 107),
+  DROP_TABLE_ATTRIBUTE((byte) 108),
 
   // query plan doesn't need any ser/deSer, thus use one type to represent all
   READ_SCHEMA(Byte.MAX_VALUE);

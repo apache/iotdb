@@ -46,6 +46,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DeleteDeviceTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableDetailsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DropDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DropTableTask;
@@ -513,7 +514,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitDescribeTable(DescribeTable node, MPPQueryContext context) {
+  protected IConfigTask visitDescribeTable(
+      final DescribeTable node, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     String database = clientSession.getDatabaseName();
     if (node.getTable().getPrefix().isPresent()) {
@@ -522,7 +524,10 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     if (database == null) {
       throw new SemanticException(DATABASE_NOT_SPECIFIED);
     }
-    return new DescribeTableTask(database, node.getTable().getSuffix());
+    final String tableName = node.getTable().getSuffix();
+    return node.isDetails()
+        ? new DescribeTableDetailsTask(database, tableName)
+        : new DescribeTableTask(database, tableName);
   }
 
   @Override
