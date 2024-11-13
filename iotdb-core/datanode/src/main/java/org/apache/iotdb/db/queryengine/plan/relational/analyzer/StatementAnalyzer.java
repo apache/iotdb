@@ -452,10 +452,11 @@ public class StatementAnalyzer {
     protected Scope visitDeleteDevice(final DeleteDevice node, final Optional<Scope> context) {
       // Actually write, but will return the result
       queryContext.setQueryType(QueryType.READ);
-      analyzeTraverseDevice(node, context, node.getWhere().isPresent());
+      node.parseTable(sessionContext);
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
       node.parseModEntries(table);
+      analyzeTraverseDevice(node, context, node.getWhere().isPresent());
       node.parseRawExpression(
           null,
           table,

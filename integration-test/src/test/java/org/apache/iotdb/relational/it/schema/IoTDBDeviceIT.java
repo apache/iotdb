@@ -232,7 +232,7 @@ public class IoTDBDeviceIT {
 
       // Test delete devices
       statement.execute(
-          "delete devices from table0 where substring(region_id, 1, 1) in ('1', '3') and 1 + 1 = 2");
+          "delete devices from table0 where region_id = '1' and plant_id = '5' and 1 + 1 = 2");
       TestUtils.assertResultSetSize(statement.executeQuery("show devices from table0"), 1);
 
       // Test successfully invalidate cache

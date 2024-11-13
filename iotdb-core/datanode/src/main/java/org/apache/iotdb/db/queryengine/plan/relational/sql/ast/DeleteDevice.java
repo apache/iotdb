@@ -77,7 +77,7 @@ public class DeleteDevice extends AbstractTraverseDevice {
 
   public void serializeModEntries(final DataOutputStream stream) throws IOException {
     if (Objects.nonNull(modEntries)) {
-      ReadWriteForEncodingUtils.writeVarInt(modEntries.size(), stream);
+      ReadWriteIOUtils.write(modEntries.size(), stream);
       for (TableDeletionEntry modEntry : modEntries) {
         modEntry.serialize(stream);
       }

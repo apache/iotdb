@@ -3604,7 +3604,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       final ByteArrayOutputStream modStream = new ByteArrayOutputStream();
       try (final DataOutputStream outputStream = new DataOutputStream(modStream)) {
-        deleteDevice.serializeFilterInfo(outputStream, sessionInfo);
+        deleteDevice.serializeModEntries(outputStream);
       } catch (final IOException ignored) {
         // ByteArrayOutputStream won't throw IOException
       }
