@@ -28,7 +28,6 @@ import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2TableModel;
-import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -77,8 +76,6 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment();
   }
-
-
 
   @Test
   public void testHistoryStartTimeAndEndTimeWorkingWithOrWithoutPattern() throws Exception {
@@ -168,5 +165,4 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
       TableModelUtils.assertData("test", "test2", 2, 4, receiverEnv);
     }
   }
-
 }
