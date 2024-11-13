@@ -231,8 +231,7 @@ public class IoTDBDeviceIT {
           statement.executeQuery("show devices from table0 offset 1 limit 1"), 1);
 
       // Test delete devices
-      statement.execute(
-          "delete devices from table0 where region_id = '1' and plant_id = '5' and 1 + 1 = 2");
+      statement.execute("delete devices from table0 where region_id = '1' and plant_id = '5'");
       TestUtils.assertResultSetSize(statement.executeQuery("show devices from table0"), 1);
 
       // Test successfully invalidate cache
