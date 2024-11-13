@@ -119,7 +119,11 @@ public class ChunkCache {
             FileReaderManager.getInstance().get(chunkCacheKey.getFilePath(), true);
         Chunk chunk = reader.readMemChunk(chunkCacheKey.offsetOfChunkHeader);
         return new Chunk(
-            chunk.getHeader(), chunk.getData().duplicate(), timeRangeList, chunkStatistic);
+            chunk.getHeader(),
+            chunk.getData().duplicate(),
+            timeRangeList,
+            chunkStatistic,
+            chunk.getEncryptParam());
       }
 
       Chunk chunk = lruCache.get(chunkCacheKey);
@@ -129,7 +133,11 @@ public class ChunkCache {
       }
 
       return new Chunk(
-          chunk.getHeader(), chunk.getData().duplicate(), timeRangeList, chunkStatistic);
+          chunk.getHeader(),
+          chunk.getData().duplicate(),
+          timeRangeList,
+          chunkStatistic,
+          chunk.getEncryptParam());
     } finally {
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
           READ_CHUNK_ALL, System.nanoTime() - startTime);

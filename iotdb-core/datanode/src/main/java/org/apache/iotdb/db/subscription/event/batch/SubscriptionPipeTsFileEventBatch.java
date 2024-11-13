@@ -68,8 +68,12 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
   /////////////////////////////// utility ///////////////////////////////
 
   @Override
-  protected void onTabletInsertionEvent(final TabletInsertionEvent event) throws Exception {
-    batch.onEvent(event); // no exceptions will be thrown
+  protected void onTabletInsertionEvent(final TabletInsertionEvent event) {
+    try {
+      batch.onEvent(event);
+    } catch (final Exception ignored) {
+      // no exceptions will be thrown
+    }
     ((EnrichedEvent) event)
         .decreaseReferenceCount(
             SubscriptionPipeTsFileEventBatch.class.getName(),

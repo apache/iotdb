@@ -31,7 +31,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 public final class SubscriptionExecutorServiceManager {
@@ -285,10 +284,12 @@ public final class SubscriptionExecutorServiceManager {
       if (!isShutdown()) {
         synchronized (this) {
           if (!isShutdown()) {
-            return Math.max(
-                ((ThreadPoolExecutor) this.executor).getPoolSize()
-                    - ((ThreadPoolExecutor) this.executor).getActiveCount(),
-                0);
+            // TODO: temporarily disable multiple poll
+            return 0;
+            // return Math.max(
+            //    ((ThreadPoolExecutor) this.executor).getCorePoolSize()
+            //        - ((ThreadPoolExecutor) this.executor).getActiveCount(),
+            //    0);
           }
         }
       }
