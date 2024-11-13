@@ -58,7 +58,7 @@ public class IoTDBMultiDBRegionGroupLeaderDistributionIT {
   private static final int TEST_DATA_NODE_NUM = 3;
   private static final int TEST_REPLICATION_FACTOR = 2;
   private static final String TEST_DATA_REGION_CONSENSUS_PROTOCOL_CLASS =
-      ConsensusFactory.IOT_CONSENSUS_V2;
+      ConsensusFactory.IOT_CONSENSUS;
 
   private static final String DATABASE = "root.db";
   private static final int TEST_DATABASE_NUM = 2;

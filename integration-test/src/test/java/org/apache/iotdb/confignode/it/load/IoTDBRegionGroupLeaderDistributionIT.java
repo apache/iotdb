@@ -60,7 +60,7 @@ public class IoTDBRegionGroupLeaderDistributionIT {
   private static final String TEST_SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS =
       ConsensusFactory.RATIS_CONSENSUS;
   private static final String TEST_DATA_REGION_CONSENSUS_PROTOCOL_CLASS =
-      ConsensusFactory.IOT_CONSENSUS_V2;
+      ConsensusFactory.IOT_CONSENSUS;
   private static final int TEST_REPLICATION_FACTOR = 3;
 
   private static final String DATABASE = "root.db";

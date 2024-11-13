@@ -62,7 +62,7 @@ public class IoTDBAutoRegionGroupExtensionIT2 {
       LoggerFactory.getLogger(IoTDBAutoRegionGroupExtensionIT2.class);
 
   private static final String testDataRegionGroupExtensionPolicy = "AUTO";
-  private static final String testConsensusProtocolClass = ConsensusFactory.IOT_CONSENSUS_V2;
+  private static final String testConsensusProtocolClass = ConsensusFactory.IOT_CONSENSUS;
   private static final int testReplicationFactor = 3;
 
   private static final String database = "root.db";
