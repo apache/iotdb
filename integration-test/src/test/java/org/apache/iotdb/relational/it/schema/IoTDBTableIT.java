@@ -432,7 +432,10 @@ public class IoTDBTableIT {
 
       // test data deletion by drop column
       statement.execute("alter table table2 add column speed double");
-      TestUtils.assertResultSetSize(statement.executeQuery("select speed from table2"), 0);
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("select speed from table2"),
+          "speed,",
+          Collections.singleton("null,"));
 
       statement.execute("drop table table2");
       try {
