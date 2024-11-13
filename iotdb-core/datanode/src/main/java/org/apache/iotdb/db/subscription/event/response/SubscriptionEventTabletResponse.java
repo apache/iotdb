@@ -78,6 +78,16 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
   }
 
   @Override
+  public void fetchNextResponse(final long offset /* unused */) {
+    prefetchRemainingResponses();
+    if (Objects.isNull(poll())) {
+      LOGGER.warn(
+          "SubscriptionEventTabletResponse {} is empty when fetching next response (broken invariant)",
+          this);
+    }
+  }
+
+  @Override
   public synchronized void nack() {
     if (nextOffset.get() == 1) {
       // do nothing if with complete tablets

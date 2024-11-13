@@ -20,13 +20,18 @@
 package org.apache.iotdb.db.subscription.task.subtask;
 
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.agent.task.subtask.connector.PipeConnectorSubtask;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
 
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.time.Duration;
 
 public class SubscriptionConnectorSubtask extends PipeConnectorSubtask {
 
@@ -55,15 +60,6 @@ public class SubscriptionConnectorSubtask extends PipeConnectorSubtask {
     this.consumerGroupId = consumerGroupId;
   }
 
-  @Override
-  protected boolean executeOnce() {
-    if (isClosed.get()) {
-      return false;
-    }
-
-    return SubscriptionAgent.broker().executePrefetch(consumerGroupId, topicName);
-  }
-
   public String getTopicName() {
     return topicName;
   }
@@ -74,6 +70,36 @@ public class SubscriptionConnectorSubtask extends PipeConnectorSubtask {
 
   public UnboundedBlockingPendingQueue<Event> getInputPendingQueue() {
     return inputPendingQueue;
+  }
+
+  //////////////////////////// execution & callback ////////////////////////////
+
+  @Override
+  protected void registerCallbackHookAfterSubmit(final ListenableFuture<Boolean> future) {
+    final ListenableFuture<Boolean> nextFuture =
+        Futures.withTimeout(
+            future,
+            Duration.ofSeconds(
+                SubscriptionConfig.getInstance().getSubscriptionDefaultTimeoutInMs()),
+            subtaskCallbackListeningExecutor);
+    Futures.addCallback(nextFuture, this, subtaskCallbackListeningExecutor);
+  }
+
+  @Override
+  public synchronized void onFailure(final Throwable throwable) {
+    isSubmitted = false;
+
+    // just resubmit
+    submitSelf();
+  }
+
+  @Override
+  protected boolean executeOnce() {
+    if (isClosed.get()) {
+      return false;
+    }
+
+    return SubscriptionAgent.broker().executePrefetch(consumerGroupId, topicName);
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////

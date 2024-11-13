@@ -299,34 +299,35 @@ final class SubscriptionProvider extends SubscriptionSession {
     return unsubscribeResp.getTopics();
   }
 
-  List<SubscriptionPollResponse> poll(final Set<String> topicNames) throws SubscriptionException {
+  List<SubscriptionPollResponse> poll(final Set<String> topicNames, final long timeoutMs)
+      throws SubscriptionException {
     return poll(
         new SubscriptionPollRequest(
             SubscriptionPollRequestType.POLL.getType(),
             new PollPayload(topicNames),
-            0L,
+            timeoutMs,
             thriftMaxFrameSize));
   }
 
   List<SubscriptionPollResponse> pollFile(
-      final SubscriptionCommitContext commitContext, final long writingOffset)
+      final SubscriptionCommitContext commitContext, final long writingOffset, final long timeoutMs)
       throws SubscriptionException {
     return poll(
         new SubscriptionPollRequest(
             SubscriptionPollRequestType.POLL_FILE.getType(),
             new PollFilePayload(commitContext, writingOffset),
-            0L,
+            timeoutMs,
             thriftMaxFrameSize));
   }
 
   List<SubscriptionPollResponse> pollTablets(
-      final SubscriptionCommitContext commitContext, final int offset)
+      final SubscriptionCommitContext commitContext, final int offset, final long timeoutMs)
       throws SubscriptionException {
     return poll(
         new SubscriptionPollRequest(
             SubscriptionPollRequestType.POLL_TABLETS.getType(),
             new PollTabletsPayload(commitContext, offset),
-            0L,
+            timeoutMs,
             thriftMaxFrameSize));
   }
 
