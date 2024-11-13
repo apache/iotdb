@@ -472,7 +472,6 @@ public class AnalyzeUtils {
       TsTable table) {
     Expression left = comparisonExpression.getLeft();
     Expression right = comparisonExpression.getRight();
-    System.out.println(left.getClass());
     if (!(left instanceof Identifier)) {
       throw new SemanticException("The left hand value must be an identifier: " + left);
     }
