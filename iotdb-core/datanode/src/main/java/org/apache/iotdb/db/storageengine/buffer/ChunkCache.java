@@ -172,7 +172,12 @@ public class ChunkCache {
 
   private Chunk constructChunk(
       Chunk chunk, List<TimeRange> timeRangeList, Statistics chunkStatistic) {
-    return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), timeRangeList, chunkStatistic);
+    return new Chunk(
+        chunk.getHeader(),
+        chunk.getData().duplicate(),
+        timeRangeList,
+        chunkStatistic,
+        chunk.getEncryptParam());
   }
 
   public double calculateChunkHitRatio() {

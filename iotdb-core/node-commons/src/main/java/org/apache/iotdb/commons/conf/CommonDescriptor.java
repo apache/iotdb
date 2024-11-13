@@ -673,11 +673,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_poll_max_blocking_time_ms",
                 String.valueOf(config.getSubscriptionPollMaxBlockingTimeMs()))));
-    config.setSubscriptionSerializeMaxBlockingTimeMs(
+    config.setSubscriptionDefaultTimeoutInMs(
         Integer.parseInt(
             properties.getProperty(
-                "subscription_serialize_max_blocking_time_ms",
-                String.valueOf(config.getSubscriptionSerializeMaxBlockingTimeMs()))));
+                "subscription_default_timeout_in_ms",
+                String.valueOf(config.getSubscriptionDefaultTimeoutInMs()))));
     config.setSubscriptionLaunchRetryIntervalMs(
         Long.parseLong(
             properties.getProperty(
@@ -703,6 +703,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_ts_file_deduplication_window_seconds",
                 String.valueOf(config.getSubscriptionTsFileDeduplicationWindowSeconds()))));
+    config.setSubscriptionTsFileSlicerCheckMemoryEnoughIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_ts_file_slicer_check_memory_enough_interval_ms",
+                String.valueOf(config.getSubscriptionTsFileSlicerCheckMemoryEnoughIntervalMs()))));
 
     config.setSubscriptionMetaSyncerInitialSyncDelayMinutes(
         Long.parseLong(

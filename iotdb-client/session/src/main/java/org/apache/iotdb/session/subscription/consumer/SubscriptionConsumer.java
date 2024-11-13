@@ -26,8 +26,10 @@ import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionPipeTimeoutException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionPollTimeoutException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeNonCriticalException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionTimeoutException;
 import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FilePiecePayload;
@@ -111,9 +113,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   private final String fileSaveDir;
   private final boolean fileSaveFsync;
+  private final Set<SubscriptionCommitContext> inFlightFilesCommitContextSet = new HashSet<>();
 
   private final int thriftMaxFrameSize;
-
   private final int maxPollParallelism;
 
   @SuppressWarnings("java:S3077")
@@ -171,7 +173,6 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     this.fileSaveFsync = builder.fileSaveFsync;
 
     this.thriftMaxFrameSize = builder.thriftMaxFrameSize;
-
     this.maxPollParallelism = builder.maxPollParallelism;
   }
 
@@ -399,33 +400,47 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   private Path getFilePath(
+      final SubscriptionCommitContext commitContext,
       final String topicName,
       final String fileName,
       final boolean allowFileAlreadyExistsException,
       final boolean allowInvalidPathException)
       throws SubscriptionException {
     try {
-      final Path filePath = getFileDir(topicName).resolve(fileName);
-      Files.createFile(filePath);
-      return filePath;
-    } catch (final FileAlreadyExistsException fileAlreadyExistsException) {
-      if (allowFileAlreadyExistsException) {
-        final String suffix = RandomStringGenerator.generate(16);
-        LOGGER.warn(
-            "Detect already existed file {} when polling topic {}, add random suffix {} to filename",
-            fileName,
-            topicName,
-            suffix);
-        return getFilePath(topicName, fileName + "." + suffix, false, true);
+      final Path filePath;
+      try {
+        filePath = getFileDir(topicName).resolve(fileName);
+      } catch (final InvalidPathException invalidPathException) {
+        if (allowInvalidPathException) {
+          return getFilePath(commitContext, URLEncoder.encode(topicName), fileName, true, false);
+        }
+        throw new SubscriptionRuntimeNonCriticalException(
+            invalidPathException.getMessage(), invalidPathException);
       }
-      throw new SubscriptionRuntimeNonCriticalException(
-          fileAlreadyExistsException.getMessage(), fileAlreadyExistsException);
-    } catch (final InvalidPathException invalidPathException) {
-      if (allowInvalidPathException) {
-        return getFilePath(URLEncoder.encode(topicName), fileName, true, false);
+
+      try {
+        Files.createFile(filePath);
+        return filePath;
+      } catch (final FileAlreadyExistsException fileAlreadyExistsException) {
+        if (allowFileAlreadyExistsException) {
+          if (inFlightFilesCommitContextSet.contains(commitContext)) {
+            LOGGER.info(
+                "Detect already existed file {} when polling topic {}, resume consumption",
+                fileName,
+                topicName);
+            return filePath;
+          }
+          final String suffix = RandomStringGenerator.generate(16);
+          LOGGER.warn(
+              "Detect already existed file {} when polling topic {}, add random suffix {} to filename",
+              fileName,
+              topicName,
+              suffix);
+          return getFilePath(commitContext, topicName, fileName + "." + suffix, false, true);
+        }
+        throw new SubscriptionRuntimeNonCriticalException(
+            fileAlreadyExistsException.getMessage(), fileAlreadyExistsException);
       }
-      throw new SubscriptionRuntimeNonCriticalException(
-          invalidPathException.getMessage(), invalidPathException);
     } catch (final IOException e) {
       throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
@@ -579,7 +594,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
         final List<SubscriptionMessage> currentMessages = new ArrayList<>();
         try {
           currentResponses.clear();
-          currentResponses = pollInternal(topicNames);
+          currentResponses = pollInternal(topicNames, timer.remainingMs());
           for (final SubscriptionPollResponse response : currentResponses) {
             final short responseType = response.getResponseType();
             if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
@@ -676,11 +691,14 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     final SubscriptionCommitContext commitContext = response.getCommitContext();
     final String fileName = ((FileInitPayload) response.getPayload()).getFileName();
     final String topicName = commitContext.getTopicName();
-    final Path filePath = getFilePath(topicName, fileName, true, true);
+    final Path filePath = getFilePath(commitContext, topicName, fileName, true, true);
     final File file = filePath.toFile();
     try (final RandomAccessFile fileWriter = new RandomAccessFile(file, "rw")) {
       return Optional.of(pollFileInternal(commitContext, fileName, file, fileWriter, timer));
     } catch (final Exception e) {
+      if (!(e instanceof SubscriptionPollTimeoutException)) {
+        inFlightFilesCommitContextSet.remove(commitContext);
+      }
       // construct temporary message to nack
       nack(
           Collections.singletonList(
@@ -696,26 +714,31 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       final RandomAccessFile fileWriter,
       final PollTimer timer)
       throws IOException, SubscriptionException {
+    long writingOffset = fileWriter.length();
+
     LOGGER.info(
-        "{} start to poll file {} with commit context {}",
+        "{} start to poll file {} with commit context {} at offset {}",
         this,
         file.getAbsolutePath(),
-        commitContext);
+        commitContext,
+        writingOffset);
 
-    long writingOffset = fileWriter.length();
+    fileWriter.seek(writingOffset);
     while (true) {
       timer.update();
-      if (timer.isExpired()) {
-        final String errorMessage =
+      if (timer.isExpired(TIMER_DELTA_MS)) {
+        // resume from breakpoint if timeout happened when polling files
+        inFlightFilesCommitContextSet.add(commitContext);
+        final String message =
             String.format(
-                "timeout while poll file %s with commit context: %s, consumer: %s",
-                file.getAbsolutePath(), commitContext, this);
-        LOGGER.warn(errorMessage);
-        throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+                "Timeout occurred when SubscriptionConsumer %s polling file %s with commit context %s, record writing offset %s for subsequent poll",
+                this, file.getAbsolutePath(), commitContext, writingOffset);
+        LOGGER.info(message);
+        throw new SubscriptionRuntimeNonCriticalException(message);
       }
 
       final List<SubscriptionPollResponse> responses =
-          pollFileInternal(commitContext, writingOffset);
+          pollFileInternal(commitContext, writingOffset, timer.remainingMs());
 
       // It's agreed that the server will always return at least one response, even in case of
       // failure.
@@ -831,6 +854,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
                 commitContext);
 
             // generate subscription message
+            inFlightFilesCommitContextSet.remove(commitContext);
             return new SubscriptionMessage(commitContext, file.getAbsolutePath());
           }
         case ERROR:
@@ -839,17 +863,30 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
             final String errorMessage = ((ErrorPayload) payload).getErrorMessage();
             final boolean critical = ((ErrorPayload) payload).isCritical();
-            LOGGER.warn(
-                "Error occurred when SubscriptionConsumer {} polling file {} with commit context {}: {}, critical: {}",
-                this,
-                file.getAbsolutePath(),
-                commitContext,
-                errorMessage,
-                critical);
-            if (critical) {
-              throw new SubscriptionRuntimeCriticalException(errorMessage);
+            if (!critical
+                && Objects.nonNull(errorMessage)
+                && errorMessage.contains(SubscriptionTimeoutException.KEYWORD)) {
+              // resume from breakpoint if timeout happened when polling files
+              inFlightFilesCommitContextSet.add(commitContext);
+              final String message =
+                  String.format(
+                      "Timeout occurred when SubscriptionConsumer %s polling file %s with commit context %s, record writing offset %s for subsequent poll",
+                      this, file.getAbsolutePath(), commitContext, writingOffset);
+              LOGGER.info(message);
+              throw new SubscriptionPollTimeoutException(message);
             } else {
-              throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+              LOGGER.warn(
+                  "Error occurred when SubscriptionConsumer {} polling file {} with commit context {}: {}, critical: {}",
+                  this,
+                  file.getAbsolutePath(),
+                  commitContext,
+                  errorMessage,
+                  critical);
+              if (critical) {
+                throw new SubscriptionRuntimeCriticalException(errorMessage);
+              } else {
+                throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+              }
             }
           }
         default:
@@ -880,16 +917,6 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
     int nextOffset = ((TabletsPayload) initialResponse.getPayload()).getNextOffset();
     while (true) {
-      timer.update();
-      if (timer.isExpired()) {
-        final String errorMessage =
-            String.format(
-                "timeout while poll tablets with commit context: %s, consumer: %s",
-                commitContext, this);
-        LOGGER.warn(errorMessage);
-        throw new SubscriptionRuntimeNonCriticalException(errorMessage);
-      }
-
       if (nextOffset < 0) {
         if (!Objects.equals(tablets.size(), -nextOffset)) {
           final String errorMessage =
@@ -902,8 +929,18 @@ abstract class SubscriptionConsumer implements AutoCloseable {
         return Optional.of(new SubscriptionMessage(commitContext, tablets));
       }
 
+      timer.update();
+      if (timer.isExpired(TIMER_DELTA_MS)) {
+        final String errorMessage =
+            String.format(
+                "timeout while poll tablets with commit context: %s, consumer: %s",
+                commitContext, this);
+        LOGGER.warn(errorMessage);
+        throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+      }
+
       final List<SubscriptionPollResponse> responses =
-          pollTabletsInternal(commitContext, nextOffset);
+          pollTabletsInternal(commitContext, nextOffset, timer.remainingMs());
 
       // It's agreed that the server will always return at least one response, even in case of
       // failure.
@@ -972,8 +1009,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     }
   }
 
-  private List<SubscriptionPollResponse> pollInternal(final Set<String> topicNames)
-      throws SubscriptionException {
+  private List<SubscriptionPollResponse> pollInternal(
+      final Set<String> topicNames, final long timeoutMs) throws SubscriptionException {
     providers.acquireReadLock();
     try {
       final SubscriptionProvider provider = providers.getNextAvailableProvider();
@@ -988,7 +1025,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       }
       // ignore SubscriptionConnectionException to improve poll auto retry
       try {
-        return provider.poll(topicNames);
+        return provider.poll(topicNames, timeoutMs);
       } catch (final SubscriptionConnectionException ignored) {
         return Collections.emptyList();
       }
@@ -998,7 +1035,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   private List<SubscriptionPollResponse> pollFileInternal(
-      final SubscriptionCommitContext commitContext, final long writingOffset)
+      final SubscriptionCommitContext commitContext, final long writingOffset, final long timeoutMs)
       throws SubscriptionException {
     final int dataNodeId = commitContext.getDataNodeId();
     providers.acquireReadLock();
@@ -1015,7 +1052,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       }
       // ignore SubscriptionConnectionException to improve poll auto retry
       try {
-        return provider.pollFile(commitContext, writingOffset);
+        return provider.pollFile(commitContext, writingOffset, timeoutMs);
       } catch (final SubscriptionConnectionException ignored) {
         return Collections.emptyList();
       }
@@ -1025,7 +1062,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   private List<SubscriptionPollResponse> pollTabletsInternal(
-      final SubscriptionCommitContext commitContext, final int offset)
+      final SubscriptionCommitContext commitContext, final int offset, final long timeoutMs)
       throws SubscriptionException {
     final int dataNodeId = commitContext.getDataNodeId();
     providers.acquireReadLock();
@@ -1042,7 +1079,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       }
       // ignore SubscriptionConnectionException to improve poll auto retry
       try {
-        return provider.pollTablets(commitContext, offset);
+        return provider.pollTablets(commitContext, offset, timeoutMs);
       } catch (final SubscriptionConnectionException ignored) {
         return Collections.emptyList();
       }
@@ -1061,7 +1098,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
           .computeIfAbsent(message.getCommitContext().getDataNodeId(), (id) -> new ArrayList<>())
           .add(message.getCommitContext());
     }
-    for (final Map.Entry<Integer, List<SubscriptionCommitContext>> entry :
+    for (final Entry<Integer, List<SubscriptionCommitContext>> entry :
         dataNodeIdToSubscriptionCommitContexts.entrySet()) {
       commitInternal(entry.getKey(), entry.getValue(), false);
     }
@@ -1073,7 +1110,10 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     for (final SubscriptionMessage message : messages) {
       // make every effort to delete stale intermediate file
       if (Objects.equals(
-          SubscriptionMessageType.TS_FILE_HANDLER.getType(), message.getMessageType())) {
+              SubscriptionMessageType.TS_FILE_HANDLER.getType(), message.getMessageType())
+          &&
+          // do not delete file that can resume from breakpoint
+          !inFlightFilesCommitContextSet.contains(message.getCommitContext())) {
         try {
           message.getTsFileHandler().deleteFile();
         } catch (final Exception ignored) {
@@ -1083,7 +1123,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
           .computeIfAbsent(message.getCommitContext().getDataNodeId(), (id) -> new ArrayList<>())
           .add(message.getCommitContext());
     }
-    for (final Map.Entry<Integer, List<SubscriptionCommitContext>> entry :
+    for (final Entry<Integer, List<SubscriptionCommitContext>> entry :
         dataNodeIdToSubscriptionCommitContexts.entrySet()) {
       commitInternal(entry.getKey(), entry.getValue(), true);
     }
@@ -1093,7 +1133,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     final Map<Integer, List<SubscriptionCommitContext>> dataNodeIdToSubscriptionCommitContexts =
         new HashMap<>();
     for (final SubscriptionPollResponse response : responses) {
-      // the actual file name cannot be obtained here through the response...
+      // there is no stale intermediate file here
       dataNodeIdToSubscriptionCommitContexts
           .computeIfAbsent(response.getCommitContext().getDataNodeId(), (id) -> new ArrayList<>())
           .add(response.getCommitContext());
@@ -1338,7 +1378,6 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     protected boolean fileSaveFsync = ConsumerConstant.FILE_SAVE_FSYNC_DEFAULT_VALUE;
 
     protected int thriftMaxFrameSize = SessionConfig.DEFAULT_MAX_FRAME_SIZE;
-
     protected int maxPollParallelism = ConsumerConstant.MAX_POLL_PARALLELISM_DEFAULT_VALUE;
 
     public Builder host(final String host) {
@@ -1424,6 +1463,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     result.put("consumerGroupId", consumerGroupId);
     result.put("isClosed", isClosed.toString());
     result.put("fileSaveDir", fileSaveDir);
+    result.put("inFlightFilesCommitContextSet", inFlightFilesCommitContextSet.toString());
     result.put("subscribedTopicNames", subscribedTopics.keySet().toString());
     return result;
   }
@@ -1439,6 +1479,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     result.put("isReleased", isReleased.toString());
     result.put("fileSaveDir", fileSaveDir);
     result.put("fileSaveFsync", String.valueOf(fileSaveFsync));
+    result.put("inFlightFilesCommitContextSet", inFlightFilesCommitContextSet.toString());
     result.put("thriftMaxFrameSize", String.valueOf(thriftMaxFrameSize));
     result.put("maxPollParallelism", String.valueOf(maxPollParallelism));
     result.put("subscribedTopics", subscribedTopics.toString());

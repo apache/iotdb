@@ -1109,7 +1109,13 @@ public class SessionConnection {
         try {
           TimeUnit.MILLISECONDS.sleep(retryIntervalInMs);
         } catch (InterruptedException e) {
-          // just ignore
+          Thread.currentThread().interrupt();
+          logger.warn(
+              "Thread {} was interrupted during retry {} with wait time {} ms. Exiting retry loop.",
+              Thread.currentThread().getName(),
+              i,
+              retryIntervalInMs);
+          break;
         }
         if (!reconnect()) {
           // reconnect failed, just continue to make another retry.
