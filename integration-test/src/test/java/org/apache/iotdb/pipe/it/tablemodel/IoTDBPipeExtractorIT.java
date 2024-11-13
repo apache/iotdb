@@ -351,6 +351,10 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
       if (!insertResult) {
         return;
       }
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, Collections.singletonList("flush"))) {
+        return;
+      }
+      Thread.sleep(10000);
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
