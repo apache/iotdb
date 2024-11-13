@@ -33,16 +33,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.Future;
 
 @SuppressWarnings("squid:S6548")
 public class FlushManager implements FlushManagerMBean, IService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FlushManager.class);
-
-  private ConcurrentLinkedDeque<TsFileProcessor> tsFileProcessorQueue =
-      new ConcurrentLinkedDeque<>();
 
   private FlushTaskPoolManager flushPool = FlushTaskPoolManager.getInstance();
 
@@ -98,9 +94,14 @@ public class FlushManager implements FlushManagerMBean, IService {
   /** a flush thread handles flush task */
   class FlushThread extends WrappedRunnable {
 
+    TsFileProcessor tsFileProcessor;
+
+    FlushThread(TsFileProcessor tsFileProcessor) {
+      this.tsFileProcessor = tsFileProcessor;
+    }
+
     @Override
     public void runMayThrow() {
-      TsFileProcessor tsFileProcessor = tsFileProcessorQueue.poll();
       if (null == tsFileProcessor) {
         return;
       }
@@ -123,9 +124,8 @@ public class FlushManager implements FlushManagerMBean, IService {
         return CompletableFuture.completedFuture(null);
       } else {
         if (tsFileProcessor.getFlushingMemTableSize() > 0) {
-          tsFileProcessorQueue.add(tsFileProcessor);
           tsFileProcessor.setManagedByFlushManager(true);
-          return flushPool.submit(new FlushThread());
+          return flushPool.submit(new FlushThread(tsFileProcessor));
         } else {
           return CompletableFuture.completedFuture(null);
         }
@@ -149,9 +149,7 @@ public class FlushManager implements FlushManagerMBean, IService {
   @Override
   public String toString() {
     return String.format(
-        "TSProcessors in the queue: %d, TaskPool size %d + %d,",
-        tsFileProcessorQueue.size(),
-        flushPool.getWorkingTasksNumber(),
-        flushPool.getWaitingTasksNumber());
+        "FlushTaskPool size %d + %d,",
+        flushPool.getWorkingTasksNumber(), flushPool.getWaitingTasksNumber());
   }
 }

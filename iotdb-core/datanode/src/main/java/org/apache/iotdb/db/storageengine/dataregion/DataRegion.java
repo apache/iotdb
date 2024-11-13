@@ -1883,12 +1883,6 @@ public class DataRegion implements IDataRegionForQuery {
         futures.add(asyncCloseOneTsFileProcessor(false, tsFileProcessor));
         count++;
       }
-      waitClosingTsFileProcessorFinished();
-    } catch (InterruptedException e) {
-      logger.error(
-          "CloseFileNodeCondition error occurs while waiting for closing tsfile processors of {}",
-          databaseName + "-" + dataRegionId,
-          e);
     } finally {
       writeUnlock();
     }
