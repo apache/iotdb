@@ -64,7 +64,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: cluster-log-auto-create-schema-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster1 }}-${{ matrix.cluster2 }}
+          name: cluster-log-auto-create-schema-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster }}-${{ matrix.cluster }}
           path: integration-test/target/cluster-logs
           retention-days: 30
   manual-create-schema:
