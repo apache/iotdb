@@ -399,7 +399,6 @@ public class PipeConsensusServerImpl {
   public void notifyPeersToCreateConsensusPipes(Peer targetPeer, Peer coordinatorPeer)
       throws ConsensusGroupModifyPeerException {
     final List<Peer> otherPeers = peerManager.getOtherPeers(thisNode);
-    Exception exception = null;
     for (Peer peer : otherPeers) {
       try (SyncPipeConsensusServiceClient client =
           syncClientManager.borrowClient(peer.getEndpoint())) {
@@ -416,15 +415,25 @@ public class PipeConsensusServerImpl {
               String.format("error when notify peer %s to create consensus pipe", peer));
         }
       } catch (Exception e) {
-        exception = e;
-        LOGGER.warn("{} cannot notify peer {} to create consensus pipe", thisNode, peer, e);
+        LOGGER.warn(
+            "{} cannot notify peer {} to create consensus pipe, may because that peer is unknown currently, please manually check!",
+            thisNode,
+            peer,
+            e);
       }
     }
 
-    // This node which acts as coordinator will transfer complete historical snapshot to new target.
-    createConsensusPipeToTargetPeer(targetPeer, thisNode);
-    if (exception != null) {
-      throw new ConsensusGroupModifyPeerException(exception);
+    try {
+      // This node which acts as coordinator will transfer complete historical snapshot to new
+      // target.
+      createConsensusPipeToTargetPeer(targetPeer, thisNode);
+    } catch (Exception e) {
+      LOGGER.warn(
+          "{} cannot create consensus pipe to {}, may because target peer is unknown currently, please manually check!",
+          thisNode,
+          targetPeer,
+          e);
+      throw new ConsensusGroupModifyPeerException(e);
     }
   }
 
@@ -449,7 +458,6 @@ public class PipeConsensusServerImpl {
   public void notifyPeersToDropConsensusPipe(Peer targetPeer)
       throws ConsensusGroupModifyPeerException {
     final List<Peer> otherPeers = peerManager.getOtherPeers(thisNode);
-    Exception exception = null;
     for (Peer peer : otherPeers) {
       if (peer.equals(targetPeer)) {
         continue;
@@ -467,14 +475,23 @@ public class PipeConsensusServerImpl {
               String.format("error when notify peer %s to drop consensus pipe", peer));
         }
       } catch (Exception e) {
-        exception = e;
-        LOGGER.warn("{} cannot notify peer {} to drop consensus pipe", thisNode, peer, e);
+        LOGGER.warn(
+            "{} cannot notify peer {} to drop consensus pipe, may because that peer is unknown currently, please manually check!",
+            thisNode,
+            peer,
+            e);
       }
     }
 
-    dropConsensusPipeToTargetPeer(targetPeer);
-    if (exception != null) {
-      throw new ConsensusGroupModifyPeerException(exception);
+    try {
+      dropConsensusPipeToTargetPeer(targetPeer);
+    } catch (Exception e) {
+      LOGGER.warn(
+          "{} cannot drop consensus pipe to {}, may because target peer is unknown currently, please manually check!",
+          thisNode,
+          targetPeer,
+          e);
+      throw new ConsensusGroupModifyPeerException(e);
     }
   }
 
