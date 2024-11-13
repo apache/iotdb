@@ -844,7 +844,7 @@ public class IoTConsensusServerImpl {
   }
 
   public long getSyncLag() {
-    // make sure the getMinFlushedSyncIndex() be executed first
+    // To avoid a negative result, make sure getMinFlushedSyncIndex() be executed first
     return -getMinFlushedSyncIndex() + getSearchIndex();
   }
 
