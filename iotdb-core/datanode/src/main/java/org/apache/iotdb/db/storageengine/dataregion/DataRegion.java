@@ -1865,7 +1865,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   /** close all working tsfile processors */
-  List<Future<?>> asyncCloseAllWorkingTsFileProcessors() {
+  private List<Future<?>> asyncCloseAllWorkingTsFileProcessors() {
     writeLock("asyncCloseAllWorkingTsFileProcessors");
     List<Future<?>> futures = new ArrayList<>();
     int count = 0;

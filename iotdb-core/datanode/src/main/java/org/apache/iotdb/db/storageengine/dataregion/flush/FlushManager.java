@@ -105,10 +105,10 @@ public class FlushManager implements FlushManagerMBean, IService {
       if (null == tsFileProcessor) {
         return;
       }
-
-      tsFileProcessor.flushOneMemTable();
+      while (tsFileProcessor.getFlushingMemTableSize() > 0) {
+        tsFileProcessor.flushOneMemTable();
+      }
       tsFileProcessor.setManagedByFlushManager(false);
-      registerTsFileProcessor(tsFileProcessor);
     }
   }
 
