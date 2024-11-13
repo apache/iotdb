@@ -388,15 +388,8 @@ public abstract class AbstractOperatePipeProcedureV2
    */
   protected Map<Integer, TPushPipeMetaResp> pushPipeMetaToDataNodes(ConfigNodeProcedureEnv env)
       throws IOException {
-    final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
-    for (PipeMeta pipeMeta : pipeTaskInfo.get().getPipeMetaList()) {
-      pipeMetaBinaryList.add(
-          pipeTaskInfo
-              .get()
-              .getPipeMetaByPipeNameWithFilterInvalidConsensusGroup(
-                  pipeMeta.getStaticMeta().getPipeName())
-              .serialize());
-    }
+    final List<ByteBuffer> pipeMetaBinaryList =
+        pipeTaskInfo.get().getPipeMetaListWithFilterInvalidConsensusGroup();
 
     return env.pushAllPipeMetaToDataNodes(pipeMetaBinaryList);
   }

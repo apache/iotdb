@@ -69,6 +69,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -554,6 +555,23 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
   }
 
+  public List<ByteBuffer> getPipeMetaListWithFilterInvalidConsensusGroup() throws IOException {
+    acquireReadLock();
+    try {
+      List<ByteBuffer> pipeMetas = new ArrayList<>(pipeMetaKeeper.getPipeMetaCount());
+      for (PipeMeta meta : pipeMetaKeeper.getPipeMetaList()) {
+        if (meta == null) {
+          // Won't happen
+          continue;
+        }
+        pipeMetas.add(filterInvalidConsensusGroup(meta).serialize());
+      }
+      return pipeMetas;
+    } finally {
+      releaseReadLock();
+    }
+  }
+
   public PipeMeta getPipeMetaByPipeName(final String pipeName) {
     acquireReadLock();
     try {
@@ -573,35 +591,39 @@ public class PipeTaskInfo implements SnapshotProcessor {
                 "PipeMate of Pipe %s does not exist. Please enter the correct Pipe Name.",
                 pipeName));
       }
-      final PipeParameters sourceAttribute = pipeMeta.getStaticMeta().getExtractorParameters();
-      if (isCaptureTable(sourceAttribute)) {
-        // todo support schemaRegion
-        // only support dataRegion
-        Map<String, List<TConsensusGroupId>> dataBaseToId =
-            ConfigNode.getInstance()
-                .getConfigManager()
-                .getPartitionManager()
-                .getAllRegionGroupIdMap(TConsensusGroupType.DataRegion);
-
-        if (dataBaseToId == null || dataBaseToId.isEmpty()) {
-          return pipeMeta;
-        }
-
-        final PipeMeta finalPipeMeta;
-        try {
-          finalPipeMeta = pipeMeta.deepCopy();
-        } catch (Exception ignore) {
-          return pipeMeta;
-        }
-
-        final String dataBasePattern = getDataBasePattern(sourceAttribute);
-        filterInvalidConsensusGroup(dataBasePattern, dataBaseToId, finalPipeMeta);
-        return finalPipeMeta;
-      }
-      return pipeMeta;
+      return filterInvalidConsensusGroup(pipeMeta);
     } finally {
       releaseReadLock();
     }
+  }
+
+  private PipeMeta filterInvalidConsensusGroup(PipeMeta pipeMeta) {
+    final PipeParameters sourceAttribute = pipeMeta.getStaticMeta().getExtractorParameters();
+    if (isCaptureTable(sourceAttribute)) {
+      // todo support schemaRegion
+      // only support dataRegion
+      Map<String, List<TConsensusGroupId>> dataBaseToId =
+          ConfigNode.getInstance()
+              .getConfigManager()
+              .getPartitionManager()
+              .getAllRegionGroupIdMap(TConsensusGroupType.DataRegion);
+
+      if (dataBaseToId == null || dataBaseToId.isEmpty()) {
+        return pipeMeta;
+      }
+
+      final PipeMeta finalPipeMeta;
+      try {
+        finalPipeMeta = pipeMeta.deepCopy();
+      } catch (Exception ignore) {
+        return pipeMeta;
+      }
+
+      final String dataBasePattern = getDataBasePattern(sourceAttribute);
+      filterInvalidConsensusGroup(dataBasePattern, dataBaseToId, finalPipeMeta);
+      return finalPipeMeta;
+    }
+    return pipeMeta;
   }
 
   public boolean isEmpty() {
