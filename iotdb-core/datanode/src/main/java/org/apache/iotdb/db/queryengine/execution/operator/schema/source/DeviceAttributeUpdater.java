@@ -112,7 +112,7 @@ public class DeviceAttributeUpdater extends DeviceUpdater {
           deviceSchemaBatch.get(withoutFilter() ? i : indexes.get(i)).getRawNodes();
       final Object[] results = new Object[resultColumns.size()];
       for (int j = 0; j < resultColumns.size(); ++j) {
-        final Object o = resultColumns.get(j).getObject(i);
+        final Object o = resultColumns.get(j).isNull(i) ? null : resultColumns.get(j).getObject(i);
         if (Objects.nonNull(o) && !(o instanceof Binary)) {
           throw new MetadataException(
               "Result type mismatch for attribute \""
