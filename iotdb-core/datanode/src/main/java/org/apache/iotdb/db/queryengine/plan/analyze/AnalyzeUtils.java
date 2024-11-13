@@ -70,6 +70,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
@@ -355,14 +356,14 @@ public class AnalyzeUtils {
       throw new SemanticException("Table " + tableName + " not found");
     }
 
-    List<Expression> disjunctiveNormalForms =
-        toDisjunctiveNormalForms(node.getWhere().orElse(null));
-    List<TableDeletionEntry> tableDeletionEntries = new ArrayList<>();
-    for (Expression disjunctiveNormalForm : disjunctiveNormalForms) {
-      tableDeletionEntries.add(parsePredicate(disjunctiveNormalForm, table));
-    }
+    node.setTableDeletionEntries(parseExpressions2ModEntries(node.getWhere().orElse(null), table));
+  }
 
-    node.setTableDeletionEntries(tableDeletionEntries);
+  public static List<TableDeletionEntry> parseExpressions2ModEntries(
+      final Expression expression, final TsTable table) {
+    return toDisjunctiveNormalForms(expression).stream()
+        .map(disjunctiveNormalForm -> parsePredicate(disjunctiveNormalForm, table))
+        .collect(Collectors.toList());
   }
 
   /**

@@ -264,7 +264,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternAndFilterReq;
-import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternReq;
+import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternOrModReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
@@ -1608,7 +1608,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     final AtomicLong preDeletedNum = new AtomicLong(0);
     final TSStatus executionResult =
         executeSchemaBlackListTask(
-            req.getRegionIdList(),
+            req.getSchemaRegionIdList(),
             consensusGroupId -> {
               final TSStatus status =
                   new RegionWriteExecutor()
@@ -1630,15 +1630,15 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus rollbackTableDeviceBlackList(final TTableDeviceDeletionWithPatternReq req) {
+  public TSStatus rollbackTableDeviceBlackList(final TTableDeviceDeletionWithPatternOrModReq req) {
     return executeInternalSchemaTask(
-        req.getSchemaRegionIdList(),
+        req.getRegionIdList(),
         consensusGroupId ->
             new RegionWriteExecutor()
                 .execute(
                     new SchemaRegionId(consensusGroupId.getId()),
                     new RollbackTableDevicesBlackListNode(
-                        new PlanNodeId(""), req.getTableName(), req.getPatternInfo()))
+                        new PlanNodeId(""), req.getTableName(), req.getPatternOrModInfo()))
                 .getStatus());
   }
 
@@ -1659,25 +1659,33 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus deleteDataForTableDevice(final TTableDeviceDeletionWithPatternAndFilterReq req) {
+  public TSStatus deleteDataForTableDevice(final TTableDeviceDeletionWithPatternOrModReq req) {
+    if (req.getPatternOrModInfo().length == 0) {
+      // TODO: Not supported by DeletionEntry, fetch blacklist from schema region
+      return StatusUtils.OK;
+    }
     return executeInternalSchemaTask(
         req.getRegionIdList(),
-        consensusGroupId -> {
-          // TODO
-          return StatusUtils.OK;
-        });
+        consensusGroupId ->
+            new RegionWriteExecutor()
+                .execute(
+                    new DataRegionId(consensusGroupId.getId()),
+                    new RelationalDeleteDataNode(
+                        new PlanNodeId(""),
+                        DeleteDevice.constructModEntries(req.getPatternOrModInfo())))
+                .getStatus());
   }
 
   @Override
-  public TSStatus deleteTableDeviceInBlackList(final TTableDeviceDeletionWithPatternReq req) {
+  public TSStatus deleteTableDeviceInBlackList(final TTableDeviceDeletionWithPatternOrModReq req) {
     return executeInternalSchemaTask(
-        req.getSchemaRegionIdList(),
+        req.getRegionIdList(),
         consensusGroupId ->
             new RegionWriteExecutor()
                 .execute(
                     new SchemaRegionId(consensusGroupId.getId()),
                     new DeleteTableDevicesInBlackListNode(
-                        new PlanNodeId(""), req.getTableName(), req.getPatternInfo()))
+                        new PlanNodeId(""), req.getTableName(), req.getPatternOrModInfo()))
                 .getStatus());
   }
 
