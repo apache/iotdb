@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan;
 
 import org.apache.tsfile.encoding.decoder.Decoder;
+import org.apache.tsfile.encrypt.EncryptParameter;
+import org.apache.tsfile.encrypt.IDecryptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
@@ -47,6 +49,8 @@ public class AlignedSinglePageWholeChunkReader extends AbstractChunkReader {
   // chunk data of the time column
   private final ByteBuffer timeChunkDataBuffer;
 
+  private final EncryptParameter encryptParam;
+
   // chunk headers of all the sub sensors
   private final List<ChunkHeader> valueChunkHeaderList = new ArrayList<>();
   // chunk data of all the sub sensors
@@ -59,6 +63,7 @@ public class AlignedSinglePageWholeChunkReader extends AbstractChunkReader {
     super(Long.MIN_VALUE, null);
     this.timeChunkHeader = timeChunk.getHeader();
     this.timeChunkDataBuffer = timeChunk.getData();
+    this.encryptParam = timeChunk.getEncryptParam();
 
     valueChunkList.forEach(
         chunk -> {
@@ -120,8 +125,10 @@ public class AlignedSinglePageWholeChunkReader extends AbstractChunkReader {
 
   private AlignedPageReader constructAlignedPageReader(
       PageHeader timePageHeader, List<PageHeader> rawValuePageHeaderList) throws IOException {
+    IDecryptor decryptor = IDecryptor.getDecryptor(encryptParam);
     ByteBuffer timePageData =
-        ChunkReader.deserializePageData(timePageHeader, timeChunkDataBuffer, timeChunkHeader);
+        ChunkReader.deserializePageData(
+            timePageHeader, timeChunkDataBuffer, timeChunkHeader, decryptor);
 
     List<PageHeader> valuePageHeaderList = new ArrayList<>();
     List<ByteBuffer> valuePageDataList = new ArrayList<>();
@@ -143,7 +150,7 @@ public class AlignedSinglePageWholeChunkReader extends AbstractChunkReader {
         valuePageHeaderList.add(valuePageHeader);
         valuePageDataList.add(
             ChunkReader.deserializePageData(
-                valuePageHeader, valueChunkDataBufferList.get(i), valueChunkHeader));
+                valuePageHeader, valueChunkDataBufferList.get(i), valueChunkHeader, decryptor));
         valueDataTypeList.add(valueChunkHeader.getDataType());
         valueDecoderList.add(
             Decoder.getDecoderByType(

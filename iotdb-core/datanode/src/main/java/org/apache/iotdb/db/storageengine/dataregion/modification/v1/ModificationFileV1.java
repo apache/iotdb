@@ -195,6 +195,10 @@ public class ModificationFileV1 implements AutoCloseable {
     return new ModificationFileV1(tsFileResource.getTsFilePath() + ModificationFileV1.FILE_SUFFIX);
   }
 
+  public static File getCompactionMods(File tsFile) {
+    return new File(tsFile.getPath() + ModificationFileV1.COMPACTION_FILE_SUFFIX);
+  }
+
   public static File getNormalMods(File tsFile) {
     return new File(tsFile.getPath() + ModificationFileV1.FILE_SUFFIX);
   }

@@ -17,29 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription.exception;
+package org.apache.iotdb.db.subscription.task.subtask;
 
-import java.util.Objects;
+import java.util.concurrent.Callable;
 
-public class SubscriptionPipeTimeoutException extends SubscriptionTimeoutException {
-
-  public SubscriptionPipeTimeoutException(final String message) {
-    super(message);
-  }
-
-  public SubscriptionPipeTimeoutException(final String message, final Throwable cause) {
-    super(message, cause);
-  }
-
-  @Override
-  public boolean equals(final Object obj) {
-    return obj instanceof SubscriptionPipeTimeoutException
-        && Objects.equals(getMessage(), ((SubscriptionPipeTimeoutException) obj).getMessage())
-        && Objects.equals(getTimeStamp(), ((SubscriptionPipeTimeoutException) obj).getTimeStamp());
-  }
-
-  @Override
-  public int hashCode() {
-    return super.hashCode();
-  }
-}
+public interface SubscriptionReceiverSubtask extends Callable<Void> {}

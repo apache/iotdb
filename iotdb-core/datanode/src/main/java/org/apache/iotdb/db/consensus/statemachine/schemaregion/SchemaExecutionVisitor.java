@@ -88,6 +88,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /** Schema write {@link PlanNode} visitor */
 public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion> {
@@ -286,6 +287,10 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
     final List<TSDataType> dataTypeList = measurementGroup.getDataTypes();
     final List<TSEncoding> encodingList = measurementGroup.getEncodings();
     final List<CompressionType> compressionTypeList = measurementGroup.getCompressors();
+    final List<String> aliasList = measurementGroup.getAliasList();
+    final List<Map<String, String>> tagsList = measurementGroup.getTagsList();
+    final List<Map<String, String>> attributesList = measurementGroup.getAttributesList();
+
     final ICreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
         SchemaRegionWritePlanFactory.getCreateAlignedTimeSeriesPlan(
             devicePath,
@@ -293,9 +298,10 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
             dataTypeList,
             encodingList,
             compressionTypeList,
-            null,
-            null,
-            null);
+            aliasList,
+            tagsList,
+            attributesList);
+
     // With merge is only true for pipe to upsert the receiver alias/tags/attributes in historical
     // transfer.
     // For normal internal creation, the alias/tags/attributes are not set
@@ -322,6 +328,16 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
         encodingList.remove(index);
         compressionTypeList.remove(index);
 
+        if (Objects.nonNull(aliasList)) {
+          aliasList.remove(index);
+        }
+        if (Objects.nonNull(tagsList)) {
+          tagsList.remove(index);
+        }
+        if (Objects.nonNull(attributesList)) {
+          attributesList.remove(index);
+        }
+
         // If with merge is set, the lists are deep copied and need to be altered here.
         // We still remove the element from the original list to help cascading pipe transfer
         // schema.
@@ -332,6 +348,16 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
           createAlignedTimeSeriesPlan.getDataTypes().remove(index);
           createAlignedTimeSeriesPlan.getEncodings().remove(index);
           createAlignedTimeSeriesPlan.getCompressors().remove(index);
+
+          if (Objects.nonNull(aliasList)) {
+            createAlignedTimeSeriesPlan.getAliasList().remove(index);
+          }
+          if (Objects.nonNull(tagsList)) {
+            createAlignedTimeSeriesPlan.getTagsList().remove(index);
+          }
+          if (Objects.nonNull(attributesList)) {
+            createAlignedTimeSeriesPlan.getAttributesList().remove(index);
+          }
         }
 
         if (measurementList.isEmpty()) {

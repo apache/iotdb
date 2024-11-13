@@ -530,6 +530,7 @@ public class PipeConsensusServerImpl {
 
         final List<String> consensusPipeNames =
             peerManager.getPeers().stream()
+                .filter(peer -> !peer.equals(targetPeer))
                 .map(peer -> new ConsensusPipeName(targetPeer, peer).toString())
                 .collect(Collectors.toList());
         isTransmissionCompleted =
