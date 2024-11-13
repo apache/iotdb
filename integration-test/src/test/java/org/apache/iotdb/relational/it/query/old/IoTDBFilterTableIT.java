@@ -237,4 +237,14 @@ public class IoTDBFilterTableIT {
       fail(throwable.getMessage());
     }
   }
+
+  @Test
+  public void testCompareWithNull() {
+    tableResultSetEqualTest(
+        "select s1 from sg1 where s1 != null", new String[] {"s1"}, new String[] {}, DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select s1 from sg1 where s1 <> null", new String[] {"s1"}, new String[] {}, DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select s1 from sg1 where s1 = null", new String[] {"s1"}, new String[] {}, DATABASE_NAME);
+  }
 }
