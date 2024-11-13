@@ -61,6 +61,7 @@ public abstract class AbstractSubscriptionIT {
     Awaitility.await()
         .atMost(1, TimeUnit.MINUTES)
         .pollDelay(2, TimeUnit.SECONDS)
+        .pollInterval(2, TimeUnit.SECONDS)
         .until(
             () -> {
               if (!TestUtils.tryExecuteNonQueryWithRetry(env, "flush")) {
