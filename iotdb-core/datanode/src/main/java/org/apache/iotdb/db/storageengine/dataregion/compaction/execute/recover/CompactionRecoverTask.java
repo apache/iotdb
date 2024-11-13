@@ -25,6 +25,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.Com
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogAnalyzer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.TsFileIdentifier;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -299,6 +300,21 @@ public class CompactionRecoverTask {
         getFileFromDataDirs(
             ModificationFile.getCompactionMods(new File(tsFileIdentifier.getFilePath())).getPath());
     if (!checkAndDeleteFile(compactionModFile)) {
+      success = false;
+    }
+
+    File oldModFile =
+        getFileFromDataDirs(
+            ModificationFileV1.getNormalMods(new File(tsFileIdentifier.getFilePath())).getPath());
+    if (!checkAndDeleteFile(oldModFile)) {
+      success = false;
+    }
+
+    File oldCompactionModFile =
+        getFileFromDataDirs(
+            ModificationFileV1.getCompactionMods(new File(tsFileIdentifier.getFilePath()))
+                .getPath());
+    if (!checkAndDeleteFile(oldCompactionModFile)) {
       success = false;
     }
 

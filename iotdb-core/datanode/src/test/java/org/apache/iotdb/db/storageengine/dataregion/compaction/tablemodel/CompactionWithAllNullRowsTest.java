@@ -35,6 +35,9 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.FullExactMatch;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -264,7 +267,10 @@ public class CompactionWithAllNullRowsTest extends AbstractCompactionTest {
     }
     resource1
         .getModFileForWrite()
-        .write(new TreeDeletionEntry(new MeasurementPath(deviceID, ""), Long.MAX_VALUE));
+        .write(
+            new TableDeletionEntry(
+                new DeletionPredicate(deviceID.getTableName(), new FullExactMatch(deviceID)),
+                new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE)));
     resource1.getModFileForWrite().close();
     seqResources.add(resource1);
     InnerSpaceCompactionTask task =
