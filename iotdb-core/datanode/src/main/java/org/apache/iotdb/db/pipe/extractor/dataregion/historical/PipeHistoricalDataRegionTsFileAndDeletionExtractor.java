@@ -151,9 +151,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
 
   private volatile boolean hasBeenStarted = false;
 
-  private final Map<TsFileResource, Boolean> tsfile2IsTableModelMap = new HashMap<>(0);
-
   private Queue<PersistentResource> pendingQueue;
+
+  private Boolean isListenTableModelDataRegion = null;
 
   @Override
   public void validate(final PipeParameterValidator validator) {
@@ -648,24 +648,24 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     return deviceSet.stream()
         .anyMatch(
             deviceID -> {
-              if (deviceID instanceof PlainDeviceID
-                  || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
-                  || deviceID.getTableName().equals(PATH_ROOT)) {
+              if ((isListenTableModelDataRegion == null
+                      && (deviceID instanceof PlainDeviceID
+                          || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
+                          || deviceID.getTableName().equals(PATH_ROOT)))
+                  || isListenTableModelDataRegion) {
+                isListenTableModelDataRegion = Boolean.FALSE;
                 // In case of tree model deviceID
                 if (treePattern.isTreeModelDataAllowedToBeCaptured()
                     && treePattern.mayOverlapWithDevice(deviceID)) {
-                  tsfile2IsTableModelMap.computeIfAbsent(
-                      resource, (tsFileResource) -> Boolean.FALSE);
                   return true;
                 }
               } else {
                 // In case of table model deviceID
+                isListenTableModelDataRegion = Boolean.TRUE;
                 if (tablePattern.isTableModelDataAllowedToBeCaptured()
                     // The database name in resource is prefixed with "root."
                     && tablePattern.matchesDatabase(resource.getDatabaseName().substring(5))
                     && tablePattern.matchesTable(deviceID.getTableName())) {
-                  tsfile2IsTableModelMap.computeIfAbsent(
-                      resource, (tsFileResource) -> Boolean.TRUE);
                   return true;
                 }
               }
@@ -767,7 +767,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   private Event supplyTsFileEvent(TsFileResource resource) {
     final PipeTsFileInsertionEvent event =
         new PipeTsFileInsertionEvent(
-            tsfile2IsTableModelMap.remove(resource),
+            isListenTableModelDataRegion,
             resource.getDatabaseName(),
             resource,
             shouldTransferModFile,
