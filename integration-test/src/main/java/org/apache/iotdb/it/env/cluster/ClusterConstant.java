@@ -131,6 +131,21 @@ public class ClusterConstant {
   public static final String PIPE_CONSENSUS_BATCH_MODE_DATA_REGION_REPLICA_NUM =
       "pipeConsensusBatchMode.dataRegionReplicaNumber";
 
+  public static final String PIPE_CONSENSUS_STREAM_MODE_CONFIG_NODE_NUM =
+      "pipeConsensusStreamMode.configNodeNumber";
+  public static final String PIPE_CONSENSUS_STREAM_MODE_DATA_NODE_NUM =
+      "pipeConsensusStreamMode.dataNodeNumber";
+  public static final String PIPE_CONSENSUS_STREAM_MODE_CONFIG_NODE_CONSENSUS =
+      "pipeConsensusStreamMode.configNodeConsensus";
+  public static final String PIPE_CONSENSUS_STREAM_MODE_SCHEMA_REGION_CONSENSUS =
+      "pipeConsensusStreamMode.schemaRegionConsensus";
+  public static final String PIPE_CONSENSUS_STREAM_MODE_DATA_REGION_CONSENSUS =
+      "pipeConsensusStreamMode.dataRegionConsensus";
+  public static final String PIPE_CONSENSUS_STREAM_MODE_SCHEMA_REGION_REPLICA_NUM =
+      "pipeConsensusStreamMode.schemaRegionReplicaNumber";
+  public static final String PIPE_CONSENSUS_STREAM_MODE_DATA_REGION_REPLICA_NUM =
+      "pipeConsensusStreamMode.dataRegionReplicaNumber";
+
   // Property file names
   public static final String IOTDB_SYSTEM_PROPERTIES_FILE = "iotdb-system.properties";
 
