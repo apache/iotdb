@@ -112,13 +112,11 @@ public class TableMetadataImpl implements Metadata {
       throws OperatorNotFoundException {
 
     if (isCompareWithNull(argumentTypes)) {
-      if (operatorType.equals(EQUAL)
-          || operatorType.equals(LESS_THAN)
-          || operatorType.equals(LESS_THAN_OR_EQUAL)) {
-        return BOOLEAN;
-      }
+      return BOOLEAN;
+    } else if (isCalculateWithNull(argumentTypes)) {
       return argumentTypes.get(0);
     }
+
     switch (operatorType) {
       case ADD:
         if (!isTwoTypeCalculable(argumentTypes)
