@@ -455,6 +455,7 @@ public class StatementAnalyzer {
       analyzeTraverseDevice(node, context, node.getWhere().isPresent());
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
+      node.parseModEntries(table);
       node.parseRawExpression(
           null,
           table,
