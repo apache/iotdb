@@ -115,9 +115,9 @@ public class DeviceAttributeUpdater extends DeviceUpdater {
         final Object o = resultColumns.get(j).getObject(i);
         if (Objects.nonNull(o) && !(o instanceof Binary)) {
           throw new MetadataException(
-              "Result type mismatch for attribute "
+              "Result type mismatch for attribute \""
                   + attributeNames.get(j)
-                  + ", expected "
+                  + "\", expected "
                   + Binary.class
                   + ", actual "
                   + o.getClass());
