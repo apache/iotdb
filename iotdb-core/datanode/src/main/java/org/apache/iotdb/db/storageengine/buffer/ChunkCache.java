@@ -160,7 +160,7 @@ public class ChunkCache {
     } catch (IoTDBIORuntimeException e) {
       throw e.getCause();
     } finally {
-      if (chunkLoader.cacheMiss) {
+      if (chunkLoader.isCacheMiss()) {
         cacheMissAdder.accept(1);
       } else {
         cacheHitAdder.accept(1);
@@ -298,10 +298,10 @@ public class ChunkCache {
 
       long startTime = System.nanoTime();
       try {
-
+        cacheMiss = true;
         TsFileSequenceReader reader =
-            FileReaderManager.getInstance().get(key.getFilePath(), key.closed);
-        Chunk chunk = reader.readMemChunk(key.offsetOfChunkHeader);
+            FileReaderManager.getInstance().get(key.getFilePath(), key.closed, ioSizeRecorder);
+        Chunk chunk = reader.readMemChunk(key.offsetOfChunkHeader, ioSizeRecorder);
         // to save memory footprint, we don't save measurementId in ChunkHeader of Chunk
         chunk.getHeader().setMeasurementID(null);
         return chunk;

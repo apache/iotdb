@@ -102,7 +102,7 @@ public class BloomFilterCache {
     } catch (IoTDBIORuntimeException e) {
       throw e.getCause();
     } finally {
-      if (loader.cacheMiss) {
+      if (loader.isCacheMiss()) {
         cacheMissAdder.accept(1);
       } else {
         cacheHitAdder.accept(1);
