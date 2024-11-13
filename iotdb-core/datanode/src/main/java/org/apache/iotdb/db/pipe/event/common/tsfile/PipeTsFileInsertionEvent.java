@@ -475,14 +475,19 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   /////////////////////////// TsFileInsertionEvent ///////////////////////////
 
   @Override
-  public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
+  public Iterable<TabletInsertionEvent> toTabletInsertionEvents() throws PipeException {
+    return toTabletInsertionEvents(Long.MAX_VALUE);
+  }
+
+  public Iterable<TabletInsertionEvent> toTabletInsertionEvents(final long timeoutMs)
+      throws PipeException {
     try {
       if (!waitForTsFileClose()) {
         LOGGER.warn(
             "Pipe skipping temporary TsFile's parsing which shouldn't be transferred: {}", tsFile);
         return Collections.emptyList();
       }
-      waitForResourceEnough4Parsing();
+      waitForResourceEnough4Parsing(timeoutMs);
       return initEventParser().toTabletInsertionEvents();
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
@@ -496,31 +501,49 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     }
   }
 
-  private void waitForResourceEnough4Parsing() throws InterruptedException {
+  private void waitForResourceEnough4Parsing(final long timeoutMs) throws InterruptedException {
     final PipeMemoryManager memoryManager = PipeDataNodeResourceManager.memory();
     if (memoryManager.isEnough4TabletParsing()) {
       return;
     }
 
+    final long startTime = System.currentTimeMillis();
+    long lastRecordTime = startTime;
+
     final long memoryCheckIntervalMs =
         PipeConfig.getInstance().getPipeTsFileParserCheckMemoryEnoughIntervalMs();
-    final long startTime = System.currentTimeMillis();
     while (!memoryManager.isEnough4TabletParsing()) {
       Thread.sleep(memoryCheckIntervalMs);
+
+      final long currentTime = System.currentTimeMillis();
+      final double elapsedRecordTimeSeconds = (currentTime - lastRecordTime) / 1000.0;
+      final double waitTimeSeconds = (currentTime - startTime) / 1000.0;
+      if (elapsedRecordTimeSeconds > 10.0) {
+        LOGGER.info(
+            "Wait for resource enough for parsing {} for {} seconds.",
+            resource != null ? resource.getTsFilePath() : "tsfile",
+            waitTimeSeconds);
+        lastRecordTime = currentTime;
+      } else if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "Wait for resource enough for parsing {} for {} seconds.",
+            resource != null ? resource.getTsFilePath() : "tsfile",
+            waitTimeSeconds);
+      }
+
+      if (waitTimeSeconds * 1000 > timeoutMs) {
+        // should contain 'TimeoutException' in exception message
+        throw new InterruptedException(
+            String.format("TimeoutException: Waited %s seconds", waitTimeSeconds));
+      }
     }
 
-    final double waitTimeSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
-    if (waitTimeSeconds > 1.0) {
-      LOGGER.info(
-          "Wait for resource enough for parsing {} for {} seconds.",
-          resource != null ? resource.getTsFilePath() : "tsfile",
-          waitTimeSeconds);
-    } else if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug(
-          "Wait for resource enough for parsing {} for {} seconds.",
-          resource != null ? resource.getTsFilePath() : "tsfile",
-          waitTimeSeconds);
-    }
+    final long currentTime = System.currentTimeMillis();
+    final double waitTimeSeconds = (currentTime - startTime) / 1000.0;
+    LOGGER.info(
+        "Wait for resource enough for parsing {} for {} seconds.",
+        resource != null ? resource.getTsFilePath() : "tsfile",
+        waitTimeSeconds);
   }
 
   /** The method is used to prevent circular replication in PipeConsensus */
