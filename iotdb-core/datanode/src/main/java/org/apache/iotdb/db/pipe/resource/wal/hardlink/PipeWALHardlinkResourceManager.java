@@ -21,15 +21,14 @@ package org.apache.iotdb.db.pipe.resource.wal.hardlink;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.resource.wal.PipeWALResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -80,7 +79,7 @@ public class PipeWALHardlinkResourceManager extends PipeWALResourceManager {
     // if the file is a wal, and there is no related hardlink in pipe dir, create a hardlink to pipe
     // dir, maintain a reference count for the hardlink, and return the hardlink.
     hardlinkToReferenceMap.put(hardlink.getPath(), 1);
-    return createHardlink(file, hardlink);
+    return FileUtils.createHardLink(file, hardlink);
   }
 
   private boolean increaseReferenceIfExists(final String path) {
@@ -126,21 +125,6 @@ public class PipeWALHardlinkResourceManager extends PipeWALResourceManager {
               .append(builder);
     }
     return builder.toString();
-  }
-
-  private static File createHardlink(final File sourceFile, final File hardlink)
-      throws IOException {
-    if (!hardlink.getParentFile().exists() && !hardlink.getParentFile().mkdirs()) {
-      throw new IOException(
-          String.format(
-              "failed to create hardlink %s for file %s: failed to create parent dir %s",
-              hardlink.getPath(), sourceFile.getPath(), hardlink.getParentFile().getPath()));
-    }
-
-    final Path sourcePath = FileSystems.getDefault().getPath(sourceFile.getAbsolutePath());
-    final Path linkPath = FileSystems.getDefault().getPath(hardlink.getAbsolutePath());
-    Files.createLink(linkPath, sourcePath);
-    return hardlink;
   }
 
   /**

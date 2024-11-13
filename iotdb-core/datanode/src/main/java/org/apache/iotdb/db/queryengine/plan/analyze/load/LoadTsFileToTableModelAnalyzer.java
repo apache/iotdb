@@ -44,6 +44,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.encrypt.EncryptParameter;
+import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -53,6 +55,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -132,6 +135,13 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
       if (Objects.isNull(reader.readFileMetadata().getTableSchemaMap())
           || reader.readFileMetadata().getTableSchemaMap().isEmpty()) {
         throw new SemanticException("Attempted to load a tree-model TsFile into table-model.");
+      }
+
+      // check whether the encrypt type of the tsfile is supported
+      EncryptParameter param = reader.getEncryptParam();
+      if (!Objects.equals(param.getType(), EncryptUtils.encryptParam.getType())
+          || !Arrays.equals(param.getKey(), EncryptUtils.encryptParam.getKey())) {
+        throw new SemanticException("The encryption way of the TsFile is not supported.");
       }
 
       // construct tsfile resource
