@@ -118,12 +118,23 @@ public class PipeEventCollector implements EventCollector {
             || (sourceEvent.isTableModelEvent()
                 && sourceEvent.getTablePattern() == null
                 && !sourceEvent.shouldParseTime()))) {
+      LOGGER.info(
+          "event {} not parser database start time {} end time {} ",
+          sourceEvent,
+          sourceEvent.getFileStartTime(),
+          sourceEvent.getFileEndTime());
       collectEvent(sourceEvent);
       return;
     }
 
     try {
+      LOGGER.info(
+          "event is parser {}  start time {} end time {} ",
+          sourceEvent,
+          sourceEvent.getFileStartTime(),
+          sourceEvent.getFileEndTime());
       for (final TabletInsertionEvent parsedEvent : sourceEvent.toTabletInsertionEvents()) {
+        LOGGER.info("result {}  start time {} end time {} ", parsedEvent);
         collectParsedRawTableEvent((PipeRawTabletInsertionEvent) parsedEvent);
       }
     } finally {

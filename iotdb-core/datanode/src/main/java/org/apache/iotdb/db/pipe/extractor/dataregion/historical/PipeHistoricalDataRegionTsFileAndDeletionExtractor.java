@@ -786,8 +786,19 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
       event.skipParsingPattern();
     }
     if (sloppyTimeRange || isTsFileResourceCoveredByTimeRange(resource)) {
+      LOGGER.info(
+          "warn event skip parsing time databaseName {}  start time {} end time {} ",
+          resource.getDatabaseName(),
+          resource.getFileStartTime(),
+          resource.getFileEndTime());
       event.skipParsingTime();
     }
+
+    LOGGER.info(
+        "event databaseName {}  start time {} end time {} ",
+        resource.getDatabaseName(),
+        resource.getFileStartTime(),
+        resource.getFileEndTime());
 
     try {
       final boolean isReferenceCountIncreased =

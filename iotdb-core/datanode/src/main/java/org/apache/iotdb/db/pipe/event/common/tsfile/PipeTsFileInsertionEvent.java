@@ -249,6 +249,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     return resource.getFileStartTime();
   }
 
+  public long getFileEndTime() {
+    return resource.getFileStartTime();
+  }
+
   /**
    * Only used for metrics on PipeConsensus' receiver side. If the event is recovered after data
    * node's restart, the flushPointCount can be not set. It's totally fine for the PipeConsensus'
