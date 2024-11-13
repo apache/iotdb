@@ -38,6 +38,8 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -49,6 +51,9 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<Tablet> {
+
+  private final Logger logger =
+      LoggerFactory.getLogger(TsFileInsertionEventQueryParserTabletIterator.class);
 
   private final TsFileReader tsFileReader;
   private final Map<String, TSDataType> measurementDataTypeMap;
@@ -160,11 +165,16 @@ public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<T
       final int rowIndex = tablet.rowSize;
 
       tablet.addTimestamp(rowIndex, rowRecord.getTimestamp());
-
+      logger.info("deviceID {}", deviceId);
       final List<Field> fields = rowRecord.getFields();
       final int fieldSize = fields.size();
       for (int i = 0; i < fieldSize; i++) {
         final Field field = fields.get(i);
+        logger.info(
+            "measurements {} Value {} rows {} ",
+            measurements.get(i),
+            field == null ? null : field.getObjectValue(schemas.get(i).getType()),
+            rowIndex);
         tablet.addValue(
             measurements.get(i),
             rowIndex,
