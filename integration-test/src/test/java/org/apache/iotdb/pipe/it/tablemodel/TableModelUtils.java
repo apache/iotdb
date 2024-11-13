@@ -320,7 +320,7 @@ public class TableModelUtils {
 
   public static String getDateStr(int value) {
     Date date = new Date(value);
-    SimpleDateFormat dateFormat = new SimpleDateFormat("YYYY-MM-DD");
+    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
     try {
       return dateFormat.format(date);
     } catch (Exception e) {

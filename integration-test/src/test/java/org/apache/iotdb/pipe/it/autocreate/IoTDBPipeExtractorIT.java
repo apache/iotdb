@@ -698,9 +698,9 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1)"
-                  + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)",
+                  + " values (1, 1), (2, 2), (3, 3), (4, 4), (5, 5)",
               "insert into root.db.d2 (time, at1)"
-                  + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)",
+                  + " values (1, 1), (2, 2), (3, 3), (4, 4), (5, 5)",
               "flush"))) {
         return;
       }
@@ -713,8 +713,8 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
       extractorAttributes.put("extractor.inclusion", "data.insert");
       extractorAttributes.put("extractor.history.enable", "true");
       // 1970-01-01T08:00:02+08:00
-      extractorAttributes.put("extractor.history.start-time", "2000");
-      extractorAttributes.put("extractor.history.end-time", "1970-01-01T08:00:04+08:00");
+      extractorAttributes.put("extractor.history.start-time", "2");
+      extractorAttributes.put("extractor.history.end-time", "3");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -734,7 +734,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.at1),",
-          Collections.singleton("3,"));
+          Collections.singleton("2,"));
 
       extractorAttributes.remove("extractor.pattern");
       status =
@@ -750,7 +750,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.at1),count(root.db.d2.at1),",
-          Collections.singleton("3,3,"));
+          Collections.singleton("2,2,"));
     }
   }
 
