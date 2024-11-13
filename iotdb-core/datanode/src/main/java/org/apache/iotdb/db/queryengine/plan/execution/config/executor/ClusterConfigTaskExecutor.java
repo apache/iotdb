@@ -3602,13 +3602,21 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         // ByteArrayOutputStream won't throw IOException
       }
 
+      final ByteArrayOutputStream modStream = new ByteArrayOutputStream();
+      try (final DataOutputStream outputStream = new DataOutputStream(modStream)) {
+        deleteDevice.serializeFilterInfo(outputStream, sessionInfo);
+      } catch (final IOException ignored) {
+        // ByteArrayOutputStream won't throw IOException
+      }
+
       final TDeleteTableDeviceReq req =
           new TDeleteTableDeviceReq(
               PathUtils.qualifyDatabaseName(deleteDevice.getDatabase()),
               deleteDevice.getTableName(),
               queryId,
               ByteBuffer.wrap(patternStream.toByteArray()),
-              ByteBuffer.wrap(filterStream.toByteArray()));
+              ByteBuffer.wrap(filterStream.toByteArray()),
+              ByteBuffer.wrap(modStream.toByteArray()));
 
       TDeleteTableDeviceResp resp;
       do {
