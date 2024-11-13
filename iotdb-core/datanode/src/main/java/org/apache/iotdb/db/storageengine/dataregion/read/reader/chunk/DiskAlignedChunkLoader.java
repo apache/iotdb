@@ -43,7 +43,6 @@ import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.INI
 public class DiskAlignedChunkLoader implements IChunkLoader {
 
   private final QueryContext context;
-  private final boolean debug;
 
   private final TsFileResource resource;
 
@@ -52,7 +51,6 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
 
   public DiskAlignedChunkLoader(QueryContext context, TsFileResource resource) {
     this.context = context;
-    this.debug = context.isDebug();
     this.resource = resource;
   }
 
@@ -83,7 +81,7 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
                       resource.isClosed()),
                   timeChunkMetadata.getDeleteIntervalList(),
                   timeChunkMetadata.getStatistics(),
-                  debug);
+                  context);
       List<Chunk> valueChunkList = new ArrayList<>();
       for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
         valueChunkList.add(
@@ -98,7 +96,7 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
                             resource.isClosed()),
                         valueChunkMetadata.getDeleteIntervalList(),
                         valueChunkMetadata.getStatistics(),
-                        debug));
+                        context));
       }
 
       long t2 = System.nanoTime();

@@ -33,6 +33,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.LongConsumer;
 
 /**
  * {@link FileReaderManager} is a singleton, which is used to manage all file readers(opened file
@@ -114,6 +115,23 @@ public class FileReaderManager {
   @SuppressWarnings("squid:S2095")
   public synchronized TsFileSequenceReader get(String filePath, boolean isClosed)
       throws IOException {
+    return get(filePath, isClosed, null);
+  }
+
+  /**
+   * Get the reader of the file(tsfile or unseq tsfile) indicated by filePath. If the reader already
+   * exists, just get it from closedFileReaderMap or unclosedFileReaderMap depending on isClosing .
+   * Otherwise a new reader will be created and cached.
+   *
+   * @param filePath the path of the file, of which the reader is desired.
+   * @param isClosed whether the corresponding file still receives insertions or not.
+   * @param ioSizeRecorder can be null
+   * @return the reader of the file specified by filePath.
+   * @throws IOException when reader cannot be created.
+   */
+  @SuppressWarnings("squid:S2095")
+  public synchronized TsFileSequenceReader get(
+      String filePath, boolean isClosed, LongConsumer ioSizeRecorder) throws IOException {
 
     Map<String, TsFileSequenceReader> readerMap =
         !isClosed ? unclosedFileReaderMap : closedFileReaderMap;
@@ -127,9 +145,9 @@ public class FileReaderManager {
       TsFileSequenceReader tsFileReader = null;
       // check if the file is old version
       if (!isClosed) {
-        tsFileReader = new UnClosedTsFileReader(filePath);
+        tsFileReader = new UnClosedTsFileReader(filePath, ioSizeRecorder);
       } else {
-        tsFileReader = new TsFileSequenceReader(filePath);
+        tsFileReader = new TsFileSequenceReader(filePath, ioSizeRecorder);
         byte versionNumber = tsFileReader.readVersionNumber();
         if (versionNumber != TSFileConfig.VERSION_NUMBER) {
           tsFileReader.close();
