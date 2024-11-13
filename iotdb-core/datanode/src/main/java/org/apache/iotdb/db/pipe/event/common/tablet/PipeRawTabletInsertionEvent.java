@@ -363,7 +363,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
             "PipeRawTabletInsertionEvent{tablet=%s, start time %s, end time= %s isAligned=%s, sourceEvent=%s, needToReport=%s, allocatedMemoryBlock=%s, eventParser=%s}",
             tablet,
             tablet.timestamps[0],
-            tablet.timestamps[tablet.rowSize - 1],
+            tablet.timestamps[tablet.rowSize > 0 ? tablet.rowSize - 1 : tablet.rowSize],
             isAligned,
             sourceEvent,
             needToReport,
