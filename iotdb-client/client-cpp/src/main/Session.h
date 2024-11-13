@@ -536,6 +536,20 @@ public:
     Field() = default;
 };
 
+enum ColumnCategory {
+    ID,
+    MEASUREMENT,
+    ATTRIBUTE;
+}
+
+std::vector<ColumnCategory> ColumCategory_nCopy(ColumnCategory type, int n) {
+    std::vector<ColumnCategory> res;
+    for (int i = 0; i < n; i++) {
+        res.push_back(type);
+    }
+    return res;
+}
+
 /*
  * A tablet data of one device, the tablet contains multiple measurements of this device that share
  * the same time column.
