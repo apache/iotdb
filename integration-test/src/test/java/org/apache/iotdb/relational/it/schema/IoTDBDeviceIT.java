@@ -220,7 +220,7 @@ public class IoTDBDeviceIT {
         fail("Update shall fail for non-exist column");
       } catch (final Exception e) {
         assertEquals(
-            "507: Result type mismatch for attribute \"model\", expected class org.apache.tsfile.utils.Binary, actual class java.lang.Integer",
+            "507: Result type mismatch for attribute 'model', expected class org.apache.tsfile.utils.Binary, actual class java.lang.Integer",
             e.getMessage());
       }
 
