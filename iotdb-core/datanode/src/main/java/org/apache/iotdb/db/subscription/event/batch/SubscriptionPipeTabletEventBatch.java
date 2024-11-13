@@ -22,7 +22,9 @@ package org.apache.iotdb.db.subscription.event.batch;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTabletQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -112,7 +114,9 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
 
   @Override
   protected void onTsFileInsertionEvent(final TsFileInsertionEvent event) {
-    for (final TabletInsertionEvent tabletInsertionEvent : event.toTabletInsertionEvents()) {
+    for (final TabletInsertionEvent tabletInsertionEvent :
+        ((PipeTsFileInsertionEvent) event)
+            .toTabletInsertionEvents(SubscriptionAgent.receiver().remainingMs())) {
       onTabletInsertionEvent(tabletInsertionEvent);
     }
   }

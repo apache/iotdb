@@ -36,7 +36,7 @@ public class SubscriptionPollRequest {
 
   private final transient SubscriptionPollPayload payload;
 
-  private final transient long timeoutMs; // unused now
+  private final transient long timeoutMs;
 
   /** The maximum size, in bytes, for the response payload. */
   private final transient long maxBytes;

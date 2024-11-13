@@ -17,29 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription.exception;
+package org.apache.iotdb.db.subscription.task.execution;
 
-import java.util.Objects;
+import org.apache.iotdb.commons.pipe.agent.task.execution.PipeSubtaskScheduler;
 
-public class SubscriptionPipeTimeoutException extends SubscriptionTimeoutException {
+public class SubscriptionSubtaskScheduler extends PipeSubtaskScheduler {
 
-  public SubscriptionPipeTimeoutException(final String message) {
-    super(message);
-  }
+  private final SubscriptionSubtaskExecutor executor;
 
-  public SubscriptionPipeTimeoutException(final String message, final Throwable cause) {
-    super(message, cause);
-  }
+  public SubscriptionSubtaskScheduler(final SubscriptionSubtaskExecutor executor) {
+    super(executor);
 
-  @Override
-  public boolean equals(final Object obj) {
-    return obj instanceof SubscriptionPipeTimeoutException
-        && Objects.equals(getMessage(), ((SubscriptionPipeTimeoutException) obj).getMessage())
-        && Objects.equals(getTimeStamp(), ((SubscriptionPipeTimeoutException) obj).getTimeStamp());
+    this.executor = executor;
   }
 
   @Override
-  public int hashCode() {
-    return super.hashCode();
+  public boolean schedule() {
+    // prioritize executing SubscriptionReceiverSubtask over SubscriptionConnectorSubtask
+    return !executor.hasSubmittedReceiverSubtasks() && super.schedule();
   }
 }

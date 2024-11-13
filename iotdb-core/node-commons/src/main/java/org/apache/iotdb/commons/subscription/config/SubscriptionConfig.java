@@ -57,8 +57,8 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionPollMaxBlockingTimeMs();
   }
 
-  public int getSubscriptionSerializeMaxBlockingTimeMs() {
-    return COMMON_CONFIG.getSubscriptionSerializeMaxBlockingTimeMs();
+  public int getSubscriptionDefaultTimeoutInMs() {
+    return COMMON_CONFIG.getSubscriptionDefaultTimeoutInMs();
   }
 
   public long getSubscriptionLaunchRetryIntervalMs() {
@@ -89,6 +89,10 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionMetaSyncerSyncIntervalMinutes();
   }
 
+  public long getSubscriptionTsFileSlicerCheckMemoryEnoughIntervalMs() {
+    return COMMON_CONFIG.getSubscriptionTsFileSlicerCheckMemoryEnoughIntervalMs();
+  }
+
   /////////////////////////////// Utils ///////////////////////////////
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConfig.class);
@@ -113,8 +117,7 @@ public class SubscriptionConfig {
         "SubscriptionPrefetchTsFileBatchMaxSizeInBytes: {}",
         getSubscriptionPrefetchTsFileBatchMaxSizeInBytes());
     LOGGER.info("SubscriptionPollMaxBlockingTimeMs: {}", getSubscriptionPollMaxBlockingTimeMs());
-    LOGGER.info(
-        "SubscriptionSerializeMaxBlockingTimeMs: {}", getSubscriptionSerializeMaxBlockingTimeMs());
+    LOGGER.info("SubscriptionDefaultTimeoutInMs: {}", getSubscriptionDefaultTimeoutInMs());
     LOGGER.info("SubscriptionLaunchRetryIntervalMs: {}", getSubscriptionLaunchRetryIntervalMs());
     LOGGER.info(
         "SubscriptionRecycleUncommittedEventIntervalMs: {}",
@@ -124,6 +127,9 @@ public class SubscriptionConfig {
     LOGGER.info(
         "SubscriptionTsFileDeduplicationWindowSeconds: {}",
         getSubscriptionTsFileDeduplicationWindowSeconds());
+    LOGGER.info(
+        "SubscriptionTsFileSlicerCheckMemoryEnoughIntervalMs: {}",
+        getSubscriptionTsFileSlicerCheckMemoryEnoughIntervalMs());
 
     LOGGER.info(
         "SubscriptionMetaSyncerInitialSyncDelayMinutes: {}",

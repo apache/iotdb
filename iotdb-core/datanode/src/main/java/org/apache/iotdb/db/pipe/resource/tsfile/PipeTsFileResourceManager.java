@@ -80,7 +80,7 @@ public class PipeTsFileResourceManager {
                 PipeConfig.getInstance().getPipeTsFilePinMaxLogNumPerRound(),
                 PipeConfig.getInstance().getPipeTsFilePinMaxLogIntervalRounds(),
                 hardlinkOrCopiedFileToPipeTsFileResourceMap.size());
-
+    final StringBuilder logBuilder = new StringBuilder();
     while (iterator.hasNext()) {
       final Map.Entry<String, PipeTsFileResource> entry = iterator.next();
 
@@ -97,18 +97,18 @@ public class PipeTsFileResourceManager {
         if (entry.getValue().closeIfOutOfTimeToLive()) {
           iterator.remove();
         } else {
-          logger.ifPresent(
-              l ->
-                  l.info(
-                      "Pipe file (file name: {}) is still referenced {} times",
-                      entry.getKey(),
-                      entry.getValue().getReferenceCount()));
+          logBuilder.append(
+              String.format(
+                  "<%s , %d times> ", entry.getKey(), entry.getValue().getReferenceCount()));
         }
       } catch (final IOException e) {
         LOGGER.warn("failed to close PipeTsFileResource when checking TTL: ", e);
       } finally {
         segmentLock.unlock(new File(hardlinkOrCopiedFile));
       }
+    }
+    if (logBuilder.length() > 0) {
+      logger.ifPresent(l -> l.info("Pipe file {}are still referenced", logBuilder));
     }
   }
 
