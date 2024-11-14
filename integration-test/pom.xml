@@ -415,7 +415,7 @@
             </activation>
             <properties>
                 <integrationTest.excludedGroups/>
-                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT1,org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema,org.apache.iotdb.itbase.category.MultiClusterIT2ManualCreateSchema,org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionArchVerification,org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionConsumer,org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionMisc,org.apache.iotdb.itbase.category.MultiClusterIT3</integrationTest.includedGroups>
+                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT1,org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema,org.apache.iotdb.itbase.category.MultiClusterIT2ManualCreateSchema,org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionArchVerification,org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionConsumer,org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionMisc,org.apache.iotdb.itbase.category.MultiClusterIT3,org.apache.iotdb.itbase.category.MultiClusterIT2TableModel</integrationTest.includedGroups>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
                 <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
@@ -458,6 +458,20 @@
             <properties>
                 <integrationTest.excludedGroups/>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT2ManualCreateSchema</integrationTest.includedGroups>
+                <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
+                <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
+                <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
+                <integrationTest.testEnv>MultiCluster</integrationTest.testEnv>
+            </properties>
+        </profile>
+        <profile>
+            <id>MultiClusterIT2TableModel</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <integrationTest.excludedGroups/>
+                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT2TableModel</integrationTest.includedGroups>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
                 <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
