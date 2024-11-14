@@ -651,13 +651,14 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     return deviceSet.stream()
         .anyMatch(
             deviceID -> {
-              if ((isListenTableModelDataRegion == null
-                      && (deviceID instanceof PlainDeviceID
-                          || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
-                          || deviceID.getTableName().equals(PATH_ROOT)))
-                  || isListenTableModelDataRegion) {
+              if (isListenTableModelDataRegion == null) {
+                isListenTableModelDataRegion =
+                    (deviceID instanceof PlainDeviceID
+                        || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
+                        || deviceID.getTableName().equals(PATH_ROOT));
+              }
+              if (isListenTableModelDataRegion) {
                 // In case of table model deviceID
-                isListenTableModelDataRegion = Boolean.TRUE;
                 if (tablePattern.isTableModelDataAllowedToBeCaptured()
                     // The database name in resource is prefixed with "root."
                     && tablePattern.matchesDatabase(resource.getDatabaseName().substring(5))
@@ -666,7 +667,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                 }
               } else {
                 // In case of tree model deviceID
-                isListenTableModelDataRegion = Boolean.FALSE;
                 if (treePattern.isTreeModelDataAllowedToBeCaptured()
                     && treePattern.mayOverlapWithDevice(deviceID)) {
                   return true;
