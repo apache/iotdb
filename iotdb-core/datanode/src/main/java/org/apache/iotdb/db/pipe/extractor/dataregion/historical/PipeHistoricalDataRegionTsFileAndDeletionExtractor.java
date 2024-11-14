@@ -659,20 +659,15 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
               }
               if (isListenTableModelDataRegion) {
                 // In case of table model deviceID
-                if (tablePattern.isTableModelDataAllowedToBeCaptured()
+                return tablePattern.isTableModelDataAllowedToBeCaptured()
                     // The database name in resource is prefixed with "root."
                     && tablePattern.matchesDatabase(resource.getDatabaseName().substring(5))
-                    && tablePattern.matchesTable(deviceID.getTableName())) {
-                  return true;
-                }
+                    && tablePattern.matchesTable(deviceID.getTableName());
               } else {
                 // In case of tree model deviceID
-                if (treePattern.isTreeModelDataAllowedToBeCaptured()
-                    && treePattern.mayOverlapWithDevice(deviceID)) {
-                  return true;
-                }
+                return treePattern.isTreeModelDataAllowedToBeCaptured()
+                    && treePattern.mayOverlapWithDevice(deviceID);
               }
-              return false;
             });
   }
 
