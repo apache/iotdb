@@ -1212,13 +1212,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
   }
 
-  public Optional<TsTable> getTsTableIfExists(final String database, final String tableName) {
+  public Optional<TsTable> getTsTableIfExists(final String database, final String tableName)
+      throws MetadataException {
     databaseReadWriteLock.readLock().lock();
     try {
       return mTree.getTableIfExists(getQualifiedDatabasePartialPath(database), tableName);
-    } catch (final MetadataException e) {
-      LOGGER.warn(e.getMessage(), e);
-      throw new RuntimeException(e);
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }
