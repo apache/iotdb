@@ -19,10 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.exception.LoadEmptyFileException;
-import org.apache.iotdb.db.exception.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.VerifyMetadataException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -89,11 +87,8 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
 
   @Override
   public IAnalysis analyzeFileByFile(IAnalysis analysis) {
-    // check if the system is read only
-    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
-      analysis.setFinishQueryAfterAnalyze(true);
-      analysis.setFailStatus(
-          RpcUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY, LoadReadOnlyException.MESSAGE));
+    checkBeforeAnalyzeFileByFile(analysis);
+    if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
 

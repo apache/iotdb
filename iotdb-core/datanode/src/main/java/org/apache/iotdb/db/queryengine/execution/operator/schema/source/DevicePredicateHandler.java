@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
@@ -123,7 +124,7 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
   }
 
   @Override
-  public void close() {
+  public void close() throws MetadataException {
     clear();
     if (Objects.nonNull(filterOutputTransformer)) {
       filterOutputTransformer.close();
