@@ -1008,59 +1008,68 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   private PipeMeta filterInvalidConsensusGroup(PipeMeta pipeMeta) {
     final PipeParameters sourceAttribute = pipeMeta.getStaticMeta().getExtractorParameters();
-    if (isCaptureTable(sourceAttribute)) {
-      // only support dataRegion
-      final Map<String, List<TConsensusGroupId>> dataBaseToId =
-          ConfigNode.getInstance()
-              .getConfigManager()
-              .getPartitionManager()
-              .getAllRegionGroupIdMap(TConsensusGroupType.DataRegion);
+    boolean isCaptureTable = isCaptureTable(sourceAttribute);
+    boolean isCaptureTree = isCaptureTree(sourceAttribute);
 
-      if (dataBaseToId == null || dataBaseToId.isEmpty()) {
-        return pipeMeta;
-      }
+    // only support dataRegion
+    final Map<String, List<TConsensusGroupId>> dataBaseToId =
+        ConfigNode.getInstance()
+            .getConfigManager()
+            .getPartitionManager()
+            .getAllRegionGroupIdMap(TConsensusGroupType.DataRegion);
 
-      final PipeMeta finalPipeMeta;
-      try {
-        finalPipeMeta = pipeMeta.deepCopy();
-      } catch (Exception ignore) {
-        return pipeMeta;
-      }
-
-      final String dataBasePattern = getDataBasePattern(sourceAttribute);
-      dataBaseToId.forEach(
-          (dataBaseName, tConsensusGroupIds) -> {
-            if (dataBaseName == null
-                || tConsensusGroupIds == null
-                || tConsensusGroupIds.isEmpty()) {
-              return;
-            }
-            boolean isTableModel = false;
-            try {
-              TDatabaseSchema schema =
-                  ConfigNode.getInstance()
-                      .getConfigManager()
-                      .getClusterSchemaManager()
-                      .getDatabaseSchemaByName(dataBaseName);
-              isTableModel = schema != null && schema.isTableModel;
-            } catch (DatabaseNotExistsException ignore) {
-            }
-
-            if (isTableModel
-                && dataBaseName.length() > 5
-                && !dataBasePattern.matches(dataBaseName.substring(5))) {
-              tConsensusGroupIds.forEach(
-                  id ->
-                      finalPipeMeta
-                          .getRuntimeMeta()
-                          .getConsensusGroupId2TaskMetaMap()
-                          .remove(id.id));
-            }
-          });
-
-      return finalPipeMeta;
+    if (dataBaseToId == null || dataBaseToId.isEmpty()) {
+      return pipeMeta;
     }
-    return pipeMeta;
+
+    final PipeMeta finalPipeMeta;
+    try {
+      finalPipeMeta = pipeMeta.deepCopy();
+    } catch (Exception ignore) {
+      return pipeMeta;
+    }
+
+    final String dataBasePattern = getDataBasePattern(sourceAttribute);
+    dataBaseToId.forEach(
+        (dataBaseName, tConsensusGroupIds) -> {
+          if (dataBaseName == null || tConsensusGroupIds == null || tConsensusGroupIds.isEmpty()) {
+            return;
+          }
+          boolean isTableModel = false;
+          try {
+            TDatabaseSchema schema =
+                ConfigNode.getInstance()
+                    .getConfigManager()
+                    .getClusterSchemaManager()
+                    .getDatabaseSchemaByName(dataBaseName);
+            isTableModel = schema != null && schema.isTableModel;
+          } catch (DatabaseNotExistsException ignore) {
+            return;
+          }
+
+          if (isTableModel) {
+            // If the DataBase is a table model, but the Pipe does not capture the table model, or
+            // the DataBase does not match the cleanup
+            if (!isCaptureTable
+                || (dataBaseName.length() > 5
+                    && !dataBasePattern.matches(dataBaseName.substring(5)))) {
+              clearAllConsensusGroupID(tConsensusGroupIds, finalPipeMeta);
+            }
+          } else {
+            if (!isCaptureTree) {
+              // If the DataBase is a tree model, but the data of the tree model is not captured
+              clearAllConsensusGroupID(tConsensusGroupIds, finalPipeMeta);
+            }
+          }
+        });
+
+    return finalPipeMeta;
+  }
+
+  private void clearAllConsensusGroupID(
+      List<TConsensusGroupId> tConsensusGroupIds, PipeMeta finalPipeMeta) {
+    tConsensusGroupIds.forEach(
+        id -> finalPipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().remove(id.id));
   }
 
   private boolean isCaptureTable(PipeParameters source) {
@@ -1075,6 +1084,20 @@ public class PipeTaskInfo implements SnapshotProcessor {
             PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
             PipeExtractorConstant.SOURCE_CAPTURE_TABLE_KEY),
         isTableMode);
+  }
+
+  private boolean isCaptureTree(PipeParameters source) {
+    final boolean isTreeMode =
+        source
+            .getStringOrDefault(
+                SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE)
+            .equals(SystemConstant.SQL_DIALECT_TREE_VALUE);
+
+    return source.getBooleanOrDefault(
+        Arrays.asList(
+            PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_KEY,
+            PipeExtractorConstant.SOURCE_CAPTURE_TREE_KEY),
+        isTreeMode);
   }
 
   private String getDataBasePattern(PipeParameters source) {
