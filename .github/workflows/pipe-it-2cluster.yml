@@ -39,7 +39,7 @@ jobs:
       matrix:
         java: [17]
         # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
-        cluster: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode]
+        cluster: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode, PipeConsensusBatchMode, PipeConsensusStreamMode]
         os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
     steps:
@@ -76,7 +76,7 @@ jobs:
       matrix:
         java: [17]
         # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
-        cluster1: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode]
+        cluster1: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode, PipeConsensusBatchMode, PipeConsensusStreamMode]
         cluster2: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode]
         os: [ ubuntu-latest ]
         exclude:
@@ -91,6 +91,14 @@ jobs:
           - cluster1: HighPerformanceMode
             cluster2: LightWeightStandaloneMode
           - cluster1: HighPerformanceMode
+            cluster2: HighPerformanceMode
+          - cluster1: PipeConsensusBatchMode
+            cluster2: LightWeightStandaloneMode
+          - cluster1: PipeConsensusBatchMode
+            cluster2: HighPerformanceMode
+          - cluster1: PipeConsensusStreamMode
+            cluster2: LightWeightStandaloneMode
+          - cluster1: PipeConsensusStreamMode
             cluster2: HighPerformanceMode
     runs-on: ${{ matrix.os }}
     steps:
@@ -127,7 +135,7 @@ jobs:
       matrix:
         java: [ 17 ]
         # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
-        cluster1: [ LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode ]
+        cluster1: [ ScalableSingleNodeMode ]
         cluster2: [ ScalableSingleNodeMode ]
         os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
