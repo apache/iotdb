@@ -37,7 +37,7 @@ public class PipeMeta {
   private final PipeTemporaryMeta temporaryMeta;
 
   public PipeMeta(final PipeStaticMeta staticMeta, final PipeRuntimeMeta runtimeMeta) {
-    this(staticMeta, runtimeMeta, new PipeTemporaryMeta());
+    this(staticMeta, runtimeMeta, new PipeTemporaryMetaInCoordinator());
   }
 
   public PipeMeta(

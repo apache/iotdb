@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager.pipe.metric;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordinator;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
@@ -49,7 +50,8 @@ public class PipeTemporaryMetaMetrics implements IMetricSet {
   @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;
 
-  private final Map<String, PipeTemporaryMeta> pipeTemporaryMetaMap = new ConcurrentHashMap<>();
+  private final Map<String, PipeTemporaryMetaInCoordinator> pipeTemporaryMetaMap =
+      new ConcurrentHashMap<>();
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
@@ -64,13 +66,13 @@ public class PipeTemporaryMetaMetrics implements IMetricSet {
   }
 
   private void createAutoGauge(final String pipeID) {
-    final PipeTemporaryMeta pipeTemporaryMeta = pipeTemporaryMetaMap.get(pipeID);
+    final PipeTemporaryMetaInCoordinator pipeTemporaryMeta = pipeTemporaryMetaMap.get(pipeID);
     final String[] pipeNameAndCreationTime = pipeID.split("_");
     metricService.createAutoGauge(
         Metric.PIPE_GLOBAL_REMAINING_EVENT_COUNT.toString(),
         MetricLevel.IMPORTANT,
         pipeTemporaryMeta,
-        PipeTemporaryMeta::getGlobalRemainingEvents,
+        PipeTemporaryMetaInCoordinator::getGlobalRemainingEvents,
         Tag.NAME.toString(),
         pipeNameAndCreationTime[0],
         Tag.CREATION_TIME.toString(),
@@ -79,7 +81,7 @@ public class PipeTemporaryMetaMetrics implements IMetricSet {
         Metric.PIPE_GLOBAL_REMAINING_TIME.toString(),
         MetricLevel.IMPORTANT,
         pipeTemporaryMeta,
-        PipeTemporaryMeta::getGlobalRemainingTime,
+        PipeTemporaryMetaInCoordinator::getGlobalRemainingTime,
         Tag.NAME.toString(),
         pipeNameAndCreationTime[0],
         Tag.CREATION_TIME.toString(),
@@ -123,7 +125,8 @@ public class PipeTemporaryMetaMetrics implements IMetricSet {
   public void register(final PipeMeta pipeMeta) {
     final String taskID =
         pipeMeta.getStaticMeta().getPipeName() + "_" + pipeMeta.getStaticMeta().getCreationTime();
-    pipeTemporaryMetaMap.putIfAbsent(taskID, pipeMeta.getTemporaryMeta());
+    pipeTemporaryMetaMap.putIfAbsent(
+        taskID, (PipeTemporaryMetaInCoordinator) pipeMeta.getTemporaryMeta());
     if (Objects.nonNull(metricService)) {
       createMetrics(taskID);
     }
