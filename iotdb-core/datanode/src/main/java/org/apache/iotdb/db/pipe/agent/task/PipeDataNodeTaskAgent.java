@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
@@ -148,11 +149,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       }
     }
 
-    pipeMetaKeeper
-        .getPipeMeta(pipeStaticMeta.getPipeName())
-        .getRuntimeMeta()
-        .getConsensusGroupId2TaskMetaMap()
-        .put(consensusGroupId, pipeTaskMeta);
+    final PipeMeta meta = pipeMetaKeeper.getPipeMeta(pipeStaticMeta.getPipeName());
+    meta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().put(consensusGroupId, pipeTaskMeta);
+    ((PipeTemporaryMetaInAgent) meta.getTemporaryMeta())
+        .initAndCommitterKeyIfAbsent(
+            pipeStaticMeta.getPipeName(), pipeStaticMeta.getCreationTime(), consensusGroupId);
   }
 
   @Override
