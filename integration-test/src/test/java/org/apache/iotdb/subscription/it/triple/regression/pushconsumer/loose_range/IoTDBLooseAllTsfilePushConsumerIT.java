@@ -131,7 +131,7 @@ public class IoTDBLooseAllTsfilePushConsumerIT extends AbstractSubscriptionRegre
       timestamp += 2000;
     }
     session_src.insertTablet(tablet);
-    awaitUntilFlush(sender);
+    session_src.executeNonQueryStatement("flush");
   }
 
   @Test
@@ -154,7 +154,7 @@ public class IoTDBLooseAllTsfilePushConsumerIT extends AbstractSubscriptionRegre
     // Write data before subscribing
     insert_data(1704038396000L, device); // 2023-12-31 23:59:56+08:00
     insert_data(1704038396000L, device2); // 2023-12-31 23:59:56+08:00
-    awaitUntilFlush(sender);
+    session_src.executeNonQueryStatement("flush");
 
     List<String> paths = new ArrayList<>(2);
     paths.add(device);
@@ -212,7 +212,7 @@ public class IoTDBLooseAllTsfilePushConsumerIT extends AbstractSubscriptionRegre
 
     insert_data(System.currentTimeMillis(), device); // now, not in range
     insert_data(System.currentTimeMillis(), device2); // now, not in range
-    awaitUntilFlush(sender);
+    session_src.executeNonQueryStatement("flush");
     System.out.println(FORMAT.format(new Date()) + " src: " + getCount(session_src, sql));
 
     AWAIT.untilAsserted(
@@ -223,7 +223,7 @@ public class IoTDBLooseAllTsfilePushConsumerIT extends AbstractSubscriptionRegre
 
     insert_data(1707782400000L, device); // 2024-02-13 08:00:00+08:00
     insert_data(1707782400000L, device2); // 2024-02-13 08:00:00+08:00
-    awaitUntilFlush(sender);
+    session_src.executeNonQueryStatement("flush");
     System.out.println(FORMAT.format(new Date()) + " src: " + getCount(session_src, sql));
 
     AWAIT.untilAsserted(
@@ -234,7 +234,7 @@ public class IoTDBLooseAllTsfilePushConsumerIT extends AbstractSubscriptionRegre
 
     insert_data(1711814398000L, device); // 2024-03-30 23:59:58+08:00
     insert_data(1711814398000L, device2); // 2024-03-30 23:59:58+08:00
-    awaitUntilFlush(sender);
+    session_src.executeNonQueryStatement("flush");
     System.out.println(FORMAT.format(new Date()) + " src: " + getCount(session_src, sql));
 
     AWAIT.untilAsserted(
@@ -245,7 +245,7 @@ public class IoTDBLooseAllTsfilePushConsumerIT extends AbstractSubscriptionRegre
 
     insert_data(1711900798000L, device); // 2024-03-31 23:59:58+08:00, not in range
     insert_data(1711900798000L, device2); // 2024-03-31 23:59:58+08:00
-    awaitUntilFlush(sender);
+    session_src.executeNonQueryStatement("flush");
     System.out.println(FORMAT.format(new Date()) + " src: " + getCount(session_src, sql));
 
     AWAIT.untilAsserted(

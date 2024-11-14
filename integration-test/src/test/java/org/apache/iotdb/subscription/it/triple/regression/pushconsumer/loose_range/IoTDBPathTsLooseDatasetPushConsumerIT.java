@@ -132,7 +132,7 @@ public class IoTDBPathTsLooseDatasetPushConsumerIT extends AbstractSubscriptionR
       timestamp += 2000;
     }
     session_src.insertTablet(tablet);
-    awaitUntilFlush(sender);
+    session_src.executeNonQueryStatement("flush");
   }
 
   @Test

@@ -124,7 +124,7 @@ public class IoTDBSnapshotTSPatternDatasetPushConsumerIT extends AbstractSubscri
       timestamp += row * 2000;
     }
     session_src.insertTablet(tablet);
-    awaitUntilFlush(sender);
+    session_src.executeNonQueryStatement("flush");
   }
 
   @Test

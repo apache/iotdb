@@ -115,7 +115,6 @@ public class IoTDBDevicePatternPullConsumerDataSetIT extends AbstractSubscriptio
       timestamp += row * 2000;
     }
     session_src.insertTablet(tablet);
-    awaitUntilFlush(sender);
   }
 
   @Test

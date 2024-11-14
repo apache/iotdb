@@ -128,7 +128,7 @@ public class IoTDBPathLooseTsfilePushConsumerIT extends AbstractSubscriptionRegr
       timestamp += 2000;
     }
     session_src.insertTablet(tablet);
-    awaitUntilFlush(sender);
+    session_src.executeNonQueryStatement("flush");
   }
 
   @Test
@@ -144,7 +144,7 @@ public class IoTDBPathLooseTsfilePushConsumerIT extends AbstractSubscriptionRegr
     // Write data before subscribing
     insert_data(1704038396000L, device); // 2023-12-31 23:59:56+08:00
     insert_data(1704038396000L, device2); // 2023-12-31 23:59:56+08:00
-    awaitUntilFlush(sender);
+    session_src.executeNonQueryStatement("flush");
 
     consumer =
         new SubscriptionPushConsumer.Builder()
@@ -188,7 +188,7 @@ public class IoTDBPathLooseTsfilePushConsumerIT extends AbstractSubscriptionRegr
 
     insert_data(System.currentTimeMillis(), device); // now, not in range
     insert_data(System.currentTimeMillis(), device2); // now, not in range
-    awaitUntilFlush(sender);
+    session_src.executeNonQueryStatement("flush");
 
     AWAIT.untilAsserted(
         () -> {
@@ -197,7 +197,7 @@ public class IoTDBPathLooseTsfilePushConsumerIT extends AbstractSubscriptionRegr
 
     insert_data(1707782400000L, device); // 2024-02-13 08:00:00+08:00
     insert_data(1707782400000L, device2); // 2024-02-13 08:00:00+08:00
-    awaitUntilFlush(sender);
+    session_src.executeNonQueryStatement("flush");
 
     AWAIT.untilAsserted(
         () -> {
@@ -206,7 +206,7 @@ public class IoTDBPathLooseTsfilePushConsumerIT extends AbstractSubscriptionRegr
 
     insert_data(1711814398000L, device); // 2024-03-30 23:59:58+08:00
     insert_data(1711814398000L, device2); // 2024-03-30 23:59:58+08:00
-    awaitUntilFlush(sender);
+    session_src.executeNonQueryStatement("flush");
 
     AWAIT.untilAsserted(
         () -> {

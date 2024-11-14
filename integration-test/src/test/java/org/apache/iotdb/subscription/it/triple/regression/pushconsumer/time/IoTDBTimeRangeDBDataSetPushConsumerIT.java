@@ -106,7 +106,6 @@ public class IoTDBTimeRangeDBDataSetPushConsumerIT extends AbstractSubscriptionR
       timestamp += row * 2000;
     }
     session_src.insertTablet(tablet);
-    awaitUntilFlush(sender);
   }
 
   @Test

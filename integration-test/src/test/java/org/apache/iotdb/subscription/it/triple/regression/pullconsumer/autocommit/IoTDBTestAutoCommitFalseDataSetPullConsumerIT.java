@@ -117,7 +117,6 @@ public class IoTDBTestAutoCommitFalseDataSetPullConsumerIT
       timestamp += row * 2000;
     }
     session_src.insertTablet(tablet);
-    awaitUntilFlush(sender);
   }
 
   private void consume_data_noCommit(SubscriptionPullConsumer consumer, Session session)

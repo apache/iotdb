@@ -95,7 +95,6 @@ public class IoTDBAllPullConsumerDataSetIT extends AbstractSubscriptionRegressio
       timestamp += row * 2000;
     }
     session_src.insertTablet(tablet);
-    awaitUntilFlush(sender);
   }
 
   @Test

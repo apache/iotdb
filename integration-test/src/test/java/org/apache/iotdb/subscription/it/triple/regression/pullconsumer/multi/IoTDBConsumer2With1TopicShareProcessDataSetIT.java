@@ -104,7 +104,6 @@ public class IoTDBConsumer2With1TopicShareProcessDataSetIT
       timestamp += 2000;
     }
     session_src.insertTablet(tablet);
-    awaitUntilFlush(sender);
   }
 
   @Test

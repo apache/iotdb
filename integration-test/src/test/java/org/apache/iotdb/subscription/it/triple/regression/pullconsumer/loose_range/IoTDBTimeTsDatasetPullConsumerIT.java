@@ -123,7 +123,6 @@ public class IoTDBTimeTsDatasetPullConsumerIT extends AbstractSubscriptionRegres
       timestamp += 2000;
     }
     session_src.insertTablet(tablet);
-    awaitUntilFlush(sender);
   }
 
   @Test

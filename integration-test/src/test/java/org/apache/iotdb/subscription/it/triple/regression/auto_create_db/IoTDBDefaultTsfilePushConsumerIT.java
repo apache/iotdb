@@ -126,7 +126,7 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionRegres
     for (int i = 0; i < deviceCount; i++) {
       insert_data(1706659200000L, devices.get(i)); // 2024-01-31 08:00:00+08:00
     }
-    awaitUntilFlush(sender);
+    session_src.executeNonQueryStatement("flush");
     final AtomicInteger onReceiveCount = new AtomicInteger(0);
     List<AtomicInteger> rowCounts = new ArrayList<>(deviceCount);
     for (int i = 0; i < deviceCount; i++) {
@@ -187,7 +187,7 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionRegres
               + ":"
               + getCount(session_src, "select count(s_0) from " + devices.get(i)));
     }
-    awaitUntilFlush(sender);
+    session_src.executeNonQueryStatement("flush");
     AWAIT.untilAsserted(
         () -> {
           for (int i = 0; i < deviceCount; i++) {
@@ -210,7 +210,7 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionRegres
               + ":"
               + getCount(session_src, "select count(s_0) from " + devices.get(i)));
     }
-    awaitUntilFlush(sender);
+    session_src.executeNonQueryStatement("flush");
 
     // Unsubscribe, then it will consume all again.
     AWAIT.untilAsserted(

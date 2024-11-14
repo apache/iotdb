@@ -100,7 +100,6 @@ public class IoTDBTestTopicNameIT extends AbstractSubscriptionRegressionIT {
       timestamp += 2000;
     }
     session_src.insertTablet(tablet);
-    awaitUntilFlush(sender);
     Thread.sleep(1000);
   }
 

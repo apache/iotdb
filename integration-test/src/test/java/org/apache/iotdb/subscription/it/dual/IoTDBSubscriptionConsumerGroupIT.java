@@ -887,7 +887,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
             String.format(
                 "insert into root.topic2(time, s, t) values (%s, 3, 4)", currentTime + i));
       }
-      awaitUntilFlush(senderEnv);
+      session.executeNonQueryStatement("flush");
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

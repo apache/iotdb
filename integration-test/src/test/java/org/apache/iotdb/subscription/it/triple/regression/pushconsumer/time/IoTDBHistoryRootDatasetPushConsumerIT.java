@@ -107,7 +107,7 @@ public class IoTDBHistoryRootDatasetPushConsumerIT extends AbstractSubscriptionR
       timestamp += 2000;
     }
     session_src.insertTablet(tablet);
-    awaitUntilFlush(sender);
+    session_src.executeNonQueryStatement("flush");
     Thread.sleep(5000);
   }
 

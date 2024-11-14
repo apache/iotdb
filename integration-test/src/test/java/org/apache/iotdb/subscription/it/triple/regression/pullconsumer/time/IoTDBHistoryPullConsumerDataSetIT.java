@@ -99,7 +99,6 @@ public class IoTDBHistoryPullConsumerDataSetIT extends AbstractSubscriptionRegre
       timestamp += row * 2000;
     }
     session_src.insertTablet(tablet);
-    awaitUntilFlush(sender);
   }
 
   @Test

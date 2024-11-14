@@ -127,7 +127,6 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
       timestamp += row * 2000;
     }
     session_src.insertTablet(tablet);
-    awaitUntilFlush(sender);
   }
 
   private void run_single(SubscriptionPullConsumer consumer, int index)
@@ -435,7 +434,7 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
       consumer1.subscribe(t1);
       session_src.executeNonQueryStatement(
           "insert into " + database + ".d_0(time,s_0,s_1) values (1,10,20),(1000,30,60);");
-      awaitUntilFlush(sender);
+      session_src.executeNonQueryStatement("flush");
       Thread.sleep(3000L);
       AtomicInteger rowCount = new AtomicInteger(0);
       while (true) {
@@ -464,7 +463,7 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
       consumer1.subscribe(t1);
       session_src.executeNonQueryStatement(
           "insert into " + device + "(time,s_0) values (1,10),(1000,30);");
-      awaitUntilFlush(sender);
+      session_src.executeNonQueryStatement("flush");
       Thread.sleep(3000L);
       AtomicInteger rowCount = new AtomicInteger(0);
       while (true) {
@@ -506,7 +505,7 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
       consumer1.subscribe(t1);
       session_src.executeNonQueryStatement(
           "insert into " + device + "(time,s_0,s_1) values (1,10,20),(1000,30,60);");
-      awaitUntilFlush(sender);
+      session_src.executeNonQueryStatement("flush");
       Thread.sleep(3000L);
       AtomicInteger rowCount = new AtomicInteger(0);
       while (true) {
