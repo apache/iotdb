@@ -40,12 +40,13 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * The {@link PipeTemporaryMetaMetrics} is to calculate the pipe-statistics from the {@link
- * PipeTemporaryMeta}. The class is lock-free and can only read from the thread-safe variables from
- * the {@link PipeTemporaryMeta}.
+ * The {@link PipeTemporaryMetaInCoordinatorMetrics} is to calculate the pipe-statistics from the
+ * {@link PipeTemporaryMeta}. The class is lock-free and can only read from the thread-safe
+ * variables from the {@link PipeTemporaryMeta}.
  */
-public class PipeTemporaryMetaMetrics implements IMetricSet {
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTemporaryMetaMetrics.class);
+public class PipeTemporaryMetaInCoordinatorMetrics implements IMetricSet {
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(PipeTemporaryMetaInCoordinatorMetrics.class);
 
   @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;
@@ -166,14 +167,15 @@ public class PipeTemporaryMetaMetrics implements IMetricSet {
 
   private static class PipeTemporaryMetaMetricsHolder {
 
-    private static final PipeTemporaryMetaMetrics INSTANCE = new PipeTemporaryMetaMetrics();
+    private static final PipeTemporaryMetaInCoordinatorMetrics INSTANCE =
+        new PipeTemporaryMetaInCoordinatorMetrics();
 
     private PipeTemporaryMetaMetricsHolder() {
       // Empty constructor
     }
   }
 
-  public static PipeTemporaryMetaMetrics getInstance() {
+  public static PipeTemporaryMetaInCoordinatorMetrics getInstance() {
     return PipeTemporaryMetaMetricsHolder.INSTANCE;
   }
 }
