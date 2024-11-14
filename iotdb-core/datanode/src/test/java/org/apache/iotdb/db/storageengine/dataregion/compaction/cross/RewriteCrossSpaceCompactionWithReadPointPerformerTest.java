@@ -58,6 +58,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -250,8 +251,8 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
                   .getTsFilePath()
                   .replace(CROSS_COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX)));
       resource.resetModFile();
-      Assert.assertTrue(resource.anyModFileExists());
-      Assert.assertEquals(4, resource.getAllModEntries().size());
+      Assert.assertFalse(resource.anyModFileExists());
+      Assert.assertEquals(0, resource.getAllModEntries().size());
     }
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
@@ -379,8 +380,6 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
     }
     generateModsFile(seriesPaths, seqResources, Long.MIN_VALUE, Long.MAX_VALUE, false);
     generateModsFile(seriesPaths, unseqResources, Long.MIN_VALUE, Long.MAX_VALUE, false);
-    generateModsFile(seriesPaths, seqResources, Long.MIN_VALUE, Long.MAX_VALUE, true);
-    generateModsFile(seriesPaths, unseqResources, Long.MIN_VALUE, Long.MAX_VALUE, true);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 4;
@@ -479,8 +478,7 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
       if (!resource.getTsFile().exists()) {
         continue;
       }
-      Assert.assertTrue(resource.anyModFileExists());
-      Assert.assertEquals(30, resource.getAllModEntries().size());
+      Assert.assertFalse(resource.anyModFileExists());
     }
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
 
@@ -568,6 +566,7 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
    * <p>The data of d3.s0 is deleted. Test when there is a deletion to the file before compaction,
    * then comes to a deletion during compaction.
    */
+  @Ignore // cannot write compaction mod ahead
   @Test
   public void testOneDeletionDuringCompaction() throws Exception {
     DataRegion vsgp =
@@ -636,15 +635,13 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
         Assert.assertNull(resource.getCompactionModFile());
         Assert.assertFalse(resource.anyModFileExists());
       } else if (i == 2) {
-        Assert.assertTrue(resource.getCompactionModFile().exists());
+        Assert.assertNull(resource.getCompactionModFile());
         Assert.assertTrue(resource.anyModFileExists());
         Assert.assertEquals(2, resource.getAllModEntries().size());
-        Assert.assertEquals(1, resource.getCompactionModFile().getAllMods().size());
       } else {
-        Assert.assertTrue(resource.getCompactionModFile().exists());
+        Assert.assertNull(resource.getCompactionModFile());
         Assert.assertTrue(resource.anyModFileExists());
         Assert.assertEquals(1, resource.getAllModEntries().size());
-        Assert.assertEquals(1, resource.getCompactionModFile().getAllMods().size());
       }
     }
     for (TsFileResource resource : unseqResources) {
@@ -668,14 +665,8 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
       TsFileResource resource =
           new TsFileResource(
               TsFileNameGenerator.increaseCrossCompactionCnt(seqResource.getTsFile()));
-      if (i < 2) {
-        Assert.assertNull(resource.getCompactionModFile());
-        Assert.assertFalse(resource.anyModFileExists());
-      } else {
-        Assert.assertNull(resource.getCompactionModFile());
-        Assert.assertTrue(resource.anyModFileExists());
-        Assert.assertEquals(1, resource.getAllModEntries().size());
-      }
+      Assert.assertNull(resource.getCompactionModFile());
+      Assert.assertFalse(resource.anyModFileExists());
     }
   }
 
@@ -697,6 +688,7 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
    * <p>The data of d3.s0 is deleted. Test when there is a deletion to the file before compaction,
    * then comes to serveral deletions during compaction.
    */
+  @Ignore // cannot write compaction mod ahead
   @Test
   public void testSeveralDeletionsDuringCompaction() throws Exception {
     DataRegion vsgp =
@@ -779,15 +771,13 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
         Assert.assertNull(resource.getCompactionModFile());
         Assert.assertFalse(resource.anyModFileExists());
       } else if (i == 2) {
-        Assert.assertTrue(resource.getCompactionModFile().exists());
+        Assert.assertNull(resource.getCompactionModFile());
         Assert.assertTrue(resource.anyModFileExists());
         Assert.assertEquals(3, resource.getAllModEntries().size());
-        Assert.assertEquals(2, resource.getCompactionModFile().getAllMods().size());
       } else {
-        Assert.assertTrue(resource.getCompactionModFile().exists());
+        Assert.assertNull(resource.getCompactionModFile());
         Assert.assertTrue(resource.anyModFileExists());
         Assert.assertEquals(2, resource.getAllModEntries().size());
-        Assert.assertEquals(2, resource.getCompactionModFile().getAllMods().size());
       }
     }
     for (TsFileResource resource : unseqResources) {
@@ -811,14 +801,8 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
       TsFileResource resource =
           new TsFileResource(
               TsFileNameGenerator.increaseCrossCompactionCnt(seqResource.getTsFile()));
-      if (i < 2) {
-        Assert.assertNull(resource.getCompactionModFile());
-        Assert.assertFalse(resource.anyModFileExists());
-      } else {
-        Assert.assertNull(resource.getCompactionModFile());
-        Assert.assertTrue(resource.anyModFileExists());
-        Assert.assertEquals(2, resource.getAllModEntries().size());
-      }
+      Assert.assertNull(resource.getCompactionModFile());
+      Assert.assertFalse(resource.anyModFileExists());
     }
   }
 

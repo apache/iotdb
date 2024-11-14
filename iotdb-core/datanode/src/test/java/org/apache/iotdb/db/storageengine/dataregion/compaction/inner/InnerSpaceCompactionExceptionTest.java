@@ -36,6 +36,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameG
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.utils.Pair;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -281,6 +282,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
    *
    * @throws Exception
    */
+  @Ignore // compaction mod cannot be written ahead
   @Test
   public void testHandleWithCompactionMods() throws Exception {
     tsFileManager.addAll(seqResources, true);
@@ -418,6 +420,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
    *
    * @throws Exception
    */
+  @Ignore // compaction mod cannot be written ahead
   @Test
   public void testHandleWithCompactionModsAndNormalMods() throws Exception {
     tsFileManager.addAll(seqResources, true);

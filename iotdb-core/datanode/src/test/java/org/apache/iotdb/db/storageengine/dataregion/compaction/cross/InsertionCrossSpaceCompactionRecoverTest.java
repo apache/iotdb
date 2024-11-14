@@ -156,7 +156,7 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     Assert.assertTrue(
         new File(unseqResource1.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
     Assert.assertTrue(unseqResource1.anyModFileExists());
-    Assert.assertFalse(unseqResource1.getCompactionModFile().getFileLength() > 0);
+    Assert.assertNull(unseqResource1.getCompactionModFile());
 
     Assert.assertFalse(targetFile.tsFileExists());
     Assert.assertFalse(targetFile.resourceFileExists());
@@ -438,6 +438,7 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     resource.setFile(new File(filePath));
     resource.setStatusForTest(TsFileResourceStatus.NORMAL);
     resource.setSeq(seq);
+    resource.setModFileManagement(modFileManagement);
     return resource;
   }
 

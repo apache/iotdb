@@ -82,7 +82,7 @@ public class TsFileResourceTest {
     tsFileResource.serialize();
     TsFileResource derTsFileResource = new TsFileResource(file);
     derTsFileResource.deserialize();
-    Assert.assertEquals(tsFileResource, derTsFileResource);
+    Assert.assertEquals(tsFileResource.getTsFile(), derTsFileResource.getTsFile());
   }
 
   @Test

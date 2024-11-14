@@ -516,13 +516,13 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
       TsFileResource resource = seqResources.get(i);
       resource.resetModFile();
       Assert.assertTrue(resource.anyModFileExists());
-      Assert.assertEquals(seqResources.size() - i, resource.getAllModEntries().size());
+      Assert.assertEquals(1, resource.getAllModEntries().size());
     }
     for (int i = 0, unseqResourcesSize = unseqResources.size(); i < unseqResourcesSize; i++) {
       TsFileResource resource = unseqResources.get(i);
       resource.resetModFile();
       Assert.assertTrue(resource.anyModFileExists());
-      Assert.assertEquals(unseqResourcesSize - i, resource.getAllModEntries().size());
+      Assert.assertEquals(1, resource.getAllModEntries().size());
     }
 
     // compaction log file should not exist
@@ -622,13 +622,13 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
       TsFileResource resource = seqResources.get(i);
       resource.resetModFile();
       Assert.assertTrue(resource.anyModFileExists());
-      Assert.assertEquals(seqResourcesSize - i, resource.getAllModEntries().size());
+      Assert.assertEquals(1, resource.getAllModEntries().size());
     }
     for (int i = 0, unseqResourcesSize = unseqResources.size(); i < unseqResourcesSize; i++) {
       TsFileResource resource = unseqResources.get(i);
       resource.resetModFile();
       Assert.assertTrue(resource.anyModFileExists());
-      Assert.assertEquals(unseqResourcesSize - i, resource.getAllModEntries().size());
+      Assert.assertEquals(1, resource.getAllModEntries().size());
     }
 
     // compaction log file should not exist

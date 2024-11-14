@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -35,8 +37,8 @@ import java.util.TreeMap;
 @SuppressWarnings("FieldCanBeLocal")
 public class PartitionLevelModFileManager implements ModFileManagement {
 
-  private int levelModFileNumThreshold = 30;
-  private long singleModFileSizeThresholdByte = 16 * 1024L;
+  private int levelModFileNumThreshold = IoTDBDescriptor.getInstance().getConfig().getLevelModFileNumThreshold();
+  private long singleModFileSizeThresholdByte = IoTDBDescriptor.getInstance().getConfig().getSingleModFileSizeThresholdByte();
   // level -> mod file id -> mod file
   private final Map<Long, TreeMap<Long, ModificationFile>> levelModFileIdMap = new HashMap<>();
   private final Map<ModificationFile, Set<TsFileResource>> modFileReferences = new HashMap<>();

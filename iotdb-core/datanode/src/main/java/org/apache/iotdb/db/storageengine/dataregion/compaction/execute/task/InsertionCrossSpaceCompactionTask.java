@@ -242,6 +242,9 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
     File sourceTsFile = sourceFileIdentifiers.get(0).getFileFromDataDirsIfAnyAdjuvantFileExists();
     if (sourceTsFile != null) {
       unseqFileToInsert = new TsFileResource(sourceTsFile);
+      if (unseqFileToInsert.resourceFileExists()) {
+        unseqFileToInsert.deserialize();
+      }
       selectedUnseqFiles.add(unseqFileToInsert);
     }
     File targetTsFile = targetFileIdentifiers.get(0).getFileFromDataDirsIfAnyAdjuvantFileExists();
