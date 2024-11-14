@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
@@ -57,7 +58,7 @@ public class DeviceBlackListConstructor extends DeviceUpdater {
     this.regionStatistics = regionStatistics;
   }
 
-  public void handleDeviceNode(final IDeviceMNode<IMemMNode> node) {
+  public void handleDeviceNode(final IDeviceMNode<IMemMNode> node) throws MetadataException {
     if (withoutFilter()) {
       node.preDeactivateSelfOrTemplate();
       preDeletedNum++;
