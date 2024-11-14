@@ -30,13 +30,33 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static com.google.common.base.Preconditions.checkState;
-import static java.util.Objects.requireNonNull;
 
 public class WorkProcessorUtils {
   static <T> WorkProcessor<T> create(Processor<T> process) {
     return new WorkProcessor<>(process);
   }
 
+  public static <T> WorkProcessor<T> fromIterator(Iterator<T> iterator) {
+    return create(
+        () -> {
+          if (!iterator.hasNext()) {
+            return ProcessState.finished();
+          }
+
+          return ProcessState.ofResult(iterator.next());
+        });
+  }
+
+  /**
+   * Receive elements generated from processor and transform them by transformation, finally wrap
+   * into a new WorkProcessor.
+   *
+   * @param processor source processor that generates elements
+   * @param transformation transform elements from source processor
+   * @return stateful stream, i.e. WorkProcessor
+   * @param <T> input elements type
+   * @param <R> output elements type
+   */
   static <T, R> WorkProcessor<R> transform(
       WorkProcessor<T> processor, Transformer<T, R> transformation) {
     return new WorkProcessor<>(
@@ -49,7 +69,7 @@ public class WorkProcessorUtils {
               if (element == null && !processor.isFinished()) {
                 if (processor.process()) {
                   if (!processor.isFinished()) {
-                    element = requireNonNull(processor.getResult(), "result is null");
+                    element = processor.getResult();
                   }
                 } else if (processor.isBlocked()) {
                   return ProcessState.blocked(processor.getBlockedFuture());
@@ -58,8 +78,7 @@ public class WorkProcessorUtils {
                 }
               }
 
-              TransformationState<R> state =
-                  requireNonNull(transformation.process(element), "state is null");
+              TransformationState<R> state = transformation.process(element);
 
               if (state.isNeedsMoreData()) {
                 checkState(
@@ -88,41 +107,7 @@ public class WorkProcessorUtils {
   }
 
   static <T, R> WorkProcessor<R> map(WorkProcessor<T> processor, Function<T, R> mapper) {
-    requireNonNull(processor, "processor is null");
-    requireNonNull(mapper, "mapper is null");
     return processor.transform(
-        element -> {
-          if (element == null) {
-            return TransformationState.finished();
-          }
-
-          return TransformationState.ofResult(mapper.apply(element));
-        });
-  }
-
-  static <T> WorkProcessor<T> yielding(WorkProcessor<T> processor, BooleanSupplier yieldSignal) {
-    return WorkProcessor.create(new YieldingProcessor<>(processor, yieldSignal));
-  }
-
-  static <T> WorkProcessor<T> blocking(
-      WorkProcessor<T> processor, Supplier<ListenableFuture<Void>> futureSupplier) {
-    return WorkProcessor.create(new BlockingProcessor<>(processor, futureSupplier));
-  }
-
-  static <T> WorkProcessor<T> finishWhen(WorkProcessor<T> processor, BooleanSupplier finishSignal) {
-    return WorkProcessor.create(
-        () -> {
-          if (finishSignal.getAsBoolean()) {
-            return ProcessState.finished();
-          }
-
-          return getNextState(processor);
-        });
-  }
-
-  static <T, R> WorkProcessor<R> flatMap(
-      WorkProcessor<T> processor, Function<T, WorkProcessor<R>> mapper) {
-    return processor.flatTransform(
         element -> {
           if (element == null) {
             return TransformationState.finished();
@@ -135,6 +120,18 @@ public class WorkProcessorUtils {
   static <T, R> WorkProcessor<R> flatTransform(
       WorkProcessor<T> processor, Transformer<T, WorkProcessor<R>> transformation) {
     return processor.transform(transformation).transformProcessor(WorkProcessorUtils::flatten);
+  }
+
+  static <T, R> WorkProcessor<R> flatMap(
+      WorkProcessor<T> processor, Function<T, WorkProcessor<R>> mapper) {
+    return processor.flatTransform(
+        element -> {
+          if (element == null) {
+            return TransformationState.finished();
+          }
+
+          return TransformationState.ofResult(mapper.apply(element));
+        });
   }
 
   static <T> WorkProcessor<T> flatten(WorkProcessor<WorkProcessor<T>> processor) {
@@ -160,14 +157,23 @@ public class WorkProcessorUtils {
         });
   }
 
-  public static <T> WorkProcessor<T> fromIterator(Iterator<T> iterator) {
-    return create(
+  static <T> WorkProcessor<T> yielding(WorkProcessor<T> processor, BooleanSupplier yieldSignal) {
+    return WorkProcessor.create(new YieldingProcessor<>(processor, yieldSignal));
+  }
+
+  static <T> WorkProcessor<T> blocking(
+      WorkProcessor<T> processor, Supplier<ListenableFuture<Void>> futureSupplier) {
+    return WorkProcessor.create(new BlockingProcessor<>(processor, futureSupplier));
+  }
+
+  static <T> WorkProcessor<T> finishWhen(WorkProcessor<T> processor, BooleanSupplier finishSignal) {
+    return WorkProcessor.create(
         () -> {
-          if (!iterator.hasNext()) {
+          if (finishSignal.getAsBoolean()) {
             return ProcessState.finished();
           }
 
-          return ProcessState.ofResult(iterator.next());
+          return getNextState(processor);
         });
   }
 

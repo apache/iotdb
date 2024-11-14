@@ -22,5 +22,12 @@ package org.apache.iotdb.db.queryengine.workers;
 import org.apache.iotdb.db.queryengine.workers.state.TransformationState;
 
 public interface Transformer<T, R> {
+  /**
+   * Processes input elements and returns current transformation state.
+   *
+   * @param element an element to be transformed. Will be null when there are no more elements. In
+   *     such case transformation should finish processing and flush any remaining data.
+   * @return the current transformation state, optionally bearing a result
+   */
   TransformationState<R> process(T element);
 }

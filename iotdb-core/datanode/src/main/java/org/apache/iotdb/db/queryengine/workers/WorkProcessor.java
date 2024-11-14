@@ -27,6 +27,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+// WorkProcessor is essentially a stream with state.
 public class WorkProcessor<T> {
   Processor<T> process;
   ProcessState<T> state;
@@ -48,6 +49,11 @@ public class WorkProcessor<T> {
     return WorkProcessorUtils.fromIterator(iterable.iterator());
   }
 
+  /**
+   * Does some work and return whether it exits normally or not
+   *
+   * @return if the worker yields or blocking, return true. Otherwise, it returns false
+   */
   public boolean process() {
     if (isBlocked()) {
       return false;
@@ -89,32 +95,51 @@ public class WorkProcessor<T> {
     return state.getResult();
   }
 
-  WorkProcessor<T> yielding(BooleanSupplier yieldSignal) {
-    return WorkProcessorUtils.yielding(this, yieldSignal);
-  }
-
-  public <R> WorkProcessor<R> transform(Transformer<T, R> transformation) {
-    return WorkProcessorUtils.transform(this, transformation);
-  }
-
-  public <R> WorkProcessor<R> map(Function<T, R> mapper) {
-    return WorkProcessorUtils.map(this, mapper);
-  }
-
+  /** Return a WorkProcessor that is blocking forever until futureSupplier is done. */
   public WorkProcessor<T> blocking(Supplier<ListenableFuture<Void>> futureSupplier) {
     return WorkProcessorUtils.blocking(this, futureSupplier);
   }
 
+  /** Return a WorkProcessor that yields at each process until futureSupplier is done. */
+  WorkProcessor<T> yielding(BooleanSupplier yieldSignal) {
+    return WorkProcessorUtils.yielding(this, yieldSignal);
+  }
+
+  /** Create a new WorkProcessor which returns finish state when the signal is set. */
   public WorkProcessor<T> finishWhen(BooleanSupplier signal) {
     return WorkProcessorUtils.finishWhen(this, signal);
   }
 
-  public <R> WorkProcessor<R> flatMap(Function<T, WorkProcessor<R>> mapper) {
-    return WorkProcessorUtils.flatMap(this, mapper);
+  /**
+   * Accept an input elements, and flat outputs generated from inner WorkProcessor, then wrap it
+   * into a brand-new WorkProcessor.
+   */
+  public <R> WorkProcessor<R> transform(Transformer<T, R> transformation) {
+    return WorkProcessorUtils.transform(this, transformation);
   }
 
+  /**
+   * Syntactic sugar of transform. Each input has a corresponding output element, There is no
+   * immediate state like NEEDS_MORE_DATA.
+   */
+  public <R> WorkProcessor<R> map(Function<T, R> mapper) {
+    return WorkProcessorUtils.map(this, mapper);
+  }
+
+  /**
+   * Accept an input elements, and flat outputs generated from inner WorkProcessor, then wrap it
+   * into a brand-new WorkProcessor.
+   */
   public <R> WorkProcessor<R> flatTransform(Transformer<T, WorkProcessor<R>> transformation) {
     return WorkProcessorUtils.flatTransform(this, transformation);
+  }
+
+  /**
+   * Syntactic sugar of flatTransform. Each input has a corresponding output WorkProcessor. There is
+   * no immediate state like NEEDS_MORE_DATA.
+   */
+  public <R> WorkProcessor<R> flatMap(Function<T, WorkProcessor<R>> mapper) {
+    return WorkProcessorUtils.flatMap(this, mapper);
   }
 
   public <R> WorkProcessor<R> transformProcessor(

@@ -22,5 +22,10 @@ package org.apache.iotdb.db.queryengine.workers;
 import org.apache.iotdb.db.queryengine.workers.state.ProcessState;
 
 public interface Processor<T> {
+  /**
+   * Does some work and returns state.
+   *
+   * @return the current state, optionally bearing a result
+   */
   ProcessState<T> process();
 }
