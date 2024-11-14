@@ -1035,7 +1035,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
           if (dataBaseName == null || tConsensusGroupIds == null || tConsensusGroupIds.isEmpty()) {
             return;
           }
-          boolean isTableModel = false;
+          final boolean isTableModel;
           try {
             TDatabaseSchema schema =
                 ConfigNode.getInstance()
@@ -1079,7 +1079,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
     final boolean isTableMode =
         source
             .getStringOrDefault(
-                SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE)
+                SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
             .equals(SystemConstant.SQL_DIALECT_TABLE_VALUE);
 
     return source.getBooleanOrDefault(
@@ -1093,7 +1093,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
     final boolean isTreeMode =
         source
             .getStringOrDefault(
-                SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE)
+                SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
             .equals(SystemConstant.SQL_DIALECT_TREE_VALUE);
 
     return source.getBooleanOrDefault(
