@@ -57,6 +57,7 @@ import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileDataCacheMemoryBlock;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
@@ -182,11 +183,7 @@ public class LoadTsFileScheduler implements IScheduler {
 
           if (node.isTsFileEmpty()) {
             LOGGER.info("Load skip TsFile {}, because it has no data.", filePath);
-          } else if (!node.needDecodeTsFile(
-              slotList ->
-                  partitionFetcher.queryDataPartition(
-                      slotList,
-                      queryContext.getSession().getUserName()))) { // do not decode, load locally
+          } else if (!needDecodeTSFile(node)) {
             final long startTime = System.nanoTime();
             try {
               isLoadSingleTsFileSuccess = loadLocally(node);
@@ -256,6 +253,21 @@ public class LoadTsFileScheduler implements IScheduler {
     } finally {
       LoadTsFileMemoryManager.getInstance().releaseDataCacheMemoryBlock();
     }
+  }
+
+  private boolean needDecodeTSFile(final LoadSingleTsFileNode node) throws IOException {
+    // do not decode, load locally
+    final boolean isDecodeRequired =
+        node.needDecodeTsFile(
+            slotList ->
+                partitionFetcher.queryDataPartition(
+                    slotList, queryContext.getSession().getUserName()));
+
+    // Local loading requires ARRAY_DEVICE_TIME_INDEX type
+    ITimeIndex timeIndex = node.getTsFileResource().getTimeIndex();
+    return isDecodeRequired
+        || timeIndex == null
+        || timeIndex.getTimeIndexType() != ITimeIndex.ARRAY_DEVICE_TIME_INDEX_TYPE;
   }
 
   private boolean firstPhase(LoadSingleTsFileNode node) {
