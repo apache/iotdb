@@ -44,11 +44,8 @@ public class DiskChunkLoader implements IChunkLoader {
 
   private final TsFileResource resource;
 
-  private final boolean debug;
-
   public DiskChunkLoader(QueryContext context, TsFileResource resource) {
     this.context = context;
-    this.debug = context.isDebug();
     this.resource = resource;
   }
 
@@ -63,7 +60,7 @@ public class DiskChunkLoader implements IChunkLoader {
                 resource.isClosed()),
             chunkMetaData.getDeleteIntervalList(),
             chunkMetaData.getStatistics(),
-            debug);
+            context);
   }
 
   @Override
@@ -86,7 +83,7 @@ public class DiskChunkLoader implements IChunkLoader {
                       resource.isClosed()),
                   chunkMetaData.getDeleteIntervalList(),
                   chunkMetaData.getStatistics(),
-                  debug);
+                  context);
 
       long t2 = System.nanoTime();
       IChunkReader chunkReader = new ChunkReader(chunk, globalTimeFilter);
