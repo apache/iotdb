@@ -43,7 +43,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -77,7 +76,7 @@ public class DeleteDevice extends AbstractTraverseDevice {
 
   public void serializeModEntries(final DataOutputStream stream) throws IOException {
     if (Objects.nonNull(modEntries)) {
-      ReadWriteForEncodingUtils.writeVarInt(modEntries.size(), stream);
+      ReadWriteIOUtils.write(modEntries.size(), stream);
       for (TableDeletionEntry modEntry : modEntries) {
         modEntry.serialize(stream);
       }
