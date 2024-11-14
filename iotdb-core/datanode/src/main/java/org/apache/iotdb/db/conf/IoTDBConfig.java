@@ -1218,10 +1218,13 @@ public class IoTDBConfig {
 
   private CompressionType WALCompressionAlgorithm = CompressionType.LZ4;
 
-  /** the number of shared mod files in each level of each partition **/
+  /** the number of shared mod files in each level of each partition * */
   private int levelModFileNumThreshold = 30;
-  /** when the size of a shared mod file reaches this value, new mod file will be alloacted to new
-   * TsFiles as long as the number of shared mod files does not exceed levelModFileNumThreshold.**/
+
+  /**
+   * when the size of a shared mod file reaches this value, new mod file will be alloacted to new
+   * TsFiles as long as the number of shared mod files does not exceed levelModFileNumThreshold.*
+   */
   private long singleModFileSizeThresholdByte = 16 * 1024L;
 
   IoTDBConfig() {}

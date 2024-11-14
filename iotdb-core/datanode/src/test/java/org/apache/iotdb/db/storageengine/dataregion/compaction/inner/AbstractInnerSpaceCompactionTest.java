@@ -21,7 +21,6 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.inner;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
@@ -111,8 +110,10 @@ public abstract class AbstractInnerSpaceCompactionTest {
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
-    levelModFileNumThreshold = IoTDBDescriptor.getInstance().getConfig().getLevelModFileNumThreshold();
-    singleModFileSizeThresholdByte = IoTDBDescriptor.getInstance().getConfig().getSingleModFileSizeThresholdByte();
+    levelModFileNumThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getLevelModFileNumThreshold();
+    singleModFileSizeThresholdByte =
+        IoTDBDescriptor.getInstance().getConfig().getSingleModFileSizeThresholdByte();
     // one TsFile one mod file for compatibility
     IoTDBDescriptor.getInstance().getConfig().setLevelModFileNumThreshold(Integer.MAX_VALUE);
     IoTDBDescriptor.getInstance().getConfig().setSingleModFileSizeThresholdByte(0);
@@ -240,7 +241,9 @@ public abstract class AbstractInnerSpaceCompactionTest {
       FileUtils.deleteDirectory(tempSGDir);
     }
     IoTDBDescriptor.getInstance().getConfig().setLevelModFileNumThreshold(levelModFileNumThreshold);
-    IoTDBDescriptor.getInstance().getConfig().setSingleModFileSizeThresholdByte(singleModFileSizeThresholdByte);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setSingleModFileSizeThresholdByte(singleModFileSizeThresholdByte);
   }
 
   private void removeFiles() throws IOException {
