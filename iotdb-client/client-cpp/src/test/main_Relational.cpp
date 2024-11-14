@@ -23,7 +23,6 @@
 #include "Session.h"
 
 Session *session = new Session("127.0.0.1", 6667, "root", "root");
-session->setSqlDialect("table");
 
 struct SessionListener : Catch::TestEventListenerBase {
 
@@ -31,6 +30,7 @@ struct SessionListener : Catch::TestEventListenerBase {
 
     void testCaseStarting(Catch::TestCaseInfo const &testInfo) override {
         // Perform some setup before a test case is run
+        session->setSqlDialect("table");
         session->open(false);
     }
 
