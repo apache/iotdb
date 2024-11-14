@@ -536,19 +536,11 @@ public:
     Field() = default;
 };
 
-enum ColumnCategory {
+enum class ColumnCategory {
     ID,
     MEASUREMENT,
-    ATTRIBUTE;
-}
-
-std::vector<ColumnCategory> ColumCategory_nCopy(ColumnCategory type, int n) {
-    std::vector<ColumnCategory> res;
-    for (int i = 0; i < n; i++) {
-        res.push_back(type);
-    }
-    return res;
-}
+    ATTRIBUTE
+};
 
 /*
  * A tablet data of one device, the tablet contains multiple measurements of this device that share
@@ -574,6 +566,7 @@ private:
 public:
     std::string deviceId; // deviceId of this tablet
     std::vector<std::pair<std::string, TSDataType::TSDataType>> schemas; // the list of measurement schemas for creating the tablet
+    std::vector<ColumnCategory> columnTypes; // the list of column types (used in table model)
     std::vector<int64_t> timestamps;   // timestamps in this tablet
     std::vector<void*> values; // each object is a primitive type array, which represents values of one measurement
     std::vector<BitMap> bitMaps; // each bitmap represents the existence of each value in the current column
@@ -594,6 +587,11 @@ public:
            const std::vector<std::pair<std::string, TSDataType::TSDataType>> &timeseries)
            : Tablet(deviceId, timeseries, DEFAULT_ROW_SIZE) {}
 
+    Tablet(const std::string &deviceId,
+           const std::vector<std::pair<std::string, TSDataType::TSDataType>> &timeseries,
+           const std::vector<ColumnCategory> &columnTypes)
+           : Tablet(deviceId, timeseries, columnTypes, DEFAULT_ROW_SIZE) {}
+
     /**
      * Return a tablet with the specified number of rows (maxBatchSize). Only
      * call this constructor directly for testing purposes. Tablet should normally
@@ -602,10 +600,16 @@ public:
      * @param deviceId     the name of the device specified to be written in
      * @param schemas   the list of measurement schemas for creating the row
      *                     batch
+     * @param columnTypes the list of column types (used in table model)
      * @param maxRowNumber the maximum number of rows for this tablet
      */
+    Tablet(const std::string &deviceId,
+        const std::vector<std::pair<std::string, TSDataType::TSDataType>> &schemas,
+        int maxRowNumber)
+        : Tablet(deviceId, schemas, std::vector<ColumnCategory>(schemas.size(), ColumnCategory::MEASUREMENT), maxRowNumber) {}
     Tablet(const std::string &deviceId, const std::vector<std::pair<std::string, TSDataType::TSDataType>> &schemas,
-           size_t maxRowNumber, bool _isAligned = false) : deviceId(deviceId), schemas(schemas),
+           const std::vector<ColumnCategory> columnTypes,
+           size_t maxRowNumber, bool _isAligned = false) : deviceId(deviceId), schemas(schemas), columnTypes(columnTypes),
                                                         maxRowNumber(maxRowNumber), isAligned(_isAligned) {
         // create timestamp column
         timestamps.resize(maxRowNumber);

@@ -1395,8 +1395,8 @@ void Session::insertRelationalTablet(Tablet &tablet, bool sorted) {
     buildInsertTabletReq(request, sessionId, tablet, sorted);
     request.__set_writeToTable(true);
     std::vector<int8_t> columnCategories;
-    for (auto &schema: tablet.schemas) {
-        columnCategories.push_back(static_cast<int8_t>(schema.second));
+    for (auto &category: tablet.columnTypes) {
+        columnCategories.push_back(static_cast<int8_t>(category));
     }
     request.__set_columnCategories(columnCategories);
     try {

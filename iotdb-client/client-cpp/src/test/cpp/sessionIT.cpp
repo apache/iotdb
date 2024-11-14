@@ -300,12 +300,6 @@ TEST_CASE("Test insertTablet ", "[testInsertTablet]") {
     REQUIRE(count == 100);
 }
 
-TEST_CASE("Test insertRelationalTablet", "testInsertRelationalTablet") {
-    CaseReporter cr("testInsertRelationalTablet");
-    session->executeNonQueryStatement("USE \"db1\"");
-    
-}
-
 TEST_CASE("Test Last query ", "[testLastQuery]") {
     CaseReporter cr("testLastQuery");
     prepareTimeseries();
