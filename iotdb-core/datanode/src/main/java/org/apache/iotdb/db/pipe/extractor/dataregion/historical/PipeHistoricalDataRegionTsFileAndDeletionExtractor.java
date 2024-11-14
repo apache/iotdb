@@ -653,7 +653,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
             deviceID -> {
               if (isListenTableModelDataRegion == null) {
                 isListenTableModelDataRegion =
-                    (deviceID instanceof PlainDeviceID
+                    !(deviceID instanceof PlainDeviceID
                         || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
                         || deviceID.getTableName().equals(PATH_ROOT));
               }
