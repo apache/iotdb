@@ -54,7 +54,7 @@ TEST_CASE("Create table success", "[createTable]") {
             "id1 string id,"
             "attr1 string attribute,"
             "m1 double measurement)");
-    unique_ptr<SessionDataSet> *sessionDataSet = session->executeQueryStatement("SHOW TABLES");
+    unique_ptr<SessionDataSet> sessionDataSet = session->executeQueryStatement("SHOW TABLES");
     sessionDataSet->setFetchSize(1024);
     bool tableExist = false;
     while (sessionDataSet->hasNext()) {
