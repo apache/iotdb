@@ -59,6 +59,30 @@ public class CompactionConfigRestorer {
 
   public CompactionConfigRestorer() {}
 
+  public void recordCompactionConfig() {
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    enableSeqSpaceCompaction = config.isEnableSeqSpaceCompaction();
+    enableUnseqSpaceCompaction = config.isEnableUnseqSpaceCompaction();
+    enableCrossSpaceCompaction = config.isEnableCrossSpaceCompaction();
+    crossStrategy = config.getCrossCompactionSelector();
+    innerStrategy = config.getInnerSequenceCompactionSelector();
+    priority = config.getCompactionPriority();
+    targetFileSize = config.getTargetCompactionFileSize();
+    targetChunkSize = config.getTargetChunkSize();
+    targetChunkPointNum = config.getTargetChunkPointNum();
+    chunkSizeLowerBoundInCompaction = config.getChunkSizeLowerBoundInCompaction();
+    chunkPointNumLowerBoundInCompaction = config.getChunkPointNumLowerBoundInCompaction();
+    maxInnerCompactionCandidateFileNum = config.getInnerCompactionCandidateFileNum();
+    maxCrossCompactionCandidateFileNum = config.getFileLimitPerCrossTask();
+    concurrentCompactionThread = config.getCompactionThreadCount();
+    compactionScheduleIntervalInMs = config.getCompactionScheduleIntervalInMs();
+    compactionWriteThroughputMbPerSec = config.getCompactionWriteThroughputMbPerSec();
+    oldCrossPerformer = config.getCrossCompactionPerformer();
+    oldInnerSeqPerformer = config.getInnerSeqCompactionPerformer();
+    oldInnerUnseqPerformer = config.getInnerUnseqCompactionPerformer();
+    oldMinCrossCompactionUnseqLevel = config.getMinCrossCompactionUnseqFileLevel();
+  }
+
   public void restoreCompactionConfig() {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     config.setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);

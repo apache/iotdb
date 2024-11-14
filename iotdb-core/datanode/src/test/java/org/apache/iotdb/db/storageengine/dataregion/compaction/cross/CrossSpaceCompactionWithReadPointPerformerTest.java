@@ -386,12 +386,12 @@ public class CrossSpaceCompactionWithReadPointPerformerTest {
             Map<String, Pair<Long, Long>> toDeleteTimeseriesAndTime = new HashMap<>();
             toDeleteTimeseriesAndTime.put(fullPaths[1], new Pair<>(250L, 300L));
             CompactionFileGeneratorUtils.generateMods(
-                toDeleteTimeseriesAndTime, seqResources.get(0), true);
+                toDeleteTimeseriesAndTime, seqResources, true);
             // unseq mods
             toDeleteTimeseriesAndTime = new HashMap<>();
             toDeleteTimeseriesAndTime.put(fullPaths[1], new Pair<>(0L, 100L));
             CompactionFileGeneratorUtils.generateMods(
-                toDeleteTimeseriesAndTime, unseqResources.get(5), true);
+                toDeleteTimeseriesAndTime, unseqResources, true);
 
             // remove data in source data list
             List<TimeValuePair> timeValuePairs = sourceData.get(fullPaths[1]);
@@ -688,12 +688,16 @@ public class CrossSpaceCompactionWithReadPointPerformerTest {
             Map<String, Pair<Long, Long>> toDeleteTimeseriesAndTime = new HashMap<>();
             toDeleteTimeseriesAndTime.put(fullPaths[1], new Pair<>(2500L, 2600L));
             CompactionFileGeneratorUtils.generateMods(
-                toDeleteTimeseriesAndTime, unseqResources.get(0), true);
+                toDeleteTimeseriesAndTime, unseqResources, true);
+            CompactionFileGeneratorUtils.generateMods(
+                toDeleteTimeseriesAndTime, seqResources, true);
             // seq mods
             toDeleteTimeseriesAndTime = new HashMap<>();
             toDeleteTimeseriesAndTime.put(fullPaths[1], new Pair<>(0L, 100L));
             CompactionFileGeneratorUtils.generateMods(
-                toDeleteTimeseriesAndTime, seqResources.get(0), true);
+                toDeleteTimeseriesAndTime, unseqResources, true);
+            CompactionFileGeneratorUtils.generateMods(
+                toDeleteTimeseriesAndTime, seqResources, true);
 
             // remove data in source data list
             List<TimeValuePair> timeValuePairs = sourceData.get(fullPaths[1]);
@@ -988,12 +992,16 @@ public class CrossSpaceCompactionWithReadPointPerformerTest {
             Map<String, Pair<Long, Long>> toDeleteTimeseriesAndTime = new HashMap<>();
             toDeleteTimeseriesAndTime.put(fullPaths[1], new Pair<>(2500L, 2600L));
             CompactionFileGeneratorUtils.generateMods(
-                toDeleteTimeseriesAndTime, unseqResources.get(0), true);
+                toDeleteTimeseriesAndTime, unseqResources, true);
+            CompactionFileGeneratorUtils.generateMods(
+                toDeleteTimeseriesAndTime, seqResources, true);
             // seq mods
             toDeleteTimeseriesAndTime = new HashMap<>();
             toDeleteTimeseriesAndTime.put(fullPaths[1], new Pair<>(0L, 100L));
             CompactionFileGeneratorUtils.generateMods(
-                toDeleteTimeseriesAndTime, seqResources.get(0), true);
+                toDeleteTimeseriesAndTime, unseqResources, true);
+            CompactionFileGeneratorUtils.generateMods(
+                toDeleteTimeseriesAndTime, seqResources, true);
 
             // remove data in source data list
             List<TimeValuePair> timeValuePairs = sourceData.get(fullPaths[1]);

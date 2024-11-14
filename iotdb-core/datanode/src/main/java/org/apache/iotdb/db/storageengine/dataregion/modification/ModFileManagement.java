@@ -33,4 +33,6 @@ public interface ModFileManagement {
       throws IOException;
 
   void addReference(TsFileResource tsFileResource, ModificationFile modificationFile);
+
+  int referenceCount(ModificationFile modificationFile);
 }

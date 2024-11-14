@@ -31,7 +31,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Abst
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceList;
@@ -135,8 +134,14 @@ public class SettleRequestHandler {
           return RpcUtils.getStatus(
               TSStatusCode.PATH_NOT_EXIST, "The specified file does not exist in " + path);
         }
-        File modFile = ModificationFile.getExclusiveMods(currentTsFile);
-        hasModsFiles |= modFile.exists();
+        TsFileResource tsFileResource = new TsFileResource(currentTsFile);
+        try {
+          tsFileResource.deserialize();
+        } catch (IOException e) {
+          return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+              .setMessage(e.getMessage());
+        }
+        hasModsFiles |= tsFileResource.anyModFileExists();
 
         ConsistentSettleInfo currentInfo = calculateConsistentInfo(currentTsFile);
         if (!currentInfo.isValid) {

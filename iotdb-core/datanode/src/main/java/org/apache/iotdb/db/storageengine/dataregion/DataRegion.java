@@ -807,6 +807,8 @@ public class DataRegion implements IDataRegionForQuery {
   /** submit unsealed TsFile to WALRecoverManager. */
   private WALRecoverListener recoverUnsealedTsFile(
       TsFileResource unsealedTsFile, DataRegionRecoveryContext context, boolean isSeq) {
+    unsealedTsFile.setModFileManagement(
+        getTsFileManager().getModFileManagement(unsealedTsFile.getTimePartition()));
     UnsealedTsFileRecoverPerformer recoverPerformer =
         new UnsealedTsFileRecoverPerformer(unsealedTsFile, isSeq, context.recoverPerformers::add);
     // remember to close UnsealedTsFileRecoverPerformer
@@ -2575,39 +2577,51 @@ public class DataRegion implements IDataRegionForQuery {
   private void deleteDataInSealedFiles(Collection<TsFileResource> sealedTsFiles, ModEntry deletion)
       throws IOException {
     Set<ModificationFile> involvedModificationFiles = new HashSet<>();
-    for (TsFileResource sealedTsFile : sealedTsFiles) {
-      if (canSkipDelete(sealedTsFile, deletion)) {
-        continue;
+    Set<TsFileResource> involvedTsFileResources = new HashSet<>();
+
+    try {
+      for (TsFileResource sealedTsFile : sealedTsFiles) {
+        if (canSkipDelete(sealedTsFile, deletion)) {
+          continue;
+        }
+
+        // lock the resource so that compaction mod file will not be created before the deletion is
+        // written
+        sealedTsFile.writeLock();
+        involvedTsFileResources.add(sealedTsFile);
+        if (sealedTsFile.isCompacting() && sealedTsFile.getCompactionModFile() != null) {
+          involvedModificationFiles.add(sealedTsFile.getCompactionModFile());
+        }
+        involvedModificationFiles.add(sealedTsFile.getModFileForWrite());
       }
 
-      if (sealedTsFile.isCompacting()) {
-        involvedModificationFiles.add(sealedTsFile.getCompactionModFile());
+      List<Exception> exceptions =
+          involvedModificationFiles.parallelStream()
+              .map(
+                  modFile -> {
+                    try {
+                      modFile.write(deletion);
+                      modFile.close();
+                    } catch (Exception e) {
+                      return e;
+                    }
+                    return null;
+                  })
+              .filter(Objects::nonNull)
+              .collect(Collectors.toList());
+
+      if (!exceptions.isEmpty()) {
+        if (exceptions.size() == 1) {
+          throw new IOException(exceptions.get(0));
+        } else {
+          exceptions.forEach(e -> logger.error("Fail to write modEntry {} to files", deletion, e));
+          throw new IOException(
+              "Multiple errors occurred while writing mod files, see logs for details.");
+        }
       }
-      involvedModificationFiles.add(sealedTsFile.getModFileForWrite());
-    }
-
-    List<Exception> exceptions =
-        involvedModificationFiles.parallelStream()
-            .map(
-                modFile -> {
-                  try {
-                    modFile.write(deletion);
-                    modFile.close();
-                  } catch (Exception e) {
-                    return e;
-                  }
-                  return null;
-                })
-            .filter(Objects::nonNull)
-            .collect(Collectors.toList());
-
-    if (!exceptions.isEmpty()) {
-      if (exceptions.size() == 1) {
-        throw new IOException(exceptions.get(0));
-      } else {
-        exceptions.forEach(e -> logger.error("Fail to write modEntry {} to files", deletion, e));
-        throw new IOException(
-            "Multiple errors occurred while writing mod files, see logs for details.");
+    } finally {
+      for (TsFileResource involvedTsFileResource : involvedTsFileResources) {
+        involvedTsFileResource.writeUnlock();
       }
     }
   }

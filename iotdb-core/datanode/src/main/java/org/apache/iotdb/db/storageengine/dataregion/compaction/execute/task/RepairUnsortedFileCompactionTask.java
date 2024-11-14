@@ -105,6 +105,8 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
   @Override
   protected void prepare() throws IOException {
     calculateSourceFilesAndTargetFiles();
+    CompactionUtils.prepareCompactionModFiles(
+        filesView.targetFilesInPerformer, filesView.sourceFilesInLog);
     isHoldingWriteLock = new boolean[this.filesView.sourceFilesInLog.size()];
     Arrays.fill(isHoldingWriteLock, false);
     logFile =
@@ -166,17 +168,8 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
     if (sourceFile.getTsFileRepairStatus() == TsFileRepairStatus.NEED_TO_REPAIR_BY_REWRITE) {
       CompactionUtils.combineModsInInnerCompaction(
           filesView.sourceFilesInCompactionPerformer, filesView.targetFilesInPerformer);
-    } else {
-      if (sourceFile.anyModFileExists()) {
-        sourceFile.linkModFile(filesView.targetFilesInPerformer.get(0));
-      }
-      if (TsFileResource.useSharedModFile) {
-        filesView
-            .targetFilesInPerformer
-            .get(0)
-            .setSharedModFile(sourceFile.getSharedModFile(), false);
-      }
     }
+    // the compaction performer has dealt with the mod file
   }
 
   @Override

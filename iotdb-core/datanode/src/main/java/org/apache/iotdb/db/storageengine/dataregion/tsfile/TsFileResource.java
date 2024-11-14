@@ -81,7 +81,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -273,7 +272,7 @@ public class TsFileResource implements PersistentResource {
     ReadWriteIOUtils.write(maxPlanIndex, outputStream);
     ReadWriteIOUtils.write(minPlanIndex, outputStream);
 
-    if (sharedModFile != null && sharedModFile.exists()) {
+    if (sharedModFile != null) {
       String modFilePath = sharedModFile.getFile().getAbsolutePath();
       ReadWriteIOUtils.write(modFilePath, outputStream);
       ReadWriteIOUtils.write(shardModFileOffset, outputStream);
@@ -371,7 +370,7 @@ public class TsFileResource implements PersistentResource {
   }
 
   public boolean sharedModFileExists() {
-    return getSharedModFile() != null && sharedModFile.exists();
+    return getSharedModFile() != null;
   }
 
   public boolean anyModFileExists() {
@@ -399,7 +398,7 @@ public class TsFileResource implements PersistentResource {
   }
 
   public boolean compactionModFileExists() {
-    return getCompactionModFile().exists();
+    return getCompactionModFile() != null && getCompactionModFile().exists();
   }
 
   public List<IChunkMetadata> getChunkMetadataList(IFullPath seriesPath) {
@@ -419,14 +418,22 @@ public class TsFileResource implements PersistentResource {
     serialize();
   }
 
-  public void setSharedModFile(ModificationFile modFile, boolean serializeNow) {
+  public void setSharedModFile(ModificationFile modFile, boolean serializeNow) throws IOException {
+    setSharedModFile(modFile, serializeNow, -1);
+  }
+
+  public void setSharedModFile(ModificationFile modFile, boolean serializeNow, long modFileOffset)
+      throws IOException {
     if (modFile == null) {
       return;
+    }
+    if (sharedModFile != null && modFileManagement != null) {
+      modFileManagement.releaseFor(this, sharedModFile);
     }
 
     sharedModFile = modFile;
     try {
-      shardModFileOffset = sharedModFile.getFileLength();
+      shardModFileOffset = modFileOffset < 0 ? sharedModFile.getFileLength() : modFileOffset;
       if (serializeNow) {
         serializedSharedModFile();
       }
@@ -469,10 +476,12 @@ public class TsFileResource implements PersistentResource {
     }
     if (sharedModFilePathFuture != null) {
       try {
-        if (modFileManagement != null) {
-          String modFilePath = sharedModFilePathFuture.get();
-          if (modFilePath != null) {
+        String modFilePath = sharedModFilePathFuture.get();
+        if (modFilePath != null) {
+          if (modFileManagement != null) {
             sharedModFile = modFileManagement.recover(modFilePath, this);
+          } else {
+            sharedModFile = new ModificationFile(modFilePath);
           }
         }
       } catch (InterruptedException e) {
@@ -482,6 +491,10 @@ public class TsFileResource implements PersistentResource {
       }
     }
     return sharedModFile;
+  }
+
+  public long getShardModFileOffset() {
+    return shardModFileOffset;
   }
 
   @SuppressWarnings("java:S2886")
@@ -513,7 +526,7 @@ public class TsFileResource implements PersistentResource {
   }
 
   public ModificationFile getCompactionModFile() {
-    if (compactionModFile == null) {
+    if (compactionModFile == null && !TsFileResource.useSharedModFile) {
       synchronized (this) {
         if (compactionModFile == null) {
           compactionModFile = ModificationFile.getCompactionMods(this);
@@ -524,8 +537,10 @@ public class TsFileResource implements PersistentResource {
   }
 
   public void removeCompactionModFile() throws IOException {
-    if (compactionModFileExists() && !useSharedModFile) {
-      getCompactionModFile().remove();
+    if (compactionModFileExists()) {
+      if (!useSharedModFile) {
+        getCompactionModFile().remove();
+      }
     }
     compactionModFile = null;
   }
@@ -763,6 +778,7 @@ public class TsFileResource implements PersistentResource {
     if (getSharedModFile() != null && modFileManagement != null) {
       modFileManagement.releaseFor(this, sharedModFile);
     }
+    sharedModFile = null;
 
     // we either remove all mod files after successful compactions,
     // or remove compaction mod file only after failed compactions,
@@ -823,23 +839,6 @@ public class TsFileResource implements PersistentResource {
   @Override
   public String toString() {
     return String.format("{file: %s, status: %s}", file.toString(), getStatus());
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    TsFileResource that = (TsFileResource) o;
-    return Objects.equals(file, that.file);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(file);
   }
 
   public boolean isDeleted() {
@@ -1477,8 +1476,9 @@ public class TsFileResource implements PersistentResource {
     return useSharedModFile;
   }
 
-  public void setModFileManagement(ModFileManagement modFileManagement) {
+  public TsFileResource setModFileManagement(ModFileManagement modFileManagement) {
     this.modFileManagement = modFileManagement;
+    return this;
   }
 
   public ModFileManagement getModFileManagement() {

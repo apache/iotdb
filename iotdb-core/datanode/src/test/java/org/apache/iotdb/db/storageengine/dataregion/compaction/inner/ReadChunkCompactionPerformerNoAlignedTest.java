@@ -35,6 +35,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.Com
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManagement;
+import org.apache.iotdb.db.storageengine.dataregion.modification.PartitionLevelModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -76,6 +78,8 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
   private MeasurementSchema[] schemas = new MeasurementSchema[measurements.length];
   private List<IFullPath> paths = new ArrayList<>();
   private List<IMeasurementSchema> schemaList = new ArrayList<>();
+  private ModFileManagement modFileManagement =
+      new PartitionLevelModFileManager(Integer.MAX_VALUE, 0);
 
   private static File tempSGDir;
   private static String SEQ_DIRS =
@@ -918,6 +922,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource resource =
             new TsFileResource(new File(SEQ_DIRS, String.format("%d-%d-0-0.tsfile", i + 1, i + 1)));
+        resource.setModFileManagement(modFileManagement);
         sourceFiles.add(resource);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPathSetWithDeleted,
@@ -1009,6 +1014,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource resource =
             new TsFileResource(new File(SEQ_DIRS, String.format("%d-%d-0-0.tsfile", i + 1, i + 1)));
+        resource.setModFileManagement(modFileManagement);
         sourceFiles.add(resource);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPathSetWithDeleted,
@@ -1101,6 +1107,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource resource =
             new TsFileResource(new File(SEQ_DIRS, String.format("%d-%d-0-0.tsfile", i + 1, i + 1)));
+        resource.setModFileManagement(modFileManagement);
         sourceFiles.add(resource);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPathSetWithDeleted,

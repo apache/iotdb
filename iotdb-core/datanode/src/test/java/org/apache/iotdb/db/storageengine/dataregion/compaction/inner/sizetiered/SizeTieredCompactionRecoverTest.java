@@ -1262,7 +1262,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
       Assert.assertFalse(
           new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
       Assert.assertFalse(resource.getTotalModSizeInByte() > 0);
-      Assert.assertFalse(resource.getCompactionModFile().getFileLength() > 0);
+      Assert.assertNull(resource.getCompactionModFile());
     }
     // the target file should be deleted
     Assert.assertFalse(targetResources.get(0).getTsFile().exists());
@@ -1337,7 +1337,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
       Assert.assertFalse(
           new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
       Assert.assertFalse(resource.anyModFileExists());
-      Assert.assertFalse(resource.getCompactionModFile().exists());
+      Assert.assertNull(resource.getCompactionModFile());
     }
     // the target file should be deleted
     Assert.assertFalse(targetResources.get(0).getTsFile().exists());
@@ -1405,7 +1405,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
       Assert.assertTrue(
           new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
       Assert.assertTrue(resource.anyModFileExists());
-      Assert.assertFalse(resource.getCompactionModFile().exists());
+      Assert.assertNull(resource.getCompactionModFile());
     }
     // tmp target file, target file and target resource file should be deleted after compaction
     for (TsFileResource resource : targetResources) {

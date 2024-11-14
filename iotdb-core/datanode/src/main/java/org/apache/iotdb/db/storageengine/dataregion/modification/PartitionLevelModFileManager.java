@@ -24,6 +24,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -34,11 +35,19 @@ import java.util.TreeMap;
 @SuppressWarnings("FieldCanBeLocal")
 public class PartitionLevelModFileManager implements ModFileManagement {
 
-  private final int levelModFileNumThreshold = 30;
-  private final long singleModFileSizeThresholdByte = 16 * 1024L;
+  private int levelModFileNumThreshold = 30;
+  private long singleModFileSizeThresholdByte = 16 * 1024L;
   // level -> mod file id -> mod file
   private final Map<Long, TreeMap<Long, ModificationFile>> levelModFileIdMap = new HashMap<>();
   private final Map<ModificationFile, Set<TsFileResource>> modFileReferences = new HashMap<>();
+
+  public PartitionLevelModFileManager() {}
+
+  public PartitionLevelModFileManager(
+      int levelModFileNumThreshold, long singleModFileSizeThresholdByte) {
+    this.levelModFileNumThreshold = levelModFileNumThreshold;
+    this.singleModFileSizeThresholdByte = singleModFileSizeThresholdByte;
+  }
 
   @Override
   public synchronized ModificationFile recover(String modFilePath, TsFileResource tsFileResource)
@@ -157,5 +166,10 @@ public class PartitionLevelModFileManager implements ModFileManagement {
   public synchronized void addReference(
       TsFileResource tsFileResource, ModificationFile modificationFile) {
     modFileReferences.computeIfAbsent(modificationFile, f -> new HashSet<>()).add(tsFileResource);
+  }
+
+  @Override
+  public synchronized int referenceCount(ModificationFile modificationFile) {
+    return modFileReferences.getOrDefault(modificationFile, Collections.emptySet()).size();
   }
 }
