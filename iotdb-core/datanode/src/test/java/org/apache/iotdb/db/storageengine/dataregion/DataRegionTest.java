@@ -227,15 +227,9 @@ public class DataRegionTest {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
-      dataRegion.asyncCloseAllWorkingTsFileProcessors();
+      dataRegion.syncCloseAllWorkingTsFileProcessors();
     }
 
-    try {
-      Thread.sleep(1000);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-    dataRegion.syncCloseAllWorkingTsFileProcessors();
     QueryDataSource queryDataSource =
         dataRegion.query(
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
@@ -288,7 +282,7 @@ public class DataRegionTest {
             times.length);
 
     dataRegion.insertTablet(insertTabletNode1);
-    dataRegion.asyncCloseAllWorkingTsFileProcessors();
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     for (int r = 50; r < 149; r++) {
       times[r - 50] = r;
@@ -310,7 +304,6 @@ public class DataRegionTest {
             times.length);
 
     dataRegion.insertTablet(insertTabletNode2);
-    dataRegion.asyncCloseAllWorkingTsFileProcessors();
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     QueryDataSource queryDataSource =
@@ -449,7 +442,7 @@ public class DataRegionTest {
             times.length);
 
     dataRegion.insertTablet(insertTabletNode1);
-    dataRegion.asyncCloseAllWorkingTsFileProcessors();
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     for (int r = 50; r < 149; r++) {
       times[r - 50] = r;
@@ -471,7 +464,6 @@ public class DataRegionTest {
             times.length);
 
     dataRegion.insertTablet(insertTabletNode2);
-    dataRegion.asyncCloseAllWorkingTsFileProcessors();
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     QueryDataSource queryDataSource =
@@ -529,7 +521,7 @@ public class DataRegionTest {
     insertTabletNode1.setFailedMeasurementNumber(2);
 
     dataRegion.insertTablet(insertTabletNode1);
-    dataRegion.asyncCloseAllWorkingTsFileProcessors();
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     for (int r = 50; r < 149; r++) {
       times[r - 50] = r;
@@ -552,7 +544,6 @@ public class DataRegionTest {
     insertTabletNode2.setFailedMeasurementNumber(2);
 
     dataRegion.insertTablet(insertTabletNode2);
-    dataRegion.asyncCloseAllWorkingTsFileProcessors();
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     QueryDataSource queryDataSource =
@@ -577,18 +568,15 @@ public class DataRegionTest {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
-      dataRegion.asyncCloseAllWorkingTsFileProcessors();
+      dataRegion.syncCloseAllWorkingTsFileProcessors();
     }
-    dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     for (int j = 10; j >= 1; j--) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
-      dataRegion.asyncCloseAllWorkingTsFileProcessors();
+      dataRegion.syncCloseAllWorkingTsFileProcessors();
     }
-
-    dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     QueryDataSource queryDataSource =
         dataRegion.query(
@@ -616,9 +604,8 @@ public class DataRegionTest {
       InsertRowNode rowNode = buildInsertRowNodeByTSRecord(record);
       rowNode.setFailedMeasurementNumber(1);
       dataRegion.insert(rowNode);
-      dataRegion.asyncCloseAllWorkingTsFileProcessors();
+      dataRegion.syncCloseAllWorkingTsFileProcessors();
     }
-    dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     for (int j = 10; j >= 1; j--) {
       TSRecord record = new TSRecord(j, deviceId);
@@ -626,10 +613,8 @@ public class DataRegionTest {
       InsertRowNode rowNode = buildInsertRowNodeByTSRecord(record);
       rowNode.setFailedMeasurementNumber(1);
       dataRegion.insert(rowNode);
-      dataRegion.asyncCloseAllWorkingTsFileProcessors();
+      dataRegion.syncCloseAllWorkingTsFileProcessors();
     }
-
-    dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     QueryDataSource queryDataSource =
         dataRegion.query(
@@ -658,18 +643,15 @@ public class DataRegionTest {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
-      dataRegion.asyncCloseAllWorkingTsFileProcessors();
+      dataRegion.syncCloseAllWorkingTsFileProcessors();
     }
-    dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     for (int j = 10; j >= 1; j--) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
-      dataRegion.asyncCloseAllWorkingTsFileProcessors();
+      dataRegion.syncCloseAllWorkingTsFileProcessors();
     }
-
-    dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     for (TsFileProcessor tsfileProcessor : dataRegion.getWorkUnsequenceTsFileProcessors()) {
       tsfileProcessor.syncFlush();
@@ -737,7 +719,7 @@ public class DataRegionTest {
             times.length);
 
     dataRegion.insertTablet(insertTabletNode1);
-    dataRegion.asyncCloseAllWorkingTsFileProcessors();
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     for (int r = 149; r >= 50; r--) {
       times[r - 50] = r;
@@ -758,7 +740,6 @@ public class DataRegionTest {
             times.length);
 
     dataRegion.insertTablet(insertTabletNode2);
-    dataRegion.asyncCloseAllWorkingTsFileProcessors();
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     for (TsFileProcessor tsfileProcessor : dataRegion.getWorkUnsequenceTsFileProcessors()) {
@@ -826,7 +807,7 @@ public class DataRegionTest {
             times.length);
 
     dataRegion.insertTablet(insertTabletNode1);
-    dataRegion.asyncCloseAllWorkingTsFileProcessors();
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     for (int r = 1249; r >= 50; r--) {
       times[r - 50] = r;
@@ -847,7 +828,6 @@ public class DataRegionTest {
             times.length);
 
     dataRegion.insertTablet(insertTabletNode2);
-    dataRegion.asyncCloseAllWorkingTsFileProcessors();
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     for (TsFileProcessor tsfileProcessor : dataRegion.getWorkUnsequenceTsFileProcessors()) {
@@ -915,7 +895,7 @@ public class DataRegionTest {
             times.length);
 
     dataRegion.insertTablet(insertTabletNode1);
-    dataRegion.asyncCloseAllWorkingTsFileProcessors();
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     for (int r = 1249; r >= 50; r--) {
       times[r - 50] = r;
@@ -936,7 +916,6 @@ public class DataRegionTest {
             times.length);
 
     dataRegion.insertTablet(insertTabletNode2);
-    dataRegion.asyncCloseAllWorkingTsFileProcessors();
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     for (TsFileProcessor tsfileProcessor : dataRegion.getWorkUnsequenceTsFileProcessors()) {
@@ -1015,7 +994,7 @@ public class DataRegionTest {
       TSRecord record = new TSRecord(j, "root.ln22");
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion1.insert(buildInsertRowNodeByTSRecord(record));
-      dataRegion1.asyncCloseAllWorkingTsFileProcessors();
+      dataRegion1.syncCloseAllWorkingTsFileProcessors();
     }
     dataRegion1.syncCloseAllWorkingTsFileProcessors();
 
@@ -1064,7 +1043,7 @@ public class DataRegionTest {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
-      dataRegion.asyncCloseAllWorkingTsFileProcessors();
+      dataRegion.syncCloseAllWorkingTsFileProcessors();
     }
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
@@ -1072,7 +1051,7 @@ public class DataRegionTest {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
-      dataRegion.asyncCloseAllWorkingTsFileProcessors();
+      dataRegion.syncCloseAllWorkingTsFileProcessors();
     }
 
     dataRegion.syncCloseAllWorkingTsFileProcessors();
@@ -1133,7 +1112,7 @@ public class DataRegionTest {
         TSRecord record = new TSRecord(j, deviceId);
         record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
         dataRegion.insert(buildInsertRowNodeByTSRecord(record));
-        dataRegion.asyncCloseAllWorkingTsFileProcessors();
+        dataRegion.syncCloseAllWorkingTsFileProcessors();
       }
       dataRegion.syncCloseAllWorkingTsFileProcessors();
       ICompactionPerformer performer = new FastCompactionPerformer(false);

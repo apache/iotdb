@@ -95,7 +95,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.VersionController;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
 import org.apache.iotdb.db.storageengine.dataregion.utils.fileTimeIndexCache.FileTimeIndexCacheReader;
@@ -258,14 +257,6 @@ public class DataRegion implements IDataRegionForQuery {
   /** manage tsFileResource degrade. */
   private final TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
 
-  /**
-   * time partition id -> version controller which assigns a version for each MemTable and
-   * deletion/update such that after they are persisted, the order of insertions, deletions and
-   * updates can be re-determined. Will be empty if there are not MemTables in memory.
-   */
-  private final HashMap<Long, VersionController> timePartitionIdVersionControllerMap =
-      new HashMap<>();
-
   /** file system factory (local or hdfs). */
   private final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
@@ -359,7 +350,12 @@ public class DataRegion implements IDataRegionForQuery {
               e);
         }
         if (FSUtils.getFSType(dataRegionFolder) == FSType.LOCAL) {
-          dataRegionFolder.mkdirs();
+          if (dataRegionFolder.mkdirs()) {
+            logger.info(
+                "Data region directory {} doesn't exist, create it", dataRegionFolder.getPath());
+          } else if (!dataRegionFolder.exists()) {
+            logger.error("create data region directory {} failed", dataRegionFolder.getPath());
+          }
         }
       }
     } else {
@@ -430,7 +426,7 @@ public class DataRegion implements IDataRegionForQuery {
         }
       } else {
         logger.info(
-            "The TsFiles of data region {}[{}] has recovered" + " {}/{}.",
+            "The TsFiles of data region {}[{}] has recovered completely {}/{}.",
             databaseName,
             dataRegionId,
             numOfFilesToRecover,
@@ -848,8 +844,8 @@ public class DataRegion implements IDataRegionForQuery {
         // get chunkMetadata size
         long chunkMetadataSize = 0;
         for (Map<String, List<ChunkMetadata>> metaMap : writer.getMetadatasForQuery().values()) {
-          for (List<ChunkMetadata> metadatas : metaMap.values()) {
-            for (ChunkMetadata chunkMetadata : metadatas) {
+          for (List<ChunkMetadata> metadataList : metaMap.values()) {
+            for (ChunkMetadata chunkMetadata : metadataList) {
               chunkMetadataSize += chunkMetadata.getRetainedSizeInBytes();
             }
           }
@@ -867,7 +863,7 @@ public class DataRegion implements IDataRegionForQuery {
 
   /** recover sealed TsFile. */
   private void recoverSealedTsFiles(
-      TsFileResource sealedTsFile, DataRegionRecoveryContext context, boolean isSeq) {
+      TsFileResource sealedTsFile, DataRegionRecoveryContext context) {
     try (SealedTsFileRecoverPerformer recoverPerformer =
         new SealedTsFileRecoverPerformer(sealedTsFile)) {
       recoverPerformer.recover();
@@ -902,19 +898,16 @@ public class DataRegion implements IDataRegionForQuery {
     }
     if (!resourceListForAsyncRecover.isEmpty()) {
       asyncRecoverTask =
-          asyncRecoverFilesInPartition(partitionId, context, resourceListForAsyncRecover, isSeq);
+          asyncRecoverFilesInPartition(partitionId, context, resourceListForAsyncRecover);
     }
     if (!resourceListForSyncRecover.isEmpty()) {
-      syncRecoverFilesInPartition(partitionId, context, resourceListForSyncRecover, isSeq);
+      syncRecoverFilesInPartition(partitionId, context, resourceListForSyncRecover);
     }
     return asyncRecoverTask;
   }
 
   private Callable<Void> asyncRecoverFilesInPartition(
-      long partitionId,
-      DataRegionRecoveryContext context,
-      List<TsFileResource> resourceList,
-      boolean isSeq) {
+      long partitionId, DataRegionRecoveryContext context, List<TsFileResource> resourceList) {
     if (config.isEnableSeparateData()) {
       if (!lastFlushTimeMap.checkAndCreateFlushedTimePartition(partitionId, false)) {
         TimePartitionManager.getInstance()
@@ -961,12 +954,9 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void syncRecoverFilesInPartition(
-      long partitionId,
-      DataRegionRecoveryContext context,
-      List<TsFileResource> resourceList,
-      boolean isSeq) {
+      long partitionId, DataRegionRecoveryContext context, List<TsFileResource> resourceList) {
     for (TsFileResource tsFileResource : resourceList) {
-      recoverSealedTsFiles(tsFileResource, context, isSeq);
+      recoverSealedTsFiles(tsFileResource, context);
     }
     FileTimeIndexCacheRecorder.getInstance()
         .logFileTimeIndex(resourceList.toArray(new TsFileResource[0]));
@@ -1530,7 +1520,7 @@ public class DataRegion implements IDataRegionForQuery {
       // build new processor, memory control module will control the number of memtables
       TimePartitionManager.getInstance()
           .updateAfterOpeningTsFileProcessor(
-              new DataRegionId(Integer.valueOf(dataRegionId)), timeRangeId);
+              new DataRegionId(Integer.parseInt(dataRegionId)), timeRangeId);
       res = newTsFileProcessor(sequence, timeRangeId);
       if (workSequenceTsFileProcessors.get(timeRangeId) == null
           && workUnsequenceTsFileProcessors.get(timeRangeId) == null) {
@@ -1584,53 +1574,8 @@ public class DataRegion implements IDataRegionForQuery {
     return tsFileProcessor;
   }
 
-  /**
-   * Create a new tsfile name
-   *
-   * @return file name
-   */
-  private String getNewTsFileName(long timePartitionId) {
-    long version =
-        partitionMaxFileVersions.compute(
-            timePartitionId, (key, oldVersion) -> (oldVersion == null ? 1 : oldVersion + 1));
-    return getNewTsFileName(System.currentTimeMillis(), version, 0, 0);
-  }
-
   private String getNewTsFileName(long time, long version, int mergeCnt, int unseqCompactionCnt) {
     return TsFileNameGenerator.generateNewTsFileName(time, version, mergeCnt, unseqCompactionCnt);
-  }
-
-  /**
-   * close one tsfile processor
-   *
-   * @param sequence whether this tsfile processor is sequence or not
-   * @param tsFileProcessor tsfile processor
-   */
-  public void syncCloseOneTsFileProcessor(boolean sequence, TsFileProcessor tsFileProcessor) {
-    synchronized (closeStorageGroupCondition) {
-      try {
-        asyncCloseOneTsFileProcessor(sequence, tsFileProcessor);
-        long startTime = System.currentTimeMillis();
-        while (closingSequenceTsFileProcessor.contains(tsFileProcessor)
-            || closingUnSequenceTsFileProcessor.contains(tsFileProcessor)) {
-          closeStorageGroupCondition.wait(60_000);
-          if (System.currentTimeMillis() - startTime > 60_000) {
-            logger.warn(
-                "{} has spent {}s to wait for closing one tsfile.",
-                databaseName + "-" + this.dataRegionId,
-                (System.currentTimeMillis() - startTime) / 1000);
-          }
-        }
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        logger.error(
-            "syncCloseOneTsFileProcessor error occurs while waiting for closing the storage "
-                + "group {}",
-            databaseName + "-" + dataRegionId,
-            e);
-      }
-    }
-    WritingMetrics.getInstance().recordManualFlushMemTableCount(1);
   }
 
   /**
@@ -1647,29 +1592,25 @@ public class DataRegion implements IDataRegionForQuery {
         || tsFileProcessor.alreadyMarkedClosing()) {
       return CompletableFuture.completedFuture(null);
     }
-    TsFileResource resource = tsFileProcessor.getTsFileResource();
     Future<?> future;
     if (sequence) {
       closingSequenceTsFileProcessor.add(tsFileProcessor);
       future = tsFileProcessor.asyncClose();
+      if (future.isDone()) {
+        closingSequenceTsFileProcessor.remove(tsFileProcessor);
+      }
 
       workSequenceTsFileProcessors.remove(tsFileProcessor.getTimeRangeId());
-      // if unsequence files don't contain this time range id, we should remove it's version
-      // controller
-      if (!workUnsequenceTsFileProcessors.containsKey(tsFileProcessor.getTimeRangeId())) {
-        timePartitionIdVersionControllerMap.remove(tsFileProcessor.getTimeRangeId());
-      }
     } else {
       closingUnSequenceTsFileProcessor.add(tsFileProcessor);
       future = tsFileProcessor.asyncClose();
+      if (future.isDone()) {
+        closingUnSequenceTsFileProcessor.remove(tsFileProcessor);
+      }
 
       workUnsequenceTsFileProcessors.remove(tsFileProcessor.getTimeRangeId());
-      // if sequence files don't contain this time range id, we should remove it's version
-      // controller
-      if (!workSequenceTsFileProcessors.containsKey(tsFileProcessor.getTimeRangeId())) {
-        timePartitionIdVersionControllerMap.remove(tsFileProcessor.getTimeRangeId());
-      }
     }
+    TsFileResource resource = tsFileProcessor.getTsFileResource();
     logger.info(
         "Async close tsfile: {}, file start time: {}, file end time: {}",
         resource.getTsFile().getAbsolutePath(),
@@ -1838,7 +1779,6 @@ public class DataRegion implements IDataRegionForQuery {
   public void syncCloseAllWorkingTsFileProcessors() {
     try {
       List<Future<?>> tsFileProcessorsClosingFutures = asyncCloseAllWorkingTsFileProcessors();
-      waitClosingTsFileProcessorFinished();
       for (Future<?> f : tsFileProcessorsClosingFutures) {
         if (f != null) {
           f.get();
@@ -1846,7 +1786,41 @@ public class DataRegion implements IDataRegionForQuery {
       }
     } catch (InterruptedException | ExecutionException e) {
       logger.error(
-          "CloseFileNodeCondition error occurs while waiting for closing the storage " + "group {}",
+          "CloseFileNodeCondition error occurs while waiting for closing tsfile processors of {}",
+          databaseName + "-" + dataRegionId,
+          e);
+      Thread.currentThread().interrupt();
+    }
+  }
+
+  public void syncCloseWorkingTsFileProcessors(boolean sequence) {
+    try {
+      writeLock("syncCloseWorkingTsFileProcessors");
+      List<Future<?>> tsFileProcessorsClosingFutures = new ArrayList<>();
+      int count = 0;
+      try {
+        // to avoid concurrent modification problem, we need a new array list
+        for (TsFileProcessor tsFileProcessor :
+            new ArrayList<>(
+                sequence
+                    ? workSequenceTsFileProcessors.values()
+                    : workUnsequenceTsFileProcessors.values())) {
+          tsFileProcessorsClosingFutures.add(
+              asyncCloseOneTsFileProcessor(sequence, tsFileProcessor));
+          count++;
+        }
+      } finally {
+        writeUnlock();
+      }
+      WritingMetrics.getInstance().recordManualFlushMemTableCount(count);
+      for (Future<?> f : tsFileProcessorsClosingFutures) {
+        if (f != null) {
+          f.get();
+        }
+      }
+    } catch (InterruptedException | ExecutionException e) {
+      logger.error(
+          "CloseFileNodeCondition error occurs while waiting for closing tsfile processors of {}",
           databaseName + "-" + dataRegionId,
           e);
       Thread.currentThread().interrupt();
@@ -1874,7 +1848,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   /** close all working tsfile processors */
-  List<Future<?>> asyncCloseAllWorkingTsFileProcessors() {
+  private List<Future<?>> asyncCloseAllWorkingTsFileProcessors() {
     writeLock("asyncCloseAllWorkingTsFileProcessors");
     List<Future<?>> futures = new ArrayList<>();
     int count = 0;
@@ -1936,7 +1910,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  /** used for queryengine */
+  /** used for query engine */
   @Override
   public QueryDataSource query(
       List<PartialPath> pathList,
@@ -1999,9 +1973,7 @@ public class DataRegion implements IDataRegionForQuery {
       QUERY_RESOURCE_METRIC_SET.recordQueryResourceNum(
           UNSEQUENCE_TSFILE, unseqFileScanHandles.size());
 
-      QueryDataSourceForRegionScan dataSource =
-          new QueryDataSourceForRegionScan(seqFileScanHandles, unseqFileScanHandles);
-      return dataSource;
+      return new QueryDataSourceForRegionScan(seqFileScanHandles, unseqFileScanHandles);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -2063,9 +2035,7 @@ public class DataRegion implements IDataRegionForQuery {
       QUERY_RESOURCE_METRIC_SET.recordQueryResourceNum(
           UNSEQUENCE_TSFILE, unseqFileScanHandles.size());
 
-      QueryDataSourceForRegionScan dataSource =
-          new QueryDataSourceForRegionScan(seqFileScanHandles, unseqFileScanHandles);
-      return dataSource;
+      return new QueryDataSourceForRegionScan(seqFileScanHandles, unseqFileScanHandles);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -2143,7 +2113,7 @@ public class DataRegion implements IDataRegionForQuery {
 
     if (context.isDebug()) {
       DEBUG_LOGGER.info(
-          "Path: {}, get tsfile list: {} isSeq: {} timefilter: {}",
+          "Path: {}, get tsfile list: {} isSeq: {} time filter: {}",
           pathList,
           tsFileResources,
           isSeq,
@@ -2176,7 +2146,7 @@ public class DataRegion implements IDataRegionForQuery {
     return tsfileResourcesForQuery;
   }
 
-  /** Seperate tsfiles in TsFileManager to sealedList and unsealedList. */
+  /** Separate tsfiles in TsFileManager to sealedList and unsealedList. */
   private void getTwoKindsOfTsFiles(
       List<TsFileResource> sealedResource,
       List<TsFileResource> unsealedResource,
@@ -2307,7 +2277,8 @@ public class DataRegion implements IDataRegionForQuery {
       }
     }
     // Some time the deletion operation doesn't have any related tsfile processor or memtable,
-    // but it's still necessary to write to the WAL, so that iotconsensus can synchronize the delete
+    // but it's still necessary to write to the WAL, so that iot consensus can synchronize the
+    // delete
     // operation to other nodes.
     if (walFlushListeners.isEmpty()) {
       // TODO: IoTConsensusV2 deletion support
@@ -2807,7 +2778,7 @@ public class DataRegion implements IDataRegionForQuery {
     oldTsFileResource.writeLock();
     try {
       TsFileAndModSettleTool.moveNewTsFile(oldTsFileResource, newTsFileResources);
-      if (TsFileAndModSettleTool.getInstance().recoverSettleFileMap.size() != 0) {
+      if (!TsFileAndModSettleTool.getInstance().recoverSettleFileMap.isEmpty()) {
         TsFileAndModSettleTool.getInstance()
             .recoverSettleFileMap
             .remove(oldTsFileResource.getTsFile().getAbsolutePath());
@@ -2947,101 +2918,6 @@ public class DataRegion implements IDataRegionForQuery {
       writeUnlock();
       DataNodeSchemaCache.getInstance().invalidateAll();
     }
-  }
-
-  /**
-   * Set the version in "partition" to "version" if "version" is larger than the current version.
-   */
-  public void setPartitionFileVersionToMax(long partition, long version) {
-    partitionMaxFileVersions.compute(
-        partition, (prt, oldVer) -> computeMaxVersion(oldVer, version));
-  }
-
-  private long computeMaxVersion(Long oldVersion, Long newVersion) {
-    if (oldVersion == null) {
-      return newVersion;
-    }
-    return Math.max(oldVersion, newVersion);
-  }
-
-  /**
-   * If the historical versions of a file is a sub-set of the given file's, (close and) remove it to
-   * reduce unnecessary merge. Only used when the file sender and the receiver share the same file
-   * close policy. Warning: DO NOT REMOVE
-   */
-  @SuppressWarnings("unused")
-  public void removeFullyOverlapFiles(TsFileResource resource) {
-    writeLock("removeFullyOverlapFiles");
-    try {
-      Iterator<TsFileResource> iterator = tsFileManager.getIterator(true);
-      removeFullyOverlapFiles(resource, iterator, true);
-
-      iterator = tsFileManager.getIterator(false);
-      removeFullyOverlapFiles(resource, iterator, false);
-    } finally {
-      writeUnlock();
-    }
-  }
-
-  private void removeFullyOverlapFiles(
-      TsFileResource newTsFile, Iterator<TsFileResource> iterator, boolean isSeq) {
-    while (iterator.hasNext()) {
-      TsFileResource existingTsFile = iterator.next();
-      if (newTsFile.isPlanRangeCovers(existingTsFile)
-          && !newTsFile.getTsFile().equals(existingTsFile.getTsFile())
-          && existingTsFile.tryWriteLock()) {
-        logger.info(
-            "{} is covered by {}: [{}, {}], [{}, {}], remove it",
-            existingTsFile,
-            newTsFile,
-            existingTsFile.minPlanIndex,
-            existingTsFile.maxPlanIndex,
-            newTsFile.minPlanIndex,
-            newTsFile.maxPlanIndex);
-        // if we fail to lock the file, it means it is being queried or merged and we will not
-        // wait until it is free, we will just leave it to the next merge
-        try {
-          removeFullyOverlapFile(existingTsFile, iterator, isSeq);
-        } catch (Exception e) {
-          logger.error(
-              "Something gets wrong while removing FullyOverlapFiles: {}",
-              existingTsFile.getTsFile().getAbsolutePath(),
-              e);
-        } finally {
-          existingTsFile.writeUnlock();
-        }
-      }
-    }
-  }
-
-  /**
-   * Remove the given {@link TsFileResource}. If the corresponding {@link TsFileProcessor} is in the
-   * working status, close it before remove the related resource files. maybe time-consuming for
-   * closing a tsfile.
-   */
-  private void removeFullyOverlapFile(
-      TsFileResource tsFileResource, Iterator<TsFileResource> iterator, boolean isSeq) {
-    logger.info(
-        "Removing a covered file {}, closed: {}", tsFileResource, tsFileResource.isClosed());
-    if (!tsFileResource.isClosed()) {
-      try {
-        // also remove the TsFileProcessor if the overlapped file is not closed
-        long timePartition = tsFileResource.getTimePartition();
-        Map<Long, TsFileProcessor> fileProcessorMap =
-            isSeq ? workSequenceTsFileProcessors : workUnsequenceTsFileProcessors;
-        TsFileProcessor tsFileProcessor = fileProcessorMap.get(timePartition);
-        if (tsFileProcessor != null && tsFileProcessor.getTsFileResource() == tsFileResource) {
-          // have to take some time to close the tsFileProcessor
-          tsFileProcessor.syncClose();
-          fileProcessorMap.remove(timePartition);
-        }
-      } catch (Exception e) {
-        logger.error("Cannot close {}", tsFileResource, e);
-      }
-    }
-    tsFileManager.remove(tsFileResource, isSeq);
-    iterator.remove();
-    tsFileResource.remove();
   }
 
   private long getAndSetNewVersion(long timePartitionId, TsFileResource tsFileResource) {
@@ -3298,67 +3174,6 @@ public class DataRegion implements IDataRegionForQuery {
    */
   public String getStorageGroupPath() {
     return databaseName + File.separator + dataRegionId;
-  }
-
-  /**
-   * Check if the data of "tsFileResource" all exist locally by comparing planIndexes in the
-   * partition of "partitionNumber". This is available only when the IoTDB instances which generated
-   * "tsFileResource" have the same plan indexes as the local one.
-   *
-   * @return true if any file contains plans with indexes no less than the max plan index of
-   *     "tsFileResource", otherwise false.
-   */
-  public boolean isFileAlreadyExist(TsFileResource tsFileResource, long partitionNum) {
-    // examine working processor first as they have the largest plan index
-    return isFileAlreadyExistInWorking(
-            tsFileResource, partitionNum, getWorkSequenceTsFileProcessors())
-        || isFileAlreadyExistInWorking(
-            tsFileResource, partitionNum, getWorkUnsequenceTsFileProcessors())
-        || isFileAlreadyExistInClosed(tsFileResource, partitionNum, getSequenceFileList())
-        || isFileAlreadyExistInClosed(tsFileResource, partitionNum, getUnSequenceFileList());
-  }
-
-  private boolean isFileAlreadyExistInClosed(
-      TsFileResource tsFileResource, long partitionNum, Collection<TsFileResource> existingFiles) {
-    for (TsFileResource resource : existingFiles) {
-      if (resource.getTimePartition() == partitionNum
-          && resource.getMaxPlanIndex() > tsFileResource.getMaxPlanIndex()) {
-        logger.info(
-            "{} is covered by a closed file {}: [{}, {}] [{}, {}]",
-            tsFileResource,
-            resource,
-            tsFileResource.minPlanIndex,
-            tsFileResource.maxPlanIndex,
-            resource.minPlanIndex,
-            resource.maxPlanIndex);
-        return true;
-      }
-    }
-    return false;
-  }
-
-  private boolean isFileAlreadyExistInWorking(
-      TsFileResource tsFileResource,
-      long partitionNum,
-      Collection<TsFileProcessor> workingProcessors) {
-    for (TsFileProcessor workingProcesssor : workingProcessors) {
-      if (workingProcesssor.getTimeRangeId() == partitionNum) {
-        TsFileResource workResource = workingProcesssor.getTsFileResource();
-        boolean isCovered = workResource.getMaxPlanIndex() > tsFileResource.getMaxPlanIndex();
-        if (isCovered) {
-          logger.info(
-              "{} is covered by a working file {}: [{}, {}] [{}, {}]",
-              tsFileResource,
-              workResource,
-              tsFileResource.minPlanIndex,
-              tsFileResource.maxPlanIndex,
-              workResource.minPlanIndex,
-              workResource.maxPlanIndex);
-        }
-        return isCovered;
-      }
-    }
-    return false;
   }
 
   public void abortCompaction() {
@@ -3627,10 +3442,6 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  public File getDataRegionSysDir() {
-    return dataRegionSysDir;
-  }
-
   public void addSettleFilesToList(
       List<TsFileResource> seqResourcesToBeSettled,
       List<TsFileResource> unseqResourcesToBeSettled,
@@ -3690,12 +3501,6 @@ public class DataRegion implements IDataRegionForQuery {
 
   public void setAllowCompaction(boolean allowCompaction) {
     this.tsFileManager.setAllowCompaction(allowCompaction);
-  }
-
-  @FunctionalInterface
-  public interface CloseTsFileCallBack {
-
-    void call(TsFileProcessor caller) throws TsFileProcessorException, IOException;
   }
 
   @FunctionalInterface
@@ -3763,6 +3568,18 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void acquireDirectBufferMemory() throws DataRegionException {
+    long acquireDirectBufferMemCost = getAcquireDirectBufferMemCost();
+    if (!SystemInfo.getInstance().addDirectBufferMemoryCost(acquireDirectBufferMemCost)) {
+      throw new DataRegionException(
+          "Total allocated memory for direct buffer will be "
+              + (SystemInfo.getInstance().getDirectBufferMemoryCost() + acquireDirectBufferMemCost)
+              + ", which is greater than limit mem cost: "
+              + SystemInfo.getInstance().getTotalDirectBufferMemorySizeLimit());
+    }
+    this.directBufferMemoryCost = acquireDirectBufferMemCost;
+  }
+
+  private static long getAcquireDirectBufferMemCost() {
     long acquireDirectBufferMemCost = 0;
     if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
         || config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.FAST_IOT_CONSENSUS)
@@ -3773,14 +3590,7 @@ public class DataRegion implements IDataRegionForQuery {
         .equals(ConsensusFactory.RATIS_CONSENSUS)) {
       acquireDirectBufferMemCost = config.getDataRatisConsensusLogAppenderBufferSizeMax();
     }
-    if (!SystemInfo.getInstance().addDirectBufferMemoryCost(acquireDirectBufferMemCost)) {
-      throw new DataRegionException(
-          "Total allocated memory for direct buffer will be "
-              + (SystemInfo.getInstance().getDirectBufferMemoryCost() + acquireDirectBufferMemCost)
-              + ", which is greater than limit mem cost: "
-              + SystemInfo.getInstance().getTotalDirectBufferMemorySizeLimit());
-    }
-    this.directBufferMemoryCost = acquireDirectBufferMemCost;
+    return acquireDirectBufferMemCost;
   }
 
   private void releaseDirectBufferMemory() {
