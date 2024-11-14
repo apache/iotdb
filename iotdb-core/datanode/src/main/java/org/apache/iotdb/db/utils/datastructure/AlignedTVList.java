@@ -548,7 +548,21 @@ public abstract class AlignedTVList extends TVList {
         deletedNumber++;
       }
     }
+    boolean needUpdateMaxTime = lowerBound <= maxTime && maxTime <= upperBound;
+    if (needUpdateMaxTime) {
+      updateMaxTime();
+    }
     return deletedNumber;
+  }
+
+  private void updateMaxTime() {
+    long maxTime = Long.MIN_VALUE;
+    for (int i = 0; i < rowCount; i++) {
+      if (!isTimeDeleted(i)) {
+        maxTime = Math.max(maxTime, getTime(i));
+      }
+    }
+    this.maxTime = maxTime;
   }
 
   /**
