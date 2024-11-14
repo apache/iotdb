@@ -47,27 +47,27 @@ ELSE()
     SET(THRIFT_STATIC_LIB "${CMAKE_SOURCE_DIR}/../../thrift/lib/libthrift.a")
 ENDIF()
 
-# ADD_EXECUTABLE(${TARGET_NAME} main.cpp cpp/sessionIT.cpp)
+ADD_EXECUTABLE(${TARGET_NAME} main.cpp cpp/sessionIT.cpp)
 ADD_EXECUTABLE(${TARGET_NAME_RELATIONAL} main_Relational.cpp cpp/sessionRelationalIT.cpp)
 
 # Link with shared library iotdb_session and pthread
 IF(MSVC)
-    # TARGET_LINK_LIBRARIES(${TARGET_NAME} iotdb_session ${THRIFT_STATIC_LIB})
+    TARGET_LINK_LIBRARIES(${TARGET_NAME} iotdb_session ${THRIFT_STATIC_LIB})
     TARGET_LINK_LIBRARIES(${TARGET_NAME_RELATIONAL} iotdb_session ${THRIFT_STATIC_LIB})
 ELSE()
-    # TARGET_LINK_LIBRARIES(${TARGET_NAME} iotdb_session pthread)
+    TARGET_LINK_LIBRARIES(${TARGET_NAME} iotdb_session pthread)
     TARGET_LINK_LIBRARIES(${TARGET_NAME_RELATIONAL} iotdb_session pthread)
 ENDIF()
 
 # Add Catch2 include directory
-# TARGET_INCLUDE_DIRECTORIES(${TARGET_NAME} PUBLIC ./catch2/)
+TARGET_INCLUDE_DIRECTORIES(${TARGET_NAME} PUBLIC ./catch2/)
 TARGET_INCLUDE_DIRECTORIES(${TARGET_NAME_RELATIONAL} PUBLIC ./catch2/)
 
 # Add 'sessionIT' to the project to be run by ctest
 IF(MSVC)
-    # ADD_TEST(NAME sessionIT CONFIGURATIONS Release COMMAND ${TARGET_NAME})
+    ADD_TEST(NAME sessionIT CONFIGURATIONS Release COMMAND ${TARGET_NAME})
     ADD_TEST(NAME sessionRelationalIT CONFIGURATIONS Release COMMAND ${TARGET_NAME_RELATIONAL})
 ELSE()
-    # ADD_TEST(NAME sessionIT COMMAND ${TARGET_NAME})
+    ADD_TEST(NAME sessionIT COMMAND ${TARGET_NAME})
     ADD_TEST(NAME sessionRelationalIT COMMAND ${TARGET_NAME_RELATIONAL})
 ENDIF()

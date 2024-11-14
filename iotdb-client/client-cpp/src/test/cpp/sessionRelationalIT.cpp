@@ -68,7 +68,7 @@ TEST_CASE("Create table success", "[createTable]") {
 
 TEST_CASE("Test insertRelationalTablet", "[testInsertRelationalTablet]") {
     CaseReporter cr("testInsertRelationalTablet");
-    session->executeNonQueryStatement("CREATE DATABASE IF NOT EXIST db1");
+    session->executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS db1");
     session->executeNonQueryStatement("USE db1");
     session->executeNonQueryStatement("CREATE TABLE table1 ("
         "id1 string id,"
