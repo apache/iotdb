@@ -37,10 +37,15 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+
+import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2TableModel.class})
@@ -351,10 +356,13 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
       if (!insertResult) {
         return;
       }
+
+      // wait for flush to complete
       if (!TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, Collections.singletonList("flush"))) {
         return;
       }
       Thread.sleep(10000);
+
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
@@ -657,6 +665,12 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
         return;
       }
 
+      // wait for flush to complete
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, Collections.singletonList("flush"))) {
+        return;
+      }
+      Thread.sleep(10000);
+
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
@@ -775,6 +789,128 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
       }
 
       TableModelUtils.assertCountData("test", "test1", 20, receiverEnv);
+    }
+  }
+
+  @Test
+  public void testTableModeSQLSupportNowFunc() {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+
+    final String p1 =
+        String.format(
+            "create pipe p1"
+                + " with extractor ("
+                + "'capture.table'='true',"
+                + "'extractor.history.enable'='true',"
+                + "'source.start-time'='now',"
+                + "'source.end-time'='now',"
+                + "'source.history.start-time'='now',"
+                + "'source.history.end-time'='now')"
+                + " with connector ("
+                + "'connector'='iotdb-thrift-connector',"
+                + "'connector.ip'='%s',"
+                + "'connector.port'='%s',"
+                + "'connector.batch.enable'='false')",
+            receiverIp, receiverPort);
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(p1);
+    } catch (final SQLException e) {
+      fail(e.getMessage());
+    }
+
+    final String p2 =
+        String.format(
+            "create pipe p2"
+                + " with extractor ("
+                + "'capture.table'='true',"
+                + "'extractor.history.enable'='true',"
+                + "'start-time'='now',"
+                + "'end-time'='now',"
+                + "'history.start-time'='now',"
+                + "'history.end-time'='now')"
+                + " with connector ("
+                + "'connector'='iotdb-thrift-connector',"
+                + "'connector.ip'='%s',"
+                + "'connector.port'='%s',"
+                + "'connector.batch.enable'='false')",
+            receiverIp, receiverPort);
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(p2);
+    } catch (final SQLException e) {
+      fail(e.getMessage());
+    }
+
+    final String p3 =
+        String.format(
+            "create pipe p3"
+                + " with extractor ("
+                + "'capture.table'='true',"
+                + "'extractor.history.enable'='true',"
+                + "'extractor.start-time'='now',"
+                + "'extractor.end-time'='now',"
+                + "'extractor.history.start-time'='now',"
+                + "'extractor.history.end-time'='now')"
+                + " with connector ("
+                + "'connector'='iotdb-thrift-connector',"
+                + "'connector.ip'='%s',"
+                + "'connector.port'='%s',"
+                + "'connector.batch.enable'='false')",
+            receiverIp, receiverPort);
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(p3);
+    } catch (final SQLException e) {
+      fail(e.getMessage());
+    }
+
+    String alterP3 =
+        "alter pipe p3"
+            + " modify extractor ("
+            + "'history.enable'='true',"
+            + "'start-time'='now',"
+            + "'end-time'='now',"
+            + "'history.start-time'='now',"
+            + "'history.end-time'='now')";
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(alterP3);
+    } catch (final SQLException e) {
+      fail(e.getMessage());
+    }
+
+    alterP3 =
+        "alter pipe p3"
+            + " modify extractor ("
+            + "'extractor.history.enable'='true',"
+            + "'extractor.start-time'='now',"
+            + "'extractor.end-time'='now',"
+            + "'extractor.history.start-time'='now',"
+            + "'extractor.history.end-time'='now')";
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(alterP3);
+    } catch (final SQLException e) {
+      fail(e.getMessage());
+    }
+
+    alterP3 =
+        "alter pipe p3"
+            + " modify source ("
+            + "'extractor.history.enable'='true',"
+            + "'source.start-time'='now',"
+            + "'source.end-time'='now',"
+            + "'source.history.start-time'='now',"
+            + "'source.history.end-time'='now')";
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(alterP3);
+    } catch (final SQLException e) {
+      fail(e.getMessage());
     }
   }
 
