@@ -36,7 +36,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpre
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 
 import java.util.List;
 import java.util.Set;
@@ -109,12 +108,14 @@ public class PredicatePushIntoMetadataChecker extends PredicateVisitor<Boolean, 
 
   @Override
   protected Boolean visitComparisonExpression(final ComparisonExpression node, final Void context) {
-    return isAllIdOrAttributeOrLiteral(node.getLeft()) && isAllIdOrAttributeOrLiteral(node.getRight());
+    return isAllIdOrAttributeOrLiteral(node.getLeft())
+        && isAllIdOrAttributeOrLiteral(node.getRight());
   }
 
   private boolean isAllIdOrAttributeOrLiteral(final Expression expression) {
     if (expression instanceof FunctionCall) {
-      return ((FunctionCall) expression).getArguments().stream().allMatch(this::isAllIdOrAttributeOrLiteral);
+      return ((FunctionCall) expression)
+          .getArguments().stream().allMatch(this::isAllIdOrAttributeOrLiteral);
     }
     return isIdOrAttributeColumn(expression) || expression instanceof Literal;
   }
