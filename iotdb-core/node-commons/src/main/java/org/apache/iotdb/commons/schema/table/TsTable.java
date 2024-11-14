@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.schema.table;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -112,7 +113,9 @@ public class TsTable {
     try {
       // Ensures idempotency
       if (columnSchemaMap.containsKey(oldName)) {
-        columnSchemaMap.put(newName, columnSchemaMap.remove(oldName));
+        final TsTableColumnSchema schema = columnSchemaMap.remove(oldName);
+        ((AttributeColumnSchema) schema).setOriginalName(oldName);
+        columnSchemaMap.put(newName, schema);
       }
     } finally {
       readWriteLock.writeLock().unlock();

@@ -24,6 +24,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
@@ -53,22 +54,28 @@ public class AttributeColumnSchema extends TsTableColumnSchema {
     return TsTableColumnCategory.ATTRIBUTE;
   }
 
+  @Override
+  void serialize(final OutputStream outputStream) throws IOException {
+    super.serialize(outputStream);
+    ReadWriteIOUtils.write(originalName, outputStream);
+  }
+
   static AttributeColumnSchema deserialize(final InputStream stream) throws IOException {
     final String columnName = ReadWriteIOUtils.readString(stream);
-    final String originalName = ReadWriteIOUtils.readString(stream);
     final TSDataType dataType = ReadWriteIOUtils.readDataType(stream);
     final Map<String, String> props = ReadWriteIOUtils.readMap(stream);
     final AttributeColumnSchema schema = new AttributeColumnSchema(columnName, dataType, props);
+    final String originalName = ReadWriteIOUtils.readString(stream);
     schema.setOriginalName(originalName);
     return schema;
   }
 
   static AttributeColumnSchema deserialize(final ByteBuffer buffer) {
     final String columnName = ReadWriteIOUtils.readString(buffer);
-    final String originalName = ReadWriteIOUtils.readString(buffer);
     final TSDataType dataType = ReadWriteIOUtils.readDataType(buffer);
     final Map<String, String> props = ReadWriteIOUtils.readMap(buffer);
     final AttributeColumnSchema schema = new AttributeColumnSchema(columnName, dataType, props);
+    final String originalName = ReadWriteIOUtils.readString(buffer);
     schema.setOriginalName(originalName);
     return schema;
   }
