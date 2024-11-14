@@ -1042,7 +1042,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
                     .getConfigManager()
                     .getClusterSchemaManager()
                     .getDatabaseSchemaByName(dataBaseName);
-            isTableModel = schema != null && schema.isTableModel;
+            if (schema == null) {
+              return;
+            }
+            isTableModel = schema.isTableModel;
           } catch (DatabaseNotExistsException ignore) {
             return;
           }
