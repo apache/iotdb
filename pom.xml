@@ -61,7 +61,7 @@
         <commons-cli.version>1.5.0</commons-cli.version>
         <commons-codec.version>1.16.1</commons-codec.version>
         <commons-csv.version>1.10.0</commons-csv.version>
-        <commons-io.version>2.13.0</commons-io.version>
+        <commons-io.version>2.14.0</commons-io.version>
         <commons-jexl3.version>3.3</commons-jexl3.version>
         <commons-lang3.version>3.13.0</commons-lang3.version>
         <commons-math3.version>3.6.1</commons-math3.version>
@@ -100,7 +100,7 @@
         <!-- This is the last version to support the javax namespace -->
         <jersey.version>2.40</jersey.version>
         <!-- This was the last version to support Java 8 -->
-        <jetty.version>9.4.55.v20240627</jetty.version>
+        <jetty.version>9.4.56.v20240826</jetty.version>
         <jjwt.version>0.11.5</jjwt.version>
         <jline.version>3.26.2</jline.version>
         <jna.version>5.14.0</jna.version>
