@@ -29,6 +29,7 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.metric.PipeResourceMetrics;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -121,13 +122,16 @@ public class PipeEventCollector implements EventCollector {
       collectEvent(sourceEvent);
       return;
     }
-
+    PipeResourceMetrics.addByteUsed(sourceEvent.getTsFile().length());
+    int count = 0;
     try {
       for (final TabletInsertionEvent parsedEvent : sourceEvent.toTabletInsertionEvents()) {
         collectParsedRawTableEvent((PipeRawTabletInsertionEvent) parsedEvent);
+        count++;
       }
     } finally {
       sourceEvent.close();
+      PipeResourceMetrics.addTabletTotal(count);
     }
   }
 

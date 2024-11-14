@@ -89,6 +89,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   private volatile ProgressIndex overridingProgressIndex;
 
+
+
   public PipeTsFileInsertionEvent(
       final String databaseName,
       final TsFileResource resource,
