@@ -37,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
@@ -169,6 +170,11 @@ public class PredicatePushIntoMetadataChecker extends AstVisitor<Boolean, Void> 
   @Override
   protected Boolean visitInPredicate(final InPredicate node, final Void context) {
     return node.getValue().accept(this, context) && node.getValueList().accept(this, context);
+  }
+
+  @Override
+  protected Boolean visitInListExpression(final InListExpression node, final Void context) {
+    return node.getValues().stream().allMatch(expression -> expression.accept(this, context));
   }
 
   @Override
