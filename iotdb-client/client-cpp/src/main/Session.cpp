@@ -1686,6 +1686,18 @@ void Session::deleteStorageGroups(const vector<string> &storageGroups) {
     }
 }
 
+void Session::createDatabase(const string &database) {
+    this->setStorageGroup(database);
+}
+
+void Session::deleteDatabase(const string &database) {
+    this->deleteStorageGroups(vector<string>{database});
+}
+
+void Session::deleteDatabases(const vector<string> &databases) {
+    this->deleteStorageGroups(databases);
+}
+
 void Session::createTimeseries(const string &path,
                                TSDataType::TSDataType dataType,
                                TSEncoding::TSEncoding encoding,

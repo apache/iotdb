@@ -1205,6 +1205,12 @@ public:
 
     void deleteStorageGroups(const std::vector<std::string> &storageGroups);
 
+    void createDatabase(const std::string &database);
+
+    void deleteDatabase(const std::string &database);
+
+    void deleteDatabases(const std::vector<std::string> &databases);
+
     void createTimeseries(const std::string &path, TSDataType::TSDataType dataType, TSEncoding::TSEncoding encoding,
                           CompressionType::CompressionType compressor);
 
