@@ -93,7 +93,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
     this.consensusGroupId = consensusGroupId;
     this.thisDataNodeId = thisDataNodeId;
     this.syncRetryClientManager =
-        PipeConsensusClientMgrContainer.getInstance().getSyncClientManager();
+        PipeConsensusClientMgrContainer.getInstance().newSyncClientManager();
     this.pipeConsensusConnectorMetrics = pipeConsensusConnectorMetrics;
   }
 

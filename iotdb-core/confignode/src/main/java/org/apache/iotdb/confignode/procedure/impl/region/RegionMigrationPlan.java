@@ -94,4 +94,16 @@ public class RegionMigrationPlan {
   public int hashCode() {
     return Objects.hash(regionId, fromDataNode, toDataNode);
   }
+
+  @Override
+  public String toString() {
+    return "RegionMigrationPlan{"
+        + "regionId="
+        + regionId
+        + ", fromDataNode="
+        + fromDataNode
+        + ", toDataNode="
+        + toDataNode
+        + '}';
+  }
 }

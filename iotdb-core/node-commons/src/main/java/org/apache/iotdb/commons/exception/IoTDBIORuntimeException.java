@@ -17,29 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription.exception;
+package org.apache.iotdb.commons.exception;
 
-import java.util.Objects;
+import java.io.IOException;
 
-public class SubscriptionPipeTimeoutException extends SubscriptionTimeoutException {
-
-  public SubscriptionPipeTimeoutException(final String message) {
-    super(message);
-  }
-
-  public SubscriptionPipeTimeoutException(final String message, final Throwable cause) {
-    super(message, cause);
+public class IoTDBIORuntimeException extends RuntimeException {
+  public IoTDBIORuntimeException(IOException cause) {
+    super(cause);
   }
 
   @Override
-  public boolean equals(final Object obj) {
-    return obj instanceof SubscriptionPipeTimeoutException
-        && Objects.equals(getMessage(), ((SubscriptionPipeTimeoutException) obj).getMessage())
-        && Objects.equals(getTimeStamp(), ((SubscriptionPipeTimeoutException) obj).getTimeStamp());
-  }
-
-  @Override
-  public int hashCode() {
-    return super.hashCode();
+  public synchronized IOException getCause() {
+    return (IOException) super.getCause();
   }
 }

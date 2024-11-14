@@ -79,7 +79,7 @@ launch_service()
   # off heap memory size
   OFF_HEAP_MEMORY="512M"
 
-	exec "$JAVA" $iotdb_parms $IOTDB_JMX_OPTS -Xms${ON_HEAP_MEMORY} -Xmx${ON_HEAP_MEMORY} -XX:MaxDirectMemorySize=${OFF_HEAP_MEMORY} -cp "$CLASSPATH" "$class" $PARAMS
+	exec "$JAVA" $iotdb_parms $illegal_access_params $IOTDB_JMX_OPTS -Xms${ON_HEAP_MEMORY} -Xmx${ON_HEAP_MEMORY} -XX:MaxDirectMemorySize=${OFF_HEAP_MEMORY} -cp "$CLASSPATH" "$class" $PARAMS
 	return $?
 }
 

@@ -91,7 +91,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackViewSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternAndFilterReq;
-import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternReq;
+import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternOrModReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
@@ -417,7 +417,8 @@ public class CnToDnInternalServiceAsyncRequestManager
         CnToDnAsyncRequestType.ROLLBACK_TABLE_DEVICE_BLACK_LIST,
         (req, client, handler) ->
             client.rollbackTableDeviceBlackList(
-                (TTableDeviceDeletionWithPatternReq) req, (DataNodeTSStatusRPCHandler) handler));
+                (TTableDeviceDeletionWithPatternOrModReq) req,
+                (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.INVALIDATE_MATCHED_TABLE_DEVICE_CACHE,
         (req, client, handler) ->
@@ -427,13 +428,14 @@ public class CnToDnInternalServiceAsyncRequestManager
         CnToDnAsyncRequestType.DELETE_DATA_FOR_TABLE_DEVICE,
         (req, client, handler) ->
             client.deleteDataForTableDevice(
-                (TTableDeviceDeletionWithPatternAndFilterReq) req,
+                (TTableDeviceDeletionWithPatternOrModReq) req,
                 (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.DELETE_TABLE_DEVICE_IN_BLACK_LIST,
         (req, client, handler) ->
             client.deleteTableDeviceInBlackList(
-                (TTableDeviceDeletionWithPatternReq) req, (DataNodeTSStatusRPCHandler) handler));
+                (TTableDeviceDeletionWithPatternOrModReq) req,
+                (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.CLEAN_DATA_NODE_CACHE,
         (req, client, handler) ->
