@@ -43,9 +43,11 @@ public class PipeResourceMetrics implements IMetricSet {
 
   private static long byteUsed = 0;
   private static long tabletTotal = 0;
+
   public long getByteUsed() {
     return byteUsed;
   }
+
   public static void addByteUsed(long byteUsed) {
     PipeResourceMetrics.byteUsed += byteUsed;
   }
@@ -53,11 +55,12 @@ public class PipeResourceMetrics implements IMetricSet {
   public long getTabletTotal() {
     return tabletTotal;
   }
+
   public static void addTabletTotal(long tabletTotal) {
     PipeResourceMetrics.tabletTotal += tabletTotal;
   }
 
-    //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
+  //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
   public void bindTo(final AbstractMetricService metricService) {
@@ -95,22 +98,19 @@ public class PipeResourceMetrics implements IMetricSet {
         PipePhantomReferenceManager::getPhantomReferenceCount);
     // tsfile length and tablet total
     metricService.createAutoGauge(
-            Metric.FILE_SIZE.toString(),
-            MetricLevel.IMPORTANT,
-            this,
-            PipeResourceMetrics::getByteUsed,
-            Tag.NAME.toString(),
-            TRANSFORMED_TOTAL_SIZE
-    );
+        Metric.FILE_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        this,
+        PipeResourceMetrics::getByteUsed,
+        Tag.NAME.toString(),
+        TRANSFORMED_TOTAL_SIZE);
     metricService.createAutoGauge(
-            Metric.FILE_COUNT.toString(),
-            MetricLevel.IMPORTANT,
-            this,
-            PipeResourceMetrics::getTabletTotal,
-            Tag.NAME.toString(),
-            TRANSFORMED_TOTAL_COUNT
-
-    );
+        Metric.FILE_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        this,
+        PipeResourceMetrics::getTabletTotal,
+        Tag.NAME.toString(),
+        TRANSFORMED_TOTAL_COUNT);
   }
 
   @Override
@@ -125,8 +125,16 @@ public class PipeResourceMetrics implements IMetricSet {
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_LINKED_TSFILE_COUNT.toString());
     // phantom reference count
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_PHANTOM_REFERENCE_COUNT.toString());
-    metricService.remove(MetricType.AUTO_GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), TRANSFORMED_TOTAL_SIZE);
-    metricService.remove(MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), TRANSFORMED_TOTAL_COUNT);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.FILE_SIZE.toString(),
+        Tag.NAME.toString(),
+        TRANSFORMED_TOTAL_SIZE);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.FILE_COUNT.toString(),
+        Tag.NAME.toString(),
+        TRANSFORMED_TOTAL_COUNT);
   }
 
   //////////////////////////// singleton ////////////////////////////
