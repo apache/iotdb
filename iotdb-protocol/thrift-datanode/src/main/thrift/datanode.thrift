@@ -620,6 +620,19 @@ struct TQueryStatistics {
   35: i64 alignedTimeSeriesMetadataModificationTime
   36: i64 nonAlignedTimeSeriesMetadataModificationCount
   37: i64 nonAlignedTimeSeriesMetadataModificationTime
+
+  38: i64 loadBloomFilterFromCacheCount
+  39: i64 loadBloomFilterFromDiskCount
+  40: i64 loadBloomFilterActualIOSize
+  41: i64 loadBloomFilterTime
+
+  42: i64 loadTimeSeriesMetadataFromCacheCount
+  43: i64 loadTimeSeriesMetadataFromDiskCount
+  44: i64 loadTimeSeriesMetadataActualIOSize
+
+  45: i64 loadChunkFromCacheCount
+  46: i64 loadChunkFromDiskCount
+  47: i64 loadChunkActualIOSize
 }
 
 

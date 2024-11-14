@@ -33,6 +33,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata.D
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata.MemAlignedChunkMetadataLoader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata.MemChunkMetadataLoader;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 
 import org.apache.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
@@ -99,8 +100,9 @@ public class FileLoaderUtils {
                         new PlainDeviceID(seriesPath.getDevice()),
                         seriesPath.getMeasurement()),
                     allSensors,
-                    resource.getTimeIndexType() != 1,
-                    context.isDebug());
+                    resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
+                    context.isDebug(),
+                    context);
         if (timeSeriesMetadata != null) {
           long t2 = System.nanoTime();
           List<Modification> pathModifications = context.getPathModifications(resource, seriesPath);
@@ -268,8 +270,9 @@ public class FileLoaderUtils {
             filePath,
             new TimeSeriesMetadataCacheKey(resource.getTsFileID(), deviceId, ""),
             allSensors,
-            resource.getTimeIndexType() != 1,
-            isDebug);
+            resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
+            isDebug,
+            context);
     if (timeColumn != null) {
       // only need time column, like count_time aggregation
       if (valueMeasurementList.isEmpty()) {
@@ -290,8 +293,9 @@ public class FileLoaderUtils {
                   new TimeSeriesMetadataCacheKey(
                       resource.getTsFileID(), deviceId, valueMeasurement),
                   allSensors,
-                  resource.getTimeIndexType() != 1,
-                  isDebug);
+                  resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
+                  isDebug,
+                  context);
           exist = (exist || (valueColumn != null));
           valueTimeSeriesMetadataList.add(valueColumn);
         }

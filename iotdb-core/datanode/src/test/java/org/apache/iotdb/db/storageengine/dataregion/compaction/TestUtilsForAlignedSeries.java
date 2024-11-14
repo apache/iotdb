@@ -58,8 +58,10 @@ public class TestUtilsForAlignedSeries {
         } else {
           writeNotAlignedChunkGroup(writer, device, schemas, startTime, endTime, randomNull[i]);
         }
-        tsFileResource.updateStartTime(new PlainDeviceID(devices[i]), startTime);
-        tsFileResource.updateEndTime(new PlainDeviceID(devices[i]), endTime);
+        if (endTime > startTime) {
+          tsFileResource.updateStartTime(new PlainDeviceID(devices[i]), startTime);
+          tsFileResource.updateEndTime(new PlainDeviceID(devices[i]), endTime);
+        }
       }
       writer.endFile();
     }
