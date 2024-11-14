@@ -68,22 +68,22 @@ public class PredicatePushIntoMetadataChecker extends PredicateVisitor<Boolean, 
 
   @Override
   protected Boolean visitInPredicate(final InPredicate node, final Void context) {
-    return isIdOrAttributeColumn(node.getValue()) && isInListAllLiteral(node);
+    return isAllIdOrAttributeOrLiteral(node.getValue()) && isAllIdOrAttributeOrLiteral(node);
   }
 
   @Override
   protected Boolean visitIsNullPredicate(final IsNullPredicate node, final Void context) {
-    return isIdOrAttributeColumn(node.getValue());
+    return isAllIdOrAttributeOrLiteral(node.getValue());
   }
 
   @Override
   protected Boolean visitIsNotNullPredicate(final IsNotNullPredicate node, final Void context) {
-    return isIdOrAttributeColumn(node.getValue());
+    return isAllIdOrAttributeOrLiteral(node.getValue());
   }
 
   @Override
   protected Boolean visitLikePredicate(final LikePredicate node, final Void context) {
-    return isIdOrAttributeColumn(node.getValue());
+    return isAllIdOrAttributeOrLiteral(node.getValue());
   }
 
   @Override
