@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.workers.state;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-import static java.util.Objects.requireNonNull;
 
 public final class TransformationState<T> {
   private static final TransformationState<?> NEEDS_MORE_DATA_STATE =
@@ -46,7 +45,7 @@ public final class TransformationState<T> {
 
   public TransformationState(
       Type type, boolean needsMoreData, T result, ListenableFuture<Void> blocked) {
-    this.type = requireNonNull(type, "type is null");
+    this.type = type;
     this.needsMoreData = needsMoreData;
     this.result = result;
     this.blocked = blocked;
@@ -59,7 +58,7 @@ public final class TransformationState<T> {
 
   public static <T> TransformationState<T> blocked(ListenableFuture<Void> blocked) {
     return new TransformationState<>(
-        Type.BLOCKED, false, null, requireNonNull(blocked, "blocked is null"));
+        Type.BLOCKED, false, null, blocked);
   }
 
   @SuppressWarnings("unchecked")
@@ -73,7 +72,7 @@ public final class TransformationState<T> {
 
   public static <T> TransformationState<T> ofResult(T result, boolean needsMoreData) {
     return new TransformationState<>(
-        Type.RESULT, needsMoreData, requireNonNull(result, "result is null"), null);
+        Type.RESULT, needsMoreData, result, null);
   }
 
   @SuppressWarnings("unchecked")
