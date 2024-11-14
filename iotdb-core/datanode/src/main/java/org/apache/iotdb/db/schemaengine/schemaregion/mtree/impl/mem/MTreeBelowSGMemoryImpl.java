@@ -1628,7 +1628,7 @@ public class MTreeBelowSGMemoryImpl {
             rootNode, pattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
           @Override
-          protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
+          protected void updateEntity(final IDeviceMNode<IMemMNode> node) throws MetadataException {
             batchUpdater.handleDeviceNode(node);
           }
         }) {
@@ -1644,7 +1644,7 @@ public class MTreeBelowSGMemoryImpl {
             rootNode, pattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
           @Override
-          protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
+          protected void updateEntity(final IDeviceMNode<IMemMNode> node) throws MetadataException {
             blackListConstructor.handleDeviceNode(node);
           }
         }) {

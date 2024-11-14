@@ -65,7 +65,7 @@ public class SubscriptionEventSingleResponse
   }
 
   @Override
-  public void fetchNextResponse() {
+  public void fetchNextResponse(final long offset) {
     // do nothing
   }
 
