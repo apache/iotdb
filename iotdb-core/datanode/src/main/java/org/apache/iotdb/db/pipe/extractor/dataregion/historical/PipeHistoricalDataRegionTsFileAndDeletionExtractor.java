@@ -868,8 +868,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
 
   @Override
   public synchronized void close() {
-    tsfile2IsTableModelMap.clear();
-
     if (Objects.nonNull(pendingQueue)) {
       pendingQueue.forEach(
           resource -> {
