@@ -44,7 +44,6 @@ import java.util.List;
 import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory.NOOP;
 
@@ -160,10 +159,6 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
       }
 
       processInput(block);
-
-      if (outputs.isEmpty()) {
-        return null;
-      }
     } else {
       // last evaluate
       if (currentGroup != null) {
@@ -173,7 +168,10 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
       finished = true;
       closeAggregationBuilder();
     }
-    checkState(!outputs.isEmpty(), "outputs should always not be empty here");
+
+    if (outputs.isEmpty()) {
+      return null;
+    }
 
     resultTsBlock = outputs.removeFirst();
     return checkTsBlockSizeAndGetResult();

@@ -113,6 +113,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
               "insert into root.ln.wf01.wt01(time, temperature, status) values (1800000000000, 23, true)"))) {
         return;
       }
+      awaitUntilFlush(senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -259,6 +260,62 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
           "list role",
           ColumnHeaderConstant.ROLE + ",",
           new HashSet<>(Arrays.asList("admin,", "test,")));
+    }
+  }
+
+  @Test
+  public void testTimeSeriesInclusion() throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+
+      // Do not fail if the failure has nothing to do with pipe
+      // Because the failures will randomly generate due to resource limitation
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList(
+              "create database root.sg",
+              "create timeseries root.sg.a.b int32",
+              "create aligned timeseries root.sg.`apache|timecho-tag-attr`.d1(s1 INT32 tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2), s2 DOUBLE tags(tag3=v3, tag4=v4) attributes(attr3=v3, attr4=v4))"))) {
+        return;
+      }
+
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
+
+      extractorAttributes.put("extractor.inclusion", "schema");
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.ip", receiverIp);
+      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      connectorAttributes.put("connector.exception.conflict.resolve-strategy", "retry");
+      connectorAttributes.put("connector.exception.conflict.retry-max-time-seconds", "-1");
+
+      final TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("testPipe", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "show timeseries",
+          "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
+          new HashSet<>(
+              Arrays.asList(
+                  "root.sg.a.b,null,root.sg,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,",
+                  "root.sg.`apache|timecho-tag-attr`.d1.s1,null,root.sg,INT32,TS_2DIFF,LZ4,{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"},null,null,BASE,",
+                  "root.sg.`apache|timecho-tag-attr`.d1.s2,null,root.sg,DOUBLE,GORILLA,LZ4,{\"tag4\":\"v4\",\"tag3\":\"v3\"},{\"attr4\":\"v4\",\"attr3\":\"v3\"},null,null,BASE,")));
     }
   }
 }
