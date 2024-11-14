@@ -22,11 +22,13 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
@@ -34,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpre
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 
 import java.util.List;
 import java.util.Set;
@@ -106,11 +109,14 @@ public class PredicatePushIntoMetadataChecker extends PredicateVisitor<Boolean, 
 
   @Override
   protected Boolean visitComparisonExpression(final ComparisonExpression node, final Void context) {
-    return isIdOrAttributeOrLiteral(node.getLeft()) && isIdOrAttributeOrLiteral(node.getRight());
+    return isAllIdOrAttributeOrLiteral(node.getLeft()) && isAllIdOrAttributeOrLiteral(node.getRight());
   }
 
-  private boolean isIdOrAttributeOrLiteral(final Expression expression) {
-    return isIdOrAttributeColumn(expression) || isStringLiteral(expression);
+  private boolean isAllIdOrAttributeOrLiteral(final Expression expression) {
+    if (expression instanceof FunctionCall) {
+      return ((FunctionCall) expression).getArguments().stream().allMatch(this::isAllIdOrAttributeOrLiteral);
+    }
+    return isIdOrAttributeColumn(expression) || expression instanceof Literal;
   }
 
   private boolean isIdOrAttributeColumn(final Expression expression) {
@@ -141,9 +147,9 @@ public class PredicatePushIntoMetadataChecker extends PredicateVisitor<Boolean, 
 
   @Override
   protected Boolean visitBetweenPredicate(final BetweenPredicate node, final Void context) {
-    return isIdOrAttributeOrLiteral(node.getValue())
-        && isIdOrAttributeOrLiteral(node.getMin())
-        && isIdOrAttributeOrLiteral(node.getMax());
+    return isAllIdOrAttributeOrLiteral(node.getValue())
+        && isAllIdOrAttributeOrLiteral(node.getMin())
+        && isAllIdOrAttributeOrLiteral(node.getMax());
   }
 
   public static boolean isStringLiteral(final Expression expression) {
