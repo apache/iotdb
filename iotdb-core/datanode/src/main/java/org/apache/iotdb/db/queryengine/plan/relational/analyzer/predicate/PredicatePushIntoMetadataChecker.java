@@ -40,7 +40,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import java.util.List;
 import java.util.Set;
 
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicateCombineIntoTableScanChecker.isInListAllLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isSymbolReference;
 
 /**
