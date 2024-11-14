@@ -1,8 +1,5 @@
 package org.apache.iotdb.db.queryengine.workers;
 
-import org.apache.iotdb.db.queryengine.workers.process.BlockingProcessor;
-import org.apache.iotdb.db.queryengine.workers.process.Processor;
-import org.apache.iotdb.db.queryengine.workers.process.YieldingProcessor;
 import org.apache.iotdb.db.queryengine.workers.state.ProcessState;
 import org.apache.iotdb.db.queryengine.workers.state.TransformationState;
 
@@ -169,5 +166,59 @@ public class WorkProcessorUtils {
     }
 
     return ProcessState.yielded();
+  }
+
+  private static class BlockingProcessor<T> implements Processor<T> {
+    final WorkProcessor<T> processor;
+    final Supplier<ListenableFuture<Void>> futureSupplier;
+    ProcessState<T> state;
+
+    public BlockingProcessor(
+        WorkProcessor<T> processor, Supplier<ListenableFuture<Void>> futureSupplier) {
+      this.processor = processor;
+      this.futureSupplier = futureSupplier;
+    }
+
+    @Override
+    public ProcessState<T> process() {
+      if (state == null) {
+        state = getNextState(processor);
+      }
+
+      ListenableFuture<Void> future = futureSupplier.get();
+      if (!future.isDone()) {
+        if (state.getType() == ProcessState.Type.YIELD) {
+          // clear yielded state to continue computations in the next iteration
+          state = null;
+        }
+        return ProcessState.blocked(future);
+      }
+
+      ProcessState<T> result = state;
+      state = null;
+      return result;
+    }
+  }
+
+  private static class YieldingProcessor<T> implements Processor<T> {
+    final WorkProcessor<T> processor;
+    final BooleanSupplier yieldSignal;
+    boolean lastProcessYielded;
+
+    public YieldingProcessor(WorkProcessor<T> processor, BooleanSupplier yieldSignal) {
+      this.processor = processor;
+      this.yieldSignal = yieldSignal;
+    }
+
+    @Override
+    public ProcessState<T> process() {
+      if (!lastProcessYielded && yieldSignal.getAsBoolean()) {
+        lastProcessYielded = true;
+        return ProcessState.yielded();
+      }
+      lastProcessYielded = false;
+
+      return getNextState(processor);
+    }
   }
 }

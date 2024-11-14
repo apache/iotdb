@@ -1,6 +1,5 @@
 package org.apache.iotdb.db.queryengine.workers;
 
-import org.apache.iotdb.db.queryengine.workers.process.Processor;
 import org.apache.iotdb.db.queryengine.workers.state.ProcessState;
 
 import com.google.common.util.concurrent.ListenableFuture;

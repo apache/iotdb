@@ -1,4 +1,4 @@
-package org.apache.iotdb.db.queryengine.workers.process;
+package org.apache.iotdb.db.queryengine.workers;
 
 import org.apache.iotdb.db.queryengine.workers.state.ProcessState;
 
