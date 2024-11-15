@@ -235,6 +235,7 @@ public class DataNodeTableCache implements ITableCache {
         }
         tableVersionPair.setRight(tableVersionPair.getRight() + 1);
       }
+      version.incrementAndGet();
     } finally {
       readWriteLock.writeLock().unlock();
     }
