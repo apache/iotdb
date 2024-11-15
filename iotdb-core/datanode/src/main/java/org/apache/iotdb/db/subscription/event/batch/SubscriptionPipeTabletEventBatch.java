@@ -228,7 +228,9 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     final EnrichedEvent enrichedEvent = enrichedEventsIterator.next();
     if (enrichedEvent instanceof TsFileInsertionEvent) {
       if (Objects.nonNull(currentTabletInsertionEventsIterator)) {
-        LOGGER.warn("broken invariant: override currentTabletInsertionEventsIterator");
+        LOGGER.warn(
+            "SubscriptionPipeTabletEventBatch {} override non-null currentTabletInsertionEventsIterator when iterating (broken invariant).",
+            this);
       }
       currentTabletInsertionEventsIterator =
           ((PipeTsFileInsertionEvent) enrichedEvent)
@@ -258,6 +260,12 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     final Map<String, String> coreReportMessage = super.coreReportMessage();
     coreReportMessage.put("firstEventProcessingTime", String.valueOf(firstEventProcessingTime));
     coreReportMessage.put("totalBufferSize", String.valueOf(totalBufferSize));
+    coreReportMessage.put(
+        "estimatedInsertNodeTabletInsertionEventSize",
+        String.valueOf(getEstimatedInsertNodeTabletInsertionEventSize()));
+    coreReportMessage.put(
+        "estimatedRawTabletInsertionEventSize",
+        String.valueOf(getEstimatedRawTabletInsertionEventSize()));
     return coreReportMessage;
   }
 }
