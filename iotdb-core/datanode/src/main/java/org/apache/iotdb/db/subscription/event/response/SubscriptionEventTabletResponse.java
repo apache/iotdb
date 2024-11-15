@@ -140,6 +140,7 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
       }
 
       if (currentBufferSize + bufferSize > READ_TABLET_BUFFER_SIZE) {
+        // TODO: split tablets
         return new CachedSubscriptionPollResponse(
             SubscriptionPollResponseType.TABLETS.getType(),
             new TabletsPayload(new ArrayList<>(currentTablets), nextOffset.incrementAndGet()),
