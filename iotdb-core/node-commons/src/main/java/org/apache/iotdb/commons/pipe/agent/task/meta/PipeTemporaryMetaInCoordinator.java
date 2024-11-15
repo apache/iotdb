@@ -19,16 +19,11 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.meta;
 
-import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
-
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class PipeTemporaryMetaInCoordinator implements PipeTemporaryMeta {
 
@@ -37,16 +32,6 @@ public class PipeTemporaryMetaInCoordinator implements PipeTemporaryMeta {
       Collections.newSetFromMap(new ConcurrentHashMap<>());
   private final ConcurrentMap<Integer, Long> nodeId2RemainingEventMap = new ConcurrentHashMap<>();
   private final ConcurrentMap<Integer, Double> nodeId2RemainingTimeMap = new ConcurrentHashMap<>();
-
-  // DataNode
-  // Statistics
-  private final AtomicLong memoryUsage = new AtomicLong(0L);
-
-  // Object pool
-  private String pipeNameWithCreationTime;
-  private Map<Integer, CommitterKey> regionId2CommitterKeyMap = new HashMap<>();
-
-  /////////////////////////////// ConfigNode ///////////////////////////////
 
   public void markDataNodeCompleted(final int dataNodeId) {
     completedDataNodeIds.add(dataNodeId);
@@ -76,22 +61,6 @@ public class PipeTemporaryMetaInCoordinator implements PipeTemporaryMeta {
     return nodeId2RemainingTimeMap.values().stream().reduce(Math::max).orElse(0d);
   }
 
-  /////////////////////////////// DataNode ///////////////////////////////
-
-  public void addMemoryUsage(final long usage) {
-    memoryUsage.addAndGet(usage);
-  }
-
-  public void decreaseMemoryUsage(final long usage) {
-    memoryUsage.addAndGet(-usage);
-  }
-
-  public String getPipeNameWithCreationTime() {
-    return pipeNameWithCreationTime;
-  }
-
-  /////////////////////////////// Object ///////////////////////////////
-
   @Override
   public boolean equals(final Object o) {
     if (this == o) {
@@ -113,10 +82,6 @@ public class PipeTemporaryMetaInCoordinator implements PipeTemporaryMeta {
 
   @Override
   public String toString() {
-    return Objects.isNull(pipeNameWithCreationTime) ? toString4ConfigNode() : toString4DataNode();
-  }
-
-  private String toString4ConfigNode() {
     return "PipeTemporaryMeta{"
         + "completedDataNodeIds="
         + completedDataNodeIds
@@ -125,9 +90,5 @@ public class PipeTemporaryMetaInCoordinator implements PipeTemporaryMeta {
         + ", nodeId2RemainingTimeMap"
         + nodeId2RemainingTimeMap
         + '}';
-  }
-
-  private String toString4DataNode() {
-    return "PipeTemporaryMeta{" + "memoryUsage=" + memoryUsage + '}';
   }
 }
