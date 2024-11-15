@@ -1945,7 +1945,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       pipeMetaFromCoordinator =
           getAllPipeInfoResp.getAllPipeInfo().stream()
-              .map(PipeMeta::deserialize4TaskAgent)
+              .map(PipeMeta::deserialize4Coordinator)
               .filter(
                   pipeMeta ->
                       pipeMeta
