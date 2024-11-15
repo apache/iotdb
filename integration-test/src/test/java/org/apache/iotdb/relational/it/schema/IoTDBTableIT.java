@@ -490,7 +490,7 @@ public class IoTDBTableIT {
       }
 
       try {
-        statement.execute("desc table test1.test");
+        statement.execute("desc test1.test");
         fail();
       } catch (final SQLException e) {
         assertEquals("500: Unknown database test1", e.getMessage());
