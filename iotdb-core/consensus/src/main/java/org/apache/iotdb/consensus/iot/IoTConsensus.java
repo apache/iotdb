@@ -303,23 +303,23 @@ public class IoTConsensus implements IConsensus {
       logger.info("[IoTConsensus] inactivate new peer: {}", peer);
       impl.inactivePeer(peer, false);
 
-      // step 2: take snapshot
+      // step 2: notify all the other Peers to build the sync connection to newPeer
+      logger.info("[IoTConsensus] notify current peers to build sync log...");
+      impl.notifyPeersToBuildSyncLogChannel(peer);
+
+      // step 3: take snapshot
       logger.info("[IoTConsensus] start to take snapshot...");
-      impl.checkAndLockSafeDeletedSearchIndex();
+
       impl.takeSnapshot();
 
-      // step 3: transit snapshot
+      // step 4: transit snapshot
       logger.info("[IoTConsensus] start to transmit snapshot...");
       impl.transmitSnapshot(peer);
 
-      // step 4: let the new peer load snapshot
+      // step 5: let the new peer load snapshot
       logger.info("[IoTConsensus] trigger new peer to load snapshot...");
       impl.triggerSnapshotLoad(peer);
       KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_TRANSITION);
-
-      // step 5: notify all the other Peers to build the sync connection to newPeer
-      logger.info("[IoTConsensus] notify current peers to build sync log...");
-      impl.notifyPeersToBuildSyncLogChannel(peer);
 
       // step 6: active new Peer
       logger.info("[IoTConsensus] activate new peer...");
@@ -340,7 +340,6 @@ public class IoTConsensus implements IConsensus {
       impl.notifyPeersToRemoveSyncLogChannel(peer);
       throw new ConsensusException(e);
     } finally {
-      impl.checkAndUnlockSafeDeletedSearchIndex();
       logger.info("[IoTConsensus] clean up local snapshot...");
       impl.cleanupLocalSnapshot();
     }

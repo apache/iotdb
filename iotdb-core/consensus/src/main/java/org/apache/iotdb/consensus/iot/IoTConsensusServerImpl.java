@@ -132,8 +132,6 @@ public class IoTConsensusServerImpl {
   private final ScheduledExecutorService backgroundTaskService;
   private final IoTConsensusRateLimiter ioTConsensusRateLimiter =
       IoTConsensusRateLimiter.getInstance();
-  private volatile long lastPinnedSearchIndexForMigration = -1;
-  private volatile long lastPinnedSafeDeletedIndexForMigration = -1;
 
   public IoTConsensusServerImpl(
       String storageDir,
@@ -516,7 +514,7 @@ public class IoTConsensusServerImpl {
       if (peer.equals(thisNode)) {
         // use searchIndex for thisNode as the initialSyncIndex because targetPeer will load the
         // snapshot produced by thisNode
-        buildSyncLogChannel(targetPeer, lastPinnedSearchIndexForMigration);
+        buildSyncLogChannel(targetPeer);
       } else {
         // use RPC to tell other peers to build sync log channel to target peer
         try (SyncIoTConsensusServiceClient client =
@@ -822,9 +820,7 @@ public class IoTConsensusServerImpl {
   }
 
   public long getMinFlushedSyncIndex() {
-    return lastPinnedSafeDeletedIndexForMigration == -1
-        ? logDispatcher.getMinFlushedSyncIndex().orElseGet(searchIndex::get)
-        : lastPinnedSafeDeletedIndexForMigration;
+    return logDispatcher.getMinFlushedSyncIndex().orElseGet(searchIndex::get);
   }
 
   public String getStorageDir() {
@@ -945,25 +941,6 @@ public class IoTConsensusServerImpl {
       logger.warn(
           "Cleanup local snapshot fail. You may manually delete {}.", newSnapshotDirName, e);
     }
-  }
-
-  /**
-   * We should set safelyDeletedSearchIndex to searchIndex before addPeer to avoid potential data
-   * lost.
-   */
-  public void checkAndLockSafeDeletedSearchIndex() {
-    lastPinnedSearchIndexForMigration = searchIndex.get();
-    lastPinnedSafeDeletedIndexForMigration = getMinFlushedSyncIndex();
-    consensusReqReader.setSafelyDeletedSearchIndex(getMinFlushedSyncIndex());
-  }
-
-  /**
-   * We should unlock safelyDeletedSearchIndex after addPeer to avoid potential data accumulation.
-   */
-  public void checkAndUnlockSafeDeletedSearchIndex() {
-    lastPinnedSearchIndexForMigration = -1;
-    lastPinnedSafeDeletedIndexForMigration = -1;
-    checkAndUpdateSafeDeletedSearchIndex();
   }
 
   /**
