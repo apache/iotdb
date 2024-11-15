@@ -155,19 +155,17 @@ get_first_data_dir() {
         return 0
     fi
 
-    local first_dir=$data_dir_value
-
     if [[ "$data_dir_value" == *";"* ]]; then
-        first_dir=$(echo "$data_dir_value" | cut -d';' -f1)
+        data_dir_value=$(echo "$data_dir_value" | cut -d';' -f1)
     fi
-    if [[ "$first_dir" == *","* ]]; then
-        first_dir=$(echo "$first_dir" | cut -d',' -f1)
+    if [[ "$data_dir_value" == *","* ]]; then
+        data_dir_value=$(echo "$data_dir_value" | cut -d',' -f1)
     fi
 
-    if [[ "$first_dir" == /* ]]; then
-        echo "$first_dir"
+    if [[ "$data_dir_value" == /* ]]; then
+        echo "$data_dir_value"
     else
-        echo "$IOTDB_HOME/$first_dir"
+        echo "$IOTDB_HOME/$data_dir_value"
     fi
 }
 
