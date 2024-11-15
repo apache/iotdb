@@ -75,6 +75,11 @@ public class TsTable {
 
   private Map<String, String> props = null;
 
+  // This is actually all the old attributeNames, to speed up the "dropped column check"
+  // in attribute names. This does not contain any extra information and shall only be
+  // used in table cache.
+  private final Map<String, String> oldAttributeNamePool = new HashMap<>();
+
   private transient int idNum = 0;
 
   public TsTable(final String tableName) {
@@ -224,11 +229,33 @@ public class TsTable {
     }
   }
 
+  public String getInternOldAttributeName(final String oldName) {
+    readWriteLock.readLock().lock();
+    try {
+      if (oldAttributeNamePool.containsKey(oldName)) {
+        return oldAttributeNamePool.get(oldName);
+      }
+      for (final TsTableColumnSchema schema : columnSchemaMap.values()) {
+        if (schema.getColumnCategory() == TsTableColumnCategory.ATTRIBUTE
+            && oldName.equals(((AttributeColumnSchema) schema).getOriginalName())) {
+          final String internName = ((AttributeColumnSchema) schema).getOriginalName();
+          if (oldName.equals(internName)) {
+            oldAttributeNamePool.put(oldName, oldName);
+            return internName;
+          }
+        }
+      }
+      return null;
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
   public byte[] serialize() {
-    ByteArrayOutputStream stream = new ByteArrayOutputStream();
+    final ByteArrayOutputStream stream = new ByteArrayOutputStream();
     try {
       serialize(stream);
-    } catch (IOException ignored) {
+    } catch (final IOException ignored) {
       // won't happen
     }
     return stream.toByteArray();
@@ -243,10 +270,10 @@ public class TsTable {
     ReadWriteIOUtils.write(props, stream);
   }
 
-  public static TsTable deserialize(InputStream inputStream) throws IOException {
-    String name = ReadWriteIOUtils.readString(inputStream);
-    TsTable table = new TsTable(name);
-    int columnNum = ReadWriteIOUtils.readInt(inputStream);
+  public static TsTable deserialize(final InputStream inputStream) throws IOException {
+    final String name = ReadWriteIOUtils.readString(inputStream);
+    final TsTable table = new TsTable(name);
+    final int columnNum = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < columnNum; i++) {
       table.addColumnSchema(TsTableColumnSchemaUtil.deserialize(inputStream));
     }
@@ -254,10 +281,10 @@ public class TsTable {
     return table;
   }
 
-  public static TsTable deserialize(ByteBuffer buffer) {
-    String name = ReadWriteIOUtils.readString(buffer);
-    TsTable table = new TsTable(name);
-    int columnNum = ReadWriteIOUtils.readInt(buffer);
+  public static TsTable deserialize(final ByteBuffer buffer) {
+    final String name = ReadWriteIOUtils.readString(buffer);
+    final TsTable table = new TsTable(name);
+    final int columnNum = ReadWriteIOUtils.readInt(buffer);
     for (int i = 0; i < columnNum; i++) {
       table.addColumnSchema(TsTableColumnSchemaUtil.deserialize(buffer));
     }
@@ -265,7 +292,7 @@ public class TsTable {
     return table;
   }
 
-  public void setProps(Map<String, String> props) {
+  public void setProps(final Map<String, String> props) {
     readWriteLock.writeLock().lock();
     try {
       this.props = props;
@@ -275,7 +302,7 @@ public class TsTable {
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     return super.equals(o);
   }
 

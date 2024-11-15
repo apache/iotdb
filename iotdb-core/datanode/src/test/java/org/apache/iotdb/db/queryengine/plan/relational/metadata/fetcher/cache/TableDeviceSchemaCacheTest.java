@@ -551,7 +551,7 @@ public class TableDeviceSchemaCacheTest {
     final String b = new String(a.getBytes());
 
     Assert.assertSame(
-        DataNodeTableCache.getInstance().tryGetInternColumnName(database1, table1, a),
-        DataNodeTableCache.getInstance().tryGetInternColumnName(database1, table1, b));
+        DataNodeTableCache.getInstance().tryGetInternColumnName(database1, table1, a, false),
+        DataNodeTableCache.getInstance().tryGetInternColumnName(database1, table1, b, false));
   }
 }

@@ -102,7 +102,7 @@ public class TableDeviceLastCache {
       final String finalMeasurement =
           !measurement2CachedLastMap.containsKey(measurement) && isTableModel
               ? DataNodeTableCache.getInstance()
-                  .tryGetInternColumnName(database, tableName, measurement)
+                  .tryGetInternColumnName(database, tableName, measurement, false)
               : measurement;
 
       // Removing table measurement, do not put cache

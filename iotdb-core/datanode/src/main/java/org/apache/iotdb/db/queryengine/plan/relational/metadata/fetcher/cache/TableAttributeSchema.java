@@ -47,7 +47,9 @@ public class TableAttributeSchema implements IDeviceSchema {
         (k, v) -> {
           if (v != Binary.EMPTY_VALUE) {
             if (!attributeMap.containsKey(k)) {
-              k = DataNodeTableCache.getInstance().tryGetInternColumnName(database, tableName, k);
+              k =
+                  DataNodeTableCache.getInstance()
+                      .tryGetInternColumnName(database, tableName, k, true);
               // Removing attribute column, do not put cache
               if (Objects.isNull(k)) {
                 return;
