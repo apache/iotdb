@@ -306,13 +306,13 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
   private void doTransfer(final PipeTabletEventTsFileBatch batchToTransfer)
       throws IOException, WriteProcessException {
-    final List<File> sealedFiles = batchToTransfer.sealTsFiles();
+    final List<Pair<String, File>> sealedFiles = batchToTransfer.sealTsFiles();
     final Map<Pair<String, Long>, Double> pipe2WeightMap = batchToTransfer.deepCopyPipe2WeightMap();
 
-    for (final File tsFile : sealedFiles) {
-      doTransfer(pipe2WeightMap, tsFile, null, null);
+    for (final Pair<String, File> tsFile : sealedFiles) {
+      doTransfer(pipe2WeightMap, tsFile.right, null, tsFile.left);
       try {
-        FileUtils.delete(tsFile);
+        FileUtils.delete(tsFile.right);
       } catch (final NoSuchFileException e) {
         LOGGER.info("The file {} is not found, may already be deleted.", tsFile);
       } catch (final Exception e) {

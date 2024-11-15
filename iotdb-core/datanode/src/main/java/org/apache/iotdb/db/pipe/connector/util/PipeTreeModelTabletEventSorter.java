@@ -30,7 +30,7 @@ import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.Comparator;
 
-public class PipeTabletEventSorter {
+public class PipeTreeModelTabletEventSorter {
 
   private final Tablet tablet;
 
@@ -40,7 +40,7 @@ public class PipeTabletEventSorter {
   private Integer[] index;
   private int deduplicatedSize;
 
-  public PipeTabletEventSorter(final Tablet tablet) {
+  public PipeTreeModelTabletEventSorter(final Tablet tablet) {
     this.tablet = tablet;
     deduplicatedSize = tablet == null ? 0 : tablet.rowSize;
   }

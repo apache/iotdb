@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector;
 
-import org.apache.iotdb.db.pipe.connector.util.PipeTabletEventSorter;
+import org.apache.iotdb.db.pipe.connector.util.PipeTreeModelTabletEventSorter;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
@@ -82,7 +82,7 @@ public class PipeTabletEventSorterTest {
 
     Assert.assertFalse(checkSorted(tablet));
 
-    new PipeTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
+    new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
 
     Assert.assertTrue(checkSorted(tablet));
 
@@ -127,7 +127,7 @@ public class PipeTabletEventSorterTest {
 
     Assert.assertTrue(checkSorted(tablet));
 
-    new PipeTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
+    new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
 
     Assert.assertTrue(checkSorted(tablet));
 
@@ -196,7 +196,7 @@ public class PipeTabletEventSorterTest {
       }
     }
 
-    new PipeTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
+    new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
 
     Assert.assertTrue(checkSorted(tablet));
 
