@@ -167,7 +167,7 @@ public class TableDeviceSchemaFetcher {
       final String database,
       final String table,
       final List<Expression> expressionList,
-      final List<String> attributeColumns,
+      List<String> attributeColumns,
       final MPPQueryContext queryContext) {
     final List<DeviceEntry> deviceEntryList = new ArrayList<>();
     final ShowDevice statement = new ShowDevice(database, table);
@@ -175,6 +175,11 @@ public class TableDeviceSchemaFetcher {
     if (tableInstance == null) {
       throw new SemanticException(String.format("Table '%s.%s' does not exist", database, table));
     }
+    // Replace to original names before the attributes access schema engine
+    attributeColumns =
+        attributeColumns.stream()
+            .map(tableInstance::getAttributeOriginalName)
+            .collect(Collectors.toList());
 
     if (parseFilter4TraverseDevice(
         database,

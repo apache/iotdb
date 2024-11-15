@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -33,12 +34,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.Ta
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Binary;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -50,8 +50,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.T
 
 public class TableDeviceSchemaValidator {
   private final SqlParser relationSqlParser = new SqlParser();
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(TableDeviceSchemaValidator.class);
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -74,8 +72,15 @@ public class TableDeviceSchemaValidator {
   public void validateDeviceSchema(
       final ITableDeviceSchemaValidation schemaValidation, final MPPQueryContext context) {
     // High-cost operations, shall only be called once
+    final TsTable table =
+        DataNodeTableCache.getInstance()
+            .getTable(schemaValidation.getDatabase(), schemaValidation.getTableName());
     final List<Object[]> deviceIdList = schemaValidation.getDeviceIdList();
-    final List<String> attributeKeyList = schemaValidation.getAttributeColumnNameList();
+    // Replace to original names before the attributes access schema engine
+    final List<String> attributeKeyList =
+        schemaValidation.getAttributeColumnNameList().stream()
+            .map(table::getAttributeOriginalName)
+            .collect(Collectors.toList());
     final List<Object[]> attributeValueList = schemaValidation.getAttributeValueList();
 
     ValidateResult validateResult =

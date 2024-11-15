@@ -210,6 +210,19 @@ public class TsTable {
     }
   }
 
+  public String getAttributeOriginalName(final String name) {
+    readWriteLock.readLock().lock();
+    try {
+      if (!columnSchemaMap.containsKey(name)) {
+        return name;
+      }
+      final String result = ((AttributeColumnSchema) columnSchemaMap.get(name)).getOriginalName();
+      return Objects.nonNull(result) ? result : name;
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
   public byte[] serialize() {
     ByteArrayOutputStream stream = new ByteArrayOutputStream();
     try {

@@ -458,13 +458,14 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     }
 
     private void getDeviceEntriesWithDataPartitions(
-        TableScanNode tableScanNode, List<Expression> metadataExpressions) {
+        final TableScanNode tableScanNode, final List<Expression> metadataExpressions) {
 
-      List<String> attributeColumns = new ArrayList<>();
+      final List<String> attributeColumns = new ArrayList<>();
       int attributeIndex = 0;
-      for (Map.Entry<Symbol, ColumnSchema> entry : tableScanNode.getAssignments().entrySet()) {
-        Symbol columnSymbol = entry.getKey();
-        ColumnSchema columnSchema = entry.getValue();
+      for (final Map.Entry<Symbol, ColumnSchema> entry :
+          tableScanNode.getAssignments().entrySet()) {
+        final Symbol columnSymbol = entry.getKey();
+        final ColumnSchema columnSchema = entry.getValue();
         if (ATTRIBUTE.equals(columnSchema.getColumnCategory())) {
           attributeColumns.add(columnSchema.getName());
           tableScanNode.getIdAndAttributeIndexMap().put(columnSymbol, attributeIndex++);
@@ -472,7 +473,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
 
       long startTime = System.nanoTime();
-      List<DeviceEntry> deviceEntries =
+      final List<DeviceEntry> deviceEntries =
           metadata.indexScan(
               tableScanNode.getQualifiedObjectName(),
               metadataExpressions,
@@ -489,18 +490,18 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         }
         analysis.setEmptyDataSource(true);
       } else {
-        Filter timeFilter =
+        final Filter timeFilter =
             tableScanNode
                 .getTimePredicate()
                 .map(value -> value.accept(new ConvertPredicateToTimeFilterVisitor(), null))
                 .orElse(null);
 
         tableScanNode.setTimeFilter(timeFilter);
-        String treeModelDatabase =
+        final String treeModelDatabase =
             "root." + tableScanNode.getQualifiedObjectName().getDatabaseName();
 
         startTime = System.nanoTime();
-        DataPartition dataPartition =
+        final DataPartition dataPartition =
             fetchDataPartitionByDevices(treeModelDatabase, deviceEntries, timeFilter);
 
         if (dataPartition.getDataPartitionMap().size() > 1) {
