@@ -33,6 +33,7 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.compress.IUnCompressor;
 import org.apache.tsfile.encoding.decoder.Decoder;
+import org.apache.tsfile.encrypt.IDecryptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.MetaMarker;
 import org.apache.tsfile.file.header.ChunkHeader;
@@ -61,7 +62,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.apache.tsfile.read.reader.chunk.ChunkReader.uncompressPageData;
+import static org.apache.tsfile.read.reader.chunk.ChunkReader.decryptAndUncompressPageData;
 
 public class RepairDataFileScanUtil {
   private static final Logger logger = LoggerFactory.getLogger(RepairDataFileScanUtil.class);
@@ -146,12 +147,13 @@ public class RepairDataFileScanUtil {
           pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
         }
         ByteBuffer pageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
-
+        IDecryptor decryptor = IDecryptor.getDecryptor(timeChunk.getEncryptParam());
         ByteBuffer uncompressedPageData =
-            uncompressPageData(
+            decryptAndUncompressPageData(
                 pageHeader,
                 IUnCompressor.getUnCompressor(chunkHeader.getCompressionType()),
-                pageData);
+                pageData,
+                decryptor);
         Decoder decoder =
             Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
         while (decoder.hasNext(uncompressedPageData)) {
@@ -204,12 +206,13 @@ public class RepairDataFileScanUtil {
           pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
         }
         ByteBuffer pageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
-
+        IDecryptor decryptor = IDecryptor.getDecryptor(chunk.getEncryptParam());
         ByteBuffer uncompressedPageData =
-            uncompressPageData(
+            decryptAndUncompressPageData(
                 pageHeader,
                 IUnCompressor.getUnCompressor(chunkHeader.getCompressionType()),
-                pageData);
+                pageData,
+                decryptor);
         ByteBuffer timeBuffer = getTimeBufferFromNonAlignedPage(uncompressedPageData);
         Decoder timeDecoder =
             Decoder.getDecoderByType(
