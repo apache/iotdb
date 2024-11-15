@@ -558,8 +558,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
   public List<ByteBuffer> getPipeMetaListWithFilterInvalidConsensusGroup() throws IOException {
     acquireReadLock();
     try {
-      List<ByteBuffer> pipeMetas = new ArrayList<>(pipeMetaKeeper.getPipeMetaCount());
-      for (PipeMeta meta : pipeMetaKeeper.getPipeMetaList()) {
+      final List<ByteBuffer> pipeMetas = new ArrayList<>(pipeMetaKeeper.getPipeMetaCount());
+      for (final PipeMeta meta : pipeMetaKeeper.getPipeMetaList()) {
         if (meta == null) {
           // Won't happen
           continue;
@@ -1006,10 +1006,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   //////////////////////////// Filter Invalid Consensus Group ////////////////////////////
 
-  private PipeMeta filterInvalidConsensusGroup(PipeMeta pipeMeta) {
+  private PipeMeta filterInvalidConsensusGroup(final PipeMeta pipeMeta) {
     final PipeParameters sourceAttribute = pipeMeta.getStaticMeta().getExtractorParameters();
-    boolean isCaptureTable = isCaptureTable(sourceAttribute);
-    boolean isCaptureTree = isCaptureTree(sourceAttribute);
+    final boolean isCaptureTable = isCaptureTable(sourceAttribute);
+    final boolean isCaptureTree = isCaptureTree(sourceAttribute);
 
     // only support dataRegion
     final Map<String, List<TConsensusGroupId>> dataBaseToId =
@@ -1032,7 +1032,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
     final String dataBasePattern = getDataBasePattern(sourceAttribute);
     dataBaseToId.forEach(
         (dataBaseName, tConsensusGroupIds) -> {
-          if (dataBaseName == null || tConsensusGroupIds == null || tConsensusGroupIds.isEmpty()) {
+          if (dataBaseName == null
+              || dataBaseName.length() < 4 // Determine whether DataBaseName is legal
+              || tConsensusGroupIds == null
+              || tConsensusGroupIds.isEmpty()) {
             return;
           }
           final boolean isTableModel;
@@ -1054,8 +1057,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
             // If the DataBase is a table model, but the Pipe does not capture the table model, or
             // the DataBase does not match the cleanup
             if (!isCaptureTable
-                || (dataBaseName.length() > 5
-                    && !dataBasePattern.matches(dataBaseName.substring(5)))) {
+                || (dataBaseName.length() >= 5
+                    && !dataBaseName.substring(5).matches(dataBasePattern))
+                || (dataBaseName.length() == 4
+                    && !dataBaseName.substring(4).matches(dataBasePattern))) {
               clearAllConsensusGroupID(tConsensusGroupIds, finalPipeMeta);
             }
           } else {
@@ -1070,12 +1075,12 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   private void clearAllConsensusGroupID(
-      List<TConsensusGroupId> tConsensusGroupIds, PipeMeta finalPipeMeta) {
+      final List<TConsensusGroupId> tConsensusGroupIds, final PipeMeta finalPipeMeta) {
     tConsensusGroupIds.forEach(
         id -> finalPipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().remove(id.id));
   }
 
-  private boolean isCaptureTable(PipeParameters source) {
+  private boolean isCaptureTable(final PipeParameters source) {
     final boolean isTableMode =
         source
             .getStringOrDefault(
@@ -1089,7 +1094,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
         isTableMode);
   }
 
-  private boolean isCaptureTree(PipeParameters source) {
+  private boolean isCaptureTree(final PipeParameters source) {
     final boolean isTreeMode =
         source
             .getStringOrDefault(
@@ -1103,7 +1108,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
         isTreeMode);
   }
 
-  private String getDataBasePattern(PipeParameters source) {
+  private String getDataBasePattern(final PipeParameters source) {
     return source.getStringOrDefault(
         Arrays.asList(
             PipeExtractorConstant.EXTRACTOR_DATABASE_NAME_KEY,
