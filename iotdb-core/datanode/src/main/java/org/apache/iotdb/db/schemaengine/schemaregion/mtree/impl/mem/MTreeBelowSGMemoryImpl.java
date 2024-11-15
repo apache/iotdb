@@ -1693,8 +1693,6 @@ public class MTreeBelowSGMemoryImpl {
     }
   }
 
-  public void renameTableAttribute() {}
-
   public boolean deleteTableDevice(final String tableName, final IntConsumer attributeDeleter)
       throws MetadataException {
     if (!store.hasChild(storageGroupMNode, tableName)) {
