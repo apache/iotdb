@@ -21,6 +21,7 @@ package org.apache.iotdb.pipe.it.autocreate;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
@@ -299,7 +300,11 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeDualAutoIT {
       }
 
       final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
-      Assert.assertEquals(3, showPipeResult.size());
+      Assert.assertEquals(
+          3,
+          showPipeResult.stream()
+              .filter(info -> !info.id.startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX))
+              .count());
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("3,"));
