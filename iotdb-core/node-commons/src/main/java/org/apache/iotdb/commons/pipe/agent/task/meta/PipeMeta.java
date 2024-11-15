@@ -79,9 +79,7 @@ public class PipeMeta {
     return new PipeMeta(staticMeta, runtimeMeta);
   }
 
-  // This is used for and only for PipeMeta Coordinator -> TaskAgent
-  // Be sure to maintain the equality from taskAgent to this method
-  public static PipeMeta deserialize(final ByteBuffer byteBuffer) {
+  public static PipeMeta deserialize4TaskAgent(final ByteBuffer byteBuffer) {
     final PipeStaticMeta staticMeta = PipeStaticMeta.deserialize(byteBuffer);
     final PipeRuntimeMeta runtimeMeta = PipeRuntimeMeta.deserialize(byteBuffer);
     return new PipeMeta(
@@ -90,8 +88,14 @@ public class PipeMeta {
         new PipeTemporaryMetaInAgent(staticMeta.getPipeName(), staticMeta.getCreationTime()));
   }
 
+  public static PipeMeta deserialize4Coordinator(final ByteBuffer byteBuffer) {
+    final PipeStaticMeta staticMeta = PipeStaticMeta.deserialize(byteBuffer);
+    final PipeRuntimeMeta runtimeMeta = PipeRuntimeMeta.deserialize(byteBuffer);
+    return new PipeMeta(staticMeta, runtimeMeta);
+  }
+
   public PipeMeta deepCopy() throws IOException {
-    return PipeMeta.deserialize(serialize());
+    return PipeMeta.deserialize4TaskAgent(serialize());
   }
 
   public String coreReportMessage() {

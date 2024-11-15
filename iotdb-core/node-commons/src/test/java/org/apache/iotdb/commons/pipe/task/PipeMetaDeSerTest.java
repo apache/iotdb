@@ -148,7 +148,7 @@ public class PipeMetaDeSerTest {
 
     final PipeMeta pipeMeta = new PipeMeta(pipeStaticMeta, pipeRuntimeMeta);
     final ByteBuffer byteBuffer = pipeMeta.serialize();
-    final PipeMeta pipeMeta1 = PipeMeta.deserialize(byteBuffer);
+    final PipeMeta pipeMeta1 = PipeMeta.deserialize4TaskAgent(byteBuffer);
     Assert.assertEquals(pipeMeta.getStaticMeta(), pipeMeta1.getStaticMeta());
     Assert.assertEquals(pipeMeta.getRuntimeMeta(), pipeMeta1.getRuntimeMeta());
   }

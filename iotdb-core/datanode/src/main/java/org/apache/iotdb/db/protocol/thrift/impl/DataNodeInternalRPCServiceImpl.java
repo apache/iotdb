@@ -1112,7 +1112,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           PipeDataNodeAgent.task()
               .handlePipeMetaChanges(
                   req.getPipeMetas().stream()
-                      .map(PipeMeta::deserialize)
+                      .map(PipeMeta::deserialize4TaskAgent)
                       .collect(Collectors.toList()));
 
       return exceptionMessages.isEmpty()
@@ -1135,7 +1135,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       if (req.isSetPipeNameToDrop()) {
         exceptionMessage = PipeDataNodeAgent.task().handleDropPipe(req.getPipeNameToDrop());
       } else if (req.isSetPipeMeta()) {
-        final PipeMeta pipeMeta = PipeMeta.deserialize(ByteBuffer.wrap(req.getPipeMeta()));
+        final PipeMeta pipeMeta =
+            PipeMeta.deserialize4TaskAgent(ByteBuffer.wrap(req.getPipeMeta()));
         exceptionMessage = PipeDataNodeAgent.task().handleSinglePipeMetaChanges(pipeMeta);
       } else {
         throw new Exception("Invalid TPushSinglePipeMetaReq");
@@ -1172,7 +1173,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         }
       } else if (req.isSetPipeMetas()) {
         for (ByteBuffer byteBuffer : req.getPipeMetas()) {
-          final PipeMeta pipeMeta = PipeMeta.deserialize(byteBuffer);
+          final PipeMeta pipeMeta = PipeMeta.deserialize4TaskAgent(byteBuffer);
           TPushPipeMetaRespExceptionMessage message =
               PipeDataNodeAgent.task().handleSinglePipeMetaChanges(pipeMeta);
           exceptionMessages.add(message);
