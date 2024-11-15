@@ -62,7 +62,7 @@ public class TableDeviceCacheEntry {
   int setAttribute(
       final String database,
       final String tableName,
-      final @Nonnull Map<String, Binary> attributeSetMap) {
+      final @Nonnull Map<Integer, Binary> attributeSetMap) {
     return (deviceSchema.compareAndSet(null, new TableAttributeSchema())
             ? TableAttributeSchema.INSTANCE_SIZE
             : 0)
@@ -70,7 +70,9 @@ public class TableDeviceCacheEntry {
   }
 
   int updateAttribute(
-      final String database, final String tableName, final @Nonnull Map<String, Binary> updateMap) {
+      final String database,
+      final String tableName,
+      final @Nonnull Map<Integer, Binary> updateMap) {
     // Shall only call this for original table device
     final TableAttributeSchema schema = (TableAttributeSchema) deviceSchema.get();
     final int result =
@@ -104,7 +106,7 @@ public class TableDeviceCacheEntry {
     return size.get();
   }
 
-  Map<String, Binary> getAttributeMap() {
+  Map<Integer, Binary> getAttributeMap() {
     final IDeviceSchema map = deviceSchema.get();
     // Cache miss
     if (Objects.isNull(map)) {

@@ -30,7 +30,7 @@ import java.util.Map;
 
 public class AttributeColumnSchema extends TsTableColumnSchema {
 
-  private String originalName;
+  private int id;
 
   public AttributeColumnSchema(final String columnName, final TSDataType dataType) {
     super(columnName, dataType);
@@ -45,13 +45,17 @@ public class AttributeColumnSchema extends TsTableColumnSchema {
       final String columnName,
       final TSDataType dataType,
       final Map<String, String> props,
-      final String originalName) {
+      final int id) {
     super(columnName, dataType, props);
-    this.originalName = originalName;
+    this.id = id;
   }
 
-  public String getOriginalName() {
-    return originalName;
+  public void setId(final int id) {
+    this.id = id;
+  }
+
+  public int getId() {
+    return id;
   }
 
   @Override
@@ -62,7 +66,7 @@ public class AttributeColumnSchema extends TsTableColumnSchema {
   @Override
   void serialize(final OutputStream outputStream) throws IOException {
     super.serialize(outputStream);
-    ReadWriteIOUtils.write(originalName, outputStream);
+    ReadWriteIOUtils.write(id, outputStream);
   }
 
   static AttributeColumnSchema deserialize(final InputStream stream) throws IOException {
@@ -70,7 +74,7 @@ public class AttributeColumnSchema extends TsTableColumnSchema {
         ReadWriteIOUtils.readString(stream),
         ReadWriteIOUtils.readDataType(stream),
         ReadWriteIOUtils.readMap(stream),
-        ReadWriteIOUtils.readString(stream));
+        ReadWriteIOUtils.readInt(stream));
   }
 
   static AttributeColumnSchema deserialize(final ByteBuffer buffer) {
@@ -78,6 +82,6 @@ public class AttributeColumnSchema extends TsTableColumnSchema {
         ReadWriteIOUtils.readString(buffer),
         ReadWriteIOUtils.readDataType(buffer),
         ReadWriteIOUtils.readMap(buffer),
-        ReadWriteIOUtils.readString(buffer));
+        ReadWriteIOUtils.readInt(buffer));
   }
 }

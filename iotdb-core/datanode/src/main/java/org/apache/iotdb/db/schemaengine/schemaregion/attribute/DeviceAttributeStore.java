@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.attribute;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.commons.schema.MemUsageUtil;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
@@ -54,7 +53,7 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   private static final Logger logger = LoggerFactory.getLogger(DeviceAttributeStore.class);
   private static final long MAP_SIZE = RamUsageEstimator.shallowSizeOfInstance(HashMap.class);
 
-  private final List<Map<String, Binary>> deviceAttributeList = new ArrayList<>();
+  private final List<Map<Integer, Binary>> deviceAttributeList = new ArrayList<>();
 
   private final MemSchemaRegionStatistics regionStatistics;
 
@@ -130,15 +129,15 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   }
 
   @Override
-  public synchronized int createAttribute(final List<String> nameList, final Object[] valueList) {
+  public synchronized int createAttribute(final int[] nameList, final Object[] valueList) {
     // todo implement storage for device of diverse data types
     long memUsage = MAP_SIZE + RamUsageEstimator.NUM_BYTES_OBJECT_REF;
-    final Map<String, Binary> attributeMap = new HashMap<>();
-    for (int i = 0; i < nameList.size(); i++) {
+    final Map<Integer, Binary> attributeMap = new HashMap<>();
+    for (int i = 0; i < nameList.length; i++) {
       final Binary value = (Binary) valueList[i];
       if (valueList[i] != null) {
-        attributeMap.put(nameList.get(i), value);
-        memUsage += MemUsageUtil.computeKVMemUsageInMap(nameList.get(i), value);
+        attributeMap.put(nameList[i], value);
+        memUsage += value.ramBytesUsed() + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
       }
     }
     deviceAttributeList.add(attributeMap);
@@ -147,27 +146,28 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   }
 
   @Override
-  public Map<String, Binary> alterAttribute(
-      final int pointer, final List<String> nameList, final Object[] valueList) {
+  public Map<Integer, Binary> alterAttribute(
+      final int pointer, final int[] attributeList, final Object[] valueList) {
     // todo implement storage for device of diverse data types
     long memUsageDelta = 0L;
     long originMemUsage;
     long updatedMemUsage;
-    final Map<String, Binary> updateMap = new HashMap<>();
-    final Map<String, Binary> attributeMap = deviceAttributeList.get(pointer);
-    for (int i = 0; i < nameList.size(); i++) {
-      final String key = nameList.get(i);
+    final Map<Integer, Binary> updateMap = new HashMap<>();
+    final Map<Integer, Binary> attributeMap = deviceAttributeList.get(pointer);
+    for (int i = 0; i < attributeList.length; i++) {
+      final int key = attributeList[i];
       final Binary value = (Binary) valueList[i];
 
       originMemUsage =
           attributeMap.containsKey(key)
-              ? MemUsageUtil.computeKVMemUsageInMap(key, attributeMap.get(key))
+              ? attributeMap.get(key).ramBytesUsed()
+                  + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
               : 0;
       if (value != null) {
         if (!Objects.equals(value, attributeMap.put(key, value))) {
           updateMap.put(key, value);
         }
-        updatedMemUsage = MemUsageUtil.computeKVMemUsageInMap(key, value);
+        updatedMemUsage = value.ramBytesUsed() + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
         memUsageDelta += (updatedMemUsage - originMemUsage);
       } else {
         if (Objects.nonNull(attributeMap.remove(key))) {
@@ -192,30 +192,30 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   }
 
   @Override
-  public void removeAttribute(final int pointer, final String attributeName) {
-    final Map<String, Binary> attributeMap = deviceAttributeList.get(pointer);
+  public void removeAttribute(final int pointer, final int attributeId) {
+    final Map<Integer, Binary> attributeMap = deviceAttributeList.get(pointer);
     if (Objects.isNull(attributeMap)) {
       return;
     }
-    final Binary value = attributeMap.remove(attributeName);
+    final Binary value = attributeMap.remove(attributeId);
     if (Objects.nonNull(value)) {
       releaseMemory(UpdateDetailContainer.sizeOfMapEntries(deviceAttributeList.get(pointer)));
     }
   }
 
   @Override
-  public Binary getAttribute(final int pointer, final String name) {
-    return deviceAttributeList.get(pointer).get(name);
+  public Binary getAttribute(final int pointer, final int id) {
+    return deviceAttributeList.get(pointer).get(id);
   }
 
   private void serialize(final OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(deviceAttributeList.size(), outputStream);
-    for (final Map<String, Binary> attributeMap : deviceAttributeList) {
+    for (final Map<Integer, Binary> attributeMap : deviceAttributeList) {
       write(attributeMap, outputStream);
     }
   }
 
-  public static int write(final Map<String, Binary> map, final OutputStream stream)
+  public static int write(final Map<Integer, Binary> map, final OutputStream stream)
       throws IOException {
     if (map == null) {
       return ReadWriteIOUtils.write(NO_BYTE_TO_READ, stream);
@@ -223,7 +223,7 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
 
     int length = 0;
     length += ReadWriteIOUtils.write(map.size(), stream);
-    for (final Map.Entry<String, Binary> entry : map.entrySet()) {
+    for (final Map.Entry<Integer, Binary> entry : map.entrySet()) {
       length += ReadWriteIOUtils.write(entry.getKey(), stream);
       length += writeBinary(entry.getValue(), stream);
     }
@@ -244,16 +244,16 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
     }
   }
 
-  public static Map<String, Binary> readMap(final InputStream inputStream, final boolean concurrent)
-      throws IOException {
+  public static Map<Integer, Binary> readMap(
+      final InputStream inputStream, final boolean concurrent) throws IOException {
     final int length = ReadWriteIOUtils.readInt(inputStream);
     if (length == NO_BYTE_TO_READ) {
       return null;
     }
-    final Map<String, Binary> map =
+    final Map<Integer, Binary> map =
         concurrent ? new ConcurrentHashMap<>(length) : new HashMap<>(length);
     for (int i = 0; i < length; i++) {
-      map.put(ReadWriteIOUtils.readString(inputStream), readBinary(inputStream));
+      map.put(ReadWriteIOUtils.readInt(inputStream), readBinary(inputStream));
     }
     return map;
   }

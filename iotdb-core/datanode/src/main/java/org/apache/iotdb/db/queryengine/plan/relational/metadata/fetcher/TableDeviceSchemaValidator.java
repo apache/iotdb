@@ -77,15 +77,15 @@ public class TableDeviceSchemaValidator {
             .getTable(schemaValidation.getDatabase(), schemaValidation.getTableName());
     final List<Object[]> deviceIdList = schemaValidation.getDeviceIdList();
     // Replace to original names before the attributes access schema engine
-    final List<String> attributeKeyList =
+    final int[] attributeIdList =
         schemaValidation.getAttributeColumnNameList().stream()
-            .map(table::getAttributeOriginalName)
-            .collect(Collectors.toList());
+            .mapToInt(table::getAttributeId)
+            .toArray();
     final List<Object[]> attributeValueList = schemaValidation.getAttributeValueList();
 
     ValidateResult validateResult =
         validateDeviceSchemaInCache(
-            schemaValidation, deviceIdList, attributeKeyList, attributeValueList);
+            schemaValidation, deviceIdList, attributeIdList, attributeValueList);
 
     if (!validateResult.missingDeviceIndexList.isEmpty()) {
       validateResult =
@@ -94,7 +94,7 @@ public class TableDeviceSchemaValidator {
               validateResult,
               context,
               deviceIdList,
-              attributeKeyList,
+              attributeIdList,
               attributeValueList);
     }
 
@@ -105,7 +105,7 @@ public class TableDeviceSchemaValidator {
           validateResult,
           context,
           deviceIdList,
-          attributeKeyList,
+          attributeIdList,
           attributeValueList);
     }
   }
@@ -113,7 +113,7 @@ public class TableDeviceSchemaValidator {
   private ValidateResult validateDeviceSchemaInCache(
       final ITableDeviceSchemaValidation schemaValidation,
       final List<Object[]> deviceIdList,
-      final List<String> attributeKeyList,
+      final int[] attributeKeyList,
       final List<Object[]> attributeValueList) {
     final ValidateResult result = new ValidateResult();
 
@@ -144,9 +144,9 @@ public class TableDeviceSchemaValidator {
       final ValidateResult previousValidateResult,
       final MPPQueryContext context,
       final List<Object[]> deviceIdList,
-      final List<String> attributeKeyList,
+      final int[] attributeKeyList,
       final List<Object[]> attributeValueList) {
-    final Map<IDeviceID, Map<String, Binary>> fetchedDeviceSchema =
+    final Map<IDeviceID, Map<Integer, Binary>> fetchedDeviceSchema =
         fetcher.fetchMissingDeviceSchemaForDataInsertion(
             new FetchDevice(
                 schemaValidation.getDatabase(),
@@ -158,7 +158,7 @@ public class TableDeviceSchemaValidator {
 
     final ValidateResult result = new ValidateResult();
     for (final int index : previousValidateResult.missingDeviceIndexList) {
-      final Map<String, Binary> attributeMap =
+      final Map<Integer, Binary> attributeMap =
           fetchedDeviceSchema.get(
               convertIdValuesToDeviceID(
                   schemaValidation.getTableName(), (String[]) deviceIdList.get(index)));
@@ -177,15 +177,15 @@ public class TableDeviceSchemaValidator {
   }
 
   private void constructAttributeUpdateDeviceIndexList(
-      final List<String> attributeKeyList,
+      final int[] attributeKeyList,
       final List<Object[]> attributeValueList,
       final ValidateResult result,
       final int index,
-      final Map<String, Binary> attributeMap) {
+      final Map<Integer, Binary> attributeMap) {
     final Object[] deviceAttributeValueList = attributeValueList.get(index);
-    for (int j = 0, size = attributeKeyList.size(); j < size; j++) {
+    for (int j = 0, size = attributeKeyList.length; j < size; j++) {
       if (deviceAttributeValueList[j] != null) {
-        final String key = attributeKeyList.get(j);
+        final int key = attributeKeyList[j];
         final Binary value = attributeMap.get(key);
 
         if (!deviceAttributeValueList[j].equals(value)) {
@@ -201,7 +201,7 @@ public class TableDeviceSchemaValidator {
       final ValidateResult previousValidateResult,
       final MPPQueryContext context,
       final List<Object[]> inputDeviceIdList,
-      final List<String> attributeKeyList,
+      final int[] attributeKeyList,
       final List<Object[]> intPutAttributeValueList) {
     final int size =
         previousValidateResult.missingDeviceIndexList.size()

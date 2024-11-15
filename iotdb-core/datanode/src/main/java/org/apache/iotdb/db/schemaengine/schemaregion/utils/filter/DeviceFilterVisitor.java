@@ -83,6 +83,6 @@ public class DeviceFilterVisitor extends SchemaFilterVisitor<IDeviceSchemaInfo> 
         .getChild()
         .accept(
             StringValueFilterVisitor.getInstance(),
-            info.getAttributeValue(filter.getKey()).getStringValue(TSFileConfig.STRING_CHARSET));
+            info.getAttributeValue(filter.getId()).getStringValue(TSFileConfig.STRING_CHARSET));
   }
 }

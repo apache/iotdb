@@ -36,20 +36,20 @@ import java.util.Objects;
  * id/attribute value from the device entry.
  */
 public class AttributeFilter extends AbstractSingleChildFilter {
-  private final String key;
+  private final int id;
 
-  public AttributeFilter(final SchemaFilter child, final String key) {
+  public AttributeFilter(final SchemaFilter child, final int id) {
     super(child);
-    this.key = key;
+    this.id = id;
   }
 
   public AttributeFilter(final ByteBuffer byteBuffer) {
     super(byteBuffer);
-    key = ReadWriteIOUtils.readString(byteBuffer);
+    id = ReadWriteIOUtils.readInt(byteBuffer);
   }
 
-  public String getKey() {
-    return key;
+  public int getId() {
+    return id;
   }
 
   @Override
@@ -65,13 +65,13 @@ public class AttributeFilter extends AbstractSingleChildFilter {
   @Override
   protected void serialize(final ByteBuffer byteBuffer) {
     super.serialize(byteBuffer);
-    ReadWriteIOUtils.write(key, byteBuffer);
+    ReadWriteIOUtils.write(id, byteBuffer);
   }
 
   @Override
   protected void serialize(final DataOutputStream stream) throws IOException {
     super.serialize(stream);
-    ReadWriteIOUtils.write(key, stream);
+    ReadWriteIOUtils.write(id, stream);
   }
 
   @Override
@@ -83,11 +83,11 @@ public class AttributeFilter extends AbstractSingleChildFilter {
       return false;
     }
     final AttributeFilter that = (AttributeFilter) o;
-    return super.equals(o) && Objects.equals(key, that.key);
+    return super.equals(o) && Objects.equals(id, that.id);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(key, super.hashCode());
+    return Objects.hash(id, super.hashCode());
   }
 }

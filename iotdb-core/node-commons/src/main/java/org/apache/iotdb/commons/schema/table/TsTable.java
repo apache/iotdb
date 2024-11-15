@@ -81,6 +81,7 @@ public class TsTable {
   private final Map<String, String> oldAttributeNamePool = new HashMap<>();
 
   private transient int idNum = 0;
+  private int attributeNum = 0;
 
   public TsTable(final String tableName) {
     this.tableName = tableName;
@@ -106,6 +107,8 @@ public class TsTable {
       columnSchemaMap.put(columnSchema.getColumnName(), columnSchema);
       if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
         idNum++;
+      } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
+        ((AttributeColumnSchema) columnSchema).setId(attributeNum++);
       }
     } finally {
       readWriteLock.writeLock().unlock();
@@ -118,10 +121,12 @@ public class TsTable {
     try {
       // Ensures idempotency
       if (columnSchemaMap.containsKey(oldName)) {
-        final TsTableColumnSchema schema = columnSchemaMap.remove(oldName);
+        final AttributeColumnSchema schema =
+            (AttributeColumnSchema) columnSchemaMap.remove(oldName);
         columnSchemaMap.put(
             newName,
-            new AttributeColumnSchema(newName, schema.getDataType(), schema.getProps(), oldName));
+            new AttributeColumnSchema(
+                newName, schema.getDataType(), schema.getProps(), schema.getId()));
       }
     } finally {
       readWriteLock.writeLock().unlock();
@@ -216,14 +221,10 @@ public class TsTable {
     }
   }
 
-  public String getAttributeOriginalName(final String name) {
+  public int getAttributeId(final String name) {
     readWriteLock.readLock().lock();
     try {
-      if (!columnSchemaMap.containsKey(name)) {
-        return name;
-      }
-      final String result = ((AttributeColumnSchema) columnSchemaMap.get(name)).getOriginalName();
-      return Objects.nonNull(result) ? result : name;
+      return ((AttributeColumnSchema) columnSchemaMap.get(name)).getId();
     } finally {
       readWriteLock.readLock().unlock();
     }
@@ -237,8 +238,8 @@ public class TsTable {
       }
       for (final TsTableColumnSchema schema : columnSchemaMap.values()) {
         if (schema.getColumnCategory() == TsTableColumnCategory.ATTRIBUTE
-            && oldName.equals(((AttributeColumnSchema) schema).getOriginalName())) {
-          final String internName = ((AttributeColumnSchema) schema).getOriginalName();
+            && oldName.equals(((AttributeColumnSchema) schema).getId())) {
+          final String internName = ((AttributeColumnSchema) schema).getId();
           if (oldName.equals(internName)) {
             oldAttributeNamePool.put(oldName, oldName);
             return internName;
@@ -268,6 +269,7 @@ public class TsTable {
       TsTableColumnSchemaUtil.serialize(columnSchema, stream);
     }
     ReadWriteIOUtils.write(props, stream);
+    ReadWriteIOUtils.write(attributeNum, stream);
   }
 
   public static TsTable deserialize(final InputStream inputStream) throws IOException {
@@ -278,6 +280,7 @@ public class TsTable {
       table.addColumnSchema(TsTableColumnSchemaUtil.deserialize(inputStream));
     }
     table.props = ReadWriteIOUtils.readMap(inputStream);
+    table.attributeNum = ReadWriteIOUtils.readInt(inputStream);
     return table;
   }
 
@@ -289,6 +292,7 @@ public class TsTable {
       table.addColumnSchema(TsTableColumnSchemaUtil.deserialize(buffer));
     }
     table.props = ReadWriteIOUtils.readMap(buffer);
+    table.attributeNum = ReadWriteIOUtils.readInt(buffer);
     return table;
   }
 

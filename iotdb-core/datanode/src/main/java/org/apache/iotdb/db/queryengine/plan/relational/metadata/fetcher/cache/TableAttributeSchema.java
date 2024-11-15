@@ -38,10 +38,12 @@ public class TableAttributeSchema implements IDeviceSchema {
       (int) RamUsageEstimator.shallowSizeOfInstance(TableAttributeSchema.class)
           + (int) RamUsageEstimator.shallowSizeOfInstance(ConcurrentHashMap.class);
 
-  private final Map<String, Binary> attributeMap = new ConcurrentHashMap<>();
+  private final Map<Integer, Binary> attributeMap = new ConcurrentHashMap<>();
 
   public int updateAttribute(
-      final String database, final String tableName, final @Nonnull Map<String, Binary> updateMap) {
+      final String database,
+      final String tableName,
+      final @Nonnull Map<Integer, Binary> updateMap) {
     final AtomicInteger diff = new AtomicInteger(0);
     updateMap.forEach(
         (k, v) -> {
@@ -84,7 +86,7 @@ public class TableAttributeSchema implements IDeviceSchema {
         : 0;
   }
 
-  public Map<String, Binary> getAttributeMap() {
+  public Map<Integer, Binary> getAttributeMap() {
     return attributeMap;
   }
 

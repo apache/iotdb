@@ -118,7 +118,7 @@ public abstract class AbstractTraverseDevice extends Statement {
   public boolean parseRawExpression(
       final List<DeviceEntry> entries,
       final TsTable tableInstance,
-      final List<String> attributeColumns,
+      final int[] attributeIds,
       final MPPQueryContext context) {
     if (Objects.isNull(where)) {
       return true;
@@ -134,7 +134,7 @@ public abstract class AbstractTraverseDevice extends Statement {
                 : Collections.singletonList(where),
             this,
             entries,
-            attributeColumns,
+            attributeIds,
             context,
             true);
   }

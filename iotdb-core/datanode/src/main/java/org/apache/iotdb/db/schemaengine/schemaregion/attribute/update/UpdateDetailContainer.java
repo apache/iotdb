@@ -59,10 +59,10 @@ public class UpdateDetailContainer implements UpdateContainer {
   // <@Nonnull TableName, <deviceId(@Nullable deviceNodes), <@Nonnull attributeKey, @Nonnull
   // attributeValue>>>
   // If the attribute value is updated to null, the stored value is Binary.EMPTY_VALUE
-  private final ConcurrentMap<String, ConcurrentMap<List<String>, ConcurrentMap<String, Binary>>>
+  private final ConcurrentMap<String, ConcurrentMap<List<String>, ConcurrentMap<Integer, Binary>>>
       updateMap = new ConcurrentHashMap<>();
 
-  public ConcurrentMap<String, ConcurrentMap<List<String>, ConcurrentMap<String, Binary>>>
+  public ConcurrentMap<String, ConcurrentMap<List<String>, ConcurrentMap<Integer, Binary>>>
       getUpdateMap() {
     return updateMap;
   }
@@ -71,7 +71,7 @@ public class UpdateDetailContainer implements UpdateContainer {
   public long updateAttribute(
       final String tableName,
       final String[] deviceId,
-      final Map<String, Binary> updatedAttributes) {
+      final Map<Integer, Binary> updatedAttributes) {
     final AtomicLong result = new AtomicLong(0);
     updateMap.compute(
         tableName,
@@ -93,15 +93,13 @@ public class UpdateDetailContainer implements UpdateContainer {
                           + MAP_SIZE);
                   attributes = new ConcurrentHashMap<>();
                 }
-                for (final Map.Entry<String, Binary> updateAttribute :
+                for (final Map.Entry<Integer, Binary> updateAttribute :
                     updatedAttributes.entrySet()) {
                   attributes.compute(
                       updateAttribute.getKey(),
                       (k, v) -> {
                         if (Objects.isNull(v)) {
-                          result.addAndGet(
-                              RamUsageEstimator.sizeOf(k)
-                                  + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY);
+                          result.addAndGet(RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY);
                         }
                         result.addAndGet(
                             sizeOf(updateAttribute.getValue())
@@ -169,23 +167,22 @@ public class UpdateDetailContainer implements UpdateContainer {
   }
 
   @Override
-  public long invalidate(final String tableName, final String attributeName) {
+  public long invalidate(final String tableName, final int attribute) {
     final AtomicLong result = new AtomicLong(0);
-    final long keyEntrySize =
-        RamUsageEstimator.sizeOf(attributeName) + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
     updateMap.compute(
         tableName,
         (name, value) -> {
           if (Objects.isNull(value)) {
             return null;
           }
-          for (final Iterator<Map.Entry<List<String>, ConcurrentMap<String, Binary>>> it =
+          for (final Iterator<Map.Entry<List<String>, ConcurrentMap<Integer, Binary>>> it =
                   value.entrySet().iterator();
               it.hasNext(); ) {
-            final Map.Entry<List<String>, ConcurrentMap<String, Binary>> entry = it.next();
-            final Binary attributeValue = entry.getValue().remove(attributeName);
+            final Map.Entry<List<String>, ConcurrentMap<Integer, Binary>> entry = it.next();
+            final Binary attributeValue = entry.getValue().remove(attribute);
             if (Objects.nonNull(attributeValue)) {
-              result.addAndGet(keyEntrySize + sizeOf(attributeValue));
+              result.addAndGet(
+                  RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY + sizeOf(attributeValue));
             }
             if (entry.getValue().isEmpty()) {
               result.addAndGet(
@@ -216,7 +213,7 @@ public class UpdateDetailContainer implements UpdateContainer {
     final int mapSizeOffset = outputStream.skipInt();
     int mapEntryCount = 0;
     int newSize;
-    for (final Map.Entry<String, ConcurrentMap<List<String>, ConcurrentMap<String, Binary>>>
+    for (final Map.Entry<String, ConcurrentMap<List<String>, ConcurrentMap<Integer, Binary>>>
         tableEntry : updateMap.entrySet()) {
       final byte[] tableEntryBytes = tableEntry.getKey().getBytes(TSFileConfig.STRING_CHARSET);
       newSize = 2 * Integer.BYTES + tableEntryBytes.length;
@@ -230,7 +227,7 @@ public class UpdateDetailContainer implements UpdateContainer {
       outputStream.writeWithLength(tableEntryBytes);
       final int deviceSizeOffset = outputStream.skipInt();
       int deviceEntryCount = 0;
-      for (final Map.Entry<List<String>, ConcurrentMap<String, Binary>> deviceEntry :
+      for (final Map.Entry<List<String>, ConcurrentMap<Integer, Binary>> deviceEntry :
           tableEntry.getValue().entrySet()) {
         final byte[][] deviceIdBytes =
             deviceEntry.getKey().stream()
@@ -256,7 +253,7 @@ public class UpdateDetailContainer implements UpdateContainer {
         }
         final int attributeOffset = outputStream.skipInt();
         int attributeCount = 0;
-        for (final Map.Entry<String, Binary> attributeKV : deviceEntry.getValue().entrySet()) {
+        for (final Map.Entry<Integer, Binary> attributeKV : deviceEntry.getValue().entrySet()) {
           final byte[] keyBytes = attributeKV.getKey().getBytes(TSFileConfig.STRING_CHARSET);
           final byte[] valueBytes =
               attributeKV.getValue() != Binary.EMPTY_VALUE
@@ -295,14 +292,14 @@ public class UpdateDetailContainer implements UpdateContainer {
                 if (!this.updateMap.containsKey(table)) {
                   return;
                 }
-                final ConcurrentMap<List<String>, ConcurrentMap<String, Binary>> thisDeviceMap =
+                final ConcurrentMap<List<String>, ConcurrentMap<Integer, Binary>> thisDeviceMap =
                     this.updateMap.get(table);
                 commitMap.forEach(
                     (device, attributes) -> {
                       if (!thisDeviceMap.containsKey(device)) {
                         return;
                       }
-                      final Map<String, Binary> thisAttributes = thisDeviceMap.get(device);
+                      final Map<Integer, Binary> thisAttributes = thisDeviceMap.get(device);
                       attributes.forEach(
                           (k, v) -> {
                             if (!thisAttributes.containsKey(k)) {
@@ -311,9 +308,7 @@ public class UpdateDetailContainer implements UpdateContainer {
                             final Binary thisV = thisAttributes.get(k);
                             if (Objects.equals(thisV, v)) {
                               result.addAndGet(
-                                  RamUsageEstimator.sizeOf(k)
-                                      + sizeOf(thisV)
-                                      + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY);
+                                  sizeOf(thisV) + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY);
                               thisAttributes.remove(k);
                             }
                           });
@@ -342,7 +337,7 @@ public class UpdateDetailContainer implements UpdateContainer {
   }
 
   private void handleTableRemoval(final String tableName, final AtomicLong result) {
-    final ConcurrentMap<List<String>, ConcurrentMap<String, Binary>> deviceMap =
+    final ConcurrentMap<List<String>, ConcurrentMap<Integer, Binary>> deviceMap =
         updateMap.remove(tableName);
     if (Objects.nonNull(deviceMap)) {
       result.addAndGet(
@@ -358,13 +353,9 @@ public class UpdateDetailContainer implements UpdateContainer {
     return input.stream().map(RamUsageEstimator::sizeOf).reduce(LIST_SIZE, Long::sum);
   }
 
-  public static long sizeOfMapEntries(final @Nonnull Map<String, Binary> map) {
+  public static long sizeOfMapEntries(final @Nonnull Map<Integer, Binary> map) {
     return map.size() * RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
-        + map.entrySet().stream()
-            .mapToLong(
-                innerEntry ->
-                    RamUsageEstimator.sizeOf(innerEntry.getKey()) + sizeOf(innerEntry.getValue()))
-            .reduce(0, Long::sum);
+        + map.values().stream().mapToLong(UpdateDetailContainer::sizeOf).reduce(0, Long::sum);
   }
 
   public static long sizeOf(final Binary value) {
@@ -375,11 +366,11 @@ public class UpdateDetailContainer implements UpdateContainer {
   public void serialize(final OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write((byte) 1, outputStream);
     ReadWriteIOUtils.write(updateMap.size(), outputStream);
-    for (final Map.Entry<String, ConcurrentMap<List<String>, ConcurrentMap<String, Binary>>>
+    for (final Map.Entry<String, ConcurrentMap<List<String>, ConcurrentMap<Integer, Binary>>>
         tableEntry : updateMap.entrySet()) {
       ReadWriteIOUtils.write(tableEntry.getKey(), outputStream);
       ReadWriteIOUtils.write(tableEntry.getValue().size(), outputStream);
-      for (final Map.Entry<List<String>, ConcurrentMap<String, Binary>> deviceEntry :
+      for (final Map.Entry<List<String>, ConcurrentMap<Integer, Binary>> deviceEntry :
           tableEntry.getValue().entrySet()) {
         ReadWriteIOUtils.write(deviceEntry.getKey().size(), outputStream);
         for (final String node : deviceEntry.getKey()) {
@@ -396,7 +387,7 @@ public class UpdateDetailContainer implements UpdateContainer {
     for (int i = 0; i < tableSize; ++i) {
       final String tableName = ReadWriteIOUtils.readString(inputStream);
       final int deviceSize = ReadWriteIOUtils.readInt(inputStream);
-      final ConcurrentMap<List<String>, ConcurrentMap<String, Binary>> deviceMap =
+      final ConcurrentMap<List<String>, ConcurrentMap<Integer, Binary>> deviceMap =
           new ConcurrentHashMap<>(deviceSize);
       for (int j = 0; j < deviceSize; ++j) {
         final int nodeSize = ReadWriteIOUtils.readInt(inputStream);
@@ -406,7 +397,7 @@ public class UpdateDetailContainer implements UpdateContainer {
         }
         deviceMap.put(
             deviceId,
-            (ConcurrentMap<String, Binary>) DeviceAttributeStore.readMap(inputStream, true));
+            (ConcurrentMap<Integer, Binary>) DeviceAttributeStore.readMap(inputStream, true));
       }
       updateMap.put(tableName, deviceMap);
     }

@@ -63,7 +63,7 @@ public class SchemaFilterSerDeTest {
     final InFilter inFilter = new InFilter(Collections.singleton("d1"));
     final LikeFilter likeFilter = new LikeFilter("__1", Optional.empty());
     final IdFilter idFilter = new IdFilter(preciseFilter, 1);
-    final AttributeFilter attributeFilter = new AttributeFilter(likeFilter, "attr");
+    final AttributeFilter attributeFilter = new AttributeFilter(likeFilter, 1);
     final ComparisonFilter comparisonFilter =
         new ComparisonFilter(ComparisonFilter.Operator.GREATER_THAN, "s1");
 

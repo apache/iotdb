@@ -112,7 +112,7 @@ public class DeleteDevice extends AbstractTraverseDevice {
       final String database,
       final String tableName,
       final byte[] filterInfo,
-      final BiFunction<Integer, String, Binary> attributeProvider,
+      final BiFunction<Integer, Integer, Binary> attributeProvider,
       final MemSchemaRegionStatistics regionStatistics) {
     final ByteBuffer buffer = ByteBuffer.wrap(filterInfo);
 

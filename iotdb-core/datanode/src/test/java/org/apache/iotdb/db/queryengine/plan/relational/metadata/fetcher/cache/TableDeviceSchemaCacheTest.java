@@ -67,6 +67,8 @@ public class TableDeviceSchemaCacheTest {
   private static final String table2 = "t2";
   private static final String attributeName1 = "type";
   private static final String attributeName2 = "cycle";
+  private static final int attributeId1 = 1;
+  private static final int attributeId2 = 2;
   private static final String measurement1 = "s0";
   private static final String measurement2 = "s1";
   private static final String measurement3 = "s2";
@@ -88,8 +90,10 @@ public class TableDeviceSchemaCacheTest {
         columnHeader ->
             testTable1.addColumnSchema(
                 new IdColumnSchema(columnHeader.getColumnName(), columnHeader.getColumnType())));
-    testTable1.addColumnSchema(new AttributeColumnSchema(attributeName1, TSDataType.STRING));
-    testTable1.addColumnSchema(new AttributeColumnSchema(attributeName2, TSDataType.STRING));
+    testTable1.addColumnSchema(
+        new AttributeColumnSchema(attributeName1, TSDataType.STRING, null, attributeId1));
+    testTable1.addColumnSchema(
+        new AttributeColumnSchema(attributeName2, TSDataType.STRING, null, attributeId2));
     testTable1.addColumnSchema(new TimeColumnSchema("time", TSDataType.INT64));
     testTable1.addColumnSchema(
         new MeasurementColumnSchema(
@@ -164,9 +168,9 @@ public class TableDeviceSchemaCacheTest {
   public void testDeviceCache() {
     final TableDeviceSchemaCache cache = TableDeviceSchemaCache.getInstance();
 
-    final Map<String, Binary> attributeMap = new HashMap<>();
-    attributeMap.put(attributeName1, new Binary("new", TSFileConfig.STRING_CHARSET));
-    attributeMap.put(attributeName2, new Binary("monthly", TSFileConfig.STRING_CHARSET));
+    final Map<Integer, Binary> attributeMap = new HashMap<>();
+    attributeMap.put(attributeId1, new Binary("new", TSFileConfig.STRING_CHARSET));
+    attributeMap.put(attributeId2, new Binary("monthly", TSFileConfig.STRING_CHARSET));
     cache.putAttributes(
         database1,
         convertIdValuesToDeviceID(table1, new String[] {"hebei", "p_1", "d_0"}),
@@ -179,7 +183,7 @@ public class TableDeviceSchemaCacheTest {
         cache.getDeviceAttribute(
             database1, convertIdValuesToDeviceID(table1, new String[] {"hebei", "p_1", "d_1"})));
 
-    attributeMap.put(attributeName1, new Binary("old", TSFileConfig.STRING_CHARSET));
+    attributeMap.put(attributeId1, new Binary("old", TSFileConfig.STRING_CHARSET));
     cache.putAttributes(
         database1,
         convertIdValuesToDeviceID(table1, new String[] {"hebei", "p_1", "d_1"}),
@@ -189,7 +193,7 @@ public class TableDeviceSchemaCacheTest {
         cache.getDeviceAttribute(
             database1, convertIdValuesToDeviceID(table1, new String[] {"hebei", "p_1", "d_1"})));
 
-    attributeMap.put(attributeName2, new Binary("daily", TSFileConfig.STRING_CHARSET));
+    attributeMap.put(attributeId2, new Binary("daily", TSFileConfig.STRING_CHARSET));
     cache.putAttributes(
         database1,
         convertIdValuesToDeviceID(table1, new String[] {"shandong", "p_1", "d_1"}),
@@ -203,8 +207,8 @@ public class TableDeviceSchemaCacheTest {
             database1, convertIdValuesToDeviceID(table1, new String[] {"shandong", "p_1", "d_1"})));
 
     final String table2 = "t2";
-    attributeMap.put(attributeName1, new Binary("new", TSFileConfig.STRING_CHARSET));
-    attributeMap.put(attributeName2, new Binary("monthly", TSFileConfig.STRING_CHARSET));
+    attributeMap.put(attributeId1, new Binary("new", TSFileConfig.STRING_CHARSET));
+    attributeMap.put(attributeId2, new Binary("monthly", TSFileConfig.STRING_CHARSET));
     cache.putAttributes(
         database1,
         convertIdValuesToDeviceID(table2, new String[] {"hebei", "p_1", "d_0"}),
@@ -217,7 +221,7 @@ public class TableDeviceSchemaCacheTest {
         cache.getDeviceAttribute(
             database1, convertIdValuesToDeviceID(table1, new String[] {"hebei", "p_1", "d_1"})));
 
-    attributeMap.put("type", new Binary("old", TSFileConfig.STRING_CHARSET));
+    attributeMap.put(attributeId1, new Binary("old", TSFileConfig.STRING_CHARSET));
     cache.putAttributes(
         database1,
         convertIdValuesToDeviceID(table2, new String[] {"hebei", "p_1", "d_1"}),

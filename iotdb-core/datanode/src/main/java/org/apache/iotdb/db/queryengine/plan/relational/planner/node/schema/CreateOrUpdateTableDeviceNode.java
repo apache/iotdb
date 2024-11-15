@@ -55,7 +55,7 @@ public class CreateOrUpdateTableDeviceNode extends WritePlanNode implements ISch
 
   private final List<Object[]> deviceIdList;
 
-  private final List<String> attributeNameList;
+  private final int[] attributeIdList;
 
   private final List<Object[]> attributeValueList;
 
@@ -71,13 +71,13 @@ public class CreateOrUpdateTableDeviceNode extends WritePlanNode implements ISch
       final String database,
       final String tableName,
       final List<Object[]> deviceIdList,
-      final List<String> attributeNameList,
+      final int[] attributeIdList,
       final List<Object[]> attributeValueList) {
     super(id);
     this.database = database;
     this.tableName = tableName;
     this.deviceIdList = deviceIdList;
-    this.attributeNameList = attributeNameList;
+    this.attributeIdList = attributeIdList;
     this.attributeValueList = attributeValueList;
   }
 
@@ -89,13 +89,13 @@ public class CreateOrUpdateTableDeviceNode extends WritePlanNode implements ISch
       final String database,
       final String tableName,
       final List<Object[]> deviceIdList,
-      final List<String> attributeNameList,
+      final int[] attributeIdList,
       final List<Object[]> attributeValueList) {
     super(id);
     this.database = database;
     this.tableName = tableName;
     this.deviceIdList = deviceIdList;
-    this.attributeNameList = attributeNameList;
+    this.attributeIdList = attributeIdList;
     this.attributeValueList = attributeValueList;
     this.regionReplicaSet = regionReplicaSet;
   }
@@ -117,8 +117,8 @@ public class CreateOrUpdateTableDeviceNode extends WritePlanNode implements ISch
     return deviceIdList;
   }
 
-  public List<String> getAttributeNameList() {
-    return attributeNameList;
+  public int[] getAttributeIdList() {
+    return attributeIdList;
   }
 
   public List<Object[]> getAttributeValueList() {
@@ -155,7 +155,7 @@ public class CreateOrUpdateTableDeviceNode extends WritePlanNode implements ISch
         database,
         tableName,
         deviceIdList,
-        attributeNameList,
+        attributeIdList,
         attributeValueList);
   }
 
@@ -181,8 +181,8 @@ public class CreateOrUpdateTableDeviceNode extends WritePlanNode implements ISch
         ReadWriteIOUtils.writeObject(idSeg, byteBuffer);
       }
     }
-    ReadWriteIOUtils.write(attributeNameList.size(), byteBuffer);
-    for (final String attributeName : attributeNameList) {
+    ReadWriteIOUtils.write(attributeIdList.length, byteBuffer);
+    for (final int attributeName : attributeIdList) {
       ReadWriteIOUtils.write(attributeName, byteBuffer);
     }
     ReadWriteIOUtils.write(attributeValueList.size(), byteBuffer);
@@ -205,8 +205,8 @@ public class CreateOrUpdateTableDeviceNode extends WritePlanNode implements ISch
         ReadWriteIOUtils.writeObject(idSeg, stream);
       }
     }
-    ReadWriteIOUtils.write(attributeNameList.size(), stream);
-    for (final String attributeName : attributeNameList) {
+    ReadWriteIOUtils.write(attributeIdList.length, stream);
+    for (final int attributeName : attributeIdList) {
       ReadWriteIOUtils.write(attributeName, stream);
     }
     for (final Object[] deviceValueList : attributeValueList) {
@@ -231,23 +231,23 @@ public class CreateOrUpdateTableDeviceNode extends WritePlanNode implements ISch
       }
       deviceIdList.add(deviceId);
     }
-    final int attributeNameNum = ReadWriteIOUtils.readInt(buffer);
-    final List<String> attributeNameList = new ArrayList<>(attributeNameNum);
-    for (int i = 0; i < attributeNameNum; i++) {
-      attributeNameList.add(ReadWriteIOUtils.readString(buffer));
+    final int attributeIdNum = ReadWriteIOUtils.readInt(buffer);
+    final int[] attributeIdList = new int[attributeIdNum];
+    for (int i = 0; i < attributeIdNum; i++) {
+      attributeIdList[i] = ReadWriteIOUtils.readInt(buffer);
     }
     final List<Object[]> attributeValueList = new ArrayList<>(deviceNum);
     Object[] deviceAttributeValues;
     for (int i = 0; i < deviceNum; i++) {
-      deviceAttributeValues = new Object[attributeNameNum];
-      for (int j = 0; j < attributeNameNum; j++) {
+      deviceAttributeValues = new Object[attributeIdNum];
+      for (int j = 0; j < attributeIdNum; j++) {
         deviceAttributeValues[j] = ReadWriteIOUtils.readObject(buffer);
       }
       attributeValueList.add(deviceAttributeValues);
     }
     final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
     return new CreateOrUpdateTableDeviceNode(
-        planNodeId, database, tableName, deviceIdList, attributeNameList, attributeValueList);
+        planNodeId, database, tableName, deviceIdList, attributeIdList, attributeValueList);
   }
 
   @Override
@@ -278,14 +278,14 @@ public class CreateOrUpdateTableDeviceNode extends WritePlanNode implements ISch
               database,
               tableName,
               subDeviceIdList,
-              attributeNameList,
+              attributeIdList,
               subAttributeValueList));
     }
     return result;
   }
 
   @Override
-  public <R, C> R accept(final PlanVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final PlanVisitor<R, C> visitor, final C context) {
     return visitor.visitCreateOrUpdateTableDevice(this, context);
   }
 
@@ -304,7 +304,7 @@ public class CreateOrUpdateTableDeviceNode extends WritePlanNode implements ISch
     return Objects.equals(database, node.database)
         && Objects.equals(tableName, node.tableName)
         && Objects.equals(deviceIdList, node.deviceIdList)
-        && Objects.equals(attributeNameList, node.attributeNameList)
+        && Objects.equals(attributeIdList, node.attributeIdList)
         && Objects.equals(attributeValueList, node.attributeValueList)
         && Objects.equals(regionReplicaSet, node.regionReplicaSet)
         && Objects.equals(partitionKeyList, node.partitionKeyList);
@@ -317,7 +317,7 @@ public class CreateOrUpdateTableDeviceNode extends WritePlanNode implements ISch
         database,
         tableName,
         deviceIdList,
-        attributeNameList,
+        attributeIdList,
         attributeValueList,
         regionReplicaSet,
         partitionKeyList);

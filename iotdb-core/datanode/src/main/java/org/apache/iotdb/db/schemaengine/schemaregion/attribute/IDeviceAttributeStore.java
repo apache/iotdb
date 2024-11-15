@@ -23,7 +23,6 @@ import org.apache.tsfile.utils.Binary;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 
 public interface IDeviceAttributeStore {
@@ -34,15 +33,15 @@ public interface IDeviceAttributeStore {
 
   void loadFromSnapshot(final File snapshotDir, final String sgSchemaDirPath) throws IOException;
 
-  int createAttribute(final List<String> nameList, final Object[] valueList);
+  int createAttribute(final int[] idList, final Object[] valueList);
 
   // Returns the actually updated map
-  Map<String, Binary> alterAttribute(
-      final int pointer, final List<String> nameList, final Object[] valueList);
+  Map<Integer, Binary> alterAttribute(
+      final int pointer, final int[] attributeList, final Object[] valueList);
 
   void removeAttribute(final int pointer);
 
-  void removeAttribute(final int pointer, final String attributeName);
+  void removeAttribute(final int pointer, final int attributeId);
 
-  Binary getAttribute(final int pointer, final String name);
+  Binary getAttribute(final int pointer, final int attributeId);
 }

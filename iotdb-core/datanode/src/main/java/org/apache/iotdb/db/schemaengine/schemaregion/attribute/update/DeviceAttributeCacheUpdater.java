@@ -92,7 +92,7 @@ public class DeviceAttributeCacheUpdater {
   /////////////////////////////// Service ///////////////////////////////
 
   public void update(
-      final String tableName, final String[] deviceId, final Map<String, Binary> attributeMap) {
+      final String tableName, final String[] deviceId, final Map<Integer, Binary> attributeMap) {
     targetDataNodeLocations.forEach(
         location -> {
           // Skip update on local
@@ -134,8 +134,8 @@ public class DeviceAttributeCacheUpdater {
     invalidate(container -> container.invalidate(pathNodes));
   }
 
-  public void invalidate(final String tableName, final String attributeName) {
-    invalidate(container -> container.invalidate(tableName, attributeName));
+  public void invalidate(final String tableName, final int attributeId) {
+    invalidate(container -> container.invalidate(tableName, attributeId));
   }
 
   private void invalidate(final ToLongFunction<UpdateContainer> updateFunction) {
