@@ -96,11 +96,13 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
 
   @Override
   protected void onTabletInsertionEvent(final TabletInsertionEvent event) {
-    // just update processing time
+    // update processing time
     if (firstEventProcessingTime == Long.MIN_VALUE) {
       firstEventProcessingTime = System.currentTimeMillis();
     }
 
+    // update buffer size
+    // TODO: more precise computation
     if (event instanceof PipeInsertNodeTabletInsertionEvent) {
       totalBufferSize += getEstimatedInsertNodeTabletInsertionEventSize();
     } else if (event instanceof PipeRawTabletInsertionEvent) {
@@ -110,11 +112,12 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
 
   @Override
   protected void onTsFileInsertionEvent(final TsFileInsertionEvent event) {
-    // just update processing time
+    // update processing time
     if (firstEventProcessingTime == Long.MIN_VALUE) {
       firstEventProcessingTime = System.currentTimeMillis();
     }
 
+    // update buffer size
     // TODO: more precise computation
     totalBufferSize += ((PipeTsFileInsertionEvent) event).getTsFile().length();
   }
