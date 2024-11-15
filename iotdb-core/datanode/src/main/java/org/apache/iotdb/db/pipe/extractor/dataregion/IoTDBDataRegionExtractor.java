@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.extractor.dataregion;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
@@ -441,6 +442,11 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
     if (isSnapshotMode) {
       realtimeExtractor = new PipeRealtimeDataRegionHeartbeatExtractor();
       LOGGER.info("Pipe: snapshot mode is enabled, use heartbeat realtime extractor.");
+      return;
+    }
+
+    if (pipeName == null || !pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+      realtimeExtractor = new PipeRealtimeDataRegionTsFileExtractor();
       return;
     }
 
