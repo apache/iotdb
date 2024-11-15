@@ -121,8 +121,6 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
 
   @Override
   protected List<SubscriptionEvent> generateSubscriptionEvents() {
-    enrichedEventsIterator = enrichedEvents.iterator();
-
     return Collections.singletonList(
         new SubscriptionEvent(this, prefetchingQueue.generateSubscriptionCommitContext()));
   }
@@ -176,6 +174,10 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   }
 
   /////////////////////////////// iterator ///////////////////////////////
+
+  public void resetIterator() {
+    enrichedEventsIterator = enrichedEvents.iterator();
+  }
 
   @Override
   public boolean hasNext() {

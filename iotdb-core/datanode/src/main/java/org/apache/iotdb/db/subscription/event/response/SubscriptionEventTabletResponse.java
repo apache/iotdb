@@ -112,6 +112,7 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
       return;
     }
 
+    batch.resetIterator();
     offer(generateNextTabletResponse());
   }
 
