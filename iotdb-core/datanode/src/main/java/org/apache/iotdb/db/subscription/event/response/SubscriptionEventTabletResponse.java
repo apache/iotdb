@@ -67,16 +67,12 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
 
   @Override
   public void prefetchRemainingResponses() {
-    if (hasNoMore) {
-      return;
-    }
-
-    offer(generateNextTabletResponse());
+    // do nothing
   }
 
   @Override
   public void fetchNextResponse(final long offset /* unused */) {
-    prefetchRemainingResponses();
+    offer(generateNextTabletResponse());
     if (Objects.isNull(poll())) {
       LOGGER.warn(
           "SubscriptionEventTabletResponse {} is empty when fetching next response (broken invariant)",
