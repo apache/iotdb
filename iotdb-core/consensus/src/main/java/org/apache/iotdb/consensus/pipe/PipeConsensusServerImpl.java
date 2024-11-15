@@ -61,10 +61,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -97,14 +94,14 @@ public class PipeConsensusServerImpl {
       Peer thisNode,
       IStateMachine stateMachine,
       String storageDir,
-      List<Peer> configuration,
+      List<Peer> peers,
       PipeConsensusConfig config,
       ConsensusPipeManager consensusPipeManager,
       IClientManager<TEndPoint, SyncPipeConsensusServiceClient> syncClientManager)
       throws IOException {
     this.thisNode = thisNode;
     this.stateMachine = stateMachine;
-    this.peerManager = new PipeConsensusPeerManager(storageDir, configuration);
+    this.peerManager = new PipeConsensusPeerManager(storageDir, peers);
     this.active = new AtomicBoolean(true);
     this.isStarted = new AtomicBoolean(false);
     this.consensusGroupId = thisNode.getGroupId().toString();
@@ -114,14 +111,12 @@ public class PipeConsensusServerImpl {
     this.pipeConsensusServerMetrics = new PipeConsensusServerMetrics(this);
     this.replicateMode = config.getReplicateMode();
 
-    if (configuration.isEmpty()) {
+    if (peers.isEmpty()) {
       peerManager.recover();
     } else {
       // create consensus pipes
-      List<Peer> deepCopyPeersWithoutSelf =
-          configuration.stream()
-              .filter(peer -> !peer.equals(thisNode))
-              .collect(Collectors.toList());
+      Set<Peer> deepCopyPeersWithoutSelf =
+          peers.stream().filter(peer -> !peer.equals(thisNode)).collect(Collectors.toSet());
       final List<Peer> successfulPipes = createConsensusPipes(deepCopyPeersWithoutSelf);
       if (successfulPipes.size() < deepCopyPeersWithoutSelf.size()) {
         // roll back
@@ -208,7 +203,7 @@ public class PipeConsensusServerImpl {
     active.set(false);
   }
 
-  private List<Peer> createConsensusPipes(List<Peer> peers) {
+  private List<Peer> createConsensusPipes(Set<Peer> peers) {
     return peers.stream()
         .filter(
             peer -> {
