@@ -41,7 +41,12 @@ public class AttributeColumnSchema extends TsTableColumnSchema {
     super(columnName, dataType, props);
   }
 
-  public void setOriginalName(final String originalName) {
+  public AttributeColumnSchema(
+      final String columnName,
+      final TSDataType dataType,
+      final Map<String, String> props,
+      final String originalName) {
+    super(columnName, dataType, props);
     this.originalName = originalName;
   }
 
@@ -61,22 +66,18 @@ public class AttributeColumnSchema extends TsTableColumnSchema {
   }
 
   static AttributeColumnSchema deserialize(final InputStream stream) throws IOException {
-    final String columnName = ReadWriteIOUtils.readString(stream);
-    final TSDataType dataType = ReadWriteIOUtils.readDataType(stream);
-    final Map<String, String> props = ReadWriteIOUtils.readMap(stream);
-    final AttributeColumnSchema schema = new AttributeColumnSchema(columnName, dataType, props);
-    final String originalName = ReadWriteIOUtils.readString(stream);
-    schema.setOriginalName(originalName);
-    return schema;
+    return new AttributeColumnSchema(
+        ReadWriteIOUtils.readString(stream),
+        ReadWriteIOUtils.readDataType(stream),
+        ReadWriteIOUtils.readMap(stream),
+        ReadWriteIOUtils.readString(stream));
   }
 
   static AttributeColumnSchema deserialize(final ByteBuffer buffer) {
-    final String columnName = ReadWriteIOUtils.readString(buffer);
-    final TSDataType dataType = ReadWriteIOUtils.readDataType(buffer);
-    final Map<String, String> props = ReadWriteIOUtils.readMap(buffer);
-    final AttributeColumnSchema schema = new AttributeColumnSchema(columnName, dataType, props);
-    final String originalName = ReadWriteIOUtils.readString(buffer);
-    schema.setOriginalName(originalName);
-    return schema;
+    return new AttributeColumnSchema(
+        ReadWriteIOUtils.readString(buffer),
+        ReadWriteIOUtils.readDataType(buffer),
+        ReadWriteIOUtils.readMap(buffer),
+        ReadWriteIOUtils.readString(buffer));
   }
 }

@@ -75,7 +75,7 @@ public class TsTable {
 
   private Map<String, String> props = null;
 
-  private transient int idNums = 0;
+  private transient int idNum = 0;
 
   public TsTable(final String tableName) {
     this.tableName = tableName;
@@ -100,7 +100,7 @@ public class TsTable {
     try {
       columnSchemaMap.put(columnSchema.getColumnName(), columnSchema);
       if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
-        idNums++;
+        idNum++;
       }
     } finally {
       readWriteLock.writeLock().unlock();
@@ -114,8 +114,9 @@ public class TsTable {
       // Ensures idempotency
       if (columnSchemaMap.containsKey(oldName)) {
         final TsTableColumnSchema schema = columnSchemaMap.remove(oldName);
-        ((AttributeColumnSchema) schema).setOriginalName(oldName);
-        columnSchemaMap.put(newName, schema);
+        columnSchemaMap.put(
+            newName,
+            new AttributeColumnSchema(newName, schema.getDataType(), schema.getProps(), oldName));
       }
     } finally {
       readWriteLock.writeLock().unlock();
@@ -128,7 +129,7 @@ public class TsTable {
       final TsTableColumnSchema columnSchema = columnSchemaMap.remove(columnName);
       if (columnSchema != null
           && columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
-        idNums--;
+        idNum--;
       }
     } finally {
       readWriteLock.writeLock().unlock();
@@ -144,10 +145,10 @@ public class TsTable {
     }
   }
 
-  public int getIdNums() {
+  public int getIdNum() {
     readWriteLock.readLock().lock();
     try {
-      return idNums;
+      return idNum;
     } finally {
       readWriteLock.readLock().unlock();
     }

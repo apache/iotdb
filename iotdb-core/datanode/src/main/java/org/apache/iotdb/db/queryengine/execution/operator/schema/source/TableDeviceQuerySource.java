@@ -195,7 +195,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
     return DeviceFilterUtil.convertToDevicePattern(
         database,
         tableName,
-        DataNodeTableCache.getInstance().getTable(database, tableName).getIdNums(),
+        DataNodeTableCache.getInstance().getTable(database, tableName).getIdNum(),
         idDeterminedPredicateList);
   }
 

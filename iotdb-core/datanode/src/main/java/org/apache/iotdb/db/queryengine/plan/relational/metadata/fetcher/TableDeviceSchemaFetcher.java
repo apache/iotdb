@@ -125,7 +125,7 @@ public class TableDeviceSchemaFetcher {
 
       final List<ColumnHeader> columnHeaderList =
           coordinator.getQueryExecution(queryId).getDatasetHeader().getColumnHeaders();
-      final int idLength = DataNodeTableCache.getInstance().getTable(database, table).getIdNums();
+      final int idLength = DataNodeTableCache.getInstance().getTable(database, table).getIdNum();
       final Map<IDeviceID, Map<String, Binary>> fetchedDeviceSchema = new HashMap<>();
 
       while (coordinator.getQueryExecution(queryId).hasNextResult()) {
@@ -319,7 +319,7 @@ public class TableDeviceSchemaFetcher {
       final List<String> attributeColumns,
       final List<IDeviceID> fetchPaths,
       final boolean isDirectDeviceQuery) {
-    String[] idValues = new String[tableInstance.getIdNums()];
+    String[] idValues = new String[tableInstance.getIdNum()];
     for (final List<SchemaFilter> schemaFilters : idFilters.values()) {
       final IdFilter idFilter = (IdFilter) schemaFilters.get(0);
       final SchemaFilter childFilter = idFilter.getChild();
@@ -408,7 +408,7 @@ public class TableDeviceSchemaFetcher {
 
       final List<ColumnHeader> columnHeaderList =
           coordinator.getQueryExecution(queryId).getDatasetHeader().getColumnHeaders();
-      final int idLength = DataNodeTableCache.getInstance().getTable(database, table).getIdNums();
+      final int idLength = DataNodeTableCache.getInstance().getTable(database, table).getIdNum();
 
       while (coordinator.getQueryExecution(queryId).hasNextResult()) {
         final Optional<TsBlock> tsBlock;
