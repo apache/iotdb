@@ -88,7 +88,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDescTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
@@ -1285,10 +1288,24 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TDescTableResp describeTable(
+      final String database, final String tableName, final boolean isDetails) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.describeTable(database, tableName, isDetails),
+        resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
   public TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap)
       throws TException {
     return executeRemoteCallWithRetry(
         () -> client.fetchTables(fetchTableMap), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TDeleteTableDeviceResp deleteDevice(final TDeleteTableDeviceReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.deleteDevice(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   public static class Factory extends ThriftClientFactory<ConfigRegionId, ConfigNodeClient> {

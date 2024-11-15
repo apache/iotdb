@@ -203,7 +203,7 @@ public class CompactionValidationTest {
       writeOneFile(path);
       if (i == 5) {
         RandomAccessFile randomAccessFile = new RandomAccessFile(path, "rw");
-        randomAccessFile.seek(randomAccessFile.length() - 100);
+        randomAccessFile.seek(randomAccessFile.length() - 130);
         randomAccessFile.write(new byte[] {1, 2, 3, 4, 5, 6, 7, 8});
         randomAccessFile.close();
       }

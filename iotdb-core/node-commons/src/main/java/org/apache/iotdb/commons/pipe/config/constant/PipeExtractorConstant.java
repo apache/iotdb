@@ -118,6 +118,7 @@ public class PipeExtractorConstant {
   public static final String SOURCE_START_TIME_KEY = "source.start-time";
   public static final String EXTRACTOR_END_TIME_KEY = "extractor.end-time";
   public static final String SOURCE_END_TIME_KEY = "source.end-time";
+  public static final String NOW_TIME_VALUE = "now";
 
   public static final String _EXTRACTOR_WATERMARK_INTERVAL_KEY = "extractor.watermark-interval-ms";
   public static final String _SOURCE_WATERMARK_INTERVAL_KEY = "source.watermark-interval-ms";

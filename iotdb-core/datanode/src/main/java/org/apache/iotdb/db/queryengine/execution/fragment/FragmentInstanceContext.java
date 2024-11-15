@@ -678,6 +678,13 @@ public class FragmentInstanceContext extends QueryContext {
     QueryRelatedResourceMetricSet.getInstance().updateFragmentInstanceTime(durationTime);
 
     SeriesScanCostMetricSet.getInstance()
+        .recordBloomFilterMetrics(
+            getQueryStatistics().getLoadBloomFilterFromCacheCount().get(),
+            getQueryStatistics().getLoadBloomFilterFromDiskCount().get(),
+            getQueryStatistics().getLoadBloomFilterActualIOSize().get(),
+            getQueryStatistics().getLoadBloomFilterTime().get());
+
+    SeriesScanCostMetricSet.getInstance()
         .recordNonAlignedTimeSeriesMetadataCount(
             getQueryStatistics().getLoadTimeSeriesMetadataDiskSeqCount().get(),
             getQueryStatistics().getLoadTimeSeriesMetadataDiskUnSeqCount().get(),
@@ -703,6 +710,12 @@ public class FragmentInstanceContext extends QueryContext {
             getQueryStatistics().getLoadTimeSeriesMetadataAlignedMemUnSeqTime().get());
 
     SeriesScanCostMetricSet.getInstance()
+        .recordTimeSeriesMetadataMetrics(
+            getQueryStatistics().getLoadTimeSeriesMetadataFromCacheCount().get(),
+            getQueryStatistics().getLoadTimeSeriesMetadataFromDiskCount().get(),
+            getQueryStatistics().getLoadTimeSeriesMetadataActualIOSize().get());
+
+    SeriesScanCostMetricSet.getInstance()
         .recordConstructChunkReadersCount(
             getQueryStatistics().getConstructAlignedChunkReadersMemCount().get(),
             getQueryStatistics().getConstructAlignedChunkReadersDiskCount().get(),
@@ -714,6 +727,12 @@ public class FragmentInstanceContext extends QueryContext {
             getQueryStatistics().getConstructAlignedChunkReadersDiskTime().get(),
             getQueryStatistics().getConstructNonAlignedChunkReadersMemTime().get(),
             getQueryStatistics().getConstructNonAlignedChunkReadersDiskTime().get());
+
+    SeriesScanCostMetricSet.getInstance()
+        .recordChunkMetrics(
+            getQueryStatistics().getLoadChunkFromCacheCount().get(),
+            getQueryStatistics().getLoadChunkFromDiskCount().get(),
+            getQueryStatistics().getLoadChunkActualIOSize().get());
 
     SeriesScanCostMetricSet.getInstance()
         .recordPageReadersDecompressCount(

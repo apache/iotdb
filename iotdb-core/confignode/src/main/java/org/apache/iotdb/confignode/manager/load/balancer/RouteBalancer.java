@@ -262,6 +262,9 @@ public class RouteBalancer implements IClusterStatusSubscriber {
             entry -> {
               // set target
               final Integer dataNodeId = entry.getValue();
+              if (dataNodeId == -1) {
+                return;
+              }
               final TDataNodeLocation dataNodeLocation =
                   getNodeManager().getRegisteredDataNode(dataNodeId).getLocation();
               if (dataNodeLocation == null) {

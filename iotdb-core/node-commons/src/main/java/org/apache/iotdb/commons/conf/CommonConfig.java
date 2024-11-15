@@ -288,12 +288,13 @@ public class CommonConfig {
   private int subscriptionPrefetchTsFileBatchMaxDelayInMs = 5000; // 5s
   private long subscriptionPrefetchTsFileBatchMaxSizeInBytes = 80 * MB;
   private int subscriptionPollMaxBlockingTimeMs = 500;
-  private int subscriptionSerializeMaxBlockingTimeMs = 100;
+  private int subscriptionDefaultTimeoutInMs = 10_000; // 10s
   private long subscriptionLaunchRetryIntervalMs = 1000;
   private int subscriptionRecycleUncommittedEventIntervalMs = 600000; // 600s
   private long subscriptionReadFileBufferSize = 8 * MB;
   private long subscriptionReadTabletBufferSize = 8 * MB;
   private long subscriptionTsFileDeduplicationWindowSeconds = 120; // 120s
+  private volatile long subscriptionTsFileSlicerCheckMemoryEnoughIntervalMs = 10L;
 
   private long subscriptionMetaSyncerInitialSyncDelayMinutes = 3;
   private long subscriptionMetaSyncerSyncIntervalMinutes = 3;
@@ -565,14 +566,6 @@ public class CommonConfig {
 
   public void setStatusReason(String statusReason) {
     this.statusReason = statusReason;
-  }
-
-  public NodeStatus getStatus() {
-    return status;
-  }
-
-  public void setStatus(NodeStatus status) {
-    this.status = status;
   }
 
   public TEndPoint getTargetAINodeEndPoint() {
@@ -1303,13 +1296,12 @@ public class CommonConfig {
     this.subscriptionPollMaxBlockingTimeMs = subscriptionPollMaxBlockingTimeMs;
   }
 
-  public int getSubscriptionSerializeMaxBlockingTimeMs() {
-    return subscriptionSerializeMaxBlockingTimeMs;
+  public int getSubscriptionDefaultTimeoutInMs() {
+    return subscriptionDefaultTimeoutInMs;
   }
 
-  public void setSubscriptionSerializeMaxBlockingTimeMs(
-      int subscriptionSerializeMaxBlockingTimeMs) {
-    this.subscriptionSerializeMaxBlockingTimeMs = subscriptionSerializeMaxBlockingTimeMs;
+  public void setSubscriptionDefaultTimeoutInMs(final int subscriptionDefaultTimeoutInMs) {
+    this.subscriptionDefaultTimeoutInMs = subscriptionDefaultTimeoutInMs;
   }
 
   public long getSubscriptionLaunchRetryIntervalMs() {
@@ -1354,6 +1346,16 @@ public class CommonConfig {
       long subscriptionTsFileDeduplicationWindowSeconds) {
     this.subscriptionTsFileDeduplicationWindowSeconds =
         subscriptionTsFileDeduplicationWindowSeconds;
+  }
+
+  public long getSubscriptionTsFileSlicerCheckMemoryEnoughIntervalMs() {
+    return subscriptionTsFileSlicerCheckMemoryEnoughIntervalMs;
+  }
+
+  public void setSubscriptionTsFileSlicerCheckMemoryEnoughIntervalMs(
+      long subscriptionTsFileSlicerCheckMemoryEnoughIntervalMs) {
+    this.subscriptionTsFileSlicerCheckMemoryEnoughIntervalMs =
+        subscriptionTsFileSlicerCheckMemoryEnoughIntervalMs;
   }
 
   public long getSubscriptionMetaSyncerInitialSyncDelayMinutes() {

@@ -31,6 +31,7 @@ import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -100,6 +101,15 @@ public class IoTDBConnection implements Connection {
   }
 
   private String userName;
+
+  // default is tree
+  public String getSqlDialect() {
+    if (params != null && StringUtils.isNotBlank(params.getSqlDialect())) {
+      return params.getSqlDialect();
+    } else {
+      return "tree";
+    }
+  }
 
   // ms is 1_000, us is 1_000_000, ns is 1_000_000_000
   private int timeFactor = 1_000;

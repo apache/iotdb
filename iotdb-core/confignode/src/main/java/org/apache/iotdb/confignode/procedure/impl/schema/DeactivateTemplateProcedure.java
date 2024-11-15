@@ -193,8 +193,8 @@ public class DeactivateTemplateProcedure
     return preDeletedNum;
   }
 
-  private void invalidateCache(ConfigNodeProcedureEnv env) {
-    // if no target timeseres, return directly
+  private void invalidateCache(final ConfigNodeProcedureEnv env) {
+    // if no target timeseries, return directly
     if (!timeSeriesPatternTree.isEmpty()) {
       Map<Integer, TDataNodeLocation> dataNodeLocationMap =
           env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
@@ -232,7 +232,7 @@ public class DeactivateTemplateProcedure
               "delete data",
               env,
               relatedDataRegionGroup,
-              true,
+              false,
               CnToDnAsyncRequestType.DELETE_DATA_FOR_DELETE_SCHEMA,
               ((dataNodeLocation, consensusGroupIdList) ->
                   new TDeleteDataForDeleteSchemaReq(

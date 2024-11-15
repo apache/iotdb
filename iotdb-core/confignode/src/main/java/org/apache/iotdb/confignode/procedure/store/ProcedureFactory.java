@@ -52,6 +52,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.DeleteDevicesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
@@ -208,6 +209,9 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case DROP_TABLE_PROCEDURE:
         procedure = new DropTableProcedure();
+        break;
+      case DELETE_DEVICES_PROCEDURE:
+        procedure = new DeleteDevicesProcedure();
         break;
       case CREATE_PIPE_PLUGIN_PROCEDURE:
         procedure = new CreatePipePluginProcedure();
@@ -369,6 +373,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.DROP_TABLE_COLUMN_PROCEDURE;
     } else if (procedure instanceof DropTableProcedure) {
       return ProcedureType.DROP_TABLE_PROCEDURE;
+    } else if (procedure instanceof DeleteDevicesProcedure) {
+      return ProcedureType.DELETE_DEVICES_PROCEDURE;
     } else if (procedure instanceof CreatePipePluginProcedure) {
       return ProcedureType.CREATE_PIPE_PLUGIN_PROCEDURE;
     } else if (procedure instanceof DropPipePluginProcedure) {

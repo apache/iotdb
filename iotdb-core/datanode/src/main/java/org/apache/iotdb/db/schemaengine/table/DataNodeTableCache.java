@@ -217,6 +217,29 @@ public class DataNodeTableCache implements ITableCache {
     }
   }
 
+  @GuardedBy("TableDeviceSchemaCache#writeLock")
+  @Override
+  public void invalid(String database, final String tableName, final String columnName) {
+    database = PathUtils.unQualifyDatabaseName(database);
+    readWriteLock.writeLock().lock();
+    try {
+      if (databaseTableMap.containsKey(database)
+          && databaseTableMap.get(database).containsKey(tableName)) {
+        databaseTableMap.get(database).get(tableName).removeColumnSchema(columnName);
+      }
+      if (preUpdateTableMap.containsKey(database)
+          && preUpdateTableMap.get(database).containsKey(tableName)) {
+        final Pair<TsTable, Long> tableVersionPair = preUpdateTableMap.get(database).get(tableName);
+        if (Objects.nonNull(tableVersionPair.getLeft())) {
+          tableVersionPair.getLeft().removeColumnSchema(columnName);
+        }
+        tableVersionPair.setRight(tableVersionPair.getRight() + 1);
+      }
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
   public long getVersion() {
     return version.get();
   }
@@ -379,7 +402,7 @@ public class DataNodeTableCache implements ITableCache {
           .getColumnSchema(columnName)
           .getColumnName();
     } catch (final Exception e) {
-      return columnName;
+      return null;
     }
   }
 

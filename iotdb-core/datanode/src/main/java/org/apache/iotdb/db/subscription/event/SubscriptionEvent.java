@@ -220,12 +220,12 @@ public class SubscriptionEvent {
 
   //////////////////////////// prefetch & fetch ////////////////////////////
 
-  public void prefetchRemainingResponses() throws IOException {
+  public void prefetchRemainingResponses() throws Exception {
     response.prefetchRemainingResponses();
   }
 
-  public void fetchNextResponse() throws IOException {
-    response.fetchNextResponse();
+  public void fetchNextResponse(final long offset) throws Exception {
+    response.fetchNextResponse(offset);
   }
 
   //////////////////////////// byte buffer ////////////////////////////

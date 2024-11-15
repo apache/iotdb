@@ -58,16 +58,6 @@ public abstract class SubscriptionEventExtendableResponse
   }
 
   @Override
-  public void fetchNextResponse() throws IOException {
-    prefetchRemainingResponses();
-    if (Objects.isNull(poll())) {
-      LOGGER.warn(
-          "SubscriptionEventExtendableResponse {} is empty when fetching next response (broken invariant)",
-          this);
-    }
-  }
-
-  @Override
   public void trySerializeCurrentResponse() {
     SubscriptionPollResponseCache.getInstance().trySerialize(getCurrentResponse());
   }
