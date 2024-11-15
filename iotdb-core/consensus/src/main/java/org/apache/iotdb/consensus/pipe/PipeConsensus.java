@@ -269,7 +269,8 @@ public class PipeConsensus implements IConsensus {
       }
 
       final String path = getPeerDir(groupId);
-      if (!new File(path).mkdirs()) {
+      File consensusDir = new File(path);
+      if (!consensusDir.exists() && !consensusDir.mkdirs()) {
         LOGGER.warn("Unable to create consensus dir for group {} at {}", groupId, path);
         throw new ConsensusException(
             String.format("Unable to create consensus dir for group %s", groupId));
