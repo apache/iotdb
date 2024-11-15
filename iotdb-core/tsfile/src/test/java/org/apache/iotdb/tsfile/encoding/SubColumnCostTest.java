@@ -338,6 +338,16 @@ public class SubColumnCostTest {
         run_length[index] = count;
         index++;
 
+        // for (int i = 0; i < index; i++) {
+        // System.out.print(values[i] + " ");
+        // }
+        // System.out.println();
+
+        // for (int i = 0; i < index; i++) {
+        // System.out.print(run_length[i] + " ");
+        // }
+        // System.out.println();
+
         int maxValue = Integer.MIN_VALUE;
         for (int i = 0; i < index; i++) {
             if (values[i] > maxValue) {
@@ -351,23 +361,20 @@ public class SubColumnCostTest {
 
     }
 
-    public static SubColumnResult subColumn(int[] list) {
-        // if (list.isEmpty()) {
-        // return new SubColumnResult(0, 0);
-        // }
-        if (list.length == 0) {
+    public static SubColumnResult subColumn(int[] list, int remaining) {
+        if (remaining == 0) {
             return new SubColumnResult(0, 0, 0);
         }
 
         int maxValue = Integer.MIN_VALUE;
         int minValue = Integer.MAX_VALUE;
 
-        for (int num : list) {
-            if (num > maxValue) {
-                maxValue = num;
+        for (int i = 0; i < remaining; i++) {
+            if (list[i] > maxValue) {
+                maxValue = list[i];
             }
-            if (num < minValue) {
-                minValue = num;
+            if (list[i] < minValue) {
+                minValue = list[i];
             }
         }
 
@@ -376,43 +383,43 @@ public class SubColumnCostTest {
         // System.out.println("m: " + m);
 
         // int cMin = list.size() * m;
-        int cMin = list.length * m;
+        int cMin = remaining * m;
 
         int lBest = 0;
         int betaBest = 0;
 
         for (int l = 1; l <= m; l++) {
             // System.out.println("l: " + l);
-            int[] highBitsList = new int[list.length];
-            // for (int num : list) {
-            // int highBits = (num >> l) & ((1 << (m - l)) - 1);
-            // highBitsList.add(highBits);
-            // }
-            for (int i = 0; i < list.length; i++) {
+
+            int highCost = 0;
+
+            // if (l != m) {
+            int[] highBitsList = new int[remaining];
+            for (int i = 0; i < remaining; i++) {
                 highBitsList[i] = (list[i] >> l) & ((1 << (m - l)) - 1);
             }
 
             // for (int i = 0; i < highBitsList.length; i++) {
-            //     System.out.print(highBitsList[i] + " ");
+            // System.out.print(highBitsList[i] + " ");
             // }
             // System.out.println();
 
-            int highCost = 0;
             highCost += RLECost(highBitsList);
             // System.out.println("highCost: " + highCost);
+            // }
 
             // ArrayList<Integer> lowBitsList = new ArrayList<>();
             // for (int num : list) {
             // int lowBits = num & ((1 << l) - 1);
             // lowBitsList.add(lowBits);
             // }
-            int[] lowBitsList = new int[list.length];
-            for (int i = 0; i < list.length; i++) {
+            int[] lowBitsList = new int[remaining];
+            for (int i = 0; i < remaining; i++) {
                 lowBitsList[i] = list[i] & ((1 << l) - 1);
             }
 
             // for (int i = 0; i < lowBitsList.length; i++) {
-            //     System.out.print(lowBitsList[i] + " ");
+            // System.out.print(lowBitsList[i] + " ");
             // }
             // System.out.println();
 
@@ -430,9 +437,9 @@ public class SubColumnCostTest {
                     // int bitsPart = (num >> (p * beta)) & ((1 << beta) - 1);
                     // bpList.add(bitsPart);
                     // }
-                    int[] bpList = new int[list.length];
+                    int[] bpList = new int[remaining];
                     int maxValuePart = 0;
-                    for (int i = 0; i < list.length; i++) {
+                    for (int i = 0; i < remaining; i++) {
                         bpList[i] = (lowBitsList[i] >> (p * beta)) & ((1 << beta) - 1);
                         if (bpList[i] > maxValuePart) {
                             maxValuePart = bpList[i];
@@ -440,7 +447,7 @@ public class SubColumnCostTest {
                     }
 
                     // for (int i = 0; i < bpList.length; i++) {
-                    //     System.out.print(bpList[i] + " ");
+                    // System.out.print(bpList[i] + " ");
                     // }
                     // System.out.println();
 
@@ -448,7 +455,7 @@ public class SubColumnCostTest {
                     int maxBitsPart = getBitWidth(maxValuePart);
                     // System.out.println("maxBitsPart: " + maxBitsPart);
 
-                    lowCost += bpList.length * maxBitsPart;
+                    lowCost += remaining * maxBitsPart;
                 }
 
                 // System.out.println("lowCost: " + lowCost);
@@ -465,10 +472,6 @@ public class SubColumnCostTest {
 
     }
 
-    // public static void SubColumnEncodeBits(int[] ts_block_delta, int l, int beta) {
-
-    // }
-
     public static int SubColumnBlockEncoder(int[] ts_block, int block_i, int block_size, int remaining, int encode_pos,
             byte[] encoded_result) {
 
@@ -481,7 +484,10 @@ public class SubColumnCostTest {
         // ts_block_delta_list.add(ts_block_delta[i]);
         // }
 
-        SubColumnResult result = subColumn(ts_block_delta);
+        SubColumnResult result = subColumn(ts_block_delta, remaining - 1);
+        // System.out.println("lBest: " + result.lBest);
+        // System.out.println("betaBest: " + result.betaBest);
+        // System.out.println("cost: " + result.cost);
         int l = result.lBest;
         int beta = result.betaBest;
         int cost = result.cost;
@@ -533,26 +539,7 @@ public class SubColumnCostTest {
 
     @Test
     public void test0() throws IOException {
-        // ArrayList<Integer> list = new ArrayList<>();
         int[] list = new int[8];
-
-        // list.add(26);
-        // list.add(48);
-        // list.add(51);
-        // list.add(33);
-        // list.add(24);
-        // list.add(56);
-        // list.add(65);
-        // list.add(75);
-
-        // list.add(154);
-        // list.add(176);
-        // list.add(179);
-        // list.add(161);
-        // list.add(152);
-        // list.add(184);
-        // list.add(193);
-        // list.add(203);
 
         list[0] = 154;
         list[1] = 176;
@@ -563,9 +550,7 @@ public class SubColumnCostTest {
         list[6] = 193;
         list[7] = 203;
 
-        // System.out.println(list);
-
-        SubColumnResult result = subColumn(list);
+        SubColumnResult result = subColumn(list, 8);
         System.out.println(result.lBest);
         System.out.println(result.betaBest);
         System.out.println(result.cost);
@@ -724,47 +709,52 @@ public class SubColumnCostTest {
                     data2_arr[i] = (int) (data1.get(i) * max_mul);
                 }
 
+                // for (int i = 0; i < data2_arr.length; i++) {
+                // System.out.print(data2_arr[i] + " ");
+                // }
+                // System.out.println();
+
                 System.out.println(max_decimal);
                 byte[] encoded_result = new byte[data2_arr.length * 4];
 
                 // for (int div = 2; div < 11; div++) {
-                //     System.out.println(div);
-                    long encodeTime = 0;
-                    long decodeTime = 0;
-                    double ratio = 0;
-                    double compressed_size = 0;
+                // System.out.println(div);
+                long encodeTime = 0;
+                long decodeTime = 0;
+                double ratio = 0;
+                double compressed_size = 0;
 
-                    int length = 0;
+                int length = 0;
 
-                    long s = System.nanoTime();
-                    for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                        length = SubcolumnEncoder(data2_arr, dataset_block_size.get(file_i),
-                        encoded_result);
-                    }
+                long s = System.nanoTime();
+                for (int repeat = 0; repeat < repeatTime2; repeat++) {
+                    length = SubcolumnEncoder(data2_arr, dataset_block_size.get(file_i),
+                            encoded_result);
+                }
 
-                    long e = System.nanoTime();
-                    encodeTime += ((e - s) / repeatTime2);
-                    compressed_size += length;
-                    double ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
-                    ratio += ratioTmp;
-                    s = System.nanoTime();
-                    // for (int repeat = 0; repeat < repeatTime2; repeat++)
-                    // SubcolumnDecoder(encoded_result);
-                    e = System.nanoTime();
-                    decodeTime += ((e - s) / repeatTime2);
+                long e = System.nanoTime();
+                encodeTime += ((e - s) / repeatTime2);
+                compressed_size += length;
+                double ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
+                ratio += ratioTmp;
+                s = System.nanoTime();
+                // for (int repeat = 0; repeat < repeatTime2; repeat++)
+                // SubcolumnDecoder(encoded_result);
+                e = System.nanoTime();
+                decodeTime += ((e - s) / repeatTime2);
 
-                    String[] record = {
-                            datasetName,
-                            "TS_2DIFF+Sucolumn",
-                            String.valueOf(encodeTime),
-                            String.valueOf(decodeTime),
-                            // String.valueOf(div),
-                            String.valueOf(data1.size()),
-                            String.valueOf(compressed_size),
-                            String.valueOf(ratio)
-                    };
-                    writer.writeRecord(record);
-                    System.out.println(ratio);
+                String[] record = {
+                        datasetName,
+                        "TS_2DIFF+Sucolumn",
+                        String.valueOf(encodeTime),
+                        String.valueOf(decodeTime),
+                        // String.valueOf(div),
+                        String.valueOf(data1.size()),
+                        String.valueOf(compressed_size),
+                        String.valueOf(ratio)
+                };
+                writer.writeRecord(record);
+                System.out.println(ratio);
                 // }
 
                 // break;
@@ -883,7 +873,7 @@ public class SubColumnCostTest {
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime2; repeat++) {
                     // length = SubColumnEncoder(data2_arr, dataset_block_size.get(file_i),
-                    //         encoded_result);
+                    // encoded_result);
                 }
 
                 long e = System.nanoTime();
