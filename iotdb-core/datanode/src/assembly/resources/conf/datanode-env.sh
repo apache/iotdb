@@ -179,7 +179,7 @@ else
 fi
 
 if [ -z "$heap_dump_dir" ]; then
-  	heap_dump_dir="$(dirname "$0")/../data/datanode/data/"
+  	heap_dump_dir="$(dirname "$0")/../data/datanode/data"
 fi
 if [ ! -d "$heap_dump_dir" ]; then
   	mkdir -p "$heap_dump_dir"
