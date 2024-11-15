@@ -49,6 +49,10 @@ public class PipeTemporaryMetaInAgent implements PipeTemporaryMeta {
     memoryUsage.addAndGet(-usage);
   }
 
+  public long getMemoryUsage() {
+    return memoryUsage.get();
+  }
+
   public String getPipeNameWithCreationTime() {
     return pipeNameWithCreationTime;
   }

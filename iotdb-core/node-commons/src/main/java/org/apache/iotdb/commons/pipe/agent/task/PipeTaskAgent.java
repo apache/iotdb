@@ -1056,4 +1056,29 @@ public abstract class PipeTaskAgent {
         : ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
             .getCommitterKey(regionId, restartTime);
   }
+
+  public long getMemory(final String pipeName) {
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    return pipeMeta == null
+        ? 0
+        : ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).getMemoryUsage();
+  }
+
+  public void addMemory(final String pipeName, final long size) {
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    if (Objects.nonNull(pipeMeta)) {
+      ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).addMemoryUsage(size);
+    }
+  }
+
+  public void releaseMemory(final String pipeName, final long size) {
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    if (Objects.nonNull(pipeMeta)) {
+      ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).decreaseMemoryUsage(size);
+    }
+  }
+
+  public int getPipeCount() {
+    return pipeMetaKeeper.getPipeMetaCount();
+  }
 }
