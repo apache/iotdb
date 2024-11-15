@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTabletQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
@@ -34,21 +33,24 @@ import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch {
+public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
+    implements Iterator<List<Tablet>> {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubscriptionPipeTabletEventBatch.class);
 
-  private volatile List<Tablet> tablets = new LinkedList<>();
   private long firstEventProcessingTime = Long.MIN_VALUE;
-  private long totalBufferSize = 0;
+  private long totalBufferSize = 0; // TODO: more precise computation
+
+  private volatile Iterator<EnrichedEvent> enrichedEventsIterator;
+  private volatile Iterator<TabletInsertionEvent> currentTabletInsertionEventsIterator;
+  ;
 
   public SubscriptionPipeTabletEventBatch(
       final int regionId,
@@ -56,29 +58,6 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
       final int maxDelayInMs,
       final long maxBatchSizeInBytes) {
     super(regionId, prefetchingQueue, maxDelayInMs, maxBatchSizeInBytes);
-  }
-
-  public LinkedList<Tablet> moveTablets() {
-    if (Objects.isNull(tablets)) {
-      tablets = new ArrayList<>();
-      for (final EnrichedEvent enrichedEvent : enrichedEvents) {
-        if (enrichedEvent instanceof TsFileInsertionEvent) {
-          onTsFileInsertionEvent((TsFileInsertionEvent) enrichedEvent);
-        } else if (enrichedEvent instanceof TabletInsertionEvent) {
-          onTabletInsertionEvent((TabletInsertionEvent) enrichedEvent);
-        } else {
-          LOGGER.warn(
-              "SubscriptionPipeTabletEventBatch {} ignore EnrichedEvent {} when moving.",
-              this,
-              enrichedEvent);
-        }
-      }
-    }
-    final LinkedList<Tablet> result = new LinkedList<>(tablets);
-    firstEventProcessingTime = Long.MIN_VALUE;
-    totalBufferSize = 0;
-    tablets = null; // reset to null for gc & subsequent move
-    return result;
   }
 
   /////////////////////////////// ack & clean ///////////////////////////////
@@ -97,16 +76,16 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
       enrichedEvent.clearReferenceCount(this.getClass().getName());
     }
     enrichedEvents.clear();
-    if (Objects.nonNull(tablets)) {
-      tablets.clear();
-    }
+
+    enrichedEventsIterator = null;
+    currentTabletInsertionEventsIterator = null;
   }
 
   /////////////////////////////// utility ///////////////////////////////
 
   @Override
   protected void onTabletInsertionEvent(final TabletInsertionEvent event) {
-    constructBatch(event);
+    // just update processing time
     if (firstEventProcessingTime == Long.MIN_VALUE) {
       firstEventProcessingTime = System.currentTimeMillis();
     }
@@ -114,18 +93,20 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
 
   @Override
   protected void onTsFileInsertionEvent(final TsFileInsertionEvent event) {
-    for (final TabletInsertionEvent tabletInsertionEvent :
-        ((PipeTsFileInsertionEvent) event)
-            .toTabletInsertionEvents(SubscriptionAgent.receiver().remainingMs())) {
-      onTabletInsertionEvent(tabletInsertionEvent);
+    // just update processing time
+    if (firstEventProcessingTime == Long.MIN_VALUE) {
+      firstEventProcessingTime = System.currentTimeMillis();
+    }
+
+    // avoid too large tsfile
+    if (((PipeTsFileInsertionEvent) event).getTsFile().length() > maxBatchSizeInBytes) {
+      totalBufferSize = maxBatchSizeInBytes;
     }
   }
 
   @Override
   protected List<SubscriptionEvent> generateSubscriptionEvents() {
-    if (tablets.isEmpty()) {
-      return null;
-    }
+    enrichedEventsIterator = enrichedEvents.iterator();
 
     return Collections.singletonList(
         new SubscriptionEvent(this, prefetchingQueue.generateSubscriptionCommitContext()));
@@ -135,19 +116,6 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   protected boolean shouldEmit() {
     return totalBufferSize >= maxBatchSizeInBytes
         || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
-  }
-
-  private void constructBatch(final TabletInsertionEvent event) {
-    final List<Tablet> currentTablets = convertToTablets(event);
-    if (currentTablets.isEmpty()) {
-      return;
-    }
-    tablets.addAll(currentTablets);
-    totalBufferSize +=
-        currentTablets.stream()
-            .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
-            .reduce(Long::sum)
-            .orElse(0L);
   }
 
   private List<Tablet> convertToTablets(final TabletInsertionEvent tabletInsertionEvent) {
@@ -165,6 +133,72 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     return Collections.emptyList();
   }
 
+  /////////////////////////////// iterator ///////////////////////////////
+
+  @Override
+  public boolean hasNext() {
+    if (Objects.nonNull(currentTabletInsertionEventsIterator)) {
+      if (currentTabletInsertionEventsIterator.hasNext()) {
+        return true;
+      } else {
+        // reset
+        currentTabletInsertionEventsIterator = null;
+        return false;
+      }
+    }
+
+    if (Objects.isNull(enrichedEventsIterator)) {
+      return false;
+    }
+
+    if (enrichedEventsIterator.hasNext()) {
+      return true;
+    } else {
+      // reset
+      enrichedEventsIterator = null;
+      return false;
+    }
+  }
+
+  @Override
+  public List<Tablet> next() {
+    if (Objects.nonNull(currentTabletInsertionEventsIterator)) {
+      if (currentTabletInsertionEventsIterator.hasNext()) {
+        return convertToTablets(currentTabletInsertionEventsIterator.next());
+      } else {
+        currentTabletInsertionEventsIterator = null;
+      }
+    }
+
+    if (Objects.isNull(enrichedEventsIterator)) {
+      return null;
+    }
+
+    if (!enrichedEventsIterator.hasNext()) {
+      return null;
+    }
+
+    final EnrichedEvent enrichedEvent = enrichedEventsIterator.next();
+    if (enrichedEvent instanceof TsFileInsertionEvent) {
+      if (Objects.nonNull(currentTabletInsertionEventsIterator)) {
+        LOGGER.warn("broken invariant: override currentTabletInsertionEventsIterator");
+      }
+      currentTabletInsertionEventsIterator =
+          ((PipeTsFileInsertionEvent) enrichedEvent)
+              .toTabletInsertionEvents(SubscriptionAgent.receiver().remainingMs())
+              .iterator();
+      return next();
+    } else if (enrichedEvent instanceof TabletInsertionEvent) {
+      return convertToTablets((TabletInsertionEvent) enrichedEvent);
+    } else {
+      LOGGER.warn(
+          "SubscriptionPipeTabletEventBatch {} ignore EnrichedEvent {} when iterating (broken invariant).",
+          this,
+          enrichedEvent);
+      return null;
+    }
+  }
+
   /////////////////////////////// stringify ///////////////////////////////
 
   @Override
@@ -175,9 +209,6 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   @Override
   protected Map<String, String> coreReportMessage() {
     final Map<String, String> coreReportMessage = super.coreReportMessage();
-    coreReportMessage.put(
-        "size of tablets",
-        (Objects.nonNull(tablets) ? String.valueOf(tablets.size()) : "<unknown>"));
     coreReportMessage.put("firstEventProcessingTime", String.valueOf(firstEventProcessingTime));
     coreReportMessage.put("totalBufferSize", String.valueOf(totalBufferSize));
     return coreReportMessage;
