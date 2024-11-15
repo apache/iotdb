@@ -247,7 +247,9 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private boolean mayInsertNodeMemoryReachDangerousThreshold() {
-    return 3 * PipeDataNodeAgent.task().getMemory(pipeName)
+    return 3
+            * PipeDataNodeAgent.task().getMemory(pipeName)
+            * PipeDataNodeAgent.task().getPipeCount()
         >= (PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes()
                 - PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes())
             * 2;
