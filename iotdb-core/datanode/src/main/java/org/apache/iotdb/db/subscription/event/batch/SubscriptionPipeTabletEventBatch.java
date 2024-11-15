@@ -23,12 +23,16 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTabletQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
+import org.apache.iotdb.metrics.core.utils.IoTDBMovingAverage;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
+import com.codahale.metrics.Clock;
+import com.codahale.metrics.Meter;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,11 +50,13 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
       LoggerFactory.getLogger(SubscriptionPipeTabletEventBatch.class);
 
   private long firstEventProcessingTime = Long.MIN_VALUE;
-  private long totalBufferSize = 0; // TODO: more precise computation
+  private long totalBufferSize = 0;
 
   private volatile Iterator<EnrichedEvent> enrichedEventsIterator;
   private volatile Iterator<TabletInsertionEvent> currentTabletInsertionEventsIterator;
-  ;
+
+  private final Meter insertNodeTabletInsertionEventSizeEstimator;
+  private final Meter rawTabletInsertionEventSizeEstimator;
 
   public SubscriptionPipeTabletEventBatch(
       final int regionId,
@@ -58,6 +64,11 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
       final int maxDelayInMs,
       final long maxBatchSizeInBytes) {
     super(regionId, prefetchingQueue, maxDelayInMs, maxBatchSizeInBytes);
+
+    this.insertNodeTabletInsertionEventSizeEstimator =
+        new Meter(new IoTDBMovingAverage(), Clock.defaultClock());
+    this.rawTabletInsertionEventSizeEstimator =
+        new Meter(new IoTDBMovingAverage(), Clock.defaultClock());
   }
 
   /////////////////////////////// ack & clean ///////////////////////////////
@@ -89,6 +100,12 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     if (firstEventProcessingTime == Long.MIN_VALUE) {
       firstEventProcessingTime = System.currentTimeMillis();
     }
+
+    if (event instanceof PipeInsertNodeTabletInsertionEvent) {
+      totalBufferSize += getEstimatedInsertNodeTabletInsertionEventSize();
+    } else if (event instanceof PipeRawTabletInsertionEvent) {
+      totalBufferSize += getEstimatedRawTabletInsertionEventSize();
+    }
   }
 
   @Override
@@ -98,10 +115,8 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
       firstEventProcessingTime = System.currentTimeMillis();
     }
 
-    // avoid too large tsfile
-    if (((PipeTsFileInsertionEvent) event).getTsFile().length() > maxBatchSizeInBytes) {
-      totalBufferSize = maxBatchSizeInBytes;
-    }
+    // TODO: more precise computation
+    totalBufferSize += ((PipeTsFileInsertionEvent) event).getTsFile().length();
   }
 
   @Override
@@ -120,10 +135,19 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
 
   private List<Tablet> convertToTablets(final TabletInsertionEvent tabletInsertionEvent) {
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-      return ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).convertToTablets();
+      final List<Tablet> tablets =
+          ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).convertToTablets();
+      updateEstimatedInsertNodeTabletInsertionEventSize(
+          tablets.stream()
+              .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
+              .reduce(Long::sum)
+              .orElse(0L));
+      return tablets;
     } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-      return Collections.singletonList(
-          ((PipeRawTabletInsertionEvent) tabletInsertionEvent).convertToTablet());
+      final Tablet tablet = ((PipeRawTabletInsertionEvent) tabletInsertionEvent).convertToTablet();
+      updateEstimatedRawTabletInsertionEventSize(
+          PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet));
+      return Collections.singletonList(tablet);
     }
 
     LOGGER.warn(
@@ -131,6 +155,24 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
         this,
         tabletInsertionEvent);
     return Collections.emptyList();
+  }
+
+  /////////////////////////////// estimator ///////////////////////////////
+
+  private long getEstimatedInsertNodeTabletInsertionEventSize() {
+    return Math.max(100L, (long) insertNodeTabletInsertionEventSizeEstimator.getOneMinuteRate());
+  }
+
+  private void updateEstimatedInsertNodeTabletInsertionEventSize(final long size) {
+    insertNodeTabletInsertionEventSizeEstimator.mark(size);
+  }
+
+  private long getEstimatedRawTabletInsertionEventSize() {
+    return Math.max(100L, (long) rawTabletInsertionEventSizeEstimator.getOneMinuteRate());
+  }
+
+  private void updateEstimatedRawTabletInsertionEventSize(final long size) {
+    rawTabletInsertionEventSizeEstimator.mark(size);
   }
 
   /////////////////////////////// iterator ///////////////////////////////

@@ -131,7 +131,7 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
               .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
               .reduce(Long::sum)
               .orElse(0L);
-      tabletsSize += currentTablets.size();
+      tabletsSize += tablets.size();
 
       if (bufferSize > READ_TABLET_BUFFER_SIZE) {
         // TODO: split tablets
