@@ -502,7 +502,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + (Objects.nonNull(devicePath) ? PartialPath.estimateSize(devicePath) : 0)
-        + progressIndex.ramBytesUsed();
+        + (Objects.nonNull(progressIndex) ? progressIndex.ramBytesUsed() : 0);
   }
 
   private static class PipeInsertNodeTabletInsertionEventResource extends PipeEventResource {
