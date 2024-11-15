@@ -43,7 +43,7 @@ public class IoTDBRegionMigrateCoordinatorCrashWhenRemoveRemotePeerIT
     if (isIoTV1) {
       success(
           IoTConsensusRemovePeerCoordinatorKillPoints
-              .AFTER_NOTIFY_PEERS_TO_REMOVE_SYNC_LOG_CHANNEL);
+              .AFTER_NOTIFY_PEERS_TO_REMOVE_REPLICATE_CHANNEL);
     }
   }
 
