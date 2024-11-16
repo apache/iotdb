@@ -135,7 +135,7 @@ public class TsFileResource implements PersistentResource {
   private volatile ModificationFile exclusiveModFile;
 
   private volatile ModificationFile sharedModFile;
-  private long shardModFileOffset;
+  private long sharedModFileOffset;
 
   public static final boolean useSharedModFile = false;
 
@@ -250,8 +250,8 @@ public class TsFileResource implements PersistentResource {
     this.tierLevel = originTsFileResource.tierLevel;
   }
 
-  public synchronized void serialize() throws IOException {
-    FileOutputStream fileOutputStream = new FileOutputStream(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
+  public synchronized void serialize(String targetFilePath) throws IOException {
+    FileOutputStream fileOutputStream = new FileOutputStream(targetFilePath + TEMP_SUFFIX);
     BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream);
     try {
       serializeTo(outputStream);
@@ -260,10 +260,14 @@ public class TsFileResource implements PersistentResource {
       fileOutputStream.getFD().sync();
       outputStream.close();
     }
-    File src = fsFactory.getFile(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
-    File dest = fsFactory.getFile(file + RESOURCE_SUFFIX);
+    File src = fsFactory.getFile(targetFilePath + TEMP_SUFFIX);
+    File dest = fsFactory.getFile(targetFilePath);
     fsFactory.deleteIfExists(dest);
     fsFactory.moveFile(src, dest);
+  }
+
+  public synchronized void serialize() throws IOException {
+    serialize(file + RESOURCE_SUFFIX);
   }
 
   private void serializeTo(BufferedOutputStream outputStream) throws IOException {
@@ -276,7 +280,7 @@ public class TsFileResource implements PersistentResource {
     if (sharedModFile != null && sharedModFile.exists()) {
       String modFilePath = sharedModFile.getFile().getAbsolutePath();
       ReadWriteIOUtils.write(modFilePath, outputStream);
-      ReadWriteIOUtils.write(shardModFileOffset, outputStream);
+      ReadWriteIOUtils.write(sharedModFileOffset, outputStream);
     } else {
       // make the first "inputStream.available() > 0" in deserialize() happy.
       //
@@ -310,7 +314,7 @@ public class TsFileResource implements PersistentResource {
       if (inputStream.available() > 0) {
         String modFilePath = ReadWriteIOUtils.readString(inputStream);
         if (modFilePath != null && !modFilePath.isEmpty()) {
-          shardModFileOffset = ReadWriteIOUtils.readLong(inputStream);
+          sharedModFileOffset = ReadWriteIOUtils.readLong(inputStream);
           if (sharedModFilePathFuture != null) {
             sharedModFilePathFuture.complete(modFilePath);
           } else {
@@ -425,7 +429,7 @@ public class TsFileResource implements PersistentResource {
 
     sharedModFile = modFile;
     try {
-      shardModFileOffset = sharedModFile.getFileLength();
+      sharedModFileOffset = sharedModFile.getFileLength();
       if (serializeNow) {
         serializedSharedModFile();
       }
@@ -1407,7 +1411,7 @@ public class TsFileResource implements PersistentResource {
       Iterator<ModEntry> sharedIterator = null;
       try {
         sharedIterator =
-            getSharedModFile() != null ? sharedModFile.getModIterator(shardModFileOffset) : null;
+            getSharedModFile() != null ? sharedModFile.getModIterator(sharedModFileOffset) : null;
       } catch (IOException e) {
         LOGGER.warn("Failed to read mods from {} for {}", exclusiveModFile, this, e);
       }

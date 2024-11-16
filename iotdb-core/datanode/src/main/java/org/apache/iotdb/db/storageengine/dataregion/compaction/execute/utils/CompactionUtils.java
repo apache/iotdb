@@ -21,6 +21,8 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -28,8 +30,12 @@ import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.FullExactMatch;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -39,6 +45,7 @@ import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -200,7 +207,7 @@ public class CompactionUtils {
             resource.getTsFile().length(),
             resource.isSeq(),
             resource.getTsFile().getName());
-    if (resource.anyModFileExists()) {
+    if (resource.exclusiveModFileExists()) {
       FileMetrics.getInstance().increaseModFileNum(1);
       FileMetrics.getInstance().increaseModFileSize(resource.getTotalModSizeInByte());
     }
@@ -373,5 +380,19 @@ public class CompactionUtils {
       resourceFileSize -= readSize;
     }
     return resource.buildDeviceTimeIndex();
+  }
+
+  public static ModEntry convertTtlToDeletion(IDeviceID deviceID, long timeLowerBound)
+      throws IllegalPathException {
+    if (!deviceID.isTableModel()) {
+      return new TreeDeletionEntry(
+          new MeasurementPath(deviceID, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD),
+          Long.MIN_VALUE,
+          timeLowerBound);
+    } else {
+      return new TableDeletionEntry(
+          new DeletionPredicate(deviceID.getTableName(), new FullExactMatch(deviceID)),
+          new TimeRange(Long.MIN_VALUE, timeLowerBound));
+    }
   }
 }

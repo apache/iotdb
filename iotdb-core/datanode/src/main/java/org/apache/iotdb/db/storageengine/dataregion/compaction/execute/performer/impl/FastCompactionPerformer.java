@@ -21,7 +21,6 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performe
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -41,7 +40,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.wri
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.FastInnerCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
-import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
@@ -143,17 +141,15 @@ public class FastCompactionPerformer
             x -> x.definitelyNotContains(device) || !x.isDeviceAlive(device, ttl));
         sortedSourceFiles.sort(Comparator.comparingLong(x -> x.getStartTime(device)));
         if (ttl != Long.MAX_VALUE) {
-          TreeDeletionEntry ttlDeletion =
-              new TreeDeletionEntry(
-                  new MeasurementPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD),
-                  Long.MIN_VALUE,
-                  deviceIterator.getTimeLowerBoundForCurrentDevice());
+          ModEntry ttlDeletion =
+              CompactionUtils.convertTtlToDeletion(
+                  device, deviceIterator.getTimeLowerBoundForCurrentDevice());
           for (TsFileResource sourceFile : sortedSourceFiles) {
             modificationCache
                 .computeIfAbsent(
                     sourceFile.getTsFile().getName(),
                     k -> PatternTreeMapFactory.getModsPatternTreeMap())
-                .append(ttlDeletion.getPathPattern(), ttlDeletion);
+                .append(ttlDeletion.keyOfPatternTree(), ttlDeletion);
           }
         }
 
