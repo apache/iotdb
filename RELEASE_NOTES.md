@@ -23,7 +23,6 @@
 
 ## Features & Improvements
 
-- AINode: AINode is provided in the open source version.
 - Storage Engine: Added new data types String, Blob, Date, and Timestamp.
 - Storage Engine: Multi-level storage has added a rate-limiting mechanism.
 - Storage Engine: New merge target file splitting feature, with additional configuration file parameters, and improved memory control performance of the merge module.
@@ -43,6 +42,7 @@
 - Scripts and Tools: The import-tsfile script is expanded to support running the script on a different server from the IoTDB server.
 - Scripts and Tools: New metadata import and export scripts added.
 - Scripts and Tools: New support for Kubernetes Helm added.
+- AINode: AINode module added.
   ...
 
 ## Bugs
