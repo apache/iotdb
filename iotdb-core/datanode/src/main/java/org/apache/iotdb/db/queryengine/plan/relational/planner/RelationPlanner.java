@@ -621,7 +621,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
 
   @Override
   protected RelationPlan visitSubqueryExpression(SubqueryExpression node, Void context) {
-    throw new IllegalStateException("SubqueryExpression is not supported in current version.");
+    return process(node.getQuery(), context);
   }
 
   @Override

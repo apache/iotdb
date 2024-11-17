@@ -642,12 +642,11 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
 
       if (node.getJoinType() == INNER && newJoinFilter.isPresent() && equiJoinClauses.isEmpty()) {
-        throw new IllegalStateException("INNER JOIN only support equiJoinClauses");
         // if we do not have any equi conjunct we do not pushdown non-equality condition into
         // inner join, so we plan execution as nested-loops-join followed by filter instead
         // hash join.
-        // postJoinPredicate = combineConjuncts(postJoinPredicate, newJoinFilter.get());
-        // newJoinFilter = Optional.empty();
+        postJoinPredicate = combineConjuncts(postJoinPredicate, newJoinFilter.get());
+        newJoinFilter = Optional.empty();
       }
 
       boolean filtersEquivalent =
@@ -680,31 +679,34 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                 node.isSpillable());
       }
 
-      JoinNode.EquiJoinClause joinCriteria = ((JoinNode) output).getCriteria().get(0);
-      OrderingScheme leftOrderingScheme =
-          new OrderingScheme(
-              Collections.singletonList(joinCriteria.getLeft()),
-              Collections.singletonMap(joinCriteria.getLeft(), ASC_NULLS_LAST));
-      OrderingScheme rightOrderingScheme =
-          new OrderingScheme(
-              Collections.singletonList(joinCriteria.getRight()),
-              Collections.singletonMap(joinCriteria.getRight(), ASC_NULLS_LAST));
-      SortNode leftSortNode =
-          new SortNode(
-              queryId.genPlanNodeId(),
-              ((JoinNode) output).getLeftChild(),
-              leftOrderingScheme,
-              false,
-              false);
-      SortNode rightSortNode =
-          new SortNode(
-              queryId.genPlanNodeId(),
-              ((JoinNode) output).getRightChild(),
-              rightOrderingScheme,
-              false,
-              false);
-      ((JoinNode) output).setLeftChild(leftSortNode);
-      ((JoinNode) output).setRightChild(rightSortNode);
+      // sort the left and right child of join node if it is not a cross join
+      if (!((JoinNode) output).isCrossJoin()) {
+        JoinNode.EquiJoinClause joinCriteria = ((JoinNode) output).getCriteria().get(0);
+        OrderingScheme leftOrderingScheme =
+            new OrderingScheme(
+                Collections.singletonList(joinCriteria.getLeft()),
+                Collections.singletonMap(joinCriteria.getLeft(), ASC_NULLS_LAST));
+        OrderingScheme rightOrderingScheme =
+            new OrderingScheme(
+                Collections.singletonList(joinCriteria.getRight()),
+                Collections.singletonMap(joinCriteria.getRight(), ASC_NULLS_LAST));
+        SortNode leftSortNode =
+            new SortNode(
+                queryId.genPlanNodeId(),
+                ((JoinNode) output).getLeftChild(),
+                leftOrderingScheme,
+                false,
+                false);
+        SortNode rightSortNode =
+            new SortNode(
+                queryId.genPlanNodeId(),
+                ((JoinNode) output).getRightChild(),
+                rightOrderingScheme,
+                false,
+                false);
+        ((JoinNode) output).setLeftChild(leftSortNode);
+        ((JoinNode) output).setRightChild(rightSortNode);
+      }
 
       if (!postJoinPredicate.equals(TRUE_LITERAL)) {
         output =

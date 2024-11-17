@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpress
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataTypeParameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
@@ -49,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuantifiedCompari
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TypeParameter;
@@ -523,6 +525,40 @@ public final class ExpressionTreeRewriter<C> {
         return new InListExpression(values);
       }
 
+      return node;
+    }
+
+    @Override
+    protected Expression visitExists(ExistsPredicate node, Context<C> context) {
+      if (!context.isDefaultRewrite()) {
+        Expression result =
+            rewriter.rewriteExists(node, context.get(), ExpressionTreeRewriter.this);
+        if (result != null) {
+          return result;
+        }
+      }
+
+      Expression subquery = node.getSubquery();
+      subquery = rewrite(subquery, context.get());
+
+      if (subquery != node.getSubquery()) {
+        return new ExistsPredicate(subquery);
+      }
+
+      return node;
+    }
+
+    @Override
+    public Expression visitSubqueryExpression(SubqueryExpression node, Context<C> context) {
+      if (!context.isDefaultRewrite()) {
+        Expression result =
+            rewriter.rewriteSubqueryExpression(node, context.get(), ExpressionTreeRewriter.this);
+        if (result != null) {
+          return result;
+        }
+      }
+
+      // No default rewrite for SubqueryExpression since we do not want to traverse subqueries
       return node;
     }
 

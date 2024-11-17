@@ -60,6 +60,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.gapfill.GapFil
 import org.apache.iotdb.db.queryengine.execution.operator.process.gapfill.GapFillWGroupWoMoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.gapfill.GapFillWoGroupWMoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.gapfill.GapFillWoGroupWoMoOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.join.SimpleNestedLoopCrossJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.CountMergeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaCountOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaQueryScanOperator;
@@ -1176,21 +1177,31 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     Operator leftChild = node.getLeftChild().accept(this, context);
     Operator rightChild = node.getRightChild().accept(this, context);
 
-    int leftTimeColumnPosition =
-        node.getLeftChild().getOutputSymbols().indexOf(node.getCriteria().get(0).getLeft());
     int[] leftOutputSymbolIdx = new int[node.getLeftOutputSymbols().size()];
     for (int i = 0; i < leftOutputSymbolIdx.length; i++) {
       leftOutputSymbolIdx[i] =
           node.getLeftChild().getOutputSymbols().indexOf(node.getLeftOutputSymbols().get(i));
     }
-    int rightTimeColumnPosition =
-        node.getRightChild().getOutputSymbols().indexOf(node.getCriteria().get(0).getRight());
     int[] rightOutputSymbolIdx = new int[node.getRightOutputSymbols().size()];
     for (int i = 0; i < rightOutputSymbolIdx.length; i++) {
       rightOutputSymbolIdx[i] =
           node.getRightChild().getOutputSymbols().indexOf(node.getRightOutputSymbols().get(i));
     }
+    // cross join does not need time column
+    if (node.isCrossJoin()) {
+      return new SimpleNestedLoopCrossJoinOperator(
+          operatorContext,
+          leftChild,
+          rightChild,
+          leftOutputSymbolIdx,
+          rightOutputSymbolIdx,
+          dataTypes);
+    }
 
+    int leftTimeColumnPosition =
+        node.getLeftChild().getOutputSymbols().indexOf(node.getCriteria().get(0).getLeft());
+    int rightTimeColumnPosition =
+        node.getRightChild().getOutputSymbols().indexOf(node.getCriteria().get(0).getRight());
     if (requireNonNull(node.getJoinType()) == JoinNode.JoinType.INNER) {
       return new TableInnerJoinOperator(
           operatorContext,

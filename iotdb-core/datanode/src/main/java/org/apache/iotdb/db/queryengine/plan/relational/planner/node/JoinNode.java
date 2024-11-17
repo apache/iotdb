@@ -292,6 +292,10 @@ public class JoinNode extends TwoChildProcessNode {
     return spillable;
   }
 
+  public boolean isCrossJoin() {
+    return criteria.isEmpty() && !filter.isPresent() && joinType == JoinType.INNER;
+  }
+
   @Override
   public String toString() {
     return "JoinNode-" + this.getPlanNodeId();
