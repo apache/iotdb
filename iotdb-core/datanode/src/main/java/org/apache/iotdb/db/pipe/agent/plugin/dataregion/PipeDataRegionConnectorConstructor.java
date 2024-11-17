@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.donothing.Do
 import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeConnectorConstructor;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.DataNodePipePluginMetaKeeper;
 import org.apache.iotdb.db.pipe.connector.protocol.airgap.IoTDBDataRegionAirGapConnector;
+import org.apache.iotdb.db.pipe.connector.protocol.exportfile.ExportTsFileConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.legacy.IoTDBLegacyPipeConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.opcua.OpcUaConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.PipeConsensusAsyncConnector;
@@ -69,6 +70,8 @@ class PipeDataRegionConnectorConstructor extends PipeConnectorConstructor {
         BuiltinPipePlugin.DO_NOTHING_CONNECTOR.getPipePluginName(), DoNothingConnector::new);
     pluginConstructors.put(
         BuiltinPipePlugin.WRITE_BACK_CONNECTOR.getPipePluginName(), WriteBackConnector::new);
+    pluginConstructors.put(
+        BuiltinPipePlugin.EXPORT_TSFILE_CONNECTOR.getPipePluginName(), ExportTsFileConnector::new);
 
     pluginConstructors.put(
         BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName(),
@@ -100,5 +103,7 @@ class PipeDataRegionConnectorConstructor extends PipeConnectorConstructor {
     pluginConstructors.put(
         BuiltinPipePlugin.PIPE_CONSENSUS_ASYNC_SINK.getPipePluginName(),
         PipeConsensusAsyncConnector::new);
+    pluginConstructors.put(
+        BuiltinPipePlugin.EXPORT_TSFILE_SINK.getPipePluginName(), ExportTsFileConnector::new);
   }
 }
