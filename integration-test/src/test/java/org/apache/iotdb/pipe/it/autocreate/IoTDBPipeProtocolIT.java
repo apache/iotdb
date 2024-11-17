@@ -376,7 +376,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
 
     final StringBuilder nodeUrlsBuilder = new StringBuilder();
     for (final DataNodeWrapper wrapper : receiverEnv.getDataNodeWrapperList()) {
-        nodeUrlsBuilder.append(wrapper.getIpAndPortString()).append(",");
+      nodeUrlsBuilder.append(wrapper.getIpAndPortString()).append(",");
     }
 
     try (final SyncConfigNodeIServiceClient client =
