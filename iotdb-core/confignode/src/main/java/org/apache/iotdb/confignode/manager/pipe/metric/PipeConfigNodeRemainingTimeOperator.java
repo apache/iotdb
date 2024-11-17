@@ -43,6 +43,10 @@ class PipeConfigNodeRemainingTimeOperator extends PipeRemainingOperator {
 
   private double lastConfigRegionCommitSmoothingValue = Long.MAX_VALUE;
 
+  PipeConfigNodeRemainingTimeOperator(String pipeName, long creationTime) {
+    super(pipeName, creationTime);
+  }
+
   //////////////////////////// Remaining time calculation ////////////////////////////
 
   /**
@@ -91,7 +95,6 @@ class PipeConfigNodeRemainingTimeOperator extends PipeRemainingOperator {
   //////////////////////////// Register & deregister (pipe integration) ////////////////////////////
 
   void register(final IoTDBConfigRegionExtractor extractor) {
-    setNameAndCreationTime(extractor.getPipeName(), extractor.getCreationTime());
     configRegionExtractors.add(extractor);
   }
 

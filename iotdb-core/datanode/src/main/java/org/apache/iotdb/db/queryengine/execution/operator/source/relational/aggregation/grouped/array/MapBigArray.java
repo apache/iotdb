@@ -80,4 +80,13 @@ public final class MapBigArray {
       sizeOfMaps += sizeOfObject(value);
     }
   }
+
+  public void reset() {
+    array.forEach(
+        v -> {
+          if (v != null) {
+            v.clear();
+          }
+        });
+  }
 }

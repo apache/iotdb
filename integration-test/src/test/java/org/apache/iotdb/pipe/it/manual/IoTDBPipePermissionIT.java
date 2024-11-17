@@ -119,6 +119,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualManualIT {
         fail();
         return;
       }
+      awaitUntilFlush(senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();

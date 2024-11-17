@@ -34,8 +34,10 @@ import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -631,6 +633,14 @@ public abstract class PipeTaskAgent {
   protected boolean checkBeforeCreatePipe(
       final PipeMeta existedPipeMeta, final String pipeName, final long creationTime)
       throws IllegalStateException {
+    // Verify that Pipe is disabled if TSFile encryption is enabled
+    if (TSFileDescriptor.getInstance().getConfig().getEncryptFlag()) {
+      throw new PipeException(
+          String.format(
+              "Failed to create Pipe %s because TSFile is configured with encryption, which prohibits the use of Pipe",
+              pipeName));
+    }
+
     if (existedPipeMeta.getStaticMeta().getCreationTime() == creationTime) {
       final PipeStatus status = existedPipeMeta.getRuntimeMeta().getStatus().get();
       switch (status) {

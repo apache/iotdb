@@ -159,6 +159,10 @@ public final class LongBigArray {
     }
   }
 
+  public void reset() {
+    fill(initialValue);
+  }
+
   private void grow(long length) {
     // how many segments are required to get to the length?
     int requiredSegments = segment(length) + 1;

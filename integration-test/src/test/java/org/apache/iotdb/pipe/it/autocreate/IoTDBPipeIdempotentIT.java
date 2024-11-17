@@ -118,7 +118,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
   public void testInternalCreateTimeSeriesIdempotent() throws Exception {
     testIdempotent(
         Collections.emptyList(),
-        "insert into root.ln.wf01.wt01(time, status0) values(now(), false);",
+        "insert into root.ln.wf01.wt01(time, status0) values(now(), false); flush;",
         "create timeSeries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
         "count timeSeries",
         "count(timeseries),",

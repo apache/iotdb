@@ -88,7 +88,9 @@ public abstract class PipePhantomReferenceManager {
     } else {
       final long currentPhantomReferenceCount = getPhantomReferenceCount();
       if (currentPhantomReferenceCount != lastPhantomReferenceCount) {
-        LOGGER.info("Remaining pipe phantom reference count: {}", currentPhantomReferenceCount);
+        if (lastPhantomReferenceCount != -1) {
+          LOGGER.info("Remaining pipe phantom reference count: {}", currentPhantomReferenceCount);
+        }
         lastPhantomReferenceCount = currentPhantomReferenceCount;
       }
     }

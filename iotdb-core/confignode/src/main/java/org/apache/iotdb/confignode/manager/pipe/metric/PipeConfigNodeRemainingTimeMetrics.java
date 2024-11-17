@@ -103,7 +103,11 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
     // The metric is global thus the regionId is omitted
     final String pipeID = extractor.getPipeName() + "_" + extractor.getCreationTime();
     remainingTimeOperatorMap
-        .computeIfAbsent(pipeID, k -> new PipeConfigNodeRemainingTimeOperator())
+        .computeIfAbsent(
+            pipeID,
+            k ->
+                new PipeConfigNodeRemainingTimeOperator(
+                    extractor.getPipeName(), extractor.getCreationTime()))
         .register(extractor);
     if (Objects.nonNull(metricService)) {
       createMetrics(pipeID);
@@ -157,7 +161,8 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
   public double getRemainingTime(final String pipeName, final long creationTime) {
     return remainingTimeOperatorMap
         .computeIfAbsent(
-            pipeName + "_" + creationTime, k -> new PipeConfigNodeRemainingTimeOperator())
+            pipeName + "_" + creationTime,
+            k -> new PipeConfigNodeRemainingTimeOperator(pipeName, creationTime))
         .getRemainingTime();
   }
 

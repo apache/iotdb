@@ -574,17 +574,20 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
               .collect(Collectors.toList());
       resourceList.addAll(unsequenceTsFileResources);
 
-      resourceList.forEach(
+      resourceList.removeIf(
           resource -> {
             // Pin the resource, in case the file is removed by compaction or anything.
             // Will unpin it after the PipeTsFileInsertionEvent is created and pinned.
             try {
               PipeDataNodeResourceManager.tsfile()
                   .pinTsFileResource((TsFileResource) resource, shouldTransferModFile);
+              return false;
             } catch (final IOException e) {
               LOGGER.warn(
                   "Pipe: failed to pin TsFileResource {}",
-                  ((TsFileResource) resource).getTsFilePath());
+                  ((TsFileResource) resource).getTsFilePath(),
+                  e);
+              return true;
             }
           });
 
