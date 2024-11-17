@@ -6,14 +6,13 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Collections;
 
 import org.junit.Test;
 
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class SubColumnCostTest {
+public class SubcolumnCostTest {
     public static int getBitWidth(int num) {
         if (num == 0)
             return 1;
