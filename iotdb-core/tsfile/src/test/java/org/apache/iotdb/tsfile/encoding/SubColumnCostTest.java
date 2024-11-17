@@ -302,17 +302,17 @@ public class SubColumnCostTest {
         return ts_block_delta;
     }
 
-    public static class SubColumnResult {
-        public int lBest;
-        public int betaBest;
-        public int cost;
+    // public static class SubColumnResult {
+    //     public int lBest;
+    //     public int betaBest;
+    //     public int cost;
 
-        public SubColumnResult(int lBest, int betaBest, int cost) {
-            this.lBest = lBest;
-            this.betaBest = betaBest;
-            this.cost = cost;
-        }
-    }
+    //     public SubColumnResult(int lBest, int betaBest, int cost) {
+    //         this.lBest = lBest;
+    //         this.betaBest = betaBest;
+    //         this.cost = cost;
+    //     }
+    // }
 
     public static int RLECost(int[] numbers) {
         int[] values = new int[numbers.length];
@@ -361,9 +361,9 @@ public class SubColumnCostTest {
 
     }
 
-    public static SubColumnResult subColumn(int[] list, int remaining) {
+    public static int[] subColumn(int[] list, int remaining) {
         if (remaining == 0) {
-            return new SubColumnResult(0, 0, 0);
+            return new int[] { 0, 0, 0, 0 };
         }
 
         int maxValue = Integer.MIN_VALUE;
@@ -383,7 +383,8 @@ public class SubColumnCostTest {
         // System.out.println("m: " + m);
 
         // int cMin = list.size() * m;
-        int cMin = remaining * m;
+        // int cMin = remaining * m;
+        int cMin = Integer.MAX_VALUE;
 
         int lBest = 0;
         int betaBest = 0;
@@ -408,11 +409,6 @@ public class SubColumnCostTest {
             // System.out.println("highCost: " + highCost);
             // }
 
-            // ArrayList<Integer> lowBitsList = new ArrayList<>();
-            // for (int num : list) {
-            // int lowBits = num & ((1 << l) - 1);
-            // lowBitsList.add(lowBits);
-            // }
             int[] lowBitsList = new int[remaining];
             for (int i = 0; i < remaining; i++) {
                 lowBitsList[i] = list[i] & ((1 << l) - 1);
@@ -432,11 +428,6 @@ public class SubColumnCostTest {
                 int parts = (l + beta - 1) / beta;
 
                 for (int p = 0; p < parts; p++) {
-                    // ArrayList<Integer> bpList = new ArrayList<>();
-                    // for (int num : lowBitsList) {
-                    // int bitsPart = (num >> (p * beta)) & ((1 << beta) - 1);
-                    // bpList.add(bitsPart);
-                    // }
                     int[] bpList = new int[remaining];
                     int maxValuePart = 0;
                     for (int i = 0; i < remaining; i++) {
@@ -468,33 +459,60 @@ public class SubColumnCostTest {
             }
         }
 
-        return new SubColumnResult(lBest, betaBest, cMin);
+        return new int[] { m, lBest, betaBest, cMin };
 
     }
 
     public static int SubColumnBlockEncoder(int[] ts_block, int block_i, int block_size, int remaining, int encode_pos,
             byte[] encoded_result) {
 
+        // for (int i = block_i * block_size; i < block_i * block_size + remaining; i++)
+        // {
+        // System.out.print(ts_block[i] + " ");
+        // }
+        // System.out.println();
+        // System.out.println("ts block length: " + remaining);
+
         int[] min_delta = new int[3];
         int[] ts_block_delta = getAbsDeltaTsBlock(ts_block, block_i, block_size, remaining, min_delta);
-        block_size = min_delta[1];
 
-        // ArrayList<Integer> ts_block_delta_list = new ArrayList<>();
-        // for (int i = 0; i < ts_block_delta.length; i++) {
-        // ts_block_delta_list.add(ts_block_delta[i]);
+        for (int i = 0; i < 3; i++) {
+            int2Bytes(min_delta[i], encode_pos, encoded_result);
+            encode_pos += 4;
+        }
+
+        // for (int i = 0; i < 3; i++) {
+        // System.out.print(min_delta[i] + " ");
         // }
+        // System.out.println();
+        // System.out.println("ts block delta length: " + (remaining - 1));
 
-        SubColumnResult result = subColumn(ts_block_delta, remaining - 1);
-        // System.out.println("lBest: " + result.lBest);
-        // System.out.println("betaBest: " + result.betaBest);
-        // System.out.println("cost: " + result.cost);
-        int l = result.lBest;
-        int beta = result.betaBest;
-        int cost = result.cost;
+        // for (int i = 0; i < remaining - 1; i++) {
+        // System.out.print(ts_block_delta[i] + " ");
+        // }
+        // System.out.println();
 
-        encode_pos += cost / 8;
+        int[] result = subColumn(ts_block_delta, remaining - 1);
+        int m = result[0];
+        int l = result[1];
+        int beta = result[2];
+        int cost = result[3];
 
-        // SubColumnEncodeBits(ts_block_delta, l, beta);
+        intByte2Bytes(m, encode_pos, encoded_result);
+        encode_pos += 1;
+
+        intByte2Bytes(l, encode_pos, encoded_result);
+        encode_pos += 1;
+
+        intByte2Bytes(beta, encode_pos, encoded_result);
+        encode_pos += 1;
+
+        int[] highBitsList = new int[remaining - 1];
+        for (int i = 0; i < remaining - 1; i++) {
+            highBitsList[i] = (ts_block_delta[i] >> l) & ((1 << (m - l)) - 1);
+        }
+
+        // encode_pos += cost / 8;
 
         return encode_pos;
 
@@ -550,10 +568,7 @@ public class SubColumnCostTest {
         list[6] = 193;
         list[7] = 203;
 
-        SubColumnResult result = subColumn(list, 8);
-        System.out.println(result.lBest);
-        System.out.println(result.betaBest);
-        System.out.println(result.cost);
+        int[] result = subColumn(list, 8);
     }
 
     public static int getDecimalPrecision(String str) {
@@ -596,7 +611,8 @@ public class SubColumnCostTest {
         String output_parent_dir = parent_dir;
         // String input_parent_dir = parent_dir +
         // "elf/src/test/resources/ElfData_Short";
-        String input_parent_dir = parent_dir + "ElfData_Short/";
+        // String input_parent_dir = parent_dir + "ElfData_Short/";
+        String input_parent_dir = parent_dir + "testdata/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
         ArrayList<String> dataset_name = new ArrayList<>();
@@ -615,7 +631,8 @@ public class SubColumnCostTest {
         // dataset_name.add("EPM-Education");
         input_path_list.add(input_parent_dir);
         dataset_block_size.add(1024);
-        output_path_list.add(output_parent_dir + "/compress_ratio.csv"); // 0
+        // output_path_list.add(output_parent_dir + "/compress_ratio.csv"); // 0
+        output_path_list.add(output_parent_dir + "/test0.csv"); // 0
         // for (String value : dataset_name) {
         // input_path_list.add(input_parent_dir + value);
         // dataset_block_size.add(1024);
@@ -647,6 +664,8 @@ public class SubColumnCostTest {
         //// dataset_block_size.add(1024);
 
         int repeatTime2 = 100;
+        // TODO 做完之后将下面这个去掉
+        repeatTime2 = 1;
         // for (int file_i = 1; file_i < 2; file_i++) {
 
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
