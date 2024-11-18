@@ -270,19 +270,13 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
       list.add(pair);
       return;
     }
-    int lastCompare = Integer.MAX_VALUE;
+
     for (int i = 0; i < list.size(); i++) {
       final int result = comparePairs(list.get(i), pair);
       if (result == 0) {
-        lastCompare = result;
-        continue;
-      }
-
-      if (lastCompare == 0) {
-        list.add(pair);
+        list.add(i, pair);
         return;
       }
-      lastCompare = result;
     }
     list.add(pair);
   }
