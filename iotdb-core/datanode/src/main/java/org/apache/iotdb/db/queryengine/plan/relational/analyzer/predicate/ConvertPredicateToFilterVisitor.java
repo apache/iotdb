@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
@@ -374,8 +375,14 @@ public class ConvertPredicateToFilterVisitor
   public static Long getTimestampValue(Expression expression) {
     if (expression instanceof LongLiteral) {
       return ((LongLiteral) expression).getParsedValue();
-    } else {
+    } else if (expression instanceof DoubleLiteral) {
+      return (long) ((DoubleLiteral) expression).getValue();
+    } else if (expression instanceof GenericLiteral) {
       return Long.valueOf(((GenericLiteral) expression).getValue());
+    } else {
+      throw new SemanticException(
+          "InList Literal for TIMESTAMP can only be LongLiteral, DoubleLiteral and GenericLiteral, current is "
+              + expression.getClass().getSimpleName());
     }
   }
 
