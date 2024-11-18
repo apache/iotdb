@@ -44,7 +44,10 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
   }
 
   @Override
-  public void bufferTreeModelTablet(Tablet tablet, Boolean isAligned) {}
+  public void bufferTreeModelTablet(Tablet tablet, Boolean isAligned) {
+    throw new UnsupportedOperationException(
+        "PipeTableModeTsFileBuilder does not support tree model tablet to build TSFile");
+  }
 
   @Override
   public List<Pair<String, File>> sealTsFiles() throws IOException, WriteProcessException {
@@ -69,19 +72,21 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
   public synchronized void onSuccess() {
     super.onSuccess();
     dataBase2TabletList.clear();
+    tabletDeviceIdTimeIndex.clear();
   }
 
   @Override
   public synchronized void close() {
     super.close();
     dataBase2TabletList.clear();
+    tabletDeviceIdTimeIndex.clear();
   }
 
   private List<Pair<String, File>> writeTableModelTabletsToTsFiles(
       List<Tablet> tabletList,
       List<List<Pair<IDeviceID, Integer>>> deviceIDPairMap,
       String dataBase)
-      throws IOException, WriteProcessException {
+      throws IOException {
 
     final Map<String, List<Pair<Tablet, List<Pair<IDeviceID, Integer>>>>> tableName2Tablets =
         new HashMap<>();
@@ -94,10 +99,16 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
           .add(new Pair<>(tablet, deviceIDPairMap.get(i)));
     }
 
-    // Sort the tablets by start time in each device
     for (final List<Pair<Tablet, List<Pair<IDeviceID, Integer>>>> tablets :
         tableName2Tablets.values()) {
-
+      // Let's make an assumption that as long as the tablets with non-duplicate timestamps are
+      // sorted from small to large, assuming that there are N tablets that overlap with other
+      // tablets, then (n+1) TSFiles must be generated. Therefore, the Builder only needs to ensure
+      // that the tablets with non-overlapping times are sorted in order.
+      // A[            (c,3),(d,2)],        device a [A],[B,C,D],
+      // B[(a,2),(b,1),(c,4),     ],------->device b [D,A],[B,C],-------> [A->B->C],[D]
+      // C[(a,3),(b,2),      (d,4)],        device c [C],[D,A,B],
+      // D[(a,4),      (c,2),(d,1)]         device d [B],[D,A,C],
       tablets.sort(this::comparePairs);
     }
 
@@ -220,7 +231,8 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
         try {
           fileWriter.writeTable(tablet);
         } catch (WriteProcessException e) {
-          throw new PipeException("");
+          throw new PipeException(
+              "The Schema in the Tablet is inconsistent with the registered TableSchema");
         }
       }
     }
