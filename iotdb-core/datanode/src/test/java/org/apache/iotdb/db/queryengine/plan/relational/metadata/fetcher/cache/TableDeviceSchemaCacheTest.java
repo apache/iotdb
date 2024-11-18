@@ -124,8 +124,10 @@ public class TableDeviceSchemaCacheTest {
         columnHeader ->
             testTable2.addColumnSchema(
                 new IdColumnSchema(columnHeader.getColumnName(), columnHeader.getColumnType())));
-    testTable2.addColumnSchema(new AttributeColumnSchema(attributeName1, TSDataType.STRING));
-    testTable2.addColumnSchema(new AttributeColumnSchema(attributeName2, TSDataType.STRING));
+    testTable2.addColumnSchema(
+        new AttributeColumnSchema(attributeName1, TSDataType.STRING, null, attributeId1));
+    testTable2.addColumnSchema(
+        new AttributeColumnSchema(attributeName2, TSDataType.STRING, null, attributeId1));
     testTable2.addColumnSchema(new TimeColumnSchema("time", TSDataType.INT64));
     testTable2.addColumnSchema(
         new MeasurementColumnSchema(
