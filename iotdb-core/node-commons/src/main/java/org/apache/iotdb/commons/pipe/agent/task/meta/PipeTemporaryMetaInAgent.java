@@ -57,13 +57,13 @@ public class PipeTemporaryMetaInAgent implements PipeTemporaryMeta {
     return pipeNameWithCreationTime;
   }
 
-  public CommitterKey getCommitterKey(final int regionId, final int restartTime) {
+  public CommitterKey getCommitterKey(
+      final String pipeName, final long creationTime, final int regionId, final int restartTime) {
     final CommitterKey key = regionId2CommitterKeyMap.get(regionId);
     if (Objects.nonNull(key) && key.getRestartTimes() == restartTime) {
       return key;
     }
-    final CommitterKey newKey =
-        new CommitterKey(key.getPipeName(), key.getCreationTime(), regionId, restartTime);
+    final CommitterKey newKey = new CommitterKey(pipeName, creationTime, regionId, restartTime);
     regionId2CommitterKeyMap.put(regionId, newKey);
     return newKey;
   }

@@ -1054,7 +1054,7 @@ public abstract class PipeTaskAgent {
     return pipeMeta == null
         ? new CommitterKey(pipeName, creationTime, regionId, restartTime)
         : ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
-            .getCommitterKey(regionId, restartTime);
+            .getCommitterKey(pipeName, creationTime, regionId, restartTime);
   }
 
   public long getMemory(final String pipeName) {
