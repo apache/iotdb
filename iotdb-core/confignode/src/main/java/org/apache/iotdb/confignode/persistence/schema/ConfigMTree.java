@@ -961,7 +961,7 @@ public class ConfigMTree {
 
     String name;
     int childNum;
-    Stack<Pair<IConfigMNode, Boolean>> stack = new Stack<>();
+    final Stack<Pair<IConfigMNode, Boolean>> stack = new Stack<>();
     IConfigMNode databaseMNode;
     IConfigMNode internalMNode;
     IConfigMNode tableNode;
@@ -1019,15 +1019,15 @@ public class ConfigMTree {
     this.root = stack.peek().left;
   }
 
-  private IConfigMNode deserializeInternalMNode(InputStream inputStream) throws IOException {
-    IConfigMNode basicMNode =
+  private IConfigMNode deserializeInternalMNode(final InputStream inputStream) throws IOException {
+    final IConfigMNode basicMNode =
         nodeFactory.createInternalMNode(null, ReadWriteIOUtils.readString(inputStream));
     basicMNode.setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
     return basicMNode;
   }
 
-  private IConfigMNode deserializeDatabaseMNode(InputStream inputStream) throws IOException {
-    IDatabaseMNode<IConfigMNode> databaseMNode =
+  private IConfigMNode deserializeDatabaseMNode(final InputStream inputStream) throws IOException {
+    final IDatabaseMNode<IConfigMNode> databaseMNode =
         nodeFactory.createDatabaseMNode(null, ReadWriteIOUtils.readString(inputStream));
     databaseMNode.getAsMNode().setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
     databaseMNode

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinkedQueue;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
@@ -46,6 +47,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
 
   protected IoTDBTreePattern pipePattern;
+  protected boolean shouldExtractTreeEvent;
+  protected boolean shouldExtractTableEvent;
 
   private List<PipeSnapshotEvent> historicalEvents = new LinkedList<>();
   // A fixed size initialized only when the historicalEvents are first
@@ -68,6 +71,9 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
     super.customize(parameters, configuration);
 
     final TreePattern pattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
+    shouldExtractTreeEvent = TreePattern.isTreeModelDataAllowToBeCaptured(parameters);
+    shouldExtractTableEvent = TablePattern.isTableModelDataAllowToBeCaptured(parameters);
+
     if (!(pattern instanceof IoTDBTreePattern
         && (((IoTDBTreePattern) pattern).isPrefix()
             || ((IoTDBTreePattern) pattern).isFullPath()))) {

@@ -34,6 +34,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
@@ -63,6 +64,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.schema.SchemaConstant.INTERNAL_MNODE_TYPE;
@@ -330,6 +332,8 @@ public class CNPhysicalPlanGenerator
         name = internalMNode.getName();
       }
 
+      final Set<TsTable> tableSet = new HashSet<>();
+
       while (!PATH_ROOT.equals(name)) {
         type = ReadWriteIOUtils.readByte(bufferedInputStream);
         switch (type) {
@@ -341,9 +345,15 @@ public class CNPhysicalPlanGenerator
             break;
           case STORAGE_GROUP_MNODE_TYPE:
             name = deserializeDatabaseMNode(bufferedInputStream).getAsMNode().getName();
+            for (final TsTable table : tableSet) {
+              planDeque.add(new CommitCreateTablePlan(name, table));
+            }
+            tableSet.clear();
             break;
           case TABLE_MNODE_TYPE:
-            name = deserializeTableMNode(inputStream).getAsMNode().getName();
+            final ConfigTableNode node = deserializeTableMNode(inputStream);
+            name = node.getName();
+            tableSet.add(node.getTable());
             break;
           default:
             logger.error("Unrecognized node type. Cannot deserialize MTree from given buffer");
@@ -382,15 +392,15 @@ public class CNPhysicalPlanGenerator
     if (templateNodeList.isEmpty()) {
       return;
     }
-    for (IConfigMNode templateNode : templateNodeList) {
-      String templateName = templateTable.get(templateNode.getSchemaTemplateId());
-      CommitSetSchemaTemplatePlan plan =
+    for (final IConfigMNode templateNode : templateNodeList) {
+      final String templateName = templateTable.get(templateNode.getSchemaTemplateId());
+      final CommitSetSchemaTemplatePlan plan =
           new CommitSetSchemaTemplatePlan(templateName, templateNode.getFullPath());
       planDeque.add(plan);
     }
   }
 
-  private IConfigMNode deserializeDatabaseMNode(InputStream inputStream) throws IOException {
+  private IConfigMNode deserializeDatabaseMNode(final InputStream inputStream) throws IOException {
     final IDatabaseMNode<IConfigMNode> databaseMNode =
         nodeFactory.createDatabaseMNode(null, ReadWriteIOUtils.readString(inputStream));
     databaseMNode.getAsMNode().setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
@@ -409,7 +419,7 @@ public class CNPhysicalPlanGenerator
     return databaseMNode.getAsMNode();
   }
 
-  private IConfigMNode deserializeInternalMNode(InputStream inputStream) throws IOException {
+  private IConfigMNode deserializeInternalMNode(final InputStream inputStream) throws IOException {
     final IConfigMNode basicMNode =
         nodeFactory.createInternalMNode(null, ReadWriteIOUtils.readString(inputStream));
     basicMNode.setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
@@ -419,7 +429,7 @@ public class CNPhysicalPlanGenerator
     return basicMNode;
   }
 
-  private IConfigMNode deserializeTableMNode(final InputStream inputStream) throws IOException {
+  private ConfigTableNode deserializeTableMNode(final InputStream inputStream) throws IOException {
     final ConfigTableNode tableNode =
         new ConfigTableNode(null, ReadWriteIOUtils.readString(inputStream));
     tableNode.setTable(TsTable.deserialize(inputStream));
