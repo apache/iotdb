@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.impl.DeviceFilterUtil;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
@@ -234,7 +235,8 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
         }
         idIndex++;
       } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
-        final Binary attributeValue = schemaInfo.getAttributeValue(columnHeader.getColumnName());
+        final Binary attributeValue =
+            schemaInfo.getAttributeValue(((AttributeColumnSchema) columnSchema).getId());
         if (attributeValue == null) {
           builder.getColumnBuilder(resultIndex).appendNull();
         } else {

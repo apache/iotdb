@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
@@ -93,12 +94,14 @@ public class TableDeviceFetchSource implements ISchemaSource<IDeviceSchemaInfo> 
         }
         idIndex++;
       } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
-        if (Objects.isNull(schemaInfo.getAttributeValue(columnHeader.getColumnName()))) {
+        if (Objects.isNull(
+            schemaInfo.getAttributeValue(((AttributeColumnSchema) columnSchema).getId()))) {
           builder.getColumnBuilder(resultIndex).appendNull();
         } else {
           builder
               .getColumnBuilder(resultIndex)
-              .writeBinary(schemaInfo.getAttributeValue(columnHeader.getColumnName()));
+              .writeBinary(
+                  schemaInfo.getAttributeValue(((AttributeColumnSchema) columnSchema).getId()));
         }
       }
       resultIndex++;

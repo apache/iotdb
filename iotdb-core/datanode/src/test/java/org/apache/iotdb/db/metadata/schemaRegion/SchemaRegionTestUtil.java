@@ -419,7 +419,7 @@ public class SchemaRegionTestUtil {
       final ISchemaRegion schemaRegion,
       final String table,
       final Object[] deviceIds,
-      final Map<String, String> attributes)
+      final Map<Integer, String> attributes)
       throws MetadataException {
     schemaRegion.createOrUpdateTableDevice(
         new CreateOrUpdateTableDeviceNode(
@@ -427,7 +427,7 @@ public class SchemaRegionTestUtil {
             null,
             table,
             Collections.singletonList(deviceIds),
-            new ArrayList<>(attributes.keySet()),
+            attributes.keySet().stream().mapToInt(Integer::intValue).toArray(),
             Collections.singletonList(
                 attributes.values().stream()
                     .map(s -> s != null ? new Binary(s.getBytes(StandardCharsets.UTF_8)) : null)

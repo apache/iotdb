@@ -272,6 +272,7 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
             new ColumnHeader("p_1", TSDataType.STRING),
             new ColumnHeader("d_1", TSDataType.STRING));
     final String attributeName = "attr";
+    final int attributeId = 1;
 
     ISchemaRegion schemaRegion =
         getSchemaRegion(ROOT + TsFileConstant.PATH_SEPARATOR + database, 0);
@@ -279,7 +280,7 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
         schemaRegion,
         tableName,
         columnHeaderList.stream().map(ColumnHeader::getColumnName).toArray(String[]::new),
-        Collections.singletonMap(attributeName, "value1"));
+        Collections.singletonMap(attributeId, "value1"));
 
     // Prepare table
     final TsTable testTable = new TsTable(tableName);
@@ -287,7 +288,8 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
         columnHeader ->
             testTable.addColumnSchema(
                 new IdColumnSchema(columnHeader.getColumnName(), columnHeader.getColumnType())));
-    testTable.addColumnSchema(new AttributeColumnSchema(attributeName, TSDataType.STRING));
+    testTable.addColumnSchema(
+        new AttributeColumnSchema(attributeName, TSDataType.STRING, null, attributeId));
     DataNodeTableCache.getInstance().preUpdateTable(database, testTable);
     DataNodeTableCache.getInstance().commitUpdateTable(database, tableName);
 
@@ -304,7 +306,7 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
             null,
             Collections.singletonList(
                 new UpdateAssignment(
-                    new SymbolReference(attributeName), new StringLiteral("value2"))),
+                    new SymbolReference(attributeId), new StringLiteral("value2"))),
             new SessionInfo(0, SessionConfig.DEFAULT_USER, ZoneId.systemDefault())));
 
     simulateRestart();
@@ -319,6 +321,6 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
     Assert.assertEquals(1, result.size());
     Assert.assertEquals(
         new Binary("value2", TSFileConfig.STRING_CHARSET),
-        result.get(0).getAttributeValue(attributeName));
+        result.get(0).getAttributeValue(attributeId));
   }
 }

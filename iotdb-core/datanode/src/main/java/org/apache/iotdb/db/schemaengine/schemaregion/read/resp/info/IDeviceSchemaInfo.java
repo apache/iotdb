@@ -27,7 +27,7 @@ public interface IDeviceSchemaInfo extends ISchemaInfo {
 
   int getTemplateId();
 
-  Binary getAttributeValue(final String attributeKey);
+  Binary getAttributeValue(final int attributeId);
 
   String[] getRawNodes();
 }

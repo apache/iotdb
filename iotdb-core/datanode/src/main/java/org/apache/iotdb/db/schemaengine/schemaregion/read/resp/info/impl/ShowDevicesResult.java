@@ -26,7 +26,6 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchem
 import org.apache.tsfile.utils.Binary;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
@@ -35,7 +34,7 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
   private Boolean isAligned;
   private int templateId;
 
-  private Function<String, Binary> attributeProvider;
+  private Function<Integer, Binary> attributeProvider;
 
   private String[] rawNodes = null;
 
@@ -61,13 +60,13 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
     return templateId;
   }
 
-  public void setAttributeProvider(final Function<String, Binary> attributeProvider) {
+  public void setAttributeProvider(final Function<Integer, Binary> attributeProvider) {
     this.attributeProvider = attributeProvider;
   }
 
   @Override
-  public Binary getAttributeValue(final String attributeKey) {
-    return attributeProvider.apply(attributeKey);
+  public Binary getAttributeValue(final int attributeId) {
+    return attributeProvider.apply(attributeId);
   }
 
   public String[] getRawNodes() {
@@ -80,13 +79,13 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
   }
 
   public static ShowDevicesResult convertDeviceEntry2ShowDeviceResult(
-      final DeviceEntry entry, final List<String> attributeColumns) {
+      final DeviceEntry entry, final int[] attributeColumns) {
     final ShowDevicesResult result =
         new ShowDevicesResult(
             entry.getDeviceID().toString(), null, -1, (String[]) entry.getDeviceID().getSegments());
-    final Map<String, Binary> attributeProviderMap = new HashMap<>();
-    for (int i = 0; i < attributeColumns.size(); ++i) {
-      attributeProviderMap.put(attributeColumns.get(i), entry.getAttributeColumnValues().get(i));
+    final Map<Integer, Binary> attributeProviderMap = new HashMap<>();
+    for (int i = 0; i < attributeColumns.length; ++i) {
+      attributeProviderMap.put(attributeColumns[i], entry.getAttributeColumnValues().get(i));
     }
     result.setAttributeProvider(attributeProviderMap::get);
     return result;
