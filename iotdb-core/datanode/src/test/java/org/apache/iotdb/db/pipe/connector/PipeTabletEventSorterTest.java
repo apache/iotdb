@@ -59,19 +59,19 @@ public class PipeTabletEventSorterTest {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp + i);
       for (int s = 0; s < 3; s++) {
-        tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, timestamp + i);
+        tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, timestamp + i);
       }
 
       rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp - i);
       for (int s = 0; s < 3; s++) {
-        tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, timestamp - i);
+        tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, timestamp - i);
       }
 
       rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
       for (int s = 0; s < 3; s++) {
-        tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, timestamp);
+        tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, timestamp);
       }
     }
 
@@ -116,7 +116,7 @@ public class PipeTabletEventSorterTest {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
       for (int s = 0; s < 3; s++) {
-        tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, timestamp);
+        tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, timestamp);
       }
     }
 
@@ -160,19 +160,19 @@ public class PipeTabletEventSorterTest {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, (long) rowIndex + 2);
       for (int s = 0; s < 3; s++) {
-        tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, (long) rowIndex + 2);
+        tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, (long) rowIndex + 2);
       }
 
       rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, (long) rowIndex);
       for (int s = 0; s < 3; s++) {
-        tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, (long) rowIndex);
+        tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, (long) rowIndex);
       }
 
       rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, (long) rowIndex - 2);
       for (int s = 0; s < 3; s++) {
-        tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, (long) rowIndex - 2);
+        tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, (long) rowIndex - 2);
       }
     }
 

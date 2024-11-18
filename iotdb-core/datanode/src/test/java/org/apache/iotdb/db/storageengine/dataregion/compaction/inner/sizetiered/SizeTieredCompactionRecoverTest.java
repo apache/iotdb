@@ -103,7 +103,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+                + measurementSchemas[0].getMeasurementName());
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,
@@ -191,7 +191,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+                + measurementSchemas[0].getMeasurementName());
     tsFilesReader =
         new SeriesDataBlockReader(
             path,
@@ -223,7 +223,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+                + measurementSchemas[0].getMeasurementName());
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,
@@ -299,7 +299,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+                + measurementSchemas[0].getMeasurementName());
     tsFilesReader =
         new SeriesDataBlockReader(
             path,
@@ -331,7 +331,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+                + measurementSchemas[0].getMeasurementName());
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,
@@ -409,7 +409,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+                + measurementSchemas[0].getMeasurementName());
     tsFilesReader =
         new SeriesDataBlockReader(
             path,
@@ -439,9 +439,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     tsFileManager.addAll(unseqResources, false);
     IFullPath path =
         SchemaTestUtils.getNonAlignedFullPath(
-            deviceIds[0]
-                + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+            deviceIds[0] + PATH_SEPARATOR + measurementSchemas[0].getMeasurementName());
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,
@@ -513,9 +511,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     tsFileManager.add(targetTsFileResource, true);
     path =
         SchemaTestUtils.getNonAlignedFullPath(
-            deviceIds[0]
-                + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+            deviceIds[0] + PATH_SEPARATOR + measurementSchemas[0].getMeasurementName());
 
     tsFilesReader =
         new SeriesDataBlockReader(
@@ -566,7 +562,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
       deleteMap.put(
-          deviceIds[0] + "." + measurementSchemas[0].getMeasurementId(),
+          deviceIds[0] + "." + measurementSchemas[0].getMeasurementName(),
           new Pair<>(i * ptNum, i * ptNum + 10));
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), true);
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), false);
@@ -638,7 +634,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
       deleteMap.put(
-          deviceIds[0] + "." + measurementSchemas[0].getMeasurementId(),
+          deviceIds[0] + "." + measurementSchemas[0].getMeasurementName(),
           new Pair<>(i * ptNum, i * ptNum + 10));
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), true);
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), false);
@@ -714,7 +710,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
       deleteMap.put(
-          deviceIds[0] + "." + measurementSchemas[0].getMeasurementId(),
+          deviceIds[0] + "." + measurementSchemas[0].getMeasurementName(),
           new Pair<>(i * ptNum, i * ptNum + 10));
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), true);
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), false);
@@ -770,7 +766,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+                + measurementSchemas[0].getMeasurementName());
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,
@@ -834,7 +830,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+                + measurementSchemas[0].getMeasurementName());
     TimeSeriesMetadataCache.getInstance().clear();
     ChunkCache.getInstance().clear();
     tsFilesReader =
@@ -868,7 +864,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+                + measurementSchemas[0].getMeasurementName());
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,
@@ -927,7 +923,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+                + measurementSchemas[0].getMeasurementName());
     tsFilesReader =
         new SeriesDataBlockReader(
             path,
@@ -960,7 +956,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+                + measurementSchemas[0].getMeasurementName());
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,
@@ -1020,7 +1016,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+                + measurementSchemas[0].getMeasurementName());
     logger.warn("TsFiles in list is {}", tsFileManager.getTsFileList(true));
     tsFilesReader =
         new SeriesDataBlockReader(
@@ -1064,7 +1060,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+                + measurementSchemas[0].getMeasurementName());
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,
@@ -1105,7 +1101,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+                + measurementSchemas[0].getMeasurementName());
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,
@@ -1160,7 +1156,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+                + measurementSchemas[0].getMeasurementName());
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,

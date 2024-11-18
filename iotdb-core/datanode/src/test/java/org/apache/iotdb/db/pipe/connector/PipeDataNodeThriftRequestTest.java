@@ -63,6 +63,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class PipeDataNodeThriftRequestTest {
 
@@ -277,7 +278,15 @@ public class PipeDataNodeThriftRequestTest {
       columnTypes.add(Tablet.ColumnCategory.MEASUREMENT);
       columnTypes.add(Tablet.ColumnCategory.MEASUREMENT);
       columnTypes.add(Tablet.ColumnCategory.MEASUREMENT);
-      final Tablet t = new Tablet("root.sg.d", schemaList, columnTypes, 1024);
+      final Tablet t =
+          new Tablet(
+              "root.sg.d",
+              schemaList.stream()
+                  .map(IMeasurementSchema::getMeasurementName)
+                  .collect(Collectors.toList()),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes,
+              1024);
       t.rowSize = 2;
       t.addTimestamp(0, 2000);
       t.addTimestamp(1, 1000);

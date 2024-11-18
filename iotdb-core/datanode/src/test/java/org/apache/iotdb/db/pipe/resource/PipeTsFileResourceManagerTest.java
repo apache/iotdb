@@ -89,39 +89,39 @@ public class PipeTsFileResourceManagerTest {
     TsFileWriter tsFileWriter = new TsFileWriter(file, schema);
 
     // construct TSRecord
-    TSRecord tsRecord = new TSRecord(1617206403001L, "root.lemming.device1");
+    TSRecord tsRecord = new TSRecord("root.lemming.device1", 1617206403001L);
     DataPoint dPoint1 = new FloatDataPoint("sensor1", 1.1f);
     DataPoint dPoint2 = new IntDataPoint("sensor2", 12);
     DataPoint dPoint3 = new IntDataPoint("sensor3", 13);
     tsRecord.addTuple(dPoint1);
     tsRecord.addTuple(dPoint2);
     tsRecord.addTuple(dPoint3);
-    tsFileWriter.write(tsRecord);
-    tsFileWriter.flushAllChunkGroups(); // flush above data to disk at once
+    tsFileWriter.writeRecord(tsRecord);
+    tsFileWriter.flush(); // flush above data to disk at once
 
-    tsRecord = new TSRecord(1617206403002L, "root.lemming.device2");
+    tsRecord = new TSRecord("root.lemming.device2", 1617206403002L);
     dPoint2 = new IntDataPoint("sensor2", 22);
     tsRecord.addTuple(dPoint2);
-    tsFileWriter.write(tsRecord);
-    tsFileWriter.flushAllChunkGroups(); // flush above data to disk at once
+    tsFileWriter.writeRecord(tsRecord);
+    tsFileWriter.flush(); // flush above data to disk at once
 
-    tsRecord = new TSRecord(1617206403003L, "root.lemming.device3");
+    tsRecord = new TSRecord("root.lemming.device3", 1617206403003L);
     dPoint1 = new FloatDataPoint("sensor1", 3.1f);
     dPoint2 = new IntDataPoint("sensor2", 32);
     tsRecord.addTuple(dPoint1);
     tsRecord.addTuple(dPoint2);
-    tsFileWriter.write(tsRecord);
-    tsFileWriter.flushAllChunkGroups(); // flush above data to disk at once
+    tsFileWriter.writeRecord(tsRecord);
+    tsFileWriter.flush(); // flush above data to disk at once
 
-    tsRecord = new TSRecord(1617206403004L, "root.lemming.device1");
+    tsRecord = new TSRecord("root.lemming.device1", 1617206403004L);
     dPoint1 = new FloatDataPoint("sensor1", 4.1f);
     dPoint2 = new IntDataPoint("sensor2", 42);
     dPoint3 = new IntDataPoint("sensor3", 43);
     tsRecord.addTuple(dPoint1);
     tsRecord.addTuple(dPoint2);
     tsRecord.addTuple(dPoint3);
-    tsFileWriter.write(tsRecord);
-    tsFileWriter.flushAllChunkGroups(); // flush above data to disk at once
+    tsFileWriter.writeRecord(tsRecord);
+    tsFileWriter.flush(); // flush above data to disk at once
 
     // close TsFile
     tsFileWriter.close();

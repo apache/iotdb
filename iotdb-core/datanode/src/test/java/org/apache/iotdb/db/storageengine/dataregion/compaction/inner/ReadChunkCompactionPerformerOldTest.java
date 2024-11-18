@@ -117,7 +117,7 @@ public class ReadChunkCompactionPerformerOldTest extends InnerCompactionTest {
         CompactionTaskType.INNER_SEQ,
         COMPACTION_TEST_SG);
     sizeTieredCompactionLogger.close();
-    Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId(), true);
+    Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementName(), true);
     try (TsFileSequenceReader reader =
             new TsFileSequenceReader(targetTsFileResource.getTsFilePath());
         TsFileReader readTsFile = new TsFileReader(reader)) {
