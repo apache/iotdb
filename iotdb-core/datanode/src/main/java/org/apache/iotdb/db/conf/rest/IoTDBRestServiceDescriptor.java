@@ -33,6 +33,7 @@ import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 import java.util.Properties;
 
 public class IoTDBRestServiceDescriptor {
@@ -79,46 +80,93 @@ public class IoTDBRestServiceDescriptor {
 
   private void loadProps(Properties properties) {
     conf.setEnableRestService(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_rest_service", Boolean.toString(conf.isEnableRestService()))));
+            Boolean.parseBoolean(
+                    Optional.ofNullable(
+                                    properties.getProperty(
+                                            "enable_rest_service", Boolean.toString(conf.isEnableRestService())))
+                            .map(String::trim)
+                            .orElse(Boolean.toString(conf.isEnableRestService()))));
     conf.setRestServicePort(
-        Integer.parseInt(
-            properties.getProperty(
-                "rest_service_port", Integer.toString(conf.getRestServicePort()))));
+            Integer.parseInt(
+                    Optional.ofNullable(
+                                    properties.getProperty(
+                                            "rest_service_port", Integer.toString(conf.getRestServicePort())))
+                            .map(String::trim)
+                            .orElse(Integer.toString(conf.getRestServicePort()))));
     conf.setRestQueryDefaultRowSizeLimit(
-        Integer.parseInt(
-            properties.getProperty(
-                "rest_query_default_row_size_limit",
-                Integer.toString(conf.getRestQueryDefaultRowSizeLimit()))));
+            Integer.parseInt(
+                    Optional.ofNullable(
+                                    properties.getProperty(
+                                            "rest_query_default_row_size_limit",
+                                            Integer.toString(conf.getRestQueryDefaultRowSizeLimit())))
+                            .map(String::trim)
+                            .orElse(Integer.toString(conf.getRestQueryDefaultRowSizeLimit()))));
     conf.setEnableSwagger(
-        Boolean.parseBoolean(
-            properties.getProperty("enable_swagger", Boolean.toString(conf.isEnableSwagger()))));
+            Boolean.parseBoolean(
+                    Optional.ofNullable(
+                                    properties.getProperty(
+                                            "enable_swagger", Boolean.toString(conf.isEnableSwagger())))
+                            .map(String::trim)
+                            .orElse(Boolean.toString(conf.isEnableSwagger()))));
 
     conf.setEnableHttps(
-        Boolean.parseBoolean(
-            properties.getProperty("enable_https", Boolean.toString(conf.isEnableHttps()))));
+            Boolean.parseBoolean(
+                    Optional.ofNullable(
+                                    properties.getProperty("enable_https", Boolean.toString(conf.isEnableHttps())))
+                            .map(String::trim)
+                            .orElse(Boolean.toString(conf.isEnableHttps()))));
     conf.setClientAuth(
-        Boolean.parseBoolean(
-            properties.getProperty("client_auth", Boolean.toString(conf.isClientAuth()))));
-    conf.setKeyStorePath(properties.getProperty("key_store_path", conf.getKeyStorePath()));
-    conf.setKeyStorePwd(properties.getProperty("key_store_pwd", conf.getKeyStorePwd()));
-    conf.setTrustStorePath(properties.getProperty("trust_store_path", conf.getTrustStorePath()));
-    conf.setTrustStorePwd(properties.getProperty("trust_store_pwd", conf.getTrustStorePwd()));
+            Boolean.parseBoolean(
+                    Optional.ofNullable(
+                                    properties.getProperty("client_auth", Boolean.toString(conf.isClientAuth())))
+                            .map(String::trim)
+                            .orElse(Boolean.toString(conf.isClientAuth()))));
+    conf.setKeyStorePath(
+            Optional.ofNullable(properties.getProperty("key_store_path", conf.getKeyStorePath()))
+                    .map(String::trim)
+                    .orElse(conf.getKeyStorePath()));
+    conf.setKeyStorePwd(
+            Optional.ofNullable(properties.getProperty("key_store_pwd", conf.getKeyStorePwd()))
+                    .map(String::trim)
+                    .orElse(conf.getKeyStorePwd()));
+    conf.setTrustStorePath(
+            Optional.ofNullable(properties.getProperty("trust_store_path", conf.getTrustStorePath()))
+                    .map(String::trim)
+                    .orElse(conf.getTrustStorePath()));
+    conf.setTrustStorePwd(
+            Optional.ofNullable(properties.getProperty("trust_store_pwd", conf.getTrustStorePwd()))
+                    .map(String::trim)
+                    .orElse(conf.getTrustStorePwd()));
     conf.setIdleTimeoutInSeconds(
-        Integer.parseInt(
-            properties.getProperty(
-                "idle_timeout_in_seconds", Integer.toString(conf.getIdleTimeoutInSeconds()))));
+            Integer.parseInt(
+                    Optional.ofNullable(
+                                    properties.getProperty(
+                                            "idle_timeout_in_seconds",
+                                            Integer.toString(conf.getIdleTimeoutInSeconds())))
+                            .map(String::trim)
+                            .orElse(Integer.toString(conf.getIdleTimeoutInSeconds()))));
     conf.setCacheExpireInSeconds(
-        Integer.parseInt(
-            properties.getProperty(
-                "cache_expire_in_seconds", Integer.toString(conf.getCacheExpireInSeconds()))));
+            Integer.parseInt(
+                    Optional.ofNullable(
+                                    properties.getProperty(
+                                            "cache_expire_in_seconds",
+                                            Integer.toString(conf.getCacheExpireInSeconds())))
+                            .map(String::trim)
+                            .orElse(Integer.toString(conf.getCacheExpireInSeconds()))));
     conf.setCacheInitNum(
-        Integer.parseInt(
-            properties.getProperty("cache_init_num", Integer.toString(conf.getCacheInitNum()))));
+            Integer.parseInt(
+                    Optional.ofNullable(
+                                    properties.getProperty(
+                                            "cache_init_num", Integer.toString(conf.getCacheInitNum())))
+                            .map(String::trim)
+                            .orElse(Integer.toString(conf.getCacheInitNum()))));
     conf.setCacheMaxNum(
-        Integer.parseInt(
-            properties.getProperty("cache_max_num", Integer.toString(conf.getCacheMaxNum()))));
+            Integer.parseInt(
+                    Optional.ofNullable(
+                                    properties.getProperty(
+                                            "cache_max_num", Integer.toString(conf.getCacheMaxNum())))
+                            .map(String::trim)
+                            .orElse(Integer.toString(conf.getCacheMaxNum()))));
   }
 
   /**
@@ -141,9 +189,9 @@ public class IoTDBRestServiceDescriptor {
           return uri;
         }
         logger.warn(
-            "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading "
-                + "config file {}, use default configuration",
-            configName);
+                "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading "
+                        + "config file {}, use default configuration",
+                configName);
         // update all data seriesPath
         return null;
       }
@@ -178,3 +226,4 @@ public class IoTDBRestServiceDescriptor {
     private IoTDBRestServiceDescriptorHolder() {}
   }
 }
+
