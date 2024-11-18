@@ -23,6 +23,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.attribute.DeviceAttributeSt
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -254,15 +255,11 @@ public class UpdateDetailContainer implements UpdateContainer {
         final int attributeOffset = outputStream.skipInt();
         int attributeCount = 0;
         for (final Map.Entry<Integer, Binary> attributeKV : deviceEntry.getValue().entrySet()) {
-          final byte[] keyBytes = attributeKV.getKey().getBytes(TSFileConfig.STRING_CHARSET);
           final byte[] valueBytes =
               attributeKV.getValue() != Binary.EMPTY_VALUE
                   ? attributeKV.getValue().getValues()
                   : null;
-          newSize =
-              2 * Integer.BYTES
-                  + keyBytes.length
-                  + (Objects.nonNull(valueBytes) ? valueBytes.length : 0);
+          newSize = 2 * Integer.BYTES + (Objects.nonNull(valueBytes) ? valueBytes.length : 0);
           if (limitBytes.get() < newSize) {
             outputStream.rewrite(mapEntryCount, mapSizeOffset);
             outputStream.rewrite(deviceEntryCount, deviceSizeOffset);
@@ -271,7 +268,7 @@ public class UpdateDetailContainer implements UpdateContainer {
             return;
           }
           limitBytes.addAndGet(-newSize);
-          outputStream.writeWithLength(keyBytes);
+          outputStream.write(BytesUtils.intToBytes(attributeKV.getKey()));
           outputStream.writeWithLength(valueBytes);
           ++attributeCount;
         }
