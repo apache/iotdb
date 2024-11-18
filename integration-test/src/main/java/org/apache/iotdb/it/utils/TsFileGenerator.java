@@ -21,8 +21,9 @@ package org.apache.iotdb.it.utils;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -250,23 +251,21 @@ public class TsFileGenerator implements AutoCloseable {
   public void generateDeletion(final String device, final int number)
       throws IOException, IllegalPathException {
     try (final ModificationFile modificationFile =
-        new ModificationFile(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX)) {
+        new ModificationFile(ModificationFile.getExclusiveMods(tsFile))) {
       writer.flushAllChunkGroups();
       final TreeSet<Long> timeSet = device2TimeSet.get(device);
       if (timeSet.isEmpty()) {
         return;
       }
 
-      final long fileOffset = tsFile.length();
       final long maxTime = timeSet.last() - 1;
       for (int i = 0; i < number; i++) {
         final int endTime = random.nextInt((int) (maxTime)) + 1;
         final int startTime = random.nextInt(endTime);
         for (final IMeasurementSchema measurementSchema : device2MeasurementSchema.get(device)) {
-          final Deletion deletion =
-              new Deletion(
+          final ModEntry deletion =
+              new TreeDeletionEntry(
                   new MeasurementPath(device, measurementSchema.getMeasurementId()),
-                  fileOffset,
                   startTime,
                   endTime);
           modificationFile.write(deletion);

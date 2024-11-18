@@ -1267,6 +1267,11 @@ public class IoTDBTableAggregationIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+
+    expectedHeader = new String[] {"_col0"};
+    retArray = new String[] {"40,"};
+    tableResultSetEqualTest(
+        "select min_by(s1, s10) from table1 where s1=40", expectedHeader, retArray, DATABASE_NAME);
   }
 
   @Test
@@ -1746,6 +1751,11 @@ public class IoTDBTableAggregationIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+
+    expectedHeader = new String[] {"_col0"};
+    retArray = new String[] {"40,"};
+    tableResultSetEqualTest(
+        "select max_by(s1, s10) from table1 where s1=40", expectedHeader, retArray, DATABASE_NAME);
   }
 
   @Test
@@ -3652,6 +3662,19 @@ public class IoTDBTableAggregationIT {
     tableAssertTestFail(
         "select s1 from table1 where s2 in (select s2 from table1)",
         "701: Only TableSubquery is supported now",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select avg() from table1",
+        "701: Aggregate functions [avg] should only have one argument",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select sum() from table1",
+        "701: Aggregate functions [sum] should only have one argument",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select extreme() from table1",
+        "701: Aggregate functions [extreme] should only have one argument",
         DATABASE_NAME);
   }
 }

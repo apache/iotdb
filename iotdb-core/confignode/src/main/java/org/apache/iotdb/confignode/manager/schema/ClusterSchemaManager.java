@@ -1152,14 +1152,16 @@ public class ClusterSchemaManager {
     schemaQuotaStatistics.setSeriesThreshold(seriesThreshold);
   }
 
-  public Optional<TsTable> getTableIfExists(final String database, final String tableName) {
+  public Optional<TsTable> getTableIfExists(final String database, final String tableName)
+      throws MetadataException {
     return clusterSchemaInfo.getTsTableIfExists(database, tableName);
   }
 
   public synchronized Pair<TSStatus, TsTable> tableColumnCheckForColumnExtension(
       final String database,
       final String tableName,
-      final List<TsTableColumnSchema> columnSchemaList) {
+      final List<TsTableColumnSchema> columnSchemaList)
+      throws MetadataException {
     final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
 
     if (Objects.isNull(originalTable)) {
@@ -1196,7 +1198,8 @@ public class ClusterSchemaManager {
   }
 
   public synchronized Pair<TSStatus, TsTable> tableColumnCheckForColumnRenaming(
-      final String database, final String tableName, final String oldName, final String newName) {
+      final String database, final String tableName, final String oldName, final String newName)
+      throws MetadataException {
     final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
 
     if (Objects.isNull(originalTable)) {
@@ -1289,7 +1292,8 @@ public class ClusterSchemaManager {
       final String database,
       final String tableName,
       final Map<String, String> originalProperties,
-      final Map<String, String> updatedProperties) {
+      final Map<String, String> updatedProperties)
+      throws MetadataException {
     final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
 
     if (Objects.isNull(originalTable)) {
