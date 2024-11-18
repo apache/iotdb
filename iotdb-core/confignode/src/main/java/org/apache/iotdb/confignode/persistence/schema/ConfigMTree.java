@@ -828,8 +828,8 @@ public class ConfigMTree {
         });
   }
 
-  // Return true if removed column is an attribute column
-  // false if measurement column
+  // Return the attributeId if removed column is an attribute column
+  // -1 if measurement column
   public int preDeleteColumn(
       final PartialPath database, final String tableName, final String columnName)
       throws MetadataException {

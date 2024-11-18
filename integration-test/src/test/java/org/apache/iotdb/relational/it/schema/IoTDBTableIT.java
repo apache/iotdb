@@ -376,8 +376,59 @@ public class IoTDBTableIT {
       statement.execute(
           "insert into table2(region_id, plant_id, color, temperature, speed) values(1, 1, 1, 1, 1)");
 
+      // Test rename column
+      statement.execute("alter table table2 rename column color to colour");
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("select colour from table2"),
+          "colour,",
+          Collections.singleton("1,"));
+
+      try {
+        statement.execute(
+            "insert into table2(region_id, plant_id, color, temperature, speed) values(1, 1, 1, 1, 1)");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals(
+            "616: Unknown column category for color. Cannot auto create column.", e.getMessage());
+      }
+
+      // Renaming that does not take effect
+      try {
+        statement.execute("alter table table2 rename column not_exist to new_id");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("616: Column 'd' does not exist", e.getMessage());
+      }
+
+      try {
+        statement.execute("alter table table2 rename column colour to colour");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals(
+            "701: The column's old name shall not be equal to the new one.", e.getMessage());
+      }
+
+      try {
+        statement.execute("alter table table2 rename column colour to speed");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("552: The new column name speed already exists", e.getMessage());
+      }
+
+      statement.execute("alter table table2 rename column if exists not_exist to new_id");
+
+      try {
+        statement.execute("alter table table2 rename column plant_id to new_id");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals(
+            "615: Currently we only support renaming for attribute columns, current category is ID",
+            e.getMessage());
+      }
+
       // Test drop column
-      statement.execute("alter table table2 drop column color");
+      statement.execute("alter table table2 drop column colour");
 
       columnNames = new String[] {"time", "region_id", "plant_id", "temperature", "speed"};
       dataTypes = new String[] {"TIMESTAMP", "STRING", "STRING", "FLOAT", "DOUBLE"};
