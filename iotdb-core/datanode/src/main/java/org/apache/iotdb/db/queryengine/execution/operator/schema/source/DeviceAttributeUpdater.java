@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransform
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.TableDeviceInfo;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import org.apache.ratis.util.function.TriConsumer;
 import org.apache.tsfile.block.column.Column;
@@ -116,7 +117,9 @@ public class DeviceAttributeUpdater extends DeviceUpdater {
         if (Objects.nonNull(o) && !(o instanceof Binary)) {
           throw new MetadataException(
               "Result type mismatch for attribute '"
-                  + attributeIdList[j]
+                  + DataNodeTableCache.getInstance()
+                      .getTable(database, tableName)
+                      .getAttributeName(attributeIdList[j])
                   + "', expected "
                   + Binary.class
                   + ", actual "

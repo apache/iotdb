@@ -231,6 +231,21 @@ public class TsTable {
     }
   }
 
+  public String getAttributeName(final int id) {
+    readWriteLock.readLock().lock();
+    try {
+      for (final TsTableColumnSchema schema : columnSchemaMap.values()) {
+        if (schema.getColumnCategory() == TsTableColumnCategory.ATTRIBUTE
+            && id == (((AttributeColumnSchema) schema).getId())) {
+          return schema.getColumnName();
+        }
+      }
+      return null;
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
   public Integer getInternAttributeId(final @Nonnull Integer attributeId) {
     readWriteLock.readLock().lock();
     try {
