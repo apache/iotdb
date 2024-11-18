@@ -56,13 +56,10 @@ public class PipeTreeModelTabletEventSorter {
 
       if (currentTimestamp < previousTimestamp) {
         isSorted = false;
+        break;
       }
       if (currentTimestamp == previousTimestamp) {
         isDeduplicated = false;
-      }
-
-      if (!isSorted && !isDeduplicated) {
-        break;
       }
     }
 

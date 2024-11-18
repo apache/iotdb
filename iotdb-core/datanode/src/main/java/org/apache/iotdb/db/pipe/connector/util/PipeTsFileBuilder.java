@@ -20,7 +20,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -88,7 +87,7 @@ public abstract class PipeTsFileBuilder {
   }
 
   public abstract void bufferTableModelTablet(
-      String dataBase, Tablet tablet, Map<IDeviceID, Pair<Long, Long>> deviceID2TimeRange);
+      String dataBase, Tablet tablet, List<Pair<IDeviceID, Integer>> deviceID2Index);
 
   public abstract void bufferTreeModelTablet(Tablet tablet, Boolean isAligned);
 

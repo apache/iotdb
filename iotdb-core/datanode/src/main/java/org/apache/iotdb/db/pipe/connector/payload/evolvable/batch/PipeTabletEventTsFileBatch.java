@@ -150,10 +150,10 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
 
   private void bufferTableModelTablet(
       final String pipeName, final long creationTime, final Tablet tablet, final String dataBase) {
-    final Map<IDeviceID, Pair<Long, Long>> deviceID2TimeRange =
+    final List<Pair<IDeviceID, Integer>> deviceID2Index =
         new PipeTableModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
 
-    if (deviceID2TimeRange == null) {
+    if (deviceID2Index == null) {
       return;
     }
 
@@ -163,7 +163,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
         new Pair<>(pipeName, creationTime),
         (pipe, weight) -> Objects.nonNull(weight) ? ++weight : 1);
 
-    tableModeTsFileBuilder.bufferTableModelTablet(dataBase, tablet, deviceID2TimeRange);
+    tableModeTsFileBuilder.bufferTableModelTablet(dataBase, tablet, deviceID2Index);
   }
 
   public Map<Pair<String, Long>, Double> deepCopyPipe2WeightMap() {

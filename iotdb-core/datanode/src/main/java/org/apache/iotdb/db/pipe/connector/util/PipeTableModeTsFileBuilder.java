@@ -29,7 +29,7 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTableModeTsFileBuilder.class);
 
   private final Map<String, List<Tablet>> dataBase2TabletList = new HashMap<>();
-  private final Map<String, List<Map<IDeviceID, Pair<Long, Long>>>> tabletDeviceIdTimeRange =
+  private final Map<String, List<List<Pair<IDeviceID, Integer>>>> tabletDeviceIdTimeIndex =
       new HashMap<>();
 
   public PipeTableModeTsFileBuilder(AtomicLong currentBatchId, AtomicLong tsFileIdGenerator) {
@@ -38,11 +38,9 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
 
   @Override
   public void bufferTableModelTablet(
-      String dataBase, Tablet tablet, Map<IDeviceID, Pair<Long, Long>> deviceID2TimeRange) {
+      String dataBase, Tablet tablet, List<Pair<IDeviceID, Integer>> deviceID2Index) {
     dataBase2TabletList.computeIfAbsent(dataBase, db -> new ArrayList<>()).add(tablet);
-    tabletDeviceIdTimeRange
-        .computeIfAbsent(dataBase, db -> new ArrayList<>())
-        .add(deviceID2TimeRange);
+    tabletDeviceIdTimeIndex.computeIfAbsent(dataBase, db -> new ArrayList<>()).add(deviceID2Index);
   }
 
   @Override
@@ -57,7 +55,7 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
     for (Map.Entry<String, List<Tablet>> entry : dataBase2TabletList.entrySet()) {
       pairList.addAll(
           writeTableModelTabletsToTsFiles(
-              entry.getValue(), tabletDeviceIdTimeRange.get(entry.getKey()), entry.getKey()));
+              entry.getValue(), tabletDeviceIdTimeIndex.get(entry.getKey()), entry.getKey()));
     }
     return pairList;
   }
@@ -81,11 +79,11 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
 
   private List<Pair<String, File>> writeTableModelTabletsToTsFiles(
       List<Tablet> tabletList,
-      List<Map<IDeviceID, Pair<Long, Long>>> deviceIDPairMap,
+      List<List<Pair<IDeviceID, Integer>>> deviceIDPairMap,
       String dataBase)
       throws IOException, WriteProcessException {
 
-    final Map<String, List<Pair<Tablet, Map<IDeviceID, Pair<Long, Long>>>>> tableName2Tablets =
+    final Map<String, List<Pair<Tablet, List<Pair<IDeviceID, Integer>>>>> tableName2Tablets =
         new HashMap<>();
 
     // Sort the tablets by dataBaseName
@@ -97,12 +95,10 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
     }
 
     // Sort the tablets by start time in each device
-    for (final List<Pair<Tablet, Map<IDeviceID, Pair<Long, Long>>>> tablets :
+    for (final List<Pair<Tablet, List<Pair<IDeviceID, Integer>>>> tablets :
         tableName2Tablets.values()) {
 
-      tablets.sort(
-          // Each tablet has at least one timestamp
-          Comparator.comparingLong(pair -> pair.left.timestamps[0]));
+      tablets.sort(this::comparePairs);
     }
 
     // Sort the devices by tableName
@@ -110,7 +106,7 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
     tables.sort(Comparator.naturalOrder());
 
     // Replace ArrayList with LinkedList to improve performance
-    final LinkedHashMap<String, LinkedList<Pair<Tablet, Map<IDeviceID, Pair<Long, Long>>>>>
+    final LinkedHashMap<String, LinkedList<Pair<Tablet, List<Pair<IDeviceID, Integer>>>>>
         table2TabletsLinkedList = new LinkedHashMap<>();
     for (final String tableName : tables) {
       table2TabletsLinkedList.put(tableName, new LinkedList<>(tableName2Tablets.get(tableName)));
@@ -184,24 +180,25 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
   }
 
   private void tryBestToWriteTabletsIntoOneFile(
-      final LinkedHashMap<String, LinkedList<Pair<Tablet, Map<IDeviceID, Pair<Long, Long>>>>>
+      final LinkedHashMap<String, LinkedList<Pair<Tablet, List<Pair<IDeviceID, Integer>>>>>
           device2TabletsLinkedList)
-      throws IOException, WriteProcessException {
-    final Iterator<Map.Entry<String, LinkedList<Pair<Tablet, Map<IDeviceID, Pair<Long, Long>>>>>>
+      throws IOException {
+    final Iterator<Map.Entry<String, LinkedList<Pair<Tablet, List<Pair<IDeviceID, Integer>>>>>>
         iterator = device2TabletsLinkedList.entrySet().iterator();
 
     while (iterator.hasNext()) {
-      final Map.Entry<String, LinkedList<Pair<Tablet, Map<IDeviceID, Pair<Long, Long>>>>> entry =
+      final Map.Entry<String, LinkedList<Pair<Tablet, List<Pair<IDeviceID, Integer>>>>> entry =
           iterator.next();
       final String tableName = entry.getKey();
-      final LinkedList<Pair<Tablet, Map<IDeviceID, Pair<Long, Long>>>> tablets = entry.getValue();
+      final LinkedList<Pair<Tablet, List<Pair<IDeviceID, Integer>>>> tablets = entry.getValue();
 
       final List<Tablet> tabletsToWrite = new ArrayList<>();
 
-      Pair<Tablet, Map<IDeviceID, Pair<Long, Long>>> lastTablet = null;
+      Pair<Tablet, List<Pair<IDeviceID, Integer>>> lastTablet = null;
+      Map<IDeviceID, Long> deviceLastTimestampMap = new HashMap<>();
       while (!tablets.isEmpty()) {
-        final Pair<Tablet, Map<IDeviceID, Pair<Long, Long>>> pair = tablets.peekFirst();
-        if (Objects.isNull(lastTablet)) {
+        final Pair<Tablet, List<Pair<IDeviceID, Integer>>> pair = tablets.peekFirst();
+        if (Objects.isNull(lastTablet) || hasNoTimestampOverlaps(pair, deviceLastTimestampMap)) {
           tabletsToWrite.add(pair.left);
           lastTablet = pair;
           tablets.pollFirst();
@@ -229,12 +226,65 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
     }
   }
 
-  //  private boolean isOver(Map<IDeviceID,Pair<Long,Long>> lastPair,Map<IDeviceID,Pair<Long,Long>>
-  // currPair){
-  //    for(Map.Entry<IDeviceID,Pair<Long,Long>> entry : lastPair.entrySet()){
-  //      Pair<Long,Long> pair = currPair.get(entry.getKey());
-  //      long lastPairL=
-  //      if(pair.left>entry.getValue().right)
-  //    }
-  //  }
+  private boolean hasNoTimestampOverlaps(
+      final Pair<Tablet, List<Pair<IDeviceID, Integer>>> tabletPair,
+      final Map<IDeviceID, Long> deviceLastTimestampMap) {
+    int currentTimestampIndex = 0;
+    for (Pair<IDeviceID, Integer> deviceTimestampIndexPair : tabletPair.right) {
+      final Long lastDeviceTimestamp = deviceLastTimestampMap.get(deviceTimestampIndexPair.left);
+      if (lastDeviceTimestamp != null
+          && lastDeviceTimestamp >= tabletPair.left.timestamps[currentTimestampIndex]) {
+        return false;
+      }
+      currentTimestampIndex = deviceTimestampIndexPair.right;
+      deviceLastTimestampMap.put(
+          deviceTimestampIndexPair.left, tabletPair.left.timestamps[currentTimestampIndex - 1]);
+    }
+
+    return true;
+  }
+
+  private int comparePairs(
+      final Pair<Tablet, List<Pair<IDeviceID, Integer>>> pairA,
+      final Pair<Tablet, List<Pair<IDeviceID, Integer>>> pairB) {
+    int aCount = 0;
+    int bCount = 0;
+    int aIndex = 0;
+    int bIndex = 0;
+    int aLastTimeIndex = 0;
+    int bLastTimeIndex = 0;
+    final List<Pair<IDeviceID, Integer>> listA = pairA.right;
+    final List<Pair<IDeviceID, Integer>> listB = pairB.right;
+    while (aIndex < listA.size() && bIndex < listB.size()) {
+      int comparisonResult = listA.get(aIndex).left.compareTo(listB.get(bIndex).left);
+      if (comparisonResult == 0) {
+        long aTime = pairA.left.timestamps[aLastTimeIndex];
+        long bTime = pairB.left.timestamps[bLastTimeIndex];
+        if (aTime > bTime) {
+          aCount++;
+        } else if (aTime < bTime) {
+          bCount++;
+        }
+        aLastTimeIndex = listA.get(aIndex).right;
+        bLastTimeIndex = listB.get(bIndex).right;
+        aIndex++;
+        bIndex++;
+        continue;
+      }
+
+      if (comparisonResult > 0) {
+        bLastTimeIndex = listB.get(bIndex).right;
+        bIndex++;
+        aCount++;
+        continue;
+      }
+
+      aLastTimeIndex = listA.get(aIndex).right;
+      aIndex++;
+      bCount++;
+    }
+    bCount += listB.size() - bIndex;
+    aCount += listA.size() - aIndex;
+    return Integer.compare(bCount, aCount);
+  }
 }
