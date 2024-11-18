@@ -415,7 +415,7 @@ public class IoTDBPipeReqAutoSliceIT extends AbstractPipeDualManualIT {
     List<String> measurementSchemas = new ArrayList<>(tablet.getSchemas().size());
     List<TSDataType> types = new ArrayList<>(tablet.rowSize);
     for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
-      measurementSchemas.add(measurementSchema.getMeasurementId());
+      measurementSchemas.add(measurementSchema.getMeasurementName());
       types.add(measurementSchema.getType());
     }
 

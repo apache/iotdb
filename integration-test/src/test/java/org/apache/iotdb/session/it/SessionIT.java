@@ -284,10 +284,10 @@ public class SessionIT {
         int rowIndex = tablet.rowSize++;
         tablet.addTimestamp(rowIndex, time);
         tablet.addValue(
-            schemaList.get(0).getMeasurementId(), rowIndex, LocalDate.of(2024, 1, (int) time));
-        tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, time);
-        tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, new Binary(bytes));
-        tablet.addValue(schemaList.get(3).getMeasurementId(), rowIndex, "" + time);
+            schemaList.get(0).getMeasurementName(), rowIndex, LocalDate.of(2024, 1, (int) time));
+        tablet.addValue(schemaList.get(1).getMeasurementName(), rowIndex, time);
+        tablet.addValue(schemaList.get(2).getMeasurementName(), rowIndex, new Binary(bytes));
+        tablet.addValue(schemaList.get(3).getMeasurementName(), rowIndex, "" + time);
       }
       session.insertTablet(tablet);
       tablet.reset();
@@ -309,7 +309,7 @@ public class SessionIT {
         Assert.assertEquals(5, columnNames.size());
         for (int i = 0; i < 4; i++) {
           Assert.assertTrue(
-              columnNames.contains(deviceId + "." + schemaList.get(i).getMeasurementId()));
+              columnNames.contains(deviceId + "." + schemaList.get(i).getMeasurementName()));
         }
         dataSet.setFetchSize(1024); // default is 10000
         int row = 10;

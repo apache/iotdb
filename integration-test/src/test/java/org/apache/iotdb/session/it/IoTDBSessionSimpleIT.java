@@ -449,11 +449,11 @@ public class IoTDBSessionSimpleIT {
         int rowIndex = tablet.rowSize++;
         tablet.addTimestamp(rowIndex, timestamp);
         tablet.addValue(
-            schemaList.get(0).getMeasurementId(), rowIndex, new SecureRandom().nextLong());
+            schemaList.get(0).getMeasurementName(), rowIndex, new SecureRandom().nextLong());
         tablet.addValue(
-            schemaList.get(1).getMeasurementId(), rowIndex, new SecureRandom().nextInt());
+            schemaList.get(1).getMeasurementName(), rowIndex, new SecureRandom().nextInt());
         tablet.addValue(
-            schemaList.get(2).getMeasurementId(),
+            schemaList.get(2).getMeasurementName(),
             rowIndex,
             new Binary("test", TSFileConfig.STRING_CHARSET));
         timestamp++;
@@ -494,13 +494,13 @@ public class IoTDBSessionSimpleIT {
         int rowIndex = tablet.rowSize++;
         tablet.addTimestamp(rowIndex, time);
 
-        tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, (double) time);
-        tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, (float) time);
-        tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, time);
-        tablet.addValue(schemaList.get(3).getMeasurementId(), rowIndex, (int) time);
-        tablet.addValue(schemaList.get(4).getMeasurementId(), rowIndex, time % 2 == 0);
+        tablet.addValue(schemaList.get(0).getMeasurementName(), rowIndex, (double) time);
+        tablet.addValue(schemaList.get(1).getMeasurementName(), rowIndex, (float) time);
+        tablet.addValue(schemaList.get(2).getMeasurementName(), rowIndex, time);
+        tablet.addValue(schemaList.get(3).getMeasurementName(), rowIndex, (int) time);
+        tablet.addValue(schemaList.get(4).getMeasurementName(), rowIndex, time % 2 == 0);
         tablet.addValue(
-            schemaList.get(5).getMeasurementId(),
+            schemaList.get(5).getMeasurementName(),
             rowIndex,
             new Binary(String.valueOf(time), TSFileConfig.STRING_CHARSET));
       }
@@ -551,16 +551,16 @@ public class IoTDBSessionSimpleIT {
         int rowIndex = tablet.rowSize++;
         tablet.addTimestamp(rowIndex, time);
 
-        tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, (double) time);
-        tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, (float) time);
-        tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, time);
-        tablet.addValue(schemaList.get(3).getMeasurementId(), rowIndex, (int) time);
-        tablet.addValue(schemaList.get(4).getMeasurementId(), rowIndex, time % 2 == 0);
+        tablet.addValue(schemaList.get(0).getMeasurementName(), rowIndex, (double) time);
+        tablet.addValue(schemaList.get(1).getMeasurementName(), rowIndex, (float) time);
+        tablet.addValue(schemaList.get(2).getMeasurementName(), rowIndex, time);
+        tablet.addValue(schemaList.get(3).getMeasurementName(), rowIndex, (int) time);
+        tablet.addValue(schemaList.get(4).getMeasurementName(), rowIndex, time % 2 == 0);
         tablet.addValue(
-            schemaList.get(5).getMeasurementId(),
+            schemaList.get(5).getMeasurementName(),
             rowIndex,
             new Binary("Text" + time, TSFileConfig.STRING_CHARSET));
-        tablet.addValue(schemaList.get(6).getMeasurementId(), rowIndex, "Text" + time);
+        tablet.addValue(schemaList.get(6).getMeasurementName(), rowIndex, "Text" + time);
       }
 
       if (tablet.rowSize != 0) {
@@ -598,16 +598,16 @@ public class IoTDBSessionSimpleIT {
         int rowIndex = tablet.rowSize++;
         tablet.addTimestamp(rowIndex, -time);
 
-        tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, (double) time);
-        tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, (float) time);
-        tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, time);
-        tablet.addValue(schemaList.get(3).getMeasurementId(), rowIndex, (int) time);
-        tablet.addValue(schemaList.get(4).getMeasurementId(), rowIndex, time % 2 == 0);
+        tablet.addValue(schemaList.get(0).getMeasurementName(), rowIndex, (double) time);
+        tablet.addValue(schemaList.get(1).getMeasurementName(), rowIndex, (float) time);
+        tablet.addValue(schemaList.get(2).getMeasurementName(), rowIndex, time);
+        tablet.addValue(schemaList.get(3).getMeasurementName(), rowIndex, (int) time);
+        tablet.addValue(schemaList.get(4).getMeasurementName(), rowIndex, time % 2 == 0);
         tablet.addValue(
-            schemaList.get(5).getMeasurementId(),
+            schemaList.get(5).getMeasurementName(),
             rowIndex,
             new Binary("Text" + time, TSFileConfig.STRING_CHARSET));
-        tablet.addValue(schemaList.get(6).getMeasurementId(), rowIndex, "Text" + time);
+        tablet.addValue(schemaList.get(6).getMeasurementName(), rowIndex, "Text" + time);
       }
 
       if (tablet.rowSize != 0) {
@@ -646,16 +646,16 @@ public class IoTDBSessionSimpleIT {
         int rowIndex = tablet.rowSize++;
         tablet.addTimestamp(rowIndex, time);
 
-        tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, (double) time);
-        tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, (float) time);
-        tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, time);
-        tablet.addValue(schemaList.get(3).getMeasurementId(), rowIndex, (int) time);
-        tablet.addValue(schemaList.get(4).getMeasurementId(), rowIndex, time % 2 == 0);
+        tablet.addValue(schemaList.get(0).getMeasurementName(), rowIndex, (double) time);
+        tablet.addValue(schemaList.get(1).getMeasurementName(), rowIndex, (float) time);
+        tablet.addValue(schemaList.get(2).getMeasurementName(), rowIndex, time);
+        tablet.addValue(schemaList.get(3).getMeasurementName(), rowIndex, (int) time);
+        tablet.addValue(schemaList.get(4).getMeasurementName(), rowIndex, time % 2 == 0);
         tablet.addValue(
-            schemaList.get(5).getMeasurementId(),
+            schemaList.get(5).getMeasurementName(),
             rowIndex,
             new Binary("Text" + time, TSFileConfig.STRING_CHARSET));
-        tablet.addValue(schemaList.get(6).getMeasurementId(), rowIndex, "Text" + time);
+        tablet.addValue(schemaList.get(6).getMeasurementName(), rowIndex, "Text" + time);
       }
 
       if (tablet.rowSize != 0) {
@@ -681,9 +681,9 @@ public class IoTDBSessionSimpleIT {
         int rowIndex = tablet.rowSize++;
         tablet.addTimestamp(rowIndex, time);
 
-        tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, (double) time);
-        tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, (double) time);
-        tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, (double) time);
+        tablet.addValue(schemaList.get(0).getMeasurementName(), rowIndex, (double) time);
+        tablet.addValue(schemaList.get(1).getMeasurementName(), rowIndex, (double) time);
+        tablet.addValue(schemaList.get(2).getMeasurementName(), rowIndex, (double) time);
       }
 
       if (tablet.rowSize != 0) {
@@ -1769,7 +1769,7 @@ public class IoTDBSessionSimpleIT {
         int rowIndex = tablet.rowSize++;
         tablet.addTimestamp(rowIndex, i);
         Binary dataBinary = new Binary(data);
-        tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, dataBinary);
+        tablet.addValue(schemaList.get(0).getMeasurementName(), rowIndex, dataBinary);
       }
       session.insertTablet(tablet);
       // check result

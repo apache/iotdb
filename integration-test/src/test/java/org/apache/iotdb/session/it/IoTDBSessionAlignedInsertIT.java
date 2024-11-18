@@ -302,8 +302,8 @@ public class IoTDBSessionAlignedInsertIT {
     for (long row = 0; row < 100; row++) {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
-      tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, row * 10 + 1L);
-      tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, (int) (row * 10 + 2));
+      tablet.addValue(schemaList.get(0).getMeasurementName(), rowIndex, row * 10 + 1L);
+      tablet.addValue(schemaList.get(1).getMeasurementName(), rowIndex, (int) (row * 10 + 2));
 
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
         session.insertAlignedTablet(tablet, true);

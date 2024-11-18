@@ -48,6 +48,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -91,7 +92,13 @@ public class IoTDBInsertTableSessionPoolIT {
               ColumnCategory.MEASUREMENT,
               ColumnCategory.MEASUREMENT,
               ColumnCategory.MEASUREMENT);
-      Tablet tablet = new Tablet("sg6", schemaList, columnTypes, 300);
+      Tablet tablet =
+          new Tablet(
+              "sg6",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes,
+              300);
       long timestamp = 0;
       for (long row = 0; row < 100; row++) {
         int rowIndex = tablet.rowSize++;
@@ -99,9 +106,9 @@ public class IoTDBInsertTableSessionPoolIT {
         for (int s = 0; s < 4; s++) {
           long value = timestamp;
           if (s == 0) {
-            tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, "d1");
+            tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, "d1");
           } else {
-            tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+            tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, value);
           }
         }
         timestamp++;
@@ -113,9 +120,9 @@ public class IoTDBInsertTableSessionPoolIT {
         for (int s = 0; s < 4; s++) {
           long value = timestamp;
           if (s == 0) {
-            tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, "d1");
+            tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, "d1");
           } else {
-            tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+            tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, value);
           }
         }
         timestamp++;
@@ -200,7 +207,13 @@ public class IoTDBInsertTableSessionPoolIT {
               ColumnCategory.MEASUREMENT);
 
       long timestamp = 0;
-      Tablet tablet = new Tablet("table20", schemas, columnTypes, 10);
+      Tablet tablet =
+          new Tablet(
+              "table20",
+              IMeasurementSchema.getMeasurementNameList(schemas),
+              schemas.stream().map(IMeasurementSchema::getType).collect(Collectors.toList()),
+              columnTypes,
+              10);
 
       for (long row = 0; row < 10; row++) {
         int rowIndex = tablet.rowSize++;

@@ -287,7 +287,7 @@ public class IoTDBSessionComplexIT {
       long value = 0;
       tablet.addTimestamp(rowIndex, time);
       for (int s = 0; s < 3; s++) {
-        tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+        tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, value);
         value++;
       }
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
@@ -390,7 +390,7 @@ public class IoTDBSessionComplexIT {
         long value = 0;
         tablet.addTimestamp(tablet.rowSize, time);
         for (int s = 0; s < 3; s++) {
-          tablet.addValue(schemaList.get(s).getMeasurementId(), tablet.rowSize, value);
+          tablet.addValue(schemaList.get(s).getMeasurementName(), tablet.rowSize, value);
           value++;
         }
         tablet.rowSize++;

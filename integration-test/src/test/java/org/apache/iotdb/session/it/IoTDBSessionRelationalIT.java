@@ -158,7 +158,13 @@ public class IoTDBSessionRelationalIT {
           Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
 
       long timestamp = 0;
-      Tablet tablet = new Tablet("table1", schemaList, columnTypes, 15);
+      Tablet tablet =
+          new Tablet(
+              "table1",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes,
+              15);
 
       for (long row = 0; row < 15; row++) {
         int rowIndex = tablet.rowSize++;
@@ -289,10 +295,9 @@ public class IoTDBSessionRelationalIT {
               ColumnCategory.MEASUREMENT);
       List<String> measurementIds =
           schemaList.stream()
-              .map(IMeasurementSchema::getMeasurementId)
+              .map(IMeasurementSchema::getMeasurementName)
               .collect(Collectors.toList());
-      List<TSDataType> dataTypes =
-          schemaList.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
+      List<TSDataType> dataTypes = IMeasurementSchema.getDataTypeList(schemaList);
 
       long timestamp = 0;
 
@@ -409,10 +414,9 @@ public class IoTDBSessionRelationalIT {
               ColumnCategory.MEASUREMENT);
       List<String> measurementIds =
           schemaList.stream()
-              .map(IMeasurementSchema::getMeasurementId)
+              .map(IMeasurementSchema::getMeasurementName)
               .collect(Collectors.toList());
-      List<TSDataType> dataTypes =
-          schemaList.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
+      List<TSDataType> dataTypes = IMeasurementSchema.getDataTypeList(schemaList);
 
       Object[] values = new Object[] {"id:" + 1, "attr:" + 1, 1 * 1.0, 1 * 1.0};
       try {
@@ -453,10 +457,9 @@ public class IoTDBSessionRelationalIT {
           Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
       List<String> measurementIds =
           schemaList.stream()
-              .map(IMeasurementSchema::getMeasurementId)
+              .map(IMeasurementSchema::getMeasurementName)
               .collect(Collectors.toList());
-      List<TSDataType> dataTypes =
-          schemaList.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
+      List<TSDataType> dataTypes = IMeasurementSchema.getDataTypeList(schemaList);
 
       long timestamp = 0;
 
@@ -518,7 +521,13 @@ public class IoTDBSessionRelationalIT {
               ColumnCategory.MEASUREMENT);
 
       long timestamp = 0;
-      Tablet tablet = new Tablet("table4", schemaList, columnTypes, 15);
+      Tablet tablet =
+          new Tablet(
+              "table4",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes,
+              15);
 
       for (long row = 0; row < 15; row++) {
         int rowIndex = tablet.rowSize++;
@@ -631,7 +640,13 @@ public class IoTDBSessionRelationalIT {
           Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
 
       long timestamp = 0;
-      Tablet tablet = new Tablet("table5", schemaList, columnTypes, 15);
+      Tablet tablet =
+          new Tablet(
+              "table5",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes,
+              15);
 
       for (long row = 0; row < 15; row++) {
         int rowIndex = tablet.rowSize++;
@@ -702,7 +717,13 @@ public class IoTDBSessionRelationalIT {
           Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
 
       long timestamp = 0;
-      Tablet tablet = new Tablet("table5", schemaList, columnTypes, 15);
+      Tablet tablet =
+          new Tablet(
+              "table5",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes,
+              15);
 
       for (long row = 0; row < 15; row++) {
         int rowIndex = tablet.rowSize++;
@@ -774,10 +795,9 @@ public class IoTDBSessionRelationalIT {
           Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
       List<String> measurementIds =
           schemaList.stream()
-              .map(IMeasurementSchema::getMeasurementId)
+              .map(IMeasurementSchema::getMeasurementName)
               .collect(Collectors.toList());
-      List<TSDataType> dataTypes =
-          schemaList.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
+      List<TSDataType> dataTypes = IMeasurementSchema.getDataTypeList(schemaList);
 
       long timestamp = 0;
 
@@ -826,7 +846,13 @@ public class IoTDBSessionRelationalIT {
           Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
 
       long timestamp = 0;
-      Tablet tablet = new Tablet("table7", schemaList, columnTypes, 15);
+      Tablet tablet =
+          new Tablet(
+              "table7",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes,
+              15);
 
       for (long row = 0; row < 15; row++) {
         int rowIndex = tablet.rowSize++;
@@ -895,7 +921,13 @@ public class IoTDBSessionRelationalIT {
           Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
 
       long timestamp = 0;
-      Tablet tablet = new Tablet("table8", schemaList, columnTypes, 15);
+      Tablet tablet =
+          new Tablet(
+              "table8",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes,
+              15);
 
       for (long row = 0; row < 15; row++) {
         int rowIndex = tablet.rowSize++;
@@ -974,10 +1006,9 @@ public class IoTDBSessionRelationalIT {
               ColumnCategory.MEASUREMENT);
       List<String> measurementIds =
           schemaList.stream()
-              .map(IMeasurementSchema::getMeasurementId)
+              .map(IMeasurementSchema::getMeasurementName)
               .collect(Collectors.toList());
-      List<TSDataType> dataTypes =
-          schemaList.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
+      List<TSDataType> dataTypes = IMeasurementSchema.getDataTypeList(schemaList);
 
       long timestamp = 0;
 

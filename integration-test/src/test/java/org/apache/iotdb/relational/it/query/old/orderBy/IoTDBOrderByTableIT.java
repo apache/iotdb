@@ -1490,10 +1490,9 @@ public class IoTDBOrderByTableIT {
               Tablet.ColumnCategory.MEASUREMENT);
       List<String> measurementIds =
           schemaList.stream()
-              .map(IMeasurementSchema::getMeasurementId)
+              .map(IMeasurementSchema::getMeasurementName)
               .collect(Collectors.toList());
-      List<TSDataType> dataTypes =
-          schemaList.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
+      List<TSDataType> dataTypes = IMeasurementSchema.getDataTypeList(schemaList);
 
       List<Object[]> values =
           Arrays.asList(
@@ -1546,10 +1545,9 @@ public class IoTDBOrderByTableIT {
               Tablet.ColumnCategory.MEASUREMENT);
       List<String> measurementIds =
           schemaList.stream()
-              .map(IMeasurementSchema::getMeasurementId)
+              .map(IMeasurementSchema::getMeasurementName)
               .collect(Collectors.toList());
-      List<TSDataType> dataTypes =
-          schemaList.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
+      List<TSDataType> dataTypes = IMeasurementSchema.getDataTypeList(schemaList);
       List<Object[]> values =
           Arrays.asList(
               new Object[] {"d2", "a2", 3, 2947483648L, 231.2121, "coconut", false},

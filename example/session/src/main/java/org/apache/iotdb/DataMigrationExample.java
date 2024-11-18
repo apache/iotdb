@@ -145,38 +145,40 @@ public class DataMigrationExample {
           tablet.timestamps[row] = dataIter.getLong(1);
           for (int j = 0; j < schemaList.size(); ++j) {
             if (dataIter.isNull(j + 2)) {
-              tablet.addValue(schemaList.get(j).getMeasurementId(), row, null);
+              tablet.addValue(schemaList.get(j).getMeasurementName(), row, null);
               continue;
             }
             switch (schemaList.get(j).getType()) {
               case BOOLEAN:
                 tablet.addValue(
-                    schemaList.get(j).getMeasurementId(), row, dataIter.getBoolean(j + 2));
+                    schemaList.get(j).getMeasurementName(), row, dataIter.getBoolean(j + 2));
                 break;
               case INT32:
-                tablet.addValue(schemaList.get(j).getMeasurementId(), row, dataIter.getInt(j + 2));
+                tablet.addValue(
+                    schemaList.get(j).getMeasurementName(), row, dataIter.getInt(j + 2));
                 break;
               case INT64:
               case TIMESTAMP:
-                tablet.addValue(schemaList.get(j).getMeasurementId(), row, dataIter.getLong(j + 2));
+                tablet.addValue(
+                    schemaList.get(j).getMeasurementName(), row, dataIter.getLong(j + 2));
                 break;
               case FLOAT:
                 tablet.addValue(
-                    schemaList.get(j).getMeasurementId(), row, dataIter.getFloat(j + 2));
+                    schemaList.get(j).getMeasurementName(), row, dataIter.getFloat(j + 2));
                 break;
               case DOUBLE:
                 tablet.addValue(
-                    schemaList.get(j).getMeasurementId(), row, dataIter.getDouble(j + 2));
+                    schemaList.get(j).getMeasurementName(), row, dataIter.getDouble(j + 2));
                 break;
               case TEXT:
               case STRING:
                 tablet.addValue(
-                    schemaList.get(j).getMeasurementId(), row, dataIter.getString(j + 2));
+                    schemaList.get(j).getMeasurementName(), row, dataIter.getString(j + 2));
                 break;
               case DATE:
               case BLOB:
                 tablet.addValue(
-                    schemaList.get(j).getMeasurementId(), row, dataIter.getObject(j + 2));
+                    schemaList.get(j).getMeasurementName(), row, dataIter.getObject(j + 2));
                 break;
               default:
                 LOGGER.info("Migration of this type of data is not supported");

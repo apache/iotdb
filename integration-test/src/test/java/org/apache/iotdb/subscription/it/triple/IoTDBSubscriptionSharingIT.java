@@ -129,8 +129,8 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
       for (int row = 0; row < rows; row++) {
         rowIndex = tablet.rowSize++;
         tablet.addTimestamp(rowIndex, timestamp);
-        tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, (row + 1) * 1400 + row);
-        tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, (row + 1) * 100 + 0.5);
+        tablet.addValue(schemaList.get(0).getMeasurementName(), rowIndex, (row + 1) * 1400 + row);
+        tablet.addValue(schemaList.get(1).getMeasurementName(), rowIndex, (row + 1) * 100 + 0.5);
         timestamp += 2000;
       }
       session.insertTablet(tablet);

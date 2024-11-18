@@ -409,7 +409,7 @@ public class SessionExample {
       tablet.addTimestamp(rowIndex, timestamp);
       for (int s = 0; s < 3; s++) {
         long value = random.nextLong();
-        tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+        tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, value);
       }
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet, true);
@@ -486,7 +486,7 @@ public class SessionExample {
         if (row % 3 == s) {
           tablet.bitMaps[s].mark((int) row);
         }
-        tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+        tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, value);
       }
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet, true);
@@ -562,9 +562,9 @@ public class SessionExample {
       tablet3.addTimestamp(row3, timestamp);
       for (int i = 0; i < 3; i++) {
         long value = random.nextLong();
-        tablet1.addValue(schemaList.get(i).getMeasurementId(), row1, value);
-        tablet2.addValue(schemaList.get(i).getMeasurementId(), row2, value);
-        tablet3.addValue(schemaList.get(i).getMeasurementId(), row3, value);
+        tablet1.addValue(schemaList.get(i).getMeasurementName(), row1, value);
+        tablet2.addValue(schemaList.get(i).getMeasurementName(), row2, value);
+        tablet3.addValue(schemaList.get(i).getMeasurementName(), row3, value);
       }
       if (tablet1.rowSize == tablet1.getMaxRowNumber()) {
         session.insertTablets(tabletMap, true);
@@ -649,7 +649,7 @@ public class SessionExample {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, i);
       //  write data of String type or Binary type
-      tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, datas.get(i));
+      tablet.addValue(schemaList.get(0).getMeasurementName(), rowIndex, datas.get(i));
     }
     session.insertTablet(tablet);
     try (SessionDataSet dataSet = session.executeQueryStatement("select s1, s2 from " + device)) {

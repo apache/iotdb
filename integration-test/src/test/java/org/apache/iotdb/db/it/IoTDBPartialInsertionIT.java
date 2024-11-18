@@ -158,7 +158,7 @@ public class IoTDBPartialInsertionIT {
         tablet.addTimestamp(rowIndex, timestamp);
         for (int s = 0; s < 3; s++) {
           long value = timestamp;
-          tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+          tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, value);
         }
         timestamp++;
       }
@@ -168,7 +168,7 @@ public class IoTDBPartialInsertionIT {
         tablet.addTimestamp(rowIndex, timestamp);
         for (int s = 0; s < 3; s++) {
           long value = timestamp;
-          tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+          tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, value);
         }
         timestamp++;
       }

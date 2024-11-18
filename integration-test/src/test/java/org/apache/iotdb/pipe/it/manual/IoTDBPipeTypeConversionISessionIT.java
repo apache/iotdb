@@ -300,7 +300,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
     String sql = "select ";
     StringBuffer param = new StringBuffer();
     for (IMeasurementSchema schema : measurementSchemas) {
-      param.append(schema.getMeasurementId());
+      param.append(schema.getMeasurementName());
       param.append(',');
     }
     sql = sql + param.substring(0, param.length() - 1);
@@ -317,9 +317,12 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
     String uuid = RandomStringUtils.random(8, true, false);
     for (Pair<MeasurementSchema, MeasurementSchema> pair : measurementSchemas) {
       createTimeSeries(
-          uuid.toString(), pair.left.getMeasurementId(), pair.left.getType().name(), senderEnv);
+          uuid.toString(), pair.left.getMeasurementName(), pair.left.getType().name(), senderEnv);
       createTimeSeries(
-          uuid.toString(), pair.right.getMeasurementId(), pair.right.getType().name(), receiverEnv);
+          uuid.toString(),
+          pair.right.getMeasurementName(),
+          pair.right.getType().name(),
+          receiverEnv);
     }
 
     try (ISession senderSession = senderEnv.getSessionConnection();
@@ -553,7 +556,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
     List<String> measurementSchemas = new ArrayList<>(tablet.getSchemas().size());
     List<TSDataType> types = new ArrayList<>(tablet.rowSize);
     for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
-      measurementSchemas.add(measurementSchema.getMeasurementId());
+      measurementSchemas.add(measurementSchema.getMeasurementName());
       types.add(measurementSchema.getType());
     }
 

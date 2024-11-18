@@ -192,7 +192,13 @@ public class IoTDBInsertTableIT {
               ColumnCategory.MEASUREMENT,
               ColumnCategory.MEASUREMENT,
               ColumnCategory.MEASUREMENT);
-      Tablet tablet = new Tablet("sg6", schemaList, columnTypes, 300);
+      Tablet tablet =
+          new Tablet(
+              "sg6",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes,
+              300);
       long timestamp = 0;
       for (long row = 0; row < 100; row++) {
         int rowIndex = tablet.rowSize++;
@@ -200,9 +206,9 @@ public class IoTDBInsertTableIT {
         for (int s = 0; s < 4; s++) {
           long value = timestamp;
           if (s == 0) {
-            tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, "d1");
+            tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, "d1");
           } else {
-            tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+            tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, value);
           }
         }
         timestamp++;
@@ -214,9 +220,9 @@ public class IoTDBInsertTableIT {
         for (int s = 0; s < 4; s++) {
           long value = timestamp;
           if (s == 0) {
-            tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, "d1");
+            tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, "d1");
           } else {
-            tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+            tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, value);
           }
         }
         timestamp++;
@@ -575,10 +581,9 @@ public class IoTDBInsertTableIT {
           Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
       List<String> measurementIds =
           schemaList.stream()
-              .map(IMeasurementSchema::getMeasurementId)
+              .map(IMeasurementSchema::getMeasurementName)
               .collect(Collectors.toList());
-      List<TSDataType> dataTypes =
-          schemaList.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
+      List<TSDataType> dataTypes = IMeasurementSchema.getDataTypeList(schemaList);
 
       long timestamp = 0;
 
@@ -618,10 +623,9 @@ public class IoTDBInsertTableIT {
           Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
       List<String> measurementIds =
           schemaList.stream()
-              .map(IMeasurementSchema::getMeasurementId)
+              .map(IMeasurementSchema::getMeasurementName)
               .collect(Collectors.toList());
-      List<TSDataType> dataTypes =
-          schemaList.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
+      List<TSDataType> dataTypes = IMeasurementSchema.getDataTypeList(schemaList);
 
       long timestamp = 0;
 
@@ -657,7 +661,13 @@ public class IoTDBInsertTableIT {
           Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
 
       long timestamp = 0;
-      Tablet tablet = new Tablet("TaBle19_4", schemaList, columnTypes, 15);
+      Tablet tablet =
+          new Tablet(
+              "TaBle19_4",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes,
+              15);
 
       for (long row = 0; row < 15; row++) {
         int rowIndex = tablet.rowSize++;
@@ -706,7 +716,13 @@ public class IoTDBInsertTableIT {
           Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
 
       long timestamp = 0;
-      Tablet tablet = new Tablet("TaBle19_5", schemaList, columnTypes, 15);
+      Tablet tablet =
+          new Tablet(
+              "TaBle19_5",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes,
+              15);
 
       for (long row = 0; row < 15; row++) {
         int rowIndex = tablet.rowSize++;
@@ -788,7 +804,13 @@ public class IoTDBInsertTableIT {
               ColumnCategory.MEASUREMENT);
 
       long timestamp = 0;
-      Tablet tablet = new Tablet("table20", schemas, columnTypes, 10);
+      Tablet tablet =
+          new Tablet(
+              "table20",
+              IMeasurementSchema.getMeasurementNameList(schemas),
+              IMeasurementSchema.getDataTypeList(schemas),
+              columnTypes,
+              10);
 
       for (long row = 0; row < 10; row++) {
         int rowIndex = tablet.rowSize++;
@@ -914,7 +936,13 @@ public class IoTDBInsertTableIT {
 
       // all expired
       long timestamp = 0;
-      Tablet tablet = new Tablet("sg23", schemaList, columnTypes, 15);
+      Tablet tablet =
+          new Tablet(
+              "sg23",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes,
+              15);
 
       for (long row = 0; row < 3; row++) {
         int rowIndex = tablet.rowSize++;
@@ -985,7 +1013,13 @@ public class IoTDBInsertTableIT {
               ColumnCategory.MEASUREMENT);
 
       long timestamp = 0;
-      Tablet tablet = new Tablet("table4", schemaList, columnTypes, 15);
+      Tablet tablet =
+          new Tablet(
+              "table4",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes,
+              15);
 
       for (long row = 0; row < 15; row++) {
         int rowIndex = tablet.rowSize++;

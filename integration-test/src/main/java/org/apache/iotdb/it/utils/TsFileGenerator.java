@@ -251,7 +251,7 @@ public class TsFileGenerator implements AutoCloseable {
       throws IOException, IllegalPathException {
     try (final ModificationFile modificationFile =
         new ModificationFile(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX)) {
-      writer.flushAllChunkGroups();
+      writer.flush();
       final TreeSet<Long> timeSet = device2TimeSet.get(device);
       if (timeSet.isEmpty()) {
         return;
@@ -265,7 +265,7 @@ public class TsFileGenerator implements AutoCloseable {
         for (final IMeasurementSchema measurementSchema : device2MeasurementSchema.get(device)) {
           final Deletion deletion =
               new Deletion(
-                  new MeasurementPath(device, measurementSchema.getMeasurementId()),
+                  new MeasurementPath(device, measurementSchema.getMeasurementName()),
                   fileOffset,
                   startTime,
                   endTime);

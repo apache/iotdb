@@ -352,18 +352,24 @@ public class TableModelUtils {
     schemaList.add(new MeasurementSchema("s7", TSDataType.DATE));
     schemaList.add(new MeasurementSchema("s8", TSDataType.TEXT));
 
-    final List<Tablet.ColumnType> columnTypes =
+    final List<Tablet.ColumnCategory> columnTypes =
         Arrays.asList(
-            Tablet.ColumnType.ID,
-            Tablet.ColumnType.MEASUREMENT,
-            Tablet.ColumnType.MEASUREMENT,
-            Tablet.ColumnType.MEASUREMENT,
-            Tablet.ColumnType.MEASUREMENT,
-            Tablet.ColumnType.MEASUREMENT,
-            Tablet.ColumnType.MEASUREMENT,
-            Tablet.ColumnType.MEASUREMENT,
-            Tablet.ColumnType.MEASUREMENT);
-    Tablet tablet = new Tablet(tableName, schemaList, columnTypes, end - start);
+            Tablet.ColumnCategory.ID,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT);
+    Tablet tablet =
+        new Tablet(
+            tableName,
+            IMeasurementSchema.getMeasurementNameList(schemaList),
+            IMeasurementSchema.getDataTypeList(schemaList),
+            columnTypes,
+            end - start);
     tablet.initBitMaps();
     Random random = new Random();
 
