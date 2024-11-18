@@ -32,6 +32,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import javax.annotation.Nonnull;
 import javax.annotation.concurrent.ThreadSafe;
 
 import java.io.ByteArrayOutputStream;
@@ -75,10 +76,10 @@ public class TsTable {
 
   private Map<String, String> props = null;
 
-  // This is actually all the old attributeNames, to speed up the "dropped column check"
-  // in attribute names. This does not contain any extra information and shall only be
-  // used in table cache.
-  private final Map<String, String> oldAttributeNamePool = new HashMap<>();
+  // We intern the attributeIds to speed up the "dropped column check" in attribute names, and
+  // decouple from java's internal Integer pool. This does not contain any extra information and
+  // shall only be used in table cache.
+  private final Map<Integer, Integer> attributeIdPool = new HashMap<>();
 
   private transient int idNum = 0;
   private int attributeNum = 0;
@@ -230,20 +231,18 @@ public class TsTable {
     }
   }
 
-  public String getInternOldAttributeName(final String oldName) {
+  public Integer getInternAttributeId(final @Nonnull Integer attributeId) {
     readWriteLock.readLock().lock();
     try {
-      if (oldAttributeNamePool.containsKey(oldName)) {
-        return oldAttributeNamePool.get(oldName);
+      if (attributeIdPool.containsKey(attributeId)) {
+        return attributeIdPool.get(attributeId);
       }
       for (final TsTableColumnSchema schema : columnSchemaMap.values()) {
         if (schema.getColumnCategory() == TsTableColumnCategory.ATTRIBUTE
-            && oldName.equals(((AttributeColumnSchema) schema).getId())) {
-          final String internName = ((AttributeColumnSchema) schema).getId();
-          if (oldName.equals(internName)) {
-            oldAttributeNamePool.put(oldName, oldName);
-            return internName;
-          }
+            && attributeId.equals(((AttributeColumnSchema) schema).getId())) {
+          final Integer internId = ((AttributeColumnSchema) schema).getId();
+          attributeIdPool.put(internId, internId);
+          return internId;
         }
       }
       return null;

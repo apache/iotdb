@@ -22,7 +22,6 @@ package org.apache.iotdb.db.schemaengine.table;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -376,20 +375,25 @@ public class DataNodeTableCache implements ITableCache {
   public String tryGetInternColumnName(
       final @Nonnull String database,
       final @Nonnull String tableName,
-      final @Nonnull String columnName,
-      final boolean isAttribute) {
+      final @Nonnull String columnName) {
     if (columnName.isEmpty()) {
       return columnName;
     }
     try {
-      final TsTable table = databaseTableMap.get(database).get(tableName);
-      final TsTableColumnSchema schema = table.getColumnSchema(columnName);
-      if (Objects.nonNull(schema)) {
-        return schema.getColumnName();
-      } else if (isAttribute) {
-        return table.getInternOldAttributeName(columnName);
-      }
+      return databaseTableMap
+          .get(database)
+          .get(tableName)
+          .getColumnSchema(columnName)
+          .getColumnName();
+    } catch (final Exception e) {
       return null;
+    }
+  }
+
+  public Integer tryGetInternAttributeId(
+      final @Nonnull String database, final @Nonnull String tableName, final int attributeId) {
+    try {
+      return databaseTableMap.get(database).get(tableName).getInternAttributeId(attributeId);
     } catch (final Exception e) {
       return null;
     }
