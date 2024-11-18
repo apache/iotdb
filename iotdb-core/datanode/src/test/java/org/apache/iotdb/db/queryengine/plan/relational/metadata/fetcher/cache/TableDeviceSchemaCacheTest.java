@@ -67,8 +67,8 @@ public class TableDeviceSchemaCacheTest {
   private static final String table2 = "t2";
   private static final String attributeName1 = "type";
   private static final String attributeName2 = "cycle";
-  private static final int attributeId1 = 1;
-  private static final int attributeId2 = 2;
+  private static final int attributeId1 = 0;
+  private static final int attributeId2 = 1;
   private static final String measurement1 = "s0";
   private static final String measurement2 = "s1";
   private static final String measurement3 = "s2";
