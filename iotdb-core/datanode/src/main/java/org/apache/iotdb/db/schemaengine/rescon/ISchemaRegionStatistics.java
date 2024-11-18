@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.schemaengine.rescon;
 
+import java.util.Map;
+
 public interface ISchemaRegionStatistics {
 
   boolean isAllowToCreateNewSeries();
@@ -27,9 +29,11 @@ public interface ISchemaRegionStatistics {
 
   int getSchemaRegionId();
 
-  long getSeriesNumber(boolean includeView);
+  long getSeriesNumber(final boolean includeView);
 
   long getDevicesNumber();
+
+  Map<String, Long> getTable2DevicesNumMap();
 
   long getTableDevicesNumber(final String table);
 

@@ -77,6 +77,7 @@ public class TsTable {
   private Map<String, String> props = null;
 
   private transient int idNums = 0;
+  private transient int measurementNum = 0;
 
   public TsTable(final String tableName) {
     this.tableName = tableName;
@@ -112,6 +113,8 @@ public class TsTable {
       if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
         idNums++;
         idColumnIndexMap.put(columnSchema.getColumnName(), idNums - 1);
+      } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.MEASUREMENT)) {
+        measurementNum++;
       }
     } finally {
       readWriteLock.writeLock().unlock();
@@ -140,6 +143,9 @@ public class TsTable {
         throw new SchemaExecutionException("Cannot remove an id column: " + columnName);
       } else if (columnSchema != null) {
         columnSchemaMap.remove(columnName);
+        if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.MEASUREMENT)) {
+          measurementNum--;
+        }
       }
     } finally {
       readWriteLock.writeLock().unlock();
@@ -159,6 +165,15 @@ public class TsTable {
     readWriteLock.readLock().lock();
     try {
       return idNums;
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
+  public int getMeasurementNum() {
+    readWriteLock.readLock().lock();
+    try {
+      return measurementNum;
     } finally {
       readWriteLock.readLock().unlock();
     }

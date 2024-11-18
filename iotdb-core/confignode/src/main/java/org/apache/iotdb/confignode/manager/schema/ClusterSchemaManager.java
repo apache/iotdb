@@ -1139,15 +1139,16 @@ public class ClusterSchemaManager {
     }
   }
 
-  public void updateTimeSeriesUsage(Map<Integer, Long> seriesUsage) {
+  public void updateTimeSeriesUsage(final Map<Integer, Long> seriesUsage) {
     schemaQuotaStatistics.updateTimeSeriesUsage(seriesUsage);
   }
 
-  public void updateDeviceUsage(Map<Integer, Long> deviceUsage) {
+  public void updateDeviceUsage(final Map<Integer, Long> deviceUsage) {
     schemaQuotaStatistics.updateDeviceUsage(deviceUsage);
   }
 
-  public void updateSchemaQuotaConfiguration(long seriesThreshold, long deviceThreshold) {
+  public void updateSchemaQuotaConfiguration(
+      final long seriesThreshold, final long deviceThreshold) {
     schemaQuotaStatistics.setDeviceThreshold(deviceThreshold);
     schemaQuotaStatistics.setSeriesThreshold(seriesThreshold);
   }
