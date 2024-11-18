@@ -118,7 +118,7 @@ public class TableDeviceSchemaValidator {
     final ValidateResult result = new ValidateResult();
 
     for (int i = 0, size = deviceIdList.size(); i < size; i++) {
-      final Map<String, Binary> attributeMap =
+      final Map<Integer, Binary> attributeMap =
           TableDeviceSchemaCache.getInstance()
               .getDeviceAttribute(
                   schemaValidation.getDatabase(),
@@ -127,9 +127,9 @@ public class TableDeviceSchemaValidator {
       if (attributeMap == null) {
         result.missingDeviceIndexList.add(i);
       } else {
-        for (int j = 0, attributeSize = attributeKeyList.size(); j < attributeSize; j++) {
+        for (int j = 0, attributeSize = attributeKeyList.length; j < attributeSize; j++) {
           if (!Objects.equals(
-              attributeMap.get(attributeKeyList.get(j)), attributeValueList.get(i)[j])) {
+              attributeMap.get(attributeKeyList[j]), attributeValueList.get(i)[j])) {
             result.attributeUpdateDeviceIndexList.add(i);
             break;
           }
