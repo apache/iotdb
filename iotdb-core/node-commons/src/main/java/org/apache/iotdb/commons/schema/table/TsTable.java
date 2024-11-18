@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.schema.table;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
@@ -151,7 +152,9 @@ public class TsTable {
       final TsTableColumnSchema columnSchema = columnSchemaMap.get(columnName);
       if (columnSchema != null
           && columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
-        idNum--;
+        throw new SchemaExecutionException("Cannot remove an id column: " + columnName);
+      } else if (columnSchema != null) {
+        columnSchemaMap.remove(columnName);
       }
     } finally {
       readWriteLock.writeLock().unlock();
