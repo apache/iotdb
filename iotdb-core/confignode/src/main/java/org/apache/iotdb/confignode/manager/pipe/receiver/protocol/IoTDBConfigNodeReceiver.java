@@ -44,6 +44,8 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnri
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
@@ -63,6 +65,7 @@ import org.apache.iotdb.confignode.persistence.schema.CNPhysicalPlanGenerator;
 import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
 import org.apache.iotdb.confignode.persistence.schema.ConfignodeSnapshotParser;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
@@ -347,6 +350,35 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ((SetTablePropertiesPlan) plan).getTableName(),
                     queryId,
                     ((SetTablePropertiesPlan) plan).getProperties()));
+      case CommitDeleteColumn:
+        queryId = generatePseudoQueryId();
+        return configManager
+            .getProcedureManager()
+            .executeWithoutDuplicate(
+                ((CommitDeleteColumnPlan) plan).getDatabase(),
+                null,
+                ((CommitDeleteColumnPlan) plan).getTableName(),
+                queryId,
+                ProcedureType.DROP_TABLE_PROCEDURE,
+                new DropTableColumnProcedure(
+                    ((CommitDeleteColumnPlan) plan).getDatabase(),
+                    ((CommitDeleteColumnPlan) plan).getTableName(),
+                    queryId,
+                    ((CommitDeleteColumnPlan) plan).getColumnName()));
+      case CommitDeleteTable:
+        queryId = generatePseudoQueryId();
+        return configManager
+            .getProcedureManager()
+            .executeWithoutDuplicate(
+                ((CommitDeleteTablePlan) plan).getDatabase(),
+                null,
+                ((CommitDeleteTablePlan) plan).getTableName(),
+                queryId,
+                ProcedureType.DROP_TABLE_PROCEDURE,
+                new DropTableProcedure(
+                    ((CommitDeleteTablePlan) plan).getDatabase(),
+                    ((CommitDeleteTablePlan) plan).getTableName(),
+                    queryId));
       case DropUser:
       case DropRole:
       case GrantRole:
