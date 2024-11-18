@@ -68,7 +68,7 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
       final TSInsertTabletReq request = new TSInsertTabletReq();
 
       for (final IMeasurementSchema measurementSchema : tablet.getSchemas()) {
-        request.addToMeasurements(measurementSchema.getMeasurementId());
+        request.addToMeasurements(measurementSchema.getMeasurementName());
         request.addToTypes(measurementSchema.getType().ordinal());
       }
 

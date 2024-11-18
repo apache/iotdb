@@ -207,9 +207,9 @@ public class BatchedFastAlignedSeriesCompactionExecutor
       List<IMeasurementSchema> measurementSchemas) {
     Map<String, Map<TsFileResource, Pair<Long, Long>>> result = new HashMap<>();
     for (IMeasurementSchema measurementSchema : measurementSchemas) {
-      String measurementId = measurementSchema.getMeasurementId();
+      String measurementId = measurementSchema.getMeasurementName();
       Map<TsFileResource, Pair<Long, Long>> entryValue =
-          timeseriesMetadataOffsetMap.get(measurementSchema.getMeasurementId());
+          timeseriesMetadataOffsetMap.get(measurementSchema.getMeasurementName());
       result.put(measurementId, entryValue);
     }
     return result;

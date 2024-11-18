@@ -1479,15 +1479,15 @@ public class IoTDBOrderByTableIT {
       schemaList.add(new MeasurementSchema("floatNum", TSDataType.DOUBLE));
       schemaList.add(new MeasurementSchema("str", TSDataType.TEXT));
       schemaList.add(new MeasurementSchema("bool", TSDataType.BOOLEAN));
-      final List<Tablet.ColumnType> columnTypes =
+      final List<Tablet.ColumnCategory> columnTypes =
           Arrays.asList(
-              Tablet.ColumnType.ID,
-              Tablet.ColumnType.ATTRIBUTE,
-              Tablet.ColumnType.MEASUREMENT,
-              Tablet.ColumnType.MEASUREMENT,
-              Tablet.ColumnType.MEASUREMENT,
-              Tablet.ColumnType.MEASUREMENT,
-              Tablet.ColumnType.MEASUREMENT);
+              Tablet.ColumnCategory.ID,
+              Tablet.ColumnCategory.ATTRIBUTE,
+              Tablet.ColumnCategory.MEASUREMENT,
+              Tablet.ColumnCategory.MEASUREMENT,
+              Tablet.ColumnCategory.MEASUREMENT,
+              Tablet.ColumnCategory.MEASUREMENT,
+              Tablet.ColumnCategory.MEASUREMENT);
       List<String> measurementIds =
           schemaList.stream()
               .map(IMeasurementSchema::getMeasurementId)
@@ -1535,15 +1535,15 @@ public class IoTDBOrderByTableIT {
       schemaList.add(new MeasurementSchema("floatNum", TSDataType.DOUBLE));
       schemaList.add(new MeasurementSchema("str", TSDataType.TEXT));
       schemaList.add(new MeasurementSchema("bool", TSDataType.BOOLEAN));
-      final List<Tablet.ColumnType> columnTypes =
+      final List<Tablet.ColumnCategory> columnTypes =
           Arrays.asList(
-              Tablet.ColumnType.ID,
-              Tablet.ColumnType.ATTRIBUTE,
-              Tablet.ColumnType.MEASUREMENT,
-              Tablet.ColumnType.MEASUREMENT,
-              Tablet.ColumnType.MEASUREMENT,
-              Tablet.ColumnType.MEASUREMENT,
-              Tablet.ColumnType.MEASUREMENT);
+              Tablet.ColumnCategory.ID,
+              Tablet.ColumnCategory.ATTRIBUTE,
+              Tablet.ColumnCategory.MEASUREMENT,
+              Tablet.ColumnCategory.MEASUREMENT,
+              Tablet.ColumnCategory.MEASUREMENT,
+              Tablet.ColumnCategory.MEASUREMENT,
+              Tablet.ColumnCategory.MEASUREMENT);
       List<String> measurementIds =
           schemaList.stream()
               .map(IMeasurementSchema::getMeasurementId)

@@ -70,7 +70,7 @@ public class SubscriptionSessionDataSet implements ISessionDataSet {
     List<IMeasurementSchema> schemas = tablet.getSchemas();
     columnNameList.addAll(
         schemas.stream()
-            .map((schema) -> deviceId + "." + schema.getMeasurementId())
+            .map((schema) -> deviceId + "." + schema.getMeasurementName())
             .collect(Collectors.toList()));
     return columnNameList;
   }

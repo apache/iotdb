@@ -34,7 +34,7 @@ import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.chunk.IChunkWriter;
-import org.apache.tsfile.write.record.Tablet.ColumnType;
+import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.File;
@@ -159,8 +159,8 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     Iterator<Map.Entry<String, TableSchema>> iterator = tableSchemaMap.entrySet().iterator();
     while (iterator.hasNext()) {
       Map.Entry<String, TableSchema> entry = iterator.next();
-      List<ColumnType> columnTypes = entry.getValue().getColumnTypes();
-      if (columnTypes.contains(ColumnType.MEASUREMENT)) {
+      List<ColumnCategory> columnTypes = entry.getValue().getColumnTypes();
+      if (columnTypes.contains(ColumnCategory.MEASUREMENT)) {
         continue;
       }
       iterator.remove();

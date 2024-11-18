@@ -275,12 +275,12 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
         continue;
       }
       // It is the same now
-      if (schemas[i] != null && schemas[i].getMeasurementId().equals(measurements[i])) {
+      if (schemas[i] != null && schemas[i].getMeasurementName().equals(measurements[i])) {
         indexMap.put(measurements[i], i);
         continue;
       }
       for (int j = 0, m = schemas.length; j < m; j++) {
-        if (schemas[j] != null && schemas[j].getMeasurementId().equals(measurements[i])) {
+        if (schemas[j] != null && schemas[j].getMeasurementName().equals(measurements[i])) {
           indexMap.put(measurements[i], j);
           break;
         }

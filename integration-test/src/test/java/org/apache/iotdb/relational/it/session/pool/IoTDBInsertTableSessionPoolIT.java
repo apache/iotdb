@@ -33,7 +33,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.record.Tablet.ColumnType;
+import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.AfterClass;
@@ -85,12 +85,12 @@ public class IoTDBInsertTableSessionPoolIT {
       schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
       schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
       schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
-      final List<ColumnType> columnTypes =
+      final List<ColumnCategory> columnTypes =
           Arrays.asList(
-              ColumnType.ID,
-              ColumnType.MEASUREMENT,
-              ColumnType.MEASUREMENT,
-              ColumnType.MEASUREMENT);
+              ColumnCategory.ID,
+              ColumnCategory.MEASUREMENT,
+              ColumnCategory.MEASUREMENT,
+              ColumnCategory.MEASUREMENT);
       Tablet tablet = new Tablet("sg6", schemaList, columnTypes, 300);
       long timestamp = 0;
       for (long row = 0; row < 100; row++) {
@@ -184,20 +184,20 @@ public class IoTDBInsertTableSessionPoolIT {
       schemas.add(new MeasurementSchema("blob", TSDataType.BLOB));
       schemas.add(new MeasurementSchema("timestamp", TSDataType.TIMESTAMP));
       schemas.add(new MeasurementSchema("date", TSDataType.DATE));
-      final List<ColumnType> columnTypes =
+      final List<ColumnCategory> columnTypes =
           Arrays.asList(
-              ColumnType.ID,
-              ColumnType.ATTRIBUTE,
-              ColumnType.MEASUREMENT,
-              ColumnType.MEASUREMENT,
-              ColumnType.MEASUREMENT,
-              ColumnType.MEASUREMENT,
-              ColumnType.MEASUREMENT,
-              ColumnType.MEASUREMENT,
-              ColumnType.MEASUREMENT,
-              ColumnType.MEASUREMENT,
-              ColumnType.MEASUREMENT,
-              ColumnType.MEASUREMENT);
+              ColumnCategory.ID,
+              ColumnCategory.ATTRIBUTE,
+              ColumnCategory.MEASUREMENT,
+              ColumnCategory.MEASUREMENT,
+              ColumnCategory.MEASUREMENT,
+              ColumnCategory.MEASUREMENT,
+              ColumnCategory.MEASUREMENT,
+              ColumnCategory.MEASUREMENT,
+              ColumnCategory.MEASUREMENT,
+              ColumnCategory.MEASUREMENT,
+              ColumnCategory.MEASUREMENT,
+              ColumnCategory.MEASUREMENT);
 
       long timestamp = 0;
       Tablet tablet = new Tablet("table20", schemas, columnTypes, 10);

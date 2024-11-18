@@ -22,7 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionTableSchemaNotMatchException;
 
 import org.apache.tsfile.file.metadata.TableSchema;
-import org.apache.tsfile.write.record.Tablet.ColumnType;
+import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
@@ -43,28 +43,28 @@ public class CompactionTableSchema extends TableSchema {
     }
     // filter id columns
     List<IMeasurementSchema> otherSchemaColumnSchemas = tableSchema.getColumnSchemas();
-    List<ColumnType> otherSchemaColumnTypes = tableSchema.getColumnTypes();
+    List<ColumnCategory> otherSchemaColumnCategories = tableSchema.getColumnTypes();
     List<IMeasurementSchema> idColumnSchemasToMerge = new ArrayList<>();
 
-    for (int i = 0; i < otherSchemaColumnTypes.size(); i++) {
-      ColumnType columnType = otherSchemaColumnTypes.get(i);
-      if (columnType != ColumnType.ID) {
+    for (int i = 0; i < otherSchemaColumnCategories.size(); i++) {
+      ColumnCategory columnCategory = otherSchemaColumnCategories.get(i);
+      if (columnCategory != ColumnCategory.ID) {
         continue;
       }
       idColumnSchemasToMerge.add(otherSchemaColumnSchemas.get(i));
     }
 
     // check id column prefix
-    int prefixLength = Math.min(this.columnTypes.size(), idColumnSchemasToMerge.size());
+    int prefixLength = Math.min(this.columnCategories.size(), idColumnSchemasToMerge.size());
     for (int i = 0; i < prefixLength; i++) {
       IMeasurementSchema idColumnToMerge = idColumnSchemasToMerge.get(i);
       IMeasurementSchema currentIdColumn = columnSchemas.get(i);
-      if (!idColumnToMerge.getMeasurementId().equals(currentIdColumn.getMeasurementId())) {
+      if (!idColumnToMerge.getMeasurementName().equals(currentIdColumn.getMeasurementName())) {
         throw new CompactionTableSchemaNotMatchException(
             "current id column name is "
-                + currentIdColumn.getMeasurementId()
+                + currentIdColumn.getMeasurementName()
                 + ", other id column name in same position is "
-                + idColumnToMerge.getMeasurementId());
+                + idColumnToMerge.getMeasurementName());
       }
     }
 
@@ -72,7 +72,7 @@ public class CompactionTableSchema extends TableSchema {
     List<IMeasurementSchema> newIdColumns =
         idColumnSchemasToMerge.subList(prefixLength, idColumnSchemasToMerge.size());
     for (IMeasurementSchema newIdColumn : newIdColumns) {
-      columnTypes.add(ColumnType.ID);
+      columnCategories.add(ColumnCategory.ID);
       columnSchemas.add(newIdColumn);
     }
   }
@@ -80,7 +80,7 @@ public class CompactionTableSchema extends TableSchema {
   public CompactionTableSchema copy() {
     CompactionTableSchema tableSchema = new CompactionTableSchema(this.tableName);
     tableSchema.columnSchemas = new ArrayList<>(this.columnSchemas);
-    tableSchema.columnTypes = new ArrayList<>(this.columnTypes);
+    tableSchema.columnCategories = new ArrayList<>(this.columnCategories);
     return tableSchema;
   }
 }

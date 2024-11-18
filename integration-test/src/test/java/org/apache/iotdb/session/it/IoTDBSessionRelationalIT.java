@@ -31,7 +31,7 @@ import org.apache.iotdb.session.Session;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.record.Tablet.ColumnType;
+import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
@@ -154,8 +154,8 @@ public class IoTDBSessionRelationalIT {
       schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
-      final List<ColumnType> columnTypes =
-          Arrays.asList(ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT);
+      final List<ColumnCategory> columnTypes =
+          Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
 
       long timestamp = 0;
       Tablet tablet = new Tablet("table1", schemaList, columnTypes, 15);
@@ -281,9 +281,12 @@ public class IoTDBSessionRelationalIT {
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
       schemaList.add(new MeasurementSchema("m2", TSDataType.DOUBLE));
-      final List<ColumnType> columnTypes =
+      final List<ColumnCategory> columnTypes =
           Arrays.asList(
-              ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT, ColumnType.MEASUREMENT);
+              ColumnCategory.ID,
+              ColumnCategory.ATTRIBUTE,
+              ColumnCategory.MEASUREMENT,
+              ColumnCategory.MEASUREMENT);
       List<String> measurementIds =
           schemaList.stream()
               .map(IMeasurementSchema::getMeasurementId)
@@ -398,9 +401,12 @@ public class IoTDBSessionRelationalIT {
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
       schemaList.add(new MeasurementSchema("m2", TSDataType.DOUBLE));
-      final List<ColumnType> columnTypes =
+      final List<ColumnCategory> columnTypes =
           Arrays.asList(
-              ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT, ColumnType.MEASUREMENT);
+              ColumnCategory.ID,
+              ColumnCategory.ATTRIBUTE,
+              ColumnCategory.MEASUREMENT,
+              ColumnCategory.MEASUREMENT);
       List<String> measurementIds =
           schemaList.stream()
               .map(IMeasurementSchema::getMeasurementId)
@@ -443,8 +449,8 @@ public class IoTDBSessionRelationalIT {
       schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
-      final List<ColumnType> columnTypes =
-          Arrays.asList(ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT);
+      final List<ColumnCategory> columnTypes =
+          Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
       List<String> measurementIds =
           schemaList.stream()
               .map(IMeasurementSchema::getMeasurementId)
@@ -504,9 +510,12 @@ public class IoTDBSessionRelationalIT {
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
       schemaList.add(new MeasurementSchema("m2", TSDataType.DOUBLE));
-      final List<ColumnType> columnTypes =
+      final List<ColumnCategory> columnTypes =
           Arrays.asList(
-              ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT, ColumnType.MEASUREMENT);
+              ColumnCategory.ID,
+              ColumnCategory.ATTRIBUTE,
+              ColumnCategory.MEASUREMENT,
+              ColumnCategory.MEASUREMENT);
 
       long timestamp = 0;
       Tablet tablet = new Tablet("table4", schemaList, columnTypes, 15);
@@ -618,8 +627,8 @@ public class IoTDBSessionRelationalIT {
       schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
-      final List<ColumnType> columnTypes =
-          Arrays.asList(ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT);
+      final List<ColumnCategory> columnTypes =
+          Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
 
       long timestamp = 0;
       Tablet tablet = new Tablet("table5", schemaList, columnTypes, 15);
@@ -689,8 +698,8 @@ public class IoTDBSessionRelationalIT {
       schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
-      final List<ColumnType> columnTypes =
-          Arrays.asList(ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT);
+      final List<ColumnCategory> columnTypes =
+          Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
 
       long timestamp = 0;
       Tablet tablet = new Tablet("table5", schemaList, columnTypes, 15);
@@ -761,8 +770,8 @@ public class IoTDBSessionRelationalIT {
       schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
-      final List<ColumnType> columnTypes =
-          Arrays.asList(ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT);
+      final List<ColumnCategory> columnTypes =
+          Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
       List<String> measurementIds =
           schemaList.stream()
               .map(IMeasurementSchema::getMeasurementId)
@@ -813,8 +822,8 @@ public class IoTDBSessionRelationalIT {
       schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
-      final List<ColumnType> columnTypes =
-          Arrays.asList(ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT);
+      final List<ColumnCategory> columnTypes =
+          Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
 
       long timestamp = 0;
       Tablet tablet = new Tablet("table7", schemaList, columnTypes, 15);
@@ -882,8 +891,8 @@ public class IoTDBSessionRelationalIT {
       schemaList.add(new MeasurementSchema("id2", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
-      final List<ColumnType> columnTypes =
-          Arrays.asList(ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT);
+      final List<ColumnCategory> columnTypes =
+          Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
 
       long timestamp = 0;
       Tablet tablet = new Tablet("table8", schemaList, columnTypes, 15);
@@ -957,8 +966,12 @@ public class IoTDBSessionRelationalIT {
       schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
-      final List<ColumnType> columnTypes =
-          Arrays.asList(ColumnType.ID, ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT);
+      final List<ColumnCategory> columnTypes =
+          Arrays.asList(
+              ColumnCategory.ID,
+              ColumnCategory.ID,
+              ColumnCategory.ATTRIBUTE,
+              ColumnCategory.MEASUREMENT);
       List<String> measurementIds =
           schemaList.stream()
               .map(IMeasurementSchema::getMeasurementId)

@@ -743,11 +743,11 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
     for (int i = 0; i < bitMaps.length; i++) {
       bitMaps[i] = new BitMap(generateDataSize);
     }
-    List<Tablet.ColumnType> columnTypes = new ArrayList<>(pairs.size());
+    List<Tablet.ColumnCategory> columnTypes = new ArrayList<>(pairs.size());
     for (int i = 0; i < objects.length; i++) {
       MeasurementSchema schema = pairs.get(i).left;
       measurementSchemas.add(schema);
-      columnTypes.add(Tablet.ColumnType.MEASUREMENT);
+      columnTypes.add(Tablet.ColumnCategory.MEASUREMENT);
       switch (schema.getType()) {
         case INT64:
           objects[i] = createTestDataForInt64();

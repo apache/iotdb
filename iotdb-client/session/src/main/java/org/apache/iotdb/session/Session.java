@@ -71,7 +71,7 @@ import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.record.Tablet.ColumnType;
+import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
@@ -1274,7 +1274,7 @@ public class Session implements ISession {
       long time,
       List<String> measurements,
       List<TSDataType> types,
-      List<ColumnType> columnCategories,
+      List<ColumnCategory> columnCategories,
       Object... values)
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertRecordReq request;
@@ -2804,16 +2804,26 @@ public class Session implements ISession {
             connection,
             (k, v) -> {
               if (v == null) {
+                List<String> measurements = new ArrayList<>(tablet.getSchemas().size());
+                List<TSDataType> dataTypes = new ArrayList<>();
+                tablet
+                    .getSchemas()
+                    .forEach(
+                        schema -> {
+                          measurements.add(schema.getMeasurementName());
+                          dataTypes.add(schema.getType());
+                        });
                 v =
                     new Tablet(
                         tablet.getTableName(),
-                        tablet.getSchemas(),
+                        measurements,
+                        dataTypes,
                         tablet.getColumnTypes(),
                         tablet.rowSize);
               }
               for (int j = 0; j < v.getSchemas().size(); j++) {
                 v.addValue(
-                    v.getSchemas().get(j).getMeasurementId(),
+                    v.getSchemas().get(j).getMeasurementName(),
                     v.rowSize,
                     tablet.getValue(finalI, j));
               }
@@ -2991,7 +3001,7 @@ public class Session implements ISession {
     TSInsertTabletReq request = new TSInsertTabletReq();
 
     for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
-      request.addToMeasurements(measurementSchema.getMeasurementId());
+      request.addToMeasurements(measurementSchema.getMeasurementName());
       request.addToTypes(measurementSchema.getType().ordinal());
     }
 
@@ -3115,7 +3125,7 @@ public class Session implements ISession {
     List<Integer> dataTypes = new ArrayList<>();
     request.setIsAligned(isAligned);
     for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
-      measurements.add(measurementSchema.getMeasurementId());
+      measurements.add(measurementSchema.getMeasurementName());
       dataTypes.add(measurementSchema.getType().ordinal());
     }
     request.addToMeasurementsList(measurements);

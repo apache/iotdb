@@ -93,7 +93,7 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
     this.timeColumnMeasurementSchema = measurementSchemas.get(0);
     this.measurementSchemaMap = new HashMap<>();
     this.measurementSchemas.forEach(
-        schema -> measurementSchemaMap.put(schema.getMeasurementId(), schema));
+        schema -> measurementSchemaMap.put(schema.getMeasurementName(), schema));
     this.ignoreAllNullRows = ignoreAllNullRows;
     // get source files which are sorted by the startTime of current device from old to new,
     // files that do not contain the current device have been filtered out as well.

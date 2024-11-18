@@ -64,7 +64,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     List<TSDataType> dataTypeList = new ArrayList<>();
     this.schemaList = schemaList;
     for (int i = 0; i < schemaList.size(); i++) {
-      measurementIndexMap.put(schemaList.get(i).getMeasurementId(), i);
+      measurementIndexMap.put(schemaList.get(i).getMeasurementName(), i);
       dataTypeList.add(schemaList.get(i).getType());
     }
     this.list = AlignedTVList.newAlignedList(dataTypeList);
@@ -74,7 +74,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     this.measurementIndexMap = new LinkedHashMap<>();
     this.schemaList = schemaList;
     for (int i = 0; i < schemaList.size(); i++) {
-      measurementIndexMap.put(schemaList.get(i).getMeasurementId(), i);
+      measurementIndexMap.put(schemaList.get(i).getMeasurementName(), i);
     }
     this.list = list;
   }
@@ -213,13 +213,13 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     for (int i = 0; i < schemaListInInsertPlan.size(); i++) {
       IMeasurementSchema measurementSchema = schemaListInInsertPlan.get(i);
       if (measurementSchema != null) {
-        Integer index = this.measurementIndexMap.get(measurementSchema.getMeasurementId());
+        Integer index = this.measurementIndexMap.get(measurementSchema.getMeasurementName());
         // Index is null means this measurement was not in this AlignedTVList before.
         // We need to extend a new column in AlignedMemChunk and AlignedTVList.
         // And the reorderedColumnValues should extend one more column for the new measurement
         if (index == null) {
           index = measurementIndexMap.size();
-          this.measurementIndexMap.put(schemaListInInsertPlan.get(i).getMeasurementId(), index);
+          this.measurementIndexMap.put(schemaListInInsertPlan.get(i).getMeasurementName(), index);
           this.schemaList.add(schemaListInInsertPlan.get(i));
           this.list.extendColumn(schemaListInInsertPlan.get(i).getType());
           reorderedColumnValues =
@@ -279,7 +279,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     List<TSDataType> dataTypeList = new ArrayList<>();
     for (IMeasurementSchema measurementSchema : schemaList) {
       columnIndexList.add(
-          measurementIndexMap.getOrDefault(measurementSchema.getMeasurementId(), -1));
+          measurementIndexMap.getOrDefault(measurementSchema.getMeasurementName(), -1));
       dataTypeList.add(measurementSchema.getType());
     }
     return list.getTvListByColumnIndex(columnIndexList, dataTypeList, ignoreAllNullRows);
@@ -318,7 +318,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     schemaList.remove(schemaToBeRemoved);
     measurementIndexMap.clear();
     for (int i = 0; i < schemaList.size(); i++) {
-      measurementIndexMap.put(schemaList.get(i).getMeasurementId(), i);
+      measurementIndexMap.put(schemaList.get(i).getMeasurementName(), i);
     }
   }
 

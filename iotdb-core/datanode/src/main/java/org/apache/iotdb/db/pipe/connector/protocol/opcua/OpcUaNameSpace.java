@@ -153,7 +153,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     final String currentFolder = currentStr.toString();
     for (int i = 0; i < tablet.getSchemas().size(); ++i) {
       final IMeasurementSchema measurementSchema = tablet.getSchemas().get(i);
-      final String name = measurementSchema.getMeasurementId();
+      final String name = measurementSchema.getMeasurementName();
       final TSDataType type = measurementSchema.getType();
       final NodeId nodeId = newNodeId(currentFolder + name);
       final UaVariableNode measurementNode;
@@ -258,7 +258,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       eventNode.setSourceName(
           tablet.getDeviceId()
               + TsFileConstant.PATH_SEPARATOR
-              + tablet.getSchemas().get(columnIndex).getMeasurementId());
+              + tablet.getSchemas().get(columnIndex).getMeasurementName());
 
       // Source node --> Sensor type, like double
       eventNode.setSourceNode(convertToOpcDataType(dataType));

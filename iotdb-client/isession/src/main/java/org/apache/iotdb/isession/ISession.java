@@ -35,7 +35,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.record.Tablet.ColumnType;
+import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -227,7 +227,7 @@ public interface ISession extends AutoCloseable {
       long time,
       List<String> measurements,
       List<TSDataType> types,
-      List<ColumnType> columnCategories,
+      List<ColumnCategory> columnCategories,
       Object... values)
       throws IoTDBConnectionException, StatementExecutionException;
 

@@ -265,7 +265,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
         if (currentDeletion
                 .getPath()
                 .matchFullPath(
-                    new PartialPath(deviceId.toString() + "." + schema.getMeasurementId()))
+                    new PartialPath(deviceId.toString() + "." + schema.getMeasurementName()))
             && currentDeletion.getFileOffset() > chunkHeaderOffset) {
           if (pageHeader.getStartTime() <= currentDeletion.getEndTime()
               && pageHeader.getEndTime() >= currentDeletion.getStartTime()) {
@@ -399,7 +399,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
         if (currentDeletion
                 .getPath()
                 .matchFullPath(
-                    new PartialPath(deviceId.toString() + "." + schema.getMeasurementId()))
+                    new PartialPath(deviceId.toString() + "." + schema.getMeasurementName()))
             && currentDeletion.getFileOffset() > chunkHeaderOffset) {
           chunkMetadata.insertIntoSortedDeletions(
               new TimeRange(currentDeletion.getStartTime(), currentDeletion.getEndTime()));

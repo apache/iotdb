@@ -177,7 +177,7 @@ public abstract class AbstractMemTable implements IMemTable {
     IWritableMemChunkGroup memChunkGroup =
         memTableMap.computeIfAbsent(deviceId, k -> new WritableMemChunkGroup());
     for (IMeasurementSchema schema : schemaList) {
-      if (schema != null && !memChunkGroup.contains(schema.getMeasurementId())) {
+      if (schema != null && !memChunkGroup.contains(schema.getMeasurementName())) {
         seriesNumber++;
         totalPointsNumThreshold += avgSeriesPointNumThreshold;
       }
@@ -197,7 +197,7 @@ public abstract class AbstractMemTable implements IMemTable {
                   schemaList.stream().filter(Objects::nonNull).collect(Collectors.toList()));
             });
     for (IMeasurementSchema schema : schemaList) {
-      if (schema != null && !memChunkGroup.contains(schema.getMeasurementId())) {
+      if (schema != null && !memChunkGroup.contains(schema.getMeasurementName())) {
         seriesNumber++;
         totalPointsNumThreshold += avgSeriesPointNumThreshold;
       }
@@ -623,7 +623,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
     boolean containsMeasurement = false;
     for (IMeasurementSchema measurementSchema : schemaList) {
-      if (alignedMemChunk.containsMeasurement(measurementSchema.getMeasurementId())) {
+      if (alignedMemChunk.containsMeasurement(measurementSchema.getMeasurementName())) {
         containsMeasurement = true;
         break;
       }
@@ -663,7 +663,7 @@ public abstract class AbstractMemTable implements IMemTable {
       for (IMeasurementSchema schema : schemaList) {
         deletionList.add(
             ModificationUtils.constructDeletionList(
-                deviceID, schema.getMeasurementId(), this, modsToMemTabled, ttlLowerBound));
+                deviceID, schema.getMeasurementName(), this, modsToMemTabled, ttlLowerBound));
       }
     }
     buildAlignedMemChunkHandle(
@@ -725,7 +725,7 @@ public abstract class AbstractMemTable implements IMemTable {
     timestamps = Arrays.copyOfRange(timestamps, 0, alignedTVList.rowCount());
 
     for (int i = 0; i < schemaList.size(); i++) {
-      String measurement = schemaList.get(i).getMeasurementId();
+      String measurement = schemaList.get(i).getMeasurementName();
       List<BitMap> curBitMap = bitMaps == null ? Collections.emptyList() : bitMaps.get(i);
       List<TimeRange> deletion =
           deletionList == null || deletionList.isEmpty()
