@@ -279,6 +279,7 @@ import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransportException;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1845,6 +1846,18 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> createPipe(CreatePipeStatement createPipeStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    // Verify that Pipe is disabled if TSFile encryption is enabled
+    if (TSFileDescriptor.getInstance().getConfig().getEncryptFlag()) {
+      String exceptionMessage =
+          String.format(
+              "Failed to create Pipe %s because TSFile is configured with encryption, which prohibits the use of Pipe",
+              createPipeStatement.getPipeName());
+      LOGGER.warn(exceptionMessage);
+      future.setException(
+          new IoTDBException(exceptionMessage, TSStatusCode.PIPE_ERROR.getStatusCode()));
+      return future;
+    }
 
     // Validate pipe name
     if (createPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
