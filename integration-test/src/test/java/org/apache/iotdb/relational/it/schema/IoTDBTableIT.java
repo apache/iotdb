@@ -398,7 +398,7 @@ public class IoTDBTableIT {
         statement.execute("alter table table2 rename column not_exist to new_id");
         fail();
       } catch (final SQLException e) {
-        assertEquals("616: Column 'd' does not exist", e.getMessage());
+        assertEquals("616: Column 'not_exist' does not exist", e.getMessage());
       }
 
       try {
