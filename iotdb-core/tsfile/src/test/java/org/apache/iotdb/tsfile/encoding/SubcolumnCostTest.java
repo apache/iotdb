@@ -301,18 +301,6 @@ public class SubcolumnCostTest {
         return ts_block_delta;
     }
 
-    // public static class SubColumnResult {
-    //     public int lBest;
-    //     public int betaBest;
-    //     public int cost;
-
-    //     public SubColumnResult(int lBest, int betaBest, int cost) {
-    //         this.lBest = lBest;
-    //         this.betaBest = betaBest;
-    //         this.cost = cost;
-    //     }
-    // }
-
     public static int RLECost(int[] numbers) {
         int[] values = new int[numbers.length];
         int[] run_length = new int[numbers.length];
@@ -511,6 +499,46 @@ public class SubcolumnCostTest {
             highBitsList[i] = (ts_block_delta[i] >> l) & ((1 << (m - l)) - 1);
         }
 
+        int[] run_length = new int[remaining - 1];
+        int[] rle_values = new int[remaining - 1];
+        int count = 1;
+        int currentNumber = highBitsList[0];
+        int index = 0;
+
+        for (int i = 1; i < remaining - 1; i++) {
+            if (highBitsList[i] == currentNumber) {
+                count++;
+            } else {
+                rle_values[index] = currentNumber;
+                run_length[index] = count;
+                index++;
+                currentNumber = highBitsList[i];
+                count = 1;
+            }
+        }
+
+        rle_values[index] = currentNumber;
+        run_length[index] = count;
+        index++;
+
+        intByte2Bytes(index, encode_pos, encoded_result);
+        encode_pos += 1;
+
+        for (int i = 0; i < index; i++) {
+            intByte2Bytes(rle_values[i], encode_pos, encoded_result);
+            encode_pos += 1;
+        }
+
+        int maxValue = Integer.MIN_VALUE;
+        for (int i = 0; i < index; i++) {
+            if (rle_values[i] > maxValue) {
+                maxValue = rle_values[i];
+            }
+        }
+
+        int maxBits = getBitWidth(maxValue);
+
+        // TODO 之后去掉
         // encode_pos += cost / 8;
 
         return encode_pos;
@@ -603,11 +631,12 @@ public class SubcolumnCostTest {
     @Test
     public void BOSOptimalTest() throws IOException {
         // String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/"; // your data path
+        // String parent_dir = "D:/github/xjz/subcolumn/elf_resources/";
         String parent_dir = "D:/github/temp/work/compress-subcolumn/";
         // String parent_dir =
         // "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
         // String output_parent_dir = parent_dir + "subcolumn/compression_ratio";
-        String output_parent_dir = parent_dir;
+        String output_parent_dir = "D:/github/temp/work/compress-subcolumn";
         // String input_parent_dir = parent_dir +
         // "elf/src/test/resources/ElfData_Short";
         // String input_parent_dir = parent_dir + "ElfData_Short/";
@@ -663,7 +692,7 @@ public class SubcolumnCostTest {
         //// dataset_block_size.add(1024);
 
         int repeatTime2 = 100;
-        // TODO 做完之后将下面这个去掉
+        // TODO 将下面这个去掉
         repeatTime2 = 1;
         // for (int file_i = 1; file_i < 2; file_i++) {
 
@@ -780,146 +809,4 @@ public class SubcolumnCostTest {
             writer.close();
         }
     }
-
-    public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/";// your data path
-        // String parent_dir =
-        // "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
-        // String output_parent_dir = parent_dir + "icde0802/compression_ratio/rle_bos";
-        String input_parent_dir = parent_dir + "trans_data/";
-        ArrayList<String> input_path_list = new ArrayList<>();
-        ArrayList<String> output_path_list = new ArrayList<>();
-        ArrayList<String> dataset_name = new ArrayList<>();
-        ArrayList<Integer> dataset_block_size = new ArrayList<>();
-        // dataset_name.add("CS-Sensors");
-        // dataset_name.add("Metro-Traffic");
-        // dataset_name.add("USGS-Earthquakes");
-        // dataset_name.add("YZ-Electricity");
-        // dataset_name.add("GW-Magnetic");
-        // dataset_name.add("TY-Fuel");
-        // dataset_name.add("Cyber-Vehicle");
-        // dataset_name.add("Vehicle-Charge");
-        // dataset_name.add("Nifty-Stocks");
-        // dataset_name.add("TH-Climate");
-        // dataset_name.add("TY-Transport");
-        // dataset_name.add("EPM-Education");
-
-        for (String value : dataset_name) {
-            input_path_list.add(input_parent_dir + value);
-            dataset_block_size.add(1024);
-        }
-
-        // output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
-        // // dataset_block_size.add(1024);
-        // output_path_list.add(output_parent_dir + "/Metro-Traffic_ratio.csv");// 1
-        // // dataset_block_size.add(2048);
-        // output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv");// 2
-        // // dataset_block_size.add(2048);
-        // output_path_list.add(output_parent_dir + "/YZ-Electricity_ratio.csv"); // 3
-        // // dataset_block_size.add(256);
-        // output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); // 4
-        // // dataset_block_size.add(1024);
-        // output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv");// 5
-        // // dataset_block_size.add(2048);
-        // output_path_list.add(output_parent_dir + "/Cyber-Vehicle_ratio.csv"); // 6
-        // // dataset_block_size.add(2048);
-        // output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv");// 7
-        // // dataset_block_size.add(2048);
-        // output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv");// 8
-        // // dataset_block_size.add(1024);
-        // output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv");// 9
-        // // dataset_block_size.add(2048);
-        // output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv");// 10
-        // // dataset_block_size.add(2048);
-        // output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");// 11
-        // dataset_block_size.add(1024);
-
-        int repeatTime2 = 100;
-        // for (int file_i = 8; file_i < 9; file_i++) {
-
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-
-            String inputPath = input_path_list.get(file_i);
-            System.out.println(inputPath);
-            String Output = output_path_list.get(file_i);
-
-            File file = new File(inputPath);
-            File[] tempList = file.listFiles();
-
-            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
-
-            String[] head = {
-                    "Input Direction",
-                    "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
-                    "Points",
-                    "Compressed Size",
-                    "Compression Ratio"
-            };
-            writer.writeRecord(head); // write header to output file
-
-            assert tempList != null;
-
-            for (File f : tempList) {
-                System.out.println(f);
-                InputStream inputStream = Files.newInputStream(f.toPath());
-
-                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-                ArrayList<Integer> data1 = new ArrayList<>();
-                ArrayList<Integer> data2 = new ArrayList<>();
-
-                loader.readHeaders();
-                while (loader.readRecord()) {
-                    data1.add(Integer.valueOf(loader.getValues()[0]));
-                    data2.add(Integer.valueOf(loader.getValues()[1]));
-                }
-
-                inputStream.close();
-                int[] data2_arr = new int[data1.size()];
-                for (int i = 0; i < data2.size(); i++) {
-                    data2_arr[i] = data2.get(i);
-                }
-                byte[] encoded_result = new byte[data2_arr.length * 4];
-                long encodeTime = 0;
-                long decodeTime = 0;
-                double ratio = 0;
-                double compressed_size = 0;
-
-                int length = 0;
-
-                long s = System.nanoTime();
-                for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                    // length = SubColumnEncoder(data2_arr, dataset_block_size.get(file_i),
-                    // encoded_result);
-                }
-
-                long e = System.nanoTime();
-                encodeTime += ((e - s) / repeatTime2);
-                compressed_size += length;
-                double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
-                ratio += ratioTmp;
-                s = System.nanoTime();
-                for (int repeat = 0; repeat < repeatTime2; repeat++)
-                    // BOSDecoder(encoded_result);
-                    e = System.nanoTime();
-                decodeTime += ((e - s) / repeatTime2);
-
-                String[] record = {
-                        f.toString(),
-                        "RLE+BOS-V",
-                        String.valueOf(encodeTime),
-                        String.valueOf(decodeTime),
-                        String.valueOf(data1.size()),
-                        String.valueOf(compressed_size),
-                        String.valueOf(ratio)
-                };
-                writer.writeRecord(record);
-                System.out.println(ratio);
-            }
-            writer.close();
-
-        }
-    }
-
 }
