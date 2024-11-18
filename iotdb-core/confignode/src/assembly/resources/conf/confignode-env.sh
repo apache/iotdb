@@ -148,12 +148,11 @@ calculate_memory_sizes()
     OFF_HEAP_MEMORY="${off_heap_memory_size_in_mb}M"
 }
 
-CONFIGNODE_CONF_DIR="`dirname "$0"`"
 get_cn_system_dir() {
     local config_file="$1"
     local cn_system_dir=""
 
-    cn_system_dir=`sed '/^cn_system_dir=/!d;s/.*=//' ${CONFIGNODE_CONF_DIR}/${config_file} | tail -n 1`
+    cn_system_dir=`sed '/^cn_system_dir=/!d;s/.*=//' ${CONFIGNODE_CONF}/${config_file} | tail -n 1`
 
     if [ -z "$cn_system_dir" ]; then
         echo ""
@@ -163,18 +162,18 @@ get_cn_system_dir() {
     if [[ "$cn_system_dir" == /* ]]; then
         echo "$cn_system_dir"
     else
-        echo "$CONFIGNODE_CONF_DIR/../$cn_system_dir"
+        echo "$CONFIGNODE_HOME/$cn_system_dir"
     fi
 }
 
-if [ -f "${CONFIGNODE_CONF_DIR}/iotdb-system.properties" ]; then
+if [ -f "${CONFIGNODE_CONF}/iotdb-system.properties" ]; then
   	heap_dump_dir=$(get_cn_system_dir "iotdb-system.properties")
 else
   	heap_dump_dir=$(get_cn_system_dir "iotdb-confignode.properties")
 fi
 
 if [ -z "$heap_dump_dir" ]; then
-  	heap_dump_dir="$(dirname "$0")/../data/confignode/system"
+  	heap_dump_dir="$CONFIGNODE_HOME/data/confignode/system"
 fi
 
 if [ ! -d "$heap_dump_dir" ]; then

@@ -143,43 +143,40 @@ calculate_memory_sizes()
 }
 
 
-DATANODE_CONF_DIR="`dirname "$0"`"
 # find first dir of dn_data_dirs from properties file
 get_first_data_dir() {
     local config_file="$1"
     local data_dir_value=""
 
-    data_dir_value=`sed '/^dn_data_dirs=/!d;s/.*=//' ${DATANODE_CONF_DIR}/${config_file} | tail -n 1`
+    data_dir_value=`sed '/^dn_data_dirs=/!d;s/.*=//' ${IOTDB_CONF}/${config_file} | tail -n 1`
 
     if [ -z "$data_dir_value" ]; then
         echo ""
         return 0
     fi
 
-    local first_dir=""
-
     if [[ "$data_dir_value" == *";"* ]]; then
-        first_dir=$(echo "$data_dir_value" | cut -d';' -f1)
+        data_dir_value=$(echo "$data_dir_value" | cut -d';' -f1)
     fi
-    if [[ "$first_dir" == *","* ]]; then
-        first_dir=$(echo "$first_dir" | cut -d',' -f1)
+    if [[ "$data_dir_value" == *","* ]]; then
+        data_dir_value=$(echo "$data_dir_value" | cut -d',' -f1)
     fi
 
-    if [[ "$first_dir" == /* ]]; then
-        echo "$first_dir"
+    if [[ "$data_dir_value" == /* ]]; then
+        echo "$data_dir_value"
     else
-        echo "$DATANODE_CONF_DIR/../$first_dir"
+        echo "$IOTDB_HOME/$data_dir_value"
     fi
 }
 
-if [ -f "${DATANODE_CONF_DIR}/iotdb-system.properties" ]; then
+if [ -f "${IOTDB_CONF}/iotdb-system.properties" ]; then
   	heap_dump_dir=$(get_first_data_dir "iotdb-system.properties")
 else
   	heap_dump_dir=$(get_first_data_dir "iotdb-datanode.properties")
 fi
 
 if [ -z "$heap_dump_dir" ]; then
-  	heap_dump_dir="$(dirname "$0")/../data/datanode/data"
+  	heap_dump_dir="$IOTDB_HOME/data/datanode/data"
 fi
 if [ ! -d "$heap_dump_dir" ]; then
   	mkdir -p "$heap_dump_dir"
