@@ -453,8 +453,51 @@ public class IoTDBTableIT {
 
       statement.execute("drop database test1");
 
+      // Test error messages
       try {
         statement.executeQuery("SHOW tables from test1");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("500: Unknown database test1", e.getMessage());
+      }
+
+      try {
+        statement.execute("create table test1.test()");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("500: Unknown database test1", e.getMessage());
+      }
+
+      try {
+        statement.execute("alter table test1.test add column a int32");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("500: Unknown database test1", e.getMessage());
+      }
+
+      try {
+        statement.execute("alter table test1.test drop column a");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("500: Unknown database test1", e.getMessage());
+      }
+
+      try {
+        statement.execute("alter table test1.test set properties ttl=default");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("500: Unknown database test1", e.getMessage());
+      }
+
+      try {
+        statement.execute("desc test1.test");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("500: Unknown database test1", e.getMessage());
+      }
+
+      try {
+        statement.execute("drop table test1.test");
         fail();
       } catch (final SQLException e) {
         assertEquals("500: Unknown database test1", e.getMessage());
