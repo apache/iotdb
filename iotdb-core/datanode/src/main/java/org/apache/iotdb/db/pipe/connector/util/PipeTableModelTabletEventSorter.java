@@ -41,7 +41,7 @@ public class PipeTableModelTabletEventSorter {
 
   private Integer[] index;
   private boolean isUnSorted = false;
-  private boolean isHasDeduplicated = false;
+  private boolean hasDuplicates = false;
   private int deduplicatedSize;
   private List<Pair<IDeviceID, Integer>> deviceID2TimeRange;
 
@@ -80,7 +80,7 @@ public class PipeTableModelTabletEventSorter {
           break;
         }
         if (previousTimestamp == currentTimestamp) {
-          isHasDeduplicated = true;
+          hasDuplicates = true;
         }
         continue;
       }
@@ -94,7 +94,7 @@ public class PipeTableModelTabletEventSorter {
       lastDevice = deviceID;
     }
 
-    if (!isUnSorted && !isHasDeduplicated) {
+    if (!isUnSorted && !hasDuplicates) {
       deviceID2TimeRange.add(new Pair<>(lastDevice, tablet.rowSize - 1));
       return deviceID2TimeRange;
     }
@@ -107,10 +107,10 @@ public class PipeTableModelTabletEventSorter {
 
     if (!isUnSorted) {
       sortAndDeduplicateTimestamps();
-      isHasDeduplicated = true;
+      hasDuplicates = true;
     }
 
-    if (!isHasDeduplicated) {
+    if (!hasDuplicates) {
       deduplicateTimestamps();
     }
 
