@@ -110,8 +110,6 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
     testSinkFormat("tablet");
   }
 
-  // table model not support
-  @Ignore
   @Test
   public void testSinkTsFileFormat() throws Exception {
     testSinkFormat("tsfile");

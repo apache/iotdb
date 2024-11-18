@@ -113,22 +113,9 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
     // Sort the tablets by dataBaseName
     for (int i = 0; i < tabletList.size(); i++) {
       final Tablet tablet = tabletList.get(i);
-      tableName2Tablets
-          .computeIfAbsent(tablet.getTableName(), k -> new ArrayList<>())
-          .add(new Pair<>(tablet, deviceIDPairMap.get(i)));
-    }
-
-    for (final List<Pair<Tablet, List<Pair<IDeviceID, Integer>>>> tablets :
-        tableName2Tablets.values()) {
-      // Let's make an assumption that as long as the tablets with non-duplicate timestamps are
-      // sorted from small to large, assuming that there are N tablets that overlap with other
-      // tablets, then (n+1) TSFiles must be generated. Therefore, the Builder only needs to ensure
-      // that the tablets with non-overlapping times are sorted in order.
-      // A[            (c,3),(d,2)],        device a [A],[B,C,D],
-      // B[(a,2),(b,1),(c,4),     ],------->device b [D,A],[B,C],-------> [A->B->C],[D]
-      // C[(a,3),(b,2),      (d,4)],        device c [C],[D,A,B],
-      // D[(a,4),      (c,2),(d,1)]         device d [B],[D,A,C],
-      tablets.sort(this::comparePairs);
+      insertPairs(
+          tableName2Tablets.computeIfAbsent(tablet.getTableName(), k -> new ArrayList<>()),
+          new Pair<>(tablet, deviceIDPairMap.get(i)));
     }
 
     // Sort the devices by tableName
@@ -222,14 +209,14 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
       final String tableName = entry.getKey();
       final LinkedList<Pair<Tablet, List<Pair<IDeviceID, Integer>>>> tablets = entry.getValue();
 
-      final List<Tablet> tabletsToWrite = new ArrayList<>();
+      final List<Pair<Tablet, List<Pair<IDeviceID, Integer>>>> tabletsToWrite = new ArrayList<>();
 
       Pair<Tablet, List<Pair<IDeviceID, Integer>>> lastTablet = null;
       Map<IDeviceID, Long> deviceLastTimestampMap = new HashMap<>();
       while (!tablets.isEmpty()) {
         final Pair<Tablet, List<Pair<IDeviceID, Integer>>> pair = tablets.peekFirst();
         if (Objects.isNull(lastTablet) || hasNoTimestampOverlaps(pair, deviceLastTimestampMap)) {
-          tabletsToWrite.add(pair.left);
+          tabletsToWrite.add(pair);
           lastTablet = pair;
           tablets.pollFirst();
         } else {
@@ -241,14 +228,15 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
         iterator.remove();
       }
       boolean schemaNotRegistered = true;
-      for (final Tablet tablet : tabletsToWrite) {
+      for (final Pair<Tablet, List<Pair<IDeviceID, Integer>>> pair : tabletsToWrite) {
+        final Tablet tablet = pair.left;
         if (schemaNotRegistered) {
           fileWriter.registerTableSchema(
               new TableSchema(tableName, tablet.getSchemas(), tablet.getColumnTypes()));
           schemaNotRegistered = false;
         }
         try {
-          fileWriter.writeTable(tablet);
+          fileWriter.writeTable(tablet, pair.right);
         } catch (WriteProcessException e) {
           throw new PipeException(
               "The Schema in the Tablet is inconsistent with the registered TableSchema");
@@ -275,10 +263,33 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
     return true;
   }
 
+  private void insertPairs(
+      List<Pair<Tablet, List<Pair<IDeviceID, Integer>>>> list,
+      Pair<Tablet, List<Pair<IDeviceID, Integer>>> pair) {
+    if (list.isEmpty()) {
+      list.add(pair);
+      return;
+    }
+    int lastCompare = Integer.MAX_VALUE;
+    for (int i = 0; i < list.size(); i++) {
+      final int result = comparePairs(list.get(i), pair);
+      if (result == 0) {
+        lastCompare = result;
+        continue;
+      }
+
+      if (lastCompare == 0) {
+        list.add(pair);
+        return;
+      }
+      lastCompare = result;
+    }
+    list.add(pair);
+  }
+
   private int comparePairs(
       final Pair<Tablet, List<Pair<IDeviceID, Integer>>> pairA,
       final Pair<Tablet, List<Pair<IDeviceID, Integer>>> pairB) {
-    int aCount = 0;
     int bCount = 0;
     int aIndex = 0;
     int bIndex = 0;
@@ -291,9 +302,7 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
       if (comparisonResult == 0) {
         long aTime = pairA.left.timestamps[aLastTimeIndex];
         long bTime = pairB.left.timestamps[bLastTimeIndex];
-        if (aTime > bTime) {
-          aCount++;
-        } else if (aTime < bTime) {
+        if (aTime < bTime) {
           bCount++;
         }
         aLastTimeIndex = listA.get(aIndex).right;
@@ -306,16 +315,12 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
       if (comparisonResult > 0) {
         bLastTimeIndex = listB.get(bIndex).right;
         bIndex++;
-        aCount++;
         continue;
       }
 
       aLastTimeIndex = listA.get(aIndex).right;
       aIndex++;
-      bCount++;
     }
-    bCount += listB.size() - bIndex;
-    aCount += listA.size() - aIndex;
-    return Integer.compare(bCount, aCount);
+    return bCount;
   }
 }
