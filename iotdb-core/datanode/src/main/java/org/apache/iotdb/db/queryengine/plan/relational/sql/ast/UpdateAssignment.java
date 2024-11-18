@@ -39,13 +39,6 @@ public class UpdateAssignment extends Node {
     this.value = requireNonNull(value, "value is null");
   }
 
-  public UpdateAssignment(
-      final NodeLocation location, final Expression name, final Expression value) {
-    super(requireNonNull(location, "location is null"));
-    this.name = requireNonNull(name, "name is null");
-    this.value = requireNonNull(value, "value is null");
-  }
-
   public Expression getName() {
     return name;
   }
