@@ -41,6 +41,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Binary;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -83,9 +84,19 @@ public class TableDeviceSchemaValidator {
             .toArray();
     final List<Object[]> attributeValueList = schemaValidation.getAttributeValueList();
 
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "Validating device schema {}.{} and other {} devices",
+          schemaValidation.getTableName(),
+          Arrays.toString(deviceIdList.get(0)),
+          deviceIdList.size() - 1);
+    }
     ValidateResult validateResult =
         validateDeviceSchemaInCache(
             schemaValidation, deviceIdList, attributeIdList, attributeValueList);
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("{} devices are missing", validateResult.missingDeviceIndexList.size());
+    }
 
     if (!validateResult.missingDeviceIndexList.isEmpty()) {
       validateResult =

@@ -454,9 +454,11 @@ public class StatementAnalyzer {
     protected Scope visitDeleteDevice(final DeleteDevice node, final Optional<Scope> context) {
       // Actually write, but will return the result
       queryContext.setQueryType(QueryType.READ);
-      analyzeTraverseDevice(node, context, node.getWhere().isPresent());
+      node.parseTable(sessionContext);
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
+      node.parseModEntries(table);
+      analyzeTraverseDevice(node, context, node.getWhere().isPresent());
       node.parseRawExpression(
           null,
           table,
@@ -528,7 +530,10 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitDelete(Delete node, Optional<Scope> scope) {
-      throw new SemanticException("Delete statement is not supported yet.");
+      final Scope ret = Scope.create();
+      AnalyzeUtils.analyzeDelete(node, queryContext);
+      analysis.setScope(node, ret);
+      return ret;
     }
 
     @Override

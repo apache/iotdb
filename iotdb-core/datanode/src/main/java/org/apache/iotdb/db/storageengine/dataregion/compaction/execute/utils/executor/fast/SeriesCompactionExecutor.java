@@ -30,9 +30,9 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.PageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.PointPriorityReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
 import org.apache.tsfile.exception.write.PageException;
@@ -76,7 +76,7 @@ public abstract class SeriesCompactionExecutor {
 
   protected Map<TsFileResource, TsFileSequenceReader> readerCacheMap;
 
-  protected final Map<String, PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer>>
+  protected final Map<String, PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>>
       modificationCacheMap;
 
   protected final PointPriorityReader pointPriorityReader;
@@ -101,7 +101,7 @@ public abstract class SeriesCompactionExecutor {
   protected SeriesCompactionExecutor(
       AbstractCompactionWriter compactionWriter,
       Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
-      Map<String, PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer>>
+      Map<String, PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>>
           modificationCacheMap,
       IDeviceID deviceId,
       boolean isAligned,
@@ -471,14 +471,14 @@ public abstract class SeriesCompactionExecutor {
    *
    * @param path name of the time series
    */
-  protected List<Modification> getModificationsFromCache(
+  protected List<ModEntry> getModificationsFromCache(
       TsFileResource tsFileResource, PartialPath path) {
-    PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer> allModifications =
+    PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> allModifications =
         modificationCacheMap.get(tsFileResource.getTsFile().getName());
     if (allModifications == null) {
       return Collections.emptyList();
     }
-    return ModificationFile.sortAndMerge(allModifications.getOverlapped(path));
+    return ModificationUtils.sortAndMerge(allModifications.getOverlapped(path));
   }
 
   @SuppressWarnings("squid:S3776")

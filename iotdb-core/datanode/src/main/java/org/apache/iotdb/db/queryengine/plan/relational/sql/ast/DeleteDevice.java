@@ -21,11 +21,13 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceBlackListConstructor;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource;
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
+import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
@@ -34,6 +36,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -58,8 +62,25 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 
 public class DeleteDevice extends AbstractTraverseDevice {
 
+  // Used for data deletion
+  private List<TableDeletionEntry> modEntries;
+
   public DeleteDevice(final NodeLocation location, final Table table, final Expression where) {
     super(location, table, where);
+  }
+
+  public void parseModEntries(final TsTable table) {
+    // TODO: Fallback to precise devices if modEnries parsing failure encountered
+    modEntries = AnalyzeUtils.parseExpressions2ModEntries(where, table);
+  }
+
+  public void serializeModEntries(final DataOutputStream stream) throws IOException {
+    if (Objects.nonNull(modEntries)) {
+      ReadWriteIOUtils.write(modEntries.size(), stream);
+      for (TableDeletionEntry modEntry : modEntries) {
+        modEntry.serialize(stream);
+      }
+    }
   }
 
   public void serializePatternInfo(final DataOutputStream stream) throws IOException {
@@ -90,12 +111,24 @@ public class DeleteDevice extends AbstractTraverseDevice {
     }
   }
 
+  public static List<TableDeletionEntry> constructModEntries(final byte[] modInfo) {
+    final ByteBuffer buffer = ByteBuffer.wrap(modInfo);
+
+    final int size = ReadWriteIOUtils.readInt(buffer);
+    final List<TableDeletionEntry> modEntries = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      modEntries.add((TableDeletionEntry) ModEntry.createFrom(buffer));
+    }
+
+    return modEntries;
+  }
+
   public static List<PartialPath> constructPaths(
       final String database, final String tableName, final byte[] patternInfo) {
     final ByteBuffer buffer = ByteBuffer.wrap(patternInfo);
 
     // Device pattern list
-    int size = ReadWriteIOUtils.readInt(buffer);
+    final int size = ReadWriteIOUtils.readInt(buffer);
     final List<List<SchemaFilter>> idDeterminedFilterList = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       final int singleSize = ReadWriteIOUtils.readInt(buffer);

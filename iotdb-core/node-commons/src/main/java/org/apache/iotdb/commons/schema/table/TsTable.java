@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.schema.table;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
+import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -71,6 +72,7 @@ public class TsTable {
   private final String tableName;
 
   private final Map<String, TsTableColumnSchema> columnSchemaMap = new LinkedHashMap<>();
+  private final Map<String, Integer> idColumnIndexMap = new HashMap<>();
 
   private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
@@ -102,12 +104,22 @@ public class TsTable {
     }
   }
 
+  public int getIdColumnOrdinal(final String columnName) {
+    readWriteLock.readLock().lock();
+    try {
+      return idColumnIndexMap.getOrDefault(columnName.toLowerCase(), -1);
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
   public void addColumnSchema(final TsTableColumnSchema columnSchema) {
     readWriteLock.writeLock().lock();
     try {
       columnSchemaMap.put(columnSchema.getColumnName(), columnSchema);
       if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
         idNum++;
+        idColumnIndexMap.put(columnSchema.getColumnName(), idNum - 1);
       } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
         ((AttributeColumnSchema) columnSchema).setId(attributeNum++);
       }
@@ -137,10 +149,10 @@ public class TsTable {
   public void removeColumnSchema(final String columnName) {
     readWriteLock.writeLock().lock();
     try {
-      final TsTableColumnSchema columnSchema = columnSchemaMap.remove(columnName);
+      final TsTableColumnSchema columnSchema = columnSchemaMap.get(columnName);
       if (columnSchema != null
           && columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
-        idNum--;
+        idNums--;
       }
     } finally {
       readWriteLock.writeLock().unlock();

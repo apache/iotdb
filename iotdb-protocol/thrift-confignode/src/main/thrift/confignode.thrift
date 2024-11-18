@@ -1048,6 +1048,7 @@ struct TDeleteTableDeviceReq {
     3: required string queryId
     4: required binary patternInfo
     5: required binary filterInfo
+    6: required binary modInfo
 }
 
 struct TDeleteTableDeviceResp {

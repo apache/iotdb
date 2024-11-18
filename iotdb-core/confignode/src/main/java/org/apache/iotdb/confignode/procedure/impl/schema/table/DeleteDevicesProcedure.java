@@ -38,13 +38,15 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecu
 import org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternAndFilterReq;
-import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternReq;
+import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternOrModReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceInvalidateCacheReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nonnull;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -69,6 +71,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
   private static final Logger LOGGER = LoggerFactory.getLogger(DeleteDevicesProcedure.class);
   private byte[] patternBytes;
   private byte[] filterBytes;
+  private byte[] modBytes;
 
   // Transient
   private PathPatternTree patternTree;
@@ -84,11 +87,13 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
       final String database,
       final String tableName,
       final String queryId,
-      final byte[] patternBytes,
-      final byte[] filterBytes) {
+      final @Nonnull byte[] patternBytes,
+      final @Nonnull byte[] filterBytes,
+      final @Nonnull byte[] modBytes) {
     super(database, tableName, queryId);
     this.patternBytes = patternBytes;
     this.filterBytes = filterBytes;
+    this.modBytes = modBytes;
   }
 
   @Override
@@ -272,11 +277,8 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
             env.getConfigManager().getRelatedDataRegionGroup(patternTree, true),
             CnToDnAsyncRequestType.DELETE_DATA_FOR_TABLE_DEVICE,
             (dataNodeLocation, consensusGroupIdList) ->
-                new TTableDeviceDeletionWithPatternAndFilterReq(
-                    consensusGroupIdList,
-                    tableName,
-                    ByteBuffer.wrap(patternBytes),
-                    ByteBuffer.wrap(filterBytes)))
+                new TTableDeviceDeletionWithPatternOrModReq(
+                    consensusGroupIdList, tableName, ByteBuffer.wrap(modBytes)))
         .execute();
     setNextState(DELETE_DEVICE_SCHEMA);
   }
@@ -288,7 +290,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
             env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, true),
             CnToDnAsyncRequestType.DELETE_TABLE_DEVICE_IN_BLACK_LIST,
             (dataNodeLocation, consensusGroupIdList) ->
-                new TTableDeviceDeletionWithPatternReq(
+                new TTableDeviceDeletionWithPatternOrModReq(
                     consensusGroupIdList, tableName, ByteBuffer.wrap(patternBytes)))
         .execute();
   }
@@ -304,7 +306,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
               env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, true),
               CnToDnAsyncRequestType.ROLLBACK_TABLE_DEVICE_BLACK_LIST,
               (dataNodeLocation, consensusGroupIdList) ->
-                  new TTableDeviceDeletionWithPatternReq(
+                  new TTableDeviceDeletionWithPatternOrModReq(
                       consensusGroupIdList, tableName, ByteBuffer.wrap(patternBytes)))
           .execute();
     }
@@ -344,6 +346,8 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
     stream.write(patternBytes);
     ReadWriteIOUtils.write(filterBytes.length, stream);
     stream.write(filterBytes);
+    ReadWriteIOUtils.write(modBytes.length, stream);
+    stream.write(modBytes);
   }
 
   @Override
@@ -354,18 +358,24 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
     byteBuffer.get(patternBytes);
     filterBytes = new byte[ReadWriteIOUtils.readInt(byteBuffer)];
     byteBuffer.get(filterBytes);
+    modBytes = new byte[ReadWriteIOUtils.readInt(byteBuffer)];
+    byteBuffer.get(modBytes);
   }
 
   @Override
   public boolean equals(final Object o) {
     return super.equals(o)
         && Arrays.equals(this.patternBytes, ((DeleteDevicesProcedure) o).patternBytes)
-        && Arrays.equals(this.filterBytes, ((DeleteDevicesProcedure) o).filterBytes);
+        && Arrays.equals(this.filterBytes, ((DeleteDevicesProcedure) o).filterBytes)
+        && Arrays.equals(this.modBytes, ((DeleteDevicesProcedure) o).modBytes);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        super.hashCode(), Arrays.hashCode(patternBytes), Arrays.hashCode(filterBytes));
+        super.hashCode(),
+        Arrays.hashCode(patternBytes),
+        Arrays.hashCode(filterBytes),
+        Arrays.hashCode(modBytes));
   }
 }
