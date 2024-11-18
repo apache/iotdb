@@ -196,7 +196,9 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         eventParsers.clear();
         eventParsers = null;
       }
-      PipeDataNodeAgent.task().releaseMemory(pipeName, ramBytesUsed());
+      if (Objects.nonNull(pipeName)) {
+        PipeDataNodeAgent.task().releaseMemory(pipeName, ramBytesUsed());
+      }
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
