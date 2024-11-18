@@ -600,14 +600,14 @@ public class TableDeviceSchemaCache {
       final String database,
       final String tableName,
       final String columnName,
-      final boolean isAttributeColumn) {
+      final int attributeId) {
     readWriteLock.writeLock().lock();
     try {
       // Table cache's invalidate must be guarded by this lock
       DataNodeTableCache.getInstance().invalid(database, tableName, columnName);
       final ToIntFunction<TableDeviceCacheEntry> updateFunction =
-          isAttributeColumn
-              ? entry -> entry.invalidateAttributeColumn(columnName)
+          attributeId >= 0
+              ? entry -> entry.invalidateAttributeColumn(attributeId)
               : entry -> entry.invalidateLastCache(columnName, true);
       dualKeyCache.update(new TableId(null, tableName), deviceID -> true, updateFunction);
     } finally {

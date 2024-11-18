@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -829,7 +830,7 @@ public class ConfigMTree {
 
   // Return true if removed column is an attribute column
   // false if measurement column
-  public boolean preDeleteColumn(
+  public int preDeleteColumn(
       final PartialPath database, final String tableName, final String columnName)
       throws MetadataException {
     final ConfigTableNode node = getTableNode(database, tableName);
@@ -844,7 +845,9 @@ public class ConfigMTree {
     }
 
     node.addPreDeletedColumn(columnName);
-    return columnSchema.getColumnCategory() == TsTableColumnCategory.ATTRIBUTE;
+    return columnSchema.getColumnCategory() == TsTableColumnCategory.ATTRIBUTE
+        ? ((AttributeColumnSchema) columnSchema).getId()
+        : -1;
   }
 
   public void commitDeleteColumn(

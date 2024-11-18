@@ -64,7 +64,7 @@ public class DropTableColumnProcedure
   private static final Logger LOGGER = LoggerFactory.getLogger(DropTableColumnProcedure.class);
 
   private String columnName;
-  private boolean isAttributeColumn;
+  private int attributeId = -1;
 
   public DropTableColumnProcedure() {
     super();
@@ -139,7 +139,9 @@ public class DropTableColumnProcedure
         SchemaUtils.executeInConsensusLayer(
             new PreDeleteColumnPlan(database, tableName, columnName), env, LOGGER);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      isAttributeColumn = status.isSetMessage();
+      if (status.isSetMessage()) {
+        attributeId = Integer.parseInt(status.getMessage());
+      }
       setNextState(DropTableColumnState.INVALIDATE_CACHE);
     } else {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
@@ -152,7 +154,7 @@ public class DropTableColumnProcedure
     final DataNodeAsyncRequestContext<TInvalidateColumnCacheReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
             CnToDnAsyncRequestType.INVALIDATE_COLUMN_CACHE,
-            new TInvalidateColumnCacheReq(database, tableName, columnName, isAttributeColumn),
+            new TInvalidateColumnCacheReq(database, tableName, columnName, attributeId),
             dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
@@ -161,7 +163,7 @@ public class DropTableColumnProcedure
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.error(
             "Failed to invalidate {} column {}'s cache of table {}.{}",
-            isAttributeColumn ? "attribute" : "measurement",
+            attributeId >= 0 ? "attribute" : "measurement",
             columnName,
             database,
             tableName);
@@ -193,7 +195,7 @@ public class DropTableColumnProcedure
     }
 
     final Map<TConsensusGroupId, TRegionReplicaSet> relatedRegionGroup =
-        isAttributeColumn
+        attributeId >= 0
             ? env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, true)
             : env.getConfigManager().getRelatedDataRegionGroup(patternTree, true);
 
@@ -205,10 +207,7 @@ public class DropTableColumnProcedure
               CnToDnAsyncRequestType.DELETE_COLUMN_DATA,
               ((dataNodeLocation, consensusGroupIdList) ->
                   new TDeleteColumnDataReq(
-                      new ArrayList<>(consensusGroupIdList),
-                      tableName,
-                      columnName,
-                      isAttributeColumn)))
+                      new ArrayList<>(consensusGroupIdList), tableName, columnName, attributeId)))
           .execute();
     }
 
@@ -258,7 +257,7 @@ public class DropTableColumnProcedure
     super.serialize(stream);
 
     ReadWriteIOUtils.write(columnName, stream);
-    ReadWriteIOUtils.write(isAttributeColumn, stream);
+    ReadWriteIOUtils.write(attributeId, stream);
   }
 
   @Override
@@ -266,18 +265,18 @@ public class DropTableColumnProcedure
     super.deserialize(byteBuffer);
 
     this.columnName = ReadWriteIOUtils.readString(byteBuffer);
-    this.isAttributeColumn = ReadWriteIOUtils.readBool(byteBuffer);
+    this.attributeId = ReadWriteIOUtils.readInt(byteBuffer);
   }
 
   @Override
   public boolean equals(final Object o) {
     return super.equals(o)
         && Objects.equals(columnName, ((DropTableColumnProcedure) o).columnName)
-        && Objects.equals(isAttributeColumn, ((DropTableColumnProcedure) o).isAttributeColumn);
+        && Objects.equals(attributeId, ((DropTableColumnProcedure) o).attributeId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), columnName, isAttributeColumn);
+    return Objects.hash(super.hashCode(), columnName, attributeId);
   }
 }

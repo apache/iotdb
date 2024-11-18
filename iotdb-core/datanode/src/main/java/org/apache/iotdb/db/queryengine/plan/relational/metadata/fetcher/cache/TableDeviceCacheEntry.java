@@ -93,7 +93,7 @@ public class TableDeviceCacheEntry {
     return size.get();
   }
 
-  int invalidateAttributeColumn(final String attribute) {
+  int invalidateAttributeColumn(final int attribute) {
     final AtomicInteger size = new AtomicInteger(0);
     deviceSchema.updateAndGet(
         schema -> {

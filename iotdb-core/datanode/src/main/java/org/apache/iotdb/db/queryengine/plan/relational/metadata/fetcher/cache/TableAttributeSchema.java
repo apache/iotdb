@@ -75,7 +75,7 @@ public class TableAttributeSchema implements IDeviceSchema {
     return diff.get();
   }
 
-  public int removeAttribute(final String attribute) {
+  public int removeAttribute(final int attribute) {
     final Binary previousValue = attributeMap.remove(attribute);
     return Objects.nonNull(previousValue)
         ? (int)
