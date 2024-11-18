@@ -339,7 +339,7 @@ IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+SafepointTimeout"
 # NOTE: it may reduce memory utilization and trigger OOM killer when memory is tight.
 # IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+AlwaysPreTouch"
 
-# if you want to dump the heap memory while OOM happening, you can use the following command, remember to replace /tmp/heapdump.hprof with your own file path and the folder where this file is located needs to be created in advance
+# if you want to dump the heap memory while OOM happening, you can use the following command, remember to replace ${heap_dump_dir}/datanode_heapdump.hprof with your own file path and the folder where this file is located needs to be created in advance
 # IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=${heap_dump_dir}/datanode_heapdump.hprof"
 
 
