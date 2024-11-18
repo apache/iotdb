@@ -57,11 +57,6 @@ public class PipeTemporaryMetaInAgent implements PipeTemporaryMeta {
     return pipeNameWithCreationTime;
   }
 
-  public void initAndCommitterKeyIfAbsent(
-      final String pipeName, final long creationTime, final int regionId) {
-    regionId2CommitterKeyMap.put(regionId, new CommitterKey(pipeName, creationTime, regionId, 0));
-  }
-
   public CommitterKey getCommitterKey(final int regionId, final int restartTime) {
     final CommitterKey key = regionId2CommitterKeyMap.get(regionId);
     if (Objects.nonNull(key) && key.getRestartTimes() == restartTime) {
