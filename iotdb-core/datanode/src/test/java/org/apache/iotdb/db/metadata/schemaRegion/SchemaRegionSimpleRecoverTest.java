@@ -33,8 +33,8 @@ import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
@@ -306,7 +306,7 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
             null,
             Collections.singletonList(
                 new UpdateAssignment(
-                    new SymbolReference(attributeId), new StringLiteral("value2"))),
+                    new LongLiteral(String.valueOf(attributeId)), new StringLiteral("value2"))),
             new SessionInfo(0, SessionConfig.DEFAULT_USER, ZoneId.systemDefault())));
 
     simulateRestart();

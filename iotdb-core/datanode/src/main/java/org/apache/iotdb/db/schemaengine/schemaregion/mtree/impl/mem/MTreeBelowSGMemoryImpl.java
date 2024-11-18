@@ -1053,7 +1053,7 @@ public class MTreeBelowSGMemoryImpl {
   @SuppressWarnings("java:S2095")
   public ISchemaReader<IDeviceSchemaInfo> getDeviceReader(
       final IShowDevicesPlan showDevicesPlan,
-      final BiFunction<Integer, String, Binary> attributeProvider)
+      final BiFunction<Integer, Integer, Binary> attributeProvider)
       throws MetadataException {
     final EntityCollector<IDeviceSchemaInfo, IMemMNode> collector =
         new EntityCollector<IDeviceSchemaInfo, IMemMNode>(
@@ -1138,7 +1138,7 @@ public class MTreeBelowSGMemoryImpl {
 
   // Used for device query/fetch with filters during show device or table query
   public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
-      final PartialPath pattern, final BiFunction<Integer, String, Binary> attributeProvider)
+      final PartialPath pattern, final BiFunction<Integer, Integer, Binary> attributeProvider)
       throws MetadataException {
 
     final EntityCollector<IDeviceSchemaInfo, IMemMNode> collector =
@@ -1202,7 +1202,7 @@ public class MTreeBelowSGMemoryImpl {
   public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
       final String table,
       final List<Object[]> devicePathList,
-      final BiFunction<Integer, String, Binary> attributeProvider) {
+      final BiFunction<Integer, Integer, Binary> attributeProvider) {
     return new ISchemaReader<IDeviceSchemaInfo>() {
 
       final Iterator<Object[]> deviceIdIterator = devicePathList.listIterator();
