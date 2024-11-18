@@ -76,8 +76,7 @@ public class IoTDBSessionReporter extends IoTDBReporter {
         try (SessionDataSetWrapper result2 =
             this.sessionPool.executeQueryStatement(
                 "CREATE DATABASE "
-                    + metricConfig.getInternalDatabase()
-                    + " WITH SCHEMA_REPLICATION_FACTOR=1, DATA_REPLICATION_FACTOR=1, SCHEMA_REGION_GROUP_NUM=1, DATA_REGION_GROUP_NUM=1")) {
+                    + metricConfig.getInternalDatabase())) {
           if (!result2.hasNext()) {
             LOGGER.error("IoTDBSessionReporter checkOrCreateDatabase failed.");
           }
