@@ -26,13 +26,17 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -54,22 +58,23 @@ public class TsFilePlanRedoer {
 
   void redoDelete(DeleteDataNode deleteDataNode) throws IOException {
     List<MeasurementPath> paths = deleteDataNode.getPathList();
+    List<ModEntry> deletionEntries = new ArrayList<>(paths.size());
     for (MeasurementPath path : paths) {
       // path here is device path pattern
-      recoveryMemTable.delete(
-          path,
-          path.getDevicePath(),
-          deleteDataNode.getDeleteStartTime(),
-          deleteDataNode.getDeleteEndTime());
-      tsFileResource
-          .getModFile()
-          .write(
-              new Deletion(
-                  path,
-                  tsFileResource.getTsFileSize(),
-                  deleteDataNode.getDeleteStartTime(),
-                  deleteDataNode.getDeleteEndTime()));
+      TreeDeletionEntry deletionEntry =
+          new TreeDeletionEntry(
+              path, deleteDataNode.getDeleteStartTime(), deleteDataNode.getDeleteEndTime());
+      recoveryMemTable.delete(deletionEntry);
+      deletionEntries.add(deletionEntry);
     }
+    tsFileResource.getModFileForWrite().write(deletionEntries);
+  }
+
+  void redoDelete(RelationalDeleteDataNode node) throws IOException {
+    for (TableDeletionEntry modEntry : node.getModEntries()) {
+      recoveryMemTable.delete(modEntry);
+    }
+    tsFileResource.getModFileForWrite().write(node.getModEntries());
   }
 
   void redoInsert(InsertNode node) throws WriteProcessException {

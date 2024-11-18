@@ -112,6 +112,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
@@ -278,7 +279,9 @@ public enum PlanNodeType {
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),
-  RELATIONAL_INSERT_ROWS((short) 2002);
+  RELATIONAL_INSERT_ROWS((short) 2002),
+  RELATIONAL_DELETE_DATA((short) 2003),
+  ;
 
   public static final int BYTES = Short.BYTES;
 
@@ -319,6 +322,8 @@ public enum PlanNodeType {
         return RelationalInsertRowNode.deserializeFromWAL(stream);
       case 2002:
         return RelationalInsertRowsNode.deserializeFromWAL(stream);
+      case 2003:
+        return RelationalDeleteDataNode.deserializeFromWAL(stream);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
@@ -343,6 +348,8 @@ public enum PlanNodeType {
         return RelationalInsertRowNode.deserializeFromWAL(buffer);
       case 2002:
         return RelationalInsertRowsNode.deserializeFromWAL(buffer);
+      case 2003:
+        return RelationalDeleteDataNode.deserializeFromWAL(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
@@ -625,6 +632,8 @@ public enum PlanNodeType {
         return RelationalInsertRowNode.deserialize(buffer);
       case 2002:
         return RelationalInsertRowsNode.deserialize(buffer);
+      case 2003:
+        return RelationalDeleteDataNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

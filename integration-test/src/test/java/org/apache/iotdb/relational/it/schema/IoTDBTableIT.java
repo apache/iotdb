@@ -430,6 +430,13 @@ public class IoTDBTableIT {
         assertTrue(e.getMessage().contains("Dropping id or time column is not supported."));
       }
 
+      // test data deletion by drop column
+      statement.execute("alter table table2 add column speed double");
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("select speed from table2"),
+          "speed,",
+          Collections.singleton("null,"));
+
       statement.execute("drop table table2");
       try {
         statement.executeQuery("describe table2");
@@ -443,6 +450,11 @@ public class IoTDBTableIT {
           statement.executeQuery("count devices from table2"),
           "count(devices),",
           Collections.singleton("0,"));
+
+      // Test data deletion by drop table
+      statement.execute(
+          "insert into table2(region_id, plant_id, color, temperature, speed) values(1, 1, 1, 1, 1)");
+      TestUtils.assertResultSetSize(statement.executeQuery("select * from table2"), 1);
 
       try {
         statement.executeQuery("describe test3.table3");
