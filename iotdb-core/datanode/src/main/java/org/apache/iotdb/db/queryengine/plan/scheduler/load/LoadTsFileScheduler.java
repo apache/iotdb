@@ -57,6 +57,9 @@ import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.PlainDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileDataCacheMemoryBlock;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
@@ -189,6 +192,16 @@ public class LoadTsFileScheduler implements IScheduler {
                       queryContext.getSession().getUserName()))) { // do not decode, load locally
             final long startTime = System.nanoTime();
             try {
+              final ITimeIndex index = node.getTsFileResource().getTimeIndex();
+              if (index instanceof PlainDeviceTimeIndex) {
+                final PlainDeviceTimeIndex timeIndex = (PlainDeviceTimeIndex) index;
+                node.getTsFileResource()
+                    .setTimeIndex(
+                        new ArrayDeviceTimeIndex(
+                            timeIndex.getDeviceToIndex(),
+                            timeIndex.getStartTimes(),
+                            timeIndex.getEndTimes()));
+              }
               isLoadSingleTsFileSuccess = loadLocally(node);
             } finally {
               LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(

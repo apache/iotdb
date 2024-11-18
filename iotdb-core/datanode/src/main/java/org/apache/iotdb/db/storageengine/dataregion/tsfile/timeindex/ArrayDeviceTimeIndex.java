@@ -165,6 +165,18 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
     return deviceToIndex.keySet();
   }
 
+  public Map<IDeviceID, Integer> getDeviceToIndex() {
+    return deviceToIndex;
+  }
+
+  public long[] getEndTimes() {
+    return endTimes;
+  }
+
+  public long[] getStartTimes() {
+    return startTimes;
+  }
+
   /**
    * Deserialize TimeIndex and get devices only.
    *
