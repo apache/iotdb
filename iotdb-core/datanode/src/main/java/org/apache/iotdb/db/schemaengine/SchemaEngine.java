@@ -28,7 +28,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -407,13 +406,7 @@ public class SchemaEngine {
                                                   entry.getValue().getDatabaseFullPath()),
                                               tableEntry.getKey());
                                   return Objects.nonNull(table)
-                                      ? table.getColumnList().stream()
-                                              .filter(
-                                                  column ->
-                                                      column.getColumnCategory()
-                                                          == TsTableColumnCategory.MEASUREMENT)
-                                              .count()
-                                          * tableEntry.getValue()
+                                      ? table.getMeasurementNum() * tableEntry.getValue()
                                       : 0;
                                 })
                             .reduce(0L, Long::sum)));
