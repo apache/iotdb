@@ -134,19 +134,23 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
   }
 
   private void checkTableExistence(final ConfigNodeProcedureEnv env) {
-    if (env.getConfigManager()
-        .getClusterSchemaManager()
-        .getTableIfExists(database, table.getTableName())
-        .isPresent()) {
-      setFailure(
-          new ProcedureException(
-              new IoTDBException(
-                  String.format(
-                      "Table '%s.%s' already exists.",
-                      database.substring(ROOT.length() + 1), table.getTableName()),
-                  TABLE_ALREADY_EXISTS.getStatusCode())));
-    } else {
-      setNextState(CONSTRUCT_BLACK_LIST);
+    try {
+      if (env.getConfigManager()
+          .getClusterSchemaManager()
+          .getTableIfExists(database, table.getTableName())
+          .isPresent()) {
+        setFailure(
+            new ProcedureException(
+                new IoTDBException(
+                    String.format(
+                        "Table '%s.%s' already exists.",
+                        database.substring(ROOT.length() + 1), table.getTableName()),
+                    TABLE_ALREADY_EXISTS.getStatusCode())));
+      } else {
+        setNextState(CONSTRUCT_BLACK_LIST);
+      }
+    } catch (final MetadataException e) {
+      setFailure(new ProcedureException(e));
     }
   }
 

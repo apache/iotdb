@@ -552,17 +552,12 @@ public class AnalyzerTest {
             .plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode.getChildren().get(0) instanceof ProjectNode);
-    assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
-    FilterNode filterNode = (FilterNode) rootNode.getChildren().get(0).getChildren().get(0);
-    assertEquals("(REPLACE(\"tag1\", 'low', '!') = '!')", filterNode.getPredicate().toString());
-    assertTrue(
-        rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof TableScanNode);
-    tableScanNode =
-        (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0);
+    assertFalse(rootNode.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
+    assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof TableScanNode);
+    tableScanNode = (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0);
     assertFalse(tableScanNode.getTimePredicate().isPresent());
     assertNull(tableScanNode.getPushDownPredicate());
-    assertEquals(Arrays.asList("tag1", "s1", "s2", "s3"), tableScanNode.getOutputColumnNames());
+    assertEquals(Arrays.asList("s1", "s2", "s3"), tableScanNode.getOutputColumnNames());
 
     // 4. project with not all attributes, to test the rightness of PruneUnUsedColumns
     sql = "SELECT tag2, attr2, s2 FROM table1";

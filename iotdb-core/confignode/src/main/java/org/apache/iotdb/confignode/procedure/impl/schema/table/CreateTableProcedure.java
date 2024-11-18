@@ -128,19 +128,23 @@ public class CreateTableProcedure
   }
 
   private void checkTableExistence(final ConfigNodeProcedureEnv env) {
-    if (env.getConfigManager()
-        .getClusterSchemaManager()
-        .getTableIfExists(database, table.getTableName())
-        .isPresent()) {
-      setFailure(
-          new ProcedureException(
-              new IoTDBException(
-                  String.format(
-                      "Table '%s.%s' already exists.",
-                      database.substring(ROOT.length() + 1), table.getTableName()),
-                  TABLE_ALREADY_EXISTS.getStatusCode())));
-    } else {
-      setNextState(CreateTableState.PRE_CREATE);
+    try {
+      if (env.getConfigManager()
+          .getClusterSchemaManager()
+          .getTableIfExists(database, table.getTableName())
+          .isPresent()) {
+        setFailure(
+            new ProcedureException(
+                new IoTDBException(
+                    String.format(
+                        "Table '%s.%s' already exists.",
+                        database.substring(ROOT.length() + 1), table.getTableName()),
+                    TABLE_ALREADY_EXISTS.getStatusCode())));
+      } else {
+        setNextState(CreateTableState.PRE_CREATE);
+      }
+    } catch (final MetadataException e) {
+      setFailure(new ProcedureException(e));
     }
   }
 
