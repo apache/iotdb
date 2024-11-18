@@ -1751,6 +1751,11 @@ public class IoTDBTableAggregationIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+
+    expectedHeader = new String[] {"_col0"};
+    retArray = new String[] {"40,"};
+    tableResultSetEqualTest(
+        "select max_by(s1, s10) from table1 where s1=40", expectedHeader, retArray, DATABASE_NAME);
   }
 
   @Test
@@ -1934,11 +1939,6 @@ public class IoTDBTableAggregationIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
-
-    expectedHeader = new String[] {"_col0"};
-    retArray = new String[] {"40,"};
-    tableResultSetEqualTest(
-        "select max_by(s1, s10) from table1 where s1=40", expectedHeader, retArray, DATABASE_NAME);
   }
 
   @Test
