@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -414,8 +415,8 @@ public class StatementAnalyzer {
               .filter(
                   columnSchema ->
                       columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
-              .map(TsTableColumnSchema::getColumnName)
-              .collect(Collectors.toList()),
+              .mapToInt(schema -> ((AttributeColumnSchema) schema).getId())
+              .toArray(),
           queryContext);
 
       final Set<SymbolReference> attributeNames = new HashSet<>();
@@ -462,8 +463,8 @@ public class StatementAnalyzer {
               .filter(
                   columnSchema ->
                       columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
-              .map(TsTableColumnSchema::getColumnName)
-              .collect(Collectors.toList()),
+              .mapToInt(schema -> ((AttributeColumnSchema) schema).getId())
+              .toArray(),
           queryContext);
       return null;
     }
