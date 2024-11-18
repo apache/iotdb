@@ -112,6 +112,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
@@ -124,6 +125,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Creat
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDevicesInBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.RollbackTableDevicesBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableAttributeColumnDropNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
@@ -254,6 +256,7 @@ public enum PlanNodeType {
   CONSTRUCT_TABLE_DEVICES_BLACK_LIST((short) 910),
   ROLLBACK_TABLE_DEVICES_BLACK_LIST((short) 911),
   DELETE_TABLE_DEVICES_IN_BLACK_LIST((short) 912),
+  TABLE_ATTRIBUTE_COLUMN_DROP((short) 913),
 
   TABLE_SCAN_NODE((short) 1000),
   TABLE_FILTER_NODE((short) 1001),
@@ -276,7 +279,9 @@ public enum PlanNodeType {
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),
-  RELATIONAL_INSERT_ROWS((short) 2002);
+  RELATIONAL_INSERT_ROWS((short) 2002),
+  RELATIONAL_DELETE_DATA((short) 2003),
+  ;
 
   public static final int BYTES = Short.BYTES;
 
@@ -317,6 +322,8 @@ public enum PlanNodeType {
         return RelationalInsertRowNode.deserializeFromWAL(stream);
       case 2002:
         return RelationalInsertRowsNode.deserializeFromWAL(stream);
+      case 2003:
+        return RelationalDeleteDataNode.deserializeFromWAL(stream);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
@@ -341,6 +348,8 @@ public enum PlanNodeType {
         return RelationalInsertRowNode.deserializeFromWAL(buffer);
       case 2002:
         return RelationalInsertRowsNode.deserializeFromWAL(buffer);
+      case 2003:
+        return RelationalDeleteDataNode.deserializeFromWAL(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
@@ -565,6 +574,8 @@ public enum PlanNodeType {
         return RollbackTableDevicesBlackListNode.deserialize(buffer);
       case 912:
         return DeleteTableDevicesInBlackListNode.deserialize(buffer);
+      case 913:
+        return TableAttributeColumnDropNode.deserialize(buffer);
       case 1000:
         return org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode
             .deserialize(buffer);
@@ -621,6 +632,8 @@ public enum PlanNodeType {
         return RelationalInsertRowNode.deserialize(buffer);
       case 2002:
         return RelationalInsertRowsNode.deserialize(buffer);
+      case 2003:
+        return RelationalDeleteDataNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

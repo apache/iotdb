@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -115,17 +116,22 @@ public class SetTablePropertiesProcedure
   }
 
   private void validateTable(final ConfigNodeProcedureEnv env) {
-    final Pair<TSStatus, TsTable> result =
-        env.getConfigManager()
-            .getClusterSchemaManager()
-            .updateTableProperties(database, tableName, originalProperties, updatedProperties);
-    final TSStatus status = result.getLeft();
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
-      return;
+    try {
+      final Pair<TSStatus, TsTable> result =
+          env.getConfigManager()
+              .getClusterSchemaManager()
+              .updateTableProperties(database, tableName, originalProperties, updatedProperties);
+      final TSStatus status = result.getLeft();
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        setFailure(
+            new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+        return;
+      }
+      table = result.getRight();
+      setNextState(PRE_RELEASE);
+    } catch (final MetadataException e) {
+      setFailure(new ProcedureException(e));
     }
-    table = result.getRight();
-    setNextState(PRE_RELEASE);
   }
 
   @Override

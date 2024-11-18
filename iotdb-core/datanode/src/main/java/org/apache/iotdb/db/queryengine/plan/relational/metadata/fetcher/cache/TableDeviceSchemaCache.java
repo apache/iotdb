@@ -402,7 +402,7 @@ public class TableDeviceSchemaCache {
     final ToIntFunction<TableDeviceCacheEntry> updateFunction =
         PathPatternUtil.hasWildcard(measurement)
             ? entry -> -entry.invalidateLastCache()
-            : entry -> -entry.invalidateLastCache(measurement);
+            : entry -> -entry.invalidateLastCache(measurement, false);
 
     if (!devicePath.hasWildcard()) {
       final IDeviceID deviceID = devicePath.getIDeviceID();
@@ -591,6 +591,25 @@ public class TableDeviceSchemaCache {
               return false;
             });
       }
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
+  public void invalidate(
+      final String database,
+      final String tableName,
+      final String columnName,
+      final boolean isAttributeColumn) {
+    readWriteLock.writeLock().lock();
+    try {
+      // Table cache's invalidate must be guarded by this lock
+      DataNodeTableCache.getInstance().invalid(database, tableName, columnName);
+      final ToIntFunction<TableDeviceCacheEntry> updateFunction =
+          isAttributeColumn
+              ? entry -> entry.invalidateAttributeColumn(columnName)
+              : entry -> entry.invalidateLastCache(columnName, true);
+      dualKeyCache.update(new TableId(null, tableName), deviceID -> true, updateFunction);
     } finally {
       readWriteLock.writeLock().unlock();
     }

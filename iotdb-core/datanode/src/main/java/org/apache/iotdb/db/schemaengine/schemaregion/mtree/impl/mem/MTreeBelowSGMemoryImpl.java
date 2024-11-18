@@ -1582,8 +1582,10 @@ public class MTreeBelowSGMemoryImpl {
       final IntSupplier attributePointerGetter,
       final IntConsumer attributeUpdater)
       throws MetadataException {
-    // todo implement storage for device of diverse data types
-
+    // todo implement storage for device of diverse data types\
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("Start to create table device {}.{}", tableName, Arrays.toString(devicePath));
+    }
     IMemMNode cur = storageGroupMNode.getChild(tableName);
     if (cur == null) {
       cur =
@@ -1603,6 +1605,9 @@ public class MTreeBelowSGMemoryImpl {
 
     synchronized (this) {
       if (cur.isDevice()) {
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug("Table device {}.{} already exists", tableName, Arrays.toString(devicePath));
+        }
         entityMNode = cur.getAsDeviceMNode();
         if (!(entityMNode.getDeviceInfo() instanceof TableDeviceInfo)) {
           throw new MetadataException("Table device shall not create under tree model");
@@ -1616,6 +1621,9 @@ public class MTreeBelowSGMemoryImpl {
         deviceInfo.setAttributePointer(attributePointerGetter.getAsInt());
         entityMNode.getAsInternalMNode().setDeviceInfo(deviceInfo);
         regionStatistics.addTableDevice(tableName);
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug("Table device {}.{} created", tableName, Arrays.toString(devicePath));
+        }
       }
     }
   }
@@ -1628,7 +1636,7 @@ public class MTreeBelowSGMemoryImpl {
             rootNode, pattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
           @Override
-          protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
+          protected void updateEntity(final IDeviceMNode<IMemMNode> node) throws MetadataException {
             batchUpdater.handleDeviceNode(node);
           }
         }) {
@@ -1644,7 +1652,7 @@ public class MTreeBelowSGMemoryImpl {
             rootNode, pattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
           @Override
-          protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
+          protected void updateEntity(final IDeviceMNode<IMemMNode> node) throws MetadataException {
             blackListConstructor.handleDeviceNode(node);
           }
         }) {
@@ -1728,6 +1736,32 @@ public class MTreeBelowSGMemoryImpl {
     }
     storageGroupMNode.deleteChild(tableName);
     regionStatistics.resetTableDevice(tableName);
+    store.releaseMemory(memoryReleased.get());
+    return true;
+  }
+
+  public boolean dropTableAttribute(final String tableName, final IntConsumer attributeDropper)
+      throws MetadataException {
+    if (!store.hasChild(storageGroupMNode, tableName)) {
+      return false;
+    }
+    final AtomicInteger memoryReleased = new AtomicInteger(0);
+    try (final EntityUpdater<IMemMNode> updater =
+        new EntityUpdater<IMemMNode>(
+            storageGroupMNode,
+            new PartialPath(new String[] {storageGroupMNode.getName(), tableName}),
+            this.store,
+            true,
+            SchemaConstant.ALL_MATCH_SCOPE) {
+          @Override
+          protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
+            attributeDropper.accept(
+                ((TableDeviceInfo<IMemMNode>) node.getAsDeviceMNode().getDeviceInfo())
+                    .getAttributePointer());
+          }
+        }) {
+      updater.update();
+    }
     store.releaseMemory(memoryReleased.get());
     return true;
   }

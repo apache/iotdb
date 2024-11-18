@@ -19,11 +19,9 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PathPatternNode;
 import org.apache.iotdb.commons.path.PatternTreeMap;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -51,71 +49,31 @@ public class PatternTreeMapFactory {
    * This PatternTreeMap is used to manage Modification. The append will merge of Modification that
    * intersect.
    */
-  public static PatternTreeMap<Modification, ModsSerializer> getModsPatternTreeMap() {
+  public static PatternTreeMap<ModEntry, ModsSerializer> getModsPatternTreeMap() {
     return new PatternTreeMap<>(
         HashSet::new, (mod, set) -> set.add(mod), null, ModsSerializer.getInstance());
   }
 
-  public static class ModsSerializer implements PathPatternNode.Serializer<Modification> {
+  public static class ModsSerializer implements PathPatternNode.Serializer<ModEntry> {
 
     @Override
-    public void write(Modification modification, ByteBuffer buffer) {
-      ReadWriteIOUtils.write(modification.getType().ordinal(), buffer);
-      modification.getPath().serialize(buffer);
-      ReadWriteIOUtils.write(modification.getFileOffset(), buffer);
-      switch (modification.getType()) {
-        case DELETION:
-          ReadWriteIOUtils.write(((Deletion) modification).getStartTime(), buffer);
-          ReadWriteIOUtils.write(((Deletion) modification).getEndTime(), buffer);
-          break;
-        default:
-          throw new IllegalArgumentException();
-      }
+    public void write(ModEntry modification, ByteBuffer buffer) {
+      modification.serialize(buffer);
     }
 
     @Override
-    public void write(Modification modification, PublicBAOS stream) throws IOException {
-      ReadWriteIOUtils.write(modification.getType().ordinal(), stream);
-      modification.getPath().serialize(stream);
-      ReadWriteIOUtils.write(modification.getFileOffset(), stream);
-      switch (modification.getType()) {
-        case DELETION:
-          ReadWriteIOUtils.write(((Deletion) modification).getStartTime(), stream);
-          ReadWriteIOUtils.write(((Deletion) modification).getEndTime(), stream);
-          break;
-        default:
-          throw new IllegalArgumentException();
-      }
+    public void write(ModEntry modification, PublicBAOS stream) throws IOException {
+      modification.serialize(stream);
     }
 
     @Override
-    public void write(Modification modification, DataOutputStream stream) throws IOException {
-      ReadWriteIOUtils.write(modification.getType().ordinal(), stream);
-      modification.getPath().serialize(stream);
-      ReadWriteIOUtils.write(modification.getFileOffset(), stream);
-      switch (modification.getType()) {
-        case DELETION:
-          ReadWriteIOUtils.write(((Deletion) modification).getStartTime(), stream);
-          ReadWriteIOUtils.write(((Deletion) modification).getEndTime(), stream);
-          break;
-        default:
-          throw new IllegalArgumentException();
-      }
+    public void write(ModEntry modification, DataOutputStream stream) throws IOException {
+      modification.serialize(stream);
     }
 
     @Override
-    public Modification read(ByteBuffer buffer) {
-      int type = ReadWriteIOUtils.read(buffer);
-      MeasurementPath partialPath = MeasurementPath.deserialize(buffer);
-      long fileOffset = ReadWriteIOUtils.readLong(buffer);
-      switch (Modification.Type.values()[type]) {
-        case DELETION:
-          long startTime = ReadWriteIOUtils.readLong(buffer);
-          long endTime = ReadWriteIOUtils.readLong(buffer);
-          return new Deletion(partialPath, fileOffset, startTime, endTime);
-        default:
-          throw new IllegalArgumentException();
-      }
+    public ModEntry read(ByteBuffer buffer) {
+      return ModEntry.createFrom(buffer);
     }
 
     private static class ModsSerializerHolder {

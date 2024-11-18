@@ -94,7 +94,7 @@ public abstract class SubscriptionPipeEventBatch {
       final @NonNull EnrichedEvent event, final Consumer<SubscriptionEvent> consumer)
       throws Exception {
     if (event instanceof TabletInsertionEvent) {
-      onTabletInsertionEvent((TabletInsertionEvent) event); // no exceptions will be thrown
+      onTabletInsertionEvent((TabletInsertionEvent) event);
       enrichedEvents.add(event);
     } else if (event instanceof TsFileInsertionEvent) {
       onTsFileInsertionEvent((TsFileInsertionEvent) event);
@@ -108,9 +108,9 @@ public abstract class SubscriptionPipeEventBatch {
 
   /////////////////////////////// utility ///////////////////////////////
 
-  protected abstract void onTabletInsertionEvent(final TabletInsertionEvent event) throws Exception;
+  protected abstract void onTabletInsertionEvent(final TabletInsertionEvent event);
 
-  protected abstract void onTsFileInsertionEvent(final TsFileInsertionEvent event) throws Exception;
+  protected abstract void onTsFileInsertionEvent(final TsFileInsertionEvent event);
 
   protected abstract boolean shouldEmit();
 
@@ -124,7 +124,7 @@ public abstract class SubscriptionPipeEventBatch {
     result.put("prefetchingQueue", prefetchingQueue.coreReportMessage().toString());
     result.put("maxDelayInMs", String.valueOf(maxDelayInMs));
     result.put("maxBatchSizeInBytes", String.valueOf(maxBatchSizeInBytes));
-    // TODO: stringify subscription events?
+    // omit subscription events here
     result.put("enrichedEvents", formatEnrichedEvents(enrichedEvents, 4));
     return result;
   }

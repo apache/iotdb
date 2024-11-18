@@ -91,6 +91,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDescTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
@@ -1284,6 +1285,14 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       throws TException {
     return executeRemoteCallWithRetry(
         () -> client.showTables(database, isDetails), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TDescTableResp describeTable(
+      final String database, final String tableName, final boolean isDetails) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.describeTable(database, tableName, isDetails),
+        resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override

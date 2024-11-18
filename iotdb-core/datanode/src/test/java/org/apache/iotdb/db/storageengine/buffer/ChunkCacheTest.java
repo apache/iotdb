@@ -112,8 +112,7 @@ public class ChunkCacheTest {
                   firstChunkMetadata.getOffsetOfChunkHeader(),
                   true),
               firstChunkMetadata.getDeleteIntervalList(),
-              firstChunkMetadata.getStatistics(),
-              false);
+              firstChunkMetadata.getStatistics());
 
       ChunkMetadata chunkMetadataKey =
           new ChunkMetadata("sensor0", TSDataType.DOUBLE, null, null, 26, new DoubleStatistics());
@@ -128,8 +127,7 @@ public class ChunkCacheTest {
                   chunkMetadataKey.getOffsetOfChunkHeader(),
                   true),
               chunkMetadataKey.getDeleteIntervalList(),
-              chunkMetadataKey.getStatistics(),
-              false);
+              chunkMetadataKey.getStatistics());
       Assert.assertEquals(chunk1.getHeader(), chunk2.getHeader());
       Assert.assertEquals(chunk1.getData(), chunk2.getData());
     }

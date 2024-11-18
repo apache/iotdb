@@ -31,8 +31,10 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.utils.Binary;
 
 import java.util.Collections;
 
@@ -56,9 +58,14 @@ public class DeleteDeviceTask implements IConfigTask {
 
   public static void buildTSBlock(
       final long deviceNum, final SettableFuture<ConfigTaskResult> future) {
-    final TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT64));
+    final TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.TEXT));
     builder.getTimeColumnBuilder().writeLong(0L);
-    builder.getColumnBuilder(0).writeLong(deviceNum);
+    builder
+        .getColumnBuilder(0)
+        .writeBinary(
+            new Binary(
+                deviceNum >= 0 ? String.valueOf(deviceNum) : "UNKNOWN",
+                TSFileConfig.STRING_CHARSET));
     builder.declarePosition();
     future.set(
         new ConfigTaskResult(
@@ -66,7 +73,7 @@ public class DeleteDeviceTask implements IConfigTask {
             builder.build(),
             new DatasetHeader(
                 Collections.singletonList(
-                    new ColumnHeader(IoTDBConstant.COLUMN_DELETED_DEVICE_NUM, TSDataType.INT64)),
+                    new ColumnHeader(IoTDBConstant.COLUMN_DELETED_DEVICE_NUM, TSDataType.TEXT)),
                 true)));
   }
 }

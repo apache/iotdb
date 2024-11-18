@@ -63,6 +63,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
@@ -315,6 +316,19 @@ public class RegionWriteExecutor {
     @Override
     public RegionExecutionResult visitDeleteData(
         DeleteDataNode node, WritePlanNodeExecutionContext context) {
+      // data deletion don't need to block data insertion, but there are some creation operation
+      // require write lock on data region.
+      context.getRegionWriteValidationRWLock().writeLock().lock();
+      try {
+        return super.visitDeleteData(node, context);
+      } finally {
+        context.getRegionWriteValidationRWLock().writeLock().unlock();
+      }
+    }
+
+    @Override
+    public RegionExecutionResult visitDeleteData(
+        RelationalDeleteDataNode node, WritePlanNodeExecutionContext context) {
       // data deletion don't need to block data insertion, but there are some creation operation
       // require write lock on data region.
       context.getRegionWriteValidationRWLock().writeLock().lock();
