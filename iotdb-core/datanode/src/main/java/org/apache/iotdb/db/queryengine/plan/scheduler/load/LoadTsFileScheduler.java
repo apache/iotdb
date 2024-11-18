@@ -61,6 +61,7 @@ import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileDataCacheMemoryBl
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.storageengine.load.splitter.ChunkData;
+import org.apache.iotdb.db.storageengine.load.splitter.DeletionData;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileSplitter;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -525,9 +526,15 @@ public class LoadTsFileScheduler implements IScheduler {
     }
 
     private boolean addOrSendTsFileData(TsFileData tsFileData) {
-      return tsFileData.isModification()
-          ? addOrSendDeletionData(tsFileData)
-          : addOrSendChunkData((ChunkData) tsFileData);
+      switch (tsFileData.getType()) {
+        case CHUNK:
+          return addOrSendChunkData((ChunkData) tsFileData);
+        case DELETION:
+          return addOrSendDeletionData((DeletionData) tsFileData);
+        default:
+          throw new UnsupportedOperationException(
+              String.format("Unsupported TsFileDataType %s.", tsFileData.getType()));
+      }
     }
 
     private boolean isMemoryEnough() {
@@ -584,11 +591,7 @@ public class LoadTsFileScheduler implements IScheduler {
       List<TRegionReplicaSet> replicaSets =
           scheduler.partitionFetcher.queryDataPartition(
               nonDirectionalChunkData.stream()
-                  .map(
-                      data ->
-                          new Pair<>(
-                              IDeviceID.Factory.DEFAULT_FACTORY.create(data.getDevice()),
-                              data.getTimePartitionSlot()))
+                  .map(data -> new Pair<>(data.getDevice(), data.getTimePartitionSlot()))
                   .collect(Collectors.toList()),
               scheduler.queryContext.getSession().getUserName());
       IntStream.range(0, nonDirectionalChunkData.size())
@@ -605,7 +608,7 @@ public class LoadTsFileScheduler implements IScheduler {
       nonDirectionalChunkData.clear();
     }
 
-    private boolean addOrSendDeletionData(TsFileData deletionData) {
+    private boolean addOrSendDeletionData(DeletionData deletionData) {
       routeChunkData(); // ensure chunk data will be added before deletion
 
       for (Map.Entry<TRegionReplicaSet, LoadTsFilePieceNode> entry : replicaSet2Piece.entrySet()) {

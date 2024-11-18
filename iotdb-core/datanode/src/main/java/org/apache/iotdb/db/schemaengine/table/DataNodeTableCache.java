@@ -33,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.concurrent.GuardedBy;
 
 import java.util.Collections;
 import java.util.List;
@@ -52,8 +53,10 @@ public class DataNodeTableCache implements ITableCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeTableCache.class);
 
+  // The database is without "root"
   private final Map<String, Map<String, TsTable>> databaseTableMap = new ConcurrentHashMap<>();
 
+  // The database is without "root"
   private final Map<String, Map<String, Pair<TsTable, Long>>> preUpdateTableMap =
       new ConcurrentHashMap<>();
 
@@ -190,6 +193,46 @@ public class DataNodeTableCache implements ITableCache {
     }
   }
 
+  @GuardedBy("TableDeviceSchemaCache#writeLock")
+  @Override
+  public void invalid(String database, final String tableName) {
+    database = PathUtils.unQualifyDatabaseName(database);
+    readWriteLock.writeLock().lock();
+    try {
+      if (databaseTableMap.containsKey(database)) {
+        databaseTableMap.get(database).remove(tableName);
+      }
+      if (preUpdateTableMap.containsKey(database)) {
+        preUpdateTableMap.get(database).remove(tableName);
+      }
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
+  @GuardedBy("TableDeviceSchemaCache#writeLock")
+  @Override
+  public void invalid(String database, final String tableName, final String columnName) {
+    database = PathUtils.unQualifyDatabaseName(database);
+    readWriteLock.writeLock().lock();
+    try {
+      if (databaseTableMap.containsKey(database)
+          && databaseTableMap.get(database).containsKey(tableName)) {
+        databaseTableMap.get(database).get(tableName).removeColumnSchema(columnName);
+      }
+      if (preUpdateTableMap.containsKey(database)
+          && preUpdateTableMap.get(database).containsKey(tableName)) {
+        final Pair<TsTable, Long> tableVersionPair = preUpdateTableMap.get(database).get(tableName);
+        if (Objects.nonNull(tableVersionPair.getLeft())) {
+          tableVersionPair.getLeft().removeColumnSchema(columnName);
+        }
+        tableVersionPair.setRight(tableVersionPair.getRight() + 1);
+      }
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
   public TsTable getTableInWrite(final String database, final String tableName) {
     final TsTable result = getTableInCache(database, tableName);
     return Objects.nonNull(result) ? result : getTable(database, tableName);
@@ -203,7 +246,7 @@ public class DataNodeTableCache implements ITableCache {
     database = PathUtils.unQualifyDatabaseName(database);
     final Map<String, Map<String, Long>> preUpdateTables =
         mayGetTableInPreUpdateMap(database, tableName);
-    if (Objects.nonNull(preUpdateTables)) {
+    if (Objects.nonNull(preUpdateTables) && !preUpdateTables.isEmpty()) {
       updateTable(getTablesInConfigNode(preUpdateTables), preUpdateTables);
     }
     return getTableInCache(database, tableName);
@@ -250,7 +293,9 @@ public class DataNodeTableCache implements ITableCache {
               .fetchTables(
                   tableInput.entrySet().stream()
                       .collect(
-                          Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().keySet())));
+                          Collectors.toMap(
+                              entry -> PathUtils.qualifyDatabaseName(entry.getKey()),
+                              entry -> entry.getValue().keySet())));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
         result = TsTableInternalRPCUtil.deserializeTsTableFetchResult(resp.getTableInfoMap());
       }
@@ -284,6 +329,12 @@ public class DataNodeTableCache implements ITableCache {
                             previousVersions.get(database).get(tableName))) {
                       return;
                     }
+                    LOGGER.info(
+                        "Update table {}.{} by table fetch, table in preUpdateMap: {}, new table: {}",
+                        database,
+                        existingPair.getLeft().getTableName(),
+                        existingPair.getLeft(),
+                        tsTable);
                     existingPair.setLeft(null);
                     if (Objects.nonNull(tsTable)) {
                       databaseTableMap
@@ -311,6 +362,15 @@ public class DataNodeTableCache implements ITableCache {
     }
   }
 
+  public boolean isDatabaseExist(final String database) {
+    readWriteLock.readLock().lock();
+    try {
+      return databaseTableMap.containsKey(database);
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
   // Database shall not start with "root"
   public String tryGetInternColumnName(
       final @Nonnull String database,
@@ -326,7 +386,7 @@ public class DataNodeTableCache implements ITableCache {
           .getColumnSchema(columnName)
           .getColumnName();
     } catch (final Exception e) {
-      return columnName;
+      return null;
     }
   }
 
@@ -351,12 +411,14 @@ public class DataNodeTableCache implements ITableCache {
     for (final Map.Entry<String, ? extends Map<String, ?>> dbEntry : tableMap.entrySet()) {
       final String database = dbEntry.getKey();
       if (!(path.startsWith(database, dbStartIndex)
+          && path.length() > dbStartIndex + database.length()
           && path.charAt(dbStartIndex + database.length()) == PATH_SEPARATOR)) {
         continue;
       }
       final int tableStartIndex = dbStartIndex + database.length() + 1;
       for (final String tableName : dbEntry.getValue().keySet()) {
         if (path.startsWith(tableName, tableStartIndex)
+            && path.length() > tableStartIndex + tableName.length()
             && path.charAt(tableStartIndex + tableName.length()) == PATH_SEPARATOR) {
           return new Pair<>(database, tableName);
         }

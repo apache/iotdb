@@ -86,9 +86,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TAlterTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
@@ -125,7 +125,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDescTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
@@ -613,10 +616,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSchemaPartitionTableResp getSchemaPartitionTable(TSchemaPartitionReq req) {
-    PathPatternTree patternTree =
+  public TSchemaPartitionTableResp getSchemaPartitionTable(final TSchemaPartitionReq req) {
+    final PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
-    return configManager.getSchemaPartition(patternTree);
+    return configManager.getSchemaPartition(
+        patternTree, req.isSetIsTableModel() && req.isIsTableModel());
   }
 
   @Override
@@ -629,7 +633,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   public TSchemaPartitionTableResp getOrCreateSchemaPartitionTable(TSchemaPartitionReq req) {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
-    return configManager.getOrCreateSchemaPartition(patternTree);
+    return configManager.getOrCreateSchemaPartition(
+        patternTree, req.isSetIsTableModel() && req.isIsTableModel());
   }
 
   @Override
@@ -925,12 +930,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus clearCache() {
-    return configManager.clearCache();
+  public TSStatus clearCache(final Set<Integer> clearCacheOptions) {
+    return configManager.clearCache(clearCacheOptions);
   }
 
   @Override
-  public TSStatus setConfiguration(TSetConfigurationReq req) throws TException {
+  public TSStatus setConfiguration(TSetConfigurationReq req) {
     return configManager.setConfiguration(req);
   }
 
@@ -1299,17 +1304,28 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus alterTable(final TAlterTableReq req) {
-    return configManager.alterTable(req);
+  public TSStatus alterOrDropTable(final TAlterOrDropTableReq req) {
+    return configManager.alterOrDropTable(req);
   }
 
   @Override
-  public TShowTableResp showTables(final String database) {
-    return configManager.showTables(database);
+  public TShowTableResp showTables(final String database, final boolean isDetails) {
+    return configManager.showTables(database, isDetails);
+  }
+
+  @Override
+  public TDescTableResp describeTable(
+      final String database, final String tableName, final boolean isDetails) {
+    return configManager.describeTable(database, tableName, isDetails);
   }
 
   @Override
   public TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap) {
     return configManager.fetchTables(fetchTableMap);
+  }
+
+  @Override
+  public TDeleteTableDeviceResp deleteDevice(final TDeleteTableDeviceReq req) {
+    return configManager.deleteDevice(req);
   }
 }

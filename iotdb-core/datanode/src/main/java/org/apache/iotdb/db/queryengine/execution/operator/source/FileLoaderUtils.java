@@ -51,7 +51,6 @@ import org.apache.tsfile.read.reader.IPageReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -103,7 +102,8 @@ public class FileLoaderUtils {
                         seriesPath.getMeasurement()),
                     allSensors,
                     resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
-                    context.isDebug());
+                    context.isDebug(),
+                    context);
         if (timeSeriesMetadata != null) {
           long t2 = System.nanoTime();
           List<Modification> pathModifications =
@@ -264,8 +264,7 @@ public class FileLoaderUtils {
     // the order of timeSeriesMetadata list is same as subSensorList's order
     TimeSeriesMetadataCache cache = TimeSeriesMetadataCache.getInstance();
     List<String> valueMeasurementList = alignedPath.getMeasurementList();
-    Set<String> allSensors = new HashSet<>(valueMeasurementList);
-    allSensors.add("");
+    Set<String> allSensors = alignedPath.getAllSensors();
     boolean isDebug = context.isDebug();
     String filePath = resource.getTsFilePath();
     IDeviceID deviceId = alignedPath.getDeviceId();
@@ -278,7 +277,8 @@ public class FileLoaderUtils {
             new TimeSeriesMetadataCacheKey(resource.getTsFileID(), deviceId, ""),
             allSensors,
             resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
-            isDebug);
+            isDebug,
+            context);
     if (timeColumn != null) {
       // only need time column, like count_time aggregation
       if (valueMeasurementList.isEmpty()) {
@@ -306,7 +306,8 @@ public class FileLoaderUtils {
                       resource.getTsFileID(), deviceId, valueMeasurement),
                   allSensors,
                   resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
-                  isDebug);
+                  isDebug,
+                  context);
           exist = (exist || (valueColumn != null));
           valueTimeSeriesMetadataList.add(valueColumn);
         }

@@ -49,7 +49,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.schema.SchemaConstant;
-import org.apache.iotdb.commons.schema.table.AlterTableOperationType;
+import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
@@ -132,9 +132,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TAlterTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
@@ -159,7 +159,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDescTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
@@ -726,8 +729,8 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus alterDatabase(DatabaseSchemaPlan databaseSchemaPlan) {
-    TSStatus status = confirmLeader();
+  public TSStatus alterDatabase(final DatabaseSchemaPlan databaseSchemaPlan) {
+    final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return clusterSchemaManager.alterDatabase(databaseSchemaPlan, false);
     } else {
@@ -736,19 +739,19 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public synchronized TSStatus deleteDatabases(TDeleteDatabasesReq tDeleteReq) {
-    TSStatus status = confirmLeader();
+  public synchronized TSStatus deleteDatabases(final TDeleteDatabasesReq tDeleteReq) {
+    final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      List<String> deletedPaths = tDeleteReq.getPrefixPathList();
+      final List<String> deletedPaths = tDeleteReq.getPrefixPathList();
       // remove wild
-      Map<String, TDatabaseSchema> deleteDatabaseSchemaMap =
+      final Map<String, TDatabaseSchema> deleteDatabaseSchemaMap =
           getClusterSchemaManager().getMatchedDatabaseSchemasByName(deletedPaths);
       if (deleteDatabaseSchemaMap.isEmpty()) {
         return RpcUtils.getStatus(
             TSStatusCode.PATH_NOT_EXIST.getStatusCode(),
             String.format("Path %s does not exist", Arrays.toString(deletedPaths.toArray())));
       }
-      ArrayList<TDatabaseSchema> parsedDeleteDatabases =
+      final ArrayList<TDatabaseSchema> parsedDeleteDatabases =
           new ArrayList<>(deleteDatabaseSchemaMap.values());
       return procedureManager.deleteDatabases(
           parsedDeleteDatabases,
@@ -783,7 +786,8 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSchemaPartitionTableResp getSchemaPartition(final PathPatternTree patternTree) {
+  public TSchemaPartitionTableResp getSchemaPartition(
+      final PathPatternTree patternTree, final boolean isTableModel) {
     // Construct empty response
 
     final TSStatus status = confirmLeader();
@@ -795,7 +799,7 @@ public class ConfigManager implements IManager {
     // Build GetSchemaPartitionPlan
     final Map<String, Set<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
     final List<PartialPath> relatedPaths = patternTree.getAllPathPatterns();
-    final List<String> allDatabases = getClusterSchemaManager().getDatabaseNames();
+    final List<String> allDatabases = getClusterSchemaManager().getDatabaseNames(isTableModel);
     final List<PartialPath> allDatabasePaths = new ArrayList<>();
     for (final String database : allDatabases) {
       try {
@@ -849,8 +853,8 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSchemaPartitionTableResp getOrCreateSchemaPartition(PathPatternTree patternTree) {
-
+  public TSchemaPartitionTableResp getOrCreateSchemaPartition(
+      final PathPatternTree patternTree, final boolean isTableModel) {
     TSStatus status = confirmLeader();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // Construct empty response
@@ -859,7 +863,7 @@ public class ConfigManager implements IManager {
     }
 
     List<IDeviceID> devicePaths = patternTree.getAllDevicePatterns();
-    List<String> databases = getClusterSchemaManager().getDatabaseNames();
+    List<String> databases = getClusterSchemaManager().getDatabaseNames(isTableModel);
 
     // Build GetOrCreateSchemaPartitionPlan
     Map<String, Set<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
@@ -1614,18 +1618,18 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus flush(TFlushReq req) {
-    TSStatus status = confirmLeader();
+  public TSStatus flush(final TFlushReq req) {
+    final TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? RpcUtils.squashResponseStatusList(nodeManager.flush(req))
         : status;
   }
 
   @Override
-  public TSStatus clearCache() {
-    TSStatus status = confirmLeader();
+  public TSStatus clearCache(final Set<Integer> clearCacheOptions) {
+    final TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? RpcUtils.squashResponseStatusList(nodeManager.clearCache())
+        ? RpcUtils.squashResponseStatusList(nodeManager.clearCache(clearCacheOptions))
         : status;
   }
 
@@ -1834,14 +1838,15 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TShowDatabaseResp showDatabase(TGetDatabaseReq req) {
-    TSStatus status = confirmLeader();
+  public TShowDatabaseResp showDatabase(final TGetDatabaseReq req) {
+    final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      PathPatternTree scope =
+      final PathPatternTree scope =
           req.getScopePatternTree() == null
               ? SchemaConstant.ALL_MATCH_SCOPE
               : PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
-      GetDatabasePlan getDatabasePlan = new GetDatabasePlan(req.getDatabasePathPattern(), scope);
+      final GetDatabasePlan getDatabasePlan =
+          new GetDatabasePlan(req.getDatabasePathPattern(), scope);
       return getClusterSchemaManager().showDatabase(getDatabasePlan);
     } else {
       return new TShowDatabaseResp().setStatus(status);
@@ -1943,17 +1948,18 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req) {
-    TSStatus status = confirmLeader();
+  public TSStatus deactivateSchemaTemplate(final TDeactivateSchemaTemplateReq req) {
+    final TSStatus status = confirmLeader();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return status;
     }
 
-    PathPatternTree patternTree =
+    final PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
 
-    List<PartialPath> patternList = patternTree.getAllPathPatterns();
-    TemplateSetInfoResp templateSetInfoResp = clusterSchemaManager.getTemplateSetInfo(patternList);
+    final List<PartialPath> patternList = patternTree.getAllPathPatterns();
+    final TemplateSetInfoResp templateSetInfoResp =
+        clusterSchemaManager.getTemplateSetInfo(patternList);
     if (templateSetInfoResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return templateSetInfoResp.getStatus();
     }
@@ -1968,9 +1974,9 @@ public class ConfigManager implements IManager {
     }
 
     if (!req.getTemplateName().equals(ONE_LEVEL_PATH_WILDCARD)) {
-      Map<PartialPath, List<Template>> filteredTemplateSetInfo = new HashMap<>();
-      for (Map.Entry<PartialPath, List<Template>> entry : templateSetInfo.entrySet()) {
-        for (Template template : entry.getValue()) {
+      final Map<PartialPath, List<Template>> filteredTemplateSetInfo = new HashMap<>();
+      for (final Map.Entry<PartialPath, List<Template>> entry : templateSetInfo.entrySet()) {
+        for (final Template template : entry.getValue()) {
           if (template.getName().equals(req.getTemplateName())) {
             filteredTemplateSetInfo.put(entry.getKey(), Collections.singletonList(template));
             break;
@@ -2379,17 +2385,22 @@ public class ConfigManager implements IManager {
    * Get all related schemaRegion which may contains the timeseries matched by given patternTree.
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup(
-      PathPatternTree patternTree) {
-    Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
-        getSchemaPartition(patternTree).getSchemaPartitionTable();
+      final PathPatternTree patternTree) {
+    return getRelatedSchemaRegionGroup(patternTree, false);
+  }
 
-    List<TRegionReplicaSet> allRegionReplicaSets = getPartitionManager().getAllReplicaSets();
-    Set<TConsensusGroupId> groupIdSet =
+  public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup(
+      final PathPatternTree patternTree, final boolean isTableModel) {
+    final Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
+        getSchemaPartition(patternTree, isTableModel).getSchemaPartitionTable();
+
+    final List<TRegionReplicaSet> allRegionReplicaSets = getPartitionManager().getAllReplicaSets();
+    final Set<TConsensusGroupId> groupIdSet =
         schemaPartitionTable.values().stream()
             .flatMap(m -> m.values().stream())
             .collect(Collectors.toSet());
-    Map<TConsensusGroupId, TRegionReplicaSet> filteredRegionReplicaSets = new HashMap<>();
-    for (TRegionReplicaSet regionReplicaSet : allRegionReplicaSets) {
+    final Map<TConsensusGroupId, TRegionReplicaSet> filteredRegionReplicaSets = new HashMap<>();
+    for (final TRegionReplicaSet regionReplicaSet : allRegionReplicaSets) {
       if (groupIdSet.contains(regionReplicaSet.getRegionId())) {
         filteredRegionReplicaSets.put(regionReplicaSet.getRegionId(), regionReplicaSet);
       }
@@ -2402,13 +2413,13 @@ public class ConfigManager implements IManager {
    * patternTree
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedDataRegionGroup(
-      PathPatternTree patternTree) {
+      final PathPatternTree patternTree, final boolean isTableModel) {
     // Get all databases and slots by getting schemaengine partition
-    Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
-        getSchemaPartition(patternTree).getSchemaPartitionTable();
+    final Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
+        getSchemaPartition(patternTree, isTableModel).getSchemaPartitionTable();
 
     // Construct request for getting data partition
-    Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap = new HashMap<>();
+    final Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap = new HashMap<>();
     schemaPartitionTable.forEach(
         (key, value) -> {
           Map<TSeriesPartitionSlot, TTimeSlotList> slotListMap = new HashMap<>();
@@ -2422,13 +2433,13 @@ public class ConfigManager implements IManager {
         });
 
     // Get all data partitions
-    GetDataPartitionPlan getDataPartitionPlan = new GetDataPartitionPlan(partitionSlotsMap);
-    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
+    final GetDataPartitionPlan getDataPartitionPlan = new GetDataPartitionPlan(partitionSlotsMap);
+    final Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
         dataPartitionTable = getDataPartition(getDataPartitionPlan).getDataPartitionTable();
 
     // Get all region replicaset of target data partitions
-    List<TRegionReplicaSet> allRegionReplicaSets = getPartitionManager().getAllReplicaSets();
-    Set<TConsensusGroupId> groupIdSet =
+    final List<TRegionReplicaSet> allRegionReplicaSets = getPartitionManager().getAllReplicaSets();
+    final Set<TConsensusGroupId> groupIdSet =
         dataPartitionTable.values().stream()
             .flatMap(
                 tSeriesPartitionSlotMapMap ->
@@ -2438,8 +2449,8 @@ public class ConfigManager implements IManager {
                                 tTimePartitionSlotListMap.values().stream()
                                     .flatMap(Collection::stream)))
             .collect(Collectors.toSet());
-    Map<TConsensusGroupId, TRegionReplicaSet> filteredRegionReplicaSets = new HashMap<>();
-    for (TRegionReplicaSet regionReplicaSet : allRegionReplicaSets) {
+    final Map<TConsensusGroupId, TRegionReplicaSet> filteredRegionReplicaSets = new HashMap<>();
+    for (final TRegionReplicaSet regionReplicaSet : allRegionReplicaSets) {
       if (groupIdSet.contains(regionReplicaSet.getRegionId())) {
         filteredRegionReplicaSets.put(regionReplicaSet.getRegionId(), regionReplicaSet);
       }
@@ -2559,7 +2570,7 @@ public class ConfigManager implements IManager {
     final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       final Pair<String, TsTable> pair =
-          TsTableInternalRPCUtil.deserializeSingleTsTable(tableInfo.array());
+          TsTableInternalRPCUtil.deserializeSingleTsTableWithDatabase(tableInfo.array());
       return procedureManager.createTable(pair.left, pair.right);
     } else {
       return status;
@@ -2567,14 +2578,20 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus alterTable(final TAlterTableReq req) {
+  public TSStatus alterOrDropTable(final TAlterOrDropTableReq req) {
     final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      switch (AlterTableOperationType.getType(req.operationType)) {
+      switch (AlterOrDropTableOperationType.getType(req.operationType)) {
         case ADD_COLUMN:
           return procedureManager.alterTableAddColumn(req);
         case SET_PROPERTIES:
           return procedureManager.alterTableSetProperties(req);
+        case RENAME_COLUMN:
+          return procedureManager.alterTableRenameColumn(req);
+        case DROP_COLUMN:
+          return procedureManager.alterTableDropColumn(req);
+        case DROP_TABLE:
+          return procedureManager.dropTable(req);
         default:
           throw new IllegalArgumentException();
       }
@@ -2584,11 +2601,28 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TShowTableResp showTables(final String database) {
+  public TDeleteTableDeviceResp deleteDevice(final TDeleteTableDeviceReq req) {
     final TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? clusterSchemaManager.showTables(database)
+        ? procedureManager.deleteDevices(req)
+        : new TDeleteTableDeviceResp(status);
+  }
+
+  @Override
+  public TShowTableResp showTables(final String database, final boolean isDetails) {
+    final TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? clusterSchemaManager.showTables(database, isDetails)
         : new TShowTableResp(status);
+  }
+
+  @Override
+  public TDescTableResp describeTable(
+      final String database, final String tableName, final boolean isDetails) {
+    final TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? clusterSchemaManager.describeTable(database, tableName, isDetails)
+        : new TDescTableResp(status);
   }
 
   @Override

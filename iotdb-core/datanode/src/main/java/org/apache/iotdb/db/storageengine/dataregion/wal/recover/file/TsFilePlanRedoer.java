@@ -91,24 +91,29 @@ public class TsFilePlanRedoer {
       }
     }
 
+    int pointsInserted;
     if (node instanceof InsertRowNode) {
       if (node.isAligned()) {
-        recoveryMemTable.insertAlignedRow((InsertRowNode) node);
+        pointsInserted = recoveryMemTable.insertAlignedRow((InsertRowNode) node);
       } else {
-        recoveryMemTable.insert((InsertRowNode) node);
+        pointsInserted = recoveryMemTable.insert((InsertRowNode) node);
       }
     } else {
       if (node.isAligned()) {
-        recoveryMemTable.insertAlignedTablet(
-            (InsertTabletNode) node, 0, ((InsertTabletNode) node).getRowCount(), null);
+        pointsInserted =
+            recoveryMemTable.insertAlignedTablet(
+                (InsertTabletNode) node, 0, ((InsertTabletNode) node).getRowCount(), null);
       } else {
-        recoveryMemTable.insertTablet(
-            (InsertTabletNode) node, 0, ((InsertTabletNode) node).getRowCount());
+        pointsInserted =
+            recoveryMemTable.insertTablet(
+                (InsertTabletNode) node, 0, ((InsertTabletNode) node).getRowCount());
       }
     }
+    recoveryMemTable.updateMemtablePointCountMetric(node, pointsInserted);
   }
 
   void redoInsertRows(InsertRowsNode insertRowsNode) {
+    int pointsInserted = 0;
     for (InsertRowNode node : insertRowsNode.getInsertRowNodeList()) {
       if (!node.hasValidMeasurements()) {
         continue;
@@ -125,11 +130,12 @@ public class TsFilePlanRedoer {
         }
       }
       if (node.isAligned()) {
-        recoveryMemTable.insertAlignedRow(node);
+        pointsInserted += recoveryMemTable.insertAlignedRow(node);
       } else {
-        recoveryMemTable.insert(node);
+        pointsInserted += recoveryMemTable.insert(node);
       }
     }
+    recoveryMemTable.updateMemtablePointCountMetric(insertRowsNode, pointsInserted);
   }
 
   void resetRecoveryMemTable(IMemTable memTable) {

@@ -19,11 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
-import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.exception.LoadEmptyFileException;
-import org.apache.iotdb.db.exception.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.VerifyMetadataException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -31,10 +28,11 @@ import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
@@ -44,8 +42,9 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.encrypt.EncryptParameter;
+import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.TsFileSequenceReaderTimeseriesMetadataIterator;
@@ -55,7 +54,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -71,30 +69,31 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
 
   private final Metadata metadata;
 
+  private final LoadTsFileTableSchemaCache schemaCache;
+
   public LoadTsFileToTableModelAnalyzer(
       LoadTsFileStatement loadTsFileStatement, Metadata metadata, MPPQueryContext context) {
     super(loadTsFileStatement, context);
     this.metadata = metadata;
+    this.schemaCache = new LoadTsFileTableSchemaCache(metadata, context);
   }
 
   public LoadTsFileToTableModelAnalyzer(
       LoadTsFile loadTsFileTableStatement, Metadata metadata, MPPQueryContext context) {
     super(loadTsFileTableStatement, context);
     this.metadata = metadata;
+    this.schemaCache = new LoadTsFileTableSchemaCache(metadata, context);
   }
 
   @Override
   public IAnalysis analyzeFileByFile(IAnalysis analysis) {
-    // check if the system is read only
-    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
-      analysis.setFinishQueryAfterAnalyze(true);
-      analysis.setFailStatus(
-          RpcUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY, LoadReadOnlyException.MESSAGE));
+    checkBeforeAnalyzeFileByFile(analysis);
+    if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
 
     try {
-      autoCreateDatabase(database);
+      autoCreateDatabaseIfAbsent(database);
     } catch (VerifyMetadataException e) {
       LOGGER.warn("Auto create database failed: {}", database, e);
       analysis.setFinishQueryAfterAnalyze(true);
@@ -116,7 +115,7 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
 
   @Override
   protected void analyzeSingleTsFile(final File tsFile)
-      throws IOException, AuthException, VerifyMetadataException {
+      throws IOException, VerifyMetadataException {
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
       // can be reused when constructing tsfile resource
       final TsFileSequenceReaderTimeseriesMetadataIterator timeseriesMetadataIterator =
@@ -128,33 +127,29 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
       }
 
       // check whether the tsfile is table-model or not
-      // TODO: currently, loading a file with both tree-model and table-model data is not supported.
-      //  May need to support this and remove this check in the future.
       if (Objects.isNull(reader.readFileMetadata().getTableSchemaMap())
-          || reader.readFileMetadata().getTableSchemaMap().size() == 0) {
+          || reader.readFileMetadata().getTableSchemaMap().isEmpty()) {
         throw new SemanticException("Attempted to load a tree-model TsFile into table-model.");
+      }
+
+      // check whether the encrypt type of the tsfile is supported
+      EncryptParameter param = reader.getEncryptParam();
+      if (!Objects.equals(param.getType(), EncryptUtils.encryptParam.getType())
+          || !Arrays.equals(param.getKey(), EncryptUtils.encryptParam.getKey())) {
+        throw new SemanticException("The encryption way of the TsFile is not supported.");
       }
 
       // construct tsfile resource
       final TsFileResource tsFileResource = constructTsFileResource(reader, tsFile);
 
-      for (Map.Entry<String, TableSchema> name2Schema :
+      schemaCache.setDatabase(database);
+      schemaCache.setCurrentModificationsAndTimeIndex(tsFileResource, reader);
+
+      for (Map.Entry<String, org.apache.tsfile.file.metadata.TableSchema> name2Schema :
           reader.readFileMetadata().getTableSchemaMap().entrySet()) {
-        org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema realSchema =
-            metadata
-                .validateTableHeaderSchema(
-                    database,
-                    org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema
-                        .fromTsFileTableSchema(name2Schema.getKey(), name2Schema.getValue()),
-                    context,
-                    true)
-                .orElse(null);
-        if (Objects.isNull(realSchema)) {
-          throw new VerifyMetadataException(
-              String.format(
-                  "Failed to validate schema for table {%s, %s}",
-                  name2Schema.getKey(), name2Schema.getValue()));
-        }
+        final TableSchema fileSchema =
+            TableSchema.fromTsFileTableSchema(name2Schema.getKey(), name2Schema.getValue());
+        schemaCache.createTable(fileSchema, context, metadata);
       }
 
       long writePointCount = 0;
@@ -164,11 +159,7 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
             timeseriesMetadataIterator.next();
 
         for (IDeviceID deviceId : device2TimeseriesMetadata.keySet()) {
-          final ITableDeviceSchemaValidation tableSchemaValidation =
-              createTableSchemaValidation(deviceId, this);
-          // TODO: currently, we only validate one device at a time for table model,
-          //  may need to validate in batched manner in the future.
-          metadata.validateDeviceSchema(tableSchemaValidation, context);
+          schemaCache.autoCreateAndVerify(deviceId);
         }
 
         if (!tsFileResource.resourceFileExists()) {
@@ -183,6 +174,9 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
 
       addTsFileResource(tsFileResource);
       addWritePointCount(writePointCount);
+
+      schemaCache.flush();
+      schemaCache.clearIdColumnMapper();
     } catch (final LoadEmptyFileException loadEmptyFileException) {
       LOGGER.warn("Failed to load empty file: {}", tsFile.getAbsolutePath());
       if (isDeleteAfterLoad) {
@@ -191,10 +185,15 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
     }
   }
 
-  private void autoCreateDatabase(final String database) throws VerifyMetadataException {
+  private void autoCreateDatabaseIfAbsent(final String database) throws VerifyMetadataException {
     validateDatabaseName(database);
+    if (DataNodeTableCache.getInstance().isDatabaseExist(database)) {
+      return;
+    }
+
     final CreateDBTask task =
-        new CreateDBTask(new TDatabaseSchema(ROOT + PATH_SEPARATOR_CHAR + database), true);
+        new CreateDBTask(
+            new TDatabaseSchema(ROOT + PATH_SEPARATOR_CHAR + database).setIsTableModel(true), true);
     try {
       final ListenableFuture<ConfigTaskResult> future =
           task.execute(ClusterConfigTaskExecutor.getInstance());
@@ -210,38 +209,8 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
     }
   }
 
-  private ITableDeviceSchemaValidation createTableSchemaValidation(
-      IDeviceID deviceId, LoadTsFileToTableModelAnalyzer analyzer) {
-    return new ITableDeviceSchemaValidation() {
-
-      @Override
-      public String getDatabase() {
-        return analyzer.database;
-      }
-
-      @Override
-      public String getTableName() {
-        return deviceId.getTableName();
-      }
-
-      @Override
-      public List<Object[]> getDeviceIdList() {
-        return Collections.singletonList(
-            Arrays.copyOfRange(deviceId.getSegments(), 1, deviceId.getSegments().length));
-      }
-
-      @Override
-      public List<String> getAttributeColumnNameList() {
-        return Collections.emptyList();
-      }
-
-      @Override
-      public List<Object[]> getAttributeValueList() {
-        return Collections.singletonList(new Object[0]);
-      }
-    };
-  }
-
   @Override
-  public void close() throws Exception {}
+  public void close() throws Exception {
+    schemaCache.close();
+  }
 }

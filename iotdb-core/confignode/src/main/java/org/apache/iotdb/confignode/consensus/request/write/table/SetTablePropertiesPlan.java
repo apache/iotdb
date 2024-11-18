@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.consensus.request.write.table;
 
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -29,11 +28,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
-public class SetTablePropertiesPlan extends ConfigPhysicalPlan {
-
-  private String database;
-
-  private String tableName;
+public class SetTablePropertiesPlan extends AbstractTablePlan {
 
   private Map<String, String> properties;
 
@@ -43,18 +38,8 @@ public class SetTablePropertiesPlan extends ConfigPhysicalPlan {
 
   public SetTablePropertiesPlan(
       final String database, final String tableName, final Map<String, String> properties) {
-    super(ConfigPhysicalPlanType.SetTableProperties);
-    this.database = database;
-    this.tableName = tableName;
+    super(ConfigPhysicalPlanType.SetTableProperties, database, tableName);
     this.properties = properties;
-  }
-
-  public String getDatabase() {
-    return database;
-  }
-
-  public String getTableName() {
-    return tableName;
   }
 
   public Map<String, String> getProperties() {
@@ -63,17 +48,13 @@ public class SetTablePropertiesPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(final DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
-
-    ReadWriteIOUtils.write(database, stream);
-    ReadWriteIOUtils.write(tableName, stream);
+    super.serializeImpl(stream);
     ReadWriteIOUtils.write(properties, stream);
   }
 
   @Override
   protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
-    this.database = ReadWriteIOUtils.readString(buffer);
-    this.tableName = ReadWriteIOUtils.readString(buffer);
+    super.deserializeImpl(buffer);
     this.properties = ReadWriteIOUtils.readMap(buffer);
   }
 }

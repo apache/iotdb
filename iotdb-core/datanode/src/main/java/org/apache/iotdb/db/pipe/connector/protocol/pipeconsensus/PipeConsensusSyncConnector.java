@@ -34,14 +34,15 @@ import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusBatchTransferResp;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.builder.PipeConsensusSyncBatchReqBuilder;
+import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusDeleteNodeReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFileSealReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFileSealWithModReq;
-import org.apache.iotdb.db.pipe.consensus.PipeConsensusConnectorMetrics;
-import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.consensus.metric.PipeConsensusConnectorMetrics;
+import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -72,6 +73,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
   private static final String TABLET_INSERTION_NODE_SCENARIO = "transfer insertionNode tablet";
   private static final String TSFILE_SCENARIO = "transfer tsfile";
   private static final String TABLET_BATCH_SCENARIO = "transfer tablet batch";
+  private static final String DELETION_SCENARIO = "transfer deletion";
   private final IClientManager<TEndPoint, SyncPipeConsensusServiceClient> syncRetryClientManager;
   private final List<TEndPoint> peers;
   private final int thisDataNodeId;
@@ -91,7 +93,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
     this.consensusGroupId = consensusGroupId;
     this.thisDataNodeId = thisDataNodeId;
     this.syncRetryClientManager =
-        PipeConsensusClientMgrContainer.getInstance().getSyncClientManager();
+        PipeConsensusClientMgrContainer.getInstance().newSyncClientManager();
     this.pipeConsensusConnectorMetrics = pipeConsensusConnectorMetrics;
   }
 
@@ -177,10 +179,8 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
       doTransfer();
     }
 
-    if (!(event instanceof PipeHeartbeatEvent)) {
-      LOGGER.warn(
-          "PipeConsensusSyncConnector does not support transferring generic event: {}.", event);
-    }
+    // Only deletion event will be passed here.
+    doTransferWrapper((PipeDeleteDataNodeEvent) event);
   }
 
   private void doTransfer() {
@@ -221,6 +221,74 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
     }
   }
 
+  private void doTransferWrapper(final PipeDeleteDataNodeEvent pipeDeleteDataNodeEvent)
+      throws PipeException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeDeleteDataNodeEvent.increaseReferenceCount(
+        PipeConsensusSyncConnector.class.getName())) {
+      return;
+    }
+    try {
+      doTransfer(pipeDeleteDataNodeEvent);
+    } finally {
+      pipeDeleteDataNodeEvent.decreaseReferenceCount(
+          PipeConsensusSyncConnector.class.getName(), false);
+    }
+  }
+
+  private void doTransfer(final PipeDeleteDataNodeEvent pipeDeleteDataNodeEvent)
+      throws PipeException {
+    final ProgressIndex progressIndex;
+    final TPipeConsensusTransferResp resp;
+    TCommitId tCommitId =
+        new TCommitId(
+            pipeDeleteDataNodeEvent.getCommitId(),
+            pipeDeleteDataNodeEvent.getCommitterKey().getRestartTimes(),
+            pipeDeleteDataNodeEvent.getRebootTimes());
+    TConsensusGroupId tConsensusGroupId =
+        new TConsensusGroupId(TConsensusGroupType.DataRegion, consensusGroupId);
+
+    try (final SyncPipeConsensusServiceClient syncPipeConsensusServiceClient =
+        syncRetryClientManager.borrowClient(getFollowerUrl())) {
+      progressIndex = pipeDeleteDataNodeEvent.getProgressIndex();
+      resp =
+          syncPipeConsensusServiceClient.pipeConsensusTransfer(
+              PipeConsensusDeleteNodeReq.toTPipeConsensusTransferReq(
+                  pipeDeleteDataNodeEvent.getDeleteDataNode(),
+                  tCommitId,
+                  tConsensusGroupId,
+                  progressIndex,
+                  thisDataNodeId));
+    } catch (Exception e) {
+      throw new PipeConnectionException(
+          String.format(
+              PIPE_CONSENSUS_SYNC_CONNECTION_FAILED_FORMAT,
+              getFollowerUrl().getIp(),
+              getFollowerUrl().getPort(),
+              DELETION_SCENARIO,
+              e.getMessage()),
+          e);
+    }
+
+    final TSStatus status = resp.getStatus();
+    // Only handle the failed statuses to avoid string format performance overhead
+    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && resp.getStatus().getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+      receiverStatusHandler.handle(
+          status,
+          String.format(
+              "PipeConsensus transfer DeletionEvent %s error, result status %s.",
+              pipeDeleteDataNodeEvent.getDeletionResource(), status),
+          pipeDeleteDataNodeEvent.getDeleteDataNode().toString());
+    }
+
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "Successfully transferred deletion event {}.",
+          pipeDeleteDataNodeEvent.getDeletionResource());
+    }
+  }
+
   private void doTransferWrapper(
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException {
@@ -245,6 +313,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
     TCommitId tCommitId =
         new TCommitId(
             pipeInsertNodeTabletInsertionEvent.getCommitId(),
+            pipeInsertNodeTabletInsertionEvent.getCommitterKey().getRestartTimes(),
             pipeInsertNodeTabletInsertionEvent.getRebootTimes());
     TConsensusGroupId tConsensusGroupId =
         new TConsensusGroupId(TConsensusGroupType.DataRegion, consensusGroupId);
@@ -302,7 +371,9 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
         syncRetryClientManager.borrowClient(getFollowerUrl())) {
       final TCommitId tCommitId =
           new TCommitId(
-              pipeTsFileInsertionEvent.getCommitId(), pipeTsFileInsertionEvent.getRebootTimes());
+              pipeTsFileInsertionEvent.getCommitId(),
+              pipeTsFileInsertionEvent.getCommitterKey().getRestartTimes(),
+              pipeTsFileInsertionEvent.getRebootTimes());
       final TConsensusGroupId tConsensusGroupId =
           new TConsensusGroupId(TConsensusGroupType.DataRegion, consensusGroupId);
 

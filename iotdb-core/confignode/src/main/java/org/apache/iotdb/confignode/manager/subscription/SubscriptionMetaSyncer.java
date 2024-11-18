@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -43,9 +43,9 @@ public class SubscriptionMetaSyncer {
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
           ThreadName.SUBSCRIPTION_RUNTIME_META_SYNCER.getName());
   private static final long INITIAL_SYNC_DELAY_MINUTES =
-      PipeConfig.getInstance().getPipeMetaSyncerInitialSyncDelayMinutes();
+      SubscriptionConfig.getInstance().getSubscriptionMetaSyncerInitialSyncDelayMinutes();
   private static final long SYNC_INTERVAL_MINUTES =
-      PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes();
+      SubscriptionConfig.getInstance().getSubscriptionMetaSyncerSyncIntervalMinutes();
 
   private final ConfigManager configManager;
 
@@ -89,22 +89,26 @@ public class SubscriptionMetaSyncer {
     }
 
     final ProcedureManager procedureManager = configManager.getProcedureManager();
-    final TSStatus consumerGroupMetaSyncStatus = procedureManager.consumerGroupMetaSync();
+
+    // sync topic meta firstly
+    // TODO: consider drop the topic which is subscribed by consumers
     final TSStatus topicMetaSyncStatus = procedureManager.topicMetaSync();
-    if (consumerGroupMetaSyncStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && topicMetaSyncStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.info(
-          "After this successful sync, if SubscriptionInfo is empty during this sync and has not been modified afterwards, all subsequent syncs will be skipped");
-      isLastSubscriptionSyncSuccessful = true;
-    } else {
-      if (consumerGroupMetaSyncStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn(
-            "Failed to sync consumer group meta. Result status: {}.", consumerGroupMetaSyncStatus);
-      }
-      if (topicMetaSyncStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn("Failed to sync topic meta. Result status: {}.", topicMetaSyncStatus);
-      }
+    if (topicMetaSyncStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn("Failed to sync topic meta. Result status: {}.", topicMetaSyncStatus);
+      return;
     }
+
+    // sync consumer meta if syncing topic meta successfully
+    final TSStatus consumerGroupMetaSyncStatus = procedureManager.consumerGroupMetaSync();
+    if (consumerGroupMetaSyncStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn(
+          "Failed to sync consumer group meta. Result status: {}.", consumerGroupMetaSyncStatus);
+      return;
+    }
+
+    LOGGER.info(
+        "After this successful sync, if SubscriptionInfo is empty during this sync and has not been modified afterwards, all subsequent syncs will be skipped");
+    isLastSubscriptionSyncSuccessful = true;
   }
 
   public synchronized void stop() {

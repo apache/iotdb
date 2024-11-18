@@ -19,17 +19,26 @@
 
 package org.apache.iotdb.confignode.persistence.schema.mnode.info;
 
+import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.confignode.persistence.schema.mnode.impl.TableNodeStatus;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.BasicMNodeInfo;
+
+import org.apache.tsfile.utils.RamUsageEstimator;
+
+import java.util.HashSet;
+import java.util.Set;
 
 public class ConfigTableInfo extends BasicMNodeInfo {
 
+  private static final int SET_SIZE = (int) RamUsageEstimator.shallowSizeOfInstance(HashSet.class);
   private TsTable table;
 
   private TableNodeStatus status;
 
-  public ConfigTableInfo(String name) {
+  // This shall be only one because concurrent modifications of one table is not allowed
+  private final Set<String> preDeletedColumns = new HashSet<>();
+
+  public ConfigTableInfo(final String name) {
     super(name);
   }
 
@@ -37,7 +46,7 @@ public class ConfigTableInfo extends BasicMNodeInfo {
     return table;
   }
 
-  public void setTable(TsTable table) {
+  public void setTable(final TsTable table) {
     this.table = table;
   }
 
@@ -45,12 +54,31 @@ public class ConfigTableInfo extends BasicMNodeInfo {
     return status;
   }
 
-  public void setStatus(TableNodeStatus status) {
+  public void setStatus(final TableNodeStatus status) {
     this.status = status;
+  }
+
+  public Set<String> getPreDeletedColumns() {
+    return preDeletedColumns;
+  }
+
+  public void addPreDeletedColumn(final String column) {
+    preDeletedColumns.add(column);
+  }
+
+  public void removePreDeletedColumn(final String column) {
+    preDeletedColumns.remove(column);
   }
 
   @Override
   public int estimateSize() {
-    return 1 + 8 + table.getColumnNum() * 30;
+    return 1
+        + 8
+        + table.getColumnNum() * 30
+        + 8
+        + SET_SIZE
+        + preDeletedColumns.stream()
+            .map(column -> (int) RamUsageEstimator.sizeOf(column))
+            .reduce(0, Integer::sum);
   }
 }

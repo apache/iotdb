@@ -21,8 +21,16 @@ package org.apache.iotdb.db.schemaengine.schemaregion.logfile.visitor;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDevicesInBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.RollbackTableDevicesBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableAttributeColumnDropNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.ISerializer;
@@ -480,20 +488,67 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
     public SchemaRegionPlanSerializationResult visitCreateOrUpdateTableDevice(
         final CreateOrUpdateTableDeviceNode createOrUpdateTableDeviceNode,
         final DataOutputStream outputStream) {
-      try {
-        createOrUpdateTableDeviceNode.serialize(outputStream);
-        return SchemaRegionPlanSerializationResult.SUCCESS;
-      } catch (final IOException e) {
-        return new SchemaRegionPlanSerializationResult(e);
-      }
+      return visitPlanNode(createOrUpdateTableDeviceNode, outputStream);
     }
 
     @Override
     public SchemaRegionPlanSerializationResult visitUpdateTableDeviceAttribute(
         final TableDeviceAttributeUpdateNode updateTableDeviceAttributePlan,
         final DataOutputStream outputStream) {
+      return visitPlanNode(updateTableDeviceAttributePlan, outputStream);
+    }
+
+    @Override
+    public SchemaRegionPlanSerializationResult visitCommitUpdateTableDeviceAttribute(
+        final TableDeviceAttributeCommitUpdateNode commitUpdateTableDeviceAttributePlan,
+        final DataOutputStream outputStream) {
+      return visitPlanNode(commitUpdateTableDeviceAttributePlan, outputStream);
+    }
+
+    @Override
+    public SchemaRegionPlanSerializationResult visitAddNodeLocation(
+        final TableNodeLocationAddNode addNodeLocationPlan, final DataOutputStream outputStream) {
+      return visitPlanNode(addNodeLocationPlan, outputStream);
+    }
+
+    @Override
+    public SchemaRegionPlanSerializationResult visitDeleteTableDevice(
+        final DeleteTableDeviceNode deleteTableDevicePlan, final DataOutputStream outputStream) {
+      return visitPlanNode(deleteTableDevicePlan, outputStream);
+    }
+
+    @Override
+    public SchemaRegionPlanSerializationResult visitConstructTableDevicesBlackList(
+        final ConstructTableDevicesBlackListNode constructTableDevicesBlackListPlan,
+        final DataOutputStream outputStream) {
+      return visitPlanNode(constructTableDevicesBlackListPlan, outputStream);
+    }
+
+    @Override
+    public SchemaRegionPlanSerializationResult visitRollbackTableDevicesBlackList(
+        final RollbackTableDevicesBlackListNode rollbackTableDevicesBlackListPlan,
+        final DataOutputStream outputStream) {
+      return visitPlanNode(rollbackTableDevicesBlackListPlan, outputStream);
+    }
+
+    @Override
+    public SchemaRegionPlanSerializationResult visitDeleteTableDevicesInBlackList(
+        final DeleteTableDevicesInBlackListNode deleteTableDevicesInBlackListPlan,
+        final DataOutputStream outputStream) {
+      return visitPlanNode(deleteTableDevicesInBlackListPlan, outputStream);
+    }
+
+    @Override
+    public SchemaRegionPlanSerializationResult visitDropTableAttribute(
+        final TableAttributeColumnDropNode dropTableAttributePlan,
+        final DataOutputStream outputStream) {
+      return visitPlanNode(dropTableAttributePlan, outputStream);
+    }
+
+    private SchemaRegionPlanSerializationResult visitPlanNode(
+        final PlanNode planNode, final DataOutputStream outputStream) {
       try {
-        updateTableDeviceAttributePlan.serialize(outputStream);
+        planNode.serialize(outputStream);
         return SchemaRegionPlanSerializationResult.SUCCESS;
       } catch (final IOException e) {
         return new SchemaRegionPlanSerializationResult(e);

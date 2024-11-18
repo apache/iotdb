@@ -19,16 +19,23 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDevicesInBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.RollbackTableDevicesBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableAttributeColumnDropNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.schemaengine.rescon.ISchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowDevicesPlan;
@@ -55,6 +62,8 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * This interface defines all interfaces and behaviours that one SchemaRegion should support and
@@ -85,7 +94,6 @@ public interface ISchemaRegion {
 
   void forceMlog();
 
-  @TestOnly
   ISchemaRegionStatistics getSchemaRegionStatistics();
 
   ISchemaRegionMetric getSchemaRegionMetric();
@@ -100,9 +108,9 @@ public interface ISchemaRegion {
   // delete this schemaRegion and clear all resources
   void deleteSchemaRegion() throws MetadataException;
 
-  boolean createSnapshot(File snapshotDir);
+  boolean createSnapshot(final File snapshotDir);
 
-  void loadSnapshot(File latestSnapshotRootDir);
+  void loadSnapshot(final File latestSnapshotRootDir);
 
   // endregion
 
@@ -114,7 +122,8 @@ public interface ISchemaRegion {
    * @param offset
    * @throws MetadataException
    */
-  void createTimeSeries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException;
+  void createTimeSeries(final ICreateTimeSeriesPlan plan, final long offset)
+      throws MetadataException;
 
   /**
    * Create aligned timeseries.
@@ -122,7 +131,7 @@ public interface ISchemaRegion {
    * @param plan a plan describes how to create the timeseries.
    * @throws MetadataException
    */
-  void createAlignedTimeSeries(ICreateAlignedTimeSeriesPlan plan) throws MetadataException;
+  void createAlignedTimeSeries(final ICreateAlignedTimeSeriesPlan plan) throws MetadataException;
 
   /**
    * Check whether measurement exists.
@@ -135,7 +144,9 @@ public interface ISchemaRegion {
    *     example, a MeasurementAlreadyExistException means this measurement exists.
    */
   Map<Integer, MetadataException> checkMeasurementExistence(
-      PartialPath devicePath, List<String> measurementList, List<String> aliasList);
+      final PartialPath devicePath,
+      final List<String> measurementList,
+      final List<String> aliasList);
 
   /**
    * Check whether time series can be created.
@@ -144,7 +155,7 @@ public interface ISchemaRegion {
    * @param timeSeriesNum the number of time series that you want to check
    * @throws SchemaQuotaExceededException if the number of time series or devices exceeds the limit
    */
-  void checkSchemaQuota(PartialPath devicePath, int timeSeriesNum)
+  void checkSchemaQuota(final PartialPath devicePath, final int timeSeriesNum)
       throws SchemaQuotaExceededException;
 
   /**
@@ -165,7 +176,7 @@ public interface ISchemaRegion {
    * @param patternTree
    * @throws MetadataException
    */
-  void rollbackSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
+  void rollbackSchemaBlackList(final PathPatternTree patternTree) throws MetadataException;
 
   /**
    * Fetch schema black list (timeseries that has been pre deleted).
@@ -173,7 +184,7 @@ public interface ISchemaRegion {
    * @param patternTree
    * @throws MetadataException
    */
-  Set<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
+  Set<PartialPath> fetchSchemaBlackList(final PathPatternTree patternTree) throws MetadataException;
 
   /**
    * Delete timeseries in schema black list.
@@ -181,20 +192,21 @@ public interface ISchemaRegion {
    * @param patternTree
    * @throws MetadataException
    */
-  void deleteTimeseriesInBlackList(PathPatternTree patternTree) throws MetadataException;
+  void deleteTimeseriesInBlackList(final PathPatternTree patternTree) throws MetadataException;
 
   // endregion
 
   // region Interfaces for Logical View
-  void createLogicalView(ICreateLogicalViewPlan createLogicalViewPlan) throws MetadataException;
+  void createLogicalView(final ICreateLogicalViewPlan createLogicalViewPlan)
+      throws MetadataException;
 
-  long constructLogicalViewBlackList(PathPatternTree patternTree) throws MetadataException;
+  long constructLogicalViewBlackList(final PathPatternTree patternTree) throws MetadataException;
 
-  void rollbackLogicalViewBlackList(PathPatternTree patternTree) throws MetadataException;
+  void rollbackLogicalViewBlackList(final PathPatternTree patternTree) throws MetadataException;
 
-  void deleteLogicalView(PathPatternTree patternTree) throws MetadataException;
+  void deleteLogicalView(final PathPatternTree patternTree) throws MetadataException;
 
-  void alterLogicalView(IAlterLogicalViewPlan alterLogicalViewPlan) throws MetadataException;
+  void alterLogicalView(final IAlterLogicalViewPlan alterLogicalViewPlan) throws MetadataException;
 
   // endregion
 
@@ -202,15 +214,15 @@ public interface ISchemaRegion {
 
   // region Interfaces for timeSeries, measurement and schema info Query
 
-  MeasurementPath fetchMeasurementPath(PartialPath fullPath) throws MetadataException;
+  MeasurementPath fetchMeasurementPath(final PartialPath fullPath) throws MetadataException;
 
   ClusterSchemaTree fetchSeriesSchema(
-      PathPatternTree patternTree,
-      Map<Integer, Template> templateMap,
-      boolean withTags,
-      boolean withAttributes,
-      boolean withTemplate,
-      boolean withAliasForce)
+      final PathPatternTree patternTree,
+      final Map<Integer, Template> templateMap,
+      final boolean withTags,
+      final boolean withAttributes,
+      final boolean withTemplate,
+      final boolean withAliasForce)
       throws MetadataException;
 
   /**
@@ -221,7 +233,8 @@ public interface ISchemaRegion {
    * @param authorityScope the scope of the authority
    * @return pattern tree with all leaves as device nodes
    */
-  ClusterSchemaTree fetchDeviceSchema(PathPatternTree patternTree, PathPatternTree authorityScope)
+  ClusterSchemaTree fetchDeviceSchema(
+      final PathPatternTree patternTree, final PathPatternTree authorityScope)
       throws MetadataException;
 
   // endregion
@@ -239,10 +252,10 @@ public interface ISchemaRegion {
    * @param fullPath timeseries
    */
   void upsertAliasAndTagsAndAttributes(
-      String alias,
-      Map<String, String> tagsMap,
-      Map<String, String> attributesMap,
-      PartialPath fullPath)
+      final String alias,
+      final Map<String, String> tagsMap,
+      final Map<String, String> attributesMap,
+      final PartialPath fullPath)
       throws MetadataException, IOException;
 
   /**
@@ -252,7 +265,7 @@ public interface ISchemaRegion {
    * @param fullPath timeseries
    * @throws MetadataException tagLogFile write error or attributes already exist
    */
-  void addAttributes(Map<String, String> attributesMap, PartialPath fullPath)
+  void addAttributes(final Map<String, String> attributesMap, final PartialPath fullPath)
       throws MetadataException, IOException;
 
   /**
@@ -262,7 +275,7 @@ public interface ISchemaRegion {
    * @param fullPath timeseries
    * @throws MetadataException tagLogFile write error or tags already exist
    */
-  void addTags(Map<String, String> tagsMap, PartialPath fullPath)
+  void addTags(final Map<String, String> tagsMap, final PartialPath fullPath)
       throws MetadataException, IOException;
 
   /**
@@ -272,7 +285,7 @@ public interface ISchemaRegion {
    * @param keySet tags key or attributes key
    * @param fullPath timeseries path
    */
-  void dropTagsOrAttributes(Set<String> keySet, PartialPath fullPath)
+  void dropTagsOrAttributes(final Set<String> keySet, final PartialPath fullPath)
       throws MetadataException, IOException;
 
   /**
@@ -282,7 +295,7 @@ public interface ISchemaRegion {
    * @param fullPath timeseries
    * @throws MetadataException tagLogFile write error or tags/attributes do not exist
    */
-  void setTagsOrAttributesValue(Map<String, String> alterMap, PartialPath fullPath)
+  void setTagsOrAttributesValue(final Map<String, String> alterMap, final PartialPath fullPath)
       throws MetadataException, IOException;
 
   /**
@@ -294,22 +307,22 @@ public interface ISchemaRegion {
    * @throws MetadataException tagLogFile write error or does not have tag/attribute or already has
    *     a tag/attribute named newKey
    */
-  void renameTagOrAttributeKey(String oldKey, String newKey, PartialPath fullPath)
+  void renameTagOrAttributeKey(final String oldKey, final String newKey, final PartialPath fullPath)
       throws MetadataException, IOException;
 
   // endregion
 
   // region Interfaces for Template operations
-  void activateSchemaTemplate(IActivateTemplateInClusterPlan plan, Template template)
+  void activateSchemaTemplate(final IActivateTemplateInClusterPlan plan, final Template template)
       throws MetadataException;
 
-  long constructSchemaBlackListWithTemplate(IPreDeactivateTemplatePlan plan)
+  long constructSchemaBlackListWithTemplate(final IPreDeactivateTemplatePlan plan)
       throws MetadataException;
 
-  void rollbackSchemaBlackListWithTemplate(IRollbackPreDeactivateTemplatePlan plan)
+  void rollbackSchemaBlackListWithTemplate(final IRollbackPreDeactivateTemplatePlan plan)
       throws MetadataException;
 
-  void deactivateTemplateInBlackList(IDeactivateTemplatePlan plan) throws MetadataException;
+  void deactivateTemplateInBlackList(final IDeactivateTemplatePlan plan) throws MetadataException;
 
   long countPathsUsingTemplate(int templateId, PathPatternTree patternTree)
       throws MetadataException;
@@ -324,19 +337,35 @@ public interface ISchemaRegion {
   void updateTableDeviceAttribute(final TableDeviceAttributeUpdateNode updateNode)
       throws MetadataException;
 
-  void deleteTableDevice(String table) throws MetadataException;
+  void deleteTableDevice(final DeleteTableDeviceNode deleteTableDeviceNode)
+      throws MetadataException;
+
+  void dropTableAttribute(final TableAttributeColumnDropNode dropTableAttributeNode)
+      throws MetadataException;
+
+  long constructTableDevicesBlackList(
+      final ConstructTableDevicesBlackListNode constructDevicesBlackListNode)
+      throws MetadataException;
+
+  void rollbackTableDevicesBlackList(
+      final RollbackTableDevicesBlackListNode rollbackTableDevicesBlackListNode)
+      throws MetadataException;
+
+  void deleteTableDevicesInBlackList(
+      final DeleteTableDevicesInBlackListNode rollbackTableDevicesBlackListNode)
+      throws MetadataException;
 
   // endregion
 
   // region Interfaces for SchemaReader
 
-  ISchemaReader<IDeviceSchemaInfo> getDeviceReader(IShowDevicesPlan showDevicesPlan)
+  ISchemaReader<IDeviceSchemaInfo> getDeviceReader(final IShowDevicesPlan showDevicesPlan)
       throws MetadataException;
 
-  ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReader(IShowTimeSeriesPlan showTimeSeriesPlan)
-      throws MetadataException;
+  ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReader(
+      final IShowTimeSeriesPlan showTimeSeriesPlan) throws MetadataException;
 
-  ISchemaReader<INodeSchemaInfo> getNodeReader(IShowNodesPlan showNodesPlan)
+  ISchemaReader<INodeSchemaInfo> getNodeReader(final IShowNodesPlan showNodesPlan)
       throws MetadataException;
 
   ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(final PartialPath pathPattern)
@@ -344,7 +373,15 @@ public interface ISchemaRegion {
 
   ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
       final String table, final List<Object[]> devicePathList) throws MetadataException;
-  // endregion
+
+  // region Interfaces for AttributeUpdate
+  Pair<Long, Map<TDataNodeLocation, byte[]>> getAttributeUpdateInfo(
+      final AtomicInteger limit, final AtomicBoolean hasRemaining);
+
+  void commitUpdateAttribute(final TableDeviceAttributeCommitUpdateNode node)
+      throws MetadataException;
+
+  void addNodeLocation(final TableNodeLocationAddNode node) throws MetadataException;
 
   // endregion
 }

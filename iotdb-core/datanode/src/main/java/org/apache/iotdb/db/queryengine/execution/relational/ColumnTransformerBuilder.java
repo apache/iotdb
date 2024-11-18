@@ -150,6 +150,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Ta
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TanhColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Trim2ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TrimColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TryCastFunctionColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.UpperColumnTransformer;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -353,7 +354,10 @@ public class ColumnTransformerBuilder
           throw new SemanticException(String.format("Unknown type: %s", node.getType()));
         }
         context.cache.put(
-            node, new CastFunctionColumnTransformer(type, child, context.sessionInfo.getZoneId()));
+            node,
+            node.isSafe()
+                ? new TryCastFunctionColumnTransformer(type, child, context.sessionInfo.getZoneId())
+                : new CastFunctionColumnTransformer(type, child, context.sessionInfo.getZoneId()));
       }
     }
     ColumnTransformer res = context.cache.get(node);

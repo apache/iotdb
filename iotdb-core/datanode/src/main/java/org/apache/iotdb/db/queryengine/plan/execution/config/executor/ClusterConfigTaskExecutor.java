@@ -45,9 +45,11 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginExecutableManager;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
-import org.apache.iotdb.commons.schema.table.AlterTableOperationType;
+import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
+import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -59,11 +61,12 @@ import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TAlterTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
@@ -78,7 +81,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDescTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
@@ -87,6 +93,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
@@ -128,9 +135,9 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.DatabaseModelException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
-import org.apache.iotdb.db.exception.metadata.table.TableNotExistsException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
@@ -139,6 +146,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
@@ -167,12 +175,20 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTTLTas
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTriggersTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowVariablesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.ShowModelsTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DeleteDeviceTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableDetailsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowDBTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesDetailsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowNodesInSchemaTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowPathSetTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowSchemaTemplateTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentDatabaseTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentSqlDialectTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentTimestampTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentUserTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowVersionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.TestConnectionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.ShowPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowSpaceQuotaTask;
@@ -182,6 +198,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.Sh
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.TransformToViewExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
@@ -236,17 +253,18 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaSt
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.rescon.DataNodeSchemaQuotaManager;
-import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateAlterOperationUtil;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
+import org.apache.iotdb.db.service.DataNodeInternalRPCService;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairTaskStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.trigger.service.TriggerClassLoader;
 import org.apache.iotdb.pipe.api.PipePlugin;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -261,9 +279,12 @@ import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransportException;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nullable;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -411,7 +432,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TShowDatabaseResp resp = client.showDatabase(req);
       // build TSBlock
       showDatabaseStatement.buildTSBlock(resp.getDatabaseInfoMap(), future);
-    } catch (final IOException | ClientManagerException | TException | IllegalPathException e) {
+    } catch (final IOException | ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
@@ -1061,24 +1082,22 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> clearCache(boolean onCluster) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+  public SettableFuture<ConfigTaskResult> clearCache(
+      final boolean onCluster, final Set<CacheClearOptions> options) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TSStatus tsStatus = new TSStatus();
     if (onCluster) {
-      try (ConfigNodeClient client =
+      try (final ConfigNodeClient client =
           CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         // Send request to some API server
-        tsStatus = client.clearCache();
-      } catch (ClientManagerException | TException e) {
+        tsStatus =
+            client.clearCache(
+                options.stream().map(CacheClearOptions::ordinal).collect(Collectors.toSet()));
+      } catch (final ClientManagerException | TException e) {
         future.setException(e);
       }
     } else {
-      try {
-        StorageEngine.getInstance().clearCache();
-        tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-      } catch (Exception e) {
-        tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
-      }
+      tsStatus = DataNodeInternalRPCService.getInstance().getImpl().clearCacheImpl(options);
     }
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
@@ -1300,13 +1319,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> showCluster(ShowClusterStatement showClusterStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+  public SettableFuture<ConfigTaskResult> showCluster(
+      final ShowClusterStatement showClusterStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TShowClusterResp showClusterResp = new TShowClusterResp();
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       showClusterResp = client.showCluster();
-    } catch (ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       if (showClusterResp.getConfigNodeList() == null) {
         future.setException(new TException(MSG_RECONNECTION_FAIL));
       } else {
@@ -1346,6 +1366,41 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     ShowClusterIdTask.buildTSBlock(
         IoTDBDescriptor.getInstance().getConfig().getClusterId(), future);
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showVersion() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    ShowVersionTask.buildTsBlock(future);
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showCurrentSqlDialect(String sqlDialect) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    ShowCurrentSqlDialectTask.buildTsBlock(sqlDialect, future);
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showCurrentDatabase(@Nullable String currentDatabase) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    ShowCurrentDatabaseTask.buildTsBlock(currentDatabase, future);
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showCurrentUser(String currentUser) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    ShowCurrentUserTask.buildTsBlock(currentUser, future);
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showCurrentTimestamp() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    ShowCurrentTimestampTask.buildTsBlock(future);
     return future;
   }
 
@@ -1792,6 +1847,18 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> createPipe(CreatePipeStatement createPipeStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
+    // Verify that Pipe is disabled if TSFile encryption is enabled
+    if (TSFileDescriptor.getInstance().getConfig().getEncryptFlag()) {
+      String exceptionMessage =
+          String.format(
+              "Failed to create Pipe %s because TSFile is configured with encryption, which prohibits the use of Pipe",
+              createPipeStatement.getPipeName());
+      LOGGER.warn(exceptionMessage);
+      future.setException(
+          new IoTDBException(exceptionMessage, TSStatusCode.PIPE_ERROR.getStatusCode()));
+      return future;
+    }
+
     // Validate pipe name
     if (createPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
       String exceptionMessage =
@@ -1860,21 +1927,102 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       return future;
     }
 
-    // Validate pipe plugin before alteration - only validate replace mode
+    // Validate pipe existence
+    final PipeMeta pipeMetaFromCoordinator;
+    try (final ConfigNodeClient configNodeClient =
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TGetAllPipeInfoResp getAllPipeInfoResp = configNodeClient.getAllPipeInfo();
+      if (getAllPipeInfoResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        String exceptionMessage =
+            String.format(
+                "Failed to get pipe info from config node, status is %s.",
+                getAllPipeInfoResp.getStatus());
+        LOGGER.warn(exceptionMessage);
+        future.setException(
+            new IoTDBException(exceptionMessage, TSStatusCode.PIPE_ERROR.getStatusCode()));
+        return future;
+      }
+
+      pipeMetaFromCoordinator =
+          getAllPipeInfoResp.getAllPipeInfo().stream()
+              .map(PipeMeta::deserialize)
+              .filter(
+                  pipeMeta ->
+                      pipeMeta
+                          .getStaticMeta()
+                          .getPipeName()
+                          .equals(alterPipeStatement.getPipeName()))
+              .findFirst()
+              .orElse(null);
+      if (pipeMetaFromCoordinator == null) {
+        final String exceptionMessage =
+            String.format(
+                "Failed to alter pipe %s, pipe not found in system.",
+                alterPipeStatement.getPipeName());
+        LOGGER.warn(exceptionMessage);
+        future.setException(
+            new IoTDBException(exceptionMessage, TSStatusCode.PIPE_ERROR.getStatusCode()));
+        return future;
+      }
+    } catch (Exception e) {
+      final String exceptionMessage =
+          String.format(
+              "Failed to alter pipe %s, because %s",
+              alterPipeStatement.getPipeName(), e.getMessage());
+      LOGGER.warn(exceptionMessage, e);
+      future.setException(
+          new IoTDBException(exceptionMessage, TSStatusCode.PIPE_ERROR.getStatusCode()));
+      return future;
+    }
+
+    // Construct temporary pipe static meta for validation
     final String pipeName = alterPipeStatement.getPipeName();
     try {
-      if (!alterPipeStatement.getExtractorAttributes().isEmpty()
-          && alterPipeStatement.isReplaceAllExtractorAttributes()) {
-        PipeDataNodeAgent.plugin().validateExtractor(alterPipeStatement.getExtractorAttributes());
+      if (!alterPipeStatement.getExtractorAttributes().isEmpty()) {
+        if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
+          PipeDataNodeAgent.plugin().validateExtractor(alterPipeStatement.getExtractorAttributes());
+        } else {
+          pipeMetaFromCoordinator
+              .getStaticMeta()
+              .getExtractorParameters()
+              .addOrReplaceEquivalentAttributes(
+                  new PipeParameters(alterPipeStatement.getExtractorAttributes()));
+          PipeDataNodeAgent.plugin()
+              .validateExtractor(
+                  pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters().getAttribute());
+        }
       }
-      if (!alterPipeStatement.getProcessorAttributes().isEmpty()
-          && alterPipeStatement.isReplaceAllProcessorAttributes()) {
-        PipeDataNodeAgent.plugin().validateProcessor(alterPipeStatement.getProcessorAttributes());
+
+      if (!alterPipeStatement.getProcessorAttributes().isEmpty()) {
+        if (alterPipeStatement.isReplaceAllProcessorAttributes()) {
+          PipeDataNodeAgent.plugin().validateProcessor(alterPipeStatement.getProcessorAttributes());
+        } else {
+          pipeMetaFromCoordinator
+              .getStaticMeta()
+              .getProcessorParameters()
+              .addOrReplaceEquivalentAttributes(
+                  new PipeParameters(alterPipeStatement.getProcessorAttributes()));
+          PipeDataNodeAgent.plugin()
+              .validateProcessor(
+                  pipeMetaFromCoordinator.getStaticMeta().getProcessorParameters().getAttribute());
+        }
       }
-      if (!alterPipeStatement.getConnectorAttributes().isEmpty()
-          && alterPipeStatement.isReplaceAllConnectorAttributes()) {
-        PipeDataNodeAgent.plugin()
-            .validateConnector(pipeName, alterPipeStatement.getConnectorAttributes());
+
+      if (!alterPipeStatement.getConnectorAttributes().isEmpty()) {
+        if (alterPipeStatement.isReplaceAllConnectorAttributes()) {
+          PipeDataNodeAgent.plugin()
+              .validateConnector(pipeName, alterPipeStatement.getConnectorAttributes());
+        } else {
+          pipeMetaFromCoordinator
+              .getStaticMeta()
+              .getConnectorParameters()
+              .addOrReplaceEquivalentAttributes(
+                  new PipeParameters(alterPipeStatement.getConnectorAttributes()));
+          PipeDataNodeAgent.plugin()
+              .validateConnector(
+                  pipeName,
+                  pipeMetaFromCoordinator.getStaticMeta().getConnectorParameters().getAttribute());
+        }
       }
     } catch (Exception e) {
       LOGGER.info("Failed to validate alter pipe statement, because {}", e.getMessage(), e);
@@ -2928,18 +3076,19 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> showDatabases(ShowDB showDB) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+  public SettableFuture<ConfigTaskResult> showDatabases(final ShowDB showDB) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     // Construct request using statement
-    List<String> databasePathPattern = Arrays.asList(ALL_RESULT_NODES);
-    try (ConfigNodeClient client =
+    final List<String> databasePathPattern = Arrays.asList(ALL_RESULT_NODES);
+    try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
-      TGetDatabaseReq req = new TGetDatabaseReq(databasePathPattern, ALL_MATCH_SCOPE.serialize());
-      TShowDatabaseResp resp = client.showDatabase(req);
+      final TGetDatabaseReq req =
+          new TGetDatabaseReq(databasePathPattern, ALL_MATCH_SCOPE.serialize());
+      final TShowDatabaseResp resp = client.showDatabase(req);
       // build TSBlock
-      ShowDBTask.buildTSBlock(resp.getDatabaseInfoMap(), future);
-    } catch (IOException | ClientManagerException | TException e) {
+      ShowDBTask.buildTSBlock(resp.getDatabaseInfoMap(), future, showDB.isDetails());
+    } catch (final IOException | ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
@@ -2955,16 +3104,23 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> useDatabase(Use useDB, IClientSession clientSession) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+  public SettableFuture<ConfigTaskResult> useDatabase(
+      final Use useDB, final IClientSession clientSession) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     // Construct request using statement
-    List<String> databasePathPattern = Arrays.asList(ROOT, useDB.getDatabaseId().getValue());
-    try (ConfigNodeClient client =
+    final List<String> databasePathPattern = Arrays.asList(ROOT, useDB.getDatabaseId().getValue());
+    try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
-      TGetDatabaseReq req = new TGetDatabaseReq(databasePathPattern, ALL_MATCH_SCOPE.serialize());
-      TShowDatabaseResp resp = client.showDatabase(req);
+      final TGetDatabaseReq req =
+          new TGetDatabaseReq(databasePathPattern, ALL_MATCH_SCOPE.serialize());
+      final TShowDatabaseResp resp = client.showDatabase(req);
       if (!resp.getDatabaseInfoMap().isEmpty()) {
+        if (!resp.getDatabaseInfoMap()
+            .get(PathUtils.qualifyDatabaseName(useDB.getDatabaseId().getValue()))
+            .isIsTableModel()) {
+          throw new DatabaseModelException(useDB.getDatabaseId().getValue(), false);
+        }
         clientSession.setDatabaseName(useDB.getDatabaseId().getValue());
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else {
@@ -2973,7 +3129,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 String.format("Unknown database %s", useDB.getDatabaseId().getValue()),
                 TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
       }
-    } catch (IOException | ClientManagerException | TException e) {
+    } catch (final IOException | ClientManagerException | TException | DatabaseModelException e) {
       future.setException(e);
     }
     return future;
@@ -3069,7 +3225,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         try {
           tsStatus =
               configNodeClient.createTable(
-                  ByteBuffer.wrap(TsTableInternalRPCUtil.serializeSingleTsTable(database, table)));
+                  ByteBuffer.wrap(
+                      TsTableInternalRPCUtil.serializeSingleTsTableWithDatabase(database, table)));
         } catch (final TTransportException e) {
           if (e.getType() == TTransportException.TIMED_OUT
               || e.getCause() instanceof SocketTimeoutException) {
@@ -3102,24 +3259,45 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> describeTable(
-      final String database, final String tableName) {
+      final String database, final String tableName, final boolean isDetails) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
-    if (table == null) {
-      future.setException(new TableNotExistsException(database, tableName));
-    } else {
-      DescribeTableTask.buildTsBlock(table, future);
+
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TDescTableResp resp = configNodeClient.describeTable(database, tableName, isDetails);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.getStatus().getCode()) {
+        LOGGER.warn(
+            "Failed to describe tables in database {} in config node, status is {}.",
+            database,
+            resp.getStatus());
+        future.setException(
+            new IoTDBException(
+                resp.getStatus().code == TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()
+                    ? String.format("Unknown database %s", database)
+                    : resp.getStatus().message,
+                resp.getStatus().code));
+        return future;
+      }
+      final TsTable table = TsTableInternalRPCUtil.deserializeSingleTsTable(resp.getTableInfo());
+      if (isDetails) {
+        DescribeTableDetailsTask.buildTsBlock(table, resp.getPreDeletedColumns(), future);
+      } else {
+        DescribeTableTask.buildTsBlock(table, future);
+      }
+    } catch (final Exception e) {
+      future.setException(e);
     }
     return future;
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> showTables(final String database) {
+  public SettableFuture<ConfigTaskResult> showTables(
+      final String database, final boolean isDetails) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final TShowTableResp resp = configNodeClient.showTables(database);
+      final TShowTableResp resp = configNodeClient.showTables(database, isDetails);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.getStatus().getCode()) {
         LOGGER.warn(
             "Failed to show tables in database {} in config node, status is {}.",
@@ -3133,7 +3311,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 resp.getStatus().code));
         return future;
       }
-      ShowTablesTask.buildTsBlock(resp.getTableInfoList(), future);
+      if (isDetails) {
+        ShowTablesDetailsTask.buildTsBlock(resp.getTableInfoList(), future);
+      } else {
+        ShowTablesTask.buildTsBlock(resp.getTableInfoList(), future);
+      }
     } catch (final Exception e) {
       future.setException(e);
     }
@@ -3157,6 +3339,52 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> alterTableRenameTable(
+      final String database,
+      final String sourceName,
+      final String targetName,
+      final String queryId,
+      final boolean tableIfExists) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient client =
+        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+
+      final ByteArrayOutputStream stream = new ByteArrayOutputStream();
+      try {
+        ReadWriteIOUtils.write(targetName, stream);
+      } catch (final IOException ignored) {
+        // ByteArrayOutputStream won't throw IOException
+      }
+
+      final TSStatus tsStatus =
+          sendAlterReq2ConfigNode(
+              database,
+              sourceName,
+              queryId,
+              AlterOrDropTableOperationType.RENAME_TABLE,
+              stream.toByteArray(),
+              client);
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
+          || (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == tsStatus.getCode()
+              && tableIfExists)) {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } else {
+        LOGGER.warn(
+            "Failed to rename table to {} from table {}.{}, status is {}.",
+            targetName,
+            database,
+            sourceName,
+            tsStatus);
+        future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
+      }
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> alterTableAddColumn(
       final String database,
       final String tableName,
@@ -3167,28 +3395,15 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TSStatus tsStatus;
-      final TAlterTableReq req = new TAlterTableReq();
-      req.setDatabase(database);
-      req.setTableName(tableName);
-      req.setQueryId(queryId);
-      req.setOperationType(AlterTableOperationType.ADD_COLUMN.getTypeValue());
-      req.setUpdateInfo(TsTableColumnSchemaUtil.serialize(columnSchemaList));
 
-      do {
-        try {
-          tsStatus = client.alterTable(req);
-        } catch (final TTransportException e) {
-          if (e.getType() == TTransportException.TIMED_OUT
-              || e.getCause() instanceof SocketTimeoutException) {
-            // time out mainly caused by slow execution, wait until
-            tsStatus = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
-          } else {
-            throw e;
-          }
-        }
-        // keep waiting until task ends
-      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
+      final TSStatus tsStatus =
+          sendAlterReq2ConfigNode(
+              database,
+              tableName,
+              queryId,
+              AlterOrDropTableOperationType.ADD_COLUMN,
+              TsTableColumnSchemaUtil.serialize(columnSchemaList),
+              client);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
           || (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == tsStatus.getCode() && tableIfExists)
@@ -3207,6 +3422,105 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> alterTableRenameColumn(
+      final String database,
+      final String tableName,
+      final String oldName,
+      final String newName,
+      final String queryId,
+      final boolean tableIfExists,
+      final boolean columnIfExists) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient client =
+        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+
+      final ByteArrayOutputStream stream = new ByteArrayOutputStream();
+      try {
+        ReadWriteIOUtils.write(oldName, stream);
+        ReadWriteIOUtils.write(newName, stream);
+      } catch (final IOException ignored) {
+        // ByteArrayOutputStream won't throw IOException
+      }
+
+      final TSStatus tsStatus =
+          sendAlterReq2ConfigNode(
+              database,
+              tableName,
+              queryId,
+              AlterOrDropTableOperationType.RENAME_COLUMN,
+              stream.toByteArray(),
+              client);
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
+          || (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == tsStatus.getCode() && tableIfExists)
+          || (TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode() == tsStatus.getCode()
+              && columnIfExists)) {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } else {
+        LOGGER.warn(
+            "Failed to rename column from {} to {} for table {}.{}, status is {}.",
+            oldName,
+            newName,
+            database,
+            tableName,
+            tsStatus);
+        future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
+      }
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> alterTableDropColumn(
+      final String database,
+      final String tableName,
+      final String columnName,
+      final String queryId,
+      final boolean tableIfExists,
+      final boolean columnIfExists) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient client =
+        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+
+      final ByteArrayOutputStream stream = new ByteArrayOutputStream();
+      try {
+        ReadWriteIOUtils.write(columnName, stream);
+      } catch (final IOException ignored) {
+        // ByteArrayOutputStream won't throw IOException
+      }
+
+      final TSStatus tsStatus =
+          sendAlterReq2ConfigNode(
+              database,
+              tableName,
+              queryId,
+              AlterOrDropTableOperationType.DROP_COLUMN,
+              stream.toByteArray(),
+              client);
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
+          || (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == tsStatus.getCode() && tableIfExists)
+          || (TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode() == tsStatus.getCode()
+              && columnIfExists)) {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } else {
+        LOGGER.warn(
+            "Failed to drop column {} for table {}.{}, status is {}.",
+            columnName,
+            database,
+            tableName,
+            tsStatus);
+        future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
+      }
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> alterTableSetProperties(
       final String database,
       final String tableName,
@@ -3216,35 +3530,22 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TSStatus tsStatus;
-      final TAlterTableReq req = new TAlterTableReq();
-      req.setDatabase(database);
-      req.setTableName(tableName);
-      req.setQueryId(queryId);
-      req.setOperationType(AlterTableOperationType.SET_PROPERTIES.getTypeValue());
 
       final ByteArrayOutputStream stream = new ByteArrayOutputStream();
       try {
         ReadWriteIOUtils.write(properties, stream);
-      } catch (IOException ignored) {
+      } catch (final IOException ignored) {
         // ByteArrayOutputStream won't throw IOException
       }
-      req.setUpdateInfo(stream.toByteArray());
 
-      do {
-        try {
-          tsStatus = client.alterTable(req);
-        } catch (final TTransportException e) {
-          if (e.getType() == TTransportException.TIMED_OUT
-              || e.getCause() instanceof SocketTimeoutException) {
-            // time out mainly caused by slow execution, wait until
-            tsStatus = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
-          } else {
-            throw e;
-          }
-        }
-        // keep waiting until task ends
-      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
+      final TSStatus tsStatus =
+          sendAlterReq2ConfigNode(
+              database,
+              tableName,
+              queryId,
+              AlterOrDropTableOperationType.SET_PROPERTIES,
+              stream.toByteArray(),
+              client);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
           || (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == tsStatus.getCode() && ifExists)) {
@@ -3262,6 +3563,133 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(e);
     }
     return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> dropTable(
+      final String database, final String tableName, final String queryId, final boolean ifExists) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient client =
+        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+
+      final TSStatus tsStatus =
+          sendAlterReq2ConfigNode(
+              database,
+              tableName,
+              queryId,
+              AlterOrDropTableOperationType.DROP_TABLE,
+              new byte[0],
+              client);
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
+          || (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == tsStatus.getCode() && ifExists)) {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } else {
+        LOGGER.warn("Failed to drop table {}.{}, status is {}.", database, tableName, tsStatus);
+        future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
+      }
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> deleteDevice(
+      final DeleteDevice deleteDevice, final String queryId, final SessionInfo sessionInfo) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient client =
+        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+
+      final ByteArrayOutputStream patternStream = new ByteArrayOutputStream();
+      try (final DataOutputStream outputStream = new DataOutputStream(patternStream)) {
+        deleteDevice.serializePatternInfo(outputStream);
+      } catch (final IOException ignored) {
+        // ByteArrayOutputStream won't throw IOException
+      }
+
+      final ByteArrayOutputStream filterStream = new ByteArrayOutputStream();
+      try (final DataOutputStream outputStream = new DataOutputStream(filterStream)) {
+        deleteDevice.serializeFilterInfo(outputStream, sessionInfo);
+      } catch (final IOException ignored) {
+        // ByteArrayOutputStream won't throw IOException
+      }
+
+      final TDeleteTableDeviceReq req =
+          new TDeleteTableDeviceReq(
+              PathUtils.qualifyDatabaseName(deleteDevice.getDatabase()),
+              deleteDevice.getTableName(),
+              queryId,
+              ByteBuffer.wrap(patternStream.toByteArray()),
+              ByteBuffer.wrap(filterStream.toByteArray()));
+
+      TDeleteTableDeviceResp resp;
+      do {
+        try {
+          resp = client.deleteDevice(req);
+        } catch (final TTransportException e) {
+          if (e.getType() == TTransportException.TIMED_OUT
+              || e.getCause() instanceof SocketTimeoutException) {
+            // time out mainly caused by slow execution, wait until
+            resp =
+                new TDeleteTableDeviceResp(
+                    RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK));
+          } else {
+            throw e;
+          }
+        }
+        // keep waiting until task ends
+      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode()
+          == resp.getStatus().getCode());
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
+        DeleteDeviceTask.buildTSBlock(resp.getDeletedNum(), future);
+      } else {
+        LOGGER.warn(
+            "Failed to delete devices from table {}.{}, status is {}.",
+            deleteDevice.getDatabase(),
+            deleteDevice.getTableName(),
+            resp.getStatus());
+        future.setException(
+            new IoTDBException(resp.getStatus().getMessage(), resp.getStatus().getCode()));
+      }
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  private TSStatus sendAlterReq2ConfigNode(
+      final String database,
+      final String tableName,
+      final String queryId,
+      final AlterOrDropTableOperationType type,
+      final byte[] updateInfo,
+      final ConfigNodeClient client)
+      throws TException {
+    TSStatus tsStatus;
+    final TAlterOrDropTableReq req = new TAlterOrDropTableReq();
+    req.setDatabase(database);
+    req.setTableName(tableName);
+    req.setQueryId(queryId);
+    req.setOperationType(type.getTypeValue());
+    req.setUpdateInfo(updateInfo);
+
+    do {
+      try {
+        tsStatus = client.alterOrDropTable(req);
+      } catch (final TTransportException e) {
+        if (e.getType() == TTransportException.TIMED_OUT
+            || e.getCause() instanceof SocketTimeoutException) {
+          // time out mainly caused by slow execution, wait until
+          tsStatus = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+        } else {
+          throw e;
+        }
+      }
+      // keep waiting until task ends
+    } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
+    return tsStatus;
   }
 
   public void handlePipeConfigClientExit(final String clientId) {

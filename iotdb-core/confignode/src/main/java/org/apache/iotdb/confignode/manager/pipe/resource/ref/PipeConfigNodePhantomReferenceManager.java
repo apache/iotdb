@@ -29,7 +29,7 @@ public class PipeConfigNodePhantomReferenceManager extends PipePhantomReferenceM
     super();
 
     PipeConfigNodeAgent.runtime()
-        .registerPeriodicalJob(
+        .registerPhantomReferenceCleanJob(
             "PipePhantomReferenceManager#gcHook()",
             // NOTE: lambda CAN NOT be replaced with method reference
             () -> super.gcHook(),

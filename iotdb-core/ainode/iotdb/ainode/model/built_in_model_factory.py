@@ -99,7 +99,7 @@ def fetch_built_in_model(model_id, inference_attributes):
     else:
         raise BuiltInModelNotSupportError(model_id)
 
-    return model, attributes
+    return model
 
 
 class Attribute(object):

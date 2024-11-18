@@ -22,17 +22,20 @@ package org.apache.iotdb.db.pipe.event.common.tsfile;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
-import org.apache.iotdb.commons.pipe.event.PipeInsertionEvent;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
+import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.aggregator.TsFileInsertionPointCounter;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParserProvider;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTimePartitionProgressIndexKeeper;
+import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -271,6 +274,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       if (isWithMod) {
         modFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(modFile, false, null);
       }
+      if (Objects.nonNull(pipeName)) {
+        PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+            .increaseTsFileEventCount(pipeName, creationTime);
+      }
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
@@ -297,6 +304,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
               tsFile.getPath(), holderMessage),
           e);
       return false;
+    } finally {
+      if (Objects.nonNull(pipeName)) {
+        PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+            .decreaseTsFileEventCount(pipeName, creationTime);
+      }
     }
   }
 
@@ -463,13 +475,19 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   /////////////////////////// TsFileInsertionEvent ///////////////////////////
 
   @Override
-  public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
+  public Iterable<TabletInsertionEvent> toTabletInsertionEvents() throws PipeException {
+    return toTabletInsertionEvents(Long.MAX_VALUE);
+  }
+
+  public Iterable<TabletInsertionEvent> toTabletInsertionEvents(final long timeoutMs)
+      throws PipeException {
     try {
       if (!waitForTsFileClose()) {
         LOGGER.warn(
             "Pipe skipping temporary TsFile's parsing which shouldn't be transferred: {}", tsFile);
         return Collections.emptyList();
       }
+      waitForResourceEnough4Parsing(timeoutMs);
       return initEventParser().toTabletInsertionEvents();
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
@@ -481,6 +499,51 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       LOGGER.warn(errorMsg, e);
       throw new PipeException(errorMsg);
     }
+  }
+
+  private void waitForResourceEnough4Parsing(final long timeoutMs) throws InterruptedException {
+    final PipeMemoryManager memoryManager = PipeDataNodeResourceManager.memory();
+    if (memoryManager.isEnough4TabletParsing()) {
+      return;
+    }
+
+    final long startTime = System.currentTimeMillis();
+    long lastRecordTime = startTime;
+
+    final long memoryCheckIntervalMs =
+        PipeConfig.getInstance().getPipeTsFileParserCheckMemoryEnoughIntervalMs();
+    while (!memoryManager.isEnough4TabletParsing()) {
+      Thread.sleep(memoryCheckIntervalMs);
+
+      final long currentTime = System.currentTimeMillis();
+      final double elapsedRecordTimeSeconds = (currentTime - lastRecordTime) / 1000.0;
+      final double waitTimeSeconds = (currentTime - startTime) / 1000.0;
+      if (elapsedRecordTimeSeconds > 10.0) {
+        LOGGER.info(
+            "Wait for resource enough for parsing {} for {} seconds.",
+            resource != null ? resource.getTsFilePath() : "tsfile",
+            waitTimeSeconds);
+        lastRecordTime = currentTime;
+      } else if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "Wait for resource enough for parsing {} for {} seconds.",
+            resource != null ? resource.getTsFilePath() : "tsfile",
+            waitTimeSeconds);
+      }
+
+      if (waitTimeSeconds * 1000 > timeoutMs) {
+        // should contain 'TimeoutException' in exception message
+        throw new InterruptedException(
+            String.format("TimeoutException: Waited %s seconds", waitTimeSeconds));
+      }
+    }
+
+    final long currentTime = System.currentTimeMillis();
+    final double waitTimeSeconds = (currentTime - startTime) / 1000.0;
+    LOGGER.info(
+        "Wait for resource enough for parsing {} for {} seconds.",
+        resource != null ? resource.getTsFilePath() : "tsfile",
+        waitTimeSeconds);
   }
 
   /** The method is used to prevent circular replication in PipeConsensus */
@@ -497,7 +560,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       if (eventParser == null) {
         eventParser =
             new TsFileInsertionEventParserProvider(
-                    tsFile, treePattern, startTime, endTime, pipeTaskMeta, this)
+                    tsFile, treePattern, tablePattern, startTime, endTime, pipeTaskMeta, this)
                 .provide();
       }
       return eventParser;

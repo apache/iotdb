@@ -151,12 +151,12 @@ public class WALNode implements IWALNode {
 
   @Override
   public WALFlushListener log(
-      long memTableId, InsertTabletNode insertTabletNode, int start, int end) {
+      long memTableId, InsertTabletNode insertTabletNode, List<int[]> rangeList) {
     logger.debug(
         "WAL node-{} logs insertTabletNode, the search index is {}.",
         identifier,
         insertTabletNode.getSearchIndex());
-    WALEntry walEntry = new WALInfoEntry(memTableId, insertTabletNode, start, end);
+    WALEntry walEntry = new WALInfoEntry(memTableId, insertTabletNode, rangeList);
     return log(walEntry);
   }
 

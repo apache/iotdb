@@ -91,6 +91,15 @@ public class PrefixTreePattern extends TreePattern {
   }
 
   @Override
+  public boolean mayOverlapWithDb(final String db) {
+    return
+    // for example, pattern is root.a.b and db is root.a.b.c
+    (pattern.length() <= db.length() && db.startsWith(pattern))
+        // for example, pattern is root.a.b.c and db is root.a.b
+        || (pattern.length() > db.length() && pattern.startsWith(db));
+  }
+
+  @Override
   public boolean mayOverlapWithDevice(final IDeviceID device) {
     final String deviceStr = device.toString();
     return

@@ -46,6 +46,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
+
 public class AnalyzeUtils {
 
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
@@ -93,6 +96,17 @@ public class AnalyzeUtils {
     return null;
   }
 
+  public static String getDatabaseNameForTableWithRoot(
+      InsertBaseStatement statement, MPPQueryContext context) {
+    if (statement.getDatabaseName().isPresent()) {
+      return PATH_ROOT + PATH_SEPARATOR + statement.getDatabaseName().get();
+    }
+    if (context != null && context.getDatabaseName().isPresent()) {
+      return PATH_ROOT + PATH_SEPARATOR + context.getDatabaseName().get();
+    }
+    return null;
+  }
+
   public static List<DataPartitionQueryParam> computeTableDataPartitionParams(
       InsertBaseStatement statement, MPPQueryContext context) {
     if (statement instanceof InsertTabletStatement) {
@@ -103,7 +117,8 @@ public class AnalyzeUtils {
             .computeIfAbsent(insertTabletStatement.getTableDeviceID(i), id -> new HashSet<>())
             .add(insertTabletStatement.getTimePartitionSlot(i));
       }
-      return computeDataPartitionParams(timePartitionSlotMap, getDatabaseName(statement, context));
+      return computeDataPartitionParams(
+          timePartitionSlotMap, getDatabaseNameForTableWithRoot(statement, context));
     } else if (statement instanceof InsertMultiTabletsStatement) {
       InsertMultiTabletsStatement insertMultiTabletsStatement =
           (InsertMultiTabletsStatement) statement;
@@ -116,14 +131,15 @@ public class AnalyzeUtils {
               .add(insertTabletStatement.getTimePartitionSlot(i));
         }
       }
-      return computeDataPartitionParams(timePartitionSlotMap, getDatabaseName(statement, context));
+      return computeDataPartitionParams(
+          timePartitionSlotMap, getDatabaseNameForTableWithRoot(statement, context));
     } else if (statement instanceof InsertRowStatement) {
       InsertRowStatement insertRowStatement = (InsertRowStatement) statement;
       return computeDataPartitionParams(
           Collections.singletonMap(
               insertRowStatement.getTableDeviceID(),
               Collections.singleton(insertRowStatement.getTimePartitionSlot())),
-          getDatabaseName(statement, context));
+          getDatabaseNameForTableWithRoot(statement, context));
     } else if (statement instanceof InsertRowsStatement) {
       InsertRowsStatement insertRowsStatement = (InsertRowsStatement) statement;
       Map<IDeviceID, Set<TTimePartitionSlot>> timePartitionSlotMap = new HashMap<>();
@@ -133,7 +149,8 @@ public class AnalyzeUtils {
             .computeIfAbsent(insertRowStatement.getTableDeviceID(), id -> new HashSet<>())
             .add(insertRowStatement.getTimePartitionSlot());
       }
-      return computeDataPartitionParams(timePartitionSlotMap, getDatabaseName(statement, context));
+      return computeDataPartitionParams(
+          timePartitionSlotMap, getDatabaseNameForTableWithRoot(statement, context));
     }
     throw new UnsupportedOperationException("computeDataPartitionParams for " + statement);
   }
@@ -184,6 +201,11 @@ public class AnalyzeUtils {
     return dataPartitionQueryParam;
   }
 
+  /**
+   * @param dataPartitionQueryParamMap IDeviceID's first segment should be tableName without
+   *     databaseName.
+   * @param databaseName must start with root.
+   */
   public static List<DataPartitionQueryParam> computeDataPartitionParams(
       Map<IDeviceID, Set<TTimePartitionSlot>> dataPartitionQueryParamMap, String databaseName) {
     List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();

@@ -59,8 +59,12 @@ public class SchemaConstant {
   public static final String MTREE_SNAPSHOT_TMP = "mtree.snapshot.tmp";
 
   public static final String DEVICE_ATTRIBUTE_SNAPSHOT = "device_attribute.snapshot";
-
   public static final String DEVICE_ATTRIBUTE_SNAPSHOT_TMP = "device_attribute.snapshot.tmp";
+
+  public static final String DEVICE_ATTRIBUTE_REMOTE_UPDATER_SNAPSHOT =
+      "device_attribute_remote_updater.snapshot";
+  public static final String DEVICE_ATTRIBUTE_REMOTE_UPDATER_SNAPSHOT_TMP =
+      "device_attribute_remote_updater.snapshot.tmp";
 
   public static final String SYSTEM_DATABASE = "root.__system";
   public static final String[] ALL_RESULT_NODES = new String[] {"root", "**"};

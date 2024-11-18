@@ -31,13 +31,20 @@ import java.io.InputStream;
 public interface TsFileData {
   long getDataSize();
 
-  boolean isModification();
+  TsFileDataType getType();
 
   void serialize(DataOutputStream stream) throws IOException;
 
   static TsFileData deserialize(InputStream stream)
       throws IOException, PageException, IllegalPathException {
-    boolean isModification = ReadWriteIOUtils.readBool(stream);
-    return isModification ? DeletionData.deserialize(stream) : ChunkData.deserialize(stream);
+    final TsFileDataType type = TsFileDataType.values()[ReadWriteIOUtils.readInt(stream)];
+    switch (type) {
+      case CHUNK:
+        return ChunkData.deserialize(stream);
+      case DELETION:
+        return DeletionData.deserialize(stream);
+      default:
+        throw new UnsupportedOperationException("Unknown TsFileData type: " + type);
+    }
   }
 }

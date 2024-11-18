@@ -67,6 +67,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REGION_MIGRATE_PROCESS;
 import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS;
+import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS_V2;
 import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
 
 public class RegionMaintainHandler {
@@ -146,7 +147,8 @@ public class RegionMaintainHandler {
 
     List<TDataNodeLocation> currentPeerNodes;
     if (TConsensusGroupType.DataRegion.equals(regionId.getType())
-        && IOT_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())) {
+        && (IOT_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())
+            || IOT_CONSENSUS_V2.equals(CONF.getDataRegionConsensusProtocolClass()))) {
       // parameter of createPeer for MultiLeader should be all peers
       currentPeerNodes = new ArrayList<>(regionReplicaNodes);
       currentPeerNodes.add(destDataNode);

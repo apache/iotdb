@@ -17,6 +17,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -26,18 +27,20 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.CountSchemaMergeNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceFetchNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryCountNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryCountNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.LogicalOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractQueryDeviceWithCache;
@@ -47,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDev
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
@@ -131,11 +135,12 @@ public class TableLogicalPlanner {
     this.planOptimizers = planOptimizers;
   }
 
-  public LogicalQueryPlan plan(Analysis analysis) {
+  public LogicalQueryPlan plan(final Analysis analysis) {
     long startTime = System.nanoTime();
-    PlanNode planNode = planStatement(analysis, analysis.getStatement());
+    final Statement statement = analysis.getStatement();
+    PlanNode planNode = planStatement(analysis, statement);
 
-    if (analysis.getStatement() instanceof Query) {
+    if (statement instanceof Query) {
       QueryPlanCostMetricSet.getInstance()
           .recordPlanCost(TABLE_TYPE, LOGICAL_PLANNER, System.nanoTime() - startTime);
       startTime = System.nanoTime();
@@ -164,7 +169,7 @@ public class TableLogicalPlanner {
 
   private PlanNode planStatement(final Analysis analysis, final Statement statement) {
     if (statement instanceof CreateOrUpdateDevice) {
-      return planCreateDevice((CreateOrUpdateDevice) statement, analysis);
+      return planCreateOrUpdateDevice((CreateOrUpdateDevice) statement, analysis);
     }
     if (statement instanceof FetchDevice) {
       return planFetchDevice((FetchDevice) statement, analysis);
@@ -193,6 +198,9 @@ public class TableLogicalPlanner {
     }
     if (statement instanceof LoadTsFile) {
       return createRelationPlan(analysis, (LoadTsFile) statement);
+    }
+    if (statement instanceof PipeEnriched) {
+      return createRelationPlan(analysis, (PipeEnriched) statement);
     }
     throw new IllegalStateException(
         "Unsupported statement type: " + statement.getClass().getSimpleName());
@@ -243,6 +251,10 @@ public class TableLogicalPlanner {
     return getRelationPlanner(analysis).process(loadTsFile, null);
   }
 
+  private RelationPlan createRelationPlan(Analysis analysis, PipeEnriched pipeEnriched) {
+    return getRelationPlanner(analysis).process(pipeEnriched, null);
+  }
+
   private RelationPlan createRelationPlan(Analysis analysis, Query query) {
     return getRelationPlanner(analysis).process(query, null);
   }
@@ -256,7 +268,8 @@ public class TableLogicalPlanner {
         analysis, symbolAllocator, queryContext, Optional.empty(), sessionInfo, ImmutableMap.of());
   }
 
-  private PlanNode planCreateDevice(final CreateOrUpdateDevice statement, final Analysis analysis) {
+  private PlanNode planCreateOrUpdateDevice(
+      final CreateOrUpdateDevice statement, final Analysis analysis) {
     final CreateOrUpdateTableDeviceNode node =
         new CreateOrUpdateTableDeviceNode(
             queryContext.getQueryId().genPlanNodeId(),
@@ -289,6 +302,7 @@ public class TableLogicalPlanner {
             statement.getDatabase(),
             statement.getTableName(),
             statement.getDeviceIdList(),
+            statement.getPartitionKeyList(),
             columnHeaderList,
             null);
 
@@ -306,23 +320,45 @@ public class TableLogicalPlanner {
   private PlanNode planShowDevice(final ShowDevice statement, final Analysis analysis) {
     planQueryDevice(statement, analysis);
 
-    final TableDeviceQueryScanNode node =
+    final QueryId queryId = queryContext.getQueryId();
+
+    long pushDownLimit =
+        Objects.nonNull(statement.getLimit())
+            ? analysis.getLimit(statement.getLimit()).orElse(-1)
+            : -1;
+    if (pushDownLimit > -1 && Objects.nonNull(statement.getOffset())) {
+      pushDownLimit += analysis.getOffset(statement.getOffset());
+    }
+
+    // Scan
+    PlanNode currentNode =
         new TableDeviceQueryScanNode(
-            queryContext.getQueryId().genPlanNodeId(),
+            queryId.genPlanNodeId(),
             statement.getDatabase(),
             statement.getTableName(),
             statement.getIdDeterminedFilterList(),
             null,
             statement.getColumnHeaderList(),
             null,
-            Objects.nonNull(statement.getOffset()) ? analysis.getOffset(statement.getOffset()) : 0,
-            Objects.nonNull(statement.getLimit())
-                ? analysis.getLimit(statement.getLimit()).orElse(-1)
-                : -1);
-    return Objects.nonNull(statement.getIdFuzzyPredicate())
-        ? new FilterNode(
-            queryContext.getQueryId().genPlanNodeId(), node, statement.getIdFuzzyPredicate())
-        : node;
+            pushDownLimit);
+
+    // Filter
+    if (Objects.nonNull(statement.getIdFuzzyPredicate())) {
+      currentNode =
+          new FilterNode(queryId.genPlanNodeId(), currentNode, statement.getIdFuzzyPredicate());
+    }
+
+    // Limit
+    if (pushDownLimit > -1) {
+      currentNode =
+          new LimitNode(queryId.genPlanNodeId(), currentNode, pushDownLimit, Optional.empty());
+    }
+
+    // Offset
+    return Objects.nonNull(statement.getOffset())
+        ? new OffsetNode(
+            queryId.genPlanNodeId(), currentNode, analysis.getOffset(statement.getOffset()))
+        : currentNode;
   }
 
   private PlanNode planCountDevice(final CountDevice statement, final Analysis analysis) {
@@ -335,8 +371,7 @@ public class TableLogicalPlanner {
             statement.getTableName(),
             statement.getIdDeterminedFilterList(),
             statement.getIdFuzzyPredicate(),
-            statement.getColumnHeaderList(),
-            null);
+            statement.getColumnHeaderList());
 
     final CountSchemaMergeNode countMergeNode =
         new CountSchemaMergeNode(queryContext.getQueryId().genPlanNodeId());

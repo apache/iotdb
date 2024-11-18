@@ -44,7 +44,7 @@ public class PipeConvertedInsertTabletStatement extends InsertTabletStatement {
     dataTypes = insertTabletStatement.getDataTypes();
     // InsertTabletStatement
     times = insertTabletStatement.getTimes();
-    bitMaps = insertTabletStatement.getBitMaps();
+    nullBitMaps = insertTabletStatement.getBitMaps();
     columns = insertTabletStatement.getColumns();
     rowCount = insertTabletStatement.getRowCount();
   }

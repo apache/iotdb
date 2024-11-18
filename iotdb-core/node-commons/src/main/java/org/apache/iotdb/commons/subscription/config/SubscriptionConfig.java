@@ -29,8 +29,6 @@ public class SubscriptionConfig {
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
-  /////////////////////////////// Subtask Executor ///////////////////////////////
-
   public float getSubscriptionCacheMemoryUsagePercentage() {
     return COMMON_CONFIG.getSubscriptionCacheMemoryUsagePercentage();
   }
@@ -59,8 +57,8 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionPollMaxBlockingTimeMs();
   }
 
-  public int getSubscriptionSerializeMaxBlockingTimeMs() {
-    return COMMON_CONFIG.getSubscriptionSerializeMaxBlockingTimeMs();
+  public int getSubscriptionDefaultTimeoutInMs() {
+    return COMMON_CONFIG.getSubscriptionDefaultTimeoutInMs();
   }
 
   public long getSubscriptionLaunchRetryIntervalMs() {
@@ -83,6 +81,18 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionTsFileDeduplicationWindowSeconds();
   }
 
+  public long getSubscriptionMetaSyncerInitialSyncDelayMinutes() {
+    return COMMON_CONFIG.getSubscriptionMetaSyncerInitialSyncDelayMinutes();
+  }
+
+  public long getSubscriptionMetaSyncerSyncIntervalMinutes() {
+    return COMMON_CONFIG.getSubscriptionMetaSyncerSyncIntervalMinutes();
+  }
+
+  public long getSubscriptionTsFileSlicerCheckMemoryEnoughIntervalMs() {
+    return COMMON_CONFIG.getSubscriptionTsFileSlicerCheckMemoryEnoughIntervalMs();
+  }
+
   /////////////////////////////// Utils ///////////////////////////////
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConfig.class);
@@ -90,6 +100,7 @@ public class SubscriptionConfig {
   public void printAllConfigs() {
     LOGGER.info(
         "SubscriptionCacheMemoryUsagePercentage: {}", getSubscriptionCacheMemoryUsagePercentage());
+
     LOGGER.info(
         "SubscriptionSubtaskExecutorMaxThreadNum: {}",
         getSubscriptionSubtaskExecutorMaxThreadNum());
@@ -106,8 +117,7 @@ public class SubscriptionConfig {
         "SubscriptionPrefetchTsFileBatchMaxSizeInBytes: {}",
         getSubscriptionPrefetchTsFileBatchMaxSizeInBytes());
     LOGGER.info("SubscriptionPollMaxBlockingTimeMs: {}", getSubscriptionPollMaxBlockingTimeMs());
-    LOGGER.info(
-        "SubscriptionSerializeMaxBlockingTimeMs: {}", getSubscriptionSerializeMaxBlockingTimeMs());
+    LOGGER.info("SubscriptionDefaultTimeoutInMs: {}", getSubscriptionDefaultTimeoutInMs());
     LOGGER.info("SubscriptionLaunchRetryIntervalMs: {}", getSubscriptionLaunchRetryIntervalMs());
     LOGGER.info(
         "SubscriptionRecycleUncommittedEventIntervalMs: {}",
@@ -117,6 +127,16 @@ public class SubscriptionConfig {
     LOGGER.info(
         "SubscriptionTsFileDeduplicationWindowSeconds: {}",
         getSubscriptionTsFileDeduplicationWindowSeconds());
+    LOGGER.info(
+        "SubscriptionTsFileSlicerCheckMemoryEnoughIntervalMs: {}",
+        getSubscriptionTsFileSlicerCheckMemoryEnoughIntervalMs());
+
+    LOGGER.info(
+        "SubscriptionMetaSyncerInitialSyncDelayMinutes: {}",
+        getSubscriptionMetaSyncerInitialSyncDelayMinutes());
+    LOGGER.info(
+        "SubscriptionMetaSyncerSyncIntervalMinutes: {}",
+        getSubscriptionMetaSyncerSyncIntervalMinutes());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

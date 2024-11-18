@@ -41,6 +41,8 @@ import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableSchemaQuerySuccessfulCallbackVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableSchemaQueryWriteVisitor;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
@@ -60,6 +62,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -344,6 +347,13 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
             throw new FragmentInstanceDispatchException(
                 RpcUtils.getStatus(
                     TSStatusCode.EXECUTE_STATEMENT_ERROR, sendFragmentInstanceResp.message));
+          } else if (Objects.nonNull(sendFragmentInstanceReq.getConsensusGroupId())) {
+            // Assume the consensus group casting will not generate any exceptions
+            new TableSchemaQuerySuccessfulCallbackVisitor()
+                .processFragment(
+                    instance,
+                    ConsensusGroupId.Factory.createFromTConsensusGroupId(
+                        sendFragmentInstanceReq.getConsensusGroupId()));
           }
           break;
         case WRITE:
@@ -450,27 +460,39 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
     switch (instance.getType()) {
       case READ:
-        final RegionReadExecutor readExecutor = new RegionReadExecutor();
-        final RegionExecutionResult readResult =
-            groupId == null
-                ? readExecutor.execute(instance)
-                : readExecutor.execute(groupId, instance);
-        if (!readResult.isAccepted()) {
-          LOGGER.warn(readResult.getMessage());
-          if (readResult.isReadNeedRetry()) {
-            if (readResult.getStatus() != null
-                && readResult.getStatus().getCode()
+        RegionExecutionResult executionResult = null;
+        if (Objects.nonNull(groupId)) {
+          // For schema query, there may be a "write" before "read"
+          // the result is not null iff the "write" has failed
+          executionResult = new TableSchemaQueryWriteVisitor().processFragment(instance, groupId);
+        }
+        if (Objects.isNull(executionResult)) {
+          final RegionReadExecutor readExecutor = new RegionReadExecutor();
+          executionResult =
+              groupId == null
+                  ? readExecutor.execute(instance)
+                  : readExecutor.execute(groupId, instance);
+        }
+        if (!executionResult.isAccepted()) {
+          LOGGER.warn(executionResult.getMessage());
+          if (executionResult.isReadNeedRetry()) {
+            if (executionResult.getStatus() != null
+                && executionResult.getStatus().getCode()
                     == TSStatusCode.TOO_MANY_CONCURRENT_QUERIES_ERROR.getStatusCode()) {
-              throw new FragmentInstanceDispatchException(readResult.getStatus());
+              throw new FragmentInstanceDispatchException(executionResult.getStatus());
             }
             throw new FragmentInstanceDispatchException(
-                RpcUtils.getStatus(TSStatusCode.DISPATCH_ERROR, readResult.getMessage()));
-          } else if (readResult.getStatus() != null) {
-            throw new FragmentInstanceDispatchException(readResult.getStatus());
+                RpcUtils.getStatus(TSStatusCode.DISPATCH_ERROR, executionResult.getMessage()));
+          } else if (executionResult.getStatus() != null) {
+            throw new FragmentInstanceDispatchException(executionResult.getStatus());
           } else {
             throw new FragmentInstanceDispatchException(
-                RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, readResult.getMessage()));
+                RpcUtils.getStatus(
+                    TSStatusCode.EXECUTE_STATEMENT_ERROR, executionResult.getMessage()));
           }
+        } else if (Objects.nonNull(groupId)) {
+          // Assume the consensus group casting will not generate any exceptions
+          new TableSchemaQuerySuccessfulCallbackVisitor().processFragment(instance, groupId);
         }
         break;
       case WRITE:

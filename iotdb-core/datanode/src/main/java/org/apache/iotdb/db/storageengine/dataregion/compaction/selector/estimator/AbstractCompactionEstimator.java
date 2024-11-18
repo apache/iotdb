@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimat
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.BatchCompactionPlan;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
@@ -62,11 +63,12 @@ public abstract class AbstractCompactionEstimator {
 
   protected IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   protected TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
-  protected long memoryBudgetForFileWriter =
+  protected long fixedMemoryBudget =
       (long)
-          ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
-              / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
-              * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
+              ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
+                  / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
+                  * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion())
+          + BatchCompactionPlan.maxCachedTimeChunksSize;
 
   protected abstract long calculatingMetadataMemoryCost(CompactionTaskInfo taskInfo);
 

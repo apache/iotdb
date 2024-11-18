@@ -74,7 +74,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
     this(false);
   }
 
-  protected StateMachineProcedure(boolean isGeneratedByPipe) {
+  protected StateMachineProcedure(final boolean isGeneratedByPipe) {
     this.isGeneratedByPipe = isGeneratedByPipe;
   }
 

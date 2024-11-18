@@ -197,4 +197,15 @@ public abstract class SystemPropertiesHandler {
     this.formalFile = SystemFileFactory.INSTANCE.getFile(filePath);
     this.tmpFile = SystemFileFactory.INSTANCE.getFile(filePath + ".tmp");
   }
+
+  public void delete() {
+    this.formalFile.delete();
+    this.tmpFile.delete();
+    if (this.formalFile.exists() || this.tmpFile.exists()) {
+      LOGGER.warn(
+          "Failed to delete system.properties file, you should manually delete them: {}, {}",
+          this.formalFile.getAbsoluteFile(),
+          this.tmpFile.getAbsolutePath());
+    }
+  }
 }

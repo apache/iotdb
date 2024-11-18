@@ -210,11 +210,13 @@ struct TDatabaseSchema {
     8: optional i32 minDataRegionGroupNum
     9: optional i32 maxDataRegionGroupNum
     10: optional i64 timePartitionOrigin
+    11: optional bool isTableModel
 }
 
 // Schema
 struct TSchemaPartitionReq {
   1: required binary pathPatternTree
+  2: optional bool isTableModel
 }
 
 struct TSchemaPartitionTableResp {
@@ -595,6 +597,7 @@ struct TDatabaseInfo {
   10: required i32 minDataRegionNum
   11: required i32 maxDataRegionNum
   12: optional i64 timePartitionOrigin
+  13: optional bool isTableModel
 }
 
 struct TGetDatabaseReq {
@@ -1031,7 +1034,7 @@ enum TTestOperation {
 // Table
 // ====================================================
 
-struct TAlterTableReq {
+struct TAlterOrDropTableReq {
     1: required string database
     2: required string tableName
     3: required string queryId
@@ -1039,9 +1042,28 @@ struct TAlterTableReq {
     5: required binary updateInfo
 }
 
+struct TDeleteTableDeviceReq {
+    1: required string database
+    2: required string tableName
+    3: required string queryId
+    4: required binary patternInfo
+    5: required binary filterInfo
+}
+
+struct TDeleteTableDeviceResp {
+   1: required common.TSStatus status
+   2: optional i64 deletedNum
+}
+
 struct TShowTableResp {
    1: required common.TSStatus status
    2: optional list<TTableInfo> tableInfoList
+}
+
+struct TDescTableResp {
+   1: required common.TSStatus status
+   2: optional binary tableInfo
+   3: optional set<string> preDeletedColumns
 }
 
 struct TFetchTableResp {
@@ -1053,6 +1075,7 @@ struct TTableInfo {
    1: required string tableName
    // TTL is stored as string in table props
    2: required string TTL
+   3: optional i32 state
 }
 
 service IConfigNodeRPCService {
@@ -1483,8 +1506,8 @@ service IConfigNodeRPCService {
   /** Persist all the data points in the memory table of the database to the disk, and seal the data file on all DataNodes */
   common.TSStatus flush(common.TFlushReq req)
 
-  /** Clear the cache of chunk, chunk metadata and timeseries metadata to release the memory footprint on all DataNodes */
-  common.TSStatus clearCache()
+  /** Clear the specific caches of all DataNodes */
+  common.TSStatus clearCache(set<i32> cacheClearOptions)
 
   /** Set configuration on specified node */
   common.TSStatus setConfiguration(common.TSetConfigurationReq req)
@@ -1787,10 +1810,14 @@ service IConfigNodeRPCService {
 
   common.TSStatus createTable(binary tableInfo)
 
-  common.TSStatus alterTable(TAlterTableReq req)
+  common.TSStatus alterOrDropTable(TAlterOrDropTableReq req)
 
-  TShowTableResp showTables(string database)
+  TShowTableResp showTables(string database, bool isDetails)
+
+  TDescTableResp describeTable(string database, string tableName, bool isDetails)
 
   TFetchTableResp fetchTables(map<string, set<string>> fetchTableMap)
+
+  TDeleteTableDeviceResp deleteDevice(TDeleteTableDeviceReq req)
 }
 

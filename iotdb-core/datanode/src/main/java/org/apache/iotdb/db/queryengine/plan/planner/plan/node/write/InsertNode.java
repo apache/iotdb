@@ -20,12 +20,10 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.commons.consensus.index.ComparableConsensusRequest;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -52,7 +50,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public abstract class InsertNode extends SearchNode implements ComparableConsensusRequest {
+public abstract class InsertNode extends SearchNode {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -295,7 +293,6 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
   public abstract long getMinTime();
 
   // region partial insert
-  @TestOnly
   public void markFailedMeasurement(int index) {
     throw new UnsupportedOperationException();
   }

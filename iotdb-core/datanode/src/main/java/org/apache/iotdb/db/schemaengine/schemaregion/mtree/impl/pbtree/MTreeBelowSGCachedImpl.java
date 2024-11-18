@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -506,7 +507,12 @@ public class MTreeBelowSGCachedImpl {
           if (cachedMNode != null) {
             unPinMNode(cachedMNode);
             throw new MetadataException(
-                "The alias is duplicated with the name or alias of other measurement.");
+                "The alias is duplicated with the name or alias of other measurement, alias: "
+                    + alias
+                    + ", fullPath: "
+                    + fullPath
+                    + ", otherMeasurement: "
+                    + cachedMNode.getFullPath());
           }
           if (measurementMNode.getAlias() != null) {
             device.deleteAliasChild(measurementMNode.getAlias());
@@ -1254,7 +1260,7 @@ public class MTreeBelowSGCachedImpl {
                 resultTemplateSetInfo.put(
                     node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
                 store.updateMNode(
-                    node.getAsMNode(), o -> o.getAsDeviceMNode().preDeactivateTemplate());
+                    node.getAsMNode(), o -> o.getAsDeviceMNode().preDeactivateSelfOrTemplate());
               }
             }
           }) {
@@ -1274,11 +1280,12 @@ public class MTreeBelowSGCachedImpl {
 
             protected void updateEntity(IDeviceMNode<ICachedMNode> node) throws MetadataException {
               if (entry.getValue().contains(node.getSchemaTemplateId())
-                  && node.isPreDeactivateTemplate()) {
+                  && node.isPreDeactivateSelfOrTemplate()) {
                 resultTemplateSetInfo.put(
                     node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
                 store.updateMNode(
-                    node.getAsMNode(), o -> o.getAsDeviceMNode().rollbackPreDeactivateTemplate());
+                    node.getAsMNode(),
+                    o -> o.getAsDeviceMNode().rollbackPreDeactivateSelfOrTemplate());
               }
             }
           }) {
@@ -1298,7 +1305,7 @@ public class MTreeBelowSGCachedImpl {
 
             protected void updateEntity(IDeviceMNode<ICachedMNode> node) throws MetadataException {
               if (entry.getValue().contains(node.getSchemaTemplateId())
-                  && node.isPreDeactivateTemplate()) {
+                  && node.isPreDeactivateSelfOrTemplate()) {
                 resultTemplateSetInfo.put(
                     node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
                 regionStatistics.deactivateTemplate(node.getSchemaTemplateId());

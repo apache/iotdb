@@ -22,17 +22,18 @@ package org.apache.iotdb.db.storageengine.load.splitter;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.PublicBAOS;
-import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
@@ -40,6 +41,8 @@ import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
+
+import javax.annotation.Nonnull;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -60,7 +63,7 @@ public class AlignedChunkData implements ChunkData {
   protected static final Binary DEFAULT_BINARY = null;
 
   protected final TTimePartitionSlot timePartitionSlot;
-  protected final String device;
+  protected final IDeviceID device;
   protected List<ChunkHeader> chunkHeaderList;
 
   protected final PublicBAOS byteStream;
@@ -75,7 +78,7 @@ public class AlignedChunkData implements ChunkData {
   protected List<Chunk> chunkList;
 
   public AlignedChunkData(
-      final String device,
+      @Nonnull final IDeviceID device,
       final ChunkHeader chunkHeader,
       final TTimePartitionSlot timePartitionSlot) {
     this(device, timePartitionSlot);
@@ -84,14 +87,15 @@ public class AlignedChunkData implements ChunkData {
     addAttrDataSize();
   }
 
-  protected AlignedChunkData(AlignedChunkData alignedChunkData) {
+  protected AlignedChunkData(final AlignedChunkData alignedChunkData) {
     this(alignedChunkData.device, alignedChunkData.timePartitionSlot);
     this.satisfiedLengthQueue = new LinkedList<>(alignedChunkData.satisfiedLengthQueue);
     this.needDecodeChunk = alignedChunkData.needDecodeChunk;
     addAttrDataSize();
   }
 
-  protected AlignedChunkData(String device, TTimePartitionSlot timePartitionSlot) {
+  protected AlignedChunkData(
+      @Nonnull final IDeviceID device, final TTimePartitionSlot timePartitionSlot) {
     this.dataSize = 0;
     this.device = device;
     this.chunkHeaderList = new ArrayList<>();
@@ -106,9 +110,7 @@ public class AlignedChunkData implements ChunkData {
   private void addAttrDataSize() { // Should be init before serialize, corresponding serializeAttr
     dataSize += 2 * Byte.BYTES; // isModification and isAligned
     dataSize += Long.BYTES; // timePartitionSlot
-    final int deviceLength = device.getBytes(TSFileConfig.STRING_CHARSET).length;
-    dataSize += ReadWriteForEncodingUtils.varIntSize(deviceLength);
-    dataSize += deviceLength; // device
+    dataSize += device.serializedSize(); // device
     dataSize += Integer.BYTES; // chunkHeaderListSize
     if (!chunkHeaderList.isEmpty()) {
       dataSize += chunkHeaderList.get(0).getSerializedSize(); // timeChunkHeader
@@ -116,7 +118,7 @@ public class AlignedChunkData implements ChunkData {
   }
 
   @Override
-  public String getDevice() {
+  public IDeviceID getDevice() {
     return device;
   }
 
@@ -162,7 +164,7 @@ public class AlignedChunkData implements ChunkData {
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(isModification(), stream);
+    ReadWriteIOUtils.write(getType().ordinal(), stream);
     ReadWriteIOUtils.write(isAligned(), stream);
     serializeAttr(stream);
     byteStream.writeTo(stream);
@@ -171,7 +173,10 @@ public class AlignedChunkData implements ChunkData {
 
   private void serializeAttr(final DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(timePartitionSlot.getStartTime(), stream);
-    ReadWriteIOUtils.write(device, stream);
+
+    ReadWriteIOUtils.write(device instanceof StringArrayDeviceID, stream);
+    device.serialize(stream);
+
     ReadWriteIOUtils.write(dataSize, stream);
     ReadWriteIOUtils.write(needDecodeChunk, stream);
     ReadWriteIOUtils.write(chunkHeaderList.size(), stream);
@@ -421,7 +426,11 @@ public class AlignedChunkData implements ChunkData {
       throws IOException, PageException {
     final TTimePartitionSlot timePartitionSlot =
         TimePartitionUtils.getTimePartitionSlot(ReadWriteIOUtils.readLong(stream));
-    final String device = ReadWriteIOUtils.readString(stream);
+    final boolean isStringArrayDeviceID = ReadWriteIOUtils.readBool(stream);
+    final IDeviceID device =
+        isStringArrayDeviceID
+            ? StringArrayDeviceID.deserialize(stream)
+            : PlainDeviceID.deserialize(stream).convertToStringArrayDeviceId();
     final long dataSize = ReadWriteIOUtils.readLong(stream);
     final boolean needDecodeChunk = ReadWriteIOUtils.readBool(stream);
     final int chunkHeaderListSize = ReadWriteIOUtils.readInt(stream);

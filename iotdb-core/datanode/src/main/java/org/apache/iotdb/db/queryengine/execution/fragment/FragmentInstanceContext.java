@@ -395,7 +395,11 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   public Optional<Throwable> getFailureCause() {
-    return Optional.ofNullable(stateMachine.getFailureCauses().peek());
+    return Optional.ofNullable(
+        stateMachine.getFailureCauses().stream()
+            .filter(e -> e instanceof IoTDBException || e instanceof IoTDBRuntimeException)
+            .findFirst()
+            .orElse(stateMachine.getFailureCauses().peek()));
   }
 
   public Filter getGlobalTimeFilter() {
@@ -674,6 +678,13 @@ public class FragmentInstanceContext extends QueryContext {
     QueryRelatedResourceMetricSet.getInstance().updateFragmentInstanceTime(durationTime);
 
     SeriesScanCostMetricSet.getInstance()
+        .recordBloomFilterMetrics(
+            getQueryStatistics().getLoadBloomFilterFromCacheCount().get(),
+            getQueryStatistics().getLoadBloomFilterFromDiskCount().get(),
+            getQueryStatistics().getLoadBloomFilterActualIOSize().get(),
+            getQueryStatistics().getLoadBloomFilterTime().get());
+
+    SeriesScanCostMetricSet.getInstance()
         .recordNonAlignedTimeSeriesMetadataCount(
             getQueryStatistics().getLoadTimeSeriesMetadataDiskSeqCount().get(),
             getQueryStatistics().getLoadTimeSeriesMetadataDiskUnSeqCount().get(),
@@ -699,6 +710,12 @@ public class FragmentInstanceContext extends QueryContext {
             getQueryStatistics().getLoadTimeSeriesMetadataAlignedMemUnSeqTime().get());
 
     SeriesScanCostMetricSet.getInstance()
+        .recordTimeSeriesMetadataMetrics(
+            getQueryStatistics().getLoadTimeSeriesMetadataFromCacheCount().get(),
+            getQueryStatistics().getLoadTimeSeriesMetadataFromDiskCount().get(),
+            getQueryStatistics().getLoadTimeSeriesMetadataActualIOSize().get());
+
+    SeriesScanCostMetricSet.getInstance()
         .recordConstructChunkReadersCount(
             getQueryStatistics().getConstructAlignedChunkReadersMemCount().get(),
             getQueryStatistics().getConstructAlignedChunkReadersDiskCount().get(),
@@ -710,6 +727,12 @@ public class FragmentInstanceContext extends QueryContext {
             getQueryStatistics().getConstructAlignedChunkReadersDiskTime().get(),
             getQueryStatistics().getConstructNonAlignedChunkReadersMemTime().get(),
             getQueryStatistics().getConstructNonAlignedChunkReadersDiskTime().get());
+
+    SeriesScanCostMetricSet.getInstance()
+        .recordChunkMetrics(
+            getQueryStatistics().getLoadChunkFromCacheCount().get(),
+            getQueryStatistics().getLoadChunkFromDiskCount().get(),
+            getQueryStatistics().getLoadChunkActualIOSize().get());
 
     SeriesScanCostMetricSet.getInstance()
         .recordPageReadersDecompressCount(

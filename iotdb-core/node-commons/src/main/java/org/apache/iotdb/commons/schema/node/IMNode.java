@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.schema.node;
 
 import org.apache.iotdb.commons.path.PartialPath;
@@ -52,7 +53,7 @@ public interface IMNode<N extends IMNode<N>> extends ITreeNode {
 
   N addChild(N child);
 
-  N deleteChild(String name);
+  N deleteChild(final String name);
 
   IMNodeContainer<N> getChildren();
 

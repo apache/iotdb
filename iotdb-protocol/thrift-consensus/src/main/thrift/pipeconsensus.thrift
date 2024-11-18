@@ -22,7 +22,8 @@ namespace java org.apache.iotdb.consensus.pipe.thrift
 
 struct TCommitId {
   1:required i64 commitIndex
-  2:required i32 rebootTimes
+  2:required i32 pipeTaskRestartTimes
+  3:required i32 dataNodeRebootTimes
 }
 
 struct TPipeConsensusTransferReq {
@@ -61,6 +62,8 @@ struct TNotifyPeerToCreateConsensusPipeReq {
   1: required common.TConsensusGroupId targetPeerConsensusGroupId
   2: required common.TEndPoint targetPeerEndPoint
   3: required i32 targetPeerNodeId
+  4: required common.TEndPoint coordinatorPeerEndPoint
+  5: required i32 coordinatorPeerNodeId
 }
 
 struct TNotifyPeerToCreateConsensusPipeResp {
@@ -88,6 +91,14 @@ struct TCheckConsensusPipeCompletedResp {
   2: required bool isCompleted
 }
 
+struct TWaitReleaseAllRegionRelatedResourceReq {
+  1: required common.TConsensusGroupId consensusGroupId
+}
+
+struct TWaitReleaseAllRegionRelatedResourceResp {
+  1: required bool releaseAllResource
+}
+
 service PipeConsensusIService {
   /**
   * Transfer stream data in a given ConsensusGroup, used by PipeConsensus
@@ -106,4 +117,6 @@ service PipeConsensusIService {
   TNotifyPeerToDropConsensusPipeResp notifyPeerToDropConsensusPipe(TNotifyPeerToDropConsensusPipeReq req)
 
   TCheckConsensusPipeCompletedResp checkConsensusPipeCompleted(TCheckConsensusPipeCompletedReq req)
+
+  TWaitReleaseAllRegionRelatedResourceResp waitReleaseAllRegionRelatedResource(TWaitReleaseAllRegionRelatedResourceReq req)
 }

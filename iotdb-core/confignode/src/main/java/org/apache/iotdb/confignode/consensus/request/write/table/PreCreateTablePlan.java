@@ -39,7 +39,7 @@ public class PreCreateTablePlan extends ConfigPhysicalPlan {
     super(ConfigPhysicalPlanType.PreCreateTable);
   }
 
-  public PreCreateTablePlan(String database, TsTable table) {
+  public PreCreateTablePlan(final String database, final TsTable table) {
     super(ConfigPhysicalPlanType.PreCreateTable);
     this.database = database;
     this.table = table;
@@ -54,14 +54,14 @@ public class PreCreateTablePlan extends ConfigPhysicalPlan {
   }
 
   @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
+  protected void serializeImpl(final DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
     ReadWriteIOUtils.write(database, stream);
     table.serialize(stream);
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
+  protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
     database = ReadWriteIOUtils.readString(buffer);
     table = TsTable.deserialize(buffer);
   }

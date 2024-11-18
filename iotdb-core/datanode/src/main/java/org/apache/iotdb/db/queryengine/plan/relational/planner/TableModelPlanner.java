@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
@@ -80,14 +81,15 @@ public class TableModelPlanner implements IPlanner {
       asyncInternalServiceClientManager;
 
   public TableModelPlanner(
-      Statement statement,
-      SqlParser sqlParser,
-      Metadata metadata,
-      ExecutorService executor,
-      ExecutorService writeOperationExecutor,
-      ScheduledExecutorService scheduledExecutor,
-      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> syncInternalServiceClientManager,
-      IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
+      final Statement statement,
+      final SqlParser sqlParser,
+      final Metadata metadata,
+      final ExecutorService executor,
+      final ExecutorService writeOperationExecutor,
+      final ScheduledExecutorService scheduledExecutor,
+      final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
+          syncInternalServiceClientManager,
+      final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
           asyncInternalServiceClientManager) {
     this.statement = statement;
     this.sqlParser = sqlParser;
@@ -100,41 +102,42 @@ public class TableModelPlanner implements IPlanner {
   }
 
   @Override
-  public IAnalysis analyze(MPPQueryContext context) {
-    StatementAnalyzerFactory statementAnalyzerFactory =
-        new StatementAnalyzerFactory(metadata, sqlParser, accessControl);
-
-    Analyzer analyzer =
-        new Analyzer(
+  public IAnalysis analyze(final MPPQueryContext context) {
+    return new Analyzer(
             context,
             context.getSession(),
-            statementAnalyzerFactory,
+            new StatementAnalyzerFactory(metadata, sqlParser, accessControl),
             Collections.emptyList(),
             Collections.emptyMap(),
-            warningCollector);
-    return analyzer.analyze(statement);
+            warningCollector)
+        .analyze(statement);
   }
 
   @Override
-  public LogicalQueryPlan doLogicalPlan(IAnalysis analysis, MPPQueryContext context) {
+  public LogicalQueryPlan doLogicalPlan(final IAnalysis analysis, final MPPQueryContext context) {
     return new TableLogicalPlanner(
             context, metadata, context.getSession(), symbolAllocator, warningCollector)
         .plan((Analysis) analysis);
   }
 
   @Override
-  public DistributedQueryPlan doDistributionPlan(IAnalysis analysis, LogicalQueryPlan logicalPlan) {
+  public DistributedQueryPlan doDistributionPlan(
+      final IAnalysis analysis, final LogicalQueryPlan logicalPlan) {
     return new TableDistributedPlanner((Analysis) analysis, symbolAllocator, logicalPlan).plan();
   }
 
   @Override
   public IScheduler doSchedule(
-      IAnalysis analysis,
-      DistributedQueryPlan distributedPlan,
-      MPPQueryContext context,
-      QueryStateMachine stateMachine) {
-    IScheduler scheduler;
-    if (statement instanceof LoadTsFile) {
+      final IAnalysis analysis,
+      final DistributedQueryPlan distributedPlan,
+      final MPPQueryContext context,
+      final QueryStateMachine stateMachine) {
+    final IScheduler scheduler;
+
+    final boolean isPipeEnrichedTsFileLoad =
+        statement instanceof PipeEnriched
+            && ((PipeEnriched) statement).getInnerStatement() instanceof LoadTsFile;
+    if (statement instanceof LoadTsFile || isPipeEnrichedTsFileLoad) {
       scheduler =
           new LoadTsFileScheduler(
               distributedPlan,
@@ -142,7 +145,7 @@ public class TableModelPlanner implements IPlanner {
               stateMachine,
               syncInternalServiceClientManager,
               ClusterPartitionFetcher.getInstance(),
-              false);
+              isPipeEnrichedTsFileLoad);
     } else {
       scheduler =
           new ClusterScheduler(
@@ -172,11 +175,18 @@ public class TableModelPlanner implements IPlanner {
   public void setRedirectInfo(
       IAnalysis iAnalysis, TEndPoint localEndPoint, TSStatus tsstatus, TSStatusCode statusCode) {
     Analysis analysis = (Analysis) iAnalysis;
-    if (!(analysis.getStatement() instanceof WrappedInsertStatement)) {
+
+    // Get the inner statement of PipeEnriched
+    Statement statementToRedirect =
+        analysis.getStatement() instanceof PipeEnriched
+            ? ((PipeEnriched) analysis.getStatement()).getInnerStatement()
+            : analysis.getStatement();
+
+    if (!(statementToRedirect instanceof WrappedInsertStatement)) {
       return;
     }
     InsertBaseStatement insertStatement =
-        ((WrappedInsertStatement) analysis.getStatement()).getInnerTreeStatement();
+        ((WrappedInsertStatement) statementToRedirect).getInnerTreeStatement();
 
     if (!analysis.isFinishQueryAfterAnalyze()) {
       // Table Model Session only supports insertTablet
@@ -204,5 +214,5 @@ public class TableModelPlanner implements IPlanner {
     }
   }
 
-  private static class NopAccessControl implements AccessControl {}
+  public static class NopAccessControl implements AccessControl {}
 }

@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.query.TsFileInsertionEventQueryParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.TsFileInsertionEventScanParser;
@@ -558,10 +559,28 @@ public class TsFileInsertionEventParserTest {
       final long endTime,
       final boolean isQuery,
       final int expectedCount) {
+    PipeTsFileInsertionEvent tsFileInsertionEvent =
+        new PipeTsFileInsertionEvent(
+            false,
+            "",
+            new TsFileResource(tsFile),
+            true,
+            false,
+            false,
+            false,
+            null,
+            0,
+            null,
+            null,
+            null,
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
     try (final TsFileInsertionEventParser tsFileContainer =
         isQuery
-            ? new TsFileInsertionEventQueryParser(tsFile, pattern, startTime, endTime)
-            : new TsFileInsertionEventScanParser(tsFile, pattern, startTime, endTime, null, null)) {
+            ? new TsFileInsertionEventQueryParser(
+                tsFile, pattern, startTime, endTime, tsFileInsertionEvent)
+            : new TsFileInsertionEventScanParser(
+                tsFile, pattern, startTime, endTime, null, tsFileInsertionEvent)) {
       final AtomicInteger count1 = new AtomicInteger(0);
       final AtomicInteger count2 = new AtomicInteger(0);
       final AtomicInteger count3 = new AtomicInteger(0);

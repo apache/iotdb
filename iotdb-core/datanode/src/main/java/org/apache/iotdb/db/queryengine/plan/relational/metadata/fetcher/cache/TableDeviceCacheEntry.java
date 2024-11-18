@@ -22,13 +22,13 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 
 import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 
 import java.util.Collections;
@@ -62,7 +62,7 @@ public class TableDeviceCacheEntry {
   int setAttribute(
       final String database,
       final String tableName,
-      final @Nonnull Map<String, String> attributeSetMap) {
+      final @Nonnull Map<String, Binary> attributeSetMap) {
     return (deviceSchema.compareAndSet(null, new TableAttributeSchema())
             ? TableAttributeSchema.INSTANCE_SIZE
             : 0)
@@ -70,7 +70,7 @@ public class TableDeviceCacheEntry {
   }
 
   int updateAttribute(
-      final String database, final String tableName, final @Nonnull Map<String, String> updateMap) {
+      final String database, final String tableName, final @Nonnull Map<String, Binary> updateMap) {
     // Shall only call this for original table device
     final TableAttributeSchema schema = (TableAttributeSchema) deviceSchema.get();
     final int result =
@@ -81,16 +81,30 @@ public class TableDeviceCacheEntry {
   int invalidateAttribute() {
     final AtomicInteger size = new AtomicInteger(0);
     deviceSchema.updateAndGet(
-        map -> {
-          if (Objects.nonNull(map)) {
-            size.set(map.estimateSize());
+        schema -> {
+          if (schema instanceof TableAttributeSchema) {
+            size.set(schema.estimateSize());
+            return null;
           }
-          return null;
+          return schema;
         });
     return size.get();
   }
 
-  Map<String, String> getAttributeMap() {
+  int invalidateAttributeColumn(final String attribute) {
+    final AtomicInteger size = new AtomicInteger(0);
+    deviceSchema.updateAndGet(
+        schema -> {
+          if (schema instanceof TableAttributeSchema) {
+            size.set(((TableAttributeSchema) schema).removeAttribute(attribute));
+            return schema;
+          }
+          return schema;
+        });
+    return size.get();
+  }
+
+  Map<String, Binary> getAttributeMap() {
     final IDeviceSchema map = deviceSchema.get();
     // Cache miss
     if (Objects.isNull(map)) {
@@ -143,13 +157,27 @@ public class TableDeviceCacheEntry {
     return deviceSchema.get();
   }
 
+  int invalidateTreeSchema() {
+    final AtomicInteger size = new AtomicInteger(0);
+    deviceSchema.updateAndGet(
+        schema -> {
+          if (schema instanceof TreeDeviceNormalSchema
+              || schema instanceof TreeDeviceTemplateSchema) {
+            size.set(schema.estimateSize());
+            return null;
+          }
+          return schema;
+        });
+    return size.get();
+  }
+
   /////////////////////////////// Last Cache ///////////////////////////////
 
-  int updateLastCache(
+  int initOrInvalidateLastCache(
       final String database,
       final String tableName,
       final String[] measurements,
-      final @Nullable TimeValuePair[] timeValuePairs,
+      final boolean isInvalidate,
       final boolean isTableModel) {
     int result =
         lastCache.compareAndSet(null, new TableDeviceLastCache())
@@ -158,7 +186,7 @@ public class TableDeviceCacheEntry {
     final TableDeviceLastCache cache = lastCache.get();
     result +=
         Objects.nonNull(cache)
-            ? cache.update(database, tableName, measurements, timeValuePairs, isTableModel)
+            ? cache.initOrInvalidate(database, tableName, measurements, isInvalidate, isTableModel)
             : 0;
     return Objects.nonNull(lastCache.get()) ? result : 0;
   }
@@ -169,9 +197,9 @@ public class TableDeviceCacheEntry {
     return Objects.nonNull(lastCache.get()) ? result : 0;
   }
 
-  int invalidateLastCache(final String measurement) {
+  int invalidateLastCache(final String measurement, final boolean isTableModel) {
     final TableDeviceLastCache cache = lastCache.get();
-    final int result = Objects.nonNull(cache) ? cache.invalidate(measurement) : 0;
+    final int result = Objects.nonNull(cache) ? cache.invalidate(measurement, isTableModel) : 0;
     return Objects.nonNull(lastCache.get()) ? result : 0;
   }
 

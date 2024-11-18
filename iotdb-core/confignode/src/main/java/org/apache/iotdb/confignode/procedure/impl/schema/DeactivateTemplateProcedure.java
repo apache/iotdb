@@ -193,8 +193,8 @@ public class DeactivateTemplateProcedure
     return preDeletedNum;
   }
 
-  private void invalidateCache(ConfigNodeProcedureEnv env) {
-    // if no target timeseres, return directly
+  private void invalidateCache(final ConfigNodeProcedureEnv env) {
+    // if no target timeseries, return directly
     if (!timeSeriesPatternTree.isEmpty()) {
       Map<Integer, TDataNodeLocation> dataNodeLocationMap =
           env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
@@ -221,18 +221,18 @@ public class DeactivateTemplateProcedure
     setNextState(DeactivateTemplateState.DELETE_DATA);
   }
 
-  private void deleteData(ConfigNodeProcedureEnv env) {
-    Map<TConsensusGroupId, TRegionReplicaSet> relatedDataRegionGroup =
-        env.getConfigManager().getRelatedDataRegionGroup(timeSeriesPatternTree);
+  private void deleteData(final ConfigNodeProcedureEnv env) {
+    final Map<TConsensusGroupId, TRegionReplicaSet> relatedDataRegionGroup =
+        env.getConfigManager().getRelatedDataRegionGroup(timeSeriesPatternTree, false);
 
     // target timeSeries has no data or no target timeSeries, return directly
     if (!relatedDataRegionGroup.isEmpty() && !timeSeriesPatternTree.isEmpty()) {
-      DeactivateTemplateRegionTaskExecutor<TDeleteDataForDeleteSchemaReq> deleteDataTask =
+      final DeactivateTemplateRegionTaskExecutor<TDeleteDataForDeleteSchemaReq> deleteDataTask =
           new DeactivateTemplateRegionTaskExecutor<>(
               "delete data",
               env,
               relatedDataRegionGroup,
-              true,
+              false,
               CnToDnAsyncRequestType.DELETE_DATA_FOR_DELETE_SCHEMA,
               ((dataNodeLocation, consensusGroupIdList) ->
                   new TDeleteDataForDeleteSchemaReq(

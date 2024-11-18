@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferHandshakeConstant;
@@ -29,11 +28,7 @@ import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeReq;
-import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
-import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -105,46 +100,9 @@ public abstract class IoTDBDataNodeAirGapConnector extends IoTDBAirGapConnector 
         Boolean.toString(shouldReceiverConvertOnTypeMismatch));
     params.put(
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY, loadTsFileStrategy);
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME, username);
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD, password);
 
     return PipeTransferDataNodeHandshakeV2Req.toTPipeTransferBytes(params);
-  }
-
-  protected void doTransferWrapper(
-      final AirGapSocket socket,
-      final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
-      throws PipeException, IOException {
-    // We increase the reference count for this event to determine if the event may be released.
-    if (!pipeSchemaRegionWritePlanEvent.increaseReferenceCount(
-        IoTDBDataNodeAirGapConnector.class.getName())) {
-      return;
-    }
-    try {
-      doTransfer(socket, pipeSchemaRegionWritePlanEvent);
-    } finally {
-      pipeSchemaRegionWritePlanEvent.decreaseReferenceCount(
-          IoTDBDataNodeAirGapConnector.class.getName(), false);
-    }
-  }
-
-  private void doTransfer(
-      final AirGapSocket socket,
-      final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
-      throws PipeException, IOException {
-    if (!send(
-        pipeSchemaRegionWritePlanEvent.getPipeName(),
-        pipeSchemaRegionWritePlanEvent.getCreationTime(),
-        socket,
-        PipeTransferPlanNodeReq.toTPipeTransferBytes(
-            pipeSchemaRegionWritePlanEvent.getPlanNode()))) {
-      final String errorMessage =
-          String.format(
-              "Transfer data node write plan %s error. Socket: %s.",
-              pipeSchemaRegionWritePlanEvent.getPlanNode().getType(), socket);
-      receiverStatusHandler.handle(
-          new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
-              .setMessage(errorMessage),
-          errorMessage,
-          pipeSchemaRegionWritePlanEvent.toString());
-    }
   }
 }

@@ -173,7 +173,7 @@ public class TsFileSplitter {
     TTimePartitionSlot timePartitionSlot =
         TimePartitionUtils.getTimePartitionSlot(chunkMetadata.getStartTime());
     ChunkData chunkData =
-        ChunkData.createChunkData(isAligned, curDevice.toString(), header, timePartitionSlot);
+        ChunkData.createChunkData(isAligned, curDevice, header, timePartitionSlot);
 
     if (!needDecodeChunk(chunkMetadata)) {
       chunkData.setNotDecode();
@@ -230,8 +230,7 @@ public class TsFileSplitter {
             consumeChunkData(measurementId, chunkOffset, chunkData);
           }
           timePartitionSlot = pageTimePartitionSlot;
-          chunkData =
-              ChunkData.createChunkData(isAligned, curDevice.toString(), header, timePartitionSlot);
+          chunkData = ChunkData.createChunkData(isAligned, curDevice, header, timePartitionSlot);
         }
         if (isAligned) {
           pageIndex2ChunkData
@@ -267,9 +266,7 @@ public class TsFileSplitter {
             satisfiedLength = 0;
             endTime =
                 timePartitionSlot.getStartTime() + TimePartitionUtils.getTimePartitionInterval();
-            chunkData =
-                ChunkData.createChunkData(
-                    isAligned, curDevice.toString(), header, timePartitionSlot);
+            chunkData = ChunkData.createChunkData(isAligned, curDevice, header, timePartitionSlot);
           }
           satisfiedLength += 1;
         }

@@ -35,9 +35,9 @@ import java.util.Objects;
 
 public abstract class PipeTransferFileSealReqV2 extends TPipeTransferReq {
 
-  private transient List<String> fileNames;
-  private transient List<Long> fileLengths;
-  private transient Map<String, String> parameters;
+  protected transient List<String> fileNames;
+  protected transient List<Long> fileLengths;
+  protected transient Map<String, String> parameters;
 
   public final List<String> getFileNames() {
     return fileNames;

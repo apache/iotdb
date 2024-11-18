@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.TableDeviceInfo;
-import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl.ShowDevicesResult;
 
 import org.apache.ratis.util.function.TriConsumer;
 import org.apache.tsfile.block.column.Column;
@@ -34,23 +34,27 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TimeColumn;
+import org.apache.tsfile.utils.Binary;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator.constructFilteredTsBlock;
 
-public class DeviceAttributeUpdater extends DevicePredicateHandler {
+public class DeviceAttributeUpdater extends DeviceUpdater {
   private final List<ColumnTransformer> commonTransformerList;
   private final List<LeafColumnTransformer> projectLeafColumnTransformerList;
   private final List<ColumnTransformer> projectOutputTransformerList;
-  final BiFunction<Integer, String, String> attributeProvider;
   private final TriConsumer<String[], Integer, Object[]> attributeUpdater;
   private final TsBlockBuilder filterTsBlockBuilder;
   private final List<Integer> attributePointers = new ArrayList<>();
+
+  // Only for error log
+  private final List<String> attributeNames;
 
   @SuppressWarnings("squid:S107")
   public DeviceAttributeUpdater(
@@ -63,39 +67,32 @@ public class DeviceAttributeUpdater extends DevicePredicateHandler {
       final List<ColumnHeader> columnHeaderList,
       final List<LeafColumnTransformer> projectLeafColumnTransformerList,
       final List<ColumnTransformer> projectOutputTransformerList,
-      final BiFunction<Integer, String, String> attributeProvider,
-      final TriConsumer<String[], Integer, Object[]> attributeUpdater) {
+      final BiFunction<Integer, String, Binary> attributeProvider,
+      final TriConsumer<String[], Integer, Object[]> attributeUpdater,
+      final List<String> attributeNames) {
     super(
         filterLeafColumnTransformerList,
         filterOutputTransformer,
         database,
         tableName,
-        columnHeaderList);
+        columnHeaderList,
+        attributeProvider);
     this.commonTransformerList = commonTransformerList;
     this.projectLeafColumnTransformerList = projectLeafColumnTransformerList;
     this.projectOutputTransformerList = projectOutputTransformerList;
-    this.attributeProvider = attributeProvider;
     this.attributeUpdater = attributeUpdater;
     this.filterTsBlockBuilder = new TsBlockBuilder(filterOutputDataTypes);
+    this.attributeNames = attributeNames;
   }
 
-  public void handleDeviceNode(final IDeviceMNode<IMemMNode> node) {
-    final ShowDevicesResult result =
-        new ShowDevicesResult(
-            null,
-            node.isAlignedNullable(),
-            node.getSchemaTemplateId(),
-            node.getPartialPath().getNodes());
-    final int pointer = ((TableDeviceInfo<IMemMNode>) node.getDeviceInfo()).getAttributePointer();
-    result.setAttributeProvider(k -> attributeProvider.apply(pointer, k));
-    attributePointers.add(pointer);
-    addBatch(result);
-    if (hasComputedResult()) {
-      update();
-    }
+  @Override
+  public void handleDeviceNode(final IDeviceMNode<IMemMNode> node) throws MetadataException {
+    attributePointers.add(
+        ((TableDeviceInfo<IMemMNode>) node.getDeviceInfo()).getAttributePointer());
+    super.handleDeviceNode(node);
   }
 
-  private void update() {
+  protected void update() throws MetadataException {
     final TsBlock block = getFilterTsBlock();
 
     projectLeafColumnTransformerList.forEach(
@@ -111,13 +108,26 @@ public class DeviceAttributeUpdater extends DevicePredicateHandler {
             .collect(Collectors.toList());
 
     for (int i = 0; i < (withoutFilter() ? attributePointers.size() : indexes.size()); ++i) {
-      final int finalI = i;
       final String[] nodes =
           deviceSchemaBatch.get(withoutFilter() ? i : indexes.get(i)).getRawNodes();
+      final Object[] results = new Object[resultColumns.size()];
+      for (int j = 0; j < resultColumns.size(); ++j) {
+        final Object o = resultColumns.get(j).isNull(i) ? null : resultColumns.get(j).getObject(i);
+        if (Objects.nonNull(o) && !(o instanceof Binary)) {
+          throw new MetadataException(
+              "Result type mismatch for attribute '"
+                  + attributeNames.get(j)
+                  + "', expected "
+                  + Binary.class
+                  + ", actual "
+                  + o.getClass());
+        }
+        results[j] = o;
+      }
       attributeUpdater.accept(
           Arrays.copyOfRange(nodes, 3, nodes.length),
           attributePointers.get(withoutFilter() ? i : indexes.get(i)),
-          resultColumns.stream().map(column -> column.getObject(finalI)).toArray(Object[]::new));
+          results);
     }
 
     attributePointers.clear();
@@ -147,11 +157,7 @@ public class DeviceAttributeUpdater extends DevicePredicateHandler {
   }
 
   @Override
-  public void close() {
-    prepareBatchResult();
-    if (hasComputedResult()) {
-      update();
-    }
+  public void close() throws MetadataException {
     super.close();
     projectOutputTransformerList.forEach(ColumnTransformer::close);
   }

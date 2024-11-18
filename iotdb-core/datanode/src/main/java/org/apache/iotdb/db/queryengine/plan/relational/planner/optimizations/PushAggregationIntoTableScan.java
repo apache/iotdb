@@ -56,7 +56,7 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
   @Override
   public PlanNode optimize(PlanNode plan, PlanOptimizer.Context context) {
     if (!(context.getAnalysis().getStatement() instanceof Query)
-        || !context.getAnalysis().hasAggregates()) {
+        || !context.getAnalysis().containsAggregationQuery()) {
       return plan;
     }
 
@@ -96,7 +96,10 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
           tableScanNode = (TableScanNode) projectNode.getChild();
         }
       }
-      if (tableScanNode == null) { // no need to optimize
+
+      // only optimize AggregationNode with raw TableScanNode
+      if (tableScanNode == null
+          || tableScanNode instanceof AggregationTableScanNode) { // no need to optimize
         return node;
       }
 
@@ -137,17 +140,7 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
           hasProject ? projectNode.getAssignments().getMap() : null;
       // calculate Function part
       for (AggregationNode.Aggregation aggregation : values) {
-        // if the function cannot make use of Statistics, we don't push down
-        if (!metadata.canUseStatistics(
-            aggregation.getResolvedFunction().getSignature().getName(),
-            aggregation.getArguments().stream()
-                .anyMatch(
-                    v ->
-                        ((SymbolReference) v)
-                            .getName()
-                            .equalsIgnoreCase(TimestampOperand.TIMESTAMP_EXPRESSION_STRING)))) {
-          return PushDownLevel.NOOP;
-        }
+        // all the functions can be pre-agg in AggTableScanNode
 
         // if expr appears in arguments of Aggregation, we don't push down
         if (hasProject
@@ -179,10 +172,10 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
                               && !(assignments.get(groupingKey) instanceof SymbolReference
                                   || isDateBinFunctionOfTime(
                                       assignments.get(groupingKey), dateBinFunctionsOfTime))
-                          || tableScanNode.isMeasurementColumn(groupingKey))
+                          || tableScanNode.isMeasurementOrTimeColumn(groupingKey))
           || dateBinFunctionsOfTime.size() > 1) {
-        // If expr except date_bin(time) or Measurement column appears in groupingKeys, we don't
-        // push down;
+        // If expr except date_bin(time), Measurement column, or Time column appears in
+        // groupingKeys, we don't push down;
         // Attention: Now we also don't push down if there are more than one date_bin function
         // appear in groupingKeys.
 

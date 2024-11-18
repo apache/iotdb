@@ -244,7 +244,7 @@ public class PartitionBalancer {
   public void setupPartitionBalancer() {
     dataPartitionPolicyTableMap.clear();
     getClusterSchemaManager()
-        .getDatabaseNames()
+        .getDatabaseNames(null)
         .forEach(
             database -> {
               DataPartitionPolicyTable dataPartitionPolicyTable = new DataPartitionPolicyTable();

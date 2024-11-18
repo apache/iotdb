@@ -63,7 +63,6 @@ import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -677,11 +676,8 @@ public class QueryPlanner {
       @Nonnull List<Expression> gapFillGroupingKeys,
       @Nonnull Expression wherePredicate) {
     Symbol gapFillColumnSymbol = subPlan.translate(gapFillColumn);
-    List<Symbol> groupingKeys = Collections.emptyList();
-    if (!gapFillGroupingKeys.isEmpty()) {
-      groupingKeys = new ArrayList<>(gapFillGroupingKeys.size());
-      subPlan = fillGroup(subPlan, gapFillGroupingKeys, groupingKeys, gapFillColumnSymbol);
-    }
+    List<Symbol> groupingKeys = new ArrayList<>(gapFillGroupingKeys.size());
+    subPlan = fillGroup(subPlan, gapFillGroupingKeys, groupingKeys, gapFillColumnSymbol);
 
     int monthDuration = (int) ((LongLiteral) gapFillColumn.getChildren().get(0)).getParsedValue();
     long nonMonthDuration = ((LongLiteral) gapFillColumn.getChildren().get(1)).getParsedValue();

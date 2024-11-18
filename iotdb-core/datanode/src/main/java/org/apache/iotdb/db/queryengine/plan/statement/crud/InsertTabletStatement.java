@@ -66,7 +66,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   private static final String DATATYPE_UNSUPPORTED = "Data type %s is not supported.";
 
   protected long[] times; // times should be sorted. It is done in the session API.
-  protected BitMap[] bitMaps;
+  protected BitMap[] nullBitMaps;
   protected Object[] columns;
 
   private IDeviceID[] deviceIDs;
@@ -122,11 +122,11 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   }
 
   public BitMap[] getBitMaps() {
-    return bitMaps;
+    return nullBitMaps;
   }
 
   public void setBitMaps(BitMap[] bitMaps) {
-    this.bitMaps = bitMaps;
+    this.nullBitMaps = bitMaps;
   }
 
   public long[] getTimes() {
@@ -278,8 +278,8 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
         measurements[i] = pairList.get(i).left;
         measurementSchemas[i] = this.measurementSchemas[realIndex];
         dataTypes[i] = this.dataTypes[realIndex];
-        if (this.bitMaps != null) {
-          copiedBitMaps[i] = this.bitMaps[realIndex];
+        if (this.nullBitMaps != null) {
+          copiedBitMaps[i] = this.nullBitMaps[realIndex];
         }
         if (this.measurementIsAligned != null) {
           statement.setAligned(this.measurementIsAligned[realIndex]);
@@ -289,7 +289,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       statement.setMeasurements(measurements);
       statement.setMeasurementSchemas(measurementSchemas);
       statement.setDataTypes(dataTypes);
-      if (this.bitMaps != null) {
+      if (this.nullBitMaps != null) {
         statement.setBitMaps(copiedBitMaps);
       }
       statement.setFailedMeasurementIndex2Info(failedMeasurementIndex2Info);
@@ -461,8 +461,9 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       deviceIdSegments[0] = this.getTableName();
       for (int i = 0; i < getIdColumnIndices().size(); i++) {
         final Integer columnIndex = getIdColumnIndices().get(i);
-        Object idSeg = ((Object[]) columns[columnIndex])[rowIdx];
-        deviceIdSegments[i + 1] = idSeg != null ? idSeg.toString() : null;
+        boolean isNull = isNull(rowIdx, i);
+        deviceIdSegments[i + 1] =
+            isNull ? null : ((Object[]) columns[columnIndex])[rowIdx].toString();
       }
       deviceIDs[rowIdx] = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
     }
@@ -474,21 +475,21 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   public void insertColumn(int pos, ColumnSchema columnSchema) {
     super.insertColumn(pos, columnSchema);
 
-    if (bitMaps == null) {
-      bitMaps = new BitMap[measurements.length];
-      bitMaps[pos] = new BitMap(rowCount);
+    if (nullBitMaps == null) {
+      nullBitMaps = new BitMap[measurements.length];
+      nullBitMaps[pos] = new BitMap(rowCount);
       for (int i = 0; i < rowCount; i++) {
-        bitMaps[pos].mark(i);
+        nullBitMaps[pos].mark(i);
       }
     } else {
-      BitMap[] tmpBitmaps = new BitMap[bitMaps.length + 1];
-      System.arraycopy(bitMaps, 0, tmpBitmaps, 0, pos);
+      BitMap[] tmpBitmaps = new BitMap[nullBitMaps.length + 1];
+      System.arraycopy(nullBitMaps, 0, tmpBitmaps, 0, pos);
       tmpBitmaps[pos] = new BitMap(rowCount);
       for (int i = 0; i < rowCount; i++) {
         tmpBitmaps[pos].mark(i);
       }
-      System.arraycopy(bitMaps, pos, tmpBitmaps, pos + 1, bitMaps.length - pos);
-      bitMaps = tmpBitmaps;
+      System.arraycopy(nullBitMaps, pos, tmpBitmaps, pos + 1, nullBitMaps.length - pos);
+      nullBitMaps = tmpBitmaps;
     }
 
     Object[] tmpColumns = new Object[columns.length + 1];
@@ -507,10 +508,17 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   @Override
   public void swapColumn(int src, int target) {
     super.swapColumn(src, target);
-    if (bitMaps != null) {
-      CommonUtils.swapArray(bitMaps, src, target);
+    if (nullBitMaps != null) {
+      CommonUtils.swapArray(nullBitMaps, src, target);
     }
     CommonUtils.swapArray(columns, src, target);
     deviceIDs = null;
+  }
+
+  public boolean isNull(int row, int col) {
+    if (nullBitMaps == null || nullBitMaps[col] == null) {
+      return false;
+    }
+    return nullBitMaps[col].isMarked(row);
   }
 }

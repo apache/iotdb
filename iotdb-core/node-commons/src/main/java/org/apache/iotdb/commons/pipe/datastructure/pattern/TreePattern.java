@@ -64,7 +64,7 @@ public abstract class TreePattern {
   }
 
   /**
-   * Interpret from source parameters and get a {@link PipePattern}.
+   * Interpret from source parameters and get a {@link TreePattern}.
    *
    * @return The interpreted {@link TreePattern} which is not {@code null}.
    */
@@ -129,6 +129,13 @@ public abstract class TreePattern {
 
   /** Check if a device's all measurements are covered by this pattern. */
   public abstract boolean coversDevice(final IDeviceID device);
+
+  /**
+   * Check if a database may have some measurements matched by the pattern.
+   *
+   * @return {@code true} if the pattern may overlap with the database, {@code false} otherwise.
+   */
+  public abstract boolean mayOverlapWithDb(final String db);
 
   /**
    * Check if a device may have some measurements matched by the pattern.

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTsFilePlainEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -38,6 +39,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQueue {
 
@@ -76,138 +78,147 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
       final String consumerId,
       final SubscriptionCommitContext commitContext,
       final long writingOffset) {
-    // 1. Extract current event and check it
-    final SubscriptionEvent event =
-        inFlightEvents.compute(
-            new Pair<>(consumerId, commitContext),
-            (key, ev) -> {
-              if (Objects.nonNull(ev) && ev.isCommitted()) {
-                ev.cleanUp();
-                return null; // remove this entry
+    final AtomicReference<SubscriptionEvent> eventRef = new AtomicReference<>();
+    inFlightEvents.compute(
+        new Pair<>(consumerId, commitContext),
+        (key, ev) -> {
+          // 1. Extract current event and check it
+          if (Objects.isNull(ev)) {
+            final String errorMessage =
+                String.format(
+                    "SubscriptionPrefetchingTsFileQueue %s is currently not transferring any file to consumer %s, commit context: %s, writing offset: %s",
+                    this, consumerId, commitContext, writingOffset);
+            LOGGER.warn(errorMessage);
+            eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
+            return null;
+          }
+
+          if (ev.isCommitted()) {
+            ev.cleanUp();
+            final String errorMessage =
+                String.format(
+                    "outdated poll request after commit, consumer id: %s, commit context: %s, writing offset: %s, prefetching queue: %s",
+                    consumerId, commitContext, writingOffset, this);
+            LOGGER.warn(errorMessage);
+            eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
+            return null; // remove this entry
+          }
+
+          // check consumer id
+          if (!Objects.equals(ev.getLastPolledConsumerId(), consumerId)) {
+            final String errorMessage =
+                String.format(
+                    "inconsistent polled consumer id, current: %s, incoming: %s, commit context: %s, writing offset: %s, prefetching queue: %s",
+                    ev.getLastPolledConsumerId(), consumerId, commitContext, writingOffset, this);
+            LOGGER.warn(errorMessage);
+            eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
+            return ev;
+          }
+
+          final SubscriptionPollResponse response = ev.getCurrentResponse();
+          final SubscriptionPollPayload payload = response.getPayload();
+
+          // 2. Check previous response type, file name and offset
+          final short responseType = response.getResponseType();
+          if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
+            final String errorMessage = String.format("unexpected response type: %s", responseType);
+            LOGGER.warn(errorMessage);
+            eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
+            return ev;
+          }
+
+          final String fileName = ev.getFileName();
+          switch (SubscriptionPollResponseType.valueOf(responseType)) {
+            case FILE_INIT:
+              // check file name
+              if (!Objects.equals(fileName, ((FileInitPayload) payload).getFileName())) {
+                final String errorMessage =
+                    String.format(
+                        "inconsistent file name, current: %s, incoming: %s, consumer: %s, writing offset: %s, prefetching queue: %s",
+                        ((FileInitPayload) payload).getFileName(),
+                        fileName,
+                        consumerId,
+                        writingOffset,
+                        this);
+                LOGGER.warn(errorMessage);
+                eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
+                return ev;
               }
-              return ev;
-            });
+              // no need to check offset for resume from breakpoint
+              break;
+            case FILE_PIECE:
+              // check file name
+              if (!Objects.equals(fileName, ((FilePiecePayload) payload).getFileName())) {
+                final String errorMessage =
+                    String.format(
+                        "inconsistent file name, current: %s, incoming: %s, consumer: %s, writing offset: %s, prefetching queue: %s",
+                        ((FilePiecePayload) payload).getFileName(),
+                        fileName,
+                        consumerId,
+                        writingOffset,
+                        this);
+                LOGGER.warn(errorMessage);
+                eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
+                return ev;
+              }
+              // check offset
+              if (writingOffset != ((FilePiecePayload) payload).getNextWritingOffset()) {
+                final String errorMessage =
+                    String.format(
+                        "inconsistent offset, current: %s, incoming: %s, consumer: %s, file name: %s, prefetching queue: %s",
+                        ((FilePiecePayload) payload).getNextWritingOffset(),
+                        writingOffset,
+                        consumerId,
+                        fileName,
+                        this);
+                LOGGER.warn(errorMessage);
+                eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
+                return ev;
+              }
+              break;
+            case FILE_SEAL:
+              {
+                final String errorMessage =
+                    String.format(
+                        "poll after sealing, consumer: %s, file name: %s, writing offset: %s, prefetching queue: %s",
+                        consumerId, fileName, writingOffset, this);
+                LOGGER.warn(errorMessage);
+                eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
+                return ev;
+              }
+            default:
+              {
+                final String errorMessage =
+                    String.format("unexpected response type: %s", responseType);
+                LOGGER.warn(errorMessage);
+                eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
+                return ev;
+              }
+          }
 
-    if (Objects.isNull(event)) {
-      final String errorMessage =
-          String.format(
-              "SubscriptionPrefetchingTsFileQueue %s is currently not transferring any file to consumer %s, commit context: %s, writing offset: %s",
-              this, consumerId, commitContext, writingOffset);
-      LOGGER.warn(errorMessage);
-      return generateSubscriptionPollErrorResponse(errorMessage);
-    }
+          // 3. Poll tsfile piece or tsfile seal
+          try {
+            executeReceiverSubtask(
+                () -> {
+                  ev.fetchNextResponse(writingOffset);
+                  return null;
+                },
+                SubscriptionAgent.receiver().remainingMs());
+            ev.recordLastPolledTimestamp();
+            eventRef.set(ev);
+          } catch (final Exception e) {
+            final String errorMessage =
+                String.format(
+                    "exception occurred when fetching next response: %s, consumer id: %s, commit context: %s, writing offset: %s, prefetching queue: %s",
+                    e, consumerId, commitContext, writingOffset, this);
+            LOGGER.warn(errorMessage);
+            eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
+          }
 
-    // check consumer id
-    if (!Objects.equals(event.getLastPolledConsumerId(), consumerId)) {
-      final String errorMessage =
-          String.format(
-              "inconsistent polled consumer id, current: %s, incoming: %s, commit context: %s, writing offset: %s, prefetching queue: %s",
-              event.getLastPolledConsumerId(), consumerId, commitContext, writingOffset, this);
-      LOGGER.warn(errorMessage);
-      return generateSubscriptionPollErrorResponse(errorMessage);
-    }
+          return ev;
+        });
 
-    final SubscriptionPollResponse response = event.getCurrentResponse();
-    final SubscriptionPollPayload payload = response.getPayload();
-
-    // 2. Check previous response type, file name and offset
-    final short responseType = response.getResponseType();
-    if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
-      final String errorMessage = String.format("unexpected response type: %s", responseType);
-      LOGGER.warn(errorMessage);
-      return generateSubscriptionPollErrorResponse(errorMessage);
-    }
-
-    final String fileName = event.getFileName();
-    switch (SubscriptionPollResponseType.valueOf(responseType)) {
-      case FILE_INIT:
-        // check file name
-        if (!Objects.equals(fileName, ((FileInitPayload) payload).getFileName())) {
-          final String errorMessage =
-              String.format(
-                  "inconsistent file name, current: %s, incoming: %s, consumer: %s, writing offset: %s, prefetching queue: %s",
-                  ((FileInitPayload) payload).getFileName(),
-                  fileName,
-                  consumerId,
-                  writingOffset,
-                  this);
-          LOGGER.warn(errorMessage);
-          return generateSubscriptionPollErrorResponse(errorMessage);
-        }
-        // check offset
-        if (writingOffset != 0) {
-          final String errorMessage =
-              String.format(
-                  "inconsistent offset, current: %s, incoming: %s, consumer: %s, file name: %s, prefetching queue: %s",
-                  0, writingOffset, consumerId, fileName, this);
-          LOGGER.warn(errorMessage);
-          return generateSubscriptionPollErrorResponse(errorMessage);
-        }
-        break;
-      case FILE_PIECE:
-        // check file name
-        if (!Objects.equals(fileName, ((FilePiecePayload) payload).getFileName())) {
-          final String errorMessage =
-              String.format(
-                  "inconsistent file name, current: %s, incoming: %s, consumer: %s, writing offset: %s, prefetching queue: %s",
-                  ((FilePiecePayload) payload).getFileName(),
-                  fileName,
-                  consumerId,
-                  writingOffset,
-                  this);
-          LOGGER.warn(errorMessage);
-          return generateSubscriptionPollErrorResponse(errorMessage);
-        }
-        // check offset
-        if (writingOffset != ((FilePiecePayload) payload).getNextWritingOffset()) {
-          final String errorMessage =
-              String.format(
-                  "inconsistent offset, current: %s, incoming: %s, consumer: %s, file name: %s, prefetching queue: %s",
-                  ((FilePiecePayload) payload).getNextWritingOffset(),
-                  writingOffset,
-                  consumerId,
-                  fileName,
-                  this);
-          LOGGER.warn(errorMessage);
-          return generateSubscriptionPollErrorResponse(errorMessage);
-        }
-        break;
-      case FILE_SEAL:
-        {
-          final String errorMessage =
-              String.format(
-                  "poll after sealing, consumer: %s, file name: %s, writing offset: %s, prefetching queue: %s",
-                  consumerId, fileName, writingOffset, this);
-          LOGGER.warn(errorMessage);
-          return generateSubscriptionPollErrorResponse(errorMessage);
-        }
-      default:
-        {
-          final String errorMessage = String.format("unexpected response type: %s", responseType);
-          LOGGER.warn(errorMessage);
-          return generateSubscriptionPollErrorResponse(errorMessage);
-        }
-    }
-
-    // 3. Poll tsfile piece or tsfile seal
-    try {
-      event.fetchNextResponse();
-    } catch (final Exception e) {
-      LOGGER.warn(
-          "Exception occurred when SubscriptionPrefetchingTsFileQueue {} transferring file (with event {}) to consumer {}",
-          this,
-          event,
-          consumerId,
-          e);
-      final String errorMessage =
-          String.format(
-              "Exception occurred when SubscriptionPrefetchingTsFileQueue %s transferring file (with event %s) to consumer %s: %s",
-              this, event, consumerId, e);
-      return generateSubscriptionPollErrorResponse(errorMessage);
-    }
-
-    event.recordLastPolledTimestamp();
-    return event;
+    return eventRef.get();
   }
 
   /////////////////////////////// prefetch ///////////////////////////////
@@ -218,10 +229,8 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
     final SubscriptionEvent ev =
         new SubscriptionEvent(
             new SubscriptionPipeTsFilePlainEvent((PipeTsFileInsertionEvent) event),
-            new SubscriptionPollResponse(
-                SubscriptionPollResponseType.FILE_INIT.getType(),
-                new FileInitPayload(((PipeTsFileInsertionEvent) event).getTsFile().getName()),
-                commitContext));
+            ((PipeTsFileInsertionEvent) event).getTsFile(),
+            commitContext);
     super.enqueueEventToPrefetchingQueue(ev);
     return true;
   }

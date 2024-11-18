@@ -51,7 +51,7 @@ public class AsyncRequestContext<Request, Response, RequestType, NodeLocation> {
    * <p>All kinds of AsyncHandler will remove its targetNode from the nodeLocationMap only if its
    * corresponding RPC request success
    */
-  private final Map<Integer, NodeLocation> nodeLocationMap;
+  private final ConcurrentHashMap<Integer, NodeLocation> nodeLocationMap;
 
   /**
    * Map key: The indices(targetNode's ID) of asynchronous RPC requests.
@@ -66,25 +66,29 @@ public class AsyncRequestContext<Request, Response, RequestType, NodeLocation> {
   private CountDownLatch countDownLatch;
 
   /** Custom constructor. */
-  public AsyncRequestContext(RequestType requestType) {
+  public AsyncRequestContext(final RequestType requestType) {
     this.requestType = requestType;
     this.requestMap = new ConcurrentHashMap<>();
     this.nodeLocationMap = new ConcurrentHashMap<>();
     this.responseMap = new ConcurrentHashMap<>();
   }
 
-  public void putRequest(int requestId, Request request) {
+  public void putRequest(final int requestId, final Request request) {
     requestMap.put(requestId, request);
   }
 
-  public void putNodeLocation(int requestId, NodeLocation nodeLocation) {
+  public Request putRequestIfAbsent(final int requestId, final Request request) {
+    return requestMap.putIfAbsent(requestId, request);
+  }
+
+  public void putNodeLocation(final int requestId, final NodeLocation nodeLocation) {
     nodeLocationMap.put(requestId, nodeLocation);
   }
 
   /** Constructor for null requests. */
   public AsyncRequestContext(RequestType requestType, Map<Integer, NodeLocation> nodeLocationMap) {
     this.requestType = requestType;
-    this.nodeLocationMap = nodeLocationMap;
+    this.nodeLocationMap = new ConcurrentHashMap<>(nodeLocationMap);
     this.requestMap = new ConcurrentHashMap<>();
     this.responseMap = new ConcurrentHashMap<>();
   }
@@ -93,7 +97,7 @@ public class AsyncRequestContext<Request, Response, RequestType, NodeLocation> {
   public AsyncRequestContext(
       RequestType requestType, Request request, Map<Integer, NodeLocation> nodeLocationMap) {
     this.requestType = requestType;
-    this.nodeLocationMap = nodeLocationMap;
+    this.nodeLocationMap = new ConcurrentHashMap<>(nodeLocationMap);
     this.requestMap = new ConcurrentHashMap<>();
     this.nodeLocationMap.keySet().forEach(nodeId -> this.requestMap.put(nodeId, request));
     this.responseMap = new ConcurrentHashMap<>();

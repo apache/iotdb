@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -44,6 +45,7 @@ import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceAttributeUpdater;
+import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceBlackListConstructor;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
@@ -77,6 +79,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -97,6 +100,8 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -189,13 +194,19 @@ public class MTreeBelowSGMemoryImpl {
       final SchemaRegionMemMetric metric,
       final Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
       final Consumer<IDeviceMNode<IMemMNode>> deviceProcess,
+      final BiConsumer<IDeviceMNode<IMemMNode>, String> tableDeviceProcess,
       final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter,
       final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> attributeGetter)
       throws IOException, IllegalPathException {
     return new MTreeBelowSGMemoryImpl(
         PartialPath.getDatabasePath(storageGroupFullPath),
         MemMTreeStore.loadFromSnapshot(
-            snapshotDir, measurementProcess, deviceProcess, regionStatistics, metric),
+            snapshotDir,
+            measurementProcess,
+            deviceProcess,
+            tableDeviceProcess,
+            regionStatistics,
+            metric),
         tagGetter,
         attributeGetter,
         regionStatistics);
@@ -525,7 +536,12 @@ public class MTreeBelowSGMemoryImpl {
         final IMemMNode memMNode = store.getChild(device.getAsMNode(), alias);
         if (memMNode != null) {
           throw new MetadataException(
-              "The alias is duplicated with the name or alias of other measurement.");
+              "The alias is duplicated with the name or alias of other measurement, alias: "
+                  + alias
+                  + ", fullPath: "
+                  + fullPath
+                  + ", otherMeasurement: "
+                  + memMNode.getFullPath());
         }
         if (measurementMNode.getAlias() != null) {
           device.deleteAliasChild(measurementMNode.getAlias());
@@ -623,7 +639,7 @@ public class MTreeBelowSGMemoryImpl {
     try (final MeasurementUpdater<IMemMNode> updater =
         new MeasurementUpdater<IMemMNode>(
             rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
-
+          @Override
           protected void updateMeasurement(final IMeasurementMNode<IMemMNode> node) {
             if (!node.isLogicalView()) {
               isAllLogicalView.set(false);
@@ -643,7 +659,7 @@ public class MTreeBelowSGMemoryImpl {
     try (final MeasurementUpdater<IMemMNode> updater =
         new MeasurementUpdater<IMemMNode>(
             rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
-
+          @Override
           protected void updateMeasurement(final IMeasurementMNode<IMemMNode> node) {
             node.setPreDeleted(false);
             result.add(getPartialPathFromRootToNode(node.getAsMNode()));
@@ -660,7 +676,7 @@ public class MTreeBelowSGMemoryImpl {
     try (final MeasurementCollector<Void, IMemMNode> collector =
         new MeasurementCollector<Void, IMemMNode>(
             rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
-
+          @Override
           protected Void collectMeasurement(final IMeasurementMNode<IMemMNode> node) {
             if (node.isPreDeleted()) {
               result.add(getPartialPathFromRootToNode(node.getAsMNode()));
@@ -680,7 +696,7 @@ public class MTreeBelowSGMemoryImpl {
     try (final MeasurementCollector<Void, IMemMNode> collector =
         new MeasurementCollector<Void, IMemMNode>(
             rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
-
+          @Override
           protected Void collectMeasurement(final IMeasurementMNode<IMemMNode> node) {
             if (node.isPreDeleted()) {
               result.add(getPartialPathFromRootToNode(node.getAsMNode()).getDevicePath());
@@ -755,6 +771,7 @@ public class MTreeBelowSGMemoryImpl {
     try (final MeasurementCollector<Void, IMemMNode> collector =
         new MeasurementCollector<Void, IMemMNode>(
             rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
+          @Override
           protected Void collectMeasurement(IMeasurementMNode<IMemMNode> node) {
             final IDeviceMNode<IMemMNode> deviceMNode =
                 getParentOfNextMatchedNode().getAsDeviceMNode();
@@ -796,6 +813,7 @@ public class MTreeBelowSGMemoryImpl {
     try (final MeasurementCollector<Void, IMemMNode> collector =
         new MeasurementCollector<Void, IMemMNode>(
             rootNode, patternTree, store, SchemaConstant.ALL_MATCH_SCOPE) {
+          @Override
           protected Void collectMeasurement(IMeasurementMNode<IMemMNode> node) {
             final IDeviceMNode<IMemMNode> deviceMNode =
                 getParentOfNextMatchedNode().getAsDeviceMNode();
@@ -931,11 +949,12 @@ public class MTreeBelowSGMemoryImpl {
           new EntityUpdater<IMemMNode>(
               rootNode, entry.getKey(), store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
+            @Override
             protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
               if (entry.getValue().contains(node.getSchemaTemplateId())) {
                 resultTemplateSetInfo.put(
                     node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
-                node.preDeactivateTemplate();
+                node.preDeactivateSelfOrTemplate();
               }
             }
           }) {
@@ -953,12 +972,13 @@ public class MTreeBelowSGMemoryImpl {
           new EntityUpdater<IMemMNode>(
               rootNode, entry.getKey(), store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
+            @Override
             protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
               if (entry.getValue().contains(node.getSchemaTemplateId())
-                  && node.isPreDeactivateTemplate()) {
+                  && node.isPreDeactivateSelfOrTemplate()) {
                 resultTemplateSetInfo.put(
                     node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
-                node.rollbackPreDeactivateTemplate();
+                node.rollbackPreDeactivateSelfOrTemplate();
               }
             }
           }) {
@@ -976,9 +996,10 @@ public class MTreeBelowSGMemoryImpl {
           new EntityUpdater<IMemMNode>(
               rootNode, entry.getKey(), store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
+            @Override
             protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
               if (entry.getValue().contains(node.getSchemaTemplateId())
-                  && node.isPreDeactivateTemplate()) {
+                  && node.isPreDeactivateSelfOrTemplate()) {
                 resultTemplateSetInfo.put(
                     node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
                 regionStatistics.deactivateTemplate(node.getSchemaTemplateId());
@@ -1032,7 +1053,7 @@ public class MTreeBelowSGMemoryImpl {
   @SuppressWarnings("java:S2095")
   public ISchemaReader<IDeviceSchemaInfo> getDeviceReader(
       final IShowDevicesPlan showDevicesPlan,
-      final BiFunction<Integer, String, String> attributeProvider)
+      final BiFunction<Integer, String, Binary> attributeProvider)
       throws MetadataException {
     final EntityCollector<IDeviceSchemaInfo, IMemMNode> collector =
         new EntityCollector<IDeviceSchemaInfo, IMemMNode>(
@@ -1042,6 +1063,7 @@ public class MTreeBelowSGMemoryImpl {
             showDevicesPlan.isPrefixMatch(),
             showDevicesPlan.getScope()) {
 
+          @Override
           protected IDeviceSchemaInfo collectEntity(final IDeviceMNode<IMemMNode> node) {
             final PartialPath device = getPartialPathFromRootToNode(node.getAsMNode());
             final ShowDevicesResult result =
@@ -1064,22 +1086,27 @@ public class MTreeBelowSGMemoryImpl {
           private final DeviceFilterVisitor filterVisitor = new DeviceFilterVisitor();
           private IDeviceSchemaInfo next;
 
+          @Override
           public boolean isSuccess() {
             return collector.isSuccess();
           }
 
+          @Override
           public Throwable getFailure() {
             return collector.getFailure();
           }
 
+          @Override
           public void close() {
             collector.close();
           }
 
+          @Override
           public ListenableFuture<?> isBlocked() {
             return NOT_BLOCKED;
           }
 
+          @Override
           public boolean hasNext() {
             while (next == null && collector.hasNext()) {
               IDeviceSchemaInfo temp = collector.next();
@@ -1091,6 +1118,7 @@ public class MTreeBelowSGMemoryImpl {
             return next != null;
           }
 
+          @Override
           public IDeviceSchemaInfo next() {
             if (!hasNext()) {
               throw new NoSuchElementException();
@@ -1110,17 +1138,21 @@ public class MTreeBelowSGMemoryImpl {
 
   // Used for device query/fetch with filters during show device or table query
   public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
-      final PartialPath pattern, final BiFunction<Integer, String, String> attributeProvider)
+      final PartialPath pattern, final BiFunction<Integer, String, Binary> attributeProvider)
       throws MetadataException {
 
     final EntityCollector<IDeviceSchemaInfo, IMemMNode> collector =
         new EntityCollector<IDeviceSchemaInfo, IMemMNode>(rootNode, pattern, store, false, null) {
+          @Override
+          protected boolean acceptFullMatchedNode(final IMemMNode node) {
+            return node.isDevice() && !node.getAsDeviceMNode().isPreDeactivateSelfOrTemplate();
+          }
 
+          @Override
           protected IDeviceSchemaInfo collectEntity(final IDeviceMNode<IMemMNode> node) {
-            final PartialPath device = getPartialPathFromRootToNode(node.getAsMNode());
             final ShowDevicesResult result =
                 new ShowDevicesResult(
-                    device.getFullPath(),
+                    null,
                     node.isAlignedNullable(),
                     node.getSchemaTemplateId(),
                     node.getPartialPath().getNodes());
@@ -1134,26 +1166,32 @@ public class MTreeBelowSGMemoryImpl {
         };
     return new ISchemaReader<IDeviceSchemaInfo>() {
 
+      @Override
       public boolean isSuccess() {
         return collector.isSuccess();
       }
 
+      @Override
       public Throwable getFailure() {
         return collector.getFailure();
       }
 
+      @Override
       public void close() {
         collector.close();
       }
 
+      @Override
       public ListenableFuture<?> isBlocked() {
         return NOT_BLOCKED;
       }
 
+      @Override
       public boolean hasNext() {
         return collector.hasNext();
       }
 
+      @Override
       public IDeviceSchemaInfo next() {
         return collector.next();
       }
@@ -1164,7 +1202,7 @@ public class MTreeBelowSGMemoryImpl {
   public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
       final String table,
       final List<Object[]> devicePathList,
-      final BiFunction<Integer, String, String> attributeProvider) {
+      final BiFunction<Integer, String, Binary> attributeProvider) {
     return new ISchemaReader<IDeviceSchemaInfo>() {
 
       final Iterator<Object[]> deviceIdIterator = devicePathList.listIterator();
@@ -1211,7 +1249,7 @@ public class MTreeBelowSGMemoryImpl {
           try {
             final IMemMNode node = getTableDeviceNode(table, deviceIdIterator.next());
 
-            if (!node.isDevice()) {
+            if (!node.isDevice() || node.getAsDeviceMNode().isPreDeactivateSelfOrTemplate()) {
               continue;
             }
             final IDeviceMNode<IMemMNode> deviceNode = node.getAsDeviceMNode();
@@ -1292,20 +1330,24 @@ public class MTreeBelowSGMemoryImpl {
             showTimeSeriesPlan.isPrefixMatch(),
             showTimeSeriesPlan.getScope()) {
 
+          @Override
           protected ITimeSeriesSchemaInfo collectMeasurement(
               final IMeasurementMNode<IMemMNode> node) {
             return new ITimeSeriesSchemaInfo() {
 
               private Pair<Map<String, String>, Map<String, String>> tagAndAttribute = null;
 
+              @Override
               public String getAlias() {
                 return node.getAlias();
               }
 
+              @Override
               public IMeasurementSchema getSchema() {
                 return node.getSchema();
               }
 
+              @Override
               public Map<String, String> getTags() {
                 if (tagAndAttribute == null) {
                   tagAndAttribute = tagAndAttributeProvider.apply(node.getOffset());
@@ -1313,6 +1355,7 @@ public class MTreeBelowSGMemoryImpl {
                 return tagAndAttribute.left;
               }
 
+              @Override
               public Map<String, String> getAttributes() {
                 if (tagAndAttribute == null) {
                   tagAndAttribute = tagAndAttributeProvider.apply(node.getOffset());
@@ -1320,6 +1363,7 @@ public class MTreeBelowSGMemoryImpl {
                 return tagAndAttribute.right;
               }
 
+              @Override
               public boolean isUnderAlignedDevice() {
                 return getParentOfNextMatchedNode().getAsDeviceMNode().isAligned();
               }
@@ -1329,10 +1373,12 @@ public class MTreeBelowSGMemoryImpl {
                 return node.isLogicalView();
               }
 
+              @Override
               public String getFullPath() {
                 return getPartialPathFromRootToNode(node.getAsMNode()).getFullPath();
               }
 
+              @Override
               public PartialPath getPartialPath() {
                 return getPartialPathFromRootToNode(node.getAsMNode());
               }
@@ -1369,6 +1415,7 @@ public class MTreeBelowSGMemoryImpl {
             showNodesPlan.isPrefixMatch(),
             showNodesPlan.getScope()) {
 
+          @Override
           protected INodeSchemaInfo collectMNode(final IMemMNode node) {
             return new ShowNodesResult(
                 getPartialPathFromRootToNode(node).getFullPath(), node.getMNodeType());
@@ -1378,26 +1425,32 @@ public class MTreeBelowSGMemoryImpl {
 
     return new ISchemaReader<INodeSchemaInfo>() {
 
+      @Override
       public boolean isSuccess() {
         return collector.isSuccess();
       }
 
+      @Override
       public Throwable getFailure() {
         return collector.getFailure();
       }
 
+      @Override
       public void close() {
         collector.close();
       }
 
+      @Override
       public ListenableFuture<?> isBlocked() {
         return NOT_BLOCKED;
       }
 
+      @Override
       public boolean hasNext() {
         return collector.hasNext();
       }
 
+      @Override
       public INodeSchemaInfo next() {
         if (!hasNext()) {
           throw new NoSuchElementException();
@@ -1467,7 +1520,7 @@ public class MTreeBelowSGMemoryImpl {
     try (final MeasurementUpdater<IMemMNode> updater =
         new MeasurementUpdater<IMemMNode>(
             rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
-
+          @Override
           protected void updateMeasurement(final IMeasurementMNode<IMemMNode> node) {
             if (node.isLogicalView()) {
               node.setPreDeleted(true);
@@ -1486,7 +1539,7 @@ public class MTreeBelowSGMemoryImpl {
     try (final MeasurementUpdater<IMemMNode> updater =
         new MeasurementUpdater<IMemMNode>(
             rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
-
+          @Override
           protected void updateMeasurement(final IMeasurementMNode<IMemMNode> node) {
             if (node.isLogicalView()) {
               node.setPreDeleted(false);
@@ -1506,6 +1559,7 @@ public class MTreeBelowSGMemoryImpl {
         new MeasurementCollector<Void, IMemMNode>(
             rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
+          @Override
           protected Void collectMeasurement(final IMeasurementMNode<IMemMNode> node) {
             if (node.isLogicalView() && node.isPreDeleted()) {
               result.add(getPartialPathFromRootToNode(node.getAsMNode()));
@@ -1561,7 +1615,7 @@ public class MTreeBelowSGMemoryImpl {
         final TableDeviceInfo<IMemMNode> deviceInfo = new TableDeviceInfo<>();
         deviceInfo.setAttributePointer(attributePointerGetter.getAsInt());
         entityMNode.getAsInternalMNode().setDeviceInfo(deviceInfo);
-        regionStatistics.addDevice();
+        regionStatistics.addTableDevice(tableName);
       }
     }
   }
@@ -1574,7 +1628,7 @@ public class MTreeBelowSGMemoryImpl {
             rootNode, pattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
           @Override
-          protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
+          protected void updateEntity(final IDeviceMNode<IMemMNode> node) throws MetadataException {
             batchUpdater.handleDeviceNode(node);
           }
         }) {
@@ -1582,8 +1636,126 @@ public class MTreeBelowSGMemoryImpl {
     }
   }
 
-  public void deleteTableDevice(final String tableName) {
+  public void constructTableDeviceBlackList(
+      final PartialPath pattern, final DeviceBlackListConstructor blackListConstructor)
+      throws MetadataException {
+    try (final EntityUpdater<IMemMNode> updater =
+        new EntityUpdater<IMemMNode>(
+            rootNode, pattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
+
+          @Override
+          protected void updateEntity(final IDeviceMNode<IMemMNode> node) throws MetadataException {
+            blackListConstructor.handleDeviceNode(node);
+          }
+        }) {
+      updater.update();
+    }
+  }
+
+  public void rollbackTableDeviceBlackList(final PartialPath pattern) throws MetadataException {
+    try (final EntityUpdater<IMemMNode> updater =
+        new EntityUpdater<IMemMNode>(
+            rootNode, pattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
+
+          @Override
+          protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
+            if (node.isPreDeactivateSelfOrTemplate()) {
+              regionStatistics.addTableDevice(pattern.getNodes()[2]);
+              node.rollbackPreDeactivateSelfOrTemplate();
+            }
+          }
+        }) {
+      updater.update();
+    }
+  }
+
+  public void deleteTableDevicesInBlackList(
+      final PartialPath pattern,
+      final IntConsumer attributeDeleter,
+      final Consumer<String[]> deviceAttributeCacheUpdateInvalidator)
+      throws MetadataException {
+    try (final EntityUpdater<IMemMNode> updater =
+        new EntityUpdater<IMemMNode>(
+            rootNode, pattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
+
+          @Override
+          protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
+            if (node.isPreDeactivateSelfOrTemplate()) {
+              attributeDeleter.accept(
+                  ((TableDeviceInfo<IMemMNode>) node.getAsDeviceMNode().getDeviceInfo())
+                      .getAttributePointer());
+              deviceAttributeCacheUpdateInvalidator.accept(node.getPartialPath().getNodes());
+              deleteEmptyInternalMNode(node);
+            }
+          }
+        }) {
+      updater.update();
+    }
+  }
+
+  public void renameTableAttribute() {}
+
+  public boolean deleteTableDevice(final String tableName, final IntConsumer attributeDeleter)
+      throws MetadataException {
+    if (!store.hasChild(storageGroupMNode, tableName)) {
+      return false;
+    }
+    final AtomicInteger memoryReleased = new AtomicInteger(0);
+    try (final MNodeCollector<Void, IMemMNode> collector =
+        new MNodeCollector<Void, IMemMNode>(
+            storageGroupMNode,
+            new PartialPath(new String[] {storageGroupMNode.getName(), tableName}),
+            this.store,
+            true,
+            SchemaConstant.ALL_MATCH_SCOPE) {
+          @Override
+          protected boolean acceptInternalMatchedNode(final IMemMNode node) {
+            return true;
+          }
+
+          @Override
+          protected Void collectMNode(final IMemMNode node) {
+            if (node.isDevice()) {
+              attributeDeleter.accept(
+                  ((TableDeviceInfo<IMemMNode>) node.getAsDeviceMNode().getDeviceInfo())
+                      .getAttributePointer());
+            }
+            memoryReleased.addAndGet(node.estimateSize());
+            return null;
+          }
+        }) {
+      collector.traverse();
+    }
     storageGroupMNode.deleteChild(tableName);
+    regionStatistics.resetTableDevice(tableName);
+    store.releaseMemory(memoryReleased.get());
+    return true;
+  }
+
+  public boolean dropTableAttribute(final String tableName, final IntConsumer attributeDropper)
+      throws MetadataException {
+    if (!store.hasChild(storageGroupMNode, tableName)) {
+      return false;
+    }
+    final AtomicInteger memoryReleased = new AtomicInteger(0);
+    try (final EntityUpdater<IMemMNode> updater =
+        new EntityUpdater<IMemMNode>(
+            storageGroupMNode,
+            new PartialPath(new String[] {storageGroupMNode.getName(), tableName}),
+            this.store,
+            true,
+            SchemaConstant.ALL_MATCH_SCOPE) {
+          @Override
+          protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
+            attributeDropper.accept(
+                ((TableDeviceInfo<IMemMNode>) node.getAsDeviceMNode().getDeviceInfo())
+                    .getAttributePointer());
+          }
+        }) {
+      updater.update();
+    }
+    store.releaseMemory(memoryReleased.get());
+    return true;
   }
 
   // endregion

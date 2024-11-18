@@ -44,9 +44,11 @@ import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -268,6 +270,17 @@ public class BatchedFastAlignedSeriesCompactionExecutor
     }
 
     @Override
+    protected Chunk readChunk(TsFileSequenceReader reader, ChunkMetadata chunkMetadata)
+        throws IOException {
+      Chunk chunk = super.readChunk(reader, chunkMetadata);
+      if (AlignedSeriesBatchCompactionUtils.isTimeChunk(chunkMetadata)) {
+        batchCompactionPlan.addTimeChunkToCache(
+            reader.getFileName(), chunkMetadata.getOffsetOfChunkHeader(), chunk);
+      }
+      return chunk;
+    }
+
+    @Override
     protected boolean flushChunkToCompactionWriter(ChunkMetadataElement chunkMetadataElement)
         throws IOException {
       boolean success = super.flushChunkToCompactionWriter(chunkMetadataElement);
@@ -373,6 +386,15 @@ public class BatchedFastAlignedSeriesCompactionExecutor
     protected List<AlignedChunkMetadata> getAlignedChunkMetadataList(TsFileResource resource)
         throws IOException, IllegalPathException {
       return getAlignedChunkMetadataListBySelectedValueColumn(resource, measurementSchemas);
+    }
+
+    @Override
+    protected Chunk readChunk(TsFileSequenceReader reader, ChunkMetadata chunkMetadata)
+        throws IOException {
+      if (AlignedSeriesBatchCompactionUtils.isTimeChunk(chunkMetadata)) {
+        return batchCompactionPlan.getTimeChunkFromCache(reader, chunkMetadata);
+      }
+      return super.readChunk(reader, chunkMetadata);
     }
 
     @Override

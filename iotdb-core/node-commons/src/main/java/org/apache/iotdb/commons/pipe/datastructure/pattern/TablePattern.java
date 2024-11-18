@@ -82,7 +82,7 @@ public class TablePattern {
   /**
    * Interpret from source parameters and get a pipe pattern.
    *
-   * @return The interpreted {@link TablePattern} which is not null.
+   * @return The interpreted {@link TablePattern} which is not {@code null}.
    */
   public static TablePattern parsePipePatternFromSourceParameters(
       final PipeParameters sourceParameters) {

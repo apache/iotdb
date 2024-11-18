@@ -36,8 +36,8 @@ public class LogicAndColumnTransformer extends LogicBinaryColumnTransformer {
     boolean[] selectionCopy = selection.clone();
 
     leftTransformer.evaluateWithSelection(selectionCopy);
-    Column leftColumn = leftTransformer.getColumn();
     int positionCount = leftTransformer.getColumnCachePositionCount();
+    Column leftColumn = leftTransformer.getColumn();
 
     for (int i = 0; i < positionCount; i++) {
       if (!leftColumn.isNull(i) && !leftColumn.getBoolean(i)) {

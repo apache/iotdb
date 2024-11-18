@@ -64,6 +64,7 @@ statement
     | insertStatement
     | updateStatement
     | deleteStatement
+    | deleteDeviceStatement
 
     // UDF Statement
     | showFunctionsStatement
@@ -112,6 +113,10 @@ statement
     | killQueryStatement
     | loadConfigurationStatement
     | setConfigurationStatement
+    | showCurrentSqlDialectStatement
+    | showCurrentUserStatement
+    | showCurrentDatabaseStatement
+    | showCurrentTimestampStatement
 
     // auth Statement
 
@@ -125,7 +130,7 @@ useDatabaseStatement
     ;
 
 showDatabasesStatement
-    : SHOW DATABASES
+    : SHOW DATABASES (DETAILS)?
     ;
 
 createDbStatement
@@ -166,12 +171,12 @@ dropTableStatement
     ;
 
 showTableStatement
-    : SHOW TABLES ((FROM | IN) database=identifier)?
+    : SHOW TABLES (DETAILS)? ((FROM | IN) database=identifier)?
           // ((LIKE pattern=string (ESCAPE escape=string)) | (WHERE expression))?
     ;
 
 descTableStatement
-    : (DESC | DESCRIBE) table=qualifiedName
+    : (DESC | DESCRIBE) table=qualifiedName (DETAILS)?
     ;
 
 alterTableStatement
@@ -216,7 +221,9 @@ updateStatement
     : UPDATE qualifiedName SET updateAssignment (',' updateAssignment)* (WHERE where=booleanExpression)?
     ;
 
-
+deleteDeviceStatement
+    : DELETE DEVICES FROM tableName=qualifiedName (WHERE booleanExpression)?
+    ;
 
 
 // -------------------------------------------- UDF Statement ----------------------------------------------------------
@@ -398,7 +405,7 @@ showAINodesStatement
     ;
 
 showClusterIdStatement
-    : SHOW CLUSTERID
+    : SHOW (CLUSTERID | CLUSTER_ID)
     ;
 
 showRegionIdStatement
@@ -433,7 +440,7 @@ flushStatement
     ;
 
 clearCacheStatement
-    : CLEAR CACHE (localOrClusterMode)?
+    : CLEAR clearCacheOptions? CACHE localOrClusterMode?
     ;
 
 repairDataStatement
@@ -469,9 +476,32 @@ setConfigurationStatement
     : SET CONFIGURATION propertyAssignments (ON INTEGER_VALUE)?
     ;
 
+clearCacheOptions
+    : ATTRIBUTE
+    | QUERY
+    | ALL
+    ;
+
 localOrClusterMode
     : (ON (LOCAL | CLUSTER))
     ;
+
+showCurrentSqlDialectStatement
+    : SHOW CURRENT_SQL_DIALECT
+    ;
+
+showCurrentUserStatement
+    : SHOW CURRENT_USER
+    ;
+
+showCurrentDatabaseStatement
+    : SHOW CURRENT_DATABASE
+    ;
+
+showCurrentTimestampStatement
+    : SHOW CURRENT_TIMESTAMP
+    ;
+
 
 
 
@@ -706,6 +736,7 @@ primaryExpression
     | CASE operand=expression whenClause+ (ELSE elseExpression=expression)? END           #simpleCase
     | CASE whenClause+ (ELSE elseExpression=expression)? END                              #searchedCase
     | CAST '(' expression AS type ')'                                                     #cast
+    | TRY_CAST '(' expression AS type ')'                                                 #cast
     | identifier                                                                          #columnReference
     | base=primaryExpression '.' fieldName=identifier                                     #dereference
     | name=NOW ('(' ')')?                                                                 #specialDateTimeFunction
@@ -927,6 +958,7 @@ CHARSET: 'CHARSET';
 CLEAR: 'CLEAR';
 CLUSTER: 'CLUSTER';
 CLUSTERID: 'CLUSTERID';
+CLUSTER_ID: 'CLUSTER_ID';
 COLUMN: 'COLUMN';
 COLUMNS: 'COLUMNS';
 COMMENT: 'COMMENT';
@@ -951,6 +983,7 @@ CURRENT_DATE: 'CURRENT_DATE';
 CURRENT_PATH: 'CURRENT_PATH';
 CURRENT_ROLE: 'CURRENT_ROLE';
 CURRENT_SCHEMA: 'CURRENT_SCHEMA';
+CURRENT_SQL_DIALECT: 'CURRENT_SQL_DIALECT';
 CURRENT_TIME: 'CURRENT_TIME';
 CURRENT_TIMESTAMP: 'CURRENT_TIMESTAMP';
 CURRENT_USER: 'CURRENT_USER';
@@ -1243,7 +1276,7 @@ VARIATION: 'VARIATION';
 VERBOSE: 'VERBOSE';
 VERSION: 'VERSION';
 VIEW: 'VIEW';
-WEEK: 'WEEK';
+WEEK: 'WEEK' | 'W';
 WHEN: 'WHEN';
 WHERE: 'WHERE';
 WHILE: 'WHILE';

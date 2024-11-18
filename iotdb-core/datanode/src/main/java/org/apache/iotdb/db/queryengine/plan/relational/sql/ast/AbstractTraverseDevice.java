@@ -60,10 +60,10 @@ public abstract class AbstractTraverseDevice extends Statement {
    * <p>Each inner list represents a device pattern and each expression of it represents one
    * condition on some id column.
    */
-  private List<List<SchemaFilter>> idDeterminedFilterList;
+  protected List<List<SchemaFilter>> idDeterminedFilterList;
 
   /** filters/conditions involving non-id columns and concat by OR to id column filters */
-  private Expression idFuzzyPredicate;
+  protected Expression idFuzzyPredicate;
 
   private List<IDeviceID> partitionKeyList;
 

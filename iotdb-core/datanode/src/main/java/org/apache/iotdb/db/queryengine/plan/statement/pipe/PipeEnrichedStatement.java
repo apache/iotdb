@@ -20,9 +20,13 @@
 package org.apache.iotdb.db.queryengine.plan.statement.pipe;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.utils.annotations.TableModel;
 
 import java.util.Collections;
 import java.util.List;
@@ -68,5 +72,17 @@ public class PipeEnrichedStatement extends Statement {
   @Override
   public List<PartialPath> getPaths() {
     return Collections.emptyList();
+  }
+
+  @TableModel
+  @Override
+  public org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement toRelationalStatement(
+      MPPQueryContext context) {
+    final PipeEnriched pipeEnriched =
+        new PipeEnriched(innerStatement.toRelationalStatement(context));
+    if (pipeEnriched.getInnerStatement() instanceof InsertRows) {
+      ((InsertRows) pipeEnriched.getInnerStatement()).setAllowCreateTable(true);
+    }
+    return pipeEnriched;
   }
 }

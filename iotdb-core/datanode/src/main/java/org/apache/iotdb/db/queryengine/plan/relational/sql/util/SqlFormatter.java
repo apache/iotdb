@@ -66,11 +66,18 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentDatabase;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentSqlDialect;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentTimestamp;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVariables;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
@@ -510,8 +517,12 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitShowTables(ShowTables node, Integer indent) {
+    protected Void visitShowTables(final ShowTables node, final Integer indent) {
       builder.append("SHOW TABLES");
+
+      if (node.isDetails()) {
+        builder.append(" DETAILS");
+      }
 
       node.getDbName().ifPresent(db -> builder.append(" FROM ").append(formatName(db)));
 
@@ -522,6 +533,48 @@ public final class SqlFormatter {
     protected Void visitShowFunctions(ShowFunctions node, Integer indent) {
       builder.append("SHOW FUNCTIONS");
 
+      return null;
+    }
+
+    @Override
+    protected Void visitShowCurrentSqlDialect(ShowCurrentSqlDialect node, Integer context) {
+      builder.append(node.toString());
+      return null;
+    }
+
+    @Override
+    protected Void visitShowCurrentDatabase(ShowCurrentDatabase node, Integer context) {
+      builder.append(node.toString());
+      return null;
+    }
+
+    @Override
+    protected Void visitShowCurrentUser(ShowCurrentUser node, Integer context) {
+      builder.append(node.toString());
+      return null;
+    }
+
+    @Override
+    protected Void visitShowVersion(ShowVersion node, Integer context) {
+      builder.append(node.toString());
+      return null;
+    }
+
+    @Override
+    protected Void visitShowVariables(ShowVariables node, Integer context) {
+      builder.append(node.toString());
+      return null;
+    }
+
+    @Override
+    protected Void visitShowClusterId(ShowClusterId node, Integer context) {
+      builder.append(node.toString());
+      return null;
+    }
+
+    @Override
+    protected Void visitShowCurrentTimestamp(ShowCurrentTimestamp node, Integer context) {
+      builder.append(node.toString());
       return null;
     }
 
@@ -630,7 +683,7 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitDropTable(DropTable node, Integer indent) {
+    protected Void visitDropTable(final DropTable node, final Integer indent) {
       builder.append("DROP TABLE ");
       if (node.isExists()) {
         builder.append("IF EXISTS ");
@@ -641,8 +694,12 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitRenameTable(RenameTable node, Integer indent) {
+    protected Void visitRenameTable(final RenameTable node, final Integer indent) {
       builder.append("ALTER TABLE ");
+      if (node.tableIfExists()) {
+        builder.append("IF EXISTS ");
+      }
+
       builder
           .append(formatName(node.getSource()))
           .append(" RENAME TO ")
@@ -688,7 +745,15 @@ public final class SqlFormatter {
     @Override
     protected Void visitRenameColumn(RenameColumn node, Integer indent) {
       builder.append("ALTER TABLE ");
+      if (node.tableIfExists()) {
+        builder.append("IF EXISTS ");
+      }
+
       builder.append(formatName(node.getTable())).append(" RENAME COLUMN ");
+      if (node.columnIfExists()) {
+        builder.append("IF EXISTS ");
+      }
+
       builder
           .append(formatName(node.getSource()))
           .append(" TO ")
@@ -698,9 +763,17 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitDropColumn(DropColumn node, Integer indent) {
+    protected Void visitDropColumn(final DropColumn node, final Integer indent) {
       builder.append("ALTER TABLE ");
+      if (node.tableIfExists()) {
+        builder.append("IF EXISTS ");
+      }
+
       builder.append(formatName(node.getTable())).append(" DROP COLUMN ");
+      if (node.columnIfExists()) {
+        builder.append("IF NOT EXISTS ");
+      }
+
       builder.append(formatName(node.getField()));
 
       return null;

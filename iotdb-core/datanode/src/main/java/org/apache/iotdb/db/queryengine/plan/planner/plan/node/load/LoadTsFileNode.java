@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -128,7 +129,11 @@ public class LoadTsFileNode extends WritePlanNode {
   private List<WritePlanNode> splitByPartitionForTableModel(
       org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis analysis) {
     List<WritePlanNode> res = new ArrayList<>();
-    LoadTsFile statement = (LoadTsFile) analysis.getStatement();
+    LoadTsFile statement =
+        (analysis.getStatement() instanceof PipeEnriched)
+            ? (LoadTsFile) ((PipeEnriched) analysis.getStatement()).getInnerStatement()
+            : (LoadTsFile) analysis.getStatement();
+
     for (int i = 0; i < resources.size(); i++) {
       if (statement != null) {
         res.add(

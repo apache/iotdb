@@ -274,9 +274,9 @@ public class PartitionMetrics implements IMetricSet {
         Metric.DATABASE_NUM.toString(),
         MetricLevel.CORE,
         clusterSchemaManager,
-        c -> c.getDatabaseNames().size());
+        c -> c.getDatabaseNames(null).size());
 
-    List<String> databases = clusterSchemaManager.getDatabaseNames();
+    List<String> databases = clusterSchemaManager.getDatabaseNames(null);
     for (String database : databases) {
       int dataReplicationFactor = 1;
       int schemaReplicationFactor = 1;
@@ -297,7 +297,7 @@ public class PartitionMetrics implements IMetricSet {
     // Remove the number of Databases
     metricService.remove(MetricType.AUTO_GAUGE, Metric.DATABASE_NUM.toString());
 
-    List<String> databases = getClusterSchemaManager().getDatabaseNames();
+    List<String> databases = getClusterSchemaManager().getDatabaseNames(null);
     for (String database : databases) {
       unbindDatabaseRelatedMetricsWhenUpdate(metricService, database);
     }

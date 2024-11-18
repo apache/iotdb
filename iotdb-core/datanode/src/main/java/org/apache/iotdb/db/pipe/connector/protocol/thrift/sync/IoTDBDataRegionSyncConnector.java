@@ -28,16 +28,16 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEven
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventPlainBatch;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventTsFileBatch;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTransferBatchReqBuilder;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReqV2;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReqV2;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReqV2;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.pipe.connector.util.LeaderCacheUtils;
+import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
-import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
@@ -163,8 +163,8 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
   @Override
   public void transfer(final Event event) throws Exception {
-    if (event instanceof PipeSchemaRegionWritePlanEvent) {
-      doTransferWrapper((PipeSchemaRegionWritePlanEvent) event);
+    if (event instanceof PipeDeleteDataNodeEvent) {
+      doTransferWrapper((PipeDeleteDataNodeEvent) event);
       return;
     }
 
@@ -176,6 +176,63 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     if (!(event instanceof PipeHeartbeatEvent || event instanceof PipeTerminateEvent)) {
       LOGGER.warn(
           "IoTDBThriftSyncConnector does not support transferring generic event: {}.", event);
+    }
+  }
+
+  private void doTransferWrapper(final PipeDeleteDataNodeEvent pipeDeleteDataNodeEvent)
+      throws PipeException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeDeleteDataNodeEvent.increaseReferenceCount(
+        IoTDBDataRegionSyncConnector.class.getName())) {
+      return;
+    }
+    try {
+      doTransfer(pipeDeleteDataNodeEvent);
+    } finally {
+      pipeDeleteDataNodeEvent.decreaseReferenceCount(
+          IoTDBDataRegionSyncConnector.class.getName(), false);
+    }
+  }
+
+  private void doTransfer(final PipeDeleteDataNodeEvent pipeDeleteDataNodeEvent)
+      throws PipeException {
+    final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
+
+    final TPipeTransferResp resp;
+    try {
+      final TPipeTransferReq req =
+          compressIfNeeded(
+              PipeTransferPlanNodeReq.toTPipeTransferReq(
+                  pipeDeleteDataNodeEvent.getDeleteDataNode()));
+      rateLimitIfNeeded(
+          pipeDeleteDataNodeEvent.getPipeName(),
+          pipeDeleteDataNodeEvent.getCreationTime(),
+          clientAndStatus.getLeft().getEndPoint(),
+          req.getBody().length);
+      resp = clientAndStatus.getLeft().pipeTransfer(req);
+    } catch (final Exception e) {
+      clientAndStatus.setRight(false);
+      throw new PipeConnectionException(
+          String.format(
+              "Network error when transfer deletion %s, because %s.",
+              pipeDeleteDataNodeEvent.getDeleteDataNode().getType(), e.getMessage()),
+          e);
+    }
+
+    final TSStatus status = resp.getStatus();
+    // Only handle the failed statuses to avoid string format performance overhead
+    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && resp.getStatus().getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+      receiverStatusHandler.handle(
+          status,
+          String.format(
+              "Transfer deletion %s error, result status %s.",
+              pipeDeleteDataNodeEvent.getDeleteDataNode().getType(), status),
+          pipeDeleteDataNodeEvent.getDeletionResource().toString());
+    }
+
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("Successfully transferred deletion event {}.", pipeDeleteDataNodeEvent);
     }
   }
 
@@ -253,7 +310,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     final Map<Pair<String, Long>, Double> pipe2WeightMap = batchToTransfer.deepCopyPipe2WeightMap();
 
     for (final File tsFile : sealedFiles) {
-      doTransfer(pipe2WeightMap, tsFile, null);
+      doTransfer(pipe2WeightMap, tsFile, null, null);
       try {
         FileUtils.delete(tsFile);
       } catch (final NoSuchFileException e) {
@@ -296,9 +353,16 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
       final TPipeTransferReq req =
           compressIfNeeded(
               insertNode != null
-                  ? PipeTransferTabletInsertNodeReq.toTPipeTransferReq(insertNode)
-                  : PipeTransferTabletBinaryReq.toTPipeTransferReq(
-                      pipeInsertNodeTabletInsertionEvent.getByteBuffer()));
+                  ? PipeTransferTabletInsertNodeReqV2.toTPipeTransferReq(
+                      insertNode,
+                      pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
+                          ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
+                          : null)
+                  : PipeTransferTabletBinaryReqV2.toTPipeTransferReq(
+                      pipeInsertNodeTabletInsertionEvent.getByteBuffer(),
+                      pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
+                          ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
+                          : null));
       rateLimitIfNeeded(
           pipeInsertNodeTabletInsertionEvent.getPipeName(),
           pipeInsertNodeTabletInsertionEvent.getCreationTime(),
@@ -358,9 +422,12 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     try {
       final TPipeTransferReq req =
           compressIfNeeded(
-              PipeTransferTabletRawReq.toTPipeTransferReq(
+              PipeTransferTabletRawReqV2.toTPipeTransferReq(
                   pipeRawTabletInsertionEvent.convertToTablet(),
-                  pipeRawTabletInsertionEvent.isAligned()));
+                  pipeRawTabletInsertionEvent.isAligned(),
+                  pipeRawTabletInsertionEvent.isTableModelEvent()
+                      ? pipeRawTabletInsertionEvent.getTableModelDatabaseName()
+                      : null));
       rateLimitIfNeeded(
           pipeRawTabletInsertionEvent.getPipeName(),
           pipeRawTabletInsertionEvent.getCreationTime(),
@@ -408,7 +475,10 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
                   pipeTsFileInsertionEvent.getCreationTime()),
               1.0),
           pipeTsFileInsertionEvent.getTsFile(),
-          pipeTsFileInsertionEvent.isWithMod() ? pipeTsFileInsertionEvent.getModFile() : null);
+          pipeTsFileInsertionEvent.isWithMod() ? pipeTsFileInsertionEvent.getModFile() : null,
+          pipeTsFileInsertionEvent.isTableModelEvent()
+              ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
+              : null);
     } finally {
       pipeTsFileInsertionEvent.decreaseReferenceCount(
           IoTDBDataRegionSyncConnector.class.getName(), false);
@@ -418,7 +488,8 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
   private void doTransfer(
       final Map<Pair<String, Long>, Double> pipeName2WeightMap,
       final File tsFile,
-      final File modFile)
+      final File modFile,
+      final String dataBaseName)
       throws PipeException, IOException {
 
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
@@ -434,7 +505,11 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
         final TPipeTransferReq req =
             compressIfNeeded(
                 PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                    modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length()));
+                    modFile.getName(),
+                    modFile.length(),
+                    tsFile.getName(),
+                    tsFile.length(),
+                    dataBaseName));
 
         pipeName2WeightMap.forEach(
             (pipePair, weight) ->
@@ -459,7 +534,8 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
       try {
         final TPipeTransferReq req =
             compressIfNeeded(
-                PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()));
+                PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+                    tsFile.getName(), tsFile.length(), dataBaseName));
 
         pipeName2WeightMap.forEach(
             (pipePair, weight) ->

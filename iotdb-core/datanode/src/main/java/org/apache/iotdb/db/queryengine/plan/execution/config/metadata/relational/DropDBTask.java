@@ -30,12 +30,12 @@ public class DropDBTask implements IConfigTask {
 
   private final DropDB node;
 
-  public DropDBTask(DropDB node) {
+  public DropDBTask(final DropDB node) {
     this.node = node;
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+  public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.dropDatabase(node);
   }

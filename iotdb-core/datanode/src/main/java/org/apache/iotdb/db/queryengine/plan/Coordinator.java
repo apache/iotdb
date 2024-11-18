@@ -48,9 +48,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.TreeModelPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableModelPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
@@ -59,11 +62,18 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentDatabase;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentSqlDialect;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentTimestamp;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVariables;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
@@ -307,13 +317,13 @@ public class Coordinator {
   }
 
   private IQueryExecution createQueryExecutionForTableModel(
-      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
-      SqlParser sqlParser,
-      IClientSession clientSession,
-      MPPQueryContext queryContext,
-      Metadata metadata,
-      long timeOut,
-      long startTime) {
+      final org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
+      final SqlParser sqlParser,
+      final IClientSession clientSession,
+      final MPPQueryContext queryContext,
+      final Metadata metadata,
+      final long timeOut,
+      final long startTime) {
     queryContext.setTableQuery(true);
     queryContext.setTimeOut(timeOut);
     queryContext.setStartTime(startTime);
@@ -326,15 +336,25 @@ public class Coordinator {
         || statement instanceof ShowTables
         || statement instanceof AddColumn
         || statement instanceof SetProperties
+        || statement instanceof DropColumn
         || statement instanceof DropTable
+        || statement instanceof DeleteDevice
         || statement instanceof ShowCluster
         || statement instanceof ShowRegions
         || statement instanceof ShowDataNodes
         || statement instanceof ShowConfigNodes
         || statement instanceof ShowAINodes
         || statement instanceof Flush
+        || statement instanceof ClearCache
         || statement instanceof SetConfiguration
-        || statement instanceof PipeStatement) {
+        || statement instanceof PipeStatement
+        || statement instanceof ShowCurrentSqlDialect
+        || statement instanceof ShowCurrentUser
+        || statement instanceof ShowCurrentDatabase
+        || statement instanceof ShowVersion
+        || statement instanceof ShowVariables
+        || statement instanceof ShowClusterId
+        || statement instanceof ShowCurrentTimestamp) {
       return new ConfigExecution(
           queryContext,
           null,
@@ -344,7 +364,7 @@ public class Coordinator {
     if (statement instanceof WrappedInsertStatement) {
       ((WrappedInsertStatement) statement).setContext(queryContext);
     }
-    TableModelPlanner tableModelPlanner =
+    final TableModelPlanner tableModelPlanner =
         new TableModelPlanner(
             statement,
             sqlParser,

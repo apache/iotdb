@@ -324,7 +324,7 @@ public class ConsensusManager {
    *
    * @throws ConsensusException When write doesn't success
    */
-  public TSStatus write(ConfigPhysicalPlan plan) throws ConsensusException {
+  public TSStatus write(final ConfigPhysicalPlan plan) throws ConsensusException {
     return consensusImpl.write(DEFAULT_CONSENSUS_GROUP_ID, plan);
   }
 

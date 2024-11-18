@@ -671,7 +671,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     boolean canUseStatistics =
         !TSDataType.BLOB.equals(node.getSeriesPath().getSeriesType())
             || (aggregationDescriptors.stream()
-                .noneMatch(o -> !judgeCanUseStatistics(o.getAggregationType(), TSDataType.BLOB)));
+                .allMatch(o -> judgeCanUseStatistics(o.getAggregationType(), TSDataType.BLOB)));
     SeriesAggregationScanOperator aggregateScanOperator =
         new SeriesAggregationScanOperator(
             node.getPlanNodeId(),
@@ -2877,7 +2877,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                   .getDataRegion()
                   .getDatabaseName(),
               fullPath,
-              null,
               false);
     }
 
@@ -2934,7 +2933,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                     devicePath.concatNode(unCachedPath.getMeasurementList().get(i)),
                     unCachedPath.getSchemaList().get(i),
                     true),
-                null,
                 false);
       }
     }

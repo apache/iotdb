@@ -47,7 +47,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeProcessorSubtask extends PipeReportableSubtask {
@@ -90,14 +90,13 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     // Only register dataRegions
     if (StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))) {
       PipeProcessorMetrics.getInstance().register(this);
-      PipeDataNodeRemainingEventAndTimeMetrics.getInstance().register(this);
     }
   }
 
   @Override
   public void bindExecutors(
       final ListeningExecutorService subtaskWorkerThreadPoolExecutor,
-      final ExecutorService ignored,
+      final ScheduledExecutorService ignored,
       final PipeSubtaskScheduler subtaskScheduler) {
     this.subtaskWorkerThreadPoolExecutor = subtaskWorkerThreadPoolExecutor;
     this.subtaskScheduler = subtaskScheduler;
@@ -138,14 +137,11 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
         if (event instanceof TabletInsertionEvent) {
           pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
           PipeProcessorMetrics.getInstance().markTabletEvent(taskID);
-          PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-              .markCollectInvocationCount(
-                  pipeNameWithCreationTime, outputEventCollector.getCollectInvocationCount());
         } else if (event instanceof TsFileInsertionEvent) {
           pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
           PipeProcessorMetrics.getInstance().markTsFileEvent(taskID);
           PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-              .markCollectInvocationCount(
+              .markTsFileCollectInvocationCount(
                   pipeNameWithCreationTime, outputEventCollector.getCollectInvocationCount());
         } else if (event instanceof PipeHeartbeatEvent) {
           pipeProcessor.process(event, outputEventCollector);

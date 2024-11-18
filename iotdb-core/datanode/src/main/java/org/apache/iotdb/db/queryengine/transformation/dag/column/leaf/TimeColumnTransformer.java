@@ -46,5 +46,6 @@ public class TimeColumnTransformer extends LeafColumnTransformer {
         builder.write(timeColumn, i);
       }
     }
+    initializeColumnCache(builder.build());
   }
 }

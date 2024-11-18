@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
@@ -35,10 +36,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.Sche
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.SchemaQueryOrderByHeatNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.SeriesSchemaFetchScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceFetchNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryCountNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.ActivateTemplateNode;
@@ -118,11 +115,22 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDevicesInBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.RollbackTableDevicesBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableAttributeColumnDropNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryCountNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -242,6 +250,12 @@ public enum PlanNodeType {
   DELETE_TABLE_DEVICE((short) 905),
   TABLE_DEVICE_QUERY_COUNT((short) 906),
   TABLE_DEVICE_ATTRIBUTE_UPDATE((short) 907),
+  TABLE_DEVICE_ATTRIBUTE_COMMIT((short) 908),
+  TABLE_DEVICE_LOCATION_ADD((short) 909),
+  CONSTRUCT_TABLE_DEVICES_BLACK_LIST((short) 910),
+  ROLLBACK_TABLE_DEVICES_BLACK_LIST((short) 911),
+  DELETE_TABLE_DEVICES_IN_BLACK_LIST((short) 912),
+  TABLE_ATTRIBUTE_COLUMN_DROP((short) 913),
 
   TABLE_SCAN_NODE((short) 1000),
   TABLE_FILTER_NODE((short) 1001),
@@ -537,10 +551,24 @@ public enum PlanNodeType {
         return TableDeviceQueryScanNode.deserialize(buffer);
       case 904:
         return TableDeviceFetchNode.deserialize(buffer);
+      case 905:
+        return DeleteTableDeviceNode.deserialize(buffer);
       case 906:
         return TableDeviceQueryCountNode.deserialize(buffer);
       case 907:
         return TableDeviceAttributeUpdateNode.deserialize(buffer);
+      case 908:
+        return TableDeviceAttributeCommitUpdateNode.deserialize(buffer);
+      case 909:
+        return TableNodeLocationAddNode.deserialize(buffer);
+      case 910:
+        return ConstructTableDevicesBlackListNode.deserialize(buffer);
+      case 911:
+        return RollbackTableDevicesBlackListNode.deserialize(buffer);
+      case 912:
+        return DeleteTableDevicesInBlackListNode.deserialize(buffer);
+      case 913:
+        return TableAttributeColumnDropNode.deserialize(buffer);
       case 1000:
         return org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode
             .deserialize(buffer);

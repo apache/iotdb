@@ -32,7 +32,7 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
@@ -47,10 +47,12 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.isession.SessionConfig;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Binary;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -315,6 +317,8 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
             Collections.singletonList(
                 columnHeaderList.stream().map(ColumnHeader::getColumnName).toArray(String[]::new)));
     Assert.assertEquals(1, result.size());
-    Assert.assertEquals("value2", result.get(0).getAttributeValue(attributeName));
+    Assert.assertEquals(
+        new Binary("value2", TSFileConfig.STRING_CHARSET),
+        result.get(0).getAttributeValue(attributeName));
   }
 }

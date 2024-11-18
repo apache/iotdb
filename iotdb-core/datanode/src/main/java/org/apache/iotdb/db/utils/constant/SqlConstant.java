@@ -57,10 +57,10 @@ public class SqlConstant {
   public static final String EXTREME = "extreme";
   public static final String FIRST_VALUE = "first_value";
   public static final String LAST_VALUE = "last_value";
-  public static final String FIRST = "first";
-  public static final String FIRST_BY = "first_by";
-  public static final String LAST_BY = "last_by";
-  public static final String LAST = "last";
+  public static final String FIRST_BY_AGGREGATION = "first_by";
+  public static final String LAST_BY_AGGREGATION = "last_by";
+  public static final String LAST_AGGREGATION = "last";
+  public static final String FIRST_AGGREGATION = "first";
   public static final String COUNT = "count";
   public static final String AVG = "avg";
   public static final String SUM = "sum";

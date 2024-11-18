@@ -50,6 +50,7 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
@@ -73,6 +74,9 @@ public class TableDeviceSchemaFetcher {
 
   private final TableDeviceSchemaCache cache = TableDeviceSchemaCache.getInstance();
 
+  private final TableDeviceCacheAttributeGuard attributeGuard =
+      new TableDeviceCacheAttributeGuard();
+
   private TableDeviceSchemaFetcher() {
     // do nothing
   }
@@ -85,11 +89,11 @@ public class TableDeviceSchemaFetcher {
     return TableDeviceSchemaFetcherHolder.INSTANCE;
   }
 
-  private TableDeviceSchemaCache getTableDeviceCache() {
-    return cache;
+  public TableDeviceCacheAttributeGuard getAttributeGuard() {
+    return attributeGuard;
   }
 
-  Map<IDeviceID, Map<String, String>> fetchMissingDeviceSchemaForDataInsertion(
+  Map<IDeviceID, Map<String, Binary>> fetchMissingDeviceSchemaForDataInsertion(
       final FetchDevice statement, final MPPQueryContext context) {
     final long queryId = SessionManager.getInstance().requestQueryId();
     Throwable t = null;
@@ -98,29 +102,32 @@ public class TableDeviceSchemaFetcher {
     final String table = statement.getTableName();
     final TsTable tableInstance = DataNodeTableCache.getInstance().getTable(database, table);
 
-    final ExecutionResult executionResult =
-        coordinator.executeForTableModel(
-            statement,
-            relationSqlParser,
-            SessionManager.getInstance().getCurrSession(),
-            queryId,
-            SessionManager.getInstance()
-                .getSessionInfoOfTableModel(SessionManager.getInstance().getCurrSession()),
-            "Fetch Device for insert",
-            LocalExecutionPlanner.getInstance().metadata,
-            config.getQueryTimeoutThreshold());
-    if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new RuntimeException(
-          new IoTDBException(
-              executionResult.status.getMessage(), executionResult.status.getCode()));
-    }
-
-    final List<ColumnHeader> columnHeaderList =
-        coordinator.getQueryExecution(queryId).getDatasetHeader().getColumnHeaders();
-    final int idLength = DataNodeTableCache.getInstance().getTable(database, table).getIdNums();
-    final Map<IDeviceID, Map<String, String>> fetchedDeviceSchema = new HashMap<>();
-
+    // For the correctness of attribute remote update
+    final Set<Long> queryIdSet = attributeGuard.addFetchQueryId(queryId);
     try {
+      final ExecutionResult executionResult =
+          coordinator.executeForTableModel(
+              statement,
+              relationSqlParser,
+              SessionManager.getInstance().getCurrSession(),
+              queryId,
+              SessionManager.getInstance()
+                  .getSessionInfoOfTableModel(SessionManager.getInstance().getCurrSession()),
+              "Fetch Device for insert",
+              LocalExecutionPlanner.getInstance().metadata,
+              config.getQueryTimeoutThreshold());
+
+      if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new RuntimeException(
+            new IoTDBException(
+                executionResult.status.getMessage(), executionResult.status.getCode()));
+      }
+
+      final List<ColumnHeader> columnHeaderList =
+          coordinator.getQueryExecution(queryId).getDatasetHeader().getColumnHeaders();
+      final int idLength = DataNodeTableCache.getInstance().getTable(database, table).getIdNums();
+      final Map<IDeviceID, Map<String, Binary>> fetchedDeviceSchema = new HashMap<>();
+
       while (coordinator.getQueryExecution(queryId).hasNextResult()) {
         final Optional<TsBlock> tsBlock;
         try {
@@ -135,20 +142,25 @@ public class TableDeviceSchemaFetcher {
         final Column[] columns = tsBlock.get().getValueColumns();
         for (int i = 0; i < tsBlock.get().getPositionCount(); i++) {
           final String[] nodes = new String[idLength + 1];
-          final Map<String, String> attributeMap = new HashMap<>();
+          final Map<String, Binary> attributeMap = new HashMap<>();
           constructNodsArrayAndAttributeMap(
               attributeMap, nodes, table, columnHeaderList, columns, tableInstance, i);
 
           fetchedDeviceSchema.put(IDeviceID.Factory.DEFAULT_FACTORY.create(nodes), attributeMap);
         }
       }
+
+      fetchedDeviceSchema.forEach((key, value) -> cache.putAttributes(database, key, value));
+
+      return fetchedDeviceSchema;
     } catch (final Throwable throwable) {
       t = throwable;
       throw throwable;
     } finally {
+      queryIdSet.remove(queryId);
+      attributeGuard.tryUpdateCache();
       coordinator.cleanupQueryExecution(queryId, null, t);
     }
-    return fetchedDeviceSchema;
   }
 
   public List<DeviceEntry> fetchDeviceSchemaForDataQuery(
@@ -310,7 +322,7 @@ public class TableDeviceSchemaFetcher {
     }
 
     final IDeviceID deviceID = convertIdValuesToDeviceID(tableInstance.getTableName(), idValues);
-    final Map<String, String> attributeMap = cache.getDeviceAttribute(database, deviceID);
+    final Map<String, Binary> attributeMap = cache.getDeviceAttribute(database, deviceID);
 
     // 1. AttributeMap == null means cache miss
     // 2. DeviceEntryList == null means that this is update statement, shall not get from cache and
@@ -359,32 +371,40 @@ public class TableDeviceSchemaFetcher {
       final MPPQueryContext mppQueryContext) {
 
     final String table = tableInstance.getTableName();
+    Throwable t = null;
 
     final long queryId = SessionManager.getInstance().requestQueryId();
-    final ExecutionResult executionResult =
-        coordinator.executeForTableModel(
-            statement,
-            relationSqlParser,
-            SessionManager.getInstance().getCurrSession(),
-            queryId,
-            SessionManager.getInstance()
-                .getSessionInfo(SessionManager.getInstance().getCurrSession()),
-            String.format(
-                "fetch device for query %s : %s",
-                mppQueryContext.getQueryId(), mppQueryContext.getSql()),
-            LocalExecutionPlanner.getInstance().metadata,
-            config.getQueryTimeoutThreshold());
-    if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new RuntimeException(
-          new IoTDBException(
-              executionResult.status.getMessage(), executionResult.status.getCode()));
+    // For the correctness of attribute remote update
+    Set<Long> queryIdSet = null;
+    if (Objects.nonNull(statement.getPartitionKeyList())) {
+      queryIdSet = attributeGuard.addFetchQueryId(queryId);
     }
 
-    final List<ColumnHeader> columnHeaderList =
-        coordinator.getQueryExecution(queryId).getDatasetHeader().getColumnHeaders();
-    final int idLength = DataNodeTableCache.getInstance().getTable(database, table).getIdNums();
-    Throwable t = null;
     try {
+      final ExecutionResult executionResult =
+          coordinator.executeForTableModel(
+              statement,
+              relationSqlParser,
+              SessionManager.getInstance().getCurrSession(),
+              queryId,
+              SessionManager.getInstance()
+                  .getSessionInfo(SessionManager.getInstance().getCurrSession()),
+              String.format(
+                  "fetch device for query %s : %s",
+                  mppQueryContext.getQueryId(), mppQueryContext.getSql()),
+              LocalExecutionPlanner.getInstance().metadata,
+              config.getQueryTimeoutThreshold());
+
+      if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new RuntimeException(
+            new IoTDBException(
+                executionResult.status.getMessage(), executionResult.status.getCode()));
+      }
+
+      final List<ColumnHeader> columnHeaderList =
+          coordinator.getQueryExecution(queryId).getDatasetHeader().getColumnHeaders();
+      final int idLength = DataNodeTableCache.getInstance().getTable(database, table).getIdNums();
+
       while (coordinator.getQueryExecution(queryId).hasNextResult()) {
         final Optional<TsBlock> tsBlock;
         try {
@@ -399,7 +419,7 @@ public class TableDeviceSchemaFetcher {
         final Column[] columns = tsBlock.get().getValueColumns();
         for (int i = 0; i < tsBlock.get().getPositionCount(); i++) {
           String[] nodes = new String[idLength + 1];
-          final Map<String, String> attributeMap = new HashMap<>();
+          final Map<String, Binary> attributeMap = new HashMap<>();
           constructNodsArrayAndAttributeMap(
               attributeMap, nodes, table, columnHeaderList, columns, tableInstance, i);
           final IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(nodes);
@@ -420,12 +440,16 @@ public class TableDeviceSchemaFetcher {
       t = throwable;
       throw throwable;
     } finally {
+      if (Objects.nonNull(queryIdSet)) {
+        queryIdSet.remove(queryId);
+        attributeGuard.tryUpdateCache();
+      }
       coordinator.cleanupQueryExecution(queryId, null, t);
     }
   }
 
   private void constructNodsArrayAndAttributeMap(
-      final Map<String, String> attributeMap,
+      final Map<String, Binary> attributeMap,
       final String[] nodes,
       final String tableName,
       final List<ColumnHeader> columnHeaderList,
@@ -451,9 +475,7 @@ public class TableDeviceSchemaFetcher {
         }
         currentIndex++;
       } else if (!columns[j].isNull(rowIndex)) {
-        attributeMap.put(
-            columnSchema.getColumnName(),
-            columns[j].getBinary(rowIndex).getStringValue(TSFileConfig.STRING_CHARSET));
+        attributeMap.put(columnSchema.getColumnName(), columns[j].getBinary(rowIndex));
       }
     }
   }

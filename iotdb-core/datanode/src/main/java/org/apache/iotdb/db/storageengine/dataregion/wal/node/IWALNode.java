@@ -30,6 +30,8 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.FlushListener;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 
+import java.util.List;
+
 /** This interface provides uniform interface for writing wal and making checkpoints. */
 public interface IWALNode extends FlushListener, AutoCloseable, ConsensusReqReader, DataSet {
 
@@ -40,7 +42,7 @@ public interface IWALNode extends FlushListener, AutoCloseable, ConsensusReqRead
   WALFlushListener log(long memTableId, InsertRowsNode insertRowsNode);
 
   /** Log InsertTabletNode. */
-  WALFlushListener log(long memTableId, InsertTabletNode insertTabletNode, int start, int end);
+  WALFlushListener log(long memTableId, InsertTabletNode insertTabletNode, List<int[]> rangeList);
 
   /** Log DeleteDataNode. */
   WALFlushListener log(long memTableId, DeleteDataNode deleteDataNode);

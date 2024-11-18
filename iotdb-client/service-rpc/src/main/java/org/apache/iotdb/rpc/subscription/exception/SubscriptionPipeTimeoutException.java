@@ -21,7 +21,7 @@ package org.apache.iotdb.rpc.subscription.exception;
 
 import java.util.Objects;
 
-public class SubscriptionPipeTimeoutException extends SubscriptionRuntimeNonCriticalException {
+public class SubscriptionPipeTimeoutException extends SubscriptionTimeoutException {
 
   public SubscriptionPipeTimeoutException(final String message) {
     super(message);

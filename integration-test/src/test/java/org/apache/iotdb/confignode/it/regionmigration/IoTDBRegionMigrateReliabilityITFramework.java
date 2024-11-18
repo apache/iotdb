@@ -90,6 +90,7 @@ public class IoTDBRegionMigrateReliabilityITFramework {
   private static final String COUNT_TIMESERIES = "select count(*) from root.sg.**";
   private static final String REGION_MIGRATE_COMMAND_FORMAT = "migrate region %d from %d to %d";
   private static final String CONFIGURATION_FILE_NAME = "configuration.dat";
+  protected final boolean isIoTV1 = true;
   ExecutorService executorService = IoTDBThreadPoolFactory.newCachedThreadPool("regionMigrateIT");
 
   public static Consumer<KillPointContext> actionOfKillNode =
@@ -304,30 +305,6 @@ public class IoTDBRegionMigrateReliabilityITFramework {
     } catch (InconsistentDataException ignore) {
 
     }
-  }
-
-  private void restartDataNodes(List<DataNodeWrapper> dataNodeWrappers) {
-    dataNodeWrappers.parallelStream()
-        .forEach(
-            nodeWrapper -> {
-              nodeWrapper.stop();
-              Awaitility.await()
-                  .atMost(1, TimeUnit.MINUTES)
-                  .pollDelay(2, TimeUnit.SECONDS)
-                  .until(() -> !nodeWrapper.isAlive());
-              LOGGER.info("Node {} stopped.", nodeWrapper.getId());
-              nodeWrapper.start();
-              Awaitility.await()
-                  .atMost(1, TimeUnit.MINUTES)
-                  .pollDelay(2, TimeUnit.SECONDS)
-                  .until(nodeWrapper::isAlive);
-              try {
-                TimeUnit.SECONDS.sleep(10);
-              } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-              }
-              LOGGER.info("Node {} restarted.", nodeWrapper.getId());
-            });
   }
 
   private void setConfigNodeKillPoints(

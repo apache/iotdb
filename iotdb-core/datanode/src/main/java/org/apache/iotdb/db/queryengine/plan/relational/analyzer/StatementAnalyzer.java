@@ -59,6 +59,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
@@ -97,6 +98,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NaturalJoin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
@@ -298,7 +300,8 @@ public class StatementAnalyzer {
           || node instanceof FetchDevice
           || node instanceof ShowDevice
           || node instanceof CountDevice
-          || node instanceof Update) {
+          || node instanceof Update
+          || node instanceof DeleteDevice) {
         return returnScope;
       }
       checkState(
@@ -446,6 +449,26 @@ public class StatementAnalyzer {
     }
 
     @Override
+    protected Scope visitDeleteDevice(final DeleteDevice node, final Optional<Scope> context) {
+      // Actually write, but will return the result
+      queryContext.setQueryType(QueryType.READ);
+      analyzeTraverseDevice(node, context, node.getWhere().isPresent());
+      final TsTable table =
+          DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
+      node.parseRawExpression(
+          null,
+          table,
+          table.getColumnList().stream()
+              .filter(
+                  columnSchema ->
+                      columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
+              .map(TsTableColumnSchema::getColumnName)
+              .collect(Collectors.toList()),
+          queryContext);
+      return null;
+    }
+
+    @Override
     protected Scope visitDropFunction(DropFunction node, Optional<Scope> context) {
       throw new SemanticException("Drop Function statement is not supported yet.");
     }
@@ -504,6 +527,14 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitDelete(Delete node, Optional<Scope> scope) {
       throw new SemanticException("Delete statement is not supported yet.");
+    }
+
+    @Override
+    protected Scope visitPipeEnriched(PipeEnriched node, Optional<Scope> scope) {
+      Scope ret = node.getInnerStatement().accept(this, scope);
+      createAndAssignScope(node, scope);
+      analysis.setScope(node, ret);
+      return ret;
     }
 
     @Override

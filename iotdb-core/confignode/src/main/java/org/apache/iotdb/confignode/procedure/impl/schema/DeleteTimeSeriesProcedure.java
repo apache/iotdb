@@ -185,14 +185,12 @@ public class DeleteTimeSeriesProcedure
         };
     constructBlackListTask.execute();
 
-    if (isFailed()) {
-      return 0;
-    }
-
-    return successResult.stream()
-        .mapToLong(resp -> Long.parseLong(resp.getMessage()))
-        .reduce(Long::sum)
-        .orElse(0L);
+    return !isFailed()
+        ? successResult.stream()
+            .mapToLong(resp -> Long.parseLong(resp.getMessage()))
+            .reduce(Long::sum)
+            .orElse(0L)
+        : 0;
   }
 
   private void invalidateCache(final ConfigNodeProcedureEnv env) {
@@ -237,7 +235,7 @@ public class DeleteTimeSeriesProcedure
     }
 
     final Map<TConsensusGroupId, TRegionReplicaSet> relatedDataRegionGroup =
-        env.getConfigManager().getRelatedDataRegionGroup(patternTree);
+        env.getConfigManager().getRelatedDataRegionGroup(patternTree, false);
 
     // Target timeSeries has no data
     if (relatedDataRegionGroup.isEmpty()) {
@@ -249,7 +247,7 @@ public class DeleteTimeSeriesProcedure
             "delete data",
             env,
             relatedDataRegionGroup,
-            true,
+            false,
             CnToDnAsyncRequestType.DELETE_DATA_FOR_DELETE_SCHEMA,
             ((dataNodeLocation, consensusGroupIdList) ->
                 new TDeleteDataForDeleteSchemaReq(

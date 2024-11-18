@@ -35,22 +35,23 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 
 import java.util.List;
+import java.util.Objects;
 
 public class TableDeviceFetchSource implements ISchemaSource<IDeviceSchemaInfo> {
 
-  private String database;
+  private final String database;
 
-  private String tableName;
+  private final String tableName;
 
-  private List<Object[]> deviceIdList;
+  private final List<Object[]> deviceIdList;
 
-  private List<ColumnHeader> columnHeaderList;
+  private final List<ColumnHeader> columnHeaderList;
 
   public TableDeviceFetchSource(
-      String database,
-      String tableName,
-      List<Object[]> deviceIdList,
-      List<ColumnHeader> columnHeaderList) {
+      final String database,
+      final String tableName,
+      final List<Object[]> deviceIdList,
+      final List<ColumnHeader> columnHeaderList) {
     this.database = database;
     this.tableName = tableName;
     this.deviceIdList = deviceIdList;
@@ -58,10 +59,10 @@ public class TableDeviceFetchSource implements ISchemaSource<IDeviceSchemaInfo> 
   }
 
   @Override
-  public ISchemaReader<IDeviceSchemaInfo> getSchemaReader(ISchemaRegion schemaRegion) {
+  public ISchemaReader<IDeviceSchemaInfo> getSchemaReader(final ISchemaRegion schemaRegion) {
     try {
       return schemaRegion.getTableDeviceReader(tableName, deviceIdList);
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       throw new SchemaExecutionException(e);
     }
   }
@@ -73,14 +74,14 @@ public class TableDeviceFetchSource implements ISchemaSource<IDeviceSchemaInfo> 
 
   @Override
   public void transformToTsBlockColumns(
-      IDeviceSchemaInfo schemaInfo, TsBlockBuilder builder, String database) {
+      final IDeviceSchemaInfo schemaInfo, final TsBlockBuilder builder, final String database) {
     builder.getTimeColumnBuilder().writeLong(0L);
     int resultIndex = 0;
     int idIndex = 0;
-    String[] pathNodes = schemaInfo.getRawNodes();
-    TsTable table = DataNodeTableCache.getInstance().getTable(this.database, tableName);
+    final String[] pathNodes = schemaInfo.getRawNodes();
+    final TsTable table = DataNodeTableCache.getInstance().getTable(this.database, tableName);
     TsTableColumnSchema columnSchema;
-    for (ColumnHeader columnHeader : columnHeaderList) {
+    for (final ColumnHeader columnHeader : columnHeaderList) {
       columnSchema = table.getColumnSchema(columnHeader.getColumnName());
       if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
         if (pathNodes.length <= idIndex + 3 || pathNodes[idIndex + 3] == null) {
@@ -92,16 +93,12 @@ public class TableDeviceFetchSource implements ISchemaSource<IDeviceSchemaInfo> 
         }
         idIndex++;
       } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
-        String attributeValue = schemaInfo.getAttributeValue(columnHeader.getColumnName());
-        if (attributeValue == null) {
+        if (Objects.isNull(schemaInfo.getAttributeValue(columnHeader.getColumnName()))) {
           builder.getColumnBuilder(resultIndex).appendNull();
         } else {
           builder
               .getColumnBuilder(resultIndex)
-              .writeBinary(
-                  new Binary(
-                      schemaInfo.getAttributeValue(columnHeader.getColumnName()),
-                      TSFileConfig.STRING_CHARSET));
+              .writeBinary(schemaInfo.getAttributeValue(columnHeader.getColumnName()));
         }
       }
       resultIndex++;
@@ -110,12 +107,12 @@ public class TableDeviceFetchSource implements ISchemaSource<IDeviceSchemaInfo> 
   }
 
   @Override
-  public boolean hasSchemaStatistic(ISchemaRegion schemaRegion) {
+  public boolean hasSchemaStatistic(final ISchemaRegion schemaRegion) {
     return false;
   }
 
   @Override
-  public long getSchemaStatistic(ISchemaRegion schemaRegion) {
+  public long getSchemaStatistic(final ISchemaRegion schemaRegion) {
     return 0;
   }
 }

@@ -17,7 +17,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Captures;
@@ -44,20 +43,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Cap
  *
  * <pre>
  * - TopK (limit = x, order by a, b)
- * </pre>
- *
- * <pre>
- * - Limit (limit = x)
- *       - MergeSort (order by a, b)
- *          - StreamSort (order by a, b)
- * </pre>
- *
- * Into:
- *
- * <pre>
- * - TopK (limit = x, order by a, b)
  *    - Limit (limit = x)
- *      - StreamSort (order by a, b)
  * </pre>
  *
  * Applies to LimitNode without ties only.
@@ -85,36 +71,19 @@ public class MergeLimitWithMergeSort implements Rule<LimitNode> {
 
   static TopKNode transformByMergeSortNode(
       LimitNode parent, MergeSortNode mergeSortNode, PlanNode childOfMergeSort, Context context) {
-    TopKNode topKNode;
-    if (childOfMergeSort instanceof StreamSortNode) {
-      topKNode =
-          new TopKNode(
-              parent.getPlanNodeId(),
-              mergeSortNode.getOrderingScheme(),
-              parent.getCount(),
-              childOfMergeSort.getOutputSymbols(),
-              true);
-      for (PlanNode child : mergeSortNode.getChildren()) {
-        LimitNode limitNode =
-            new LimitNode(
-                context.getIdAllocator().genPlanNodeId(),
-                child,
-                parent.getCount(),
-                Optional.empty());
-        topKNode.addChild(limitNode);
-      }
-
-    } else {
-      topKNode =
-          new TopKNode(
-              parent.getPlanNodeId(),
-              mergeSortNode.getChildren(),
-              mergeSortNode.getOrderingScheme(),
-              parent.getCount(),
-              childOfMergeSort.getOutputSymbols(),
-              true);
+    TopKNode topKNode =
+        new TopKNode(
+            parent.getPlanNodeId(),
+            mergeSortNode.getOrderingScheme(),
+            parent.getCount(),
+            childOfMergeSort.getOutputSymbols(),
+            true);
+    for (PlanNode child : mergeSortNode.getChildren()) {
+      LimitNode limitNode =
+          new LimitNode(
+              context.getIdAllocator().genPlanNodeId(), child, parent.getCount(), Optional.empty());
+      topKNode.addChild(limitNode);
     }
-
     return topKNode;
   }
 }

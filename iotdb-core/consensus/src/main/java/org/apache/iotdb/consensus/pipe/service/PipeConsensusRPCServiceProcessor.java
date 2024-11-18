@@ -39,6 +39,8 @@ import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.consensus.pipe.thrift.TSetActiveReq;
 import org.apache.iotdb.consensus.pipe.thrift.TSetActiveResp;
+import org.apache.iotdb.consensus.pipe.thrift.TWaitReleaseAllRegionRelatedResourceReq;
+import org.apache.iotdb.consensus.pipe.thrift.TWaitReleaseAllRegionRelatedResourceResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -105,11 +107,17 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.I
     }
     TSStatus responseStatus;
     try {
+      // Other peers which don't act as coordinator will only transfer data(may contain both
+      // historical and realtime data) after the snapshot progress.
       impl.createConsensusPipeToTargetPeer(
           new Peer(
               ConsensusGroupId.Factory.createFromTConsensusGroupId(req.targetPeerConsensusGroupId),
               req.targetPeerNodeId,
-              req.targetPeerEndPoint));
+              req.targetPeerEndPoint),
+          new Peer(
+              ConsensusGroupId.Factory.createFromTConsensusGroupId(req.targetPeerConsensusGroupId),
+              req.coordinatorPeerNodeId,
+              req.coordinatorPeerEndPoint));
       responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (ConsensusGroupModifyPeerException e) {
       responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
@@ -184,6 +192,24 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.I
           e);
     }
     return new TCheckConsensusPipeCompletedResp(responseStatus, isCompleted);
+  }
+
+  @Override
+  public TWaitReleaseAllRegionRelatedResourceResp waitReleaseAllRegionRelatedResource(
+      TWaitReleaseAllRegionRelatedResourceReq req) {
+    ConsensusGroupId groupId =
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
+    PipeConsensusServerImpl impl = pipeConsensus.getImpl(groupId);
+    if (impl == null) {
+      String message =
+          String.format(
+              "unexpected consensusGroupId %s for TWaitReleaseAllRegionRelatedResourceRes request",
+              groupId);
+      LOGGER.error(message);
+      return new TWaitReleaseAllRegionRelatedResourceResp(true);
+    }
+    return new TWaitReleaseAllRegionRelatedResourceResp(
+        impl.hasReleaseAllRegionRelatedResource(groupId));
   }
 
   public void handleExit() {}

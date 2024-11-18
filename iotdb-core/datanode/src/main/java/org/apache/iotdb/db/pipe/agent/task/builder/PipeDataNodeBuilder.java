@@ -64,9 +64,11 @@ public class PipeDataNodeBuilder {
 
       if (pipeTaskMeta.getLeaderNodeId() == CONFIG.getDataNodeId()) {
         final PipeParameters extractorParameters = pipeStaticMeta.getExtractorParameters();
+        final DataRegionId dataRegionId = new DataRegionId(consensusGroupId);
         final boolean needConstructDataRegionTask =
-            dataRegionIds.contains(new DataRegionId(consensusGroupId))
-                && DataRegionListeningFilter.shouldDataRegionBeListened(extractorParameters);
+            dataRegionIds.contains(dataRegionId)
+                && DataRegionListeningFilter.shouldDataRegionBeListened(
+                    extractorParameters, dataRegionId);
         final boolean needConstructSchemaRegionTask =
             schemaRegionIds.contains(new SchemaRegionId(consensusGroupId))
                 && !SchemaRegionListeningFilter.parseListeningPlanTypeSet(extractorParameters)

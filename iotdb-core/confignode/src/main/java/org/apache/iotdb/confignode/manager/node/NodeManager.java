@@ -383,7 +383,7 @@ public class NodeManager {
     try {
       // Checks if the RemoveDataNode request is valid
       RemoveDataNodeHandler removeDataNodeHandler =
-          configManager.getProcedureManager().getEnv().getRemoveDataNodeManager();
+          configManager.getProcedureManager().getEnv().getRemoveDataNodeHandler();
       DataNodeToStatusResp preCheckStatus =
           removeDataNodeHandler.checkRemoveDataNodeRequest(removeDataNodePlan);
       if (preCheckStatus.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -881,11 +881,12 @@ public class NodeManager {
     return clientHandler.getResponseList();
   }
 
-  public List<TSStatus> clearCache() {
-    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+  public List<TSStatus> clearCache(final Set<Integer> clearCacheOptions) {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    DataNodeAsyncRequestContext<Object, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.CLEAR_CACHE, dataNodeLocationMap);
+    final DataNodeAsyncRequestContext<Set<Integer>, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
+            CnToDnAsyncRequestType.CLEAR_CACHE, clearCacheOptions, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }

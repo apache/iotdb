@@ -51,6 +51,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Phaser;
@@ -499,10 +501,9 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     Assert.assertEquals(
         unseqFileNumBeforeCompaction - 1, FileMetrics.getInstance().getFileCount(false));
 
-    // overlap
     TsFileResource unseqResource2 =
         generateSingleNonAlignedSeriesFileWithDevices(
-            "3-3-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(1, 4)}, false);
+            "3-3-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(5, 6)}, false);
     FileMetrics.getInstance()
         .addTsFile(
             unseqResource2.getDatabaseName(),
@@ -517,6 +518,9 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     taskResource = new InsertionCrossCompactionTaskResource();
     taskResource.setToInsertUnSeqFile(unseqResource2);
     task = new InsertionCrossSpaceCompactionTask(null, 0, tsFileManager, taskResource, 0);
+    // .resource file not found
+    Files.deleteIfExists(
+        Paths.get(unseqResource2.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX));
     // rollback
     Assert.assertFalse(task.start());
     Assert.assertEquals(seqFileNumBeforeCompaction, FileMetrics.getInstance().getFileCount(true));

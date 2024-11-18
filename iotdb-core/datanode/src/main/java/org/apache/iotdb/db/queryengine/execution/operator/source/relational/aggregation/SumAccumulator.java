@@ -113,15 +113,16 @@ public class SumAccumulator implements TableAccumulator {
   }
 
   @Override
-  public void addStatistics(Statistics statistics) {
-    if (statistics == null) {
+  public void addStatistics(Statistics[] statistics) {
+    if (statistics == null || statistics[0] == null) {
       return;
     }
+
     initResult = true;
-    if (statistics instanceof IntegerStatistics) {
-      sumValue += statistics.getSumLongValue();
+    if (statistics[0] instanceof IntegerStatistics) {
+      sumValue += statistics[0].getSumLongValue();
     } else {
-      sumValue += statistics.getSumDoubleValue();
+      sumValue += statistics[0].getSumDoubleValue();
     }
   }
 

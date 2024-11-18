@@ -244,22 +244,22 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
         schemaRegion.upsertAliasAndTagsAndAttributes(
             "s2", null, null, new PartialPath("root.sg.wf01.wt01.v1.s1"));
         Assert.fail();
-      } catch (Exception e) {
+      } catch (final Exception e) {
         Assert.assertTrue(
             e.getMessage()
-                .contains("The alias is duplicated with the name or alias of other measurement."));
+                .contains("The alias is duplicated with the name or alias of other measurement"));
       }
       try {
         schemaRegion.upsertAliasAndTagsAndAttributes(
             "temp", null, null, new PartialPath("root.sg.wf01.wt01.v1.s1"));
         Assert.fail();
-      } catch (Exception e) {
+      } catch (final Exception e) {
         Assert.assertTrue(
             e.getMessage()
-                .contains("The alias is duplicated with the name or alias of other measurement."));
+                .contains("The alias is duplicated with the name or alias of other measurement"));
       }
 
-      Map<String, String> newTags =
+      final Map<String, String> newTags =
           new HashMap<String, String>() {
             {
               put("tag1", "new1");
@@ -267,7 +267,7 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
               put("tag3", "new3");
             }
           };
-      Map<String, String> newAttributes =
+      final Map<String, String> newAttributes =
           new HashMap<String, String>() {
             {
               put("attr1", "new1");
@@ -275,7 +275,7 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
               put("attr3", "new3");
             }
           };
-      List<String> fullPaths =
+      final List<String> fullPaths =
           Arrays.asList(
               "root.sg.wf01.wt01.v1.s1",
               "root.sg.wf01.wt01.v1.s2",
@@ -283,7 +283,7 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
               "root.sg.wf01.aligned_device1.s2",
               "root.sg.wf01.aligned_device2.s1",
               "root.sg.wf01.aligned_device2.s2");
-      List<String> aliasList =
+      final List<String> aliasList =
           Arrays.asList(
               "newAlias1", "newAlias2", "newAlias3", "newAlias4", "newAlias5", "newAlias6");
       for (int i = 0; i < fullPaths.size(); i++) {
@@ -291,7 +291,7 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
             aliasList.get(i), newTags, newAttributes, new PartialPath(fullPaths.get(i)));
         checkAliasAndTagsAndAttributes(fullPaths.get(i), aliasList.get(i), newTags, newAttributes);
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       logger.error(e.getMessage(), e);
       Assert.fail(e.getMessage());
     }

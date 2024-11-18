@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.attribute;
 
+import org.apache.tsfile.utils.Binary;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -35,8 +37,12 @@ public interface IDeviceAttributeStore {
   int createAttribute(final List<String> nameList, final Object[] valueList);
 
   // Returns the actually updated map
-  Map<String, String> alterAttribute(
+  Map<String, Binary> alterAttribute(
       final int pointer, final List<String> nameList, final Object[] valueList);
 
-  String getAttribute(final int pointer, final String name);
+  void removeAttribute(final int pointer);
+
+  void removeAttribute(final int pointer, final String attributeName);
+
+  Binary getAttribute(final int pointer, final String name);
 }

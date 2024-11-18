@@ -50,7 +50,7 @@ public class ShowTablesTask implements IConfigTask {
   @Override
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.showTables(database);
+    return configTaskExecutor.showTables(database, false);
   }
 
   public static void buildTsBlock(

@@ -89,7 +89,7 @@ public class LoadManagerTest {
     // Simulate update to Running status
     LOAD_CACHE.cacheConfigNodeHeartbeatSample(0, new NodeHeartbeatSample(NodeStatus.Running));
     LOAD_CACHE.cacheDataNodeHeartbeatSample(1, new NodeHeartbeatSample(NodeStatus.Running));
-    LOAD_CACHE.updateNodeStatistics();
+    LOAD_CACHE.updateNodeStatistics(false);
     LOAD_MANAGER.getEventService().checkAndBroadcastNodeStatisticsChangeEventIfNecessary();
     NODE_SEMAPHORE.acquire();
     Assert.assertEquals(NodeStatus.Running, LOAD_CACHE.getNodeStatus(0));
@@ -117,7 +117,7 @@ public class LoadManagerTest {
 
     // Removing status can't be updated to any other status automatically
     LOAD_CACHE.cacheDataNodeHeartbeatSample(1, new NodeHeartbeatSample(NodeStatus.ReadOnly));
-    LOAD_CACHE.updateNodeStatistics();
+    LOAD_CACHE.updateNodeStatistics(false);
     LOAD_MANAGER.getEventService().checkAndBroadcastNodeStatisticsChangeEventIfNecessary();
     Assert.assertEquals(NodeStatus.Removing, LOAD_CACHE.getNodeStatus(1));
 

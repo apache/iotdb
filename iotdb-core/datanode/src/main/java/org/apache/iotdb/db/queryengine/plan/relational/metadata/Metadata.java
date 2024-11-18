@@ -38,6 +38,7 @@ import org.apache.tsfile.read.common.type.Type;
 import java.util.List;
 import java.util.Optional;
 
+// All the input databases shall not contain "root"
 public interface Metadata {
 
   boolean tableExists(final QualifiedObjectName name);
@@ -183,10 +184,4 @@ public interface Metadata {
    */
   DataPartition getDataPartitionWithUnclosedTimeRange(
       final String database, final List<DataPartitionQueryParam> sgNameToQueryParamsMap);
-
-  /**
-   * @param withTime some function with time can also use Statistics, like first_by, last_by
-   * @return if the Aggregation can use statistics to optimize
-   */
-  boolean canUseStatistics(final String name, boolean withTime);
 }

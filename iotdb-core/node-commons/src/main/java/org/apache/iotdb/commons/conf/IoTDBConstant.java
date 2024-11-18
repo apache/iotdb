@@ -161,6 +161,7 @@ public class IoTDBConstant {
   public static final String COLUMN_CHILD_PATHS_TYPES = "node types";
   public static final String COLUMN_CHILD_NODES = "child nodes";
   public static final String COLUMN_DEVICES = "devices";
+  public static final String COLUMN_DELETED_DEVICE_NUM = "num_of_deleted_devices";
   public static final String COLUMN_COLUMN = "column";
   public static final String COLUMN_COUNT = "count";
   public static final String COLUMN_TAGS = "tags";
@@ -252,6 +253,7 @@ public class IoTDBConstant {
   public static final String TRIGGER_FOLDER_NAME = "trigger";
   public static final String PIPE_FOLDER_NAME = "pipe";
   public static final String TMP_FOLDER_NAME = "tmp";
+  public static final String DELETION_FOLDER_NAME = "deletion";
 
   public static final String MQTT_FOLDER_NAME = "mqtt";
   public static final String WAL_FOLDER_NAME = "wal";

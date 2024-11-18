@@ -29,7 +29,9 @@ import javax.annotation.Nullable;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 public class LoadTsFileConfigurator {
@@ -52,7 +54,7 @@ public class LoadTsFileConfigurator {
     }
   }
 
-  private static final String DATABASE_LEVEL_KEY = "database-level";
+  public static final String DATABASE_LEVEL_KEY = "database-level";
   private static final int DATABASE_LEVEL_DEFAULT_VALUE =
       IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
   private static final int DATABASE_LEVEL_MIN_VALUE = 1;
@@ -80,13 +82,14 @@ public class LoadTsFileConfigurator {
             DATABASE_LEVEL_KEY, String.valueOf(DATABASE_LEVEL_DEFAULT_VALUE)));
   }
 
-  private static final String DATABASE_NAME_KEY = "database-name";
+  public static final String DATABASE_NAME_KEY = "database-name";
 
   public static @Nullable String parseDatabaseName(final Map<String, String> loadAttributes) {
-    return loadAttributes.get(DATABASE_NAME_KEY);
+    final String databaseName = loadAttributes.get(DATABASE_NAME_KEY);
+    return Objects.nonNull(databaseName) ? databaseName.toLowerCase(Locale.ENGLISH) : null;
   }
 
-  private static final String ON_SUCCESS_KEY = "on-success";
+  public static final String ON_SUCCESS_KEY = "on-success";
   private static final String ON_SUCCESS_DELETE_VALUE = "delete";
   private static final String ON_SUCCESS_NONE_VALUE = "none";
   private static final Set<String> ON_SUCCESS_VALUE_SET =

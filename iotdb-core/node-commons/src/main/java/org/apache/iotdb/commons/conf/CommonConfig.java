@@ -193,6 +193,8 @@ public class CommonConfig {
 
   private boolean pipeHardLinkWALEnabled = false;
 
+  private boolean pipeFileReceiverFsyncEnabled = true;
+
   private int pipeRealTimeQueuePollHistoryThreshold = 100;
 
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor. */
@@ -204,6 +206,7 @@ public class CommonConfig {
   private int pipeDataStructureTabletRowSize = 2048;
   private int pipeDataStructureTabletSizeInBytes = 2097152;
   private double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold = 0.4;
+  private double pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold = 0.4;
 
   private int pipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount = 10_000;
   private long pipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration = 10 * 1000L;
@@ -260,6 +263,7 @@ public class CommonConfig {
   private long pipeMemoryAllocateMinSizeInBytes = 32;
   private long pipeMemoryAllocateForTsFileSequenceReaderInBytes = (long) 2 * 1024 * 1024; // 2MB
   private long pipeMemoryExpanderIntervalSeconds = (long) 3 * 60; // 3Min
+  private volatile long pipeTsFileParserCheckMemoryEnoughIntervalMs = 10L;
   private float pipeLeaderCacheMemoryUsagePercentage = 0.1F;
   private long pipeListeningQueueTransferSnapshotThreshold = 1000;
   private int pipeSnapshotExecutionMaxBatchSize = 1000;
@@ -274,7 +278,7 @@ public class CommonConfig {
 
   private float subscriptionCacheMemoryUsagePercentage = 0.2F;
 
-  private boolean pipeEventReferenceTrackingEnabled = false; // TODO: enable later
+  private boolean pipeEventReferenceTrackingEnabled = true;
   private long pipeEventReferenceEliminateIntervalSeconds = 10;
 
   private int subscriptionSubtaskExecutorMaxThreadNum =
@@ -284,12 +288,16 @@ public class CommonConfig {
   private int subscriptionPrefetchTsFileBatchMaxDelayInMs = 5000; // 5s
   private long subscriptionPrefetchTsFileBatchMaxSizeInBytes = 80 * MB;
   private int subscriptionPollMaxBlockingTimeMs = 500;
-  private int subscriptionSerializeMaxBlockingTimeMs = 100;
+  private int subscriptionDefaultTimeoutInMs = 10_000; // 10s
   private long subscriptionLaunchRetryIntervalMs = 1000;
   private int subscriptionRecycleUncommittedEventIntervalMs = 600000; // 600s
   private long subscriptionReadFileBufferSize = 8 * MB;
   private long subscriptionReadTabletBufferSize = 8 * MB;
   private long subscriptionTsFileDeduplicationWindowSeconds = 120; // 120s
+  private volatile long subscriptionTsFileSlicerCheckMemoryEnoughIntervalMs = 10L;
+
+  private long subscriptionMetaSyncerInitialSyncDelayMinutes = 3;
+  private long subscriptionMetaSyncerSyncIntervalMinutes = 3;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -560,14 +568,6 @@ public class CommonConfig {
     this.statusReason = statusReason;
   }
 
-  public NodeStatus getStatus() {
-    return status;
-  }
-
-  public void setStatus(NodeStatus status) {
-    this.status = status;
-  }
-
   public TEndPoint getTargetAINodeEndPoint() {
     return targetAINodeEndPoint;
   }
@@ -670,6 +670,14 @@ public class CommonConfig {
     this.pipeHardLinkWALEnabled = pipeHardLinkWALEnabled;
   }
 
+  public boolean getPipeFileReceiverFsyncEnabled() {
+    return pipeFileReceiverFsyncEnabled;
+  }
+
+  public void setPipeFileReceiverFsyncEnabled(boolean pipeFileReceiverFsyncEnabled) {
+    this.pipeFileReceiverFsyncEnabled = pipeFileReceiverFsyncEnabled;
+  }
+
   public int getPipeDataStructureTabletRowSize() {
     return pipeDataStructureTabletRowSize;
   }
@@ -694,6 +702,16 @@ public class CommonConfig {
       double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold) {
     this.pipeDataStructureTabletMemoryBlockAllocationRejectThreshold =
         pipeDataStructureTabletMemoryBlockAllocationRejectThreshold;
+  }
+
+  public double getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold() {
+    return pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold;
+  }
+
+  public void setPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold(
+      double pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold) {
+    this.pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold =
+        pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold;
   }
 
   public int getPipeExtractorAssignerDisruptorRingBufferSize() {
@@ -1056,6 +1074,15 @@ public class CommonConfig {
     this.pipeMemoryExpanderIntervalSeconds = pipeMemoryExpanderIntervalSeconds;
   }
 
+  public long getPipeTsFileParserCheckMemoryEnoughIntervalMs() {
+    return pipeTsFileParserCheckMemoryEnoughIntervalMs;
+  }
+
+  public void setPipeTsFileParserCheckMemoryEnoughIntervalMs(
+      long pipeTsFileParserCheckMemoryEnoughIntervalMs) {
+    this.pipeTsFileParserCheckMemoryEnoughIntervalMs = pipeTsFileParserCheckMemoryEnoughIntervalMs;
+  }
+
   public int getPipeMemoryAllocateMaxRetries() {
     return pipeMemoryAllocateMaxRetries;
   }
@@ -1269,13 +1296,12 @@ public class CommonConfig {
     this.subscriptionPollMaxBlockingTimeMs = subscriptionPollMaxBlockingTimeMs;
   }
 
-  public int getSubscriptionSerializeMaxBlockingTimeMs() {
-    return subscriptionSerializeMaxBlockingTimeMs;
+  public int getSubscriptionDefaultTimeoutInMs() {
+    return subscriptionDefaultTimeoutInMs;
   }
 
-  public void setSubscriptionSerializeMaxBlockingTimeMs(
-      int subscriptionSerializeMaxBlockingTimeMs) {
-    this.subscriptionSerializeMaxBlockingTimeMs = subscriptionSerializeMaxBlockingTimeMs;
+  public void setSubscriptionDefaultTimeoutInMs(final int subscriptionDefaultTimeoutInMs) {
+    this.subscriptionDefaultTimeoutInMs = subscriptionDefaultTimeoutInMs;
   }
 
   public long getSubscriptionLaunchRetryIntervalMs() {
@@ -1320,6 +1346,35 @@ public class CommonConfig {
       long subscriptionTsFileDeduplicationWindowSeconds) {
     this.subscriptionTsFileDeduplicationWindowSeconds =
         subscriptionTsFileDeduplicationWindowSeconds;
+  }
+
+  public long getSubscriptionTsFileSlicerCheckMemoryEnoughIntervalMs() {
+    return subscriptionTsFileSlicerCheckMemoryEnoughIntervalMs;
+  }
+
+  public void setSubscriptionTsFileSlicerCheckMemoryEnoughIntervalMs(
+      long subscriptionTsFileSlicerCheckMemoryEnoughIntervalMs) {
+    this.subscriptionTsFileSlicerCheckMemoryEnoughIntervalMs =
+        subscriptionTsFileSlicerCheckMemoryEnoughIntervalMs;
+  }
+
+  public long getSubscriptionMetaSyncerInitialSyncDelayMinutes() {
+    return subscriptionMetaSyncerInitialSyncDelayMinutes;
+  }
+
+  public void setSubscriptionMetaSyncerInitialSyncDelayMinutes(
+      long subscriptionMetaSyncerInitialSyncDelayMinutes) {
+    this.subscriptionMetaSyncerInitialSyncDelayMinutes =
+        subscriptionMetaSyncerInitialSyncDelayMinutes;
+  }
+
+  public long getSubscriptionMetaSyncerSyncIntervalMinutes() {
+    return subscriptionMetaSyncerSyncIntervalMinutes;
+  }
+
+  public void setSubscriptionMetaSyncerSyncIntervalMinutes(
+      long subscriptionMetaSyncerSyncIntervalMinutes) {
+    this.subscriptionMetaSyncerSyncIntervalMinutes = subscriptionMetaSyncerSyncIntervalMinutes;
   }
 
   public String getSchemaEngineMode() {
