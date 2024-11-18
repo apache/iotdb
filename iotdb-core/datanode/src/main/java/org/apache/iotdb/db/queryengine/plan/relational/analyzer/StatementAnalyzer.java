@@ -440,7 +440,9 @@ public class StatementAnalyzer {
                     attributeNames.add((SymbolReference) parsedColumn);
 
                     return new UpdateAssignment(
-                        parsedColumn,
+                        new LongLiteral(
+                            String.valueOf(
+                                table.getAttributeId(((SymbolReference) parsedColumn).getName()))),
                         analyzeAndRewriteExpression(
                             translationMap, translationMap.getScope(), assignment.getValue()));
                   })

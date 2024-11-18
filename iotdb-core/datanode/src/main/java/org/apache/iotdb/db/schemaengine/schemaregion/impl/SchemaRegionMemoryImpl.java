@@ -64,7 +64,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Table
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
@@ -1503,8 +1503,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
     final int[] attributeNames =
         updateNode.getAssignments().stream()
-            .map(assignment -> ((SymbolReference) assignment.getName()).getName())
-            .collect(Collectors.toList());
+            .mapToInt(assignment -> (int) ((LongLiteral) assignment.getName()).getParsedValue())
+            .toArray();
 
     // Project expressions don't contain Non-Mappable UDF, TransformOperator is not needed
     return new DeviceAttributeUpdater(
