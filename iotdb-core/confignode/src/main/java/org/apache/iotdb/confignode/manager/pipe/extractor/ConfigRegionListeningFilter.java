@@ -21,6 +21,8 @@ package org.apache.iotdb.confignode.manager.pipe.extractor;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
@@ -56,6 +58,11 @@ public class ConfigRegionListeningFilter {
 
   private static final Map<PartialPath, List<ConfigPhysicalPlanType>> OPTION_PLAN_MAP =
       new HashMap<>();
+
+  private static final PartialPath treeOnlySyncPrefix =
+      new PartialPath(new String[] {"schema", "timeseries"});
+  private static final PartialPath tableOnlySyncPrefix =
+      new PartialPath(new String[] {"schema", "table"});
 
   static {
     try {
@@ -109,8 +116,11 @@ public class ConfigRegionListeningFilter {
           new PartialPath("schema.table.alter.setproperties"),
           Collections.singletonList(ConfigPhysicalPlanType.SetTableProperties));
       OPTION_PLAN_MAP.put(
+          new PartialPath("schema.table.dropcolumn"),
+          Collections.singletonList(ConfigPhysicalPlanType.CommitDeleteColumn));
+      OPTION_PLAN_MAP.put(
           new PartialPath("schema.table.drop"),
-          Collections.singletonList(ConfigPhysicalPlanType.DropTable));
+          Collections.singletonList(ConfigPhysicalPlanType.CommitDeleteTable));
 
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.ttl"), Collections.singletonList(ConfigPhysicalPlanType.SetTTL));
@@ -184,23 +194,26 @@ public class ConfigRegionListeningFilter {
             parameters.getStringOrDefault(
                 Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
                 EXTRACTOR_EXCLUSION_DEFAULT_VALUE));
-    inclusionOptions.forEach(
-        inclusion ->
-            planTypes.addAll(
-                OPTION_PLAN_MAP.keySet().stream()
-                    .filter(path -> path.overlapWithFullPathPrefix(inclusion))
-                    .map(OPTION_PLAN_MAP::get)
-                    .flatMap(Collection::stream)
-                    .collect(Collectors.toSet())));
-    exclusionOptions.forEach(
-        exclusion ->
-            planTypes.removeAll(
-                OPTION_PLAN_MAP.keySet().stream()
-                    .filter(path -> path.overlapWithFullPathPrefix(exclusion))
-                    .map(OPTION_PLAN_MAP::get)
-                    .flatMap(Collection::stream)
-                    .collect(Collectors.toSet())));
+    inclusionOptions.forEach(inclusion -> planTypes.addAll(getOptionsByPrefix(inclusion)));
+    exclusionOptions.forEach(exclusion -> planTypes.removeAll(getOptionsByPrefix(exclusion)));
+
+    if (!TreePattern.isTreeModelDataAllowToBeCaptured(parameters)) {
+      planTypes.removeAll(getOptionsByPrefix(treeOnlySyncPrefix));
+    }
+
+    if (!TablePattern.isTableModelDataAllowToBeCaptured(parameters)) {
+      planTypes.removeAll(getOptionsByPrefix(tableOnlySyncPrefix));
+    }
+
     return planTypes;
+  }
+
+  private static Set<ConfigPhysicalPlanType> getOptionsByPrefix(final PartialPath prefix) {
+    return OPTION_PLAN_MAP.keySet().stream()
+        .filter(path -> path.overlapWithFullPathPrefix(prefix))
+        .map(OPTION_PLAN_MAP::get)
+        .flatMap(Collection::stream)
+        .collect(Collectors.toSet());
   }
 
   private ConfigRegionListeningFilter() {
