@@ -3244,7 +3244,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               && ifNotExists)) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else {
-        System.out.println(tsStatus.getCode());
         LOGGER.warn(
             "Failed to create table {}.{} in config node, status is {}.",
             database,
