@@ -42,7 +42,9 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDele
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
@@ -60,7 +62,9 @@ import org.apache.iotdb.confignode.manager.pipe.receiver.visitor.PipeConfigPhysi
 import org.apache.iotdb.confignode.persistence.schema.CNPhysicalPlanGenerator;
 import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
 import org.apache.iotdb.confignode.persistence.schema.ConfignodeSnapshotParser;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
@@ -221,6 +225,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   }
 
   private TSStatus executePlan(final ConfigPhysicalPlan plan) throws ConsensusException {
+    final String queryId;
     switch (plan.getType()) {
       case CreateDatabase:
         // Here we only reserve database name and substitute the sender's local information
@@ -299,7 +304,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             ? configManager.getTTLManager().unsetTTL((SetTTLPlan) plan, true)
             : configManager.getTTLManager().setTTL((SetTTLPlan) plan, true);
       case CommitCreateTable:
-        final String queryId = generatePseudoQueryId();
+        queryId = generatePseudoQueryId();
         return configManager
             .getProcedureManager()
             .executeWithoutDuplicate(
@@ -312,6 +317,36 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ((CommitCreateTablePlan) plan).getDatabase(),
                     ((CommitCreateTablePlan) plan).getTableName(),
                     queryId));
+      case AddTableColumn:
+        queryId = generatePseudoQueryId();
+        return configManager
+            .getProcedureManager()
+            .executeWithoutDuplicate(
+                ((AddTableColumnPlan) plan).getDatabase(),
+                null,
+                ((AddTableColumnPlan) plan).getTableName(),
+                queryId,
+                ProcedureType.DROP_TABLE_PROCEDURE,
+                new AddTableColumnProcedure(
+                    ((AddTableColumnPlan) plan).getDatabase(),
+                    ((AddTableColumnPlan) plan).getTableName(),
+                    queryId,
+                    ((AddTableColumnPlan) plan).getColumnSchemaList()));
+      case SetTableProperties:
+        queryId = generatePseudoQueryId();
+        return configManager
+            .getProcedureManager()
+            .executeWithoutDuplicate(
+                ((SetTablePropertiesPlan) plan).getDatabase(),
+                null,
+                ((SetTablePropertiesPlan) plan).getTableName(),
+                queryId,
+                ProcedureType.DROP_TABLE_PROCEDURE,
+                new SetTablePropertiesProcedure(
+                    ((SetTablePropertiesPlan) plan).getDatabase(),
+                    ((SetTablePropertiesPlan) plan).getTableName(),
+                    queryId,
+                    ((SetTablePropertiesPlan) plan).getProperties()));
       case DropUser:
       case DropRole:
       case GrantRole:
