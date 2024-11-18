@@ -64,7 +64,7 @@ public class PipeTemporaryMetaInAgent implements PipeTemporaryMeta {
 
   public CommitterKey getCommitterKey(final int regionId, final int restartTime) {
     final CommitterKey key = regionId2CommitterKeyMap.get(regionId);
-    if (key.getRestartTimes() == restartTime) {
+    if (Objects.nonNull(key) && key.getRestartTimes() == restartTime) {
       return key;
     }
     final CommitterKey newKey =
