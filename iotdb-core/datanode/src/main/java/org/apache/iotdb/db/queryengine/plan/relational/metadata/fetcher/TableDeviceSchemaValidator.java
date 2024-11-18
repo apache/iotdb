@@ -39,6 +39,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Binary;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -51,6 +53,8 @@ import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.T
 
 public class TableDeviceSchemaValidator {
   private final SqlParser relationSqlParser = new SqlParser();
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(TableDeviceSchemaValidator.class);
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
