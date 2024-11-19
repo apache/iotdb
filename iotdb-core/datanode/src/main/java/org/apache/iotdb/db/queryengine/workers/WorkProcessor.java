@@ -32,11 +32,11 @@ public class WorkProcessor<T> {
   Processor<T> process;
   ProcessState<T> state;
 
-  WorkProcessor(Processor<T> processor) {
+  public WorkProcessor(Processor<T> processor) {
     this(processor, ProcessState.yielded());
   }
 
-  WorkProcessor(Processor<T> process, ProcessState<T> initialState) {
+  public WorkProcessor(Processor<T> process, ProcessState<T> initialState) {
     this.process = process;
     this.state = initialState;
   }
