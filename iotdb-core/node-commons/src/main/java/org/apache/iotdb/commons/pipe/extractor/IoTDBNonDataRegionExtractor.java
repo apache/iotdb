@@ -46,9 +46,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
 
-  protected IoTDBTreePattern pipePattern;
-  protected boolean shouldExtractTreeEvent;
-  protected boolean shouldExtractTableEvent;
+  protected IoTDBTreePattern treePattern;
+  protected TablePattern tablePattern;
 
   private List<PipeSnapshotEvent> historicalEvents = new LinkedList<>();
   // A fixed size initialized only when the historicalEvents are first
@@ -71,8 +70,6 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
     super.customize(parameters, configuration);
 
     final TreePattern pattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
-    shouldExtractTreeEvent = TreePattern.isTreeModelDataAllowToBeCaptured(parameters);
-    shouldExtractTableEvent = TablePattern.isTableModelDataAllowToBeCaptured(parameters);
 
     if (!(pattern instanceof IoTDBTreePattern
         && (((IoTDBTreePattern) pattern).isPrefix()
@@ -82,7 +79,8 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
               "The path pattern %s is not valid for the source. Only prefix or full path is allowed.",
               pattern.getPattern()));
     }
-    pipePattern = (IoTDBTreePattern) pattern;
+    treePattern = (IoTDBTreePattern) pattern;
+    tablePattern = TablePattern.parsePipePatternFromSourceParameters(parameters);
   }
 
   @Override
@@ -168,7 +166,7 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
                       pipeName,
                       creationTime,
                       pipeTaskMeta,
-                      pipePattern,
+                      treePattern,
                       null,
                       Long.MIN_VALUE,
                       Long.MAX_VALUE);
@@ -200,7 +198,7 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
               pipeName,
               creationTime,
               pipeTaskMeta,
-              pipePattern,
+              treePattern,
               null,
               Long.MIN_VALUE,
               Long.MAX_VALUE);
@@ -215,7 +213,7 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
                 pipeName,
                 creationTime,
                 pipeTaskMeta,
-                pipePattern,
+                treePattern,
                 null,
                 Long.MIN_VALUE,
                 Long.MAX_VALUE);

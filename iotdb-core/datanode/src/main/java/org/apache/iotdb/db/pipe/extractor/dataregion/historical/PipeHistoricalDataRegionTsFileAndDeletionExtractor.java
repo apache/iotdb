@@ -657,8 +657,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                 // In case of tree model deviceID
                 if (treePattern.isTreeModelDataAllowedToBeCaptured()
                     && treePattern.mayOverlapWithDevice(deviceID)) {
-                  tsfile2IsTableModelMap.computeIfAbsent(
-                      resource, (tsFileResource) -> Boolean.FALSE);
+                  tsfile2IsTableModelMap.computeIfAbsent(resource, tsFileResource -> Boolean.FALSE);
                   return true;
                 }
               } else {
@@ -667,8 +666,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                     // The database name in resource is prefixed with "root."
                     && tablePattern.matchesDatabase(resource.getDatabaseName().substring(5))
                     && tablePattern.matchesTable(deviceID.getTableName())) {
-                  tsfile2IsTableModelMap.computeIfAbsent(
-                      resource, (tsFileResource) -> Boolean.TRUE);
+                  tsfile2IsTableModelMap.computeIfAbsent(resource, tsFileResource -> Boolean.TRUE);
                   return true;
                 }
               }

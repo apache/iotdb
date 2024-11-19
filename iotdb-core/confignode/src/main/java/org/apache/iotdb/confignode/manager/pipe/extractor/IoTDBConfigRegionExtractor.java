@@ -117,7 +117,7 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
   protected Optional<PipeWritePlanEvent> trimRealtimeEventByPipePattern(
       final PipeWritePlanEvent event) {
     return PATTERN_PARSE_VISITOR
-        .process(((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan(), pipePattern)
+        .process(((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan(), treePattern)
         .map(
             configPhysicalPlan ->
                 new PipeConfigRegionWritePlanEvent(configPhysicalPlan, event.isGeneratedByPipe()));
