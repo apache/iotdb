@@ -3676,5 +3676,21 @@ public class IoTDBTableAggregationIT {
         "select extreme() from table1",
         "701: Aggregate functions [extreme] should only have one argument",
         DATABASE_NAME);
+    tableAssertTestFail(
+        "select first() from table1",
+        "701: Aggregate functions [first] should only have two arguments",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select first_by() from table1",
+        "701: Aggregate functions [first_by] should only have three arguments",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select last() from table1",
+        "701: Aggregate functions [last] should only have two arguments",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select last_by() from table1",
+        "701: Aggregate functions [last_by] should only have three arguments",
+        DATABASE_NAME);
   }
 }
