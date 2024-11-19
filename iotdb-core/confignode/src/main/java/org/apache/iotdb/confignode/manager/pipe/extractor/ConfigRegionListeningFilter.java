@@ -106,6 +106,7 @@ public class ConfigRegionListeningFilter {
           Collections.singletonList(ConfigPhysicalPlanType.PipeDeactivateTemplate));
 
       // Table Model
+      // TODO: Delete devices
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.table.create"),
           Collections.unmodifiableList(

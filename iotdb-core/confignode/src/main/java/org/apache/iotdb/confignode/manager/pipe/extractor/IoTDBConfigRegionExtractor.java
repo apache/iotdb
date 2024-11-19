@@ -127,6 +127,7 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
 
   @Override
   protected boolean isTypeListened(final PipeWritePlanEvent event) {
+    // TODO: Delete Database?
     final ConfigPhysicalPlan plan =
         ((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan();
     final ConfigPhysicalPlanType type = plan.getType();

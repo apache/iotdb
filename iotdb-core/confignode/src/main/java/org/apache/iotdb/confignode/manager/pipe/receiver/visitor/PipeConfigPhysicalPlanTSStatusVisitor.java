@@ -325,40 +325,65 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
   @Override
   public TSStatus visitPipeCreateTable(
       final PipeCreateTablePlan pipeCreateTablePlan, final TSStatus context) {
-    if (context.getCode() == TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()) {
-      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+    if (context.getCode() == TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }
-    return super.visitPipeCreateTable(pipeCreateTablePlan, context);
+    return visitCommonTablePlan(pipeCreateTablePlan, context);
   }
 
+  // TODO: Table not exist in alter?
   @Override
   public TSStatus visitAddTableColumn(
       final AddTableColumnPlan addTableColumnPlan, final TSStatus context) {
-    return super.visitAddTableColumn(addTableColumnPlan, context);
+    if (context.getCode() == TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return visitCommonTablePlan(addTableColumnPlan, context);
   }
 
   @Override
   public TSStatus visitSetTableProperties(
       final SetTablePropertiesPlan setTablePropertiesPlan, final TSStatus context) {
-    return super.visitSetTableProperties(setTablePropertiesPlan, context);
+    return visitCommonTablePlan(setTablePropertiesPlan, context);
   }
 
   @Override
   public TSStatus visitCommitDeleteColumn(
       final CommitDeleteColumnPlan commitDeleteColumnPlan, final TSStatus context) {
-    return super.visitCommitDeleteColumn(commitDeleteColumnPlan, context);
+    if (context.getCode() == TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return visitCommonTablePlan(commitDeleteColumnPlan, context);
   }
 
   @Override
   public TSStatus visitRenameTableColumn(
       final RenameTableColumnPlan renameTableColumnPlan, final TSStatus context) {
-    return super.visitRenameTableColumn(renameTableColumnPlan, context);
+    if (context.getCode() == TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return visitCommonTablePlan(renameTableColumnPlan, context);
   }
 
   @Override
   public TSStatus visitCommitDeleteTable(
       final CommitDeleteTablePlan commitDeleteTablePlan, final TSStatus context) {
-    return super.visitCommitDeleteTable(commitDeleteTablePlan, context);
+    if (context.getCode() == TSStatusCode.TABLE_NOT_EXISTS.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return visitCommonTablePlan(commitDeleteTablePlan, context);
+  }
+
+  private TSStatus visitCommonTablePlan(final ConfigPhysicalPlan plan, final TSStatus context) {
+    if (context.getCode() == TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return visitPlan(plan, context);
   }
 }
