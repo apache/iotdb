@@ -92,12 +92,12 @@ public class PipeTableModelTabletEventSorter {
         break;
       }
       deviceIDSet.add(deviceID);
-      deviceID2TimeIndex.add(new Pair<>(deviceID, i));
+      deviceID2TimeIndex.add(new Pair<>(lastDevice, i));
       lastDevice = deviceID;
     }
 
     if (!isUnSorted && !hasDuplicates) {
-      deviceID2TimeIndex.add(new Pair<>(lastDevice, tablet.rowSize - 1));
+      deviceID2TimeIndex.add(new Pair<>(lastDevice, tablet.rowSize));
       return deviceID2TimeIndex;
     }
 
@@ -125,15 +125,14 @@ public class PipeTableModelTabletEventSorter {
         index,
         (a, b) -> {
           final int deviceComparison = tablet.getDeviceID(a).compareTo(tablet.getDeviceID(b));
-          if (deviceComparison == 0) {
-            return Long.compare(tablet.timestamps[a], tablet.timestamps[b]);
-          }
-          return deviceComparison;
+          return deviceComparison == 0
+              ? Long.compare(tablet.timestamps[a], tablet.timestamps[b])
+              : deviceComparison;
         });
     final long[] timestamps = new long[tablet.rowSize];
     final long[] tabletTimestamps = tablet.timestamps;
     timestamps[0] = tabletTimestamps[index[0]];
-    IDeviceID lastDevice = tablet.getDeviceID(0);
+    IDeviceID lastDevice = tablet.getDeviceID(index[0]);
     deduplicatedSize = 1;
 
     for (int i = 1; i < timestamps.length; i++) {
@@ -141,14 +140,16 @@ public class PipeTableModelTabletEventSorter {
       final IDeviceID deviceId = tablet.getDeviceID(timeIndex);
       if (!lastDevice.equals(deviceId)) {
         timestamps[deduplicatedSize] = tabletTimestamps[timeIndex];
+        index[deduplicatedSize] = timeIndex;
+        deviceID2TimeIndex.add(new Pair<>(lastDevice, deduplicatedSize));
         lastDevice = deviceId;
-        deviceID2TimeIndex.add(new Pair<>(deviceId, i));
         deduplicatedSize++;
         continue;
       }
 
-      if (timestamps[deduplicatedSize - 1] != timestamps[deduplicatedSize]) {
+      if (timestamps[deduplicatedSize - 1] != timestamps[timeIndex]) {
         timestamps[deduplicatedSize] = tabletTimestamps[timeIndex];
+        index[deduplicatedSize] = timeIndex;
         lastDevice = deviceId;
         deduplicatedSize++;
       }
@@ -165,14 +166,16 @@ public class PipeTableModelTabletEventSorter {
       final IDeviceID deviceId = tablet.getDeviceID(i);
       if (!lastDevice.equals(deviceId)) {
         timestamps[deduplicatedSize] = timestamps[i];
+        index[deduplicatedSize] = i;
+        deviceID2TimeIndex.add(new Pair<>(lastDevice, i));
         lastDevice = deviceId;
-        deviceID2TimeIndex.add(new Pair<>(deviceId, i));
         deduplicatedSize++;
         continue;
       }
 
-      if (timestamps[deduplicatedSize - 1] != timestamps[deduplicatedSize]) {
+      if (timestamps[deduplicatedSize - 1] != timestamps[i]) {
         timestamps[deduplicatedSize] = timestamps[i];
+        index[deduplicatedSize] = i;
         lastDevice = deviceId;
         deduplicatedSize++;
       }
