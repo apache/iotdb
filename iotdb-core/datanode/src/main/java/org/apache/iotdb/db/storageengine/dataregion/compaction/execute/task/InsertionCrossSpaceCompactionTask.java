@@ -367,6 +367,11 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
     }
   }
 
+  @Override
+  public long getCompactionRewriteDataSize() {
+    return 0;
+  }
+
   private void updateFileMetrics() {
     // Here the target file is used for updating metrics because the source file
     // has been deleted here.

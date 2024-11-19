@@ -66,7 +66,7 @@ public abstract class AbstractCompactionEstimator {
   protected long fixedMemoryBudget =
       (long)
               ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
-                  / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
+                  / IoTDBDescriptor.getInstance().getConfig().getTotalCompactionThreadCount()
                   * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion())
           + BatchCompactionPlan.maxCachedTimeChunksSize;
 

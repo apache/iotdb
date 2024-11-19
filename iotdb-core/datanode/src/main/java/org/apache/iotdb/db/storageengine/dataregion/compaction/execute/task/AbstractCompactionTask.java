@@ -98,6 +98,10 @@ public abstract class AbstractCompactionTask {
 
   public abstract List<TsFileResource> getAllSourceTsFiles();
 
+  public List<TsFileResource> getSelectedTsFileResourceList() {
+    return getAllSourceTsFiles();
+  }
+
   public long getCompactionConfigVersion() {
     // This parameter should not take effect by default unless it is overridden by a subclass
     return Long.MAX_VALUE;
@@ -548,6 +552,8 @@ public abstract class AbstractCompactionTask {
   }
 
   public abstract CompactionTaskType getCompactionTaskType();
+
+  public abstract long getCompactionRewriteDataSize();
 
   @TestOnly
   public void setRecoverMemoryStatus(boolean recoverMemoryStatus) {

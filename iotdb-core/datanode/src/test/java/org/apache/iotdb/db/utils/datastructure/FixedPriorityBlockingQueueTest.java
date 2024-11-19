@@ -296,9 +296,9 @@ public class FixedPriorityBlockingQueueTest {
       integers.add(new AtomicInteger(random.nextInt(1000)));
     }
 
-    testQueue.regsitPollLastHook(x -> x.set(x.get() + 1));
-    testQueue.regsitPollLastHook(x -> x.set(x.get() * 5));
-    testQueue.regsitPollLastHook(x -> x.set(x.get() * x.get()));
+    testQueue.registerPollLastHooks(x -> x.set(x.get() + 1));
+    testQueue.registerPollLastHooks(x -> x.set(x.get() * 5));
+    testQueue.registerPollLastHooks(x -> x.set(x.get() * x.get()));
 
     integers.sort(Comparator.comparingInt(AtomicInteger::get));
 

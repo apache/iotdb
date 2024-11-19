@@ -608,6 +608,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     return filesView.sortedAllSourceFilesInTask;
   }
 
+  @Override
   public List<TsFileResource> getSelectedTsFileResourceList() {
     return filesView.sourceFilesInCompactionPerformer;
   }
@@ -626,7 +627,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     return filesView.sequence;
   }
 
-  public long getSelectedFileSize() {
+  public long getCompactionRewriteDataSize() {
     return filesView.selectedFileSize;
   }
 
@@ -746,5 +747,10 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   @Override
   public void setCompactionConfigVersion(long compactionConfigVersion) {
     this.compactionConfigVersion = Math.min(this.compactionConfigVersion, compactionConfigVersion);
+  }
+
+  @Override
+  public long getSelectedFileSize() {
+    return filesView.selectedFileSize;
   }
 }

@@ -748,14 +748,30 @@ public class IoTDBDescriptor {
                         "merge_interval_sec", Long.toString(conf.getMergeIntervalSec())))
                 .map(String::trim)
                 .orElse(Long.toString(conf.getMergeIntervalSec()))));
-    conf.setCompactionThreadCount(
+    conf.setNormalCompactionThreadCount(
         Integer.parseInt(
             Optional.ofNullable(
                     properties.getProperty(
-                        "compaction_thread_count",
-                        Integer.toString(conf.getCompactionThreadCount())))
+                        "normal_compaction_thread_count",
+                        Integer.toString(conf.getNormalCompactionThreadCount())))
                 .map(String::trim)
-                .orElse(Integer.toString(conf.getCompactionThreadCount()))));
+                .orElse(Integer.toString(conf.getNormalCompactionThreadCount()))));
+    conf.setLightweightCompactionThreadCount(
+        Integer.parseInt(
+            Optional.ofNullable(
+                    properties.getProperty(
+                        "lightweight_compaction_thread_count",
+                        Integer.toString(conf.getLightweightCompactionThreadCount())))
+                .map(String::trim)
+                .orElse(Integer.toString(conf.getLightweightCompactionThreadCount()))));
+    conf.setSmallCompactionTaskFileSizeInBytes(
+        Long.parseLong(
+            Optional.ofNullable(
+                    properties.getProperty(
+                        "small_compaction_task_file_size_in_bytes",
+                        Long.toString(conf.getSmallCompactionTaskFileSizeInBytes())))
+                .map(String::trim)
+                .orElse(Long.toString(conf.getSmallCompactionTaskFileSizeInBytes()))));
     int maxConcurrentAlignedSeriesInCompaction =
         Integer.parseInt(
             Optional.ofNullable(
@@ -2004,34 +2020,66 @@ public class IoTDBDescriptor {
     configModified |=
         compactionMaxAlignedSeriesNumInOneBatch
             != conf.getCompactionMaxAlignedSeriesNumInOneBatch();
+
+    // update small_compaction_task_file_size_in_bytes
+    long smallCompactionTaskFileSize = conf.getSmallCompactionTaskFileSizeInBytes();
+    conf.setSmallCompactionTaskFileSizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "small_compaction_task_file_size_in_bytes",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "small_compaction_task_file_size_in_bytes"))));
+    configModified |= smallCompactionTaskFileSize != conf.getSmallCompactionTaskFileSizeInBytes();
+
     return configModified;
   }
 
   private boolean loadCompactionThreadCountHotModifiedProps(Properties properties)
       throws IOException {
-    int newConfigCompactionThreadCount =
+    int newConfigNormalCompactionThreadCount =
         Integer.parseInt(
             properties.getProperty(
-                "compaction_thread_count",
-                ConfigurationFileUtils.getConfigurationDefaultValue("compaction_thread_count")));
-    if (newConfigCompactionThreadCount <= 0) {
+                "normal_compaction_thread_count",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "normal_compaction_thread_count")));
+    int newConfigLightweightCompactionThreadCount =
+        Integer.parseInt(
+            properties.getProperty(
+                "lightweight_compaction_thread_count",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "lightweight_compaction_thread_count")));
+    if (newConfigNormalCompactionThreadCount <= 0
+        || newConfigLightweightCompactionThreadCount <= 0) {
       LOGGER.error("compaction_thread_count must greater than 0");
       return false;
     }
-    if (newConfigCompactionThreadCount == conf.getCompactionThreadCount()) {
+    if (newConfigNormalCompactionThreadCount == conf.getNormalCompactionThreadCount()
+        && newConfigLightweightCompactionThreadCount
+            == conf.getLightweightCompactionThreadCount()) {
       return false;
     }
-    conf.setCompactionThreadCount(
+    conf.setNormalCompactionThreadCount(
         Integer.parseInt(
             Optional.ofNullable(
                     properties.getProperty(
-                        "compaction_thread_count",
+                        "normal_compaction_thread_count",
                         ConfigurationFileUtils.getConfigurationDefaultValue(
-                            "compaction_thread_count")))
+                            "normal_compaction_thread_count")))
                 .map(String::trim)
                 .orElse(
                     ConfigurationFileUtils.getConfigurationDefaultValue(
-                        "compaction_thread_count"))));
+                        "normal_compaction_thread_count"))));
+    conf.setLightweightCompactionThreadCount(
+        Integer.parseInt(
+            Optional.ofNullable(
+                    properties.getProperty(
+                        "lightweight_compaction_thread_count",
+                        ConfigurationFileUtils.getConfigurationDefaultValue(
+                            "lightweight_compaction_thread_count")))
+                .map(String::trim)
+                .orElse(
+                    ConfigurationFileUtils.getConfigurationDefaultValue(
+                        "lightweight_compaction_thread_count"))));
     return true;
   }
 

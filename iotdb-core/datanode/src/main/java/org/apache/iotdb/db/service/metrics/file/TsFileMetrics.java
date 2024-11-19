@@ -411,4 +411,29 @@ public class TsFileMetrics implements IMetricSet {
     }
     return fileCount;
   }
+
+  public long getAverageTsFileSize(int level) {
+    int levelFileCount = 0;
+    Pair<Integer, Gauge> seqCountPair = seqLevelTsFileCountMap.get(level);
+    if (seqCountPair != null) {
+      levelFileCount += seqCountPair.left;
+    }
+    Pair<Integer, Gauge> unseqCountPair = unseqLevelTsFileCountMap.get(levelFileCount);
+    if (unseqCountPair != null) {
+      levelFileCount += unseqCountPair.left;
+    }
+    if (levelFileCount == 0) {
+      return 0;
+    }
+    long levelFileSize = 0;
+    Pair<Long, Gauge> seqFileSizePair = seqLevelTsFileSizeMap.get(level);
+    if (seqFileSizePair != null) {
+      levelFileSize += seqFileSizePair.left;
+    }
+    Pair<Long, Gauge> unseqFileSizePair = unseqLevelTsFileSizeMap.get(level);
+    if (unseqFileSizePair != null) {
+      levelFileSize += unseqFileSizePair.left;
+    }
+    return levelFileSize / levelFileCount;
+  }
 }

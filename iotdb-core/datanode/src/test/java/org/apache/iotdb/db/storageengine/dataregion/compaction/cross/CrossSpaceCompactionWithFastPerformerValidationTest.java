@@ -84,6 +84,13 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
 
   private ICrossCompactionPerformer performer = new FastCompactionPerformer(true);
   private long compactionMemory = SystemInfo.getInstance().getMemorySizeForCompaction();
+  private int minCrossCompactionUnseqFileLevel =
+      IoTDBDescriptor.getInstance().getConfig().getMinCrossCompactionUnseqFileLevel();
+  private long targetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
+  private int maxNumberOfPointsInPage =
+      TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+  private int fileLimitPerCrossTask =
+      IoTDBDescriptor.getInstance().getConfig().getFileLimitPerCrossTask();
 
   @Before
   public void setUp()
@@ -101,6 +108,12 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     super.tearDown();
     Thread.currentThread().setName(oldThreadName);
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setMinCrossCompactionUnseqFileLevel(minCrossCompactionUnseqFileLevel);
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(targetChunkSize);
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(maxNumberOfPointsInPage);
+    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerCrossTask(fileLimitPerCrossTask);
     SystemInfo.getInstance().setMemorySizeForCompaction(compactionMemory);
     TsFileValidationTool.setBadFileNum(0);
   }
