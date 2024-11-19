@@ -101,7 +101,7 @@ public class IoTDBInsertTableSessionPoolIT {
               300);
       long timestamp = 0;
       for (long row = 0; row < 100; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp);
         for (int s = 0; s < 4; s++) {
           long value = timestamp;
@@ -115,7 +115,7 @@ public class IoTDBInsertTableSessionPoolIT {
       }
       timestamp = System.currentTimeMillis();
       for (long row = 0; row < 100; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp);
         for (int s = 0; s < 4; s++) {
           long value = timestamp;
@@ -216,7 +216,7 @@ public class IoTDBInsertTableSessionPoolIT {
               10);
 
       for (long row = 0; row < 10; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("device_id", rowIndex, "1");
         tablet.addValue("attribute", rowIndex, "1");

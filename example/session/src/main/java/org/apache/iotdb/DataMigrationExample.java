@@ -141,8 +141,8 @@ public class DataMigrationExample {
         }
         tablet = new Tablet(device, schemaList, 300000);
         while (dataIter.next()) {
-          int row = tablet.rowSize++;
-          tablet.timestamps[row] = dataIter.getLong(1);
+          int row = tablet.getRowSize();
+          tablet.addTimestamp(row, dataIter.getLong(1));
           for (int j = 0; j < schemaList.size(); ++j) {
             if (dataIter.isNull(j + 2)) {
               tablet.addValue(schemaList.get(j).getMeasurementName(), row, null);
@@ -184,12 +184,12 @@ public class DataMigrationExample {
                 LOGGER.info("Migration of this type of data is not supported");
             }
           }
-          if (tablet.rowSize == tablet.getMaxRowNumber()) {
+          if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
             writerPool.insertTablet(tablet, true);
             tablet.reset();
           }
         }
-        if (tablet.rowSize != 0) {
+        if (tablet.getRowSize() != 0) {
           writerPool.insertTablet(tablet);
           tablet.reset();
         }

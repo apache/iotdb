@@ -125,7 +125,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
         continue;
       }
 
-      final int rowIndex = tablet.rowSize;
+      final int rowIndex = tablet.getRowSize();
       tablet.addTimestamp(rowIndex, timestamp);
       for (int i = 0, fieldSize = row.length - 1; i < fieldSize; i++) {
         final Object value =
@@ -140,7 +140,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     }
 
     if (isAllNull) {
-      tablet.rowSize = 0;
+      tablet.setRowSize(0);
     }
 
     return tablet;

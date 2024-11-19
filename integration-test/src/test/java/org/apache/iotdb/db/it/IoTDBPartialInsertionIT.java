@@ -154,7 +154,7 @@ public class IoTDBPartialInsertionIT {
       Tablet tablet = new Tablet("root.sg1.d1", schemaList, 300);
       long timestamp = 0;
       for (long row = 0; row < 100; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp);
         for (int s = 0; s < 3; s++) {
           long value = timestamp;
@@ -164,7 +164,7 @@ public class IoTDBPartialInsertionIT {
       }
       timestamp = System.currentTimeMillis();
       for (long row = 0; row < 100; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp);
         for (int s = 0; s < 3; s++) {
           long value = timestamp;

@@ -2796,7 +2796,7 @@ public class Session implements ISession {
     if (tableModelDeviceIdToEndpoint.isEmpty()) {
       relationalTabletGroup.put(defaultSessionConnection, tablet);
     } else {
-      for (int i = 0; i < tablet.rowSize; i++) {
+      for (int i = 0; i < tablet.getRowSize(); i++) {
         IDeviceID iDeviceID = tablet.getDeviceID(i);
         final SessionConnection connection = getSessionConnection(iDeviceID);
         int finalI = i;
@@ -2819,16 +2819,16 @@ public class Session implements ISession {
                         measurements,
                         dataTypes,
                         tablet.getColumnTypes(),
-                        tablet.rowSize);
+                        tablet.getRowSize());
               }
               for (int j = 0; j < v.getSchemas().size(); j++) {
                 v.addValue(
                     v.getSchemas().get(j).getMeasurementName(),
-                    v.rowSize,
+                    v.getRowSize(),
                     tablet.getValue(finalI, j));
               }
-              v.addTimestamp(v.rowSize, tablet.timestamps[finalI]);
-              v.rowSize++;
+              v.addTimestamp(v.getRowSize(), tablet.timestamps[finalI]);
+              v.setRowSize(v.getRowSize() + 1);
               return v;
             });
       }
@@ -3009,7 +3009,7 @@ public class Session implements ISession {
     request.setIsAligned(isAligned);
     request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
     request.setValues(SessionUtils.getValueBuffer(tablet));
-    request.setSize(tablet.rowSize);
+    request.setSize(tablet.getRowSize());
     return request;
   }
 
@@ -3132,7 +3132,7 @@ public class Session implements ISession {
     request.addToTypesList(dataTypes);
     request.addToTimestampsList(SessionUtils.getTimeBuffer(tablet));
     request.addToValuesList(SessionUtils.getValueBuffer(tablet));
-    request.addToSizeList(tablet.rowSize);
+    request.addToSizeList(tablet.getRowSize());
   }
 
   // sample some records and judge weather need to add too many null values to convert to tablet.
@@ -3308,7 +3308,7 @@ public class Session implements ISession {
       List<String> measurements,
       List<Object> values,
       Map<String, Pair<TSDataType, Boolean>> allMeasurementMap) {
-    int row = tablet.rowSize++;
+    int row = tablet.getRowSize();
     tablet.addTimestamp(row, timestamp);
     // tablet without null value
     if (measurements.size() == allMeasurementMap.size()) {
@@ -3538,7 +3538,7 @@ public class Session implements ISession {
    * @return whether the batch has been sorted
    */
   private boolean checkSorted(Tablet tablet) {
-    for (int i = 1; i < tablet.rowSize; i++) {
+    for (int i = 1; i < tablet.getRowSize(); i++) {
       if (tablet.timestamps[i] < tablet.timestamps[i - 1]) {
         return false;
       }
@@ -3564,12 +3564,12 @@ public class Session implements ISession {
      * so we can insert continuous data in value list to get a better performance
      */
     // sort to get index, and use index to sort value list
-    Integer[] index = new Integer[tablet.rowSize];
-    for (int i = 0; i < tablet.rowSize; i++) {
+    Integer[] index = new Integer[tablet.getRowSize()];
+    for (int i = 0; i < tablet.getRowSize(); i++) {
       index[i] = i;
     }
     Arrays.sort(index, Comparator.comparingLong(o -> tablet.timestamps[o]));
-    Arrays.sort(tablet.timestamps, 0, tablet.rowSize);
+    Arrays.sort(tablet.timestamps, 0, tablet.getRowSize());
     int columnIndex = 0;
     for (int i = 0; i < tablet.getSchemas().size(); i++) {
       IMeasurementSchema schema = tablet.getSchemas().get(i);

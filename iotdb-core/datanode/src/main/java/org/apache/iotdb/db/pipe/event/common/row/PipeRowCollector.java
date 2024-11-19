@@ -77,7 +77,7 @@ public class PipeRowCollector implements RowCollector {
       isAligned = pipeRow.isAligned();
     }
 
-    final int rowIndex = tablet.rowSize;
+    final int rowIndex = tablet.getRowSize();
     tablet.addTimestamp(rowIndex, row.getTime());
     for (int i = 0; i < row.size(); i++) {
       final Object value = row.getObject(i);
@@ -94,7 +94,7 @@ public class PipeRowCollector implements RowCollector {
       }
     }
 
-    if (tablet.rowSize == tablet.getMaxRowNumber()) {
+    if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
       collectTabletInsertionEvent();
     }
   }

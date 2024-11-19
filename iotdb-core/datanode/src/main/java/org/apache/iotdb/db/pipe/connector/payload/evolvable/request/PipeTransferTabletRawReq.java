@@ -79,7 +79,7 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
       request.setIsAligned(isAligned);
       request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
       request.setValues(SessionUtils.getValueBuffer(tablet));
-      request.setSize(tablet.rowSize);
+      request.setSize(tablet.getRowSize());
       request.setMeasurements(
           PathUtils.checkIsLegalSingleMeasurementsAndUpdate(request.getMeasurements()));
 

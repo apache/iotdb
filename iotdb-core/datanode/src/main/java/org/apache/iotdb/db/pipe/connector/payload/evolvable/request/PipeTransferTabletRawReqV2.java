@@ -76,7 +76,7 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
       request.setIsAligned(isAligned);
       request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
       request.setValues(SessionUtils.getValueBuffer(tablet));
-      request.setSize(tablet.rowSize);
+      request.setSize(tablet.getRowSize());
 
       // Tree model
       if (Objects.isNull(dataBaseName)) {

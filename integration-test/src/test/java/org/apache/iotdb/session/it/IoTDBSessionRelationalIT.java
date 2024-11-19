@@ -167,18 +167,18 @@ public class IoTDBSessionRelationalIT {
               15);
 
       for (long row = 0; row < 15; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("id1", rowIndex, "id:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           session.insertRelationalTablet(tablet, true);
           tablet.reset();
         }
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         session.insertRelationalTablet(tablet);
         tablet.reset();
       }
@@ -186,18 +186,18 @@ public class IoTDBSessionRelationalIT {
       session.executeNonQueryStatement("FLush");
 
       for (long row = 15; row < 30; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("id1", rowIndex, "id:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           session.insertRelationalTablet(tablet, true);
           tablet.reset();
         }
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         session.insertRelationalTablet(tablet);
         tablet.reset();
       }
@@ -530,13 +530,13 @@ public class IoTDBSessionRelationalIT {
               15);
 
       for (long row = 0; row < 15; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("id1", rowIndex, "id:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
         tablet.addValue("m2", rowIndex, row * 1.0);
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           try {
             session.insertRelationalTablet(tablet, true);
           } catch (StatementExecutionException e) {
@@ -551,7 +551,7 @@ public class IoTDBSessionRelationalIT {
         }
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         try {
           session.insertRelationalTablet(tablet, true);
         } catch (StatementExecutionException e) {
@@ -567,13 +567,13 @@ public class IoTDBSessionRelationalIT {
       session.executeNonQueryStatement("FLush");
 
       for (long row = 15; row < 30; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("id1", rowIndex, "id:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
         tablet.addValue("m2", rowIndex, row * 1.0);
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           try {
             session.insertRelationalTablet(tablet, true);
           } catch (StatementExecutionException e) {
@@ -587,7 +587,7 @@ public class IoTDBSessionRelationalIT {
         }
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         try {
           session.insertRelationalTablet(tablet, true);
         } catch (StatementExecutionException e) {
@@ -649,18 +649,18 @@ public class IoTDBSessionRelationalIT {
               15);
 
       for (long row = 0; row < 15; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("id1", rowIndex, "id:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           session.insertRelationalTablet(tablet, true);
           tablet.reset();
         }
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         session.insertRelationalTablet(tablet);
         tablet.reset();
       }
@@ -668,18 +668,18 @@ public class IoTDBSessionRelationalIT {
       session.executeNonQueryStatement("FLush");
 
       for (long row = 15; row < 30; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("id1", rowIndex, "id:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           session.insertRelationalTablet(tablet, true);
           tablet.reset();
         }
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         session.insertRelationalTablet(tablet);
         tablet.reset();
       }
@@ -726,18 +726,18 @@ public class IoTDBSessionRelationalIT {
               15);
 
       for (long row = 0; row < 15; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("id1", rowIndex, "id:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           session.insertRelationalTablet(tablet, true);
           tablet.reset();
         }
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         session.insertRelationalTablet(tablet);
         tablet.reset();
       }
@@ -745,19 +745,19 @@ public class IoTDBSessionRelationalIT {
       session.executeNonQueryStatement("FLush");
 
       for (long row = 15; row < 30; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         // cache leader should work for devices that have inserted before
         tablet.addValue("id1", rowIndex, "id:" + (row - 15));
         tablet.addValue("attr1", rowIndex, "attr:" + (row - 15));
         tablet.addValue("m1", rowIndex, row * 1.0);
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           session.insertRelationalTablet(tablet, true);
           tablet.reset();
         }
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         session.insertRelationalTablet(tablet);
         tablet.reset();
       }
@@ -855,18 +855,18 @@ public class IoTDBSessionRelationalIT {
               15);
 
       for (long row = 0; row < 15; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("id1", rowIndex, "id:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           session.insertRelationalTablet(tablet, true);
           tablet.reset();
         }
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         session.insertRelationalTablet(tablet);
         tablet.reset();
       }
@@ -874,18 +874,18 @@ public class IoTDBSessionRelationalIT {
       session.executeNonQueryStatement("FLush");
 
       for (long row = 15; row < 30; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("id1", rowIndex, "id:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           session.insertRelationalTablet(tablet, true);
           tablet.reset();
         }
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         session.insertRelationalTablet(tablet);
         tablet.reset();
       }
@@ -930,18 +930,18 @@ public class IoTDBSessionRelationalIT {
               15);
 
       for (long row = 0; row < 15; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("id2", rowIndex, "id:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           session.insertRelationalTablet(tablet, true);
           tablet.reset();
         }
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         session.insertRelationalTablet(tablet);
         tablet.reset();
       }
@@ -949,18 +949,18 @@ public class IoTDBSessionRelationalIT {
       session.executeNonQueryStatement("FLush");
 
       for (long row = 15; row < 30; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("id2", rowIndex, "id:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           session.insertRelationalTablet(tablet, true);
           tablet.reset();
         }
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         session.insertRelationalTablet(tablet);
         tablet.reset();
       }

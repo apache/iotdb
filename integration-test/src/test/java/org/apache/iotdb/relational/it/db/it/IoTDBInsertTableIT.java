@@ -201,7 +201,7 @@ public class IoTDBInsertTableIT {
               300);
       long timestamp = 0;
       for (long row = 0; row < 100; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp);
         for (int s = 0; s < 4; s++) {
           long value = timestamp;
@@ -215,7 +215,7 @@ public class IoTDBInsertTableIT {
       }
       timestamp = System.currentTimeMillis();
       for (long row = 0; row < 100; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp);
         for (int s = 0; s < 4; s++) {
           long value = timestamp;
@@ -670,18 +670,18 @@ public class IoTDBInsertTableIT {
               15);
 
       for (long row = 0; row < 15; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("id1", rowIndex, "id:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           session.insertRelationalTablet(tablet, true);
           tablet.reset();
         }
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         session.insertRelationalTablet(tablet);
         tablet.reset();
       }
@@ -725,18 +725,18 @@ public class IoTDBInsertTableIT {
               15);
 
       for (long row = 0; row < 15; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("id1", rowIndex, "id:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           session.insertRelationalTablet(tablet, true);
           tablet.reset();
         }
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         session.insertRelationalTablet(tablet);
         tablet.reset();
       }
@@ -813,7 +813,7 @@ public class IoTDBInsertTableIT {
               10);
 
       for (long row = 0; row < 10; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("device_id", rowIndex, "1");
         tablet.addValue("attribute", rowIndex, "1");
@@ -945,7 +945,7 @@ public class IoTDBInsertTableIT {
               15);
 
       for (long row = 0; row < 3; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("id1", rowIndex, "id:" + row);
         tablet.addValue("s1", rowIndex, row);
@@ -961,7 +961,7 @@ public class IoTDBInsertTableIT {
       tablet.reset();
       timestamp = System.currentTimeMillis() - 10000;
       for (long row = 0; row < 4; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp);
         tablet.addValue("id1", rowIndex, "id:" + row);
         tablet.addValue("s1", rowIndex, row);
@@ -1022,13 +1022,13 @@ public class IoTDBInsertTableIT {
               15);
 
       for (long row = 0; row < 15; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("id1", rowIndex, "id:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
         tablet.addValue("m2", rowIndex, row * 1.0);
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           try {
             session.insertRelationalTablet(tablet, true);
           } catch (StatementExecutionException e) {
@@ -1046,13 +1046,13 @@ public class IoTDBInsertTableIT {
       session.executeNonQueryStatement("FLush");
 
       for (long row = 0; row < 15; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, 14 - row);
         tablet.addValue("id1", rowIndex, "id:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
         tablet.addValue("m2", rowIndex, row * 1.0);
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           try {
             session.insertRelationalTablet(tablet, true);
           } catch (StatementExecutionException e) {

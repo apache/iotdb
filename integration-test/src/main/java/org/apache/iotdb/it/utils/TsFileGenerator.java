@@ -103,15 +103,15 @@ public class TsFileGenerator implements AutoCloseable {
     long startTime = timeSet.isEmpty() ? 0L : timeSet.last();
 
     for (long r = 0; r < number; r++) {
-      int row = tablet.rowSize++;
+      int row = tablet.getRowSize();
       startTime += timeGap;
-      timestamps[row] = startTime;
+      tablet.addTimestamp(row, startTime);
       timeSet.add(startTime);
       for (int i = 0; i < sensorNum; i++) {
         generateDataPoint(values[i], row, schemas.get(i));
       }
       // write
-      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+      if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
         if (!isAligned) {
           writer.write(tablet);
         } else {
@@ -121,7 +121,7 @@ public class TsFileGenerator implements AutoCloseable {
       }
     }
     // write
-    if (tablet.rowSize != 0) {
+    if (tablet.getRowSize() != 0) {
       if (!isAligned) {
         writer.write(tablet);
       } else {
@@ -149,15 +149,15 @@ public class TsFileGenerator implements AutoCloseable {
     long startTime = startTimestamp;
 
     for (long r = 0; r < number; r++) {
-      final int row = tablet.rowSize++;
+      final int row = tablet.getRowSize();
       startTime += timeGap;
-      timestamps[row] = startTime;
+      tablet.addTimestamp(row, startTime);
       timeSet.add(startTime);
       for (int i = 0; i < sensorNum; i++) {
         generateDataPoint(values[i], row, schemas.get(i));
       }
       // write
-      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+      if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
         if (!isAligned) {
           writer.write(tablet);
         } else {
@@ -167,7 +167,7 @@ public class TsFileGenerator implements AutoCloseable {
       }
     }
     // write
-    if (tablet.rowSize != 0) {
+    if (tablet.getRowSize() != 0) {
       if (!isAligned) {
         writer.write(tablet);
       } else {

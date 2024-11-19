@@ -92,8 +92,8 @@ public class SessionIT {
       Object[] values = tablet.values;
 
       for (long time = 0; time < 10; time++) {
-        int row = tablet.rowSize++;
-        timestamps[row] = time;
+        int row = tablet.getRowSize();
+        tablet.addTimestamp(row, time);
         long[] sensor = (long[]) values[0];
         sensor[row] = time;
         double[] sensor2 = (double[]) values[1];
@@ -281,7 +281,7 @@ public class SessionIT {
       bytes[1] = (byte) Integer.parseInt("BE", 16);
       // Method 1 to add tablet data
       for (long time = 10; time < 15; time++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, time);
         tablet.addValue(
             schemaList.get(0).getMeasurementName(), rowIndex, LocalDate.of(2024, 1, (int) time));
@@ -291,12 +291,13 @@ public class SessionIT {
       }
       session.insertTablet(tablet);
       tablet.reset();
+      tablet.bitMaps = null;
       // Method 2 to add tablet data
       long[] timestamps = tablet.timestamps;
       Object[] values = tablet.values;
       for (long time = 15; time < 20; time++) {
-        int rowIndex = tablet.rowSize++;
-        timestamps[rowIndex] = time;
+        int rowIndex = tablet.getRowSize();
+        tablet.addTimestamp(rowIndex, time);
         ((LocalDate[]) values[0])[rowIndex] = LocalDate.of(2024, 1, (int) time);
         ((long[]) values[1])[rowIndex] = time;
         ((Binary[]) values[2])[rowIndex] = new Binary(bytes);

@@ -105,20 +105,20 @@ public class CompactionValidationTest {
     long sensorNum = schemas.size();
 
     for (long r = 0; r < rowNum; r++, startValue++) {
-      int row = tablet.rowSize++;
-      timestamps[row] = startTime++;
+      int row = tablet.getRowSize();
+      tablet.addTimestamp(row, startTime++);
       for (int i = 0; i < sensorNum; i++) {
         Binary[] textSensor = (Binary[]) values[i];
         textSensor[row] = new Binary("testString.........", TSFileConfig.STRING_CHARSET);
       }
       // write
-      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+      if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
         tsFileWriter.write(tablet);
         tablet.reset();
       }
     }
     // write
-    if (tablet.rowSize != 0) {
+    if (tablet.getRowSize() != 0) {
       tsFileWriter.write(tablet);
       tablet.reset();
     }

@@ -389,7 +389,7 @@ public class ExportTsFile extends AbstractTsFileTool {
       for (Tablet tablet : tabletList) {
         String deviceId = tablet.getDeviceId();
         List<Integer> columnIndices = deviceColumnIndices.get(deviceId);
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, rowRecord.getTimestamp());
         List<IMeasurementSchema> schemas = tablet.getSchemas();
 
@@ -404,7 +404,7 @@ public class ExportTsFile extends AbstractTsFileTool {
           tablet.addValue(measurementSchema.getMeasurementName(), rowIndex, value);
         }
 
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           writeToTsFile(alignedDevices, tsFileWriter, tablet);
           tablet.initBitMaps();
           tablet.reset();
@@ -413,7 +413,7 @@ public class ExportTsFile extends AbstractTsFileTool {
     }
 
     for (Tablet tablet : tabletList) {
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         writeToTsFile(alignedDevices, tsFileWriter, tablet);
       }
     }

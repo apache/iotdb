@@ -183,7 +183,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       }
 
       int lastNonnullIndex = -1;
-      for (int j = 0; j < tablet.rowSize; ++j) {
+      for (int j = 0; j < tablet.getRowSize(); ++j) {
         if (!tablet.bitMaps[i].isMarked(j)) {
           lastNonnullIndex = j;
           break;
@@ -263,7 +263,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       // Source node --> Sensor type, like double
       eventNode.setSourceNode(convertToOpcDataType(dataType));
 
-      for (int rowIndex = 0; rowIndex < tablet.rowSize; ++rowIndex) {
+      for (int rowIndex = 0; rowIndex < tablet.getRowSize(); ++rowIndex) {
         // Filter null value
         if (tablet.bitMaps[columnIndex].isMarked(rowIndex)) {
           continue;

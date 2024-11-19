@@ -295,7 +295,8 @@ public abstract class TabletInsertionEventParser {
 
     final long[] originTimestampColumn =
         Arrays.copyOf(
-            tablet.timestamps, tablet.rowSize); // tablet.timestamps.length == tablet.maxRowNumber
+            tablet.timestamps,
+            tablet.getRowSize()); // tablet.timestamps.length == tablet.maxRowNumber
     final List<Integer> rowIndexList = generateRowIndexList(originTimestampColumn);
     this.timestampColumn = rowIndexList.stream().mapToLong(i -> originTimestampColumn[i]).toArray();
 

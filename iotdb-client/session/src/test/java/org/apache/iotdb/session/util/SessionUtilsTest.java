@@ -198,7 +198,7 @@ public class SessionUtilsTest {
     tablet.values[4] = new Binary[] {null, new Binary(new byte[] {(byte) 16})};
     tablet.values[5] = new boolean[] {true, false};
     tablet.values[6] = new LocalDate[] {null, LocalDate.of(2024, 4, 1)};
-    tablet.rowSize += 2;
+    tablet.setRowSize(tablet.getRowSize() + 2);
 
     ByteBuffer timeBuffer = SessionUtils.getValueBuffer(tablet);
     Assert.assertNotNull(timeBuffer);
