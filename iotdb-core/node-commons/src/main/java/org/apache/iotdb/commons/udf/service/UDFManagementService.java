@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.udf.service;
 import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.UDFTable;
+import org.apache.iotdb.commons.udf.UDFType;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
 import org.apache.iotdb.commons.udf.builtin.BuiltinTimeSeriesGeneratingFunction;
@@ -48,6 +49,19 @@ public class UDFManagementService {
   private UDFManagementService() {
     lock = new ReentrantLock();
     udfTable = new UDFTable();
+    // register tree model built-in functions
+    for (BuiltinTimeSeriesGeneratingFunction builtinTimeSeriesGeneratingFunction :
+        BuiltinTimeSeriesGeneratingFunction.values()) {
+      String functionName = builtinTimeSeriesGeneratingFunction.getFunctionName();
+      udfTable.addUDFInformation(
+          functionName,
+          new UDFInformation(
+              functionName.toUpperCase(),
+              builtinTimeSeriesGeneratingFunction.getClassName(),
+              UDFType.TREE_BUILT_IN));
+      udfTable.addFunctionAndClass(
+          Model.TREE, functionName, builtinTimeSeriesGeneratingFunction.getFunctionClass());
+    }
   }
 
   public void acquireLock() {

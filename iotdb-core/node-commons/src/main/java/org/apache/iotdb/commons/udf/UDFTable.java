@@ -36,8 +36,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
- * UDFTable is a table that stores UDF information. Only manage external UDFs, built-in UDFs are not
- * managed here.
+ * UDFTable is a table that stores UDF information. On DataNode, it stores all UDF information. On
+ * ConfigNode, it does not store built-in UDF information.
  */
 public class UDFTable {
 

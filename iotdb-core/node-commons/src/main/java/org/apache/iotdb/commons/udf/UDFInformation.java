@@ -65,6 +65,14 @@ public class UDFInformation {
     }
   }
 
+  // Only used for built-in UDF
+  public UDFInformation(String functionName, String className, UDFType udfType) {
+    this.functionName = functionName.toUpperCase();
+    this.className = className;
+    this.udfType = udfType;
+    this.isUsingURI = false;
+  }
+
   public String getFunctionName() {
     return functionName;
   }

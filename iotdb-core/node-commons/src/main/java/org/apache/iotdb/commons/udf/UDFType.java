@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public enum UDFType {
-  ILLEGAL((byte) -1),
   TREE_EXTERNAL((byte) 0),
   TREE_BUILT_IN((byte) 1),
   TREE_UNAVAILABLE((byte) 2),
@@ -50,7 +49,7 @@ public enum UDFType {
         return udfType;
       }
     }
-    return ILLEGAL;
+    throw new IllegalArgumentException("Unknown UDFType: " + type);
   }
 
   public boolean isTreeModel() {
