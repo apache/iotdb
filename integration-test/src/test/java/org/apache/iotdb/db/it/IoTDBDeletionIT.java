@@ -388,7 +388,7 @@ public class IoTDBDeletionIT {
       statement.execute(
           "DELETE FROM root.ln10.wf01.wt01.status,root.sg.wf01.wt01.status WHERE time >2022-10-11 10:20:50;");
 
-      try (ResultSet resultSet = statement.executeQuery("select ** from root")) {
+      try (ResultSet resultSet = statement.executeQuery("select ** from root.ln10")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
