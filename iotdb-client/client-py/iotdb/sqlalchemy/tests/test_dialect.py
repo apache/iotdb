@@ -18,10 +18,10 @@
 
 import operator
 
+from iotdb.IoTDBContainer import IoTDBContainer
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.dialects import registry
-
-from iotdb.IoTDBContainer import IoTDBContainer
+from sqlalchemy.orm import Session
 
 final_flag = True
 failed_count = 0
@@ -52,17 +52,20 @@ def test_dialect():
         )
         registry.register("iotdb", "iotdb.sqlalchemy.IoTDBDialect", "IoTDBDialect")
         eng = create_engine(url)
-        eng.execute("create database root.cursor")
-        eng.execute("create database root.cursor_s1")
-        eng.execute(
-            "create timeseries root.cursor.device1.temperature with datatype=FLOAT,encoding=RLE"
-        )
-        eng.execute(
-            "create timeseries root.cursor.device1.status with datatype=FLOAT,encoding=RLE"
-        )
-        eng.execute(
-            "create timeseries root.cursor.device2.temperature with datatype=FLOAT,encoding=RLE"
-        )
+
+        with Session(engine=eng) as session:
+            session.execute("create database root.cursor")
+            session.execute("create database root.cursor_s1")
+            session.execute(
+                "create timeseries root.cursor.device1.temperature with datatype=FLOAT,encoding=RLE"
+            )
+            session.execute(
+                "create timeseries root.cursor.device1.status with datatype=FLOAT,encoding=RLE"
+            )
+            session.execute(
+                "create timeseries root.cursor.device2.temperature with datatype=FLOAT,encoding=RLE"
+            )
+
         insp = inspect(eng)
         # test get_schema_names
         schema_names = insp.get_schema_names()
@@ -79,8 +82,11 @@ def test_dialect():
         if len(columns) != 3:
             test_fail()
             print_message("test get_columns failed!")
-        eng.execute("delete database root.cursor")
-        eng.execute("delete database root.cursor_s1")
+
+        with Session(engine=eng) as session:
+            session.execute("delete database root.cursor")
+            session.execute("delete database root.cursor_s1")
+
         # close engine
         eng.dispose()
 
