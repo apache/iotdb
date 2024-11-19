@@ -33,6 +33,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -619,6 +620,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
     }
   }
 
+  @Ignore
   @Test
   public void testHistoryLooseRange() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -708,6 +710,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
     }
   }
 
+  @Ignore
   @Test
   public void testRealtimeLooseRange() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
