@@ -23,10 +23,16 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
@@ -193,5 +199,33 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
 
   public R visitTTL(final SetTTLPlan setTTLPlan, final C context) {
     return visitPlan(setTTLPlan, context);
+  }
+
+  public R visitPipeCreateTable(final PipeCreateTablePlan pipeCreateTablePlan, final C context) {
+    return visitPlan(pipeCreateTablePlan, context);
+  }
+
+  public R visitAddTableColumn(final AddTableColumnPlan addTableColumnPlan, final C context) {
+    return visitPlan(addTableColumnPlan, context);
+  }
+
+  public R visitSetTableProperties(
+      final SetTablePropertiesPlan setTablePropertiesPlan, final C context) {
+    return visitPlan(setTablePropertiesPlan, context);
+  }
+
+  public R visitCommitDeleteColumn(
+      final CommitDeleteColumnPlan commitDeleteColumnPlan, final C context) {
+    return visitPlan(commitDeleteColumnPlan, context);
+  }
+
+  public R visitRenameTableColumn(
+      final RenameTableColumnPlan renameTableColumnPlan, final C context) {
+    return visitPlan(renameTableColumnPlan, context);
+  }
+
+  public R visitCommitDeleteTable(
+      final CommitDeleteTablePlan commitDeleteTablePlan, final C context) {
+    return visitPlan(commitDeleteTablePlan, context);
   }
 }
