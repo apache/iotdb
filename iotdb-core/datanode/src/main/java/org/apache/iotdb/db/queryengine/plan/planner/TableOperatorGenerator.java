@@ -1187,19 +1187,38 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     Operator leftChild = node.getLeftChild().accept(this, context);
     Operator rightChild = node.getRightChild().accept(this, context);
 
-    int leftTimeColumnPosition =
-        node.getLeftChild().getOutputSymbols().indexOf(node.getCriteria().get(0).getLeft());
+    ImmutableMap<Symbol, Integer> leftColumnNamesMap =
+        makeLayoutFromOutputSymbols(node.getLeftChild().getOutputSymbols());
+    Integer leftTimeColumnPosition = leftColumnNamesMap.get(node.getCriteria().get(0).getLeft());
+    if (leftTimeColumnPosition == null) {
+      throw new IllegalStateException("Left child of JoinNode doesn't contain time column");
+    }
     int[] leftOutputSymbolIdx = new int[node.getLeftOutputSymbols().size()];
     for (int i = 0; i < leftOutputSymbolIdx.length; i++) {
-      leftOutputSymbolIdx[i] =
-          node.getLeftChild().getOutputSymbols().indexOf(node.getLeftOutputSymbols().get(i));
+      Integer index = leftColumnNamesMap.get(node.getLeftOutputSymbols().get(i));
+      if (index == null) {
+        throw new IllegalStateException(
+            "Left child of JoinNode doesn't contain LeftOutputSymbol "
+                + node.getLeftOutputSymbols().get(i));
+      }
+      leftOutputSymbolIdx[i] = index;
     }
-    int rightTimeColumnPosition =
-        node.getRightChild().getOutputSymbols().indexOf(node.getCriteria().get(0).getRight());
+
+    ImmutableMap<Symbol, Integer> rightColumnNamesMap =
+        makeLayoutFromOutputSymbols(node.getRightChild().getOutputSymbols());
+    Integer rightTimeColumnPosition = rightColumnNamesMap.get(node.getCriteria().get(0).getRight());
+    if (rightTimeColumnPosition == null) {
+      throw new IllegalStateException("Right child of JoinNode doesn't contain time column");
+    }
     int[] rightOutputSymbolIdx = new int[node.getRightOutputSymbols().size()];
     for (int i = 0; i < rightOutputSymbolIdx.length; i++) {
-      rightOutputSymbolIdx[i] =
-          node.getRightChild().getOutputSymbols().indexOf(node.getRightOutputSymbols().get(i));
+      Integer index = rightColumnNamesMap.get(node.getRightOutputSymbols().get(i));
+      if (index == null) {
+        throw new IllegalStateException(
+            "Right child of JoinNode doesn't contain RightOutputSymbol "
+                + node.getLeftOutputSymbols().get(i));
+      }
+      rightOutputSymbolIdx[i] = index;
     }
 
     if (requireNonNull(node.getJoinType()) == JoinNode.JoinType.INNER) {
