@@ -680,8 +680,8 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
       extractorAttributes.put("source.table-name", "test1");
       extractorAttributes.put("source.path", "root.db.d1.at1");
       extractorAttributes.put("source.inclusion", "data.insert");
-      extractorAttributes.put("source.start-time", "1");
-      extractorAttributes.put("source.end-time", "2");
+      extractorAttributes.put("source.history.start-time", "1");
+      extractorAttributes.put("source.history.end-time", "2");
       extractorAttributes.put("source.history.loose-range", "time, path");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
