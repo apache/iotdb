@@ -154,7 +154,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       // put the pre-planned recursive subquery in the actual outer context to enable resolving
       // correlation
       return new RelationPlan(
-          expansion.getRoot(), expansion.getScope(), expansion.getFieldMappings());
+          expansion.getRoot(), expansion.getScope(), expansion.getFieldMappings(), outerContext);
     }
 
     Scope scope = analysis.getScope(table);
@@ -199,7 +199,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             outputSymbols,
             tableColumnSchema,
             idAndAttributeIndexMap);
-    return new RelationPlan(tableScanNode, scope, outputSymbols);
+    return new RelationPlan(tableScanNode, scope, outputSymbols, outerContext);
 
     // Collection<Field> fields = analysis.getMaterializedViewStorageTableFields(node);
     // Query namedQuery = analysis.getNamedQuery(node);
@@ -223,8 +223,8 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   @Override
   protected RelationPlan visitTableSubquery(TableSubquery node, Void context) {
     RelationPlan plan = process(node.getQuery(), context);
-    // TODO transmit outerContext
-    return new RelationPlan(plan.getRoot(), analysis.getScope(node), plan.getFieldMappings());
+    return new RelationPlan(
+        plan.getRoot(), analysis.getScope(node), plan.getFieldMappings(), outerContext);
   }
 
   @Override
@@ -365,8 +365,8 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     return new RelationPlan(
         new ProjectNode(queryContext.getQueryId().genPlanNodeId(), join, assignments.build()),
         analysis.getScope(node),
-        outputs.build());
-    // outerContext);
+        outputs.build(),
+        outerContext);
   }
 
   public RelationPlan planJoin(
@@ -567,7 +567,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       }
     }
 
-    return new RelationPlan(root, scope, outputSymbols);
+    return new RelationPlan(root, scope, outputSymbols, outerContext);
   }
 
   public static JoinNode.JoinType mapJoinType(Join.Type joinType) {
@@ -611,7 +611,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       mappings = newMappings.build();
     }
 
-    return new RelationPlan(root, analysis.getScope(node), mappings);
+    return new RelationPlan(root, analysis.getScope(node), mappings, outerContext);
   }
 
   // ================================ Implemented later =====================================
@@ -658,14 +658,16 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             insertTabletStatement.getRowCount(),
             insertTabletStatement.getColumnCategories());
     insertNode.setFailedMeasurementNumber(insertTabletStatement.getFailedMeasurementNumber());
-    return new RelationPlan(insertNode, analysis.getRootScope(), Collections.emptyList());
+    return new RelationPlan(
+        insertNode, analysis.getRootScope(), Collections.emptyList(), outerContext);
   }
 
   @Override
   protected RelationPlan visitInsertRow(InsertRow node, Void context) {
     InsertRowStatement insertRowStatement = node.getInnerTreeStatement();
     RelationalInsertRowNode insertNode = fromInsertRowStatement(insertRowStatement);
-    return new RelationPlan(insertNode, analysis.getRootScope(), Collections.emptyList());
+    return new RelationPlan(
+        insertNode, analysis.getRootScope(), Collections.emptyList(), outerContext);
   }
 
   protected RelationalInsertRowNode fromInsertRowStatement(InsertRowStatement insertRowStatement) {
@@ -698,7 +700,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     RelationalInsertRowsNode relationalInsertRowsNode =
         new RelationalInsertRowsNode(idAllocator.genPlanNodeId(), indices, insertRowStatements);
     return new RelationPlan(
-        relationalInsertRowsNode, analysis.getRootScope(), Collections.emptyList());
+        relationalInsertRowsNode, analysis.getRootScope(), Collections.emptyList(), outerContext);
   }
 
   @Override
@@ -711,7 +713,8 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
         new LoadTsFileNode(
             idAllocator.genPlanNodeId(), node.getResources(), isTableModel, node.getDatabase()),
         analysis.getRootScope(),
-        Collections.emptyList());
+        Collections.emptyList(),
+        outerContext);
   }
 
   @Override
@@ -724,7 +727,8 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       return new RelationPlan(
           new PipeEnrichedInsertNode((InsertNode) relationPlan.getRoot()),
           analysis.getRootScope(),
-          Collections.emptyList());
+          Collections.emptyList(),
+          outerContext);
     }
     throw new IllegalStateException("Other WritePlanNode is not supported in current version.");
   }
@@ -734,6 +738,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     return new RelationPlan(
         new RelationalDeleteDataNode(idAllocator.genPlanNodeId(), node),
         analysis.getRootScope(),
-        Collections.emptyList());
+        Collections.emptyList(),
+        outerContext);
   }
 }

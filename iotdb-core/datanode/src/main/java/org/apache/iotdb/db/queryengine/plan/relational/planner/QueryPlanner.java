@@ -153,7 +153,10 @@ public class QueryPlanner {
     builder = builder.appendProjections(outputs, symbolAllocator, queryContext);
 
     return new RelationPlan(
-        builder.getRoot(), analysis.getScope(query), computeOutputs(builder, outputs));
+        builder.getRoot(),
+        analysis.getScope(query),
+        computeOutputs(builder, outputs),
+        outerContext);
   }
 
   public RelationPlan plan(QuerySpecification node) {
@@ -261,7 +264,7 @@ public class QueryPlanner {
     builder = builder.appendProjections(outputs, symbolAllocator, queryContext);
 
     return new RelationPlan(
-        builder.getRoot(), analysis.getScope(node), computeOutputs(builder, outputs));
+        builder.getRoot(), analysis.getScope(node), computeOutputs(builder, outputs), outerContext);
   }
 
   private static boolean hasExpressionsToUnfold(List<Analysis.SelectExpression> selectExpressions) {
