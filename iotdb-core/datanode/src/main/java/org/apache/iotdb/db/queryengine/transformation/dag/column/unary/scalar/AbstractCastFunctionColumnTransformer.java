@@ -49,18 +49,12 @@ public abstract class AbstractCastFunctionColumnTransformer extends UnaryColumnT
   @Override
   protected void doTransform(Column column, ColumnBuilder columnBuilder) {
     Type childType = childColumnTransformer.getType();
-    if (childType == null) {
-      for (int i = 0; i < column.getPositionCount(); i++) {
+    TypeEnum sourceType = childType.getTypeEnum();
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (!column.isNull(i)) {
+        transform(column, columnBuilder, sourceType, childType, i);
+      } else {
         columnBuilder.appendNull();
-      }
-    } else {
-      TypeEnum sourceType = childType.getTypeEnum();
-      for (int i = 0, n = column.getPositionCount(); i < n; i++) {
-        if (!column.isNull(i)) {
-          transform(column, columnBuilder, sourceType, childType, i);
-        } else {
-          columnBuilder.appendNull();
-        }
       }
     }
   }
@@ -68,18 +62,12 @@ public abstract class AbstractCastFunctionColumnTransformer extends UnaryColumnT
   @Override
   protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
     Type childType = childColumnTransformer.getType();
-    if (childType == null) {
-      for (int i = 0; i < column.getPositionCount(); i++) {
+    TypeEnum sourceType = childType.getTypeEnum();
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (selection[i] && !column.isNull(i)) {
+        transform(column, columnBuilder, sourceType, childType, i);
+      } else {
         columnBuilder.appendNull();
-      }
-    } else {
-      TypeEnum sourceType = childType.getTypeEnum();
-      for (int i = 0, n = column.getPositionCount(); i < n; i++) {
-        if (selection[i] && !column.isNull(i)) {
-          transform(column, columnBuilder, sourceType, childType, i);
-        } else {
-          columnBuilder.appendNull();
-        }
       }
     }
   }
