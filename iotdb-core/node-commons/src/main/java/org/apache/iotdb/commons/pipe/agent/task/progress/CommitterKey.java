@@ -26,7 +26,7 @@ public class CommitterKey {
   private final String pipeName;
   private final long creationTime;
   private final int regionId;
-  private int restartTimes;
+  private final int restartTimes;
 
   CommitterKey(final String pipeName, final long creationTime, final int regionId) {
     this(pipeName, creationTime, regionId, -1);
