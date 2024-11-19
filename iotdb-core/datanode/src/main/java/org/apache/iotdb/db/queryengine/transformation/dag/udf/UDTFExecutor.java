@@ -80,7 +80,8 @@ public class UDTFExecutor {
         configurations.getAccessStrategy().getAccessStrategyType())) {
       outputStorage =
           ElasticSerializableTVList.construct(
-              UDFDataTypeTransformer.transformToTsDataType(configurations.getOutputDataType()),
+              UDFDataTypeTransformer.transformToTsDataType(
+                  configurations.getOutputDataType()),
               queryId,
               collectorMemoryBudgetInMB,
               1);

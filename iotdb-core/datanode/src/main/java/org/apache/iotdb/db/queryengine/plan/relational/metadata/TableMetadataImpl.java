@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
+import org.apache.iotdb.commons.udf.utils.TableUDFUtils;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -47,6 +49,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
+import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -619,10 +622,22 @@ public class TableMetadataImpl implements Metadata {
         // ignore
     }
 
-    // TODO scalar UDF function
     // 根据 argumentTypes 获取返回类型，这边暂时先 mock 一个 INT32
-    if (UDFManagementService.getInstance().isAssignableFrom(functionName, ScalarFunction.class)) {
-      return INT32;
+    if (TableUDFUtils.isScalarFunction(functionName)) {
+      ScalarFunction scalarFunction =
+          UDFManagementService.getInstance().reflect(functionName, ScalarFunction.class);
+      FunctionParameters functionParameters =
+          new FunctionParameters(
+              argumentTypes.stream()
+                  .map(UDFDataTypeTransformer::transformReadTypeToUDFDataType)
+                  .collect(Collectors.toList()),
+              Collections.emptyMap());
+      try {
+        return UDFDataTypeTransformer.transformUDFDataTypeToReadType(
+            scalarFunction.validateAndInferOutputType(functionParameters));
+      } catch (Exception e) {
+        throw new SemanticException("Invalid function parameters: " + e.getMessage());
+      }
     }
 
     // TODO UDAF

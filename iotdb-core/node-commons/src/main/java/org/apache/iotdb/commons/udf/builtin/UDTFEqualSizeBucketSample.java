@@ -45,7 +45,8 @@ public abstract class UDTFEqualSizeBucketSample implements UDTF {
             "Illegal sample proportion. proportion > 0 and proportion <= 1",
             proportion);
     dataType =
-        UDFDataTypeTransformer.transformToTsDataType(validator.getParameters().getDataType(0));
+        UDFDataTypeTransformer.transformToTsDataType(
+            validator.getParameters().getDataType(0));
     bucketSize = (int) (1 / proportion);
   }
 }

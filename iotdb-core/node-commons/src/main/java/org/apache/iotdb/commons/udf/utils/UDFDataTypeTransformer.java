@@ -21,6 +21,12 @@ package org.apache.iotdb.commons.udf.utils;
 import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.BinaryType;
+import org.apache.tsfile.read.common.type.BooleanType;
+import org.apache.tsfile.read.common.type.DoubleType;
+import org.apache.tsfile.read.common.type.FloatType;
+import org.apache.tsfile.read.common.type.IntType;
+import org.apache.tsfile.read.common.type.LongType;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -72,6 +78,62 @@ public class UDFDataTypeTransformer {
         return TSDataType.BLOB;
       case STRING:
         return TSDataType.STRING;
+      default:
+        throw new IllegalArgumentException("Invalid input: " + type);
+    }
+  }
+
+  public static Type transformReadTypeToUDFDataType(org.apache.tsfile.read.common.type.Type type) {
+    if (type == null) {
+      return null;
+    }
+    switch (type.getTypeEnum()) {
+      case BOOLEAN:
+        return Type.BOOLEAN;
+      case INT32:
+        return Type.INT32;
+      case INT64:
+        return Type.INT64;
+      case FLOAT:
+        return Type.FLOAT;
+      case DOUBLE:
+        return Type.DOUBLE;
+      case TEXT:
+        return Type.TEXT;
+      case TIMESTAMP:
+        return Type.TIMESTAMP;
+      case DATE:
+        return Type.DATE;
+      case BLOB:
+        return Type.BLOB;
+      case STRING:
+        return Type.STRING;
+      default:
+        throw new IllegalArgumentException("Invalid input: " + type);
+    }
+  }
+
+  public static org.apache.tsfile.read.common.type.Type transformUDFDataTypeToReadType(Type type) {
+    if (type == null) {
+      return null;
+    }
+    switch (type) {
+      case BOOLEAN:
+        return BooleanType.BOOLEAN;
+      case INT32:
+      case DATE:
+        return IntType.INT32;
+      case INT64:
+      case TIMESTAMP:
+        return LongType.INT64;
+      case FLOAT:
+        return FloatType.FLOAT;
+      case DOUBLE:
+        return DoubleType.DOUBLE;
+      case TEXT:
+      case BLOB:
+      case STRING:
+        return BinaryType.TEXT;
       default:
         throw new IllegalArgumentException("Invalid input: " + type);
     }
