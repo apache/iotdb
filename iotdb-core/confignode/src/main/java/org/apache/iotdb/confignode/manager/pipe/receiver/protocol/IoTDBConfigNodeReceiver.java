@@ -37,13 +37,13 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
-import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
@@ -66,6 +66,7 @@ import org.apache.iotdb.confignode.persistence.schema.CNPhysicalPlanGenerator;
 import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
 import org.apache.iotdb.confignode.persistence.schema.ConfignodeSnapshotParser;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
@@ -308,20 +309,18 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         return ((SetTTLPlan) plan).getTTL() == TTLCache.NULL_TTL
             ? configManager.getTTLManager().unsetTTL((SetTTLPlan) plan, true)
             : configManager.getTTLManager().setTTL((SetTTLPlan) plan, true);
-      case CommitCreateTable:
-        queryId = generatePseudoQueryId();
+      case PipeCreateTable:
         return configManager
             .getProcedureManager()
             .executeWithoutDuplicate(
-                ((CommitCreateTablePlan) plan).getDatabase(),
-                null,
-                ((CommitCreateTablePlan) plan).getTableName(),
-                queryId,
+                ((PipeCreateTablePlan) plan).getDatabase(),
+                ((PipeCreateTablePlan) plan).getTable(),
+                ((PipeCreateTablePlan) plan).getTable().getTableName(),
+                generatePseudoQueryId(),
                 ProcedureType.DROP_TABLE_PROCEDURE,
-                new DropTableProcedure(
-                    ((CommitCreateTablePlan) plan).getDatabase(),
-                    ((CommitCreateTablePlan) plan).getTableName(),
-                    queryId,
+                new CreateTableProcedure(
+                    ((PipeCreateTablePlan) plan).getDatabase(),
+                    ((PipeCreateTablePlan) plan).getTable(),
                     true));
       case AddTableColumn:
         queryId = generatePseudoQueryId();
