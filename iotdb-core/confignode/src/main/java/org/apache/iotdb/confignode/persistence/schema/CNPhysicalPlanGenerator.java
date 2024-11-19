@@ -34,7 +34,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
@@ -346,7 +346,7 @@ public class CNPhysicalPlanGenerator
           case STORAGE_GROUP_MNODE_TYPE:
             name = deserializeDatabaseMNode(bufferedInputStream).getAsMNode().getName();
             for (final TsTable table : tableSet) {
-              planDeque.add(new CommitCreateTablePlan(name, table));
+              planDeque.add(new PipeCreateTablePlan(name, table));
             }
             tableSet.clear();
             break;

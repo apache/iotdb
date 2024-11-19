@@ -108,7 +108,10 @@ public class ConfigRegionListeningFilter {
       // Table Model
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.table.create"),
-          Collections.singletonList(ConfigPhysicalPlanType.CommitCreateTable));
+          Collections.unmodifiableList(
+              Arrays.asList(
+                  ConfigPhysicalPlanType.CommitCreateTable,
+                  ConfigPhysicalPlanType.PipeCreateTable)));
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.table.alter.addcolumn"),
           Collections.singletonList(ConfigPhysicalPlanType.AddTableColumn));

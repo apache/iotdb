@@ -58,6 +58,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataP
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
@@ -334,7 +335,7 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           plan = new ExtendSchemaTemplatePlan();
           break;
         case PreCreateTable:
-          plan = new PreCreateTablePlan();
+          plan = new PreCreateTablePlan(configPhysicalPlanType);
           break;
         case RollbackCreateTable:
           plan = new RollbackCreateTablePlan();
@@ -443,6 +444,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case PipeDeactivateTemplate:
           plan = new PipeDeactivateTemplatePlan();
+          break;
+        case PipeCreateTable:
+          plan = new PipeCreateTablePlan();
           break;
         case UpdateTriggersOnTransferNodes:
           plan = new UpdateTriggersOnTransferNodesPlan();
