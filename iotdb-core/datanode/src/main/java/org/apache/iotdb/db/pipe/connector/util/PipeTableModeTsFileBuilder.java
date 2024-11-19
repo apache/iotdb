@@ -220,6 +220,8 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
           lastTablet = pair;
           tablets.pollFirst();
         } else {
+          // help GC
+          deviceLastTimestampMap = null;
           break;
         }
       }
@@ -245,6 +247,13 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
     }
   }
 
+  /**
+   * A Map is used to record the maximum time each {@link IDeviceID} is written. {@link Pair}
+   * records the Index+1 of the maximum timestamp of IDevice in each {@link Tablet}.
+   *
+   * @return If true, the tablet overlaps with the previous tablet; if false, there is no time
+   *     overlap.
+   */
   private boolean hasNoTimestampOverlaps(
       final Pair<Tablet, List<Pair<IDeviceID, Integer>>> tabletPair,
       final Map<IDeviceID, Long> deviceLastTimestampMap) {
@@ -263,9 +272,16 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
     return true;
   }
 
+  /**
+   * Add the Tablet to the List and compare the IDevice minimum timestamp with each Tablet from the
+   * beginning. If all the IDevice minimum timestamps of the current Tablet are smaller than the
+   * IDevice minimum timestamps of a certain Tablet in the List, put the current Tablet in this
+   * position.
+   */
   private void insertPairs(
       List<Pair<Tablet, List<Pair<IDeviceID, Integer>>>> list,
       Pair<Tablet, List<Pair<IDeviceID, Integer>>> pair) {
+    int lastResult = Integer.MAX_VALUE;
     if (list.isEmpty()) {
       list.add(pair);
       return;
@@ -273,10 +289,11 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
 
     for (int i = 0; i < list.size(); i++) {
       final int result = comparePairs(list.get(i), pair);
-      if (result == 0) {
-        list.add(i, pair);
+      if (lastResult == 0 && result != 0) {
+        list.add(i - 1, pair);
         return;
       }
+      lastResult = result;
     }
     list.add(pair);
   }
