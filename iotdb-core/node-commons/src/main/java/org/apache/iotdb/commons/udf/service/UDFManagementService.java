@@ -105,31 +105,31 @@ public class UDFManagementService {
     }
   }
 
-  private void checkIsBuiltInFunctionName(Model model, UDFInformation udfInformation)
+  public boolean checkIsBuiltInFunctionName(Model model, String functionName)
       throws UDFManagementException {
-    String functionName = udfInformation.getFunctionName();
-    String className = udfInformation.getClassName();
     if (Model.TREE.equals(model)) {
-      if (BuiltinAggregationFunction.getNativeFunctionNames().contains(functionName.toLowerCase())
+      return BuiltinAggregationFunction.getNativeFunctionNames()
+              .contains(functionName.toLowerCase())
           || BuiltinTimeSeriesGeneratingFunction.getNativeFunctionNames()
               .contains(functionName.toUpperCase())
-          || BuiltinScalarFunction.getNativeFunctionNames().contains(functionName.toLowerCase())) {
-        String errorMessage =
-            String.format(
-                "Failed to register UDF %s(%s), because the given function name conflicts with the built-in function name",
-                functionName, className);
-
-        LOGGER.warn(errorMessage);
-        throw new UDFManagementException(errorMessage);
-      }
+          || BuiltinScalarFunction.getNativeFunctionNames().contains(functionName.toLowerCase());
     } else {
       // TODO: Table model UDF
+      return false;
     }
   }
 
   private void checkIfRegistered(Model model, UDFInformation udfInformation)
       throws UDFManagementException {
-    checkIsBuiltInFunctionName(model, udfInformation);
+    if (checkIsBuiltInFunctionName(model, udfInformation.getFunctionName())) {
+      String errorMessage =
+          String.format(
+              "Failed to register UDF %s(%s), because the given function name conflicts with the built-in function name",
+              udfInformation.getFunctionName(), udfInformation.getClassName());
+
+      LOGGER.warn(errorMessage);
+      throw new UDFManagementException(errorMessage);
+    }
     String functionName = udfInformation.getFunctionName();
     String className = udfInformation.getClassName();
     UDFInformation information = udfTable.getUDFInformation(model, functionName);
