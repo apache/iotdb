@@ -164,7 +164,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
-      TableModelUtils.insertData("test", "test", 100, 150, senderEnv, true);
+      TableModelUtils.insertData("test", "test", 50, 150, senderEnv, true);
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
@@ -213,7 +213,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
           Collections.unmodifiableSet(
               new HashSet<>(Arrays.asList("0,1.0,", "1,1.0,", "2,1.0,", "3,1.0,", "4,1.0,"))));
 
-      TableModelUtils.assertCountData("test", "test", 300, receiverEnv);
+      TableModelUtils.assertCountData("test", "test", 350, receiverEnv);
     }
   }
 }

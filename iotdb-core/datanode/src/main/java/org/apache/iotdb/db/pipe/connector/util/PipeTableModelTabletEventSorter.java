@@ -65,7 +65,7 @@ public class PipeTableModelTabletEventSorter {
     }
 
     deviceID2TimeIndex = new ArrayList<>();
-    final Set<IDeviceID> deviceIDSet = new HashSet<>();
+    Set<IDeviceID> deviceIDSet = new HashSet<>();
     final long[] timestamps = tablet.timestamps;
 
     IDeviceID lastDevice = tablet.getDeviceID(0);
@@ -79,6 +79,7 @@ public class PipeTableModelTabletEventSorter {
         final long previousTimestamp = tablet.timestamps[i - 1];
         if (previousTimestamp > currentTimestamp) {
           isUnSorted = true;
+          deviceIDSet = null;
           break;
         }
         if (previousTimestamp == currentTimestamp) {
@@ -89,6 +90,7 @@ public class PipeTableModelTabletEventSorter {
 
       if (deviceComparison < 0 || deviceIDSet.contains(deviceID)) {
         isUnSorted = true;
+        deviceIDSet = null;
         break;
       }
       deviceIDSet.add(deviceID);

@@ -210,18 +210,15 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
       final LinkedList<Pair<Tablet, List<Pair<IDeviceID, Integer>>>> tablets = entry.getValue();
 
       final List<Pair<Tablet, List<Pair<IDeviceID, Integer>>>> tabletsToWrite = new ArrayList<>();
-
-      Pair<Tablet, List<Pair<IDeviceID, Integer>>> lastTablet = null;
-      Map<IDeviceID, Long> deviceLastTimestampMap = new HashMap<>();
+      final Map<IDeviceID, Long> deviceLastTimestampMap = new HashMap<>();
       while (!tablets.isEmpty()) {
         final Pair<Tablet, List<Pair<IDeviceID, Integer>>> pair = tablets.peekFirst();
-        if (Objects.isNull(lastTablet) || hasNoTimestampOverlaps(pair, deviceLastTimestampMap)) {
+        if (hasNoTimestampOverlaps(pair, deviceLastTimestampMap)) {
           tabletsToWrite.add(pair);
-          lastTablet = pair;
           tablets.pollFirst();
-        } else {
-          break;
+          continue;
         }
+        break;
       }
 
       if (tablets.isEmpty()) {
