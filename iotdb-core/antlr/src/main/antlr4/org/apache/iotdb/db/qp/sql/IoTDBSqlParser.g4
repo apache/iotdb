@@ -64,7 +64,8 @@ ddlStatement
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
     | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes | showClusterId
-    | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList | migrateRegion | reconstructRegion
+    | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList
+    | migrateRegion | reconstructRegion | extendRegion | removeRegion
     | verifyConnection
     // AINode
     | showAINodes | createModel | dropModel | showModels | callInference
@@ -539,6 +540,14 @@ migrateRegion
 
 reconstructRegion
     : RECONSTRUCT REGION regionId=INTEGER_LITERAL (COMMA regionId=INTEGER_LITERAL)* ON targetDataNodeId=INTEGER_LITERAL
+    ;
+
+extendRegion
+    : EXTEND REGION regionId=INTEGER_LITERAL TO targetDataNodeId=INTEGER_LITERAL
+    ;
+
+removeRegion
+    : REMOVE REGION regionId=INTEGER_LITERAL FROM targetDataNodeId=INTEGER_LITERAL
     ;
 
 verifyConnection

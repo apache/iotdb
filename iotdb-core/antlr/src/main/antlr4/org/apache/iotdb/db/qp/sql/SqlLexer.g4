@@ -302,6 +302,10 @@ EXPLAIN
     : E X P L A I N
     ;
 
+EXTEND
+    : E X T E N D
+    ;
+
 EXTRACTOR
     : E X T R A C T O R
     ;
