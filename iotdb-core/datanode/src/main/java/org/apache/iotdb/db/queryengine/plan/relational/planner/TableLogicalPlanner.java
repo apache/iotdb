@@ -348,7 +348,7 @@ public class TableLogicalPlanner {
             null,
             statement.getColumnHeaderList(),
             null,
-            pushDownLimit);
+            Objects.isNull(statement.getIdFuzzyPredicate()) ? pushDownLimit : -1);
 
     // Filter
     if (Objects.nonNull(statement.getIdFuzzyPredicate())) {
