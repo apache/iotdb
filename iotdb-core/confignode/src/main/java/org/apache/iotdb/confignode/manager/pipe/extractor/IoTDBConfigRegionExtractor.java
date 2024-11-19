@@ -50,8 +50,8 @@ import java.util.Set;
 
 public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
 
-  public static final PipeConfigPhysicalPlanPatternParseVisitor PATTERN_PARSE_VISITOR =
-      new PipeConfigPhysicalPlanPatternParseVisitor();
+  public static final PipeConfigPhysicalPlanTreePatternParseVisitor PATTERN_PARSE_VISITOR =
+      new PipeConfigPhysicalPlanTreePatternParseVisitor();
 
   private Set<ConfigPhysicalPlanType> listenedTypeSet = new HashSet<>();
 

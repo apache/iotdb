@@ -83,6 +83,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLo
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
@@ -1646,6 +1647,31 @@ public class ConfigPhysicalPlanSerDeTest {
     Assert.assertEquals(
         pipeDeactivateTemplatePlan,
         ConfigPhysicalPlan.Factory.create(pipeDeactivateTemplatePlan.serializeToByteBuffer()));
+  }
+
+  @Test
+  public void pipeCreateTablePlanTest() throws IOException {
+    final TsTable table = new TsTable("table1");
+    table.addColumnSchema(new IdColumnSchema("Id", TSDataType.STRING));
+    table.addColumnSchema(new AttributeColumnSchema("Attr", TSDataType.STRING));
+    table.addColumnSchema(
+        new MeasurementColumnSchema(
+            "Measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
+    final PipeCreateTablePlan pipeCreateTablePlan0 =
+        new PipeCreateTablePlan("root.database1", table);
+    final PipeCreateTablePlan pipeCreateTablePlan1 =
+        (PipeCreateTablePlan)
+            ConfigPhysicalPlan.Factory.create(pipeCreateTablePlan0.serializeToByteBuffer());
+
+    Assert.assertEquals(pipeCreateTablePlan0.getDatabase(), pipeCreateTablePlan1.getDatabase());
+    Assert.assertEquals(
+        pipeCreateTablePlan0.getTable().getTableName(),
+        pipeCreateTablePlan1.getTable().getTableName());
+    Assert.assertEquals(
+        pipeCreateTablePlan0.getTable().getColumnNum(),
+        pipeCreateTablePlan1.getTable().getColumnNum());
+    Assert.assertEquals(
+        pipeCreateTablePlan0.getTable().getIdNums(), pipeCreateTablePlan1.getTable().getIdNums());
   }
 
   @Test
