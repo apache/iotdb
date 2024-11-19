@@ -465,7 +465,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         new IoTDBTreePattern(parameters.get(ColumnHeaderConstant.PATH_PATTERN));
     final List<TSStatus> results = new ArrayList<>();
     while (generator.hasNext()) {
-      IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
+      IoTDBConfigRegionExtractor.TREE_PATTERN_PARSE_VISITOR
           .process(generator.next(), pattern)
           .filter(configPhysicalPlan -> executionTypes.contains(configPhysicalPlan.getType()))
           .ifPresent(

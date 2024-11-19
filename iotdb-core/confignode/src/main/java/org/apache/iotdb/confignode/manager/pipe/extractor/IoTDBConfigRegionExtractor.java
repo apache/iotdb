@@ -50,8 +50,10 @@ import java.util.Set;
 
 public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
 
-  public static final PipeConfigPhysicalPlanTreePatternParseVisitor PATTERN_PARSE_VISITOR =
+  public static final PipeConfigPhysicalPlanTreePatternParseVisitor TREE_PATTERN_PARSE_VISITOR =
       new PipeConfigPhysicalPlanTreePatternParseVisitor();
+  public static final PipeConfigPhysicalPlanTablePatternParseVisitor TABLE_PATTERN_PARSE_VISITOR =
+      new PipeConfigPhysicalPlanTablePatternParseVisitor();
 
   private Set<ConfigPhysicalPlanType> listenedTypeSet = new HashSet<>();
 
@@ -118,7 +120,7 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
   @Override
   protected Optional<PipeWritePlanEvent> trimRealtimeEventByPipePattern(
       final PipeWritePlanEvent event) {
-    return PATTERN_PARSE_VISITOR
+    return TREE_PATTERN_PARSE_VISITOR
         .process(((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan(), treePattern)
         .map(
             configPhysicalPlan ->
