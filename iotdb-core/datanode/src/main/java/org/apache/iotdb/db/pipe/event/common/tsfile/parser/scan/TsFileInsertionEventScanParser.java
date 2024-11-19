@@ -131,6 +131,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             }
 
             final Tablet tablet = getNextTablet();
+            // The hasNext method will update currentIsAligned, causing the updated currentIsAligned
+            // to not correspond to the current Tablet
             final boolean isAligned = currentIsAligned;
             final boolean hasNext = hasNext();
             try {
