@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.pipe.agent.task.subtask.processor.PipeProcessorSubtask;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
@@ -53,6 +54,33 @@ public class PipeProcessorMetrics implements IMetricSet {
 
   private final Map<String, Rate> pipeHeartbeatRateMap = new ConcurrentHashMap<>();
 
+  private final Map<String, Counter> tsFileSizeMap = new ConcurrentHashMap<>();
+
+  private final Map<String, Counter> tsFileCountMap = new ConcurrentHashMap<>();
+
+  private long byteUsed = 0;
+  private long tabletTotal = 0;
+
+  private static final String TRANSFORMED_TOTAL_SIZE = "total_transformed_size";
+
+  private static final String TRANSFORMED_TOTAL_COUNT = "total_transformed_count";
+
+  public long getByteUsed() {
+    return byteUsed;
+  }
+
+  public void addByteUsed(long byteUsed) {
+    this.byteUsed += byteUsed;
+  }
+
+  public long getTabletTotal() {
+    return tabletTotal;
+  }
+
+  public void addTabletTotal(long tabletTotal) {
+    this.tabletTotal += tabletTotal;
+  }
+
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
@@ -62,10 +90,56 @@ public class PipeProcessorMetrics implements IMetricSet {
     for (final String taskID : taskIDs) {
       createMetrics(taskID);
     }
+    // tsfile length and tablet total
+    createAutoGaugeMetrics();
+  }
+
+  private void createAutoGaugeMetrics() {
+    metricService.createAutoGauge(
+        Metric.FILE_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        this,
+        PipeProcessorMetrics::getByteUsed,
+        Tag.NAME.toString(),
+        TRANSFORMED_TOTAL_SIZE);
+    metricService.createAutoGauge(
+        Metric.FILE_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        this,
+        PipeProcessorMetrics::getTabletTotal,
+        Tag.NAME.toString(),
+        TRANSFORMED_TOTAL_COUNT);
   }
 
   private void createMetrics(final String taskID) {
     createRate(taskID);
+    createCounter(taskID);
+  }
+
+  private void createCounter(String taskID) {
+    final PipeProcessorSubtask processor = processorMap.get(taskID);
+    tsFileSizeMap.put(
+        taskID,
+        metricService.getOrCreateCounter(
+            TRANSFORMED_TOTAL_SIZE,
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            processor.getPipeName(),
+            Tag.REGION.toString(),
+            String.valueOf(processor.getRegionId()),
+            Tag.CREATION_TIME.toString(),
+            String.valueOf(processor.getCreationTime())));
+    tsFileCountMap.put(
+        taskID,
+        metricService.getOrCreateCounter(
+            TRANSFORMED_TOTAL_COUNT,
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            processor.getPipeName(),
+            Tag.REGION.toString(),
+            String.valueOf(processor.getRegionId()),
+            Tag.CREATION_TIME.toString(),
+            String.valueOf(processor.getCreationTime())));
   }
 
   private void createRate(final String taskID) {
@@ -115,10 +189,47 @@ public class PipeProcessorMetrics implements IMetricSet {
     if (!processorMap.isEmpty()) {
       LOGGER.warn("Failed to unbind from pipe processor metrics, processor map not empty");
     }
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.FILE_SIZE.toString(),
+        Tag.NAME.toString(),
+        TRANSFORMED_TOTAL_SIZE);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.FILE_COUNT.toString(),
+        Tag.NAME.toString(),
+        TRANSFORMED_TOTAL_COUNT);
   }
 
   private void removeMetrics(final String taskID) {
     removeRate(taskID);
+    removeCount(taskID);
+  }
+
+  private void removeCount(String taskID) {
+    PipeProcessorSubtask processor = processorMap.get(taskID);
+    // process tsfile count
+    metricService.remove(
+        MetricType.COUNTER,
+        TRANSFORMED_TOTAL_SIZE,
+        Tag.NAME.toString(),
+        processor.getPipeName(),
+        Tag.REGION.toString(),
+        String.valueOf(processor.getRegionId()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(processor.getCreationTime()));
+    metricService.remove(
+        MetricType.COUNTER,
+        TRANSFORMED_TOTAL_COUNT,
+        Tag.NAME.toString(),
+        processor.getPipeName(),
+        Tag.REGION.toString(),
+        String.valueOf(processor.getRegionId()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(processor.getCreationTime()));
+
+    tsFileSizeMap.remove(taskID);
+    tsFileCountMap.remove(taskID);
   }
 
   private void removeRate(final String taskID) {
@@ -192,6 +303,8 @@ public class PipeProcessorMetrics implements IMetricSet {
   }
 
   public void markTsFileEvent(final String taskID) {
+
+    LOGGER.info("here now");
     if (Objects.isNull(metricService)) {
       return;
     }
@@ -217,6 +330,34 @@ public class PipeProcessorMetrics implements IMetricSet {
       return;
     }
     rate.mark();
+  }
+
+  public void incTsFileSize(final String taskID, final long size) {
+    if (Objects.isNull(metricService)) {
+      return;
+    }
+    final Counter counter = tsFileSizeMap.get(taskID);
+    if (counter == null) {
+      LOGGER.info(
+          "Failed to inc pipe processor tsfile size, PipeProcessorSubtask({}) does not exist",
+          taskID);
+      return;
+    }
+    counter.inc(size);
+  }
+
+  public void incTsFileCount(final String taskID, final long size) {
+    if (Objects.isNull(metricService)) {
+      return;
+    }
+    final Counter counter = tsFileCountMap.get(taskID);
+    if (counter == null) {
+      LOGGER.info(
+          "Failed to inc pipe processor tsfile count, PipeProcessorSubtask({}) does not exist",
+          taskID);
+      return;
+    }
+    counter.inc(size);
   }
 
   //////////////////////////// singleton ////////////////////////////

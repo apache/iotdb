@@ -29,7 +29,7 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.pipe.metric.PipeResourceMetrics;
+import org.apache.iotdb.db.pipe.metric.PipeProcessorMetrics;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -43,7 +43,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class PipeEventCollector implements EventCollector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeEventCollector.class);
-
+  private final String taskId;
   private final UnboundedBlockingPendingQueue<Event> pendingQueue;
 
   private final long creationTime;
@@ -57,10 +57,12 @@ public class PipeEventCollector implements EventCollector {
   private boolean isFailedToIncreaseReferenceCount = false;
 
   public PipeEventCollector(
+      final String taskId,
       final UnboundedBlockingPendingQueue<Event> pendingQueue,
       final long creationTime,
       final int regionId,
       final boolean forceTabletFormat) {
+    this.taskId = taskId;
     this.pendingQueue = pendingQueue;
     this.creationTime = creationTime;
     this.regionId = regionId;
@@ -107,6 +109,7 @@ public class PipeEventCollector implements EventCollector {
   }
 
   private void parseAndCollectEvent(final PipeTsFileInsertionEvent sourceEvent) throws Exception {
+    LOGGER.warn("I'm in Eventnow");
     if (!sourceEvent.waitForTsFileClose()) {
       LOGGER.warn(
           "Pipe skipping temporary TsFile which shouldn't be transferred: {}",
@@ -122,7 +125,11 @@ public class PipeEventCollector implements EventCollector {
       collectEvent(sourceEvent);
       return;
     }
-    PipeResourceMetrics.addByteUsed(sourceEvent.getTsFile().length());
+    LOGGER.warn("transforming now");
+
+    final long tsfileLength = sourceEvent.getTsFile().length();
+    PipeProcessorMetrics.getInstance().addByteUsed(tsfileLength);
+    PipeProcessorMetrics.getInstance().incTsFileSize(taskId, tsfileLength);
     int count = 0;
     try {
       for (final TabletInsertionEvent parsedEvent : sourceEvent.toTabletInsertionEvents()) {
@@ -131,7 +138,8 @@ public class PipeEventCollector implements EventCollector {
       }
     } finally {
       sourceEvent.close();
-      PipeResourceMetrics.addTabletTotal(count);
+      PipeProcessorMetrics.getInstance().addTabletTotal(count);
+      PipeProcessorMetrics.getInstance().incTsFileCount(taskId, count);
     }
   }
 

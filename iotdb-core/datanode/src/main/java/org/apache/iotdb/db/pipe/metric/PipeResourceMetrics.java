@@ -37,29 +37,6 @@ public class PipeResourceMetrics implements IMetricSet {
 
   private static final String PIPE_TOTAL_MEMORY = "PipeTotalMemory";
 
-  private static final String TRANSFORMED_TOTAL_SIZE = "total transformed size";
-
-  private static final String TRANSFORMED_TOTAL_COUNT = "total transformed count";
-
-  private static long byteUsed = 0;
-  private static long tabletTotal = 0;
-
-  public long getByteUsed() {
-    return byteUsed;
-  }
-
-  public static void addByteUsed(long byteUsed) {
-    PipeResourceMetrics.byteUsed += byteUsed;
-  }
-
-  public long getTabletTotal() {
-    return tabletTotal;
-  }
-
-  public static void addTabletTotal(long tabletTotal) {
-    PipeResourceMetrics.tabletTotal += tabletTotal;
-  }
-
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
@@ -96,21 +73,6 @@ public class PipeResourceMetrics implements IMetricSet {
         MetricLevel.IMPORTANT,
         PipeDataNodeResourceManager.ref(),
         PipePhantomReferenceManager::getPhantomReferenceCount);
-    // tsfile length and tablet total
-    metricService.createAutoGauge(
-        Metric.FILE_SIZE.toString(),
-        MetricLevel.IMPORTANT,
-        this,
-        PipeResourceMetrics::getByteUsed,
-        Tag.NAME.toString(),
-        TRANSFORMED_TOTAL_SIZE);
-    metricService.createAutoGauge(
-        Metric.FILE_COUNT.toString(),
-        MetricLevel.IMPORTANT,
-        this,
-        PipeResourceMetrics::getTabletTotal,
-        Tag.NAME.toString(),
-        TRANSFORMED_TOTAL_COUNT);
   }
 
   @Override
@@ -125,16 +87,6 @@ public class PipeResourceMetrics implements IMetricSet {
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_LINKED_TSFILE_COUNT.toString());
     // phantom reference count
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_PHANTOM_REFERENCE_COUNT.toString());
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.FILE_SIZE.toString(),
-        Tag.NAME.toString(),
-        TRANSFORMED_TOTAL_SIZE);
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.FILE_COUNT.toString(),
-        Tag.NAME.toString(),
-        TRANSFORMED_TOTAL_COUNT);
   }
 
   //////////////////////////// singleton ////////////////////////////

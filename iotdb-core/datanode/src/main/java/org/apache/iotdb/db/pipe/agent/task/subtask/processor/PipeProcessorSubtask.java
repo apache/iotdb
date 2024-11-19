@@ -86,6 +86,12 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     this.pipeProcessor = pipeProcessor;
     this.outputEventCollector = outputEventCollector;
     this.subtaskCreationTime = System.currentTimeMillis();
+    LOGGER.info(
+        "Create pipe processor subtask {}, pipe: {}, region: {}, creation time: {}",
+        taskID,
+        pipeName,
+        regionId,
+        subtaskCreationTime);
 
     // Only register dataRegions
     if (StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))) {

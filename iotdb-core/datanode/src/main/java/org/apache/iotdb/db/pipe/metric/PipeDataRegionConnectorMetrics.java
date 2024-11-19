@@ -54,7 +54,6 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
 
   private final Map<String, Rate> pipeHeartbeatRateMap = new ConcurrentHashMap<>();
 
-  // private final Map<String, >
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
