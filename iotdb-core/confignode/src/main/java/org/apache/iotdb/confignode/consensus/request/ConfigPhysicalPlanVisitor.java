@@ -89,6 +89,18 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
         return visitRevokeRoleFromUser((AuthorPlan) plan, context);
       case SetTTL:
         return visitTTL((SetTTLPlan) plan, context);
+      case PipeCreateTable:
+        return visitPipeCreateTable((PipeCreateTablePlan) plan, context);
+      case AddTableColumn:
+        return visitAddTableColumn((AddTableColumnPlan) plan, context);
+      case SetTableProperties:
+        return visitSetTableProperties((SetTablePropertiesPlan) plan, context);
+      case RenameTableColumn:
+        return visitRenameTableColumn((RenameTableColumnPlan) plan, context);
+      case CommitDeleteColumn:
+        return visitCommitDeleteColumn((CommitDeleteColumnPlan) plan, context);
+      case CommitDeleteTable:
+        return visitCommitDeleteTable((CommitDeleteTablePlan) plan, context);
       default:
         return visitPlan(plan, context);
     }
