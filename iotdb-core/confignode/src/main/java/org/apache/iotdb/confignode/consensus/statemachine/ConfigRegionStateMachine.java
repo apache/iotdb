@@ -125,7 +125,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     try {
       result = executor.executeNonQueryPlan(plan);
     } catch (UnknownPhysicalPlanTypeException e) {
-      LOGGER.error(e.getMessage());
+      LOGGER.error("Exception", e);
       result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
 
@@ -184,7 +184,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     try {
       result = executor.executeQueryPlan(plan);
     } catch (final UnknownPhysicalPlanTypeException | AuthException e) {
-      LOGGER.error(e.getMessage());
+      LOGGER.error("Exception", e);
       result = null;
     }
     return result;
@@ -432,7 +432,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
               PipeConfigNodeAgent.runtime().listener().tryListenToPlan(nextPlan, false);
             }
           } catch (UnknownPhysicalPlanTypeException e) {
-            LOGGER.error(e.getMessage());
+            LOGGER.error("Exception", e);
           }
         }
         logReader.close();
