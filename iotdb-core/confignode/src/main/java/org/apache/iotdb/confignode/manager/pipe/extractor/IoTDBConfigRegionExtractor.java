@@ -28,7 +28,9 @@ import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.event.PipeWritePlanEvent;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBNonDataRegionExtractor;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
@@ -125,8 +127,16 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
 
   @Override
   protected boolean isTypeListened(final PipeWritePlanEvent event) {
-    return listenedTypeSet.contains(
-        ((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan().getType());
+    final ConfigPhysicalPlan plan =
+        ((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan();
+    final ConfigPhysicalPlanType type = plan.getType();
+    return listenedTypeSet.contains(type)
+        && (type != ConfigPhysicalPlanType.CreateDatabase
+                && type != ConfigPhysicalPlanType.AlterDatabase
+            || ((DatabaseSchemaPlan) plan).getSchema().isIsTableModel()
+                && tablePattern.isTableModelDataAllowedToBeCaptured()
+            || !((DatabaseSchemaPlan) plan).getSchema().isIsTableModel()
+                && treePattern.isTreeModelDataAllowedToBeCaptured());
   }
 
   @Override
