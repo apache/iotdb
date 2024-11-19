@@ -58,7 +58,7 @@ public abstract class PipeTsFileBuilder {
   @SuppressWarnings("java:S3077")
   protected volatile TsFileWriter fileWriter;
 
-  public PipeTsFileBuilder(AtomicLong currentBatchId, AtomicLong tsFileIdGenerator) {
+  public PipeTsFileBuilder(final AtomicLong currentBatchId, final AtomicLong tsFileIdGenerator) {
     this.currentBatchId = currentBatchId;
     this.tsFileIdGenerator = tsFileIdGenerator;
     try {

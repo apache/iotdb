@@ -49,19 +49,22 @@ public class PipeTreeModelTSFileBuilder extends PipeTsFileBuilder {
   private final List<Tablet> tabletList = new ArrayList<>();
   private final List<Boolean> isTabletAlignedList = new ArrayList<>();
 
-  public PipeTreeModelTSFileBuilder(AtomicLong currentBatchId, AtomicLong tsFileIdGenerator) {
+  public PipeTreeModelTSFileBuilder(
+      final AtomicLong currentBatchId, final AtomicLong tsFileIdGenerator) {
     super(currentBatchId, tsFileIdGenerator);
   }
 
   @Override
   public void bufferTableModelTablet(
-      String dataBase, Tablet tablet, List<Pair<IDeviceID, Integer>> deviceID2Index) {
+      final String dataBase,
+      final Tablet tablet,
+      final List<Pair<IDeviceID, Integer>> deviceID2Index) {
     throw new UnsupportedOperationException(
         "PipeTreeModelTSFileBuilder does not support table model tablet to build TSFile");
   }
 
   @Override
-  public void bufferTreeModelTablet(Tablet tablet, Boolean isAligned) {
+  public void bufferTreeModelTablet(final Tablet tablet, final Boolean isAligned) {
     tabletList.add(tablet);
     isTabletAlignedList.add(isAligned);
   }

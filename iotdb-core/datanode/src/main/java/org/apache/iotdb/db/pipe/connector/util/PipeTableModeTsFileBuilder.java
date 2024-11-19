@@ -102,9 +102,9 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
   }
 
   private List<Pair<String, File>> writeTableModelTabletsToTsFiles(
-      List<Tablet> tabletList,
-      List<List<Pair<IDeviceID, Integer>>> deviceIDPairMap,
-      String dataBase)
+      final List<Tablet> tabletList,
+      final List<List<Pair<IDeviceID, Integer>>> deviceIDPairMap,
+      final String dataBase)
       throws IOException {
 
     final Map<String, List<Pair<Tablet, List<Pair<IDeviceID, Integer>>>>> tableName2Tablets =
@@ -220,8 +220,6 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
           lastTablet = pair;
           tablets.pollFirst();
         } else {
-          // help GC
-          deviceLastTimestampMap = null;
           break;
         }
       }
@@ -240,8 +238,12 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
         try {
           fileWriter.writeTable(tablet, pair.right);
         } catch (WriteProcessException e) {
+          LOGGER.warn(
+              "Batch id = {}: Failed to build the table model TSFile. Please check whether the written Tablet has time overlap and whether the Table Schema is correct.",
+              currentBatchId.get(),
+              e);
           throw new PipeException(
-              "The Schema in the Tablet is inconsistent with the registered TableSchema");
+              "The written Tablet time may overlap or the Schema may be incorrect");
         }
       }
     }
@@ -279,8 +281,8 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
    * position.
    */
   private void insertPairs(
-      List<Pair<Tablet, List<Pair<IDeviceID, Integer>>>> list,
-      Pair<Tablet, List<Pair<IDeviceID, Integer>>> pair) {
+      final List<Pair<Tablet, List<Pair<IDeviceID, Integer>>>> list,
+      final Pair<Tablet, List<Pair<IDeviceID, Integer>>> pair) {
     int lastResult = Integer.MAX_VALUE;
     if (list.isEmpty()) {
       list.add(pair);

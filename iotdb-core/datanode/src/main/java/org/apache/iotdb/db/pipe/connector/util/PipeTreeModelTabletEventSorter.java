@@ -123,7 +123,7 @@ public class PipeTreeModelTabletEventSorter {
   }
 
   private static Object reorderValueList(
-      int deduplicatedSize,
+      final int deduplicatedSize,
       final Object valueList,
       final TSDataType dataType,
       final Integer[] index) {
@@ -187,7 +187,7 @@ public class PipeTreeModelTabletEventSorter {
   }
 
   private static BitMap reorderBitMap(
-      int deduplicatedSize, final BitMap bitMap, final Integer[] index) {
+      final int deduplicatedSize, final BitMap bitMap, final Integer[] index) {
     final BitMap deduplicatedBitMap = new BitMap(bitMap.getSize());
     for (int i = 0; i < deduplicatedSize; i++) {
       if (bitMap.isMarked(index[i])) {

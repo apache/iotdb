@@ -107,12 +107,12 @@ public class PipeTableModelTabletEventSorter {
       index[i] = i;
     }
 
-    if (!isUnSorted) {
+    if (isUnSorted) {
       sortAndDeduplicateTimestamps();
-      hasDuplicates = true;
+      hasDuplicates = false;
     }
 
-    if (!hasDuplicates) {
+    if (hasDuplicates) {
       deduplicateTimestamps();
     }
 
@@ -147,14 +147,14 @@ public class PipeTableModelTabletEventSorter {
         continue;
       }
 
-      if (timestamps[deduplicatedSize - 1] != timestamps[timeIndex]) {
+      if (timestamps[deduplicatedSize - 1] != tabletTimestamps[timeIndex]) {
         timestamps[deduplicatedSize] = tabletTimestamps[timeIndex];
         index[deduplicatedSize] = timeIndex;
         lastDevice = deviceId;
         deduplicatedSize++;
       }
     }
-    deviceID2TimeIndex.add(new Pair<>(lastDevice, tablet.rowSize));
+    deviceID2TimeIndex.add(new Pair<>(lastDevice, deduplicatedSize));
     tablet.timestamps = timestamps;
   }
 
@@ -167,7 +167,7 @@ public class PipeTableModelTabletEventSorter {
       if (!lastDevice.equals(deviceId)) {
         timestamps[deduplicatedSize] = timestamps[i];
         index[deduplicatedSize] = i;
-        deviceID2TimeIndex.add(new Pair<>(lastDevice, i));
+        deviceID2TimeIndex.add(new Pair<>(lastDevice, deduplicatedSize));
         lastDevice = deviceId;
         deduplicatedSize++;
         continue;
@@ -180,7 +180,7 @@ public class PipeTableModelTabletEventSorter {
         deduplicatedSize++;
       }
     }
-    deviceID2TimeIndex.add(new Pair<>(lastDevice, tablet.rowSize));
+    deviceID2TimeIndex.add(new Pair<>(lastDevice, deduplicatedSize));
   }
 
   private void sortAndDeduplicateValuesAndBitMaps() {
@@ -197,10 +197,11 @@ public class PipeTableModelTabletEventSorter {
         columnIndex++;
       }
     }
+    tablet.rowSize = deduplicatedSize;
   }
 
   private static Object reorderValueList(
-      int deduplicatedSize,
+      final int deduplicatedSize,
       final Object valueList,
       final TSDataType dataType,
       final Integer[] index) {
@@ -264,7 +265,7 @@ public class PipeTableModelTabletEventSorter {
   }
 
   private static BitMap reorderBitMap(
-      int deduplicatedSize, final BitMap bitMap, final Integer[] index) {
+      final int deduplicatedSize, final BitMap bitMap, final Integer[] index) {
     final BitMap deduplicatedBitMap = new BitMap(bitMap.getSize());
     for (int i = 0; i < deduplicatedSize; i++) {
       if (bitMap.isMarked(index[i])) {

@@ -19,17 +19,27 @@
 
 package org.apache.iotdb.db.pipe.connector;
 
+import org.apache.iotdb.db.pipe.connector.util.PipeTableModelTabletEventSorter;
 import org.apache.iotdb.db.pipe.connector.util.PipeTreeModelTabletEventSorter;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.DateUtils;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.WriteUtils;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -46,7 +56,7 @@ public class PipeTabletEventSorterTest {
   }
 
   @Test
-  public void testDeduplicateAndSort() {
+  public void testTreeModelDeduplicateAndSort() {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
@@ -103,7 +113,7 @@ public class PipeTabletEventSorterTest {
   }
 
   @Test
-  public void testDeduplicate() {
+  public void testTreeModelDeduplicate() {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
@@ -148,7 +158,7 @@ public class PipeTabletEventSorterTest {
   }
 
   @Test
-  public void testSort() {
+  public void testTreeModelSort() {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
@@ -213,6 +223,125 @@ public class PipeTabletEventSorterTest {
       for (int j = 0; j < 3; ++j) {
         Assert.assertTrue(((long[]) tablet.values[j])[i] > ((long[]) tablet.values[j])[i - 1]);
       }
+    }
+  }
+
+  @Test
+  public void testTableModelDeduplicateAndSort() {
+    doTableModelTest(true, true);
+  }
+
+  @Test
+  public void testTableModelDeduplicate() {
+    doTableModelTest(true, false);
+  }
+
+  @Test
+  public void testTableModelSort() {
+    doTableModelTest(false, true);
+  }
+
+  public void doTableModelTest(final boolean isDeduplicated, final boolean isUnSorted) {
+    Tablet tablet = generateTablet("test", 10, isDeduplicated, isUnSorted);
+
+    List<Pair<IDeviceID, Integer>> list =
+        new PipeTableModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
+    List<Pair<IDeviceID, Integer>> list1 = WriteUtils.splitTabletByDevice(tablet);
+    Assert.assertEquals(list1, list);
+    for (int i = 1; i < tablet.rowSize; i++) {
+      long time = tablet.timestamps[i];
+      Assert.assertTrue(time > tablet.timestamps[i - 1]);
+      Assert.assertEquals(
+          tablet.getValue(i, 0),
+          new Binary(String.valueOf(i / 100).getBytes(StandardCharsets.UTF_8)));
+      Assert.assertEquals(tablet.getValue(i, 1), (long) i);
+      Assert.assertEquals(tablet.getValue(i, 2), i * 1.0f);
+      Assert.assertEquals(
+          tablet.getValue(i, 3), new Binary(String.valueOf(i).getBytes(StandardCharsets.UTF_8)));
+      Assert.assertEquals(tablet.getValue(i, 4), (long) i);
+      Assert.assertEquals(tablet.getValue(i, 5), i);
+      Assert.assertEquals(tablet.getValue(i, 6), i * 0.1);
+      Assert.assertEquals(tablet.getValue(i, 7), getDate(i));
+      Assert.assertEquals(
+          tablet.getValue(i, 8), new Binary(String.valueOf(i).getBytes(StandardCharsets.UTF_8)));
+    }
+  }
+
+  private Tablet generateTablet(
+      final String tableName,
+      final int deviceIDNum,
+      final boolean isDeduplicated,
+      final boolean isUnSorted) {
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s0", TSDataType.STRING));
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.FLOAT));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.STRING));
+    schemaList.add(new MeasurementSchema("s4", TSDataType.TIMESTAMP));
+    schemaList.add(new MeasurementSchema("s5", TSDataType.INT32));
+    schemaList.add(new MeasurementSchema("s6", TSDataType.DOUBLE));
+    schemaList.add(new MeasurementSchema("s7", TSDataType.DATE));
+    schemaList.add(new MeasurementSchema("s8", TSDataType.TEXT));
+
+    final List<Tablet.ColumnType> columnTypes =
+        Arrays.asList(
+            Tablet.ColumnType.ID,
+            Tablet.ColumnType.MEASUREMENT,
+            Tablet.ColumnType.MEASUREMENT,
+            Tablet.ColumnType.MEASUREMENT,
+            Tablet.ColumnType.MEASUREMENT,
+            Tablet.ColumnType.MEASUREMENT,
+            Tablet.ColumnType.MEASUREMENT,
+            Tablet.ColumnType.MEASUREMENT,
+            Tablet.ColumnType.MEASUREMENT);
+    Tablet tablet = new Tablet(tableName, schemaList, columnTypes, deviceIDNum * 1000);
+    tablet.initBitMaps();
+
+    // s2 float, s3 string, s4 timestamp, s5 int32, s6 double, s7 date, s8 text
+    int rowIndex = 0;
+    for (long row = 0; row < deviceIDNum; row++) {
+
+      for (int i = 0; i < 100; i++) {
+        final long value;
+        if (isUnSorted) {
+          value = (row + 1) * 100 - i - 1;
+        } else {
+          value = (row) * 100 + i;
+        }
+        for (int j = 0; j < 10; j++) {
+          tablet.addTimestamp(rowIndex, value);
+          tablet.addValue(
+              "s0", rowIndex, new Binary(String.valueOf(row).getBytes(StandardCharsets.UTF_8)));
+          tablet.addValue("s1", rowIndex, value);
+          tablet.addValue("s2", rowIndex, (value * 1.0f));
+          tablet.addValue(
+              "s3", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
+          tablet.addValue("s4", rowIndex, value);
+          tablet.addValue("s5", rowIndex, (int) value);
+          tablet.addValue("s6", rowIndex, value * 0.1);
+          tablet.addValue("s7", rowIndex, getDate((int) value));
+          tablet.addValue(
+              "s8", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
+          rowIndex++;
+          tablet.rowSize++;
+          if (!isDeduplicated) {
+            break;
+          }
+        }
+      }
+    }
+
+    return tablet;
+  }
+
+  public static LocalDate getDate(int value) {
+    Date date = new Date(value);
+    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+    try {
+      return DateUtils.parseIntToLocalDate(
+          DateUtils.parseDateExpressionToInt(dateFormat.format(date)));
+    } catch (Exception e) {
+      return DateUtils.parseIntToLocalDate(DateUtils.parseDateExpressionToInt("1970-01-01"));
     }
   }
 }
