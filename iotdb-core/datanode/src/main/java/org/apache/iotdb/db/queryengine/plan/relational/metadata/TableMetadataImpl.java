@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.commons.udf.utils.TableUDFUtils;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -622,10 +621,9 @@ public class TableMetadataImpl implements Metadata {
         // ignore
     }
 
-    // 根据 argumentTypes 获取返回类型，这边暂时先 mock 一个 INT32
-    if (TableUDFUtils.isScalarFunction(functionName)) {
-      ScalarFunction scalarFunction =
-          UDFManagementService.getInstance().reflect(functionName, ScalarFunction.class);
+    // User-defined scalar function
+    ScalarFunction scalarFunction = TableUDFUtils.tryGetScalarFunction(functionName);
+    if (scalarFunction != null) {
       FunctionParameters functionParameters =
           new FunctionParameters(
               argumentTypes.stream()
@@ -633,11 +631,12 @@ public class TableMetadataImpl implements Metadata {
                   .collect(Collectors.toList()),
               Collections.emptyMap());
       try {
-        return UDFDataTypeTransformer.transformUDFDataTypeToReadType(
-            scalarFunction.validateAndInferOutputType(functionParameters));
+        scalarFunction.validate(functionParameters);
       } catch (Exception e) {
         throw new SemanticException("Invalid function parameters: " + e.getMessage());
       }
+      return UDFDataTypeTransformer.transformUDFDataTypeToReadType(
+          scalarFunction.inferOutputType(functionParameters));
     }
 
     // TODO UDAF

@@ -25,30 +25,27 @@ import org.apache.iotdb.udf.api.relational.ScalarFunction;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 
 public class TableUDFUtils {
-  public static boolean isScalarFunction(String functionName) {
+  public static ScalarFunction tryGetScalarFunction(String functionName) {
     try {
-      UDFManagementService.getInstance().reflect(functionName, ScalarFunction.class);
-      return true;
+      return UDFManagementService.getInstance().reflect(functionName, ScalarFunction.class);
     } catch (Throwable e) {
-      return false;
+      return null;
     }
   }
 
-  public static boolean isTableFunction(String functionName) {
+  public static TableFunction tryGetTableFunction(String functionName) {
     try {
-      UDFManagementService.getInstance().reflect(functionName, TableFunction.class);
-      return true;
+      return UDFManagementService.getInstance().reflect(functionName, TableFunction.class);
     } catch (Throwable e) {
-      return false;
+      return null;
     }
   }
 
-  public static boolean isAggregateFunction(String functionName) {
+  public static AggregateFunction tryGetAggregateFunction(String functionName) {
     try {
-      UDFManagementService.getInstance().reflect(functionName, AggregateFunction.class);
-      return true;
+      return UDFManagementService.getInstance().reflect(functionName, AggregateFunction.class);
     } catch (Throwable e) {
-      return false;
+      return null;
     }
   }
 }

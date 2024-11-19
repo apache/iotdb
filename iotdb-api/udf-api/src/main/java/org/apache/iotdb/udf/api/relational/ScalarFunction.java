@@ -26,12 +26,20 @@ import org.apache.iotdb.udf.api.type.Type;
 public interface ScalarFunction extends SQLFunction {
 
   /**
-   * This method is mainly used to validate {@link FunctionParameters} and infer output data type.
+   * This method is used to validate {@link FunctionParameters}.
    *
    * @param parameters parameters used to validate
    * @throws Exception if any parameter is not valid
    */
-  Type validateAndInferOutputType(FunctionParameters parameters) throws Exception;
+  void validate(FunctionParameters parameters) throws Exception;
+
+  /**
+   * This method is used to infer the output data type of the transformation.
+   *
+   * @param parameters input parameters
+   * @return the output data type
+   */
+  Type inferOutputType(FunctionParameters parameters);
 
   /**
    * This method will be called to process the transformation. In a single UDF query, this method

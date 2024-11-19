@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.relational;
 
-import org.apache.iotdb.commons.udf.service.UDFManagementService;
+import org.apache.iotdb.commons.udf.utils.TableUDFUtils;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
@@ -95,6 +96,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.LogicalAn
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.LogicalOrMultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ternary.BetweenColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ternary.Like3ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.udf.UserDefineScalarFunctionTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.IsNullColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.LikeColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.LogicNotColumnTransformer;
@@ -153,7 +155,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Tr
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TrimColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TryCastFunctionColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.UpperColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.UserDefineScalarFunctionTransformer;
+import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -173,6 +175,7 @@ import org.apache.tsfile.utils.Binary;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -999,13 +1002,24 @@ public class ColumnTransformerBuilder
           source,
           ((LongLiteral) children.get(3)).getParsedValue(),
           context.sessionInfo.getZoneId());
-    } else if (UDFManagementService.getInstance()
-        .isAssignableFrom(functionName, ScalarFunction.class)) {
-      List<ColumnTransformer> childrenColumnTransformer =
-          children.stream().map(child -> process(child, context)).collect(Collectors.toList());
-      // TODO(UDSF): check the return type of the function
-      return new UserDefineScalarFunctionTransformer(
-          INT32, functionName, children, childrenColumnTransformer);
+    } else {
+      // user defined function
+      ScalarFunction scalarFunction = TableUDFUtils.tryGetScalarFunction(functionName);
+      if (scalarFunction != null) {
+        List<ColumnTransformer> childrenColumnTransformer =
+            children.stream().map(child -> process(child, context)).collect(Collectors.toList());
+        FunctionParameters parameters =
+            new FunctionParameters(
+                childrenColumnTransformer.stream()
+                    .map(i -> UDFDataTypeTransformer.transformReadTypeToUDFDataType(i.getType()))
+                    .collect(Collectors.toList()),
+                Collections.emptyMap());
+        Type returnType =
+            UDFDataTypeTransformer.transformUDFDataTypeToReadType(
+                scalarFunction.inferOutputType(parameters));
+        return new UserDefineScalarFunctionTransformer(
+            returnType, scalarFunction, childrenColumnTransformer);
+      }
     }
     throw new IllegalArgumentException(String.format("Unknown function: %s", functionName));
   }
