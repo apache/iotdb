@@ -213,8 +213,6 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
           tablet.addTimestamp(rowIndex, data.currentTime());
           putValueToColumns(data, tablet, rowIndex);
-
-          tablet.rowSize++;
         }
 
         data.next();

@@ -171,8 +171,6 @@ public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<T
             field == null ? null : field.getObjectValue(schemas.get(i).getType()));
       }
 
-      tablet.rowSize++;
-
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
         break;
       }

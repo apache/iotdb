@@ -37,6 +37,7 @@ import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
 import org.apache.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.tsfile.write.record.datapoint.IntDataPoint;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.schema.Schema;
 import org.junit.After;
@@ -79,6 +80,9 @@ public class PipeTsFileResourceManagerTest {
 
     Schema schema = new Schema();
     String template = "template";
+    IMeasurementSchema s1 = new MeasurementSchema("sensor1", TSDataType.FLOAT, TSEncoding.RLE);
+    IMeasurementSchema s2 = new MeasurementSchema("sensor2", TSDataType.INT32, TSEncoding.TS_2DIFF);
+    IMeasurementSchema s3 = new MeasurementSchema("sensor3", TSDataType.INT32, TSEncoding.TS_2DIFF);
     schema.extendTemplate(
         template, new MeasurementSchema("sensor1", TSDataType.FLOAT, TSEncoding.RLE));
     schema.extendTemplate(
@@ -87,6 +91,9 @@ public class PipeTsFileResourceManagerTest {
         template, new MeasurementSchema("sensor3", TSDataType.INT32, TSEncoding.TS_2DIFF));
 
     TsFileWriter tsFileWriter = new TsFileWriter(file, schema);
+    tsFileWriter.registerDevice("root.lemming.device1", template);
+    tsFileWriter.registerDevice("root.lemming.device2", template);
+    tsFileWriter.registerDevice("root.lemming.device3", template);
 
     // construct TSRecord
     TSRecord tsRecord = new TSRecord("root.lemming.device1", 1617206403001L);

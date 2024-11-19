@@ -124,15 +124,12 @@ public class TabletInsertionEventTablePatternParser extends TabletInsertionEvent
     final Tablet newTablet =
         new Tablet(
             Objects.nonNull(deviceIdString) ? deviceIdString : deviceId.getTableName(),
-            Arrays.asList(columnNameStringList),
-            Arrays.asList(valueColumnDataTypes),
+            Arrays.asList(measurementSchemaList),
             Arrays.asList(valueColumnTypes),
+            timestampColumn,
+            valueColumns,
+            nullValueColumnBitmaps,
             rowCount);
-    newTablet.timestamps = timestampColumn;
-    newTablet.bitMaps = nullValueColumnBitmaps;
-    newTablet.values = valueColumns;
-    newTablet.rowSize = rowCount;
-    newTablet.setColumnCategories(Arrays.asList(valueColumnTypes));
 
     tablet = newTablet;
 

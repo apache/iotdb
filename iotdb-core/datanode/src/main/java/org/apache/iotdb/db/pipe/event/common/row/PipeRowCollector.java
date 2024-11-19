@@ -93,7 +93,6 @@ public class PipeRowCollector implements RowCollector {
         tablet.bitMaps[i].mark(rowIndex);
       }
     }
-    tablet.rowSize++;
 
     if (tablet.rowSize == tablet.getMaxRowNumber()) {
       collectTabletInsertionEvent();

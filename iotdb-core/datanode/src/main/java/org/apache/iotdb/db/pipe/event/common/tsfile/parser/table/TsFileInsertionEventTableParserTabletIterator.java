@@ -137,7 +137,6 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
           isAllNull = false;
         }
       }
-      tablet.rowSize++;
     }
 
     if (isAllNull) {
