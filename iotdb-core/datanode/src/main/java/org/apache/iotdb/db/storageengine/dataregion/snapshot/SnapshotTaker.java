@@ -201,15 +201,34 @@ public class SnapshotTaker {
           continue;
         }
         File snapshotTsFile = getSnapshotFilePathForTsFile(tsFile, snapshotId);
+        File snapshotResourceFile =
+            new File(snapshotTsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
+        File snapshotDir = snapshotTsFile.getParentFile();
         // create hard link for tsfile, resource, mods
         createHardLink(snapshotTsFile, tsFile);
-        createHardLink(
-            new File(snapshotTsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
-            new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
-        if (resource.getModFile().exists()) {
+
+        if (resource.exclusiveModFileExists()) {
           copyFile(
-              new File(snapshotTsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX),
-              new File(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX));
+              ModificationFile.getExclusiveMods(snapshotTsFile),
+              ModificationFile.getExclusiveMods(tsFile));
+        }
+
+        if (resource.sharedModFileExists()) {
+          File sharedModFile = resource.getSharedModFile().getFile();
+          File snapshotSharedModFile = new File(snapshotDir, sharedModFile.getName());
+          if (!snapshotSharedModFile.exists()) {
+            copyFile(snapshotSharedModFile, sharedModFile);
+          }
+
+          // rewrite the resource in snapshot to update the mod file path
+          ModificationFile sharedModFileTemp = resource.getSharedModFile();
+          resource.setSharedModFile(new ModificationFile(snapshotSharedModFile), false);
+          resource.serialize(snapshotResourceFile.getAbsolutePath());
+          resource.setSharedModFile(sharedModFileTemp, false);
+        } else {
+          createHardLink(
+              snapshotResourceFile,
+              new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
         }
       }
       return true;

@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.IFullPath;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -46,6 +45,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -56,8 +56,7 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.FlushListener;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.flush.NotifyFlushMemTable;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IFileScanHandle;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl.DiskAlignedChunkHandleImpl;
@@ -101,7 +100,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -139,7 +137,7 @@ public class TsFileProcessor {
   private final ConcurrentLinkedDeque<IMemTable> flushingMemTables = new ConcurrentLinkedDeque<>();
 
   /** Modification to memtable mapping. */
-  private final List<Pair<Modification, IMemTable>> modsToMemtable = new ArrayList<>();
+  private final List<Pair<ModEntry, IMemTable>> modsToMemtable = new ArrayList<>();
 
   /** Writer for restore tsfile and flushing. */
   private RestorableTsFileIOWriter writer;
@@ -1153,20 +1151,16 @@ public class TsFileProcessor {
    *
    * <p>Delete data in both working MemTable and flushing MemTables.
    */
-  public void deleteDataInMemory(Deletion deletion, Set<PartialPath> devicePaths) {
+  public void deleteDataInMemory(ModEntry deletion) {
     flushQueryLock.writeLock().lock();
     logFlushQueryWriteLocked();
     try {
       if (workMemTable != null) {
+        long pointDeleted = workMemTable.delete(deletion);
         logger.info(
-            "[Deletion] Deletion with path: {}, time:{}-{} in workMemTable",
-            deletion.getPath(),
-            deletion.getStartTime(),
-            deletion.getEndTime());
-        for (PartialPath device : devicePaths) {
-          workMemTable.delete(
-              deletion.getPath(), device, deletion.getStartTime(), deletion.getEndTime());
-        }
+            "[Deletion] Deletion with {} in workMemTable, {} points deleted",
+            deletion,
+            pointDeleted);
       }
       // Flushing memTables are immutable, only record this deletion in these memTables for read
       if (!flushingMemTables.isEmpty()) {
@@ -1179,6 +1173,10 @@ public class TsFileProcessor {
   }
 
   public WALFlushListener logDeleteDataNodeInWAL(DeleteDataNode deleteDataNode) {
+    return walNode.log(workMemTable.getMemTableId(), deleteDataNode);
+  }
+
+  public WALFlushListener logDeleteDataNodeInWAL(RelationalDeleteDataNode deleteDataNode) {
     return walNode.log(workMemTable.getMemTableId(), deleteDataNode);
   }
 
@@ -1577,19 +1575,14 @@ public class TsFileProcessor {
 
     try {
       flushQueryLock.writeLock().lock();
-      Iterator<Pair<Modification, IMemTable>> iterator = modsToMemtable.iterator();
+      Iterator<Pair<ModEntry, IMemTable>> iterator = modsToMemtable.iterator();
       while (iterator.hasNext()) {
-        Pair<Modification, IMemTable> entry = iterator.next();
+        Pair<ModEntry, IMemTable> entry = iterator.next();
         if (entry.right.equals(memTableToFlush)) {
-          entry.left.setFileOffset(tsFileResource.getTsFileSize());
-          this.tsFileResource.getModFile().write(entry.left);
-          tsFileResource.getModFile().close();
+          this.tsFileResource.getModFileForWrite().write(entry.left);
+          tsFileResource.getModFileForWrite().close();
           iterator.remove();
-          logger.info(
-              "[Deletion] Deletion with path: {}, time:{}-{} written when flush memtable",
-              entry.left.getPath(),
-              ((Deletion) (entry.left)).getStartTime(),
-              ((Deletion) (entry.left)).getEndTime());
+          logger.info("[Deletion] Deletion : {} written when flush memtable", entry.left);
         }
       }
     } catch (IOException e) {
@@ -1856,7 +1849,7 @@ public class TsFileProcessor {
   private int searchTimeChunkMetaDataIndexAndSetModifications(
       List<List<ChunkMetadata>> chunkMetaDataList,
       IDeviceID deviceID,
-      List<List<Modification>> modifications,
+      List<List<ModEntry>> modifications,
       QueryContext context) {
     int timeChunkMetaDataIndex = -1;
     for (int i = 0; i < chunkMetaDataList.size(); i++) {
@@ -1897,7 +1890,7 @@ public class TsFileProcessor {
       QueryContext queryContext, IDeviceID deviceID)
       throws QueryProcessException, IllegalPathException {
     List<AlignedChunkMetadata> alignedChunkMetadataForOneDevice = new ArrayList<>();
-    List<List<Modification>> modifications = new ArrayList<>();
+    List<List<ModEntry>> modifications = new ArrayList<>();
     List<List<ChunkMetadata>> chunkMetaDataListForDevice =
         writer.getVisibleMetadataList(deviceID, null);
 
@@ -2283,6 +2276,10 @@ public class TsFileProcessor {
   public void registerToTsFile(
       String tableName, Function<String, TableSchema> tableSchemaFunction) {
     getWriter().getSchema().getTableSchemaMap().computeIfAbsent(tableName, tableSchemaFunction);
+  }
+
+  public ReadWriteLock getFlushQueryLock() {
+    return flushQueryLock;
   }
 
   private void logFlushQueryWriteLocked() {
