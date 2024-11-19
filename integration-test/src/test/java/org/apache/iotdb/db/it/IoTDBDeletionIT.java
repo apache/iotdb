@@ -437,6 +437,37 @@ public class IoTDBDeletionIT {
     }
   }
 
+  @Test
+  public void testDelAfterUpdate() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "CREATE ALIGNED TIMESERIES root.ln12.d1 (status int32)");
+      statement.execute("INSERT INTO root.ln12.d1(timestamp, status) VALUES(1, 1)");
+      statement.execute("INSERT INTO root.ln12.d1(timestamp, status) VALUES(2, 2)");
+      statement.execute("INSERT INTO root.ln12.d1(timestamp, status) VALUES(3, 3)");
+      statement.execute("INSERT INTO root.ln12.d1(timestamp, status) VALUES(2, 2)");
+
+      try (ResultSet resultSet = statement.executeQuery("select status from root.ln12.d1")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(3, cnt);
+      }
+
+      statement.execute("DELETE FROM root.ln12.d1.* WHERE time <= 2");
+
+      try (ResultSet resultSet = statement.executeQuery("select status from root.ln12.d1")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+    }
+  }
+
   private static void prepareSeries() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

@@ -493,30 +493,28 @@ public abstract class AlignedTVList extends TVList {
   /**
    * Get whether value is null at the given position in AlignedTvList.
    *
-   * @param rowIndex value index inside this column
+   * @param unsortedRowIndex value index inside this column
    * @param columnIndex index of the column
    * @return boolean
    */
-  public boolean isNullValue(int rowIndex, int columnIndex) {
-    if (rowIndex >= rowCount) {
+  public boolean isNullValue(int unsortedRowIndex, int columnIndex) {
+    if (unsortedRowIndex >= rowCount) {
       return false;
     }
-    if (allValueColDeletedMap != null && allValueColDeletedMap.isMarked(rowIndex)) {
+    if (allValueColDeletedMap != null && allValueColDeletedMap.isMarked(unsortedRowIndex)) {
       return true;
     }
-    if (isTimeDeleted(rowIndex)) {
-      return true;
-    }
+
     if (values.get(columnIndex) == null) {
       return true;
     }
     if (bitMaps == null
         || bitMaps.get(columnIndex) == null
-        || bitMaps.get(columnIndex).get(rowIndex / ARRAY_SIZE) == null) {
+        || bitMaps.get(columnIndex).get(unsortedRowIndex / ARRAY_SIZE) == null) {
       return false;
     }
-    int arrayIndex = rowIndex / ARRAY_SIZE;
-    int elementIndex = rowIndex % ARRAY_SIZE;
+    int arrayIndex = unsortedRowIndex / ARRAY_SIZE;
+    int elementIndex = unsortedRowIndex % ARRAY_SIZE;
     List<BitMap> columnBitMaps = bitMaps.get(columnIndex);
     return columnBitMaps.get(arrayIndex).isMarked(elementIndex);
   }
@@ -1424,6 +1422,9 @@ public abstract class AlignedTVList extends TVList {
     return timeColDeletedMap;
   }
 
+  /**
+   * @param rowIndex should be the sorted index.
+   */
   public boolean isTimeDeleted(int rowIndex) {
     int bitmapIndex = getValueIndex(rowIndex);
     if (timeColDeletedMap == null || timeColDeletedMap.getSize() <= bitmapIndex) {
