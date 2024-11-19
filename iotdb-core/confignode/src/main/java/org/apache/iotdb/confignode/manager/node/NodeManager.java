@@ -256,7 +256,7 @@ public class NodeManager {
       runtimeConfiguration.setAllTriggerInformation(
           getTriggerManager().getTriggerTable(false).getAllTriggerInformation());
       runtimeConfiguration.setAllUDFInformation(
-          getUDFManager().getUDFTable().getAllUDFInformation());
+          getUDFManager().getAllUDFTable().getAllUDFInformation());
       runtimeConfiguration.setAllPipeInformation(
           getPipeManager().getPipePluginCoordinator().getPipePluginTable().getAllPipePluginMeta());
       runtimeConfiguration.setAllTTLInformation(

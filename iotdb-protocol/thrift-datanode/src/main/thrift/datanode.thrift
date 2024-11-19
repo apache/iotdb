@@ -208,6 +208,7 @@ struct TCreateFunctionInstanceReq {
 struct TDropFunctionInstanceReq {
   1: required string functionName
   2: required bool needToDeleteJar
+  3: optional common.Model model
 }
 
 struct TCreateTriggerInstanceReq {

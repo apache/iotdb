@@ -442,10 +442,16 @@ struct TCreateFunctionReq {
   4: optional string jarName
   5: optional binary jarFile
   6: optional string jarMD5
+  7: optional common.Model model
 }
 
 struct TDropFunctionReq {
   1: required string udfName
+  2: optional common.Model model
+}
+
+struct TGetUdfTableReq {
+  1: required common.Model model
 }
 
 // Get UDF table from config node
@@ -1392,7 +1398,7 @@ service IConfigNodeRPCService {
   /**
    * Return the UDF table
    */
-  TGetUDFTableResp getUDFTable()
+  TGetUDFTableResp getUDFTable(TGetUdfTableReq req)
 
   /**
    * Return the UDF jar list of the jar name list

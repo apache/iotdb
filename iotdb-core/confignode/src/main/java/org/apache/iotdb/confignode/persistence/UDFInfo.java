@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.persistence;
 
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
@@ -28,15 +29,18 @@ import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.read.function.GetFunctionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetUDFJarPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.UpdateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.response.JarResp;
 import org.apache.iotdb.confignode.consensus.response.function.FunctionTableResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.exception.UDFManagementException;
 
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,9 +94,10 @@ public class UDFInfo implements SnapshotProcessor {
   }
 
   /** Validate whether the UDF can be created. */
-  public void validate(String udfName, String jarName, String jarMD5)
+  public void validate(Model model, String udfName, String jarName, String jarMD5)
       throws UDFManagementException {
-    if (udfTable.containsUDF(udfName)) {
+    if (udfTable.containsUDF(model, udfName)
+        && udfTable.getUDFInformation(model, udfName).isAvailable()) {
       throw new UDFManagementException(
           String.format("Failed to create UDF [%s], the same name UDF has been created", udfName));
     }
@@ -106,9 +111,10 @@ public class UDFInfo implements SnapshotProcessor {
   }
 
   /** Validate whether the UDF can be dropped. */
-  public void validate(String udfName) throws UDFManagementException {
-    if (udfTable.containsUDF(udfName)) {
-      return;
+  public UDFInformation getUDFInformation(Model model, String udfName)
+      throws UDFManagementException {
+    if (udfTable.containsUDF(model, udfName)) {
+      return udfTable.getUDFInformation(model, udfName);
     }
     throw new UDFManagementException(
         String.format("Failed to drop UDF [%s], this UDF has not been created", udfName));
@@ -141,10 +147,16 @@ public class UDFInfo implements SnapshotProcessor {
     }
   }
 
-  public DataSet getUDFTable() {
+  public DataSet getUDFTable(GetFunctionTablePlan plan) {
     return new FunctionTableResp(
         new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-        udfTable.getAllNonBuiltInUDFInformation());
+        udfTable.getUDFInformationList(plan.getModel()));
+  }
+
+  public DataSet getAllUDFTable() {
+    return new FunctionTableResp(
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+        udfTable.getAllInformationList());
   }
 
   public JarResp getUDFJar(GetUDFJarPlan physicalPlan) {
@@ -167,15 +179,22 @@ public class UDFInfo implements SnapshotProcessor {
 
   public TSStatus dropFunction(DropFunctionPlan req) {
     String udfName = req.getFunctionName();
-    if (udfTable.containsUDF(udfName)) {
-      existedJarToMD5.remove(udfTable.getUDFInformation(udfName).getJarName());
-      udfTable.removeUDFInformation(udfName);
+    Model model = req.getModel();
+    if (udfTable.containsUDF(model, udfName)) {
+      existedJarToMD5.remove(udfTable.getUDFInformation(model, udfName).getJarName());
+      udfTable.removeUDFInformation(model, udfName);
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
+  public TSStatus updateFunction(UpdateFunctionPlan req) {
+    UDFInformation udfInformation = req.getUdfInformation();
+    udfTable.addUDFInformation(udfInformation.getFunctionName(), udfInformation);
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
   @TestOnly
-  public Map<String, UDFInformation> getRawUDFTable() {
+  public Map<Pair<Model, String>, UDFInformation> getRawUDFTable() {
     return udfTable.getTable();
   }
 

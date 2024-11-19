@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.consensus.request;
 
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
@@ -1442,7 +1443,7 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void CreateFunctionPlanTest() throws IOException {
     UDFInformation udfInformation =
-        new UDFInformation("test1", "test1", false, true, "test1.jar", "12345");
+        new UDFInformation("test1", "test1", Model.TREE, true, true, "test1.jar", "12345");
     CreateFunctionPlan createFunctionPlan0 =
         new CreateFunctionPlan(udfInformation, new Binary(new byte[] {1, 2, 3}));
     CreateFunctionPlan createFunctionPlan1 =
@@ -1453,7 +1454,7 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void DropFunctionPlanTest() throws IOException {
-    DropFunctionPlan dropFunctionPlan0 = new DropFunctionPlan("test");
+    DropFunctionPlan dropFunctionPlan0 = new DropFunctionPlan(Model.TABLE, "test");
     DropFunctionPlan dropFunctionPlan1 =
         (DropFunctionPlan)
             ConfigPhysicalPlan.Factory.create(dropFunctionPlan0.serializeToByteBuffer());
