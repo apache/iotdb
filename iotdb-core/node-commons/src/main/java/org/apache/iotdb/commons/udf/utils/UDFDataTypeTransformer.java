@@ -46,6 +46,37 @@ public class UDFDataTypeTransformer {
             .collect(Collectors.toList());
   }
 
+  public static TSDataType transformReadTypeToTSDataType(
+      org.apache.tsfile.read.common.type.Type type) {
+    if (type == null) {
+      return null;
+    }
+    switch (type.getTypeEnum()) {
+      case BOOLEAN:
+        return TSDataType.BOOLEAN;
+      case INT32:
+        return TSDataType.INT32;
+      case INT64:
+        return TSDataType.INT64;
+      case FLOAT:
+        return TSDataType.FLOAT;
+      case DOUBLE:
+        return TSDataType.DOUBLE;
+      case TEXT:
+        return TSDataType.TEXT;
+      case TIMESTAMP:
+        return TSDataType.TIMESTAMP;
+      case DATE:
+        return TSDataType.DATE;
+      case BLOB:
+        return TSDataType.BLOB;
+      case STRING:
+        return TSDataType.STRING;
+      default:
+        throw new IllegalArgumentException("Invalid input: " + type);
+    }
+  }
+
   private static Type getUDFDataType(byte type) {
     switch (type) {
       case 0:

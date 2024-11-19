@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.relational;
 
+import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
@@ -152,6 +153,8 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Tr
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TrimColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TryCastFunctionColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.UpperColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.UserDefineScalarFunctionTransformer;
+import org.apache.iotdb.udf.api.relational.ScalarFunction;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.regexp.LikePattern;
@@ -996,6 +999,13 @@ public class ColumnTransformerBuilder
           source,
           ((LongLiteral) children.get(3)).getParsedValue(),
           context.sessionInfo.getZoneId());
+    } else if (UDFManagementService.getInstance()
+        .isAssignableFrom(functionName, ScalarFunction.class)) {
+      List<ColumnTransformer> childrenColumnTransformer =
+          children.stream().map(child -> process(child, context)).collect(Collectors.toList());
+      // TODO(UDSF): check the return type of the function
+      return new UserDefineScalarFunctionTransformer(
+          INT32, functionName, children, childrenColumnTransformer);
     }
     throw new IllegalArgumentException(String.format("Unknown function: %s", functionName));
   }
