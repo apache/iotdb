@@ -48,6 +48,10 @@ public class TablePattern {
     tablePattern = tablePatternString == null ? null : Pattern.compile(tablePatternString);
   }
 
+  public TablePattern(final String databasePatternString, final String tablePatternString) {
+    this(true, databasePatternString, tablePatternString);
+  }
+
   public boolean isTableModelDataAllowedToBeCaptured() {
     return isTableModelDataAllowedToBeCaptured;
   }
