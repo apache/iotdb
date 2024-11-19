@@ -40,7 +40,8 @@ public class DeleteDevicesProcedureTest {
             "0",
             new byte[] {0, 1, 2},
             new byte[] {0, 1, 2},
-            new byte[] {0, 1, 2});
+            new byte[] {0, 1, 2},
+            false);
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);

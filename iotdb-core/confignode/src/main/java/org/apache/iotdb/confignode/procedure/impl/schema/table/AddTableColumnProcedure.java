@@ -57,8 +57,9 @@ public class AddTableColumnProcedure
       final String database,
       final String tableName,
       final String queryId,
-      final List<TsTableColumnSchema> addedColumnList) {
-    super(database, tableName, queryId);
+      final List<TsTableColumnSchema> addedColumnList,
+      final boolean isGeneratedByPipe) {
+    super(database, tableName, queryId, isGeneratedByPipe);
     this.addedColumnList = addedColumnList;
   }
 

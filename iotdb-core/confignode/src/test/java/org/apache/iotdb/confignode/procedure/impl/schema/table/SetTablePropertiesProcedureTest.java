@@ -44,7 +44,8 @@ public class SetTablePropertiesProcedureTest {
                 put("prop1", "value1");
                 put("ttl", null);
               }
-            });
+            },
+            false);
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);

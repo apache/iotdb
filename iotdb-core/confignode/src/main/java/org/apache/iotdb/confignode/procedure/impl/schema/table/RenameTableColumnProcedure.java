@@ -57,8 +57,9 @@ public class RenameTableColumnProcedure
       final String tableName,
       final String queryId,
       final String oldName,
-      final String newName) {
-    super(database, tableName, queryId);
+      final String newName,
+      final boolean isGeneratedByPipe) {
+    super(database, tableName, queryId, isGeneratedByPipe);
     this.oldName = oldName;
     this.newName = newName;
   }

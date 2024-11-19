@@ -75,8 +75,9 @@ public class DropTableColumnProcedure
       final String database,
       final String tableName,
       final String queryId,
-      final String columnName) {
-    super(database, tableName, queryId);
+      final String columnName,
+      final boolean isGeneratedByPipe) {
+    super(database, tableName, queryId, isGeneratedByPipe);
     this.columnName = columnName;
   }
 

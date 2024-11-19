@@ -68,8 +68,12 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     super(isGeneratedByPipe);
   }
 
-  public DropTableProcedure(final String database, final String tableName, final String queryId) {
-    super(database, tableName, queryId);
+  public DropTableProcedure(
+      final String database,
+      final String tableName,
+      final String queryId,
+      final boolean isGeneratedByPipe) {
+    super(database, tableName, queryId, isGeneratedByPipe);
   }
 
   // Not used

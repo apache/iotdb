@@ -41,7 +41,8 @@ public class AddTableColumnProcedureTest {
             "root.database1",
             "table1",
             "0",
-            Collections.singletonList(new IdColumnSchema("Id", TSDataType.STRING)));
+            Collections.singletonList(new IdColumnSchema("Id", TSDataType.STRING)),
+            false);
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);

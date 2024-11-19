@@ -89,8 +89,9 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
       final String queryId,
       final @Nonnull byte[] patternBytes,
       final @Nonnull byte[] filterBytes,
-      final @Nonnull byte[] modBytes) {
-    super(database, tableName, queryId);
+      final @Nonnull byte[] modBytes,
+      final boolean isGeneratedByPipe) {
+    super(database, tableName, queryId, isGeneratedByPipe);
     this.patternBytes = patternBytes;
     this.filterBytes = filterBytes;
     this.modBytes = modBytes;

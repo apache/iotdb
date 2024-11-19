@@ -64,8 +64,9 @@ public class SetTablePropertiesProcedure
       final String database,
       final String tableName,
       final String queryId,
-      final Map<String, String> properties) {
-    super(database, tableName, queryId);
+      final Map<String, String> properties,
+      final boolean isGeneratedByPipe) {
+    super(database, tableName, queryId, isGeneratedByPipe);
     this.updatedProperties = properties;
   }
 

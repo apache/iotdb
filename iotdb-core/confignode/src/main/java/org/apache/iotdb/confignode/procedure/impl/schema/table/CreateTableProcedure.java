@@ -77,7 +77,9 @@ public class CreateTableProcedure
     super(isGeneratedByPipe);
   }
 
-  public CreateTableProcedure(final String database, final TsTable table) {
+  public CreateTableProcedure(
+      final String database, final TsTable table, final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
     this.database = database;
     this.table = table;
   }

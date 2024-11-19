@@ -46,6 +46,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnP
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
@@ -67,6 +68,7 @@ import org.apache.iotdb.confignode.persistence.schema.ConfignodeSnapshotParser;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
@@ -319,7 +321,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 new DropTableProcedure(
                     ((CommitCreateTablePlan) plan).getDatabase(),
                     ((CommitCreateTablePlan) plan).getTableName(),
-                    queryId));
+                    queryId,
+                    true));
       case AddTableColumn:
         queryId = generatePseudoQueryId();
         return configManager
@@ -334,7 +337,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ((AddTableColumnPlan) plan).getDatabase(),
                     ((AddTableColumnPlan) plan).getTableName(),
                     queryId,
-                    ((AddTableColumnPlan) plan).getColumnSchemaList()));
+                    ((AddTableColumnPlan) plan).getColumnSchemaList(),
+                    true));
       case SetTableProperties:
         queryId = generatePseudoQueryId();
         return configManager
@@ -349,7 +353,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ((SetTablePropertiesPlan) plan).getDatabase(),
                     ((SetTablePropertiesPlan) plan).getTableName(),
                     queryId,
-                    ((SetTablePropertiesPlan) plan).getProperties()));
+                    ((SetTablePropertiesPlan) plan).getProperties(),
+                    true));
       case CommitDeleteColumn:
         queryId = generatePseudoQueryId();
         return configManager
@@ -364,7 +369,25 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ((CommitDeleteColumnPlan) plan).getDatabase(),
                     ((CommitDeleteColumnPlan) plan).getTableName(),
                     queryId,
-                    ((CommitDeleteColumnPlan) plan).getColumnName()));
+                    ((CommitDeleteColumnPlan) plan).getColumnName(),
+                    true));
+      case RenameTableColumn:
+        queryId = generatePseudoQueryId();
+        return configManager
+            .getProcedureManager()
+            .executeWithoutDuplicate(
+                ((RenameTableColumnPlan) plan).getDatabase(),
+                null,
+                ((RenameTableColumnPlan) plan).getTableName(),
+                queryId,
+                ProcedureType.RENAME_TABLE_COLUMN_PROCEDURE,
+                new RenameTableColumnProcedure(
+                    ((RenameTableColumnPlan) plan).getDatabase(),
+                    ((RenameTableColumnPlan) plan).getTableName(),
+                    queryId,
+                    ((RenameTableColumnPlan) plan).getOldName(),
+                    ((RenameTableColumnPlan) plan).getNewName(),
+                    true));
       case CommitDeleteTable:
         queryId = generatePseudoQueryId();
         return configManager
@@ -378,7 +401,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 new DropTableProcedure(
                     ((CommitDeleteTablePlan) plan).getDatabase(),
                     ((CommitDeleteTablePlan) plan).getTableName(),
-                    queryId));
+                    queryId,
+                    true));
       case DropUser:
       case DropRole:
       case GrantRole:

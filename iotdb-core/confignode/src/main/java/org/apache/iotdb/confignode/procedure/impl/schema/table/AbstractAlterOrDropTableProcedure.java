@@ -63,7 +63,11 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
   }
 
   protected AbstractAlterOrDropTableProcedure(
-      final String database, final String tableName, final String queryId) {
+      final String database,
+      final String tableName,
+      final String queryId,
+      final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
     this.database = database;
     this.tableName = tableName;
     this.queryId = queryId;
