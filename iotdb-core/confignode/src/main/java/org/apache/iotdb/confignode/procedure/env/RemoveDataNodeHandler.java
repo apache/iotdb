@@ -481,4 +481,21 @@ public class RemoveDataNodeHandler {
         .map(TRegionReplicaSet::getRegionId)
         .collect(Collectors.toList());
   }
+
+  /**
+   * Retrieves all DataNodes related to the specified DataNode.
+   *
+   * @param removedDataNode the DataNode to be removed
+   * @return a set of TDataNodeLocation representing the DataNodes associated with the specified
+   *     DataNode
+   */
+  public Set<TDataNodeLocation> getRelatedDataNodeLocations(TDataNodeLocation removedDataNode) {
+    return configManager.getPartitionManager().getAllReplicaSets().stream()
+        .filter(
+            replicaSet ->
+                replicaSet.getDataNodeLocations().contains(removedDataNode)
+                    && replicaSet.regionId.getType() != TConsensusGroupType.ConfigRegion)
+        .flatMap(replicaSet -> replicaSet.getDataNodeLocations().stream())
+        .collect(Collectors.toSet());
+  }
 }
