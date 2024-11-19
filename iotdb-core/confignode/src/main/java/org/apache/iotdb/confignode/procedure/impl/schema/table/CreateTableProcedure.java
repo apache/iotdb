@@ -73,8 +73,8 @@ public class CreateTableProcedure
 
   private TsTable table;
 
-  public CreateTableProcedure() {
-    super();
+  public CreateTableProcedure(final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
   public CreateTableProcedure(final String database, final TsTable table) {

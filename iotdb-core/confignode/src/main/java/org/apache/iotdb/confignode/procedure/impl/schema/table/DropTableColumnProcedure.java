@@ -67,8 +67,8 @@ public class DropTableColumnProcedure
   private String columnName;
   private boolean isAttributeColumn;
 
-  public DropTableColumnProcedure() {
-    super();
+  public DropTableColumnProcedure(final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
   public DropTableColumnProcedure(

@@ -58,8 +58,8 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
 
   protected TsTable table;
 
-  protected AbstractAlterOrDropTableProcedure() {
-    super();
+  protected AbstractAlterOrDropTableProcedure(final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
   protected AbstractAlterOrDropTableProcedure(

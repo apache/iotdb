@@ -57,7 +57,7 @@ public class CreateTableProcedureTest {
 
     Assert.assertEquals(ProcedureType.CREATE_TABLE_PROCEDURE.getTypeCode(), byteBuffer.getShort());
 
-    final CreateTableProcedure deserializedProcedure = new CreateTableProcedure();
+    final CreateTableProcedure deserializedProcedure = new CreateTableProcedure(false);
     deserializedProcedure.deserialize(byteBuffer);
 
     Assert.assertEquals(createTableProcedure.getDatabase(), deserializedProcedure.getDatabase());

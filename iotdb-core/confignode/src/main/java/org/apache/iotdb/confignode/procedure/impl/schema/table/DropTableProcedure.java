@@ -64,8 +64,8 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
   // Transient
   private PathPatternTree patternTree;
 
-  public DropTableProcedure() {
-    super();
+  public DropTableProcedure(final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
   public DropTableProcedure(final String database, final String tableName, final String queryId) {

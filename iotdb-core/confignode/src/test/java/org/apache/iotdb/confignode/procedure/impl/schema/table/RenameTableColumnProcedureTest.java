@@ -45,7 +45,7 @@ public class RenameTableColumnProcedureTest {
     Assert.assertEquals(
         ProcedureType.RENAME_TABLE_COLUMN_PROCEDURE.getTypeCode(), byteBuffer.getShort());
 
-    final RenameTableColumnProcedure deserializedProcedure = new RenameTableColumnProcedure();
+    final RenameTableColumnProcedure deserializedProcedure = new RenameTableColumnProcedure(false);
     deserializedProcedure.deserialize(byteBuffer);
 
     Assert.assertEquals(renameTableColumnProcedure, deserializedProcedure);

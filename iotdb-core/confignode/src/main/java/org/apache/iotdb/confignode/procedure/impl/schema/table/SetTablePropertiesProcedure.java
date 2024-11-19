@@ -56,8 +56,8 @@ public class SetTablePropertiesProcedure
   private Map<String, String> originalProperties = new HashMap<>();
   private Map<String, String> updatedProperties;
 
-  public SetTablePropertiesProcedure() {
-    super();
+  public SetTablePropertiesProcedure(final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
   public SetTablePropertiesProcedure(

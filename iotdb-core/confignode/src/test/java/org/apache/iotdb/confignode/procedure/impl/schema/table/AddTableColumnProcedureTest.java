@@ -52,7 +52,7 @@ public class AddTableColumnProcedureTest {
     Assert.assertEquals(
         ProcedureType.ADD_TABLE_COLUMN_PROCEDURE.getTypeCode(), byteBuffer.getShort());
 
-    final AddTableColumnProcedure deserializedProcedure = new AddTableColumnProcedure();
+    final AddTableColumnProcedure deserializedProcedure = new AddTableColumnProcedure(false);
     deserializedProcedure.deserialize(byteBuffer);
 
     Assert.assertEquals(addTableColumnProcedure.getDatabase(), deserializedProcedure.getDatabase());

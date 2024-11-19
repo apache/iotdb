@@ -79,8 +79,8 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
   // Transient, will not be returned if once recovers
   private long deletedDevicesNum;
 
-  public DeleteDevicesProcedure() {
-    super();
+  public DeleteDevicesProcedure(final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
   public DeleteDevicesProcedure(

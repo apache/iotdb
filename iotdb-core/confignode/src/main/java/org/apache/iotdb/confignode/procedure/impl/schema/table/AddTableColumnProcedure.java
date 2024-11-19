@@ -49,8 +49,8 @@ public class AddTableColumnProcedure
   private static final Logger LOGGER = LoggerFactory.getLogger(AddTableColumnProcedure.class);
   private List<TsTableColumnSchema> addedColumnList;
 
-  public AddTableColumnProcedure() {
-    super();
+  public AddTableColumnProcedure(final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
   public AddTableColumnProcedure(

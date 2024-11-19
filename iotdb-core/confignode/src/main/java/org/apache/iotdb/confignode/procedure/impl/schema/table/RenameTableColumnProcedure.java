@@ -48,8 +48,8 @@ public class RenameTableColumnProcedure
   private String oldName;
   private String newName;
 
-  public RenameTableColumnProcedure() {
-    super();
+  public RenameTableColumnProcedure(final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
   public RenameTableColumnProcedure(

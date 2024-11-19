@@ -45,7 +45,7 @@ public class DropTableColumnProcedureTest {
     Assert.assertEquals(
         ProcedureType.DROP_TABLE_COLUMN_PROCEDURE.getTypeCode(), byteBuffer.getShort());
 
-    final DropTableColumnProcedure deserializedProcedure = new DropTableColumnProcedure();
+    final DropTableColumnProcedure deserializedProcedure = new DropTableColumnProcedure(false);
     deserializedProcedure.deserialize(byteBuffer);
 
     Assert.assertEquals(dropTableColumnProcedure, deserializedProcedure);

@@ -55,7 +55,8 @@ public class SetTablePropertiesProcedureTest {
     Assert.assertEquals(
         ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE.getTypeCode(), byteBuffer.getShort());
 
-    final SetTablePropertiesProcedure deserializedProcedure = new SetTablePropertiesProcedure();
+    final SetTablePropertiesProcedure deserializedProcedure =
+        new SetTablePropertiesProcedure(false);
     deserializedProcedure.deserialize(byteBuffer);
 
     Assert.assertEquals(setTablePropertiesProcedure, deserializedProcedure);
