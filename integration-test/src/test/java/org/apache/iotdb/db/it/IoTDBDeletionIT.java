@@ -441,8 +441,7 @@ public class IoTDBDeletionIT {
   public void testDelAfterUpdate() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(
-          "CREATE ALIGNED TIMESERIES root.ln12.d1 (status int32)");
+      statement.execute("CREATE ALIGNED TIMESERIES root.ln12.d1 (status int32)");
       statement.execute("INSERT INTO root.ln12.d1(timestamp, status) VALUES(1, 1)");
       statement.execute("INSERT INTO root.ln12.d1(timestamp, status) VALUES(2, 2)");
       statement.execute("INSERT INTO root.ln12.d1(timestamp, status) VALUES(3, 3)");
