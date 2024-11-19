@@ -2080,6 +2080,32 @@ public class IoTDBTableAggregationIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+
+    expectedHeader = new String[] {"city", "region", "device_id", "_col3"};
+    retArray =
+        new String[] {
+          "beijing,chaoyang,d09,null,",
+          "beijing,chaoyang,d10,true,",
+          "beijing,chaoyang,d11,null,",
+          "beijing,chaoyang,d12,true,",
+          "beijing,haidian,d13,null,",
+          "beijing,haidian,d14,true,",
+          "beijing,haidian,d15,null,",
+          "beijing,haidian,d16,true,",
+          "shanghai,huangpu,d01,null,",
+          "shanghai,huangpu,d02,true,",
+          "shanghai,huangpu,d03,null,",
+          "shanghai,huangpu,d04,true,",
+          "shanghai,pudong,d05,null,",
+          "shanghai,pudong,d06,true,",
+          "shanghai,pudong,d07,null,",
+          "shanghai,pudong,d08,true,",
+        };
+    tableResultSetEqualTest(
+        "select city,region,device_id,first_by(s5,time,time) from table1 group by city,region,device_id order by 1,2,3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
   }
 
   @Test
@@ -2401,6 +2427,32 @@ public class IoTDBTableAggregationIT {
         };
     tableResultSetEqualTest(
         "select province,city,region,device_id,last_by(time,s8),last(s8) from table1 group by 1,2,3,4 order by 1,2,3,4",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"city", "region", "device_id", "_col3"};
+    retArray =
+        new String[] {
+          "beijing,chaoyang,d09,null,",
+          "beijing,chaoyang,d10,null,",
+          "beijing,chaoyang,d11,null,",
+          "beijing,chaoyang,d12,null,",
+          "beijing,haidian,d13,null,",
+          "beijing,haidian,d14,null,",
+          "beijing,haidian,d15,null,",
+          "beijing,haidian,d16,null,",
+          "shanghai,huangpu,d01,null,",
+          "shanghai,huangpu,d02,null,",
+          "shanghai,huangpu,d03,null,",
+          "shanghai,huangpu,d04,null,",
+          "shanghai,pudong,d05,null,",
+          "shanghai,pudong,d06,null,",
+          "shanghai,pudong,d07,null,",
+          "shanghai,pudong,d08,null,",
+        };
+    tableResultSetEqualTest(
+        "select city,region,device_id,last_by(s5,time,time) from table1 group by city,region,device_id order by 1,2,3",
         expectedHeader,
         retArray,
         DATABASE_NAME);
