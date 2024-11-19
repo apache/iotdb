@@ -110,13 +110,6 @@ public class TableMetadataImpl implements Metadata {
   @Override
   public Type getOperatorReturnType(OperatorType operatorType, List<? extends Type> argumentTypes)
       throws OperatorNotFoundException {
-
-    if (isCompareWithNull(argumentTypes)) {
-      return BOOLEAN;
-    } else if (isCalculateWithNull(argumentTypes)) {
-      return argumentTypes.get(0);
-    }
-
     switch (operatorType) {
       case ADD:
         if (!isTwoTypeCalculable(argumentTypes)
@@ -807,18 +800,11 @@ public class TableMetadataImpl implements Metadata {
     if (left.equals(right)) {
       return true;
     }
-
     // Boolean type and Binary Type can not be compared with other types
-    return (isNumericType(left) && isNumericType(right)) || (isCharType(left) && isCharType(right));
-  }
-
-  public static boolean isCompareWithNull(List<? extends Type> argumentTypes) {
-    if (argumentTypes.size() != 2) {
-      return false;
-    }
-    Type left = argumentTypes.get(0);
-    Type right = argumentTypes.get(1);
-    return isNumericType(left) || isCharType(left) && isUnknownType(right);
+    return (isNumericType(left) && isNumericType(right))
+        || (isCharType(left) && isCharType(right))
+        || (isUnknownType(left) && (isNumericType(right) || isCharType(right)))
+        || ((isNumericType(left) || isCharType(left)) && isUnknownType(right));
   }
 
   public static boolean isArithmeticType(Type type) {
@@ -836,6 +822,10 @@ public class TableMetadataImpl implements Metadata {
     }
     Type left = argumentTypes.get(0);
     Type right = argumentTypes.get(1);
+    if ((isUnknownType(left) && isArithmeticType(right))
+        || (isUnknownType(right) && isArithmeticType(left))) {
+      return true;
+    }
     return isArithmeticType(left) && isArithmeticType(right);
   }
 
