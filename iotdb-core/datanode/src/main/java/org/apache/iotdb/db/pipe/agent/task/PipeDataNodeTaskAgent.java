@@ -148,8 +148,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       }
     }
 
-    final PipeMeta meta = pipeMetaKeeper.getPipeMeta(pipeStaticMeta.getPipeName());
-    meta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().put(consensusGroupId, pipeTaskMeta);
+    pipeMetaKeeper
+        .getPipeMeta(pipeStaticMeta.getPipeName())
+        .getRuntimeMeta()
+        .getConsensusGroupId2TaskMetaMap()
+        .put(consensusGroupId, pipeTaskMeta);
   }
 
   @Override
