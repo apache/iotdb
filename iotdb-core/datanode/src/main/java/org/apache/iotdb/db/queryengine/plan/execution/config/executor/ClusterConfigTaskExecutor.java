@@ -496,7 +496,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(
           new IoTDBException(
               String.format(
-                  "Failed to create UDF [%s], the same name UDF has been created",
+                  "Failed to create UDF [%s], the given function name conflicts with the built-in function name.",
                   udfName.toUpperCase()),
               TSStatusCode.CREATE_UDF_ERROR.getStatusCode()));
       return future;

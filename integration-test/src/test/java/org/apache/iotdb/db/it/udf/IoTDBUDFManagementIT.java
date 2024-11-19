@@ -353,7 +353,10 @@ public class IoTDBUDFManagementIT {
       statement.execute("create function sin as 'org.apache.iotdb.db.query.udf.example.Adder'");
       fail();
     } catch (SQLException throwable) {
-      assertTrue(throwable.getMessage().contains("the same name UDF has been created"));
+      assertTrue(
+          throwable
+              .getMessage()
+              .contains("the given function name conflicts with the built-in function name"));
     }
   }
 
