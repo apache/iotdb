@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
@@ -35,7 +34,7 @@ import java.util.Collections;
 
 public class AddTableColumnProcedureTest {
   @Test
-  public void serializeDeserializeTest() throws IllegalPathException, IOException {
+  public void serializeDeserializeTest() throws IOException {
     final AddTableColumnProcedure addTableColumnProcedure =
         new AddTableColumnProcedure(
             "root.database1",
