@@ -1126,7 +1126,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                             new TTableInfo(
                                 pair.getLeft().getTableName(),
                                 pair.getLeft()
-                                    .getPropValue(TTL_PROPERTY.toLowerCase(Locale.ENGLISH))
+                                    .getPropValue(TTL_PROPERTY)
                                     .orElse(TTL_INFINITE));
                         info.setState(pair.getRight().ordinal());
                         return info;
@@ -1141,7 +1141,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                           new TTableInfo(
                               tsTable.getTableName(),
                               tsTable
-                                  .getPropValue(TTL_PROPERTY.toLowerCase(Locale.ENGLISH))
+                                  .getPropValue(TTL_PROPERTY)
                                   .orElse(TTL_INFINITE)))
                   .collect(Collectors.toList()));
     } catch (final MetadataException e) {

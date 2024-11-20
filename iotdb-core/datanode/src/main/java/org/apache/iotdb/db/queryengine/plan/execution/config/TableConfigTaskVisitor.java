@@ -464,7 +464,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
           map.put(
               key,
               String.valueOf(
-                  parseLongFromLiteral(value, TTL_PROPERTY.toLowerCase(Locale.ENGLISH))));
+                  parseLongFromLiteral(value, TTL_PROPERTY)));
         } else if (serializeDefault) {
           map.put(key, null);
         }

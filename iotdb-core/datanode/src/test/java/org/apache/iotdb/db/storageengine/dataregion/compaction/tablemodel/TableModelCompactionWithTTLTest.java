@@ -184,7 +184,7 @@ public class TableModelCompactionWithTTLTest extends AbstractCompactionTest {
     tsTable.addColumnSchema(
         new MeasurementColumnSchema(
             "s1", TSDataType.STRING, TSEncoding.PLAIN, CompressionType.LZ4));
-    tsTable.addProp(TsTable.TTL_PROPERTY.toLowerCase(Locale.ENGLISH), ttl + "");
+    tsTable.addProp(TsTable.TTL_PROPERTY, ttl + "");
     DataNodeTableCache.getInstance().preUpdateTable(this.COMPACTION_TEST_SG, tsTable);
     DataNodeTableCache.getInstance().commitUpdateTable(this.COMPACTION_TEST_SG, tableName);
   }

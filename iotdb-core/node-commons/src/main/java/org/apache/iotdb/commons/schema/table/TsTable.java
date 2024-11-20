@@ -57,8 +57,9 @@ public class TsTable {
   private static final TimeColumnSchema TIME_COLUMN_SCHEMA =
       new TimeColumnSchema(TIME_COLUMN_NAME, TSDataType.TIMESTAMP);
 
-  public static final String TTL_PROPERTY = "TTL";
-  public static final Set<String> TABLE_ALLOWED_PROPERTIES = Collections.singleton(TTL_PROPERTY);
+  public static final String TTL_PROPERTY = "ttl";
+  public static final Set<String> TABLE_ALLOWED_PROPERTIES =
+      Collections.singleton(TTL_PROPERTY);
   private final String tableName;
 
   private final Map<String, TsTableColumnSchema> columnSchemaMap = new LinkedHashMap<>();
@@ -190,7 +191,7 @@ public class TsTable {
 
   public long getTableTTLInMS() {
     return Long.parseLong(
-        getPropValue(TTL_PROPERTY.toLowerCase(Locale.ENGLISH)).orElse(Long.MAX_VALUE + ""));
+        getPropValue(TTL_PROPERTY).orElse(Long.MAX_VALUE + ""));
   }
 
   public Optional<String> getPropValue(final String propKey) {
