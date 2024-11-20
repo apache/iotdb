@@ -108,7 +108,6 @@ public class ConfigRegionListeningFilter {
           Collections.singletonList(ConfigPhysicalPlanType.PipeDeactivateTemplate));
 
       // Table Model
-      // TODO: Delete devices
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.table.create"),
           Collections.unmodifiableList(
@@ -127,6 +126,10 @@ public class ConfigRegionListeningFilter {
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.table.drop"),
           Collections.singletonList(ConfigPhysicalPlanType.CommitDeleteTable));
+
+      OPTION_PLAN_MAP.put(
+          new PartialPath("schema.table.devices.delete"),
+          Collections.singletonList(ConfigPhysicalPlanType.PipeDeleteDevices));
 
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.ttl"), Collections.singletonList(ConfigPhysicalPlanType.SetTTL));
