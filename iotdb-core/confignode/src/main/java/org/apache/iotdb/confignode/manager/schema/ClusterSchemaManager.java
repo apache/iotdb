@@ -1321,7 +1321,11 @@ public class ClusterSchemaManager {
     updatedProperties.forEach(
         (k, v) -> {
           originalProperties.put(k, originalTable.getPropValue(k).orElse(null));
-          updatedTable.addProp(k, v);
+          if (Objects.nonNull(v)) {
+            updatedTable.addProp(k, v);
+          } else {
+            updatedTable.removeProp(k);
+          }
         });
 
     return new Pair<>(RpcUtils.SUCCESS_STATUS, updatedTable);
