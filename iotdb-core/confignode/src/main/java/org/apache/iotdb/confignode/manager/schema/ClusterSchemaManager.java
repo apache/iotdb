@@ -360,7 +360,7 @@ public class ClusterSchemaManager {
       final String database = databaseSchema.getName();
       final TDatabaseInfo databaseInfo = new TDatabaseInfo();
       databaseInfo.setName(database);
-      databaseInfo.setTTL(databaseSchema.getTTL());
+      databaseInfo.setTTL(databaseSchema.isSetTTL() ? databaseSchema.getTTL() : Long.MAX_VALUE);
       databaseInfo.setSchemaReplicationFactor(databaseSchema.getSchemaReplicationFactor());
       databaseInfo.setDataReplicationFactor(databaseSchema.getDataReplicationFactor());
       databaseInfo.setTimePartitionOrigin(databaseSchema.getTimePartitionOrigin());
