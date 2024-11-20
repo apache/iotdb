@@ -39,7 +39,7 @@ import org.apache.iotdb.confignode.client.sync.CnToDnSyncRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.exception.AddConsensusGroupException;
@@ -133,13 +133,13 @@ public class ConfigNodeProcedureEnv {
   /**
    * Delete ConfigNode cache, includes {@link ClusterSchemaInfo} and {@link PartitionInfo}.
    *
-   * @param name database name
+   * @param plan databaseSchemaPlan
    * @param isGeneratedByPipe whether the deletion is triggered by pipe request
    * @return tsStatus
    */
-  public TSStatus deleteDatabaseConfig(String name, boolean isGeneratedByPipe) {
-    DeleteDatabasePlan deleteDatabasePlan = new DeleteDatabasePlan(name);
-    return getClusterSchemaManager().deleteDatabase(deleteDatabasePlan, isGeneratedByPipe);
+  public TSStatus deleteDatabaseConfig(
+      final DatabaseSchemaPlan plan, final boolean isGeneratedByPipe) {
+    return getClusterSchemaManager().deleteDatabase(plan, isGeneratedByPipe);
   }
 
   /**

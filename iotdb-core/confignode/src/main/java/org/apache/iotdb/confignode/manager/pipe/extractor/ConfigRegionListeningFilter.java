@@ -74,7 +74,9 @@ public class ConfigRegionListeningFilter {
           Collections.singletonList(ConfigPhysicalPlanType.AlterDatabase));
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.database.drop"),
-          Collections.singletonList(ConfigPhysicalPlanType.DeleteDatabase));
+          Collections.unmodifiableList(
+              Arrays.asList(
+                  ConfigPhysicalPlanType.DeleteDatabase, ConfigPhysicalPlanType.DeleteDatabaseV2)));
 
       // Tree model
       OPTION_PLAN_MAP.put(
