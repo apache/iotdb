@@ -35,6 +35,8 @@ import java.util.Objects;
 public class PipeTransferConfigSnapshotSealReq extends PipeTransferFileSealReqV2 {
 
   public static final String FILE_TYPE = "fileType";
+  public static final String TREE = "tree";
+  public static final String TABLE = "table";
 
   private PipeTransferConfigSnapshotSealReq() {
     // Empty constructor
@@ -62,6 +64,14 @@ public class PipeTransferConfigSnapshotSealReq extends PipeTransferFileSealReqV2
       throws IOException {
     final Map<String, String> parameters = new HashMap<>();
     parameters.put(ColumnHeaderConstant.PATH_PATTERN, treePattern);
+    parameters.put(ColumnHeaderConstant.DATABASE, tablePatternDatabase);
+    parameters.put(ColumnHeaderConstant.TABLE_NAME, tablePatternTable);
+    if (isTreeCaptured) {
+      parameters.put(TREE, "");
+    }
+    if (isTableCaptured) {
+      parameters.put(TABLE, "");
+    }
     parameters.put(FILE_TYPE, Byte.toString(fileType.getType()));
     parameters.put(ColumnHeaderConstant.TYPE, typeString);
 
