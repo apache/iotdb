@@ -60,11 +60,6 @@ public class TablePattern {
     return isTableModelDataAllowedToBeCaptured;
   }
 
-  public boolean hasUserSpecifiedDatabasePatternOrTablePattern() {
-    return !databasePattern.pattern().equals(EXTRACTOR_DATABASE_NAME_DEFAULT_VALUE)
-        || !tablePattern.pattern().equals(EXTRACTOR_TABLE_NAME_DEFAULT_VALUE);
-  }
-
   public boolean coversDb(final String database) {
     return databasePattern.matcher(database).matches()
         && EXTRACTOR_TABLE_NAME_DEFAULT_VALUE.equals(tablePattern.toString());
