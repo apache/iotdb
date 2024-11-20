@@ -20,8 +20,10 @@
 package org.apache.iotdb.confignode.manager.pipe.extractor;
 
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanVisitor;
+import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
@@ -38,6 +40,24 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitor
   public Optional<ConfigPhysicalPlan> visitPlan(
       final ConfigPhysicalPlan plan, final TablePattern pattern) {
     return Optional.of(plan);
+  }
+
+  @Override
+  public Optional<ConfigPhysicalPlan> visitCreateDatabase(
+      final DatabaseSchemaPlan createDatabasePlan, final TablePattern pattern) {
+    return pattern.matchesDatabase(
+            PathUtils.unQualifyDatabaseName(createDatabasePlan.getSchema().getName()))
+        ? Optional.of(createDatabasePlan)
+        : Optional.empty();
+  }
+
+  @Override
+  public Optional<ConfigPhysicalPlan> visitAlterDatabase(
+      final DatabaseSchemaPlan alterDatabasePlan, final TablePattern pattern) {
+    return pattern.matchesDatabase(
+            PathUtils.unQualifyDatabaseName(alterDatabasePlan.getSchema().getName()))
+        ? Optional.of(alterDatabasePlan)
+        : Optional.empty();
   }
 
   @Override
