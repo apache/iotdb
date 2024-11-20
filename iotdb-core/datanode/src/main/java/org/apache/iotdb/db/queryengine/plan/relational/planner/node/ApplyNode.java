@@ -147,11 +147,15 @@ public class ApplyNode extends TwoChildProcessNode {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
+    // ApplyNode should be transformed to other nodes after planning, so serialization is not
+    // expected.
     throw new UnsupportedOperationException();
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    // ApplyNode should be transformed to other nodes after planning, so serialization is not
+    // expected.
     throw new UnsupportedOperationException();
   }
 

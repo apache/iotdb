@@ -205,7 +205,7 @@ public class SimpleNestedLoopCrossJoinOperator extends AbstractOperator {
       return false;
     }
 
-    return (cachedProbeBlock != null && !cachedProbeBlock.isEmpty())
+    return (cachedProbeBlock == null || cachedProbeBlock.isEmpty())
         && probeSource.isFinished()
         && buildFinished;
   }

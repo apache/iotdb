@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
@@ -70,11 +71,16 @@ public class EnforceSingleRowNode extends SingleChildProcessNode {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    throw new UnsupportedOperationException();
+    PlanNodeType.TABLE_ENFORCE_SINGLE_ROW_NODE.serialize(byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    throw new UnsupportedOperationException();
+    PlanNodeType.TABLE_ENFORCE_SINGLE_ROW_NODE.serialize(stream);
+  }
+
+  public static EnforceSingleRowNode deserialize(ByteBuffer byteBuffer) {
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new EnforceSingleRowNode(planNodeId, null);
   }
 }

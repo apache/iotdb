@@ -156,11 +156,15 @@ public class CorrelatedJoinNode extends TwoChildProcessNode {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
+    // CorrelatedJoinNode should be transformed to other nodes after planning, so serialization is
+    // not expected.
     throw new UnsupportedOperationException();
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    // CorrelatedJoinNode should be transformed to other nodes after planning, so serialization is
+    // not expected.
     throw new UnsupportedOperationException();
   }
 }

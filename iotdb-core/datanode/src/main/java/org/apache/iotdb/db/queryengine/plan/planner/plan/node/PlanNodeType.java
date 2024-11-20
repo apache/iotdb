@@ -115,6 +115,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
@@ -275,6 +276,7 @@ public enum PlanNodeType {
   TABLE_AGGREGATION_NODE((short) 1015),
   TABLE_AGGREGATION_TABLE_SCAN_NODE((short) 1016),
   TABLE_GAP_FILL_NODE((short) 1017),
+  TABLE_ENFORCE_SINGLE_ROW_NODE((short) 1018),
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),
@@ -619,6 +621,8 @@ public enum PlanNodeType {
             .deserialize(buffer);
       case 1017:
         return GapFillNode.deserialize(buffer);
+      case 1018:
+        return EnforceSingleRowNode.deserialize(buffer);
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);
       case 2001:
