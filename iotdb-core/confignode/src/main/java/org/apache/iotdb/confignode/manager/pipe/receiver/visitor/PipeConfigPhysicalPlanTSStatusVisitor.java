@@ -379,7 +379,7 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
   @Override
   public TSStatus visitPipeDeleteDevices(
       final PipeDeleteDevicesPlan pipeDeleteDevicesPlan, final TSStatus context) {
-    return visitPlan(pipeDeleteDevicesPlan, context);
+    return visitCommonTablePlan(pipeDeleteDevicesPlan, context);
   }
 
   private TSStatus visitCommonTablePlan(final ConfigPhysicalPlan plan, final TSStatus context) {
