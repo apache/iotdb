@@ -1217,6 +1217,11 @@ public class DataRegion implements IDataRegionForQuery {
       TSStatus[] results = new TSStatus[insertTabletNode.getRowCount()];
       Arrays.fill(results, RpcUtils.SUCCESS_STATUS);
       long[] infoForMetrics = new long[5];
+      // infoForMetrics[0]: CreateMemtableBlockTimeCost
+      // infoForMetrics[1]: ScheduleMemoryBlockTimeCost
+      // infoForMetrics[2]: ScheduleWalTimeCost
+      // infoForMetrics[3]: ScheduleMemTableTimeCost
+      // infoForMetrics[4]: InsertedPointsNumber
       boolean noFailure = executeInsertTablet(insertTabletNode, results, infoForMetrics);
       updateTsFileProcessorMetric(insertTabletNode, infoForMetrics);
 
@@ -1357,6 +1362,11 @@ public class DataRegion implements IDataRegionForQuery {
       return null;
     }
     long[] infoForMetrics = new long[5];
+    // infoForMetrics[0]: CreateMemtableBlockTimeCost
+    // infoForMetrics[1]: ScheduleMemoryBlockTimeCost
+    // infoForMetrics[2]: ScheduleWalTimeCost
+    // infoForMetrics[3]: ScheduleMemTableTimeCost
+    // infoForMetrics[4]: InsertedPointsNumber
     tsFileProcessor.insert(insertRowNode, infoForMetrics);
     updateTsFileProcessorMetric(insertRowNode, infoForMetrics);
     // register TableSchema (and maybe more) for table insertion
@@ -3340,6 +3350,11 @@ public class DataRegion implements IDataRegionForQuery {
       }
       List<InsertRowNode> executedInsertRowNodeList = new ArrayList<>();
       long[] infoForMetrics = new long[5];
+      // infoForMetrics[0]: CreateMemtableBlockTimeCost
+      // infoForMetrics[1]: ScheduleMemoryBlockTimeCost
+      // infoForMetrics[2]: ScheduleWalTimeCost
+      // infoForMetrics[3]: ScheduleMemTableTimeCost
+      // infoForMetrics[4]: InsertedPointsNumber
       for (Map.Entry<TsFileProcessor, InsertRowsNode> entry : tsFileProcessorMap.entrySet()) {
         TsFileProcessor tsFileProcessor = entry.getKey();
         InsertRowsNode subInsertRowsNode = entry.getValue();
@@ -3428,6 +3443,11 @@ public class DataRegion implements IDataRegionForQuery {
                         timePartitionIds[i], insertRowNode.getDeviceID());
       }
       long[] infoForMetrics = new long[5];
+      // infoForMetrics[0]: CreateMemtableBlockTimeCost
+      // infoForMetrics[1]: ScheduleMemoryBlockTimeCost
+      // infoForMetrics[2]: ScheduleWalTimeCost
+      // infoForMetrics[3]: ScheduleMemTableTimeCost
+      // infoForMetrics[4]: InsertedPointsNumber
       List<InsertRowNode> executedInsertRowNodeList =
           insertToTsFileProcessors(insertRowsNode, areSequence, timePartitionIds, infoForMetrics);
       updateTsFileProcessorMetric(insertRowsNode, infoForMetrics);
@@ -3469,6 +3489,11 @@ public class DataRegion implements IDataRegionForQuery {
         return;
       }
       long[] infoForMetrics = new long[5];
+      // infoForMetrics[0]: CreateMemtableBlockTimeCost
+      // infoForMetrics[1]: ScheduleMemoryBlockTimeCost
+      // infoForMetrics[2]: ScheduleWalTimeCost
+      // infoForMetrics[3]: ScheduleMemTableTimeCost
+      // infoForMetrics[4]: InsertedPointsNumber
       for (int i = 0; i < insertMultiTabletsNode.getInsertTabletNodeList().size(); i++) {
         InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
         TSStatus[] results = new TSStatus[insertTabletNode.getRowCount()];
