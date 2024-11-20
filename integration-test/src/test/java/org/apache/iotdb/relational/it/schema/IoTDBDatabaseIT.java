@@ -67,7 +67,7 @@ public class IoTDBDatabaseIT {
         final Statement statement = connection.createStatement()) {
 
       // create
-      statement.execute("create database test");
+      statement.execute("create database test with (ttl='INF')");
 
       // create duplicated database without IF NOT EXISTS
       try {

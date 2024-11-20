@@ -139,6 +139,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
@@ -208,6 +209,14 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
       switch (key) {
         case TTL_KEY:
+          final Optional<String> strValue = parseStringFromLiteralIfBinary(value);
+          if (strValue.isPresent()) {
+            if (!strValue.get().equalsIgnoreCase(TTL_INFINITE)) {
+              throw new SemanticException(
+                  "ttl value must be 'INF' or a long literal, but now is: " + value);
+            }
+            break;
+          }
           schema.setTTL(parseLongFromLiteral(value, TTL_KEY));
           break;
         case SCHEMA_REPLICATION_FACTOR_KEY:
@@ -449,15 +458,13 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       if (TABLE_ALLOWED_PROPERTIES.contains(key)) {
         if (!property.isSetToDefault()) {
           final Expression value = property.getNonDefaultValue();
-          if (value instanceof Literal && ((Literal) value).getTsValue() instanceof Binary) {
-            final String strValue =
-                ((Binary) ((Literal) value).getTsValue())
-                    .getStringValue(TSFileConfig.STRING_CHARSET);
-            if (!strValue.equalsIgnoreCase(TTL_INFINITE)) {
+          final Optional<String> strValue = parseStringFromLiteralIfBinary(value);
+          if (strValue.isPresent()) {
+            if (!strValue.get().equalsIgnoreCase(TTL_INFINITE)) {
               throw new SemanticException(
                   "ttl value must be 'INF' or a long literal, but now is: " + value);
             }
-            map.put(key, strValue);
+            map.put(key, strValue.get());
             continue;
           }
           // TODO: support validation for other properties
@@ -544,6 +551,13 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitSetConfiguration(SetConfiguration node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     return new SetConfigurationTask(((SetConfigurationStatement) node.getInnerTreeStatement()));
+  }
+
+  private Optional<String> parseStringFromLiteralIfBinary(final Object value) {
+    return value instanceof Literal && ((Literal) value).getTsValue() instanceof Binary
+        ? Optional.of(
+            ((Binary) ((Literal) value).getTsValue()).getStringValue(TSFileConfig.STRING_CHARSET))
+        : Optional.empty();
   }
 
   private long parseLongFromLiteral(final Object value, final String name) {
