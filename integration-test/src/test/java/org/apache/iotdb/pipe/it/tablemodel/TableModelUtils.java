@@ -77,10 +77,10 @@ public class TableModelUtils {
     }
   }
 
-  public static void createDataBase(BaseEnv baseEnv, String database) {
+  public static void createDataBase(BaseEnv baseEnv, String database, long ttl) {
     try (Connection connection = baseEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("create database if not exists " + database);
+      statement.execute("create database if not exists " + database + " with (ttl=" + ttl + ")");
     } catch (Exception e) {
       fail(e.getMessage());
     }
