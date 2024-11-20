@@ -160,6 +160,7 @@ public class IoTDBPipeTableManualIT extends AbstractPipeDualManualIT {
           senderEnv,
           Arrays.asList(
               "create database root.test",
+              "alter database root.test with schema_region_group_num=2, data_region_group_num=3",
               "create timeSeries root.test.d1.s1 int32",
               "insert into root.test.d1 (s1) values (1)"))) {
         return;
@@ -169,8 +170,63 @@ public class IoTDBPipeTableManualIT extends AbstractPipeDualManualIT {
           receiverEnv,
           "show databases",
           "Database,SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
+          Collections.emptySet());
+    }
+  }
+
+  @Test
+  public void testNoTable() throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
+
+      extractorAttributes.put("extractor.inclusion", "all");
+      extractorAttributes.put("extractor.capture.tree", "true");
+      extractorAttributes.put("extractor.capture.table", "false");
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.ip", receiverIp);
+      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+
+      final TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("testPipe", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
+
+      final String dbName = "test";
+      TableModelUtils.createDataBase(senderEnv, dbName, 300);
+
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          dbName,
+          BaseEnv.TABLE_SQL_DIALECT,
+          senderEnv,
+          Arrays.asList(
+              "create table table1(a id, b attribute, c int32) with (ttl=3000)",
+              "alter table table1 add column d int64",
+              "alter table table1 drop column b",
+              "alter table table1 set properties ttl=default"))) {
+        return;
+      }
+
+      TestUtils.assertDataAlwaysOnEnv(
+          receiverEnv,
+          "show databases",
+          "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
           Collections.emptySet(),
-          "test");
+          dbName);
     }
   }
 }
