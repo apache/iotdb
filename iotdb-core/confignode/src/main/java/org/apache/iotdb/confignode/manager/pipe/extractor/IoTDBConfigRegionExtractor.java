@@ -120,11 +120,33 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
   @Override
   protected Optional<PipeWritePlanEvent> trimRealtimeEventByPipePattern(
       final PipeWritePlanEvent event) {
-    return TREE_PATTERN_PARSE_VISITOR
-        .process(((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan(), treePattern)
-        .map(
-            configPhysicalPlan ->
-                new PipeConfigRegionWritePlanEvent(configPhysicalPlan, event.isGeneratedByPipe()));
+    final ConfigPhysicalPlan plan =
+        ((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan();
+    Optional<PipeWritePlanEvent> result = Optional.empty();
+    if (!(plan instanceof DatabaseSchemaPlan
+        && ((DatabaseSchemaPlan) plan).getSchema().isIsTableModel())) {
+      result =
+          TREE_PATTERN_PARSE_VISITOR
+              .process(plan, treePattern)
+              .map(
+                  configPhysicalPlan ->
+                      new PipeConfigRegionWritePlanEvent(
+                          configPhysicalPlan, event.isGeneratedByPipe()));
+      if (!result.isPresent()) {
+        return result;
+      }
+    }
+    if (!(plan instanceof DatabaseSchemaPlan
+        && !((DatabaseSchemaPlan) plan).getSchema().isIsTableModel())) {
+      result =
+          TABLE_PATTERN_PARSE_VISITOR
+              .process(plan, tablePattern)
+              .map(
+                  configPhysicalPlan ->
+                      new PipeConfigRegionWritePlanEvent(
+                          configPhysicalPlan, event.isGeneratedByPipe()));
+    }
+    return result;
   }
 
   @Override
@@ -132,10 +154,8 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
     // TODO: Delete Database?
     final ConfigPhysicalPlan plan =
         ((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan();
-    final ConfigPhysicalPlanType type = plan.getType();
-    return listenedTypeSet.contains(type)
-        && (type != ConfigPhysicalPlanType.CreateDatabase
-                && type != ConfigPhysicalPlanType.AlterDatabase
+    return listenedTypeSet.contains(plan.getType())
+        && (!(plan instanceof DatabaseSchemaPlan)
             || ((DatabaseSchemaPlan) plan).getSchema().isIsTableModel()
                 && tablePattern.isTableModelDataAllowedToBeCaptured()
             || !((DatabaseSchemaPlan) plan).getSchema().isIsTableModel()
