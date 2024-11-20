@@ -73,7 +73,6 @@ import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import org.apache.tsfile.read.common.type.LongType;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.ArrayList;
@@ -299,14 +298,12 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       // will not appear the situation: Cast(toSqlType(type))
       leftCoercions.put(leftOutput, left.getSymbol(leftField).toSymbolReference());
       leftJoinColumns.put(identifier, leftOutput);
-      queryContext.getTypeProvider().putTableModelType(leftOutput, LongType.INT64);
 
       // compute the coercion for the field on the right to the common supertype of left & right
       Symbol rightOutput = symbolAllocator.newSymbol(identifier, type);
       int rightField = joinAnalysis.getRightJoinFields().get(i);
       rightCoercions.put(rightOutput, right.getSymbol(rightField).toSymbolReference());
       rightJoinColumns.put(identifier, rightOutput);
-      queryContext.getTypeProvider().putTableModelType(rightOutput, LongType.INT64);
 
       clauses.add(new JoinNode.EquiJoinClause(leftOutput, rightOutput));
     }
@@ -338,7 +335,6 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     for (Identifier column : joinColumns) {
       Symbol output = symbolAllocator.newSymbol(column, analysis.getType(column));
       outputs.add(output);
-      queryContext.getTypeProvider().putTableModelType(output, LongType.INT64);
       if (node.getType() == INNER) {
         assignments.put(output, leftJoinColumns.get(column).toSymbolReference());
       } else if (node.getType() == FULL) {

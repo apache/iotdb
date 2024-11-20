@@ -17,7 +17,6 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis.GroupingSetAnalysis;
@@ -374,8 +373,7 @@ public class QueryPlanner {
 
     Function<Expression, Expression> rewrite = subPlan.getTranslations()::rewrite;
 
-    GroupingSetsPlan groupingSets =
-        planGroupingSets(subPlan, node, groupingSetAnalysis, queryContext.getTypeProvider());
+    GroupingSetsPlan groupingSets = planGroupingSets(subPlan, node, groupingSetAnalysis);
 
     return planAggregation(
         groupingSets.getSubPlan(),
@@ -386,10 +384,7 @@ public class QueryPlanner {
   }
 
   private GroupingSetsPlan planGroupingSets(
-      PlanBuilder subPlan,
-      QuerySpecification node,
-      GroupingSetAnalysis groupingSetAnalysis,
-      TypeProvider typeProvider) {
+      PlanBuilder subPlan, QuerySpecification node, GroupingSetAnalysis groupingSetAnalysis) {
     Map<Symbol, Symbol> groupingSetMappings = new LinkedHashMap<>();
 
     // Compute a set of artificial columns that will contain the values of the original columns
@@ -412,7 +407,6 @@ public class QueryPlanner {
             symbolAllocator.newSymbol(expression, analysis.getType(expression), GROUP_KEY_SUFFIX);
         complexExpressions.put(scopeAwareKey(expression, analysis, subPlan.getScope()), output);
         groupingSetMappings.put(output, input);
-        typeProvider.putTableModelType(output, typeProvider.getTableModelType(input));
       }
     }
 
@@ -533,13 +527,6 @@ public class QueryPlanner {
             AggregationNode.Step.SINGLE,
             Optional.empty(),
             groupIdSymbol);
-    aggregationNode
-        .getAggregations()
-        .forEach(
-            (k, v) ->
-                queryContext
-                    .getTypeProvider()
-                    .putTableModelType(k, v.getResolvedFunction().getSignature().getReturnType()));
 
     return new PlanBuilder(
         subPlan

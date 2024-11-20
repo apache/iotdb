@@ -96,7 +96,7 @@ public class TableDistributedPlanGenerator
   private final QueryId queryId;
   private final Analysis analysis;
   private final SymbolAllocator symbolAllocator;
-  Map<PlanNodeId, OrderingScheme> nodeOrderingMap = new HashMap<>();
+  private final Map<PlanNodeId, OrderingScheme> nodeOrderingMap = new HashMap<>();
 
   public TableDistributedPlanGenerator(
       MPPQueryContext queryContext, Analysis analysis, SymbolAllocator symbolAllocator) {

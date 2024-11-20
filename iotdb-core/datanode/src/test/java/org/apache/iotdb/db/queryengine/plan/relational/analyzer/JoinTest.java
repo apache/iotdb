@@ -20,6 +20,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableLogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
@@ -98,8 +99,10 @@ public class JoinTest {
 
   private void assertInnerJoinTest1(String sql) {
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
+    SymbolAllocator symbolAllocator = new SymbolAllocator();
     logicalQueryPlan =
-        new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+        new TableLogicalPlanner(
+                QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, symbolAllocator, DEFAULT_WARNING)
             .plan(analysis);
 
     // LogicalPlan: `Output-Offset-Limit-Join-(Left + Right)-Sort-TableScan`
@@ -161,7 +164,9 @@ public class JoinTest {
      *   └──SortNode-154
      *       └──TableScanNode-150
      */
-    distributedQueryPlan = new TableDistributedPlanner(analysis, logicalQueryPlan).plan();
+    distributedQueryPlan =
+        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA)
+            .plan();
     assertEquals(5, distributedQueryPlan.getFragments().size());
     IdentitySinkNode identitySinkNode =
         (IdentitySinkNode) distributedQueryPlan.getFragments().get(0).getPlanNodeTree();
@@ -234,8 +239,10 @@ public class JoinTest {
 
   private void assertInnerJoinTest2(String sql, boolean joinUsing) {
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
+    SymbolAllocator symbolAllocator = new SymbolAllocator();
     logicalQueryPlan =
-        new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+        new TableLogicalPlanner(
+                QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, symbolAllocator, DEFAULT_WARNING)
             .plan(analysis);
 
     // LogicalPlan: `Output-Offset-TopK-Join-(Left + Right)-Sort-(Project)-TableScan`
@@ -298,7 +305,9 @@ public class JoinTest {
      *   └──SortNode-167
      *       └──TableScanNode-164
      */
-    distributedQueryPlan = new TableDistributedPlanner(analysis, logicalQueryPlan).plan();
+    distributedQueryPlan =
+        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA)
+            .plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     identitySinkNode =
         (IdentitySinkNode) distributedQueryPlan.getFragments().get(0).getPlanNodeTree();
