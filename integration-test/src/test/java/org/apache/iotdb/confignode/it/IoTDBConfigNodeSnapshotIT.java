@@ -73,9 +73,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils.generatePatternTreeBuffer;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
@@ -311,11 +313,13 @@ public class IoTDBConfigNodeSnapshotIT {
   }
 
   private void assertUDFInformation(List<TCreateFunctionReq> req, TGetUDFTableResp resp) {
+    Map<String, TCreateFunctionReq> nameToReqMap =
+        req.stream().collect(Collectors.toMap(r -> r.getUdfName().toUpperCase(), r -> r));
     for (int i = 0; i < req.size(); i++) {
-      TCreateFunctionReq createFunctionReq = req.get(i);
       UDFInformation udfInformation =
           UDFInformation.deserialize(resp.getAllUDFInformation().get(i));
-
+      assertTrue(nameToReqMap.containsKey(udfInformation.getFunctionName()));
+      TCreateFunctionReq createFunctionReq = nameToReqMap.get(udfInformation.getFunctionName());
       assertEquals(createFunctionReq.getUdfName().toUpperCase(), udfInformation.getFunctionName());
       assertEquals(createFunctionReq.getClassName(), udfInformation.getClassName());
       assertEquals(createFunctionReq.getJarName(), udfInformation.getJarName());
