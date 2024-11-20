@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -585,10 +586,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       List<JoinNode.EquiJoinClause> equiJoinClauses = new ArrayList<>();
       ImmutableList.Builder<Expression> joinFilterBuilder = ImmutableList.builder();
       for (Expression conjunct : extractConjuncts(newJoinPredicate)) {
-        if (joinEqualityExpression(
-            conjunct,
-            node.getLeftChild().getOutputSymbols(),
-            node.getRightChild().getOutputSymbols())) {
+        if (joinEqualityExpressionOnTimeColumn(conjunct, node)) {
           ComparisonExpression equality = (ComparisonExpression) conjunct;
 
           boolean alignedComparison =
@@ -722,6 +720,24 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
 
       return output;
+    }
+
+    private boolean joinEqualityExpressionOnTimeColumn(Expression conjunct, JoinNode node) {
+      if (!joinEqualityExpression(
+          conjunct,
+          node.getLeftChild().getOutputSymbols(),
+          node.getRightChild().getOutputSymbols())) {
+        return false;
+      }
+      // conjunct must be a comparison expression
+      ComparisonExpression equality = (ComparisonExpression) conjunct;
+      // After Optimization, some subqueries are transformed into Join.
+      // For now, we only support join on time, so we need to use FilterOperator + CrossJoinOperator
+      // to simulate the join with equality criteria on columns other than time column.
+      // todo: after supporting join on other columns, we need to remove the following code, this is
+      // temporary walkaround.
+      return IoTDBConstant.TIME.equalsIgnoreCase(equality.getLeft().toString())
+          || IoTDBConstant.TIME.equalsIgnoreCase(equality.getRight().toString());
     }
 
     private Symbol symbolForExpression(Expression expression) {
