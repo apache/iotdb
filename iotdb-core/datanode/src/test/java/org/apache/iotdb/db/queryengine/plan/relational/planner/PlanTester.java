@@ -170,7 +170,8 @@ public class PlanTester {
 
   public PlanNode getFragmentPlan(int index) {
     if (distributedQueryPlan == null) {
-      distributedQueryPlan = new TableDistributedPlanner(analysis, symbolAllocator, plan).plan();
+      distributedQueryPlan =
+          new TableDistributedPlanner(analysis, symbolAllocator, plan, metadata).plan();
     }
     return distributedQueryPlan.getFragments().get(index).getPlanNodeTree().getChildren().get(0);
   }

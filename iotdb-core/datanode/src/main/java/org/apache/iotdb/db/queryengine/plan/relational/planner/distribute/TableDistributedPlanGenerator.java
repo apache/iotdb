@@ -86,7 +86,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizati
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.TransformSortToStreamSort.isOrderByAllIdsAndTime;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Util.split;
 import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction.DATE_BIN;
-import static org.apache.iotdb.db.utils.constant.TestConstant.TIMESTAMP_STR;
 import static org.apache.tsfile.utils.Preconditions.checkArgument;
 
 /** This class is used to generate distributed plan for table model. */
@@ -97,7 +96,7 @@ public class TableDistributedPlanGenerator
   private final QueryId queryId;
   private final Analysis analysis;
   private final SymbolAllocator symbolAllocator;
-  Map<PlanNodeId, OrderingScheme> nodeOrderingMap = new HashMap<>();
+  private final Map<PlanNodeId, OrderingScheme> nodeOrderingMap = new HashMap<>();
 
   public TableDistributedPlanGenerator(
       MPPQueryContext queryContext, Analysis analysis, SymbolAllocator symbolAllocator) {
@@ -719,7 +718,7 @@ public class TableDistributedPlanGenerator
 
     boolean lastIsTimeRelated = false;
     for (final Symbol symbol : expectedOrderingScheme.getOrderBy()) {
-      if (timeRelatedSymbol(symbol)) {
+      if (timeRelatedSymbol(symbol, tableScanNode)) {
         if (!expectedOrderingScheme.getOrderings().get(symbol).isAscending()) {
           // TODO(beyyes) move scan order judgement into logical plan optimizer
           resultTableScanNodeList.forEach(
@@ -864,8 +863,8 @@ public class TableDistributedPlanGenerator
   }
 
   // time column or push down date_bin function call in agg which should only have one such column
-  private boolean timeRelatedSymbol(Symbol symbol) {
-    return TIMESTAMP_STR.equalsIgnoreCase(symbol.getName())
+  private boolean timeRelatedSymbol(Symbol symbol, TableScanNode tableScanNode) {
+    return tableScanNode.isTimeColumn(symbol)
         || PUSH_DOWN_DATE_BIN_SYMBOL_NAME.equals(symbol.getName());
   }
 

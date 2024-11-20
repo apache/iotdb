@@ -17,7 +17,6 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
-import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
@@ -34,7 +33,6 @@ public interface PlanOptimizer {
     private final Analysis analysis;
     private final Metadata metadata;
     private final MPPQueryContext queryContext;
-    private final TypeProvider typeProvider;
     private final SymbolAllocator symbolAllocator;
     private final QueryId queryIdAllocator;
     private final WarningCollector warningCollector;
@@ -45,7 +43,6 @@ public interface PlanOptimizer {
         Analysis analysis,
         Metadata metadata,
         MPPQueryContext queryContext,
-        TypeProvider typeProvider,
         SymbolAllocator symbolAllocator,
         QueryId queryIdAllocator,
         WarningCollector warningCollector,
@@ -54,7 +51,6 @@ public interface PlanOptimizer {
       this.analysis = analysis;
       this.metadata = metadata;
       this.queryContext = queryContext;
-      this.typeProvider = requireNonNull(typeProvider, "types is null");
       this.symbolAllocator = requireNonNull(symbolAllocator, "symbolAllocator is null");
       this.queryIdAllocator = requireNonNull(queryIdAllocator, "idAllocator is null");
       this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
@@ -76,10 +72,6 @@ public interface PlanOptimizer {
 
     public MPPQueryContext getQueryContext() {
       return queryContext;
-    }
-
-    public TypeProvider types() {
-      return typeProvider;
     }
 
     public SymbolAllocator getSymbolAllocator() {
