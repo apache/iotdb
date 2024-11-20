@@ -22,12 +22,15 @@ package org.apache.iotdb.confignode.manager.pipe.extractor;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
 import org.apache.commons.collections4.map.SingletonMap;
 import org.junit.Assert;
@@ -39,8 +42,30 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitorTest {
   private final TablePattern tablePattern = new TablePattern("^db[0-9]", "a.*b");
 
   @Test
+  public void testCreateDatabase() {
+    testInput(
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.db1")),
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.da")),
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.dc")));
+  }
+
+  @Test
+  public void testAlterDatabase() {
+    testInput(
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.AlterDatabase, new TDatabaseSchema("root.db1")),
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.AlterDatabase, new TDatabaseSchema("root.da")),
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.AlterDatabase, new TDatabaseSchema("root.dc")));
+  }
+
+  @Test
   public void testCreateTable() {
-    testTable(
+    testInput(
         new PipeCreateTablePlan("db1", new TsTable("ab")),
         new PipeCreateTablePlan("db1", new TsTable("ac")),
         new PipeCreateTablePlan("da", new TsTable("a2b")));
@@ -48,7 +73,7 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitorTest {
 
   @Test
   public void testAddTableColumn() {
-    testTable(
+    testInput(
         new AddTableColumnPlan("db1", "ab", new ArrayList<>(), false),
         new AddTableColumnPlan("db1", "ac", new ArrayList<>(), false),
         new AddTableColumnPlan("da", "ac", new ArrayList<>(), false));
@@ -56,7 +81,7 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitorTest {
 
   @Test
   public void testSetTableProperties() {
-    testTable(
+    testInput(
         new SetTablePropertiesPlan("db1", "ab", new SingletonMap<>("ttl", "2")),
         new SetTablePropertiesPlan("db1", "ac", new SingletonMap<>("ttl", "2")),
         new SetTablePropertiesPlan("da", "ac", new SingletonMap<>("ttl", "2")));
@@ -64,7 +89,7 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitorTest {
 
   @Test
   public void testCommitDeleteColumn() {
-    testTable(
+    testInput(
         new CommitDeleteColumnPlan("db1", "ab", "a"),
         new CommitDeleteColumnPlan("db1", "ac", "a"),
         new CommitDeleteColumnPlan("da", "ac", "a"));
@@ -72,7 +97,7 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitorTest {
 
   @Test
   public void testRenameTableColumn() {
-    testTable(
+    testInput(
         new RenameTableColumnPlan("db1", "ab", "old", "new"),
         new RenameTableColumnPlan("db1", "ac", "old", "new"),
         new RenameTableColumnPlan("da", "ac", "old", "new"));
@@ -80,13 +105,13 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitorTest {
 
   @Test
   public void testCommitDeleteTable() {
-    testTable(
+    testInput(
         new CommitDeleteTablePlan("db1", "ab"),
         new CommitDeleteTablePlan("db1", "ac"),
         new CommitDeleteTablePlan("da", "ac"));
   }
 
-  private void testTable(
+  private void testInput(
       final ConfigPhysicalPlan trueInput,
       final ConfigPhysicalPlan falseInput1,
       final ConfigPhysicalPlan falseInput2) {
