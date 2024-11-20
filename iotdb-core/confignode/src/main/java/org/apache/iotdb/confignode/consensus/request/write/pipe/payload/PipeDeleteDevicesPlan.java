@@ -29,6 +29,8 @@ import javax.annotation.Nonnull;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.Objects;
 
 public class PipeDeleteDevicesPlan extends ConfigPhysicalPlan {
   private String database;
@@ -97,5 +99,31 @@ public class PipeDeleteDevicesPlan extends ConfigPhysicalPlan {
     buffer.get(filterBytes);
     modBytes = new byte[ReadWriteIOUtils.readInt(buffer)];
     buffer.get(modBytes);
+  }
+
+  @Override
+  public boolean equals(final Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    final PipeDeleteDevicesPlan that = (PipeDeleteDevicesPlan) obj;
+    return Objects.equals(this.database, that.database)
+        && Objects.equals(this.tableName, that.tableName)
+        && Arrays.equals(this.patternBytes, that.patternBytes)
+        && Arrays.equals(this.filterBytes, that.filterBytes)
+        && Arrays.equals(this.modBytes, that.modBytes);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        database,
+        tableName,
+        Arrays.hashCode(patternBytes),
+        Arrays.hashCode(filterBytes),
+        Arrays.hashCode(modBytes));
   }
 }
