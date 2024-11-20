@@ -39,17 +39,13 @@ public class TablePattern {
   private final Pattern databasePattern;
   private final Pattern tablePattern;
 
-  protected TablePattern(
+  public TablePattern(
       final boolean isTableModelDataAllowedToBeCaptured,
       final String databasePatternString,
       final String tablePatternString) {
     this.isTableModelDataAllowedToBeCaptured = isTableModelDataAllowedToBeCaptured;
     databasePattern = databasePatternString == null ? null : Pattern.compile(databasePatternString);
     tablePattern = tablePatternString == null ? null : Pattern.compile(tablePatternString);
-  }
-
-  public TablePattern(final String databasePatternString, final String tablePatternString) {
-    this(true, databasePatternString, tablePatternString);
   }
 
   public boolean isTableModelDataAllowedToBeCaptured() {

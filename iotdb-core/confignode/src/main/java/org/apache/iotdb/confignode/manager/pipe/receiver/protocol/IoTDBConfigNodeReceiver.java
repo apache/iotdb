@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransf
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV1;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
@@ -461,13 +462,22 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
     final Set<ConfigPhysicalPlanType> executionTypes =
         PipeConfigRegionSnapshotEvent.getConfigPhysicalPlanTypeSet(
             parameters.get(ColumnHeaderConstant.TYPE));
-    final IoTDBTreePattern pattern =
-        new IoTDBTreePattern(parameters.get(ColumnHeaderConstant.PATH_PATTERN));
+    final IoTDBTreePattern treePattern =
+        new IoTDBTreePattern(
+            parameters.containsKey(PipeTransferConfigSnapshotSealReq.TREE),
+            parameters.get(ColumnHeaderConstant.PATH_PATTERN));
+    final TablePattern tablePattern =
+        new TablePattern(
+            parameters.containsKey(PipeTransferConfigSnapshotSealReq.TABLE),
+            parameters.get(ColumnHeaderConstant.DATABASE),
+            parameters.get(ColumnHeaderConstant.TABLE_NAME));
     final List<TSStatus> results = new ArrayList<>();
     while (generator.hasNext()) {
-      IoTDBConfigRegionExtractor.TREE_PATTERN_PARSE_VISITOR
-          .process(generator.next(), pattern)
-          .filter(configPhysicalPlan -> executionTypes.contains(configPhysicalPlan.getType()))
+      IoTDBConfigRegionExtractor.parseConfigPlan(generator.next(), treePattern, tablePattern)
+          .filter(
+              configPhysicalPlan ->
+                  IoTDBConfigRegionExtractor.isTypeListened(
+                      configPhysicalPlan, executionTypes, treePattern, tablePattern))
           .ifPresent(
               configPhysicalPlan ->
                   results.add(executePlanAndClassifyExceptions(configPhysicalPlan)));
