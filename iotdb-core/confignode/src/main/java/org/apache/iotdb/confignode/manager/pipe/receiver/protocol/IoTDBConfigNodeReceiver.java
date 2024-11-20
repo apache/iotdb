@@ -125,8 +125,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                   .setMessage(
                       "The receiver ConfigNode has set up a new receiver and the sender must re-send its handshake request."));
         }
-        TPipeTransferResp resp;
-        long startTime = System.nanoTime();
+        final TPipeTransferResp resp;
+        final long startTime = System.nanoTime();
         switch (type) {
           case HANDSHAKE_CONFIGNODE_V1:
             resp =

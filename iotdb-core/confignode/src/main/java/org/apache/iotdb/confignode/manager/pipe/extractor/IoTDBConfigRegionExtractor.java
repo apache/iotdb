@@ -22,6 +22,8 @@ package org.apache.iotdb.confignode.manager.pipe.extractor;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
@@ -120,31 +122,30 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
   @Override
   protected Optional<PipeWritePlanEvent> trimRealtimeEventByPipePattern(
       final PipeWritePlanEvent event) {
-    final ConfigPhysicalPlan plan =
-        ((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan();
-    Optional<PipeWritePlanEvent> result = Optional.empty();
+    return parseConfigPlan(
+            ((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan(),
+            treePattern,
+            tablePattern)
+        .map(
+            configPhysicalPlan ->
+                new PipeConfigRegionWritePlanEvent(configPhysicalPlan, event.isGeneratedByPipe()));
+  }
+
+  public static Optional<ConfigPhysicalPlan> parseConfigPlan(
+      final ConfigPhysicalPlan plan,
+      final IoTDBTreePattern treePattern,
+      final TablePattern tablePattern) {
+    Optional<ConfigPhysicalPlan> result = Optional.empty();
     if (!(plan instanceof DatabaseSchemaPlan
         && ((DatabaseSchemaPlan) plan).getSchema().isIsTableModel())) {
-      result =
-          TREE_PATTERN_PARSE_VISITOR
-              .process(plan, treePattern)
-              .map(
-                  configPhysicalPlan ->
-                      new PipeConfigRegionWritePlanEvent(
-                          configPhysicalPlan, event.isGeneratedByPipe()));
+      result = TREE_PATTERN_PARSE_VISITOR.process(plan, treePattern);
       if (!result.isPresent()) {
         return result;
       }
     }
     if (!(plan instanceof DatabaseSchemaPlan
         && !((DatabaseSchemaPlan) plan).getSchema().isIsTableModel())) {
-      result =
-          TABLE_PATTERN_PARSE_VISITOR
-              .process(plan, tablePattern)
-              .map(
-                  configPhysicalPlan ->
-                      new PipeConfigRegionWritePlanEvent(
-                          configPhysicalPlan, event.isGeneratedByPipe()));
+      result = TABLE_PATTERN_PARSE_VISITOR.process(plan, tablePattern);
     }
     return result;
   }
