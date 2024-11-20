@@ -118,6 +118,7 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitor
 
   private boolean matchDatabaseAndTableName(
       final String database, final String tableName, final TablePattern pattern) {
-    return pattern.matchesDatabase(database) && pattern.matchesTable(tableName);
+    return pattern.matchesDatabase(PathUtils.unQualifyDatabaseName(database))
+        && pattern.matchesTable(tableName);
   }
 }
