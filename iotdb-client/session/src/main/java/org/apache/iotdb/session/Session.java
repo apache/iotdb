@@ -434,7 +434,7 @@ public class Session implements ISession {
     this.version = version;
   }
 
-  public Session(Builder builder) {
+  public Session(AbstractSessionBuilder builder) {
     if (builder.nodeUrls != null) {
       if (builder.nodeUrls.isEmpty()) {
         throw new IllegalArgumentException("nodeUrls shouldn't be empty.");
@@ -4180,48 +4180,7 @@ public class Session implements ISession {
     return database;
   }
 
-  public static class Builder {
-
-    private String host = SessionConfig.DEFAULT_HOST;
-    private int rpcPort = SessionConfig.DEFAULT_PORT;
-    private String username = SessionConfig.DEFAULT_USER;
-    private String pw = SessionConfig.DEFAULT_PASSWORD;
-    private int fetchSize = SessionConfig.DEFAULT_FETCH_SIZE;
-    private ZoneId zoneId = null;
-    private int thriftDefaultBufferSize = SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY;
-    private int thriftMaxFrameSize = SessionConfig.DEFAULT_MAX_FRAME_SIZE;
-    // this field only take effect in write request, nothing to do with any other type requests,
-    // like query, load and so on.
-    // if set to true, it means that we may redirect the write request to its corresponding leader
-    // if set to false, it means that we will only send write request to first available DataNode(it
-    // may be changed while current DataNode is not available, for example, we may retry to connect
-    // to another available DataNode)
-    // so even if enableRedirection is set to false, we may also send write request to another
-    // datanode while encountering retriable errors in current DataNode
-    private boolean enableRedirection = SessionConfig.DEFAULT_REDIRECTION_MODE;
-    private boolean enableRecordsAutoConvertTablet =
-        SessionConfig.DEFAULT_RECORDS_AUTO_CONVERT_TABLET;
-    private Version version = SessionConfig.DEFAULT_VERSION;
-    private long timeOut = SessionConfig.DEFAULT_QUERY_TIME_OUT;
-
-    // set to true, means that we will start a background thread to fetch all available (Status is
-    // not Removing) datanodes in cluster, and these available nodes will be used in retrying stage
-    private boolean enableAutoFetch = SessionConfig.DEFAULT_ENABLE_AUTO_FETCH;
-
-    private boolean useSSL = false;
-    private String trustStore;
-    private String trustStorePwd;
-
-    // max retry count, if set to 0, means that we won't do any retry
-    // we can use any available DataNodes(fetched in background thread if enableAutoFetch is true,
-    // or nodeUrls user specified) to retry, even if enableRedirection is false
-    private int maxRetryCount = SessionConfig.MAX_RETRY_COUNT;
-
-    private long retryIntervalInMs = SessionConfig.RETRY_INTERVAL_IN_MS;
-
-    private String sqlDialect = SessionConfig.SQL_DIALECT;
-
-    private String database;
+  public static class Builder extends AbstractSessionBuilder {
 
     public Builder useSSL(boolean useSSL) {
       this.useSSL = useSSL;
