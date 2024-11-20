@@ -128,7 +128,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStateme
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.Collections;
@@ -139,7 +141,8 @@ import java.util.Map;
 import java.util.Objects;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
-import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_CHECKER;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
+import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
 import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.DATA_REGION_GROUP_NUM_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.DATA_REPLICATION_FACTOR_KEY;
@@ -443,16 +446,18 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     final Map<String, String> map = new HashMap<>();
     for (final Property property : propertyList) {
       final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
-      if (TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_CHECKER.containsKey(key)) {
+      if (TABLE_ALLOWED_PROPERTIES.contains(key)) {
         if (!property.isSetToDefault()) {
           final Expression value = property.getNonDefaultValue();
-          if (value instanceof Literal
-              && TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_CHECKER
-                  .get(key)
-                  .test(((Literal) value).getTsValue())) {
-            if (serializeDefault) {
-              map.put(key, null);
+          if (value instanceof Literal && ((Literal) value).getTsValue() instanceof Binary) {
+            final String strValue =
+                ((Binary) ((Literal) value).getTsValue())
+                    .getStringValue(TSFileConfig.STRING_CHARSET);
+            if (!strValue.equalsIgnoreCase(TTL_INFINITE)) {
+              throw new SemanticException(
+                  "ttl value must be 'INF' or a long literal, but now is: " + value);
             }
+            map.put(key, strValue);
             continue;
           }
           // TODO: support validation for other properties

@@ -27,9 +27,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -40,6 +38,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -47,9 +46,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.Predicate;
 
 @ThreadSafe
 public class TsTable {
@@ -58,21 +57,8 @@ public class TsTable {
   private static final TimeColumnSchema TIME_COLUMN_SCHEMA =
       new TimeColumnSchema(TIME_COLUMN_NAME, TSDataType.TIMESTAMP);
 
-  public static final Map<String, Predicate<Object>>
-      TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_CHECKER = new HashMap<>();
-
   public static final String TTL_PROPERTY = "TTL";
-
-  static {
-    TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_CHECKER.put(
-        TTL_PROPERTY.toLowerCase(Locale.ENGLISH),
-        tsValue ->
-            tsValue instanceof Binary
-                && ((Binary) tsValue)
-                    .getStringValue(TSFileConfig.STRING_CHARSET)
-                    .equalsIgnoreCase("INF"));
-  }
-
+  public static final Set<String> TABLE_ALLOWED_PROPERTIES = Collections.singleton(TTL_PROPERTY);
   private final String tableName;
 
   private final Map<String, TsTableColumnSchema> columnSchemaMap = new LinkedHashMap<>();

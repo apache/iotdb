@@ -145,7 +145,7 @@ public class CreateTableProcedure
       } else {
         final TDatabaseSchema schema =
             env.getConfigManager().getClusterSchemaManager().getDatabaseSchemaByName(database);
-        if (schema.isSetTTL()) {
+        if (schema.isSetTTL() && !table.getPropValue(TsTable.TTL_PROPERTY).isPresent()) {
           table.addProp(TsTable.TTL_PROPERTY, String.valueOf(schema.getTTL()));
         }
         setNextState(CreateTableState.PRE_CREATE);
