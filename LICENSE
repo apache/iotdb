@@ -265,6 +265,7 @@ which is under Apache License 2.0:
 ./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceState.java
 ./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceStateMachine.java
 ./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/LocalExecutionPlanner.java
+./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/workers/*
 ./iotdb-core/tsfile/src/main/java/org/apache/iotdb/tsfile/read/common/block/*
 
 --------------------------------------------------------------------------------
