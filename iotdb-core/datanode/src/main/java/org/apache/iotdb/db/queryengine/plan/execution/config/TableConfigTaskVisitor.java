@@ -139,7 +139,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
-import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_MAP;
+import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_CHECKER;
 import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.DATA_REGION_GROUP_NUM_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.DATA_REPLICATION_FACTOR_KEY;
@@ -443,14 +443,16 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     final Map<String, String> map = new HashMap<>();
     for (final Property property : propertyList) {
       final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
-      if (TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_MAP.containsKey(key)) {
+      if (TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_CHECKER.containsKey(key)) {
         if (!property.isSetToDefault()) {
           final Expression value = property.getNonDefaultValue();
           if (value instanceof Literal
-              && Objects.equals(
-                  ((Literal) value).getTsValue(),
-                  TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_MAP.get(key))) {
-            // Ignore default values
+              && TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_CHECKER
+                  .get(key)
+                  .test(((Literal) value).getTsValue())) {
+            if (serializeDefault) {
+              map.put(key, null);
+            }
             continue;
           }
           // TODO: support validation for other properties

@@ -49,6 +49,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Predicate;
 
 @ThreadSafe
 public class TsTable {
@@ -57,14 +58,19 @@ public class TsTable {
   private static final TimeColumnSchema TIME_COLUMN_SCHEMA =
       new TimeColumnSchema(TIME_COLUMN_NAME, TSDataType.TIMESTAMP);
 
-  public static final Map<String, Object> TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_MAP =
-      new HashMap<>();
+  public static final Map<String, Predicate<Object>>
+      TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_CHECKER = new HashMap<>();
 
   public static final String TTL_PROPERTY = "TTL";
 
   static {
-    TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_MAP.put(
-        TTL_PROPERTY.toLowerCase(Locale.ENGLISH), new Binary("INF", TSFileConfig.STRING_CHARSET));
+    TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_CHECKER.put(
+        TTL_PROPERTY.toLowerCase(Locale.ENGLISH),
+        tsValue ->
+            tsValue instanceof Binary
+                && ((Binary) tsValue)
+                    .getStringValue(TSFileConfig.STRING_CHARSET)
+                    .equalsIgnoreCase("INF"));
   }
 
   private final String tableName;
