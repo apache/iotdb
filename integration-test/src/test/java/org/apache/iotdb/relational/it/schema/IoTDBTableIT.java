@@ -310,6 +310,26 @@ public class IoTDBTableIT {
         assertEquals(tableNames.length, cnt);
       }
 
+      statement.execute("alter table table3 set properties ttl=300");
+      statement.execute("alter table table3 set properties ttl=DEFAULT");
+
+      // The table3's ttl shall be also 300
+      try (final ResultSet resultSet = statement.executeQuery("SHOW tables")) {
+        int cnt = 0;
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(showTablesColumnHeaders.size(), metaData.getColumnCount());
+        for (int i = 0; i < showTablesColumnHeaders.size(); i++) {
+          assertEquals(
+              showTablesColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
+        }
+        while (resultSet.next()) {
+          assertEquals(tableNames[cnt], resultSet.getString(1));
+          assertEquals(ttls[cnt], resultSet.getString(2));
+          cnt++;
+        }
+        assertEquals(tableNames.length, cnt);
+      }
+
       // show tables from a non-exist database
       try {
         statement.executeQuery("SHOW tables from test3");
