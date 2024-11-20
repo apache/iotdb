@@ -68,7 +68,7 @@ public class IoTDBTableIT {
         final Statement statement = connection.createStatement()) {
 
       statement.execute("create database test1");
-      statement.execute("create database test2 (ttl=300)");
+      statement.execute("create database test2 with (ttl=300)");
 
       // should specify database before create table
       try {
