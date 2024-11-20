@@ -48,6 +48,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
@@ -1077,8 +1078,20 @@ public class TestUtils {
   }
 
   public static void assertDataAlwaysOnEnv(
-      BaseEnv env, String sql, String expectedHeader, Set<String> expectedResSet) {
-    assertDataAlwaysOnEnv(env, sql, expectedHeader, expectedResSet, 10);
+      final BaseEnv env,
+      final String sql,
+      final String expectedHeader,
+      final Set<String> expectedResSet) {
+    assertDataAlwaysOnEnv(env, sql, expectedHeader, expectedResSet, 10, null);
+  }
+
+  public static void assertDataAlwaysOnEnv(
+      final BaseEnv env,
+      final String sql,
+      final String expectedHeader,
+      final Set<String> expectedResSet,
+      final String database) {
+    assertDataAlwaysOnEnv(env, sql, expectedHeader, expectedResSet, 10, database);
   }
 
   public static void assertDataAlwaysOnEnv(
@@ -1086,8 +1099,11 @@ public class TestUtils {
       String sql,
       String expectedHeader,
       Set<String> expectedResSet,
-      long consistentSeconds) {
-    try (Connection connection = env.getConnection();
+      long consistentSeconds,
+      final String database) {
+    try (Connection connection =
+            env.getConnection(
+                Objects.isNull(database) ? BaseEnv.TREE_SQL_DIALECT : BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       // Keep retrying if there are execution failures
       await()
@@ -1098,6 +1114,9 @@ public class TestUtils {
           .failFast(
               () -> {
                 try {
+                  if (Objects.nonNull(database)) {
+                    statement.execute("use " + database);
+                  }
                   TestUtils.assertResultSetEqual(
                       executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
                 } catch (Exception e) {
