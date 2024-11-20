@@ -455,6 +455,11 @@ public class StatementAnalyzer {
       node.parseTable(sessionContext);
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
+      if (Objects.isNull(table)) {
+        throw new SemanticException(
+            String.format(
+                "Table '%s.%s' does not exist.", node.getDatabase(), node.getTableName()));
+      }
       node.parseModEntries(table);
       analyzeTraverseDevice(node, context, node.getWhere().isPresent());
       node.parseRawExpression(
