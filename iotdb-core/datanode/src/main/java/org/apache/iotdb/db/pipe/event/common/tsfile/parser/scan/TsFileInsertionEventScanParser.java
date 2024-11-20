@@ -130,10 +130,12 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               throw new NoSuchElementException();
             }
 
-            final Tablet tablet = getNextTablet();
-            // The hasNext method will update currentIsAligned, causing the updated currentIsAligned
-            // to not correspond to the current Tablet
+            // currentIsAligned is initialized when TsFileInsertionEventScanParser is constructed.
+            // When the getNextTablet function is called, currentIsAligned may be updated, causing
+            // the currentIsAligned information to be inconsistent with the current Tablet
+            // information.
             final boolean isAligned = currentIsAligned;
+            final Tablet tablet = getNextTablet();
             final boolean hasNext = hasNext();
             try {
               return new PipeRawTabletInsertionEvent(
@@ -170,10 +172,15 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               throw new NoSuchElementException();
             }
 
+            // currentIsAligned is initialized when TsFileInsertionEventScanParser is constructed.
+            // When the getNextTablet function is called, currentIsAligned may be updated, causing
+            // the currentIsAligned information to be inconsistent with the current Tablet
+            // information.
+            final boolean isAligned = currentIsAligned;
             final Tablet tablet = getNextTablet();
             final boolean hasNext = hasNext();
             try {
-              return new Pair<>(tablet, currentIsAligned);
+              return new Pair<>(tablet, isAligned);
             } finally {
               if (!hasNext) {
                 close();
