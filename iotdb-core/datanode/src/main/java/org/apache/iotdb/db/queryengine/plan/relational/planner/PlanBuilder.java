@@ -27,7 +27,6 @@ import com.google.common.collect.ImmutableMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 
@@ -56,7 +55,7 @@ public class PlanBuilder {
       RelationPlan plan, Analysis analysis, Map<ScopeAware<Expression>, Symbol> mappings) {
     return new PlanBuilder(
         new TranslationMap(
-            Optional.empty(),
+            plan.getOuterContext(),
             plan.getScope(),
             analysis,
             plan.getFieldMappings(),
@@ -135,7 +134,6 @@ public class PlanBuilder {
       if (!mappings.containsKey(scopeAwareKey(expression, analysis, translations.getScope()))
           && !alreadyHasTranslation.test(translations, expression)) {
         Symbol symbol = symbolAllocator.newSymbol(expression, analysis.getType(expression));
-        queryContext.getTypeProvider().putTableModelType(symbol, analysis.getType(expression));
         projections.put(symbol, rewriter.apply(translations, expression));
         mappings.put(scopeAwareKey(expression, analysis, translations.getScope()), symbol);
       }
