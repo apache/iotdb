@@ -79,6 +79,7 @@ public class PipeDeleteDevicesPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(final DataOutputStream stream) throws IOException {
+    stream.writeShort(getType().getPlanType());
     ReadWriteIOUtils.write(database, stream);
     ReadWriteIOUtils.write(tableName, stream);
     ReadWriteIOUtils.write(patternBytes.length, stream);
