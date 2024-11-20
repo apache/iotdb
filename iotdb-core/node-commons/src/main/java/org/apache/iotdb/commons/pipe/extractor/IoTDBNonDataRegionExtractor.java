@@ -167,7 +167,7 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
                       creationTime,
                       pipeTaskMeta,
                       treePattern,
-                      null,
+                      tablePattern,
                       Long.MIN_VALUE,
                       Long.MAX_VALUE);
 
