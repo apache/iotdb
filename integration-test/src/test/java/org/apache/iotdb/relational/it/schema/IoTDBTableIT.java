@@ -290,8 +290,8 @@ public class IoTDBTableIT {
       // Test create table with only time column
       statement.execute("create table table3()");
 
-      tableNames = new String[] {"table2", "table3"};
-      ttls = new String[] {"6600000", "300"};
+      tableNames = new String[] {"table3", "table2"};
+      ttls = new String[] {"300", "6600000"};
 
       // show tables from current database
       try (final ResultSet resultSet = statement.executeQuery("SHOW tables")) {
