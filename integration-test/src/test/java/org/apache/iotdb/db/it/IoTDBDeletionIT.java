@@ -388,7 +388,7 @@ public class IoTDBDeletionIT {
       statement.execute(
           "DELETE FROM root.ln10.wf01.wt01.status,root.sg.wf01.wt01.status WHERE time >2022-10-11 10:20:50;");
 
-      try (ResultSet resultSet = statement.executeQuery("select ** from root")) {
+      try (ResultSet resultSet = statement.executeQuery("select ** from root.ln10")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -433,6 +433,36 @@ public class IoTDBDeletionIT {
           cnt++;
         }
         Assert.assertEquals(0, cnt);
+      }
+    }
+  }
+
+  @Test
+  public void testDelAfterUpdate() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE ALIGNED TIMESERIES root.ln12.d1 (status int32)");
+      statement.execute("INSERT INTO root.ln12.d1(timestamp, status) VALUES(1, 1)");
+      statement.execute("INSERT INTO root.ln12.d1(timestamp, status) VALUES(2, 2)");
+      statement.execute("INSERT INTO root.ln12.d1(timestamp, status) VALUES(3, 3)");
+      statement.execute("INSERT INTO root.ln12.d1(timestamp, status) VALUES(2, 2)");
+
+      try (ResultSet resultSet = statement.executeQuery("select status from root.ln12.d1")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(3, cnt);
+      }
+
+      statement.execute("DELETE FROM root.ln12.d1.* WHERE time <= 2");
+
+      try (ResultSet resultSet = statement.executeQuery("select status from root.ln12.d1")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
       }
     }
   }
