@@ -25,6 +25,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDataba
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
@@ -101,6 +102,8 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
         return visitCommitDeleteColumn((CommitDeleteColumnPlan) plan, context);
       case CommitDeleteTable:
         return visitCommitDeleteTable((CommitDeleteTablePlan) plan, context);
+      case PipeDeleteDevices:
+        return visitPipeDeleteDevices((PipeDeleteDevicesPlan) plan, context);
       default:
         return visitPlan(plan, context);
     }
@@ -239,5 +242,10 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
   public R visitCommitDeleteTable(
       final CommitDeleteTablePlan commitDeleteTablePlan, final C context) {
     return visitPlan(commitDeleteTablePlan, context);
+  }
+
+  public R visitPipeDeleteDevices(
+      final PipeDeleteDevicesPlan pipeDeleteDevicesPlan, final C context) {
+    return visitPlan(pipeDeleteDevicesPlan, context);
   }
 }

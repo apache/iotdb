@@ -1601,7 +1601,7 @@ public class ProcedureManager {
                 req.getPatternInfo(),
                 req.getFilterInfo(),
                 req.getModInfo(),
-                false);
+                isGeneratedByPipe);
         procedureId = this.executor.submitProcedure(procedure);
       }
     }

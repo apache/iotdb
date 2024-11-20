@@ -85,6 +85,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchem
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
@@ -1672,6 +1673,19 @@ public class ConfigPhysicalPlanSerDeTest {
         pipeCreateTablePlan1.getTable().getColumnNum());
     Assert.assertEquals(
         pipeCreateTablePlan0.getTable().getIdNums(), pipeCreateTablePlan1.getTable().getIdNums());
+  }
+
+  @Test
+  public void pipeDeleteDevicesPlanTest() throws IOException {
+    final PipeDeleteDevicesPlan originalPlan =
+        new PipeDeleteDevicesPlan(
+            "root.database1",
+            "table1",
+            new byte[] {0, 1, 2},
+            new byte[] {0, 1, 2},
+            new byte[] {0, 1, 2});
+    Assert.assertEquals(
+        originalPlan, ConfigPhysicalPlan.Factory.create(originalPlan.serializeToByteBuffer()));
   }
 
   @Test
