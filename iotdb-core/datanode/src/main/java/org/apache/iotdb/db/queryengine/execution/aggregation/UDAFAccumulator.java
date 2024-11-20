@@ -199,8 +199,7 @@ public class UDAFAccumulator implements Accumulator {
 
   @Override
   public TSDataType getFinalType() {
-    return UDFDataTypeTransformer.transformToTsDataType(
-        configurations.getOutputDataType());
+    return UDFDataTypeTransformer.transformToTsDataType(configurations.getOutputDataType());
   }
 
   private void onError(String methodName, Exception e) {

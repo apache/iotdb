@@ -94,16 +94,14 @@ public class UDTFM4 implements UDTF {
     }
 
     dataType =
-        UDFDataTypeTransformer.transformToTsDataType(
-            validator.getParameters().getDataType(0));
+        UDFDataTypeTransformer.transformToTsDataType(validator.getParameters().getDataType(0));
   }
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws MetadataException {
     // set data type
-    configurations.setOutputDataType(
-        UDFDataTypeTransformer.transformToUDFDataType(dataType));
+    configurations.setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(dataType));
 
     // set access strategy
     if (accessStrategy == AccessStrategy.SIZE_WINDOW) {

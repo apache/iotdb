@@ -105,6 +105,15 @@ public interface Record {
   String getString(int columnIndex) throws IOException;
 
   /**
+   * Returns the object value at the specified column in this row.
+   *
+   * @param columnIndex index of the specified column
+   * @return the object value at the specified column in this row
+   * @throws IOException if an I/O error occurs
+   */
+  Object getObject(int columnIndex) throws IOException;
+
+  /**
    * Returns the actual data type of the value at the specified column in this row.
    *
    * @param columnIndex index of the specified column

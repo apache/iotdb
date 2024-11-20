@@ -674,7 +674,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
   @Override
   protected IConfigTask visitShowFunctions(ShowFunctions node, MPPQueryContext context) {
-    context.setQueryType(QueryType.WRITE);
+    context.setQueryType(QueryType.READ);
     return new ShowFunctionsTask(Model.TABLE);
   }
 

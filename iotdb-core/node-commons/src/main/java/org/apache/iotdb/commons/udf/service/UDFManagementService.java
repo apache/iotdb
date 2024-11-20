@@ -224,10 +224,7 @@ public class UDFManagementService {
 
     try {
       return clazz.cast(
-          udfTable
-              .getFunctionClass(Model.TREE, functionName)
-              .getDeclaredConstructor()
-              .newInstance());
+          udfTable.getFunctionClass(model, functionName).getDeclaredConstructor().newInstance());
     } catch (InstantiationException
         | InvocationTargetException
         | NoSuchMethodException

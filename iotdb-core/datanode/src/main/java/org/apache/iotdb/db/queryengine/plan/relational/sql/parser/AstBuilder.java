@@ -166,7 +166,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction;
@@ -584,10 +583,10 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     final String udfName = ((Identifier) visit(ctx.udfName)).getValue();
     final String className = ((Identifier) visit(ctx.className)).getValue();
     if (ctx.uriClause() == null) {
-      return new CreateFunction(getLocation(ctx),udfName, className);
+      return new CreateFunction(getLocation(ctx), udfName, className);
     } else {
       String uriString = parseAndValidateURI(ctx.uriClause());
-      return new CreateFunction(getLocation(ctx),udfName, className, uriString);
+      return new CreateFunction(getLocation(ctx), udfName, className, uriString);
     }
   }
 

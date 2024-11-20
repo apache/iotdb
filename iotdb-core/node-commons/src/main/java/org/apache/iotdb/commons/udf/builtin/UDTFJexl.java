@@ -70,8 +70,7 @@ public class UDTFJexl implements UDTF {
 
     inputDataType = new TSDataType[inputSeriesNumber];
     for (int i = 0; i < inputSeriesNumber; i++) {
-      inputDataType[i] =
-          UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(i));
+      inputDataType[i] = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(i));
     }
     outputDataType = probeOutputDataType();
 

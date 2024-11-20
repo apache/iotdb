@@ -628,8 +628,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 getUDFTableResp.getStatus().message, getUDFTableResp.getStatus().code));
         return future;
       }
-      // convert UDFTable and buildTsBlock
-      ShowFunctionsTask.buildTsBlock(getUDFTableResp.getAllUDFInformation(), future);
+      // convert UDFTable and buildTreeModelTsBlock
+      ShowFunctionsTask.buildTsBlock(model, getUDFTableResp.getAllUDFInformation(), future);
     } catch (ClientManagerException | TException e) {
       future.setException(e);
     }
@@ -803,7 +803,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 getTriggerTableResp.getStatus().message, getTriggerTableResp.getStatus().code));
         return future;
       }
-      // convert triggerTable and buildTsBlock
+      // convert triggerTable and buildTreeModelTsBlock
       ShowTriggersTask.buildTsBlock(getTriggerTableResp.getAllTriggerInformation(), future);
     } catch (ClientManagerException | TException e) {
       future.setException(e);
@@ -978,7 +978,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 getPipePluginTableResp.getStatus().code));
         return future;
       }
-      // convert PipePluginTable and buildTsBlock
+      // convert PipePluginTable and buildTreeModelTsBlock
       ShowPipePluginsTask.buildTsBlock(getPipePluginTableResp.getAllPipePluginMeta(), future);
     } catch (ClientManagerException | TException e) {
       future.setException(e);
@@ -2826,7 +2826,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             new IoTDBException(showCQResp.getStatus().message, showCQResp.getStatus().code));
         return future;
       }
-      // convert cqList and buildTsBlock
+      // convert cqList and buildTreeModelTsBlock
       ShowContinuousQueriesTask.buildTsBlock(showCQResp.getCqList(), future);
     } catch (ClientManagerException | TException e) {
       future.setException(e);
@@ -2893,7 +2893,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             new IoTDBException(showModelResp.getStatus().message, showModelResp.getStatus().code));
         return future;
       }
-      // convert model info list and buildTsBlock
+      // convert model info list and buildTreeModelTsBlock
       ShowModelsTask.buildTsBlock(showModelResp.getModelInfoList(), future);
     } catch (ClientManagerException | TException e) {
       future.setException(e);
