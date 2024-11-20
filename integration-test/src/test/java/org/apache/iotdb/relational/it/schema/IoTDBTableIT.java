@@ -68,7 +68,7 @@ public class IoTDBTableIT {
         final Statement statement = connection.createStatement()) {
 
       statement.execute("create database test1");
-      statement.execute("create database test2");
+      statement.execute("create database test2 (ttl=300)");
 
       // should specify database before create table
       try {
@@ -287,8 +287,11 @@ public class IoTDBTableIT {
 
       statement.execute("alter table if exists table3 add column speed DOUBLE MEASUREMENT");
 
-      tableNames = new String[] {"table2"};
-      ttls = new String[] {"6600000"};
+      // Test create table with only time column
+      statement.execute("create table table3()");
+
+      tableNames = new String[] {"table2", "table3"};
+      ttls = new String[] {"6600000", "300"};
 
       // show tables from current database
       try (final ResultSet resultSet = statement.executeQuery("SHOW tables")) {
@@ -306,9 +309,6 @@ public class IoTDBTableIT {
         }
         assertEquals(tableNames.length, cnt);
       }
-
-      // Test create table with only time column
-      statement.execute("create table table3()");
 
       // show tables from a non-exist database
       try {
