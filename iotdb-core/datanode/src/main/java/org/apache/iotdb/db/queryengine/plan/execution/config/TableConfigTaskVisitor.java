@@ -461,10 +461,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
             continue;
           }
           // TODO: support validation for other properties
-          map.put(
-              key,
-              String.valueOf(
-                  parseLongFromLiteral(value, TTL_PROPERTY)));
+          map.put(key, String.valueOf(parseLongFromLiteral(value, TTL_PROPERTY)));
         } else if (serializeDefault) {
           map.put(key, null);
         }

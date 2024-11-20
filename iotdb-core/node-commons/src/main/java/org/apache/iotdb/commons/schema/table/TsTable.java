@@ -42,7 +42,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -58,8 +57,7 @@ public class TsTable {
       new TimeColumnSchema(TIME_COLUMN_NAME, TSDataType.TIMESTAMP);
 
   public static final String TTL_PROPERTY = "ttl";
-  public static final Set<String> TABLE_ALLOWED_PROPERTIES =
-      Collections.singleton(TTL_PROPERTY);
+  public static final Set<String> TABLE_ALLOWED_PROPERTIES = Collections.singleton(TTL_PROPERTY);
   private final String tableName;
 
   private final Map<String, TsTableColumnSchema> columnSchemaMap = new LinkedHashMap<>();
@@ -190,8 +188,7 @@ public class TsTable {
   }
 
   public long getTableTTLInMS() {
-    return Long.parseLong(
-        getPropValue(TTL_PROPERTY).orElse(Long.MAX_VALUE + ""));
+    return Long.parseLong(getPropValue(TTL_PROPERTY).orElse(Long.MAX_VALUE + ""));
   }
 
   public Optional<String> getPropValue(final String propKey) {
