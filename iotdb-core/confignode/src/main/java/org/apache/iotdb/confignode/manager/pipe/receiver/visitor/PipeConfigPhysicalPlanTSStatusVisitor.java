@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDataba
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
@@ -373,6 +374,12 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
   public TSStatus visitCommitDeleteTable(
       final CommitDeleteTablePlan commitDeleteTablePlan, final TSStatus context) {
     return visitCommonTablePlan(commitDeleteTablePlan, context);
+  }
+
+  @Override
+  public TSStatus visitPipeDeleteDevices(
+      final PipeDeleteDevicesPlan pipeDeleteDevicesPlan, final TSStatus context) {
+    return visitPlan(pipeDeleteDevicesPlan, context);
   }
 
   private TSStatus visitCommonTablePlan(final ConfigPhysicalPlan plan, final TSStatus context) {
