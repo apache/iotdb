@@ -55,6 +55,26 @@ public class PipeDeleteDevicesPlan extends ConfigPhysicalPlan {
     this.modBytes = modBytes;
   }
 
+  public String getDatabase() {
+    return database;
+  }
+
+  public String getTableName() {
+    return tableName;
+  }
+
+  public byte[] getPatternBytes() {
+    return patternBytes;
+  }
+
+  public byte[] getFilterBytes() {
+    return filterBytes;
+  }
+
+  public byte[] getModBytes() {
+    return modBytes;
+  }
+
   @Override
   protected void serializeImpl(final DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(database, stream);

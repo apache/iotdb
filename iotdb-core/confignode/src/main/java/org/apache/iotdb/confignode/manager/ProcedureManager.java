@@ -1572,7 +1572,8 @@ public class ProcedureManager {
         new DropTableProcedure(req.database, req.tableName, req.queryId, false));
   }
 
-  public TDeleteTableDeviceResp deleteDevices(final TDeleteTableDeviceReq req) {
+  public TDeleteTableDeviceResp deleteDevices(
+      final TDeleteTableDeviceReq req, final boolean isGeneratedByPipe) {
     long procedureId;
     DeleteDevicesProcedure procedure = null;
     synchronized (this) {

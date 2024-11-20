@@ -2604,7 +2604,7 @@ public class ConfigManager implements IManager {
   public TDeleteTableDeviceResp deleteDevice(final TDeleteTableDeviceReq req) {
     final TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? procedureManager.deleteDevices(req)
+        ? procedureManager.deleteDevices(req, false)
         : new TDeleteTableDeviceResp(status);
   }
 
