@@ -25,7 +25,15 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.TableSessionBuilder;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
+
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 public class TableModelSessionExample {
 
@@ -34,27 +42,27 @@ public class TableModelSessionExample {
   public static void main(String[] args) {
 
     // don't specify database in constructor
-    try (ITableSession tableSession =
+    try (ITableSession session =
         new TableSessionBuilder()
             .nodeUrls(Collections.singletonList(LOCAL_URL))
             .username("root")
             .password("root")
             .build()) {
 
-      tableSession.executeNonQueryStatement("CREATE DATABASE test1");
-      tableSession.executeNonQueryStatement("CREATE DATABASE test2");
+      session.executeNonQueryStatement("CREATE DATABASE test1");
+      session.executeNonQueryStatement("CREATE DATABASE test2");
 
-      tableSession.executeNonQueryStatement("use test2");
+      session.executeNonQueryStatement("use test2");
 
       // or use full qualified table name
-      tableSession.executeNonQueryStatement(
+      session.executeNonQueryStatement(
           "create table test1.table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=3600000)");
 
-      tableSession.executeNonQueryStatement(
+      session.executeNonQueryStatement(
           "create table table2(region_id STRING ID, plant_id STRING ID, color STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, speed DOUBLE MEASUREMENT) with (TTL=6600000)");
 
       // show tables from current database
-      try (SessionDataSet dataSet = tableSession.executeQueryStatement("SHOW TABLES")) {
+      try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
         System.out.println(dataSet.getColumnNames());
         while (dataSet.hasNext()) {
           System.out.println(dataSet.next());
@@ -63,8 +71,59 @@ public class TableModelSessionExample {
 
       // show tables by specifying another database
       // using SHOW tables FROM
-      try (SessionDataSet dataSet = tableSession.executeQueryStatement("SHOW TABLES FROM test1")) {
+      try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES FROM test1")) {
         System.out.println(dataSet.getColumnNames());
+        while (dataSet.hasNext()) {
+          System.out.println(dataSet.next());
+        }
+      }
+
+      // insert table data by tablet
+      List<IMeasurementSchema> measurementSchemaList =
+          new ArrayList<>(
+              Arrays.asList(
+                  new MeasurementSchema("region_id", TSDataType.STRING),
+                  new MeasurementSchema("plant_id", TSDataType.STRING),
+                  new MeasurementSchema("device_id", TSDataType.STRING),
+                  new MeasurementSchema("model", TSDataType.STRING),
+                  new MeasurementSchema("temperature", TSDataType.FLOAT),
+                  new MeasurementSchema("humidity", TSDataType.DOUBLE)));
+      List<Tablet.ColumnType> columnTypeList =
+          new ArrayList<>(
+              Arrays.asList(
+                  Tablet.ColumnType.ID,
+                  Tablet.ColumnType.ID,
+                  Tablet.ColumnType.ID,
+                  Tablet.ColumnType.ATTRIBUTE,
+                  Tablet.ColumnType.MEASUREMENT,
+                  Tablet.ColumnType.MEASUREMENT));
+      Tablet tablet = new Tablet("test1", measurementSchemaList, columnTypeList, 100);
+      for (long timestamp = 0; timestamp < 100; timestamp++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, timestamp);
+        tablet.addValue("region_id", rowIndex, "1");
+        tablet.addValue("plant_id", rowIndex, "5");
+        tablet.addValue("device_id", rowIndex, "3");
+        tablet.addValue("model", rowIndex, "A");
+        tablet.addValue("temperature", rowIndex, 37.6F);
+        tablet.addValue("humidity", rowIndex, 111.1);
+        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+          session.insert(tablet);
+          tablet.reset();
+        }
+      }
+      if (tablet.rowSize != 0) {
+        session.insert(tablet);
+        tablet.reset();
+      }
+
+      // query table data
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement(
+              "select * from test1 "
+                  + "where region_id = '1' and plant_id in ('3', '5') and device_id = '3'")) {
+        System.out.println(dataSet.getColumnNames());
+        System.out.println(dataSet.getColumnTypes());
         while (dataSet.hasNext()) {
           System.out.println(dataSet.next());
         }
@@ -77,7 +136,7 @@ public class TableModelSessionExample {
     }
 
     // specify database in constructor
-    try (ITableSession tableSession =
+    try (ITableSession session =
         new TableSessionBuilder()
             .nodeUrls(Collections.singletonList(LOCAL_URL))
             .username("root")
@@ -86,7 +145,7 @@ public class TableModelSessionExample {
             .build()) {
 
       // show tables from current database
-      try (SessionDataSet dataSet = tableSession.executeQueryStatement("SHOW TABLES")) {
+      try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
         System.out.println(dataSet.getColumnNames());
         while (dataSet.hasNext()) {
           System.out.println(dataSet.next());
@@ -94,11 +153,11 @@ public class TableModelSessionExample {
       }
 
       // change database to test2
-      tableSession.executeNonQueryStatement("use test2");
+      session.executeNonQueryStatement("use test2");
 
       // show tables by specifying another database
       // using SHOW tables FROM
-      try (SessionDataSet dataSet = tableSession.executeQueryStatement("SHOW TABLES")) {
+      try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
         System.out.println(dataSet.getColumnNames());
         while (dataSet.hasNext()) {
           System.out.println(dataSet.next());
