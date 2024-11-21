@@ -59,6 +59,8 @@ public class PipeExtractorConstant {
   public static final String SOURCE_DATABASE_NAME_KEY = "source.database-name";
   public static final String EXTRACTOR_TABLE_NAME_KEY = "extractor.table-name";
   public static final String SOURCE_TABLE_NAME_KEY = "source.table-name";
+  public static final String EXTRACTOR_DATABASE_NAME_DEFAULT_VALUE = ".*";
+  public static final String EXTRACTOR_TABLE_NAME_DEFAULT_VALUE = ".*";
 
   public static final String EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY =
       "extractor.forwarding-pipe-requests";
