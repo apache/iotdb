@@ -25,9 +25,13 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.common.TimeRange;
 
-public class CompactionTimeRangeCheckFailedException extends RuntimeException {
+public class CompactionStatisticsCheckFailedException extends RuntimeException {
 
-  public CompactionTimeRangeCheckFailedException(
+  public CompactionStatisticsCheckFailedException(String msg) {
+    super(msg);
+  }
+
+  public CompactionStatisticsCheckFailedException(
       IDeviceID deviceID, TimeRange deviceTimeRange, TimeRange actualDeviceTimeRange) {
     super(
         getExceptionMsg(
@@ -38,7 +42,7 @@ public class CompactionTimeRangeCheckFailedException extends RuntimeException {
                 + actualDeviceTimeRange));
   }
 
-  public CompactionTimeRangeCheckFailedException(
+  public CompactionStatisticsCheckFailedException(
       IDeviceID deviceID, TimeseriesMetadata timeseriesMetadata, TimeRange actualTimeRange) {
     super(
         getExceptionMsg(
@@ -49,7 +53,7 @@ public class CompactionTimeRangeCheckFailedException extends RuntimeException {
                 + actualTimeRange));
   }
 
-  public CompactionTimeRangeCheckFailedException(
+  public CompactionStatisticsCheckFailedException(
       IDeviceID deviceID, ChunkMetadata chunkMetadata, TimeRange actualChunkTimeRange) {
     super(
         getExceptionMsg(
@@ -60,7 +64,7 @@ public class CompactionTimeRangeCheckFailedException extends RuntimeException {
                 + actualChunkTimeRange));
   }
 
-  public CompactionTimeRangeCheckFailedException(
+  public CompactionStatisticsCheckFailedException(
       IDeviceID deviceID, PageHeader pageHeader, TimeRange pageDataTimeRange) {
     super(
         getExceptionMsg(

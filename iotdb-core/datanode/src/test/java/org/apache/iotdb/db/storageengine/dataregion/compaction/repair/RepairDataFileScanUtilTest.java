@@ -24,9 +24,11 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
@@ -82,17 +84,9 @@ public class RepairDataFileScanUtilTest extends AbstractCompactionTest {
   }
 
   @Test
-  public void testWrongStatistics() throws IOException {
+  public void testWrongChunkStatisticsWithNonAlignedSeries() throws IOException {
     TsFileResource resource = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
-      writer.startChunkGroup("d1");
-      writer.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
-          Arrays.asList("s0", "s1", "s2"),
-          new TimeRange[] {new TimeRange(10, 40)},
-          TSEncoding.PLAIN,
-          CompressionType.LZ4,
-          Arrays.asList(false, false, true));
-      writer.endChunkGroup();
       writer.startChunkGroup("d2");
       writer.generateSimpleNonAlignedSeriesToCurrentDevice(
           "s0", new TimeRange[] {new TimeRange(10, 40)}, TSEncoding.PLAIN, CompressionType.LZ4);
@@ -110,6 +104,97 @@ public class RepairDataFileScanUtilTest extends AbstractCompactionTest {
     }
     RepairDataFileScanUtil scanUtil = new RepairDataFileScanUtil(resource);
     scanUtil.scanTsFile();
+    Assert.assertFalse(scanUtil.isBrokenFile());
+    Assert.assertTrue(scanUtil.hasUnsortedDataOrWrongStatistics());
+  }
+
+  @Test
+  public void testWrongChunkStatisticsWithAlignedSeries() throws IOException {
+    TsFileResource resource = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
+          Arrays.asList("s0", "s1", "s2"),
+          new TimeRange[] {new TimeRange(10, 40)},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4,
+          Arrays.asList(false, false, true));
+      List<ChunkMetadata> chunkMetadataListInMemory =
+          writer.getFileWriter().getChunkMetadataListOfCurrentDeviceInMemory();
+      ChunkMetadata originChunkMetadata = chunkMetadataListInMemory.get(0);
+      originChunkMetadata.getStatistics().setStartTime(20);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    RepairDataFileScanUtil scanUtil = new RepairDataFileScanUtil(resource);
+    scanUtil.scanTsFile();
+    Assert.assertFalse(scanUtil.isBrokenFile());
+    Assert.assertTrue(scanUtil.hasUnsortedDataOrWrongStatistics());
+  }
+
+  @Test
+  public void testWrongResourceStatistics() throws IOException {
+    TsFileResource resource = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
+          Arrays.asList("s0", "s1", "s2"),
+          new TimeRange[] {new TimeRange(10, 40)},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4,
+          Arrays.asList(false, false, true));
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    resource
+        .getTimeIndex()
+        .updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1"), 1);
+    RepairDataFileScanUtil scanUtil = new RepairDataFileScanUtil(resource);
+    scanUtil.scanTsFile(true);
+    Assert.assertFalse(scanUtil.isBrokenFile());
+    Assert.assertTrue(scanUtil.hasUnsortedDataOrWrongStatistics());
+  }
+
+  @Test
+  public void testDeviceNotExistsInTsFile() throws IOException {
+    TsFileResource resource = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
+          Arrays.asList("s0", "s1", "s2"),
+          new TimeRange[] {new TimeRange(10, 40)},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4,
+          Arrays.asList(false, false, true));
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    resource
+        .getTimeIndex()
+        .updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2"), 1);
+    RepairDataFileScanUtil scanUtil = new RepairDataFileScanUtil(resource);
+    scanUtil.scanTsFile(true);
+    Assert.assertFalse(scanUtil.isBrokenFile());
+    Assert.assertTrue(scanUtil.hasUnsortedDataOrWrongStatistics());
+  }
+
+  @Test
+  public void testDeviceDoesNotExistInResourceFile() throws IOException {
+    TsFileResource resource = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
+          Arrays.asList("s0", "s1", "s2"),
+          new TimeRange[] {new TimeRange(10, 40)},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4,
+          Arrays.asList(false, false, true));
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    resource.setTimeIndex(new ArrayDeviceTimeIndex());
+    RepairDataFileScanUtil scanUtil = new RepairDataFileScanUtil(resource);
+    scanUtil.scanTsFile(true);
     Assert.assertFalse(scanUtil.isBrokenFile());
     Assert.assertTrue(scanUtil.hasUnsortedDataOrWrongStatistics());
   }

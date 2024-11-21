@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.repair;
 
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionTimeRangeCheckFailedException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionStatisticsCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.reader.CompactionChunkReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
@@ -28,7 +28,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -61,6 +60,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -70,7 +70,7 @@ import static org.apache.tsfile.read.reader.chunk.ChunkReader.decryptAndUncompre
 public class RepairDataFileScanUtil {
   private static final Logger logger = LoggerFactory.getLogger(RepairDataFileScanUtil.class);
   private final TsFileResource resource;
-  private ITimeIndex timeIndex;
+  private ArrayDeviceTimeIndex timeIndex;
   private boolean hasUnsortedDataOrWrongStatistics;
   private boolean isBrokenFile;
   private long previousTime;
@@ -94,7 +94,7 @@ public class RepairDataFileScanUtil {
   public void scanTsFile(boolean checkTsFileResource) {
     File tsfile = resource.getTsFile();
     try {
-      buildTimeIndex(checkTsFileResource);
+      timeIndex = checkTsFileResource ? getDeviceTimeIndex(resource) : null;
     } catch (IOException e) {
       logger.warn(
           "Meet error when read tsfile resource file {}",
@@ -110,13 +110,25 @@ public class RepairDataFileScanUtil {
                 ? CompactionType.INNER_SEQ_COMPACTION
                 : CompactionType.INNER_UNSEQ_COMPACTION)) {
       TsFileDeviceIterator deviceIterator = reader.getAllDevicesIteratorWithIsAligned();
+      Set<IDeviceID> deviceIdsInTimeIndex =
+          checkTsFileResource ? new HashSet<>(timeIndex.getDevices()) : Collections.emptySet();
       while (deviceIterator.hasNext()) {
         Pair<IDeviceID, Boolean> deviceIsAlignedPair = deviceIterator.next();
         IDeviceID device = deviceIsAlignedPair.getLeft();
+        if (checkTsFileResource) {
+          if (!deviceIdsInTimeIndex.contains(device)) {
+            throw new CompactionStatisticsCheckFailedException(
+                device + " does not exist in the resource file");
+          }
+          deviceIdsInTimeIndex.remove(device);
+        }
+        deviceIdsInTimeIndex.remove(device);
         MetadataIndexNode metadataIndexNode =
             deviceIterator.getFirstMeasurementNodeOfCurrentDevice();
         TimeRange deviceTimeRangeInResource =
-            new TimeRange(timeIndex.getStartTime(device), timeIndex.getEndTime(device));
+            checkTsFileResource
+                ? new TimeRange(timeIndex.getStartTime(device), timeIndex.getEndTime(device))
+                : null;
         boolean isAligned = deviceIsAlignedPair.getRight();
         if (isAligned) {
           checkAlignedDeviceSeries(
@@ -126,6 +138,10 @@ public class RepairDataFileScanUtil {
               reader, device, metadataIndexNode, deviceTimeRangeInResource, checkTsFileResource);
         }
       }
+      if (!deviceIdsInTimeIndex.isEmpty()) {
+        throw new CompactionStatisticsCheckFailedException(
+            "These devices (" + deviceIdsInTimeIndex + ") do not exist in the tsfile");
+      }
     } catch (CompactionLastTimeCheckFailedException lastTimeCheckFailedException) {
       this.hasUnsortedDataOrWrongStatistics = true;
       if (printLog) {
@@ -134,13 +150,13 @@ public class RepairDataFileScanUtil {
             resource.getTsFile().getPath(),
             lastTimeCheckFailedException);
       }
-    } catch (CompactionTimeRangeCheckFailedException compactionTimeRangeCheckFailedException) {
+    } catch (CompactionStatisticsCheckFailedException compactionStatisticsCheckFailedException) {
       this.hasUnsortedDataOrWrongStatistics = true;
       if (printLog) {
         logger.error(
             "File {} has wrong time statistics: ",
             resource.getTsFile().getPath(),
-            compactionTimeRangeCheckFailedException);
+            compactionStatisticsCheckFailedException);
       }
     } catch (Exception e) {
       // ignored the exception caused by thread interrupt
@@ -153,14 +169,6 @@ public class RepairDataFileScanUtil {
       }
       logger.warn("Meet error when read tsfile {}", tsfile.getAbsolutePath(), e);
       isBrokenFile = true;
-    }
-  }
-
-  private void buildTimeIndex(boolean checkResourceFile) throws IOException {
-    if (checkResourceFile) {
-      this.timeIndex = CompactionUtils.buildDeviceTimeIndex(resource);
-    } else {
-      this.timeIndex = new FileTimeIndex(Long.MIN_VALUE, Long.MAX_VALUE);
     }
   }
 
@@ -180,8 +188,8 @@ public class RepairDataFileScanUtil {
         new TimeRange(
             timeseriesMetadata.getStatistics().getStartTime(),
             timeseriesMetadata.getStatistics().getEndTime());
-    if (checkTsFileResource && !deviceTimeRangeInResource.equals(timeseriesTimeRange)) {
-      throw new CompactionTimeRangeCheckFailedException(
+    if (checkTsFileResource && !timeseriesTimeRange.equals(deviceTimeRangeInResource)) {
+      throw new CompactionStatisticsCheckFailedException(
           device, deviceTimeRangeInResource, timeseriesTimeRange);
     }
 
@@ -206,7 +214,7 @@ public class RepairDataFileScanUtil {
     TimeRange actualTimeseriesTimeRange =
         new TimeRange(actualTimeseriesStartTime, actualTimeseriesEndTime);
     if (!actualTimeseriesTimeRange.equals(timeseriesTimeRange)) {
-      throw new CompactionTimeRangeCheckFailedException(
+      throw new CompactionStatisticsCheckFailedException(
           device, timeseriesMetadata, actualTimeseriesTimeRange);
     }
   }
@@ -247,7 +255,7 @@ public class RepairDataFileScanUtil {
     TimeRange actualChunkTimeRange = new TimeRange(actualChunkStartTime, actualChunkEndTime);
     if (!actualChunkTimeRange.equals(
         new TimeRange(timeChunkMetadata.getStartTime(), timeChunkMetadata.getEndTime()))) {
-      throw new CompactionTimeRangeCheckFailedException(
+      throw new CompactionStatisticsCheckFailedException(
           device, timeChunkMetadata, actualChunkTimeRange);
     }
   }
@@ -278,7 +286,7 @@ public class RepairDataFileScanUtil {
     }
     TimeRange actualDeviceTimeRange = new TimeRange(actualDeviceStartTime, actualDeviceEndTime);
     if (!actualDeviceTimeRange.equals(deviceTimeRangeInResource)) {
-      throw new CompactionTimeRangeCheckFailedException(
+      throw new CompactionStatisticsCheckFailedException(
           device, deviceTimeRangeInResource, actualDeviceTimeRange);
     }
   }
@@ -294,9 +302,6 @@ public class RepairDataFileScanUtil {
     long actualTimeseriesEndTime = Long.MIN_VALUE;
     for (IChunkMetadata iChunkMetadata : timeseriesMetadata.getChunkMetadataList()) {
       ChunkMetadata chunkMetadata = (ChunkMetadata) iChunkMetadata;
-      if (chunkMetadata == null || chunkMetadata.getStatistics().getCount() == 0) {
-        return;
-      }
       actualTimeseriesStartTime = Math.min(actualTimeseriesStartTime, chunkMetadata.getStartTime());
       actualTimeseriesEndTime = Math.max(actualTimeseriesEndTime, chunkMetadata.getEndTime());
       checkChunkOfNonAlignedSeries(reader, deviceID, chunkMetadata);
@@ -307,7 +312,7 @@ public class RepairDataFileScanUtil {
     TimeRange actualTimeseriesTimeRange =
         new TimeRange(actualTimeseriesStartTime, actualTimeseriesEndTime);
     if (!actualTimeseriesTimeRange.equals(timeseriesTimeRange)) {
-      throw new CompactionTimeRangeCheckFailedException(
+      throw new CompactionStatisticsCheckFailedException(
           deviceID, timeseriesMetadata, actualTimeseriesTimeRange);
     }
   }
@@ -348,7 +353,7 @@ public class RepairDataFileScanUtil {
     TimeRange actualChunkTimeRange = new TimeRange(actualChunkStartTime, actualChunkEndTime);
     if (!actualChunkTimeRange.equals(
         new TimeRange(chunkMetadata.getStartTime(), chunkMetadata.getEndTime()))) {
-      throw new CompactionTimeRangeCheckFailedException(
+      throw new CompactionStatisticsCheckFailedException(
           deviceID, chunkMetadata, actualChunkTimeRange);
     }
   }
@@ -382,7 +387,7 @@ public class RepairDataFileScanUtil {
     }
     TimeRange actualPageTimeRange = new TimeRange(actualStartTime, actualEndTime);
     if (!actualPageTimeRange.equals(pageHeaderTimeRange)) {
-      throw new CompactionTimeRangeCheckFailedException(device, pageHeader, actualPageTimeRange);
+      throw new CompactionStatisticsCheckFailedException(device, pageHeader, actualPageTimeRange);
     }
   }
 
