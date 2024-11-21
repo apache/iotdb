@@ -67,7 +67,7 @@ public class IoTDBDatabaseIT {
         final Statement statement = connection.createStatement()) {
 
       // create
-      statement.execute("create database test");
+      statement.execute("create database test with (ttl='INF')");
 
       // create duplicated database without IF NOT EXISTS
       try {
@@ -81,6 +81,7 @@ public class IoTDBDatabaseIT {
       statement.execute("create database IF NOT EXISTS test");
 
       String[] databaseNames = new String[] {"test"};
+      String[] TTLs = new String[] {"INF"};
       int[] schemaReplicaFactors = new int[] {1};
       int[] dataReplicaFactors = new int[] {1};
       int[] timePartitionInterval = new int[] {604800000};
@@ -96,9 +97,10 @@ public class IoTDBDatabaseIT {
         }
         while (resultSet.next()) {
           assertEquals(databaseNames[cnt], resultSet.getString(1));
-          assertEquals(schemaReplicaFactors[cnt], resultSet.getInt(2));
-          assertEquals(dataReplicaFactors[cnt], resultSet.getInt(3));
-          assertEquals(timePartitionInterval[cnt], resultSet.getLong(4));
+          assertEquals(TTLs[cnt], resultSet.getString(2));
+          assertEquals(schemaReplicaFactors[cnt], resultSet.getInt(3));
+          assertEquals(dataReplicaFactors[cnt], resultSet.getInt(4));
+          assertEquals(timePartitionInterval[cnt], resultSet.getLong(5));
           cnt++;
         }
         assertEquals(databaseNames.length, cnt);
@@ -115,10 +117,11 @@ public class IoTDBDatabaseIT {
         }
         while (resultSet.next()) {
           assertEquals(databaseNames[cnt], resultSet.getString(1));
-          assertEquals(schemaReplicaFactors[cnt], resultSet.getInt(2));
-          assertEquals(dataReplicaFactors[cnt], resultSet.getInt(3));
-          assertEquals(timePartitionInterval[cnt], resultSet.getLong(4));
-          assertEquals(model[cnt], resultSet.getString(5));
+          assertEquals(TTLs[cnt], resultSet.getString(2));
+          assertEquals(schemaReplicaFactors[cnt], resultSet.getInt(3));
+          assertEquals(dataReplicaFactors[cnt], resultSet.getInt(4));
+          assertEquals(timePartitionInterval[cnt], resultSet.getLong(5));
+          assertEquals(model[cnt], resultSet.getString(6));
           cnt++;
         }
         assertEquals(databaseNames.length, cnt);
@@ -154,9 +157,9 @@ public class IoTDBDatabaseIT {
 
       // Test create database with properties
       statement.execute(
-          "create database test_prop with (schema_replication_factor=DEFAULT, data_replication_factor=3, time_partition_interval=100000)");
-
+          "create database test_prop with (ttl=300, schema_replication_factor=DEFAULT, data_replication_factor=3, time_partition_interval=100000)");
       databaseNames = new String[] {"test_prop"};
+      TTLs = new String[] {"300"};
       dataReplicaFactors = new int[] {3};
       timePartitionInterval = new int[] {100000};
 
@@ -170,9 +173,10 @@ public class IoTDBDatabaseIT {
         }
         while (resultSet.next()) {
           assertEquals(databaseNames[cnt], resultSet.getString(1));
-          assertEquals(schemaReplicaFactors[cnt], resultSet.getInt(2));
-          assertEquals(dataReplicaFactors[cnt], resultSet.getInt(3));
-          assertEquals(timePartitionInterval[cnt], resultSet.getLong(4));
+          assertEquals(TTLs[cnt], resultSet.getString(2));
+          assertEquals(schemaReplicaFactors[cnt], resultSet.getInt(3));
+          assertEquals(dataReplicaFactors[cnt], resultSet.getInt(4));
+          assertEquals(timePartitionInterval[cnt], resultSet.getLong(5));
           cnt++;
         }
         assertEquals(databaseNames.length, cnt);

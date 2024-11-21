@@ -345,8 +345,8 @@ public class PartitionMetrics implements IMetricSet {
           try {
             return manager.getRegionGroupCount(database, TConsensusGroupType.SchemaRegion);
           } catch (DatabaseNotExistsException e) {
-            LOGGER.warn("Error when counting SchemaRegionGroups in Database: {}", database, e);
-            return -1;
+            LOGGER.info("Error when counting SchemaRegionGroups in Database: {}", database, e);
+            return 0;
           }
         },
         Tag.NAME.toString(),
@@ -361,8 +361,8 @@ public class PartitionMetrics implements IMetricSet {
           try {
             return manager.getRegionGroupCount(database, TConsensusGroupType.DataRegion);
           } catch (DatabaseNotExistsException e) {
-            LOGGER.warn("Error when counting DataRegionGroups in Database: {}", database, e);
-            return -1;
+            LOGGER.info("Error when counting DataRegionGroups in Database: {}", database, e);
+            return 0;
           }
         },
         Tag.NAME.toString(),
