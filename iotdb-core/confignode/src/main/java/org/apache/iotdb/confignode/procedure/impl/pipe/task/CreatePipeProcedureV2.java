@@ -180,9 +180,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
           .forEach(
               (regionGroupId, regionLeaderNodeId) -> {
                 final String databaseName =
-                    env.getConfigManager()
-                        .getPartitionManager()
-                        .getRegionStorageGroup(regionGroupId);
+                    env.getConfigManager().getPartitionManager().getRegionDatabase(regionGroupId);
                 if (databaseName != null
                     && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)
                     && !databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE + ".")) {
