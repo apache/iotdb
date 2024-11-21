@@ -559,8 +559,6 @@ public interface ISessionPool {
 
   long getQueryTimeout();
 
-  ITableSession getPooledTableSession() throws IoTDBConnectionException;
-
   /**
    * @deprecated
    */
