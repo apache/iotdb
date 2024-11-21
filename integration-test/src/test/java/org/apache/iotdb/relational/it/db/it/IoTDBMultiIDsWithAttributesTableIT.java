@@ -1027,8 +1027,13 @@ public class IoTDBMultiIDsWithAttributesTableIT {
     retArray = new String[] {"0,0,null,"};
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
-    // no data in given time range
+    // no data in given time range (push-down)
     sql = "select count(*), count(num), sum(num) from table0 where time>2100-04-26T18:01:40.000";
+    retArray = new String[] {"0,0,null,"};
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    // no data in given time range (no push-down)
+    sql = "select count(*), count(num+1), sum(num) from table0 where time>2100-04-26T18:01:40.000";
     retArray = new String[] {"0,0,null,"};
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 

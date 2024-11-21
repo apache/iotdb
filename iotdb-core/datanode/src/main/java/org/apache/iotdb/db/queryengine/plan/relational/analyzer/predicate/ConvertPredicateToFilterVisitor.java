@@ -56,7 +56,8 @@ import org.apache.tsfile.read.filter.factory.FilterFactory;
 import org.apache.tsfile.read.filter.factory.ValueFilterApi;
 import org.apache.tsfile.utils.Binary;
 
-import java.util.HashMap;
+import javax.annotation.Nullable;
+
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -65,23 +66,28 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.isTimeColumn;
 import static org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression.getEscapeCharacter;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor.getLongValue;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isSymbolReference;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
 
 public class ConvertPredicateToFilterVisitor
     extends PredicateVisitor<Filter, ConvertPredicateToFilterVisitor.Context> {
 
-  private static final ConvertPredicateToTimeFilterVisitor TIME_FILTER_VISITOR =
-      new ConvertPredicateToTimeFilterVisitor();
+  @Nullable private final String timeColumnName;
+  private final ConvertPredicateToTimeFilterVisitor timeFilterVisitor;
+
+  public ConvertPredicateToFilterVisitor(@Nullable String timeColumnName) {
+    this.timeColumnName = timeColumnName;
+    this.timeFilterVisitor = new ConvertPredicateToTimeFilterVisitor();
+  }
 
   @Override
   protected Filter visitInPredicate(InPredicate node, Context context) {
     Expression operand = node.getValue();
-    if (isTimeColumn(operand)) {
-      return TIME_FILTER_VISITOR.process(node, null);
+    if (isTimeColumn(operand, timeColumnName)) {
+      return timeFilterVisitor.process(node, null);
     }
 
     checkArgument(isSymbolReference(operand));
@@ -246,8 +252,9 @@ public class ConvertPredicateToFilterVisitor
 
   @Override
   protected Filter visitComparisonExpression(ComparisonExpression node, Context context) {
-    if (isTimeColumn(node.getLeft()) || isTimeColumn(node.getRight())) {
-      return TIME_FILTER_VISITOR.process(node, null);
+    if (isTimeColumn(node.getLeft(), timeColumnName)
+        || isTimeColumn(node.getRight(), timeColumnName)) {
+      return timeFilterVisitor.process(node, null);
     }
 
     Expression left = node.getLeft();
@@ -295,10 +302,10 @@ public class ConvertPredicateToFilterVisitor
     Expression secondExpression = node.getMin();
     Expression thirdExpression = node.getMax();
 
-    if (isTimeColumn(firstExpression)
-        || isTimeColumn(secondExpression)
-        || isTimeColumn(thirdExpression)) {
-      return TIME_FILTER_VISITOR.process(node, null);
+    if (isTimeColumn(firstExpression, timeColumnName)
+        || isTimeColumn(secondExpression, timeColumnName)
+        || isTimeColumn(thirdExpression, timeColumnName)) {
+      return timeFilterVisitor.process(node, null);
     }
 
     if (isSymbolReference(firstExpression)
@@ -391,11 +398,9 @@ public class ConvertPredicateToFilterVisitor
     private final Map<String, Integer> measuremrntsMap;
     private final Map<Symbol, ColumnSchema> schemaMap;
 
-    public Context(List<String> allMeasurements, Map<Symbol, ColumnSchema> schemaMap) {
-      this.measuremrntsMap = new HashMap<>(allMeasurements.size());
-      for (int i = 0, size = allMeasurements.size(); i < size; i++) {
-        measuremrntsMap.put(allMeasurements.get(i), i);
-      }
+    public Context(
+        Map<String, Integer> measurementColumnsIndexMap, Map<Symbol, ColumnSchema> schemaMap) {
+      this.measuremrntsMap = measurementColumnsIndexMap;
       this.schemaMap = schemaMap;
     }
 

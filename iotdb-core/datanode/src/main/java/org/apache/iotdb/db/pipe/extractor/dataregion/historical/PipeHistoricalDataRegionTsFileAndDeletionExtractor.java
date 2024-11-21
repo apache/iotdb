@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.StateProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
@@ -502,6 +503,22 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   private void flushTsFilesForExtraction(
       DataRegion dataRegion, final long startHistoricalExtractionTime) {
     LOGGER.info("Pipe {}@{}: start to flush data region", pipeName, dataRegionId);
+
+    // Consider the scenario: a consensus pipe comes to the same region, followed by another pipe
+    // **immediately**, the latter pipe will skip the flush operation.
+    // Since a large number of consensus pipes are not created at the same time, resulting in no
+    // serious waiting for locks. Therefore, the flush operation is always performed for the
+    // consensus pipe, and the lastFlushed timestamp is not updated here.
+    if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+      dataRegion.syncCloseAllWorkingTsFileProcessors();
+      LOGGER.info(
+          "Pipe {}@{}: finish to flush data region, took {} ms",
+          pipeName,
+          dataRegionId,
+          System.currentTimeMillis() - startHistoricalExtractionTime);
+      return;
+    }
+
     synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
       final long lastFlushedByPipeTime = DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.get(dataRegionId);
       if (System.currentTimeMillis() - lastFlushedByPipeTime >= PIPE_MIN_FLUSH_INTERVAL_IN_MS) {
