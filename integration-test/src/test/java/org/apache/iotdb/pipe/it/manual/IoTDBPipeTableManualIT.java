@@ -60,6 +60,8 @@ public class IoTDBPipeTableManualIT extends AbstractPipeDualManualIT {
       extractorAttributes.put("extractor.inclusion", "all");
       extractorAttributes.put("extractor.capture.tree", "false");
       extractorAttributes.put("extractor.capture.table", "true");
+      extractorAttributes.put("extractor.database-name", "test");
+      extractorAttributes.put("extractor.table-name", "t.*[0-9]");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.ip", receiverIp);
@@ -87,11 +89,24 @@ public class IoTDBPipeTableManualIT extends AbstractPipeDualManualIT {
               "create table table1(a id, b attribute, c int32) with (ttl=3000)",
               "alter table table1 add column d int64",
               "alter table table1 drop column b",
-              "alter table table1 set properties ttl=default"))) {
+              "alter table table1 set properties ttl=default",
+              "insert into table1 (a, c, d) values(1, 1, 1)",
+              "delete devices from table1",
+              "create table noTransferTable(a id, b attribute, c int32) with (ttl=3000)"))) {
         return;
       }
 
+      TableModelUtils.createDataBase(senderEnv, "noTransferDatabase", 300);
+
       TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "show tables from test",
+          "TableName,TTL(ms),",
+          Collections.singleton("table1,300,"),
+          dbName);
+
+      // Will not include no-transfer table
+      TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
           "show tables from test",
           "TableName,TTL(ms),",
@@ -119,6 +134,19 @@ public class IoTDBPipeTableManualIT extends AbstractPipeDualManualIT {
           receiverEnv,
           "show tables from test",
           "TableName,TTL(ms),",
+          Collections.emptySet(),
+          dbName);
+
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          dbName, BaseEnv.TABLE_SQL_DIALECT, senderEnv, "drop database test")) {
+        return;
+      }
+
+      // Will not include no-transfer database
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "show databases",
+          "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
           Collections.emptySet(),
           dbName);
     }
