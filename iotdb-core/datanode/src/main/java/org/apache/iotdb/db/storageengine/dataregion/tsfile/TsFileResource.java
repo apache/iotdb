@@ -487,7 +487,7 @@ public class TsFileResource implements PersistentResource {
     }
   }
 
-  /** Only used for compaction to validate tsfile. */
+  /** Used for compression to verify tsfile. And to verify TimeIndex version in LoadFile */
   public ITimeIndex getTimeIndex() {
     return timeIndex;
   }
