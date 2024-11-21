@@ -37,6 +37,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_REALTIME_FIRST_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CONSENSUS_GROUP_ID_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CONSENSUS_RECEIVER_DATANODE_ID_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CONSENSUS_RESTORE_PROGRESS_PIPE_TASK_NAME_KEY;
@@ -103,6 +105,8 @@ public class ConsensusPipeManager {
                   EXTRACTOR_CONSENSUS_RECEIVER_DATANODE_ID_KEY,
                   String.valueOf(consensusPipeName.getReceiverDataNodeId()))
               .put(EXTRACTOR_REALTIME_MODE_KEY, replicateMode.getValue())
+              .put(EXTRACTOR_CAPTURE_TABLE_KEY, String.valueOf(true))
+              .put(EXTRACTOR_CAPTURE_TREE_KEY, String.valueOf(true))
               .build();
     } else {
       extractorParams =
@@ -119,6 +123,8 @@ public class ConsensusPipeManager {
                   EXTRACTOR_CONSENSUS_RECEIVER_DATANODE_ID_KEY,
                   String.valueOf(consensusPipeName.getReceiverDataNodeId()))
               .put(EXTRACTOR_REALTIME_MODE_KEY, replicateMode.getValue())
+              .put(EXTRACTOR_CAPTURE_TABLE_KEY, String.valueOf(true))
+              .put(EXTRACTOR_CAPTURE_TREE_KEY, String.valueOf(true))
               .put(
                   EXTRACTOR_CONSENSUS_RESTORE_PROGRESS_PIPE_TASK_NAME_KEY,
                   String.valueOf(new ConsensusPipeName(senderPeer, regionMigrationCoordinatorPeer)))
