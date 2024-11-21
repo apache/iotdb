@@ -35,6 +35,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class SwingingDoorTrendingSamplingProcessor extends DownSamplingProcessor {
@@ -49,21 +51,7 @@ public class SwingingDoorTrendingSamplingProcessor extends DownSamplingProcessor
    */
   private double compressionDeviation;
 
-  /**
-   * The minimum time distance between two stored data points if current point time to the last
-   * stored point time distance <= compressionMinTimeInterval, current point will NOT be stored
-   * regardless of compression deviation
-   */
-  private long compressionMinTimeInterval;
-
-  /**
-   * The maximum time distance between two stored data points if current point time to the last
-   * stored point time distance >= compressionMaxTimeInterval, current point will be stored
-   * regardless of compression deviation
-   */
-  private long compressionMaxTimeInterval;
-
-  private PartialPathLastObjectCache<SwingingDoorTrendingFilter<?>> pathLastObjectCache;
+  private PartialPathLastObjectCache<SwingingDoorTrendingFilter> pathLastObjectCache;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -74,47 +62,29 @@ public class SwingingDoorTrendingSamplingProcessor extends DownSamplingProcessor
         parameters.getDoubleOrDefault(
             PipeProcessorConstant.PROCESSOR_SDT_COMPRESSION_DEVIATION_KEY,
             PipeProcessorConstant.PROCESSOR_SDT_COMPRESSION_DEVIATION_DEFAULT_VALUE);
-    compressionMinTimeInterval =
+    eventTimeMinInterval =
         parameters.getLongOrDefault(
-            PipeProcessorConstant.PROCESSOR_SDT_MIN_TIME_INTERVAL_KEY,
-            PipeProcessorConstant.PROCESSOR_SDT_MIN_TIME_INTERVAL_DEFAULT_VALUE);
-    compressionMaxTimeInterval =
+            Arrays.asList(
+                PipeProcessorConstant.PROCESSOR_SDT_EVENT_TIME_MIN_INTERVAL,
+                PipeProcessorConstant.PROCESSOR_SDT_MIN_TIME_INTERVAL_KEY),
+            PipeProcessorConstant.PROCESSOR_SDT_EVENT_TIME_MIN_INTERVAL_DEFAULT_VALUE);
+    eventTimeMaxInterval =
         parameters.getLongOrDefault(
-            PipeProcessorConstant.PROCESSOR_SDT_MAX_TIME_INTERVAL_KEY,
-            PipeProcessorConstant.PROCESSOR_SDT_MAX_TIME_INTERVAL_DEFAULT_VALUE);
+            Arrays.asList(
+                PipeProcessorConstant.PROCESSOR_SDT_EVENT_TIME_MAX_INTERVAL,
+                PipeProcessorConstant.PROCESSOR_SDT_MAX_TIME_INTERVAL_KEY),
+            PipeProcessorConstant.PROCESSOR_SDT_EVENT_TIME_MAX_INTERVAL_DEFAULT_VALUE);
+    arrivalTimeMinInterval =
+        parameters.getLongOrDefault(
+            PipeProcessorConstant.PROCESSOR_SDT_ARRIVAL_TIME_MIN_INTERVAL,
+            PipeProcessorConstant.PROCESSOR_SDT_ARRIVAL_TIME_MIN_INTERVAL_DEFAULT_VALUE);
+    arrivalTimeMaxInterval =
+        parameters.getLongOrDefault(
+            PipeProcessorConstant.PROCESSOR_SDT_ARRIVAL_TIME_MAX_INTERVAL,
+            PipeProcessorConstant.PROCESSOR_SDT_ARRIVAL_TIME_MAX_INTERVAL_DEFAULT_VALUE);
 
-    validator
-        .validate(
-            compressionDeviation -> (Double) compressionDeviation >= 0,
-            String.format(
-                "%s must be >= 0, but got %s",
-                PipeProcessorConstant.PROCESSOR_SDT_COMPRESSION_DEVIATION_KEY,
-                compressionDeviation),
-            compressionDeviation)
-        .validate(
-            compressionMinTimeInterval -> (Long) compressionMinTimeInterval >= 0,
-            String.format(
-                "%s must be >= 0, but got %s",
-                PipeProcessorConstant.PROCESSOR_SDT_MIN_TIME_INTERVAL_KEY,
-                compressionMinTimeInterval),
-            compressionMinTimeInterval)
-        .validate(
-            compressionMaxTimeInterval -> (Long) compressionMaxTimeInterval >= 0,
-            String.format(
-                "%s must be >= 0, but got %s",
-                PipeProcessorConstant.PROCESSOR_SDT_MAX_TIME_INTERVAL_KEY,
-                compressionMaxTimeInterval),
-            compressionMaxTimeInterval)
-        .validate(
-            minMaxPair -> (Long) minMaxPair[0] <= (Long) minMaxPair[1],
-            String.format(
-                "%s must be <= %s, but got %s and %s",
-                PipeProcessorConstant.PROCESSOR_SDT_MIN_TIME_INTERVAL_KEY,
-                PipeProcessorConstant.PROCESSOR_SDT_MAX_TIME_INTERVAL_KEY,
-                compressionMinTimeInterval,
-                compressionMaxTimeInterval),
-            compressionMinTimeInterval,
-            compressionMaxTimeInterval);
+    validatorTimeInterval(validator);
+    initPathLastObjectCache(memoryLimitInBytes);
   }
 
   @Override
@@ -123,26 +93,31 @@ public class SwingingDoorTrendingSamplingProcessor extends DownSamplingProcessor
     super.customize(parameters, configuration);
 
     LOGGER.info(
-        "SwingingDoorTrendingSamplingProcessor in {} is initialized with {}: {}, {}: {}, {}: {}.",
+        "SwingingDoorTrendingSamplingProcessor in {} is initialized with {}: {}, {}: {}, {}: {}, {}: {}, {}: {}.",
         dataBaseNameWithPathSeparator,
         PipeProcessorConstant.PROCESSOR_SDT_COMPRESSION_DEVIATION_KEY,
         compressionDeviation,
-        PipeProcessorConstant.PROCESSOR_SDT_MIN_TIME_INTERVAL_KEY,
-        compressionMinTimeInterval,
-        PipeProcessorConstant.PROCESSOR_SDT_MAX_TIME_INTERVAL_KEY,
-        compressionMaxTimeInterval);
+        PipeProcessorConstant.PROCESSOR_CHANGING_POINT_ARRIVAL_TIME_MIN_INTERVAL,
+        arrivalTimeMinInterval,
+        PipeProcessorConstant.PROCESSOR_CHANGING_POINT_ARRIVAL_TIME_MAX_INTERVAL,
+        arrivalTimeMaxInterval,
+        PipeProcessorConstant.PROCESSOR_CHANGING_POINT_EVENT_TIME_MIN_INTERVAL,
+        eventTimeMinInterval,
+        PipeProcessorConstant.PROCESSOR_CHANGING_POINT_EVENT_TIME_MAX_INTERVAL,
+        eventTimeMaxInterval);
+
+    initPathLastObjectCache(memoryLimitInBytes);
   }
 
   @Override
-  protected PartialPathLastObjectCache<?> initPathLastObjectCache(long memoryLimitInBytes) {
+  protected void initPathLastObjectCache(final long memoryLimitInBytes) {
     pathLastObjectCache =
-        new PartialPathLastObjectCache<SwingingDoorTrendingFilter<?>>(memoryLimitInBytes) {
+        new PartialPathLastObjectCache<SwingingDoorTrendingFilter>(memoryLimitInBytes) {
           @Override
-          protected long calculateMemoryUsage(SwingingDoorTrendingFilter<?> object) {
-            return 64; // Long.BYTES * 8
+          protected long calculateMemoryUsage(SwingingDoorTrendingFilter object) {
+            return object.estimatedMemory();
           }
         };
-    return pathLastObjectCache;
   }
 
   @Override
@@ -152,6 +127,8 @@ public class SwingingDoorTrendingSamplingProcessor extends DownSamplingProcessor
       String deviceSuffix,
       AtomicReference<Exception> exception) {
     final PipeRemarkableRow remarkableRow = new PipeRemarkableRow((PipeRow) row);
+    final long currentRowTime = row.getTime();
+    final long arrivalTime = System.currentTimeMillis();
 
     boolean hasNonNullMeasurements = false;
     for (int i = 0, size = row.size(); i < size; i++) {
@@ -164,18 +141,29 @@ public class SwingingDoorTrendingSamplingProcessor extends DownSamplingProcessor
       final SwingingDoorTrendingFilter filter =
           pathLastObjectCache.getPartialPathLastObject(timeSeriesSuffix);
 
-      if (filter != null) {
-        if (filter.filter(row.getTime(), row.getObject(i))) {
-          hasNonNullMeasurements = true;
-        } else {
+      if (Objects.nonNull(filter)) {
+        final Boolean result = filterArrivalTimeAndEventTime(filter, arrivalTime, currentRowTime);
+        if (Objects.isNull(result)) {
+          if (filter.filter(arrivalTime, currentRowTime, row.getObject(i))) {
+            hasNonNullMeasurements = true;
+          } else {
+            remarkableRow.markNull(i);
+          }
+          continue;
+        }
+
+        if (result == Boolean.FALSE) {
           remarkableRow.markNull(i);
+          continue;
         }
       } else {
-        hasNonNullMeasurements = true;
         pathLastObjectCache.setPartialPathLastObject(
             timeSeriesSuffix,
-            new SwingingDoorTrendingFilter<>(this, row.getTime(), row.getObject(i)));
+            new SwingingDoorTrendingFilter(
+                arrivalTime, currentRowTime, row.getObject(i), compressionDeviation));
       }
+
+      hasNonNullMeasurements = true;
     }
 
     if (hasNonNullMeasurements) {
@@ -187,15 +175,10 @@ public class SwingingDoorTrendingSamplingProcessor extends DownSamplingProcessor
     }
   }
 
-  double getCompressionDeviation() {
-    return compressionDeviation;
-  }
-
-  long getCompressionMinTimeInterval() {
-    return compressionMinTimeInterval;
-  }
-
-  long getCompressionMaxTimeInterval() {
-    return compressionMaxTimeInterval;
+  @Override
+  public void close() throws Exception {
+    if (pathLastObjectCache != null) {
+      pathLastObjectCache.close();
+    }
   }
 }

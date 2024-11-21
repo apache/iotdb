@@ -17,7 +17,29 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.processor.downsampling.changingpoint;
+package org.apache.iotdb.db.pipe.processor.downsampling;
 
-public class ChangingPointSamplingProcessor {
+public abstract class DownSamplingFilter {
+
+  protected long lastPointArrivalTime;
+
+  protected long lastPointEventTime;
+
+  public DownSamplingFilter(long arrivalTime, long eventTime) {
+    this.lastPointArrivalTime = arrivalTime;
+    this.lastPointEventTime = eventTime;
+  }
+
+  public void reset(final long arrivalTime, final long eventTime) {
+    this.lastPointArrivalTime = arrivalTime;
+    this.lastPointEventTime = eventTime;
+  }
+
+  public long getLastPointArrivalTime() {
+    return lastPointArrivalTime;
+  }
+
+  public long getLastPointEventTime() {
+    return lastPointEventTime;
+  }
 }

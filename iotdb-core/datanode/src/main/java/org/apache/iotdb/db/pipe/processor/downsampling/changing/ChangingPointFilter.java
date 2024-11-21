@@ -19,57 +19,53 @@
 
 package org.apache.iotdb.db.pipe.processor.downsampling.changing;
 
+import org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingFilter;
 import org.apache.iotdb.pipe.api.type.Binary;
+
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.time.LocalDate;
 import java.util.Objects;
 
-public class ChangingValueFilter<T> {
+public class ChangingPointFilter extends DownSamplingFilter {
 
-  private final ChangingValueSamplingProcessor processor;
+  private static final long estimatedMemory =
+      RamUsageEstimator.shallowSizeOfInstance(ChangingPointFilter.class);
 
   /**
-   * The last stored time and value we compare current point against lastReadTimestamp and
-   * lastReadValue
+   * The maximum absolute difference the user set if the data's value is within
+   * compressionDeviation, it will be compressed and discarded after compression
    */
-  private long lastStoredTimestamp;
+  private final double compressionDeviation;
 
-  private T lastStoredValue;
+  private Object lastStoredValue;
 
-  public ChangingValueFilter(
-      final ChangingValueSamplingProcessor processor,
+  public ChangingPointFilter(
+      final long arrivalTime,
       final long firstTimestamp,
-      final T firstValue) {
-    this.processor = processor;
-    init(firstTimestamp, firstValue);
+      final Object firstValue,
+      final double compressionDeviation) {
+    super(arrivalTime, firstTimestamp);
+    lastStoredValue = firstValue;
+    this.compressionDeviation = compressionDeviation;
   }
 
-  private void init(final long firstTimestamp, final T firstValue) {
-    lastStoredTimestamp = firstTimestamp;
+  private void init(final long arrivalTime, long firstTimestamp, final Object firstValue) {
+    lastPointArrivalTime = arrivalTime;
+    lastPointEventTime = firstTimestamp;
     lastStoredValue = firstValue;
   }
 
-  public boolean filter(final long timestamp, final T value) {
+  public boolean filter(final long arrivalTime, final long timestamp, final Object value) {
     try {
-      return tryFilter(timestamp, value);
+      return tryFilter(arrivalTime, timestamp, value);
     } catch (final Exception e) {
-      init(timestamp, value);
+      init(arrivalTime, timestamp, value);
       return true;
     }
   }
 
-  private boolean tryFilter(final long timestamp, final T value) {
-    final long timeDiff = Math.abs(timestamp - lastStoredTimestamp);
-
-    if (timeDiff <= processor.getCompressionMinTimeInterval()) {
-      return false;
-    }
-
-    if (timeDiff >= processor.getCompressionMaxTimeInterval()) {
-      reset(timestamp, value);
-      return true;
-    }
-
+  private boolean tryFilter(final long arrivalTime, final long timestamp, final Object value) {
     // For non-numerical types, we only compare the value
     if (value instanceof Boolean
         || value instanceof String
@@ -79,23 +75,28 @@ public class ChangingValueFilter<T> {
         return false;
       }
 
-      reset(timestamp, value);
+      reset(arrivalTime, timestamp, value);
       return true;
     }
 
     // For other numerical types, we compare the value difference
     if (Math.abs(
             Double.parseDouble(lastStoredValue.toString()) - Double.parseDouble(value.toString()))
-        > processor.getCompressionDeviation()) {
-      reset(timestamp, value);
+        > compressionDeviation) {
+      reset(arrivalTime, timestamp, value);
       return true;
     }
 
     return false;
   }
 
-  private void reset(final long timestamp, final T value) {
-    lastStoredTimestamp = timestamp;
+  public void reset(final long arrivalTime, final long timestamp, final Object value) {
+    lastPointArrivalTime = arrivalTime;
+    lastPointEventTime = timestamp;
     lastStoredValue = value;
+  }
+
+  public long estimatedMemory() {
+    return estimatedMemory + 64;
   }
 }

@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.meta.DataNodePipePluginMetaKee
 import org.apache.iotdb.db.pipe.processor.aggregate.AggregateProcessor;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.processor.StandardStatisticsOperatorProcessor;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.processor.TumblingWindowingProcessor;
-import org.apache.iotdb.db.pipe.processor.downsampling.changing.ChangingValueSamplingProcessor;
+import org.apache.iotdb.db.pipe.processor.downsampling.changing.ChangingPointSamplingProcessor;
 import org.apache.iotdb.db.pipe.processor.downsampling.sdt.SwingingDoorTrendingSamplingProcessor;
 import org.apache.iotdb.db.pipe.processor.downsampling.tumbling.TumblingTimeSamplingProcessor;
 import org.apache.iotdb.db.pipe.processor.pipeconsensus.PipeConsensusProcessor;
@@ -51,7 +51,7 @@ class PipeDataRegionProcessorConstructor extends PipeProcessorConstructor {
         SwingingDoorTrendingSamplingProcessor::new);
     pluginConstructors.put(
         BuiltinPipePlugin.CHANGING_VALUE_SAMPLING_PROCESSOR.getPipePluginName(),
-        ChangingValueSamplingProcessor::new);
+        ChangingPointSamplingProcessor::new);
     pluginConstructors.put(
         BuiltinPipePlugin.THROWING_EXCEPTION_PROCESSOR.getPipePluginName(),
         ThrowingExceptionProcessor::new);
