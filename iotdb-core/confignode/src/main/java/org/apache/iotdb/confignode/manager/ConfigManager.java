@@ -751,9 +751,17 @@ public class ConfigManager implements IManager {
       // Filter by model
       final int size = deleteDatabaseSchemaMap.size();
       final boolean isTableModel = tDeleteReq.isSetIsTableModel() && tDeleteReq.isIsTableModel();
+      final List<String> mismatchDatabaseNames = new ArrayList<>();
       deleteDatabaseSchemaMap
           .entrySet()
-          .removeIf(entry -> entry.getValue().isIsTableModel() != isTableModel);
+          .removeIf(
+              entry -> {
+                if (entry.getValue().isIsTableModel() != isTableModel) {
+                  mismatchDatabaseNames.add(entry.getKey());
+                  return true;
+                }
+                return false;
+              });
 
       if (deleteDatabaseSchemaMap.isEmpty()) {
         if (size == 0) {
@@ -761,12 +769,13 @@ public class ConfigManager implements IManager {
               TSStatusCode.PATH_NOT_EXIST.getStatusCode(),
               String.format("Path %s does not exist", Arrays.toString(deletedPaths.toArray())));
         } else if (size == 1) {
-          final DatabaseModelException exception = new DatabaseModelException("", !isTableModel);
+          final DatabaseModelException exception =
+              new DatabaseModelException(mismatchDatabaseNames.get(0), !isTableModel);
           return RpcUtils.getStatus(exception.getErrorCode(), exception.getMessage());
         } else {
-          return RpcUtils.getStatus(
-              TSStatusCode.PATH_NOT_EXIST.getStatusCode(),
-              String.format("Path %s does not exist", Arrays.toString(deletedPaths.toArray())));
+          final DatabaseModelException exception =
+              new DatabaseModelException(mismatchDatabaseNames, !isTableModel);
+          return RpcUtils.getStatus(exception.getErrorCode(), exception.getMessage());
         }
       }
       final ArrayList<TDatabaseSchema> parsedDeleteDatabases =
