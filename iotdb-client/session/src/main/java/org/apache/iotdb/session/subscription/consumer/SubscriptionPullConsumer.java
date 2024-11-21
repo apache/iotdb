@@ -70,6 +70,10 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     return isClosed.get();
   }
 
+  public boolean isAutoCommit() {
+    return autoCommit;
+  }
+
   /////////////////////////////// ctor ///////////////////////////////
 
   protected SubscriptionPullConsumer(final SubscriptionPullConsumer.Builder builder) {

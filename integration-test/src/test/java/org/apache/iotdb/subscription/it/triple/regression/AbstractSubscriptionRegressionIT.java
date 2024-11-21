@@ -299,7 +299,9 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
           session.insertTablet(tablet);
         }
       }
-      consumer.commitSync(messages);
+      if (!consumer.isAutoCommit()) {
+        consumer.commitSync(messages);
+      }
     }
   }
 
@@ -349,7 +351,9 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
           throw new RuntimeException(e);
         }
       }
-      consumer.commitSync(messages);
+      if (!consumer.isAutoCommit()) {
+        consumer.commitSync(messages);
+      }
     }
     List<Integer> results = new ArrayList<>(devices.size());
     for (AtomicInteger rowCount : rowCounts) {
@@ -375,7 +379,9 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
           session.insertTablet(tablet);
         }
       }
-      consumer.commitSync(messages);
+      if (!consumer.isAutoCommit()) {
+        consumer.commitSync(messages);
+      }
     }
   }
 
