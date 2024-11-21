@@ -537,7 +537,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
               "Pipe {} needs to restart because too many memTables are pinned.",
               pipeMeta.getStaticMeta());
           stuckPipes.add(pipeMeta);
-        } else if (getMemory(pipeName)
+        } else if (getFloatingMemoryUsageInByte(pipeName)
             >= (PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes()
                     - PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes())
                 / pipeMetaKeeper.getPipeMetaCount()) {

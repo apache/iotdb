@@ -29,7 +29,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class PipeTemporaryMetaInAgent implements PipeTemporaryMeta {
 
   // Statistics
-  private final AtomicLong memoryUsage = new AtomicLong(0L);
+  private final AtomicLong floatingMemoryUsageInByte = new AtomicLong(0L);
 
   // Object pool
   private final String pipeNameWithCreationTime;
@@ -41,16 +41,16 @@ public class PipeTemporaryMetaInAgent implements PipeTemporaryMeta {
 
   /////////////////////////////// DataNode ///////////////////////////////
 
-  public void addMemoryUsage(final long usage) {
-    memoryUsage.addAndGet(usage);
+  public void addFloatingMemoryUsageInByte(final long usage) {
+    floatingMemoryUsageInByte.addAndGet(usage);
   }
 
-  public void decreaseMemoryUsage(final long usage) {
-    memoryUsage.addAndGet(-usage);
+  public void decreaseFloatingMemoryUsageInByte(final long usage) {
+    floatingMemoryUsageInByte.addAndGet(-usage);
   }
 
-  public long getMemoryUsage() {
-    return memoryUsage.get();
+  public long getFloatingMemoryUsageInByte() {
+    return floatingMemoryUsageInByte.get();
   }
 
   public String getPipeNameWithCreationTime() {
@@ -64,6 +64,10 @@ public class PipeTemporaryMetaInAgent implements PipeTemporaryMeta {
       return key;
     }
     final CommitterKey newKey = new CommitterKey(pipeName, creationTime, regionId, restartTime);
+    if (Objects.nonNull(key) && restartTime < key.getRestartTimes()) {
+      return newKey;
+    }
+    // restartTime > key.getRestartTimes()
     regionId2CommitterKeyMap.put(regionId, newKey);
     return newKey;
   }
@@ -81,20 +85,21 @@ public class PipeTemporaryMetaInAgent implements PipeTemporaryMeta {
       return false;
     }
     final PipeTemporaryMetaInAgent that = (PipeTemporaryMetaInAgent) o;
-    return Objects.equals(this.memoryUsage.get(), that.memoryUsage.get())
+    return Objects.equals(
+            this.floatingMemoryUsageInByte.get(), that.floatingMemoryUsageInByte.get())
         && Objects.equals(this.regionId2CommitterKeyMap, that.regionId2CommitterKeyMap);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(memoryUsage, regionId2CommitterKeyMap);
+    return Objects.hash(floatingMemoryUsageInByte, regionId2CommitterKeyMap);
   }
 
   @Override
   public String toString() {
     return "PipeTemporaryMeta{"
-        + "memoryUsage="
-        + memoryUsage
+        + "floatingMemoryUsage="
+        + floatingMemoryUsageInByte
         + ", regionId2CommitterKeyMap="
         + regionId2CommitterKeyMap
         + '}';

@@ -1057,24 +1057,26 @@ public abstract class PipeTaskAgent {
             .getCommitterKey(pipeName, creationTime, regionId, restartTime);
   }
 
-  public long getMemory(final String pipeName) {
+  public long getFloatingMemoryUsageInByte(final String pipeName) {
     final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
     return pipeMeta == null
         ? 0
-        : ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).getMemoryUsage();
+        : ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).getFloatingMemoryUsageInByte();
   }
 
-  public void addMemory(final String pipeName, final long size) {
+  public void addFloatingMemoryUsageInByte(final String pipeName, final long sizeInByte) {
     final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
     if (Objects.nonNull(pipeMeta)) {
-      ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).addMemoryUsage(size);
+      ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
+          .addFloatingMemoryUsageInByte(sizeInByte);
     }
   }
 
-  public void releaseMemory(final String pipeName, final long size) {
+  public void decreaseFloatingMemoryUsageInByte(final String pipeName, final long sizeInByte) {
     final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
     if (Objects.nonNull(pipeMeta)) {
-      ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).decreaseMemoryUsage(size);
+      ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
+          .decreaseFloatingMemoryUsageInByte(sizeInByte);
     }
   }
 
