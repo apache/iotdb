@@ -181,7 +181,7 @@ import static java.lang.Math.toIntExact;
 import static java.util.Collections.emptyList;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_MAP;
+import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
 import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 import static org.apache.iotdb.db.queryengine.execution.warnings.StandardWarningCode.REDUNDANT_ORDER_BY;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AggregationAnalyzer.verifyOrderByAggregations;
@@ -455,6 +455,11 @@ public class StatementAnalyzer {
       node.parseTable(sessionContext);
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
+      if (Objects.isNull(table)) {
+        throw new SemanticException(
+            String.format(
+                "Table '%s.%s' does not exist.", node.getDatabase(), node.getTableName()));
+      }
       node.parseModEntries(table);
       analyzeTraverseDevice(node, context, node.getWhere().isPresent());
       node.parseRawExpression(
@@ -2820,7 +2825,7 @@ public class StatementAnalyzer {
       final Set<String> propertyNames = new HashSet<>();
       for (final Property property : properties) {
         final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
-        if (!TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_MAP.containsKey(key)) {
+        if (!TABLE_ALLOWED_PROPERTIES.contains(key)) {
           throw new SemanticException("Table property " + key + " is currently not allowed.");
         }
         if (!propertyNames.add(key)) {
