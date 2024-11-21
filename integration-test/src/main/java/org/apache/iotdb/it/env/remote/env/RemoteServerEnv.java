@@ -45,6 +45,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.TableSessionBuilder;
 import org.apache.iotdb.session.pool.SessionPool;
+import org.apache.iotdb.session.pool.TableSessionPoolBuilder;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -54,7 +55,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import org.apache.iotdb.session.pool.TableSessionPoolBuilder;
 
 import static org.apache.iotdb.jdbc.Config.VERSION;
 
@@ -228,7 +228,9 @@ public class RemoteServerEnv implements BaseEnv {
   @Override
   public ITableSessionPool getTableSessionPool(int maxSize) {
     return new TableSessionPoolBuilder()
-        .nodeUrls(Collections.singletonList(SessionConfig.DEFAULT_HOST + ":" +SessionConfig.DEFAULT_PORT))
+        .nodeUrls(
+            Collections.singletonList(
+                SessionConfig.DEFAULT_HOST + ":" + SessionConfig.DEFAULT_PORT))
         .user(SessionConfig.DEFAULT_USER)
         .password(SessionConfig.DEFAULT_PASSWORD)
         .maxSize(maxSize)
@@ -246,7 +248,9 @@ public class RemoteServerEnv implements BaseEnv {
   @Override
   public ITableSessionPool getTableSessionPool(int maxSize, String database) {
     return new TableSessionPoolBuilder()
-        .nodeUrls(Collections.singletonList(SessionConfig.DEFAULT_HOST + ":" +SessionConfig.DEFAULT_PORT))
+        .nodeUrls(
+            Collections.singletonList(
+                SessionConfig.DEFAULT_HOST + ":" + SessionConfig.DEFAULT_PORT))
         .user(SessionConfig.DEFAULT_USER)
         .password(SessionConfig.DEFAULT_PASSWORD)
         .database(database)
@@ -264,18 +268,13 @@ public class RemoteServerEnv implements BaseEnv {
 
   @Override
   public ISession getSessionConnection() throws IoTDBConnectionException {
-    Session session =
-        new Session.Builder()
-            .host(ip_addr)
-            .port(Integer.parseInt(port))
-            .build();
+    Session session = new Session.Builder().host(ip_addr).port(Integer.parseInt(port)).build();
     session.open();
     return session;
   }
 
   @Override
-  public ITableSession getTableSessionConnection()
-      throws IoTDBConnectionException {
+  public ITableSession getTableSessionConnection() throws IoTDBConnectionException {
     return new TableSessionBuilder()
         .nodeUrls(Collections.singletonList(ip_addr + ":" + port))
         .build();
@@ -294,15 +293,15 @@ public class RemoteServerEnv implements BaseEnv {
   public ITableSession getTableSessionConnection(List<String> nodeUrls)
       throws IoTDBConnectionException {
     return new TableSessionBuilder()
-            .nodeUrls(nodeUrls)
-            .username(SessionConfig.DEFAULT_USER)
-            .password(SessionConfig.DEFAULT_PASSWORD)
-            .fetchSize(SessionConfig.DEFAULT_FETCH_SIZE)
-            .zoneId(null)
-            .thriftDefaultBufferSize(SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY)
-            .thriftMaxFrameSize(SessionConfig.DEFAULT_MAX_FRAME_SIZE)
-            .enableRedirection(SessionConfig.DEFAULT_REDIRECTION_MODE)
-            .build();
+        .nodeUrls(nodeUrls)
+        .username(SessionConfig.DEFAULT_USER)
+        .password(SessionConfig.DEFAULT_PASSWORD)
+        .fetchSize(SessionConfig.DEFAULT_FETCH_SIZE)
+        .zoneId(null)
+        .thriftDefaultBufferSize(SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY)
+        .thriftMaxFrameSize(SessionConfig.DEFAULT_MAX_FRAME_SIZE)
+        .enableRedirection(SessionConfig.DEFAULT_REDIRECTION_MODE)
+        .build();
   }
 
   @Override
@@ -320,8 +319,7 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
-  public ISession getSessionConnection(List<String> nodeUrls)
-      throws IoTDBConnectionException {
+  public ISession getSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException {
     Session session =
         new Session.Builder()
             .nodeUrls(Collections.singletonList(ip_addr + ":" + port))

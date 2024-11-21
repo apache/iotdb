@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.relational.it.db.it;
 
-import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -574,20 +573,19 @@ public class IoTDBInsertTableIT {
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
       final List<ColumnType> columnTypes =
           Arrays.asList(ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT);
-      List<String> measurementIds =
-          schemaList.stream()
-              .map(IMeasurementSchema::getMeasurementId)
-              .collect(Collectors.toList());
-      List<TSDataType> dataTypes =
-          schemaList.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
 
       long timestamp = 0;
 
-//      for (long row = 0; row < 15; row++) {
-//        Object[] values = new Object[] {"id:" + row, "attr:" + row, row * 1.0};
-//        session.insertRelationalRecord(
-//            "TaBle19_2", timestamp + row, measurementIds, dataTypes, columnTypes, values);
-//      }
+      Tablet tablet = new Tablet("TaBle19_2", schemaList, columnTypes, 15);
+      for (long row = 0; row < 15; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, timestamp + row);
+        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("attr1", rowIndex, "attr:" + row);
+        tablet.addValue("m1", rowIndex, row * 1.0);
+      }
+      session.insert(tablet);
+      tablet.reset();
 
       int cnt = 0;
       SessionDataSet dataSet =
@@ -626,11 +624,16 @@ public class IoTDBInsertTableIT {
 
       long timestamp = 0;
 
-//      for (long row = 0; row < 15; row++) {
-//        Object[] values = new Object[] {"id:" + row, "attr:" + row, row * 1.0};
-//        session.insertRelationalRecord(
-//            "TaBle19_3", timestamp + row, measurementIds, dataTypes, columnTypes, values);
-//      }
+      Tablet tablet = new Tablet("TaBle19_3", schemaList, columnTypes, 15);
+      for (long row = 0; row < 15; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, timestamp + row);
+        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("attr1", rowIndex, "attr:" + row);
+        tablet.addValue("m1", rowIndex, row * 1.0);
+      }
+      session.insert(tablet);
+      tablet.reset();
 
       int cnt = 0;
       SessionDataSet dataSet =

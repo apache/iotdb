@@ -193,19 +193,15 @@ public interface BaseEnv {
 
   ISession getSessionConnection() throws IoTDBConnectionException;
 
-  ISession getSessionConnection(String userName, String password)
-      throws IoTDBConnectionException;
+  ISession getSessionConnection(String userName, String password) throws IoTDBConnectionException;
 
-  ISession getSessionConnection(List<String> nodeUrls)
-      throws IoTDBConnectionException;
+  ISession getSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException;
 
   ITableSession getTableSessionConnection() throws IoTDBConnectionException;
 
-  ITableSession getTableSessionConnectionWithDB(String database)
-      throws IoTDBConnectionException;
+  ITableSession getTableSessionConnectionWithDB(String database) throws IoTDBConnectionException;
 
-  ITableSession getTableSessionConnection(List<String> nodeUrls)
-      throws IoTDBConnectionException;
+  ITableSession getTableSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException;
 
   /**
    * Get the index of the first dataNode with a SchemaRegion leader.

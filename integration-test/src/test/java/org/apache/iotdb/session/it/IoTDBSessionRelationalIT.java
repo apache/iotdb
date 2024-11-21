@@ -27,7 +27,6 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.Session;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.RowRecord;
@@ -46,10 +45,7 @@ import org.junit.runner.RunWith;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
-import static org.apache.iotdb.itbase.env.BaseEnv.TABLE_SQL_DIALECT;
-import static org.apache.iotdb.itbase.env.BaseEnv.TREE_SQL_DIALECT;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
@@ -628,6 +624,59 @@ public class IoTDBSessionRelationalIT {
 
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void autoCreateTableTest() throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      // no table created here
+
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
+      final List<ColumnType> columnTypes =
+          Arrays.asList(ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT);
+
+      long timestamp = 0;
+      Tablet tablet = new Tablet("table6", schemaList, columnTypes, 15);
+
+      for (int row = 0; row < 15; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, timestamp + row);
+        tablet.addValue("id1", rowIndex, "id1:" + row);
+        tablet.addValue("attr1", rowIndex, "attr1:" + row);
+        tablet.addValue("m1", rowIndex, row * 1.0);
+      }
+      session.insert(tablet);
+      tablet.reset();
+
+      session.executeNonQueryStatement("FLush");
+
+      for (int row = 15; row < 30; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, timestamp + row);
+        tablet.addValue("id1", rowIndex, "id1:" + row);
+        tablet.addValue("attr1", rowIndex, "attr1:" + row);
+        tablet.addValue("m1", rowIndex, row * 1.0);
+      }
+      session.insert(tablet);
+      tablet.reset();
+
+      int cnt = 0;
+      SessionDataSet dataSet = session.executeQueryStatement("select * from table6 order by time");
+      while (dataSet.hasNext()) {
+        RowRecord rowRecord = dataSet.next();
+        timestamp = rowRecord.getFields().get(0).getLongV();
+        assertEquals("id:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
+        assertEquals("attr:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
+        assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
+        cnt++;
+      }
+      assertEquals(30, cnt);
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void autoCreateIdColumnTest()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
@@ -697,62 +746,67 @@ public class IoTDBSessionRelationalIT {
     }
   }
 
-//  @Test
-//  @Category({LocalStandaloneIT.class, ClusterIT.class})
-//  public void autoAdjustIdTest() throws IoTDBConnectionException, StatementExecutionException {
-//    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
-//      session.executeNonQueryStatement("USE \"db1\"");
-//      // the id order in the table is (id1, id2)
-//      session.executeNonQueryStatement(
-//          "CREATE TABLE table9 (id1 string id, id2 string id, attr1 string attribute, "
-//              + "m1 double "
-//              + "measurement)");
-//
-//      // the id order in the row is (id2, id1)
-//      List<IMeasurementSchema> schemaList = new ArrayList<>();
-//      schemaList.add(new MeasurementSchema("id2", TSDataType.STRING));
-//      schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
-//      schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
-//      schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
-//      final List<ColumnType> columnTypes =
-//          Arrays.asList(ColumnType.ID, ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT);
-//      List<String> measurementIds =
-//          schemaList.stream()
-//              .map(IMeasurementSchema::getMeasurementId)
-//              .collect(Collectors.toList());
-//      List<TSDataType> dataTypes =
-//          schemaList.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
-//
-//      long timestamp = 0;
-//
-//      for (long row = 0; row < 15; row++) {
-//        Object[] values = new Object[] {"id2:" + row, "id1:" + row, "attr1:" + row, row * 1.0};
-//        session.insertRelationalRecord(
-//            "table9", timestamp + row, measurementIds, dataTypes, columnTypes, values);
-//      }
-//
-//      session.executeNonQueryStatement("FLush");
-//
-//      for (long row = 15; row < 30; row++) {
-//        Object[] values = new Object[] {"id2:" + row, "id1:" + row, "attr1:" + row, row * 1.0};
-//        session.insertRelationalRecord(
-//            "table9", timestamp + row, measurementIds, dataTypes, columnTypes, values);
-//      }
-//
-//      SessionDataSet dataSet = session.executeQueryStatement("select * from table9 order by time");
-//      int cnt = 0;
-//      while (dataSet.hasNext()) {
-//        RowRecord rowRecord = dataSet.next();
-//        timestamp = rowRecord.getFields().get(0).getLongV();
-//        assertEquals("id1:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
-//        assertEquals("id2:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
-//        assertEquals("attr1:" + timestamp, rowRecord.getFields().get(3).getBinaryV().toString());
-//        assertEquals(timestamp * 1.0, rowRecord.getFields().get(4).getDoubleV(), 0.0001);
-//        cnt++;
-//      }
-//      assertEquals(30, cnt);
-//    }
-//  }
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void autoAdjustIdTest() throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      // the id order in the table is (id1, id2)
+      session.executeNonQueryStatement(
+          "CREATE TABLE table9 (id1 string id, id2 string id, attr1 string attribute, "
+              + "m1 double "
+              + "measurement)");
+
+      // the id order in the row is (id2, id1)
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("id2", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
+      final List<ColumnType> columnTypes =
+          Arrays.asList(ColumnType.ID, ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT);
+
+      long timestamp = 0;
+      Tablet tablet = new Tablet("table9", schemaList, columnTypes, 15);
+
+      for (long row = 0; row < 15; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, timestamp + row);
+        tablet.addValue("id2", rowIndex, "id2:" + row);
+        tablet.addValue("id1", rowIndex, "id1:" + row);
+        tablet.addValue("attr1", rowIndex, "attr1:" + row);
+        tablet.addValue("m1", rowIndex, row * 1.0);
+      }
+      session.insert(tablet);
+      tablet.reset();
+
+      session.executeNonQueryStatement("FLush");
+
+      for (long row = 15; row < 30; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, timestamp + row);
+        tablet.addValue("id2", rowIndex, "id2:" + row);
+        tablet.addValue("id1", rowIndex, "id1:" + row);
+        tablet.addValue("attr1", rowIndex, "attr1:" + row);
+        tablet.addValue("m1", rowIndex, row * 1.0);
+      }
+      session.insert(tablet);
+      tablet.reset();
+
+      SessionDataSet dataSet = session.executeQueryStatement("select * from table9 order by time");
+      int cnt = 0;
+      while (dataSet.hasNext()) {
+        RowRecord rowRecord = dataSet.next();
+        timestamp = rowRecord.getFields().get(0).getLongV();
+        assertEquals("id1:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
+        assertEquals("id2:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
+        assertEquals("attr1:" + timestamp, rowRecord.getFields().get(3).getBinaryV().toString());
+        assertEquals(timestamp * 1.0, rowRecord.getFields().get(4).getDoubleV(), 0.0001);
+        cnt++;
+      }
+      assertEquals(30, cnt);
+    }
+  }
 
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})

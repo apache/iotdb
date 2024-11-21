@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.relational.it.query.old.orderBy;
 
-import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -47,9 +46,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
-import static org.apache.iotdb.itbase.env.BaseEnv.TABLE_SQL_DIALECT;
 import static org.apache.iotdb.relational.it.query.old.aligned.TableUtils.USE_DB;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -1419,157 +1416,155 @@ public class IoTDBOrderByTableIT {
     testLastQueryOrderBy(sql, ans);
   }
 
-//  @Ignore
-//  @Test
-//  public void lastQueryOrderBy4() {
-//    String[][] ans =
-//        new String[][] {
-//          {"51536000000", "51536000000", "51536000000", "51536000000"},
-//          {"root.sg.d2.num", "root.sg.d.num", "root.sg.d2.bigNum", "root.sg.d.bigNum"},
-//          {"15", "15", "3147483648", "3147483648"},
-//          {"INT32", "INT32", "INT64", "INT64"}
-//        };
-//    String sql = "select last bigNum,num from root.** order by value, timeseries desc";
-//    testLastQueryOrderBy(sql, ans);
-//  }
-//
-//  @Ignore
-//  @Test
-//  public void lastQueryOrderBy5() {
-//    String[][] ans =
-//        new String[][] {
-//          {"51536000000", "51536000000", "51536000000", "51536000000"},
-//          {"root.sg.d2.num", "root.sg.d.num", "root.sg.d2.bigNum", "root.sg.d.bigNum"},
-//          {"15", "15", "3147483648", "3147483648"},
-//          {"INT32", "INT32", "INT64", "INT64"}
-//        };
-//    String sql = "select last bigNum,num from root.** order by datatype, timeseries desc";
-//    testLastQueryOrderBy(sql, ans);
-//  }
-//
-//  private static List<Long> TIMES =
-//      Arrays.asList(
-//          0L,
-//          20L,
-//          40L,
-//          80L,
-//          100L,
-//          31536000000L,
-//          31536000100L,
-//          31536000500L,
-//          31536001000L,
-//          31536010000L,
-//          31536100000L,
-//          41536000000L,
-//          41536000020L,
-//          41536900000L,
-//          51536000000L);
-//
-//  protected static void sessionInsertData1() {
-//    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
-//      session.executeNonQueryStatement("CREATE DATABASE \"db0\"");
-//      session.executeNonQueryStatement("USE \"db0\"");
-//
-//      List<IMeasurementSchema> schemaList = new ArrayList<>();
-//      schemaList.add(new MeasurementSchema("device", TSDataType.STRING));
-//      schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
-//      schemaList.add(new MeasurementSchema("num", TSDataType.INT32));
-//      schemaList.add(new MeasurementSchema("bigNum", TSDataType.INT64));
-//      schemaList.add(new MeasurementSchema("floatNum", TSDataType.DOUBLE));
-//      schemaList.add(new MeasurementSchema("str", TSDataType.TEXT));
-//      schemaList.add(new MeasurementSchema("bool", TSDataType.BOOLEAN));
-//      final List<Tablet.ColumnType> columnTypes =
-//          Arrays.asList(
-//              Tablet.ColumnType.ID,
-//              Tablet.ColumnType.ATTRIBUTE,
-//              Tablet.ColumnType.MEASUREMENT,
-//              Tablet.ColumnType.MEASUREMENT,
-//              Tablet.ColumnType.MEASUREMENT,
-//              Tablet.ColumnType.MEASUREMENT,
-//              Tablet.ColumnType.MEASUREMENT);
-//      List<String> measurementIds =
-//          schemaList.stream()
-//              .map(IMeasurementSchema::getMeasurementId)
-//              .collect(Collectors.toList());
-//      List<TSDataType> dataTypes =
-//          schemaList.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
-//
-//      List<Object[]> values =
-//          Arrays.asList(
-//              new Object[] {"d1", "a1", 3, 2947483648L, 231.2121, "coconut", false},
-//              new Object[] {"d1", "a1", 2, 2147483648L, 434.12, "pineapple", true},
-//              new Object[] {"d1", "a1", 1, 2247483648L, 12.123, "apricot", true},
-//              new Object[] {"d1", "a1", 9, 2147483646L, 43.12, "apple", false},
-//              new Object[] {"d1", "a1", 8, 2147483964L, 4654.231, "papaya", true},
-//              new Object[] {"d1", "a1", 6, 2147483650L, 1231.21, "banana", true},
-//              new Object[] {"d1", "a1", 10, 3147483648L, 231.55, "pumelo", false},
-//              new Object[] {"d1", "a1", 4, 2147493648L, 213.1, "peach", false},
-//              new Object[] {"d1", "a1", 5, 2149783648L, 56.32, "orange", false},
-//              new Object[] {"d1", "a1", 7, 2147983648L, 213.112, "lemon", true},
-//              new Object[] {"d1", "a1", 11, 2147468648L, 54.121, "pitaya", false},
-//              new Object[] {"d1", "a1", 12, 2146483648L, 45.231, "strawberry", false},
-//              new Object[] {"d1", "a1", 14, 2907483648L, 231.34, "cherry", false},
-//              new Object[] {"d1", "a1", 13, 2107483648L, 54.12, "lychee", true},
-//              new Object[] {"d1", "a1", 15, 3147483648L, 235.213, "watermelon", true});
-//      for (int i = 0; i < TIMES.size(); i++) {
-//        session.insertRelationalRecord(
-//            "table0", TIMES.get(i), measurementIds, dataTypes, columnTypes, values.get(i));
-//      }
-//    } catch (Exception e) {
-//      e.printStackTrace();
-//    }
-//  }
+  @Ignore
+  @Test
+  public void lastQueryOrderBy4() {
+    String[][] ans =
+        new String[][] {
+          {"51536000000", "51536000000", "51536000000", "51536000000"},
+          {"root.sg.d2.num", "root.sg.d.num", "root.sg.d2.bigNum", "root.sg.d.bigNum"},
+          {"15", "15", "3147483648", "3147483648"},
+          {"INT32", "INT32", "INT64", "INT64"}
+        };
+    String sql = "select last bigNum,num from root.** order by value, timeseries desc";
+    testLastQueryOrderBy(sql, ans);
+  }
 
-//  protected static void sessionInsertData2() {
-//    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
-//      session.executeNonQueryStatement("USE \"db0\"");
-//
-//      List<IMeasurementSchema> schemaList = new ArrayList<>();
-//      schemaList.add(new MeasurementSchema("device", TSDataType.STRING));
-//      schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
-//      schemaList.add(new MeasurementSchema("num", TSDataType.INT32));
-//      schemaList.add(new MeasurementSchema("bigNum", TSDataType.INT64));
-//      schemaList.add(new MeasurementSchema("floatNum", TSDataType.DOUBLE));
-//      schemaList.add(new MeasurementSchema("str", TSDataType.TEXT));
-//      schemaList.add(new MeasurementSchema("bool", TSDataType.BOOLEAN));
-//      final List<Tablet.ColumnType> columnTypes =
-//          Arrays.asList(
-//              Tablet.ColumnType.ID,
-//              Tablet.ColumnType.ATTRIBUTE,
-//              Tablet.ColumnType.MEASUREMENT,
-//              Tablet.ColumnType.MEASUREMENT,
-//              Tablet.ColumnType.MEASUREMENT,
-//              Tablet.ColumnType.MEASUREMENT,
-//              Tablet.ColumnType.MEASUREMENT);
-//      List<String> measurementIds =
-//          schemaList.stream()
-//              .map(IMeasurementSchema::getMeasurementId)
-//              .collect(Collectors.toList());
-//      List<TSDataType> dataTypes =
-//          schemaList.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
-//      List<Object[]> values =
-//          Arrays.asList(
-//              new Object[] {"d2", "a2", 3, 2947483648L, 231.2121, "coconut", false},
-//              new Object[] {"d2", "a2", 2, 2147483648L, 434.12, "pineapple", true},
-//              new Object[] {"d2", "a2", 1, 2247483648L, 12.123, "apricot", true},
-//              new Object[] {"d2", "a2", 9, 2147483646L, 43.12, "apple", false},
-//              new Object[] {"d2", "a2", 8, 2147483964L, 4654.231, "papaya", true},
-//              new Object[] {"d2", "a2", 6, 2147483650L, 1231.21, "banana", true},
-//              new Object[] {"d2", "a2", 10, 3147483648L, 231.55, "pumelo", false},
-//              new Object[] {"d2", "a2", 4, 2147493648L, 213.1, "peach", false},
-//              new Object[] {"d2", "a2", 5, 2149783648L, 56.32, "orange", false},
-//              new Object[] {"d2", "a2", 7, 2147983648L, 213.112, "lemon", true},
-//              new Object[] {"d2", "a2", 11, 2147468648L, 54.121, "pitaya", false},
-//              new Object[] {"d2", "a2", 12, 2146483648L, 45.231, "strawberry", false},
-//              new Object[] {"d2", "a2", 14, 2907483648L, 231.34, "cherry", false},
-//              new Object[] {"d2", "a2", 13, 2107483648L, 54.12, "lychee", true},
-//              new Object[] {"d2", "a2", 15, 3147483648L, 235.213, "watermelon", true});
-//      for (int i = 0; i < TIMES.size(); i++) {
-//        session.insertRelationalRecord(
-//            "table0", TIMES.get(i), measurementIds, dataTypes, columnTypes, values.get(i));
-//      }
-//    } catch (Exception e) {
-//      e.printStackTrace();
-//    }
-//  }
+  @Ignore
+  @Test
+  public void lastQueryOrderBy5() {
+    String[][] ans =
+        new String[][] {
+          {"51536000000", "51536000000", "51536000000", "51536000000"},
+          {"root.sg.d2.num", "root.sg.d.num", "root.sg.d2.bigNum", "root.sg.d.bigNum"},
+          {"15", "15", "3147483648", "3147483648"},
+          {"INT32", "INT32", "INT64", "INT64"}
+        };
+    String sql = "select last bigNum,num from root.** order by datatype, timeseries desc";
+    testLastQueryOrderBy(sql, ans);
+  }
+
+  private static List<Long> TIMES =
+      Arrays.asList(
+          0L,
+          20L,
+          40L,
+          80L,
+          100L,
+          31536000000L,
+          31536000100L,
+          31536000500L,
+          31536001000L,
+          31536010000L,
+          31536100000L,
+          41536000000L,
+          41536000020L,
+          41536900000L,
+          51536000000L);
+
+  protected static void sessionInsertData1() {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("CREATE DATABASE \"db0\"");
+      session.executeNonQueryStatement("USE \"db0\"");
+
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("device", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("num", TSDataType.INT32));
+      schemaList.add(new MeasurementSchema("bigNum", TSDataType.INT64));
+      schemaList.add(new MeasurementSchema("floatNum", TSDataType.DOUBLE));
+      schemaList.add(new MeasurementSchema("str", TSDataType.TEXT));
+      schemaList.add(new MeasurementSchema("bool", TSDataType.BOOLEAN));
+      final List<Tablet.ColumnType> columnTypes =
+          Arrays.asList(
+              Tablet.ColumnType.ID,
+              Tablet.ColumnType.ATTRIBUTE,
+              Tablet.ColumnType.MEASUREMENT,
+              Tablet.ColumnType.MEASUREMENT,
+              Tablet.ColumnType.MEASUREMENT,
+              Tablet.ColumnType.MEASUREMENT,
+              Tablet.ColumnType.MEASUREMENT);
+
+      List<Object[]> values =
+          Arrays.asList(
+              new Object[] {"d1", "a1", 3, 2947483648L, 231.2121, "coconut", false},
+              new Object[] {"d1", "a1", 2, 2147483648L, 434.12, "pineapple", true},
+              new Object[] {"d1", "a1", 1, 2247483648L, 12.123, "apricot", true},
+              new Object[] {"d1", "a1", 9, 2147483646L, 43.12, "apple", false},
+              new Object[] {"d1", "a1", 8, 2147483964L, 4654.231, "papaya", true},
+              new Object[] {"d1", "a1", 6, 2147483650L, 1231.21, "banana", true},
+              new Object[] {"d1", "a1", 10, 3147483648L, 231.55, "pumelo", false},
+              new Object[] {"d1", "a1", 4, 2147493648L, 213.1, "peach", false},
+              new Object[] {"d1", "a1", 5, 2149783648L, 56.32, "orange", false},
+              new Object[] {"d1", "a1", 7, 2147983648L, 213.112, "lemon", true},
+              new Object[] {"d1", "a1", 11, 2147468648L, 54.121, "pitaya", false},
+              new Object[] {"d1", "a1", 12, 2146483648L, 45.231, "strawberry", false},
+              new Object[] {"d1", "a1", 14, 2907483648L, 231.34, "cherry", false},
+              new Object[] {"d1", "a1", 13, 2107483648L, 54.12, "lychee", true},
+              new Object[] {"d1", "a1", 15, 3147483648L, 235.213, "watermelon", true});
+      Tablet tablet = new Tablet("table0", schemaList, columnTypes, TIMES.size());
+      for (int i = 0; i < TIMES.size(); i++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, TIMES.get(i));
+        for (int j = 0; j < schemaList.size(); j++) {
+          tablet.addValue(schemaList.get(j).getMeasurementId(), rowIndex, values.get(i)[j]);
+        }
+      }
+      session.insert(tablet);
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  protected static void sessionInsertData2() {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db0\"");
+
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("device", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("num", TSDataType.INT32));
+      schemaList.add(new MeasurementSchema("bigNum", TSDataType.INT64));
+      schemaList.add(new MeasurementSchema("floatNum", TSDataType.DOUBLE));
+      schemaList.add(new MeasurementSchema("str", TSDataType.TEXT));
+      schemaList.add(new MeasurementSchema("bool", TSDataType.BOOLEAN));
+      final List<Tablet.ColumnType> columnTypes =
+          Arrays.asList(
+              Tablet.ColumnType.ID,
+              Tablet.ColumnType.ATTRIBUTE,
+              Tablet.ColumnType.MEASUREMENT,
+              Tablet.ColumnType.MEASUREMENT,
+              Tablet.ColumnType.MEASUREMENT,
+              Tablet.ColumnType.MEASUREMENT,
+              Tablet.ColumnType.MEASUREMENT);
+      List<Object[]> values =
+          Arrays.asList(
+              new Object[] {"d2", "a2", 3, 2947483648L, 231.2121, "coconut", false},
+              new Object[] {"d2", "a2", 2, 2147483648L, 434.12, "pineapple", true},
+              new Object[] {"d2", "a2", 1, 2247483648L, 12.123, "apricot", true},
+              new Object[] {"d2", "a2", 9, 2147483646L, 43.12, "apple", false},
+              new Object[] {"d2", "a2", 8, 2147483964L, 4654.231, "papaya", true},
+              new Object[] {"d2", "a2", 6, 2147483650L, 1231.21, "banana", true},
+              new Object[] {"d2", "a2", 10, 3147483648L, 231.55, "pumelo", false},
+              new Object[] {"d2", "a2", 4, 2147493648L, 213.1, "peach", false},
+              new Object[] {"d2", "a2", 5, 2149783648L, 56.32, "orange", false},
+              new Object[] {"d2", "a2", 7, 2147983648L, 213.112, "lemon", true},
+              new Object[] {"d2", "a2", 11, 2147468648L, 54.121, "pitaya", false},
+              new Object[] {"d2", "a2", 12, 2146483648L, 45.231, "strawberry", false},
+              new Object[] {"d2", "a2", 14, 2907483648L, 231.34, "cherry", false},
+              new Object[] {"d2", "a2", 13, 2107483648L, 54.12, "lychee", true},
+              new Object[] {"d2", "a2", 15, 3147483648L, 235.213, "watermelon", true});
+      Tablet tablet = new Tablet("table0", schemaList, columnTypes, TIMES.size());
+      for (int i = 0; i < TIMES.size(); i++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, TIMES.get(i));
+        for (int j = 0; j < schemaList.size(); j++) {
+          tablet.addValue(schemaList.get(j).getMeasurementId(), rowIndex, values.get(i)[j]);
+        }
+      }
+      session.insert(tablet);
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
 }

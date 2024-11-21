@@ -21,7 +21,6 @@ package org.apache.iotdb.pipe.it.tablemodel;
 
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ITableSession;
-import org.apache.iotdb.isession.pool.ISessionPool;
 import org.apache.iotdb.isession.pool.ITableSessionPool;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;

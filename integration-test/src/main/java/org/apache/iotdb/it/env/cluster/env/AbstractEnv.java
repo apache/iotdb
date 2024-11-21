@@ -58,8 +58,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.TableSessionBuilder;
 import org.apache.iotdb.session.pool.SessionPool;
-
 import org.apache.iotdb.session.pool.TableSessionPoolBuilder;
+
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
@@ -484,17 +484,13 @@ public abstract class AbstractEnv implements BaseEnv {
     final DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
     final Session session =
-        new Session.Builder()
-            .host(dataNode.getIp())
-            .port(dataNode.getPort())
-            .build();
+        new Session.Builder().host(dataNode.getIp()).port(dataNode.getPort()).build();
     session.open();
     return session;
   }
 
   @Override
-  public ISession getSessionConnection(
-      final String userName, final String password)
+  public ISession getSessionConnection(final String userName, final String password)
       throws IoTDBConnectionException {
     final DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
@@ -529,8 +525,7 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
-  public ITableSession getTableSessionConnection()
-      throws IoTDBConnectionException {
+  public ITableSession getTableSessionConnection() throws IoTDBConnectionException {
     final DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
     return new TableSessionBuilder()
@@ -549,7 +544,8 @@ public abstract class AbstractEnv implements BaseEnv {
         .build();
   }
 
-  public ITableSession getTableSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException {
+  public ITableSession getTableSessionConnection(List<String> nodeUrls)
+      throws IoTDBConnectionException {
     return new TableSessionBuilder()
         .nodeUrls(nodeUrls)
         .username(SessionConfig.DEFAULT_USER)
@@ -588,8 +584,7 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
-  public ITableSessionPool getTableSessionPool(
-      final int maxSize, final String database) {
+  public ITableSessionPool getTableSessionPool(final int maxSize, final String database) {
     DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
     return new TableSessionPoolBuilder()
