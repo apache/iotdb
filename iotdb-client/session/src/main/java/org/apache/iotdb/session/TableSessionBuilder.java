@@ -122,7 +122,7 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
   }
 
   public ITableSession build() throws IoTDBConnectionException {
-    if (nodeUrls != null) {
+    if (nodeUrls == null) {
       throw new IllegalArgumentException("You should specify nodeUrls");
     }
     this.sqlDialect = "table";
