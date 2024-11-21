@@ -85,12 +85,17 @@ public abstract class IntTVList extends TVList {
     int arrayIndex = rowCount / ARRAY_SIZE;
     int elementIndex = rowCount % ARRAY_SIZE;
     maxTime = Math.max(maxTime, timestamp);
+    minTime = Math.min(minTime, timestamp);
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
     values.get(arrayIndex)[elementIndex] = value;
     indices.get(arrayIndex)[elementIndex] = rowCount;
     rowCount++;
-    if (sorted && rowCount > 1 && timestamp < getTime(rowCount - 2)) {
-      sorted = false;
+    if (sorted) {
+      if (rowCount > 1 && timestamp < getTime(rowCount - 2)) {
+        sorted = false;
+      } else {
+        seqRowCount++;
+      }
     }
   }
 
@@ -167,10 +172,10 @@ public abstract class IntTVList extends TVList {
       timeIdxOffset = start;
       // drop null at the end of value array
       int nullCnt =
-          dropNullValThenUpdateMaxTimeAndSorted(time, value, bitMap, start, end, timeIdxOffset);
+          dropNullValThenUpdateMinMaxTimeAndSorted(time, value, bitMap, start, end, timeIdxOffset);
       end -= nullCnt;
     } else {
-      updateMaxTimeAndSorted(time, start, end);
+      updateMinMaxTimeAndSorted(time, start, end);
     }
 
     while (idx < end) {
@@ -203,12 +208,13 @@ public abstract class IntTVList extends TVList {
   }
 
   // move null values to the end of time array and value array, then return number of null values
-  int dropNullValThenUpdateMaxTimeAndSorted(
+  int dropNullValThenUpdateMinMaxTimeAndSorted(
       long[] time, int[] values, BitMap bitMap, int start, int end, int tIdxOffset) {
     long inPutMinTime = Long.MAX_VALUE;
     boolean inputSorted = true;
 
     int nullCnt = 0;
+    int inputSeqRowCount = 0;
     for (int vIdx = start; vIdx < end; vIdx++) {
       if (bitMap.isMarked(vIdx)) {
         nullCnt++;
@@ -224,6 +230,19 @@ public abstract class IntTVList extends TVList {
       tIdx = tIdx - nullCnt;
       inPutMinTime = Math.min(inPutMinTime, time[tIdx]);
       maxTime = Math.max(maxTime, time[tIdx]);
+      minTime = Math.min(minTime, time[tIdx]);
+      if (inputSorted) {
+        if (tIdx > 0 && time[tIdx - 1] > time[tIdx]) {
+          inputSorted = false;
+        } else {
+          inputSeqRowCount++;
+        }
+      }
+      if (sorted
+          && (rowCount == 0
+              || (end - start > nullCnt) && time[start - tIdxOffset] > getTime(rowCount - 1))) {
+        seqRowCount += inputSeqRowCount;
+      }
       if (inputSorted && tIdx > 0 && time[tIdx - 1] > time[tIdx]) {
         inputSorted = false;
       }

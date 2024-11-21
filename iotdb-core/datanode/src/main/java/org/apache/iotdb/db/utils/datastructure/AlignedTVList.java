@@ -231,8 +231,12 @@ public abstract class AlignedTVList extends TVList {
     }
     indices.get(arrayIndex)[elementIndex] = rowCount;
     rowCount++;
-    if (sorted && rowCount > 1 && timestamp < getTime(rowCount - 2)) {
-      sorted = false;
+    if (sorted) {
+      if (rowCount > 1 && timestamp < getTime(rowCount - 2)) {
+        sorted = false;
+      } else {
+        seqRowCount++;
+      }
     }
   }
 
@@ -740,7 +744,7 @@ public abstract class AlignedTVList extends TVList {
     checkExpansion();
     int idx = start;
 
-    updateMaxTimeAndSorted(time, start, end);
+    updateMinMaxTimeAndSorted(time, start, end);
 
     while (idx < end) {
       int inputRemaining = end - idx;
