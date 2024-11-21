@@ -56,6 +56,7 @@ import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
 public class Utils {
+
   private static final int TEMP_BUFFER_SIZE = 1024;
   private static final byte PADDING_MAGIC = 0x47;
   private static final String DATA_REGION_GROUP = "group-0001";
@@ -311,6 +312,9 @@ public class Utils {
     RaftServerConfigKeys.Log.setCorruptionPolicy(
         properties, RaftServerConfigKeys.Log.CorruptionPolicy.WARN_AND_RETURN);
 
+    RaftServerConfigKeys.Write.setByteLimit(
+        properties, config.getLeaderLogAppender().getBufferByteLimit());
+
     RaftServerConfigKeys.Log.Appender.setBufferByteLimit(
         properties, config.getLeaderLogAppender().getBufferByteLimit());
     RaftServerConfigKeys.Log.Appender.setSnapshotChunkSizeMax(
@@ -331,8 +335,12 @@ public class Utils {
     RaftServerConfigKeys.Read.setTimeout(properties, config.getRead().getReadTimeout());
 
     RaftServerConfigKeys.setSleepDeviationThreshold(
-        properties, config.getUtils().getSleepDeviationThresholdMs());
-    RaftServerConfigKeys.setCloseThreshold(properties, config.getUtils().getCloseThresholdMs());
+        properties,
+        TimeDuration.valueOf(
+            config.getUtils().getSleepDeviationThresholdMs(), TimeUnit.MILLISECONDS));
+    RaftServerConfigKeys.setCloseThreshold(
+        properties,
+        TimeDuration.valueOf(config.getUtils().getCloseThresholdMs(), TimeUnit.MILLISECONDS));
 
     final TimeDuration clientMaxRetryGap = getMaxRetrySleepTime(config.getClient());
     RaftServerConfigKeys.RetryCache.setExpiryTime(properties, clientMaxRetryGap);
