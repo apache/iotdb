@@ -1,6 +1,7 @@
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.table;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.PipeTsfileToTabletMetrics;
@@ -10,13 +11,15 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.read.query.executor.TableQueryExecutor;
 import org.apache.tsfile.write.record.Tablet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
 public class TabletInsertionEventIterable implements Iterable<TabletInsertionEvent> {
-
+  private static final Logger LOGGER = LoggerFactory.getLogger(TabletInsertionEventIterable.class);
   private final Iterator<Map.Entry<String, TableSchema>> filteredTableSchemaIterator;
   private final TableQueryExecutor tableQueryExecutor;
   private final long startTime;
@@ -81,8 +84,12 @@ public class TabletInsertionEventIterable implements Iterable<TabletInsertionEve
         final Tablet tablet = tabletIterator.next();
         count++;
         if (sourceEvent != null) {
+          LOGGER.info("innext");
           PipeTsfileToTabletMetrics.getInstance()
               .markTabletCount(sourceEvent.getPipeName() + '_' + sourceEvent.getCreationTime(), 1);
+        }
+        else{
+          LOGGER.info("sourceEvent not exists");
         }
         final TabletInsertionEvent next;
         if (!hasNext()) {

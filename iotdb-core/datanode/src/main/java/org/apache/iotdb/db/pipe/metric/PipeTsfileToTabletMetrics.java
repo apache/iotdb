@@ -145,6 +145,7 @@ public class PipeTsfileToTabletMetrics implements IMetricSet {
   }
 
   public void markTabletCount(final String pipeID, final long count) {
+    LOGGER.info("Marking Pipe({}) ", pipeID);
     if (Objects.isNull(metricService)) {
       return;
     }

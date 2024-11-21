@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
+
+import org.apache.iotdb.db.pipe.metric.PipeTsfileToTabletMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -50,6 +52,8 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -63,7 +67,8 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 
 public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
-
+  private static final Logger LOGGER =
+          LoggerFactory.getLogger(TsFileInsertionEventScanParser.class);
   private static final LocalDate EMPTY_DATE = LocalDate.of(1000, 1, 1);
 
   private final long startTime;
@@ -132,6 +137,14 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
             final Tablet tablet = getNextTablet();
             final boolean hasNext = hasNext();
+            if (sourceEvent != null) {
+              LOGGER.info("innext");
+              PipeTsfileToTabletMetrics.getInstance()
+                      .markTabletCount(sourceEvent.getPipeName() + '_' + sourceEvent.getCreationTime(), 1);
+            }
+            else{
+              LOGGER.info("sourceEvent not exists");
+            }
             try {
               return new PipeRawTabletInsertionEvent(
                   sourceEvent != null ? sourceEvent.isTableModelEvent() : null,
