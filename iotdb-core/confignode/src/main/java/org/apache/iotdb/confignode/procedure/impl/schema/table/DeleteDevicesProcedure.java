@@ -66,11 +66,12 @@ import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
+import static org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState.CHECK_TABLE_EXISTENCE;
 import static org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState.CLEAN_DATANODE_SCHEMA_CACHE;
 import static org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState.CONSTRUCT_BLACK_LIST;
 import static org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState.DELETE_DATA;
 import static org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState.DELETE_DEVICE_SCHEMA;
-import static org.apache.iotdb.rpc.TSStatusCode.TABLE_ALREADY_EXISTS;
+import static org.apache.iotdb.rpc.TSStatusCode.TABLE_NOT_EXISTS;
 
 public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<DeleteDevicesState> {
   private static final Logger LOGGER = LoggerFactory.getLogger(DeleteDevicesProcedure.class);
@@ -109,7 +110,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
     try {
       switch (state) {
         case CHECK_TABLE_EXISTENCE:
-          LOGGER.info("Check the existence of table {}.{}", database, table.getTableName());
+          LOGGER.info("Check the existence of table {}.{}", database, tableName);
           checkTableExistence(env);
           break;
         case CONSTRUCT_BLACK_LIST:
@@ -140,24 +141,23 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
       }
       return Flow.HAS_MORE_STATE;
     } finally {
-      LOGGER.info(
-          "DeleteTimeSeries-[{}] costs {}ms", state, (System.currentTimeMillis() - startTime));
+      LOGGER.info("DeleteDevices-[{}] costs {}ms", state, (System.currentTimeMillis() - startTime));
     }
   }
 
   private void checkTableExistence(final ConfigNodeProcedureEnv env) {
     try {
-      if (env.getConfigManager()
+      if (!env.getConfigManager()
           .getClusterSchemaManager()
-          .getTableIfExists(database, table.getTableName())
+          .getTableIfExists(database, tableName)
           .isPresent()) {
         setFailure(
             new ProcedureException(
                 new IoTDBException(
                     String.format(
-                        "Table '%s.%s' already exists.",
-                        database.substring(ROOT.length() + 1), table.getTableName()),
-                    TABLE_ALREADY_EXISTS.getStatusCode())));
+                        "Table '%s.%s' not exists.",
+                        database.substring(ROOT.length() + 1), tableName),
+                    TABLE_NOT_EXISTS.getStatusCode())));
       } else {
         setNextState(CONSTRUCT_BLACK_LIST);
       }
@@ -358,7 +358,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
 
   @Override
   protected DeleteDevicesState getInitialState() {
-    return CONSTRUCT_BLACK_LIST;
+    return CHECK_TABLE_EXISTENCE;
   }
 
   @Override

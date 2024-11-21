@@ -100,7 +100,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -1124,9 +1123,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                         final TTableInfo info =
                             new TTableInfo(
                                 pair.getLeft().getTableName(),
-                                pair.getLeft()
-                                    .getPropValue(TTL_PROPERTY.toLowerCase(Locale.ENGLISH))
-                                    .orElse(TTL_INFINITE));
+                                pair.getLeft().getPropValue(TTL_PROPERTY).orElse(TTL_INFINITE));
                         info.setState(pair.getRight().ordinal());
                         return info;
                       })
@@ -1139,9 +1136,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                       tsTable ->
                           new TTableInfo(
                               tsTable.getTableName(),
-                              tsTable
-                                  .getPropValue(TTL_PROPERTY.toLowerCase(Locale.ENGLISH))
-                                  .orElse(TTL_INFINITE)))
+                              tsTable.getPropValue(TTL_PROPERTY).orElse(TTL_INFINITE)))
                   .collect(Collectors.toList()));
     } catch (final MetadataException e) {
       return new ShowTableResp(
