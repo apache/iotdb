@@ -57,7 +57,11 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
 
   @Override
   public InsertTabletStatement constructStatement() {
-    new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
+    if (Objects.isNull(dataBaseName)) {
+      new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
+    } else {
+      new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
+    }
 
     try {
       if (isTabletEmpty(tablet)) {

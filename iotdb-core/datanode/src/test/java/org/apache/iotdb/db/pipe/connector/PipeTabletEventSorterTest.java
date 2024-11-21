@@ -242,7 +242,7 @@ public class PipeTabletEventSorterTest {
   }
 
   public void doTableModelTest(final boolean isDeduplicated, final boolean isUnSorted) {
-    Tablet tablet = generateTablet("test", 10, isDeduplicated, isUnSorted);
+    final Tablet tablet = generateTablet("test", 10, isDeduplicated, isUnSorted);
 
     List<Pair<IDeviceID, Integer>> list =
         new PipeTableModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
@@ -272,7 +272,7 @@ public class PipeTabletEventSorterTest {
       final int deviceIDNum,
       final boolean isDeduplicated,
       final boolean isUnSorted) {
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    final List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s0", TSDataType.STRING));
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.FLOAT));
@@ -294,7 +294,7 @@ public class PipeTabletEventSorterTest {
             Tablet.ColumnType.MEASUREMENT,
             Tablet.ColumnType.MEASUREMENT,
             Tablet.ColumnType.MEASUREMENT);
-    Tablet tablet = new Tablet(tableName, schemaList, columnTypes, deviceIDNum * 1000);
+    final Tablet tablet = new Tablet(tableName, schemaList, columnTypes, deviceIDNum * 1000);
     tablet.initBitMaps();
 
     // s2 float, s3 string, s4 timestamp, s5 int32, s6 double, s7 date, s8 text
@@ -334,7 +334,7 @@ public class PipeTabletEventSorterTest {
     return tablet;
   }
 
-  public static LocalDate getDate(int value) {
+  public LocalDate getDate(final int value) {
     Date date = new Date(value);
     SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
     try {
