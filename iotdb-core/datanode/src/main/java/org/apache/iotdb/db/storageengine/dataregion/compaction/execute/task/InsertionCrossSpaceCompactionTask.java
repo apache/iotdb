@@ -250,6 +250,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
     File targetTsFile = targetFileIdentifiers.get(0).getFileFromDataDirsIfAnyAdjuvantFileExists();
     if (targetTsFile != null) {
       targetFile = new TsFileResource(targetTsFile);
+      targetFile.deserialize();
     }
     return true;
   }
@@ -293,8 +294,8 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
         || !targetFile.tsFileExists()
         || !targetFile.resourceFileExists()
         || (unseqFileToInsert != null
-            && unseqFileToInsert.anyModFileExists()
-            && !targetFile.anyModFileExists())
+            && ((unseqFileToInsert.exclusiveModFileExists() && !targetFile.exclusiveModFileExists())
+                || (unseqFileToInsert.sharedModFileExists() && !targetFile.sharedModFileExists())))
         || failToPassValidation;
   }
 
