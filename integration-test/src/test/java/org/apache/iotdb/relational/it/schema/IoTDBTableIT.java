@@ -68,7 +68,7 @@ public class IoTDBTableIT {
         final Statement statement = connection.createStatement()) {
 
       statement.execute("create database test1");
-      statement.execute("create database test2");
+      statement.execute("create database test2 with (ttl=300)");
 
       // should specify database before create table
       try {
@@ -287,8 +287,11 @@ public class IoTDBTableIT {
 
       statement.execute("alter table if exists table3 add column speed DOUBLE MEASUREMENT");
 
-      tableNames = new String[] {"table2"};
-      ttls = new String[] {"6600000"};
+      // Test create table with only time column
+      statement.execute("create table table3()");
+
+      tableNames = new String[] {"table3", "table2"};
+      ttls = new String[] {"300", "6600000"};
 
       // show tables from current database
       try (final ResultSet resultSet = statement.executeQuery("SHOW tables")) {
@@ -307,8 +310,25 @@ public class IoTDBTableIT {
         assertEquals(tableNames.length, cnt);
       }
 
-      // Test create table with only time column
-      statement.execute("create table table3()");
+      statement.execute("alter table table3 set properties ttl=300");
+      statement.execute("alter table table3 set properties ttl=DEFAULT");
+
+      // The table3's ttl shall be also 300
+      try (final ResultSet resultSet = statement.executeQuery("SHOW tables")) {
+        int cnt = 0;
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(showTablesColumnHeaders.size(), metaData.getColumnCount());
+        for (int i = 0; i < showTablesColumnHeaders.size(); i++) {
+          assertEquals(
+              showTablesColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
+        }
+        while (resultSet.next()) {
+          assertEquals(tableNames[cnt], resultSet.getString(1));
+          assertEquals(ttls[cnt], resultSet.getString(2));
+          cnt++;
+        }
+        assertEquals(tableNames.length, cnt);
+      }
 
       // show tables from a non-exist database
       try {

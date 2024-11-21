@@ -1194,8 +1194,8 @@ public class PartitionManager {
    * @param regionId regionId
    * @return database name
    */
-  public String getRegionStorageGroup(TConsensusGroupId regionId) {
-    return partitionInfo.getRegionStorageGroup(regionId);
+  public String getRegionDatabase(TConsensusGroupId regionId) {
+    return partitionInfo.getRegionDatabase(regionId);
   }
 
   /**
