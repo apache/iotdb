@@ -127,6 +127,7 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
       timestamp += row * 2000;
     }
     session_src.insertTablet(tablet);
+    session_src.executeNonQueryStatement("flush");
   }
 
   private void run_single(SubscriptionPullConsumer consumer, int index)
