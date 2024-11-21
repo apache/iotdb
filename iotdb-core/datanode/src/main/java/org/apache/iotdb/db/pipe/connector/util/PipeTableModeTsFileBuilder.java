@@ -250,7 +250,7 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
    * A Map is used to record the maximum time each {@link IDeviceID} is written. {@link Pair}
    * records the Index+1 of the maximum timestamp of IDevice in each {@link Tablet}.
    *
-   * @return If true, the tablet overlaps with the previous tablet; if false, there is no time
+   * @return If false, the tablet overlaps with the previous tablet; if true, there is no time
    *     overlap.
    */
   private boolean hasNoTimestampOverlaps(
