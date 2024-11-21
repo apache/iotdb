@@ -48,6 +48,8 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
         return visitAlterDatabase((DatabaseSchemaPlan) plan, context);
       case DeleteDatabase:
         return visitDeleteDatabase((DeleteDatabasePlan) plan, context);
+      case DeleteDatabaseV2:
+        return visitDeleteDatabaseV2((DatabaseSchemaPlan) plan, context);
       case CreateSchemaTemplate:
         return visitCreateSchemaTemplate((CreateSchemaTemplatePlan) plan, context);
       case CommitSetSchemaTemplate:
@@ -122,6 +124,10 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
 
   public R visitDeleteDatabase(final DeleteDatabasePlan deleteDatabasePlan, final C context) {
     return visitPlan(deleteDatabasePlan, context);
+  }
+
+  public R visitDeleteDatabaseV2(final DatabaseSchemaPlan deleteDatabaseV2Plan, final C context) {
+    return visitPlan(deleteDatabaseV2Plan, context);
   }
 
   public R visitCreateSchemaTemplate(
