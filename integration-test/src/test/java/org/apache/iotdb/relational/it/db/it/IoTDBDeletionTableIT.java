@@ -570,7 +570,7 @@ public class IoTDBDeletionTableIT {
     cleanData(testNum);
   }
 
-  //  @Ignore
+  @Ignore
   @Test
   public void testDeletionWritePerformance() throws SQLException, IOException {
     int fileNumMax = 10000;

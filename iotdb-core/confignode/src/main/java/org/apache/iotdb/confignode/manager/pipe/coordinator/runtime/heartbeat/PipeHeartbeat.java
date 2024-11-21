@@ -42,7 +42,8 @@ public class PipeHeartbeat {
       /* @Nullable */ final List<Long> pipeRemainingEventCountListFromAgent,
       /* @Nullable */ final List<Double> pipeRemainingTimeListFromAgent) {
     for (int i = 0; i < pipeMetaByteBufferListFromAgent.size(); ++i) {
-      final PipeMeta pipeMeta = PipeMeta.deserialize(pipeMetaByteBufferListFromAgent.get(i));
+      final PipeMeta pipeMeta =
+          PipeMeta.deserialize4TaskAgent(pipeMetaByteBufferListFromAgent.get(i));
       pipeMetaMap.put(pipeMeta.getStaticMeta(), pipeMeta);
       isCompletedMap.put(
           pipeMeta.getStaticMeta(),

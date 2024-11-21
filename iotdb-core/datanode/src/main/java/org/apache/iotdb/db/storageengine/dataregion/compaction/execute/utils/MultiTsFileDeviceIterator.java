@@ -444,7 +444,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     IDeviceID device = currentDevice.getLeft();
     ModEntry ttlDeletion = null;
     if (tsFileResource.getStartTime(device) < timeLowerBoundForCurrentDevice) {
-      ttlDeletion = convertTtlToDeletion(device, timeLowerBoundForCurrentDevice);
+      ttlDeletion = CompactionUtils.convertTtlToDeletion(device, timeLowerBoundForCurrentDevice);
     }
 
     List<ModEntry> modifications =

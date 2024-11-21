@@ -195,7 +195,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     }
   }
 
-  @SuppressWarnings("unchecked")
   protected void prepare() throws IOException, DiskSpaceInsufficientException {
     calculateSourceFilesAndTargetFiles();
     CompactionUtils.prepareCompactionModFiles(

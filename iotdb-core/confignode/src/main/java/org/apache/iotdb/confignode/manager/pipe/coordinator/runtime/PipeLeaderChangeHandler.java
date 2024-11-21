@@ -83,7 +83,7 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
         .forEach(
             (regionGroupId, pair) -> {
               final String databaseName =
-                  configManager.getPartitionManager().getRegionStorageGroup(regionGroupId);
+                  configManager.getPartitionManager().getRegionDatabase(regionGroupId);
               // Pipe only collect user's data, filter metric database here.
               // DatabaseName may be null for config region group
               if (Objects.isNull(databaseName)

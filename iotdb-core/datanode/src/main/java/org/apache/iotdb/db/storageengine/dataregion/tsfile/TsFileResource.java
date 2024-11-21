@@ -249,8 +249,8 @@ public class TsFileResource implements PersistentResource {
     this.tierLevel = originTsFileResource.tierLevel;
   }
 
-  public synchronized void serialize() throws IOException {
-    FileOutputStream fileOutputStream = new FileOutputStream(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
+  public synchronized void serialize(String targetFilePath) throws IOException {
+    FileOutputStream fileOutputStream = new FileOutputStream(targetFilePath + TEMP_SUFFIX);
     BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream);
     try {
       serializeTo(outputStream);
@@ -259,10 +259,14 @@ public class TsFileResource implements PersistentResource {
       fileOutputStream.getFD().sync();
       outputStream.close();
     }
-    File src = fsFactory.getFile(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
-    File dest = fsFactory.getFile(file + RESOURCE_SUFFIX);
+    File src = fsFactory.getFile(targetFilePath + TEMP_SUFFIX);
+    File dest = fsFactory.getFile(targetFilePath);
     fsFactory.deleteIfExists(dest);
     fsFactory.moveFile(src, dest);
+  }
+
+  public synchronized void serialize() throws IOException {
+    serialize(file + RESOURCE_SUFFIX);
   }
 
   private void serializeTo(BufferedOutputStream outputStream) throws IOException {
@@ -422,6 +426,9 @@ public class TsFileResource implements PersistentResource {
     setSharedModFile(modFile, serializeNow, -1);
   }
 
+  /**
+   * @param modFileOffset when < 0, will use the length of the mod file.
+   */
   public void setSharedModFile(ModificationFile modFile, boolean serializeNow, long modFileOffset)
       throws IOException {
     if (modFile == null) {
@@ -537,10 +544,8 @@ public class TsFileResource implements PersistentResource {
   }
 
   public void removeCompactionModFile() throws IOException {
-    if (compactionModFileExists()) {
-      if (!useSharedModFile) {
-        getCompactionModFile().remove();
-      }
+    if (compactionModFileExists() && !useSharedModFile) {
+      getCompactionModFile().remove();
     }
     compactionModFile = null;
   }

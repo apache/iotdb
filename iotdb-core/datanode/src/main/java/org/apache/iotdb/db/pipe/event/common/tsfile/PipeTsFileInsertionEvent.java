@@ -147,7 +147,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     this.isWithExclusiveMod = isWithMod && resource.exclusiveModFileExists();
     this.exclusiveModFile =
         this.isWithExclusiveMod ? resource.getExclusiveModFile().getFile() : null;
-    // TODO: process the shared mod file
     this.isWithSharedMod = isWithMod && resource.sharedModFileExists();
     if (isWithSharedMod) {
       this.sharedModFile = resource.getSharedModFile().getFile();

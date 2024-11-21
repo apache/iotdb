@@ -129,7 +129,7 @@ public class TsFileOverlapValidationAndRepairTool {
     moveFile(
         new File(tsfile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
         new File(targetFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
-    if (resource.anyModFileExists()) {
+    if (resource.exclusiveModFileExists()) {
       moveFile(
           ModificationFile.getExclusiveMods(tsfile), ModificationFile.getExclusiveMods(targetFile));
     }
