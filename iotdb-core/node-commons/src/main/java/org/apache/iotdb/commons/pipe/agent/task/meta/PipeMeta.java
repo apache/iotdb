@@ -94,7 +94,7 @@ public class PipeMeta {
     return new PipeMeta(staticMeta, runtimeMeta);
   }
 
-  public PipeMeta deepCopy() throws IOException {
+  public PipeMeta deepCopy4TaskAgent() throws IOException {
     return PipeMeta.deserialize4TaskAgent(serialize());
   }
 

@@ -592,7 +592,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     acquireWriteLock();
     try {
       final long startTime = System.currentTimeMillis();
-      final PipeMeta originalPipeMeta = pipeMeta.deepCopy();
+      final PipeMeta originalPipeMeta = pipeMeta.deepCopy4TaskAgent();
       handleDropPipe(pipeMeta.getStaticMeta().getPipeName());
       handleSinglePipeMetaChanges(originalPipeMeta);
       LOGGER.warn(
