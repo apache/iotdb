@@ -12,7 +12,7 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class SubcolumnRLETest {
+public class SubcolumnSPRINTZTest {
     /**
      * 位宽
      * 
@@ -89,7 +89,7 @@ public class SubcolumnRLETest {
     }
 
     /**
-     * 位打包，将 values 数组中的值，按 bitWidth 位宽，写入 byte array 的 startBitPosition 比特位置
+     * 将 values 数组中的值，按 bitWidth 位宽，写入 byte array 的 startBitPosition 比特位置
      * 
      * @param values
      * @param array
@@ -231,143 +231,58 @@ public class SubcolumnRLETest {
 
     }
 
+    public static int zigzag(int num) {
+        if (num < 0)
+            return ((-num) << 1) - 1;
+        else
+            return num << 1;
+    }
+
+    public static int deZigzag(int num) {
+        if (num % 2 == 0)
+            return num >> 1;
+        else
+            return -((num + 1) >> 1);
+    }
+
     public static int[] getAbsDeltaTsBlock(
             int[] ts_block,
             int i,
             int block_size,
             int remaining,
-            int[] min_delta,
-            ArrayList<Integer> repeat_count) {
-        int[] ts_block_delta = new int[remaining];
+            int[] min_delta) {
+        int[] ts_block_delta = new int[remaining - 1];
 
+        int base = i * block_size + 1;
+        int end = i * block_size + remaining;
+        min_delta[0] = ts_block[base - 1];
         int value_delta_min = Integer.MAX_VALUE;
         int value_delta_max = Integer.MIN_VALUE;
-        int base = i * block_size;
-        int end = i * block_size + remaining;
         for (int j = base; j < end; j++) {
-
-            int integer = ts_block[j];
-            if (integer < value_delta_min)
-                value_delta_min = integer;
-            if (integer > value_delta_max) {
-                value_delta_max = integer;
+            int epsilon_v = ts_block[j] - ts_block[j - 1];
+            epsilon_v = zigzag(epsilon_v);
+            if (epsilon_v < value_delta_min) {
+                value_delta_min = epsilon_v;
             }
-        }
-        int pre_delta = ts_block[i * block_size] - value_delta_min;
-        int pre_count = 1;
-
-        min_delta[0] = (value_delta_min);
-        int repeat_i = 0;
-        int ts_block_delta_i = 0;
-        for (int j = base + 1; j < end; j++) {
-            int delta = ts_block[j] - value_delta_min;
-            if (delta == pre_delta) {
-                pre_count++;
-            } else {
-                if (pre_count > 7) {
-                    repeat_count.add(repeat_i);
-                    repeat_count.add(pre_count);
-                    ts_block_delta[ts_block_delta_i] = pre_delta;
-                    ts_block_delta_i++;
-                } else {
-                    for (int k = 0; k < pre_count; k++) {
-                        ts_block_delta[ts_block_delta_i] = pre_delta;
-                        ts_block_delta_i++;
-                    }
-                }
-                pre_count = 1;
-                repeat_i = j - i * block_size;
+            if (epsilon_v > value_delta_max) {
+                value_delta_max = epsilon_v;
             }
-            pre_delta = delta;
+            ts_block_delta[j - base] = epsilon_v;
 
         }
-        for (int j = 0; j < pre_count; j++) {
-            ts_block_delta[ts_block_delta_i] = pre_delta;
-            ts_block_delta_i++;
+        for (int j = 0; j < remaining - 1; j++) {
+            ts_block_delta[j] = ts_block_delta[j] - value_delta_min;
+
         }
-        min_delta[1] = (ts_block_delta_i);
+        min_delta[1] = (value_delta_min);
         min_delta[2] = (value_delta_max - value_delta_min);
-        int[] new_ts_block_delta = new int[ts_block_delta_i];
-        System.arraycopy(ts_block_delta, 0, new_ts_block_delta, 0, ts_block_delta_i);
 
-        return new_ts_block_delta;
-    }
-
-    public static int BOSEncoder(int[] data, int block_size, byte[] encoded_result) {
-        int data_length = data.length;
-        int startBitPosition = 0;
-
-        writeBits(encoded_result, startBitPosition, 32, data_length);
-        startBitPosition += 32;
-
-        // System.out.println("data_length: " + data_length);
-
-        writeBits(encoded_result, startBitPosition, 32, block_size);
-        startBitPosition += 32;
-
-        // System.out.println("block_size: " + block_size);
-
-        int num_blocks = data_length / block_size;
-
-        // System.out.println("num_blocks: " + num_blocks);
-
-        for (int i = 0; i < num_blocks; i++) {
-            startBitPosition = BOSBlockEncoder(data, i, block_size, block_size, startBitPosition, encoded_result);
-        }
-
-        int remainder = data_length % block_size;
-
-        if (remainder <= 3) {
-            for (int i = 0; i < remainder; i++) {
-                writeBits(encoded_result, startBitPosition, 32, data[num_blocks * block_size + i]);
-                startBitPosition += 32;
-            }
-        } else {
-            startBitPosition = BOSBlockEncoder(data, num_blocks, block_size, remainder, startBitPosition,
-                    encoded_result);
-        }
-
-        return startBitPosition;
-    }
-
-    public static int[] BOSDecoder(byte[] encoded_result) {
-        int startBitPosition = 0;
-
-        int data_length = readBits(encoded_result, startBitPosition, 32, 0);
-        startBitPosition += 32;
-
-        // System.out.println("data_length: " + data_length);
-
-        int block_size = readBits(encoded_result, startBitPosition, 32, 0);
-        startBitPosition += 32;
-
-        // System.out.println("block_size: " + block_size);
-
-        int num_blocks = data_length / block_size;
-
-        int[] data = new int[data_length];
-
-        for (int i = 0; i < num_blocks; i++) {
-            startBitPosition = BOSBlockDecoder(encoded_result, i, block_size, block_size, startBitPosition, data);
-        }
-
-        int remainder = data_length % block_size;
-
-        if (remainder <= 3) {
-            for (int i = 0; i < remainder; i++) {
-                data[num_blocks * block_size + i] = readBits(encoded_result, startBitPosition, 32, 0);
-                startBitPosition += 32;
-            }
-        } else {
-            startBitPosition = BOSBlockDecoder(encoded_result, num_blocks, block_size, remainder,
-                    startBitPosition, data);
-        }
-
-        return data;
+        return ts_block_delta;
     }
 
     /**
      * 将序列 list 进行 subcolumn 编码，结果写入 encoded_result 的 startBitPosition 比特位置
+     * 
      * @param list
      * @param startBitPosition
      * @param encoded_result
@@ -502,58 +417,9 @@ public class SubcolumnRLETest {
 
     }
 
-    public static int BOSBlockEncoder(int[] data, int block_index, int block_size, int remainder,
-            int startBitPosition, byte[] encoded_result) {
-        int[] min_delta = new int[3];
-
-        ArrayList<Integer> repeat_count = new ArrayList<>();
-        int[] data_delta = getAbsDeltaTsBlock(data, block_index, block_size, remainder, min_delta, repeat_count);
-
-        // int[] data_delta = getAbsDeltaTsBlock(data, block_index, block_size, remainder, min_delta);
-
-        System.out.println("data_delta_length: " + data_delta.length);
-
-        for (int i = 0; i < data_delta.length; i++) {
-        System.out.print(data_delta[i] + " ");
-        }
-        System.out.println();
-
-        System.out.println("repeat_count_length: " + repeat_count.size());
-
-        for (int i = 0; i < repeat_count.size(); i++) {
-            System.out.print(repeat_count.get(i) + " ");
-        }
-        System.out.println();
-
-        writeBits(encoded_result, startBitPosition, 32, min_delta[0]);
-        startBitPosition += 32;
-
-        // System.out.println("min_delta[0]: " + min_delta[0]);
-
-        writeBits(encoded_result, startBitPosition, 32, min_delta[1]);
-        startBitPosition += 32;
-
-        // System.out.println("min_delta[1]: " + min_delta[1]);
-
-        // int m = bitWidth(min_delta[2]);
-
-        startBitPosition = SubcolumnEncoder(data_delta, startBitPosition, encoded_result);
-
-        int[] repeat_count_arr = new int[repeat_count.size()];
-        for (int i = 0; i < repeat_count.size(); i++) {
-            repeat_count_arr[i] = repeat_count.get(i);
-        }
-
-        writeBits(encoded_result, startBitPosition, 32, repeat_count_arr.length);
-        startBitPosition += 32;
-
-        startBitPosition = SubcolumnEncoder(repeat_count_arr, startBitPosition, encoded_result);
-
-        return startBitPosition;
-    }
-
     /**
      * 将 encoded_result 的 startBitPosition 比特位置开始的数据，用 subcolumn 解码为序列 list
+     * 
      * @param encoded_result
      * @param startBitPosition
      * @param list
@@ -588,7 +454,7 @@ public class SubcolumnRLETest {
 
             System.arraycopy(new_list, 0, list, 0, list_length);
             // for (int i = 0; i < list_length; i++) {
-            //     list[i] = new_list[i];
+            // list[i] = new_list[i];
             // }
 
             return startBitPosition;
@@ -644,6 +510,36 @@ public class SubcolumnRLETest {
         return startBitPosition;
     }
 
+    public static int BOSBlockEncoder(int[] data, int block_index, int block_size, int remainder,
+            int startBitPosition, byte[] encoded_result) {
+        int[] min_delta = new int[3];
+
+        int[] data_delta = getAbsDeltaTsBlock(data, block_index, block_size, remainder, min_delta);
+
+        // System.out.println("data_delta_length: " + data_delta.length);
+
+        // for (int i = 0; i < data_delta.length; i++) {
+        // System.out.print(data_delta[i] + " ");
+        // }
+        // System.out.println();
+
+        writeBits(encoded_result, startBitPosition, 32, min_delta[0]);
+        startBitPosition += 32;
+
+        // System.out.println("min_delta[0]: " + min_delta[0]);
+
+        writeBits(encoded_result, startBitPosition, 32, min_delta[1]);
+        startBitPosition += 32;
+
+        // System.out.println("min_delta[1]: " + min_delta[1]);
+
+        // int m = bitWidth(min_delta[2]);
+
+        startBitPosition = SubcolumnEncoder(data_delta, startBitPosition, encoded_result);
+
+        return startBitPosition;
+    }
+
     public static int BOSBlockDecoder(byte[] encoded_result, int block_index, int block_size, int remainder,
             int startBitPosition, int[] data) {
         int[] min_delta = new int[3];
@@ -669,14 +565,94 @@ public class SubcolumnRLETest {
         // }
         // System.out.println();
 
-        int repeat_count_length = readBits(encoded_result, startBitPosition, 32, 0);
-        startBitPosition += 32;
+        for (int i = 0; i < remainder - 1; i++) {
+            data_delta[i] = data_delta[i] + min_delta[1];
+        }
 
-        int[] repeat_count = new int[repeat_count_length];
+        for (int i = 0; i < remainder - 1; i++) {
+            data_delta[i] = deZigzag(data_delta[i]);
+        }
 
-        startBitPosition = SubcolumnDecoder(encoded_result, startBitPosition, repeat_count);
+        data[block_index * block_size] = min_delta[0];
+
+        for (int i = 0; i < remainder - 1; i++) {
+            data[block_index * block_size + i + 1] = data[block_index * block_size + i] + data_delta[i];
+        }
 
         return startBitPosition;
+    }
+
+    public static int BOSEncoder(int[] data, int block_size, byte[] encoded_result) {
+        int data_length = data.length;
+        int startBitPosition = 0;
+
+        writeBits(encoded_result, startBitPosition, 32, data_length);
+        startBitPosition += 32;
+
+        // System.out.println("data_length: " + data_length);
+
+        writeBits(encoded_result, startBitPosition, 32, block_size);
+        startBitPosition += 32;
+
+        // System.out.println("block_size: " + block_size);
+
+        int num_blocks = data_length / block_size;
+
+        // System.out.println("num_blocks: " + num_blocks);
+
+        for (int i = 0; i < num_blocks; i++) {
+            startBitPosition = BOSBlockEncoder(data, i, block_size, block_size, startBitPosition, encoded_result);
+        }
+
+        int remainder = data_length % block_size;
+
+        if (remainder <= 3) {
+            for (int i = 0; i < remainder; i++) {
+                writeBits(encoded_result, startBitPosition, 32, data[num_blocks * block_size + i]);
+                startBitPosition += 32;
+            }
+        } else {
+            startBitPosition = BOSBlockEncoder(data, num_blocks, block_size, remainder, startBitPosition,
+                    encoded_result);
+        }
+
+        return startBitPosition;
+    }
+
+    public static int[] BOSDecoder(byte[] encoded_result) {
+        int startBitPosition = 0;
+
+        int data_length = readBits(encoded_result, startBitPosition, 32, 0);
+        startBitPosition += 32;
+
+        // System.out.println("data_length: " + data_length);
+
+        int block_size = readBits(encoded_result, startBitPosition, 32, 0);
+        startBitPosition += 32;
+
+        // System.out.println("block_size: " + block_size);
+
+        int num_blocks = data_length / block_size;
+
+        int[] data = new int[data_length];
+
+        for (int i = 0; i < num_blocks; i++) {
+            startBitPosition = BOSBlockDecoder(encoded_result, i, block_size, block_size, startBitPosition, data);
+        }
+
+        int remainder = data_length % block_size;
+
+        if (remainder <= 3) {
+            for (int i = 0; i < remainder; i++) {
+                data[num_blocks * block_size + i] = readBits(encoded_result, startBitPosition, 32, 0);
+                startBitPosition += 32;
+            }
+        } else {
+            startBitPosition = BOSBlockDecoder(encoded_result, num_blocks, block_size, remainder,
+                    startBitPosition, data);
+        }
+
+        return data;
     }
 
     @Test
@@ -787,8 +763,8 @@ public class SubcolumnRLETest {
     @Test
     public void BOSTest() throws IOException {
         // String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/"; // your data path
-        // String parent_dir = "/Users/allen/Documents/github/xjz17/subcolumn/elf_resources/";
-        String parent_dir = "/Users/allen/Documents/compress-subcolumn/";
+        String parent_dir = "/Users/allen/Documents/github/xjz17/subcolumn/elf_resources/";
+        // String parent_dir = "/Users/allen/Documents/compress-subcolumn/";
         // String parent_dir =
         // "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
         String output_parent_dir = "/Users/allen/Documents/compress-subcolumn";
@@ -797,7 +773,8 @@ public class SubcolumnRLETest {
         // String input_parent_dir = parent_dir +
         // "elf/src/test/resources/ElfData_Short";
         // String input_parent_dir = parent_dir + "ElfData_Short/";
-        String input_parent_dir = parent_dir + "testdata/";
+        String input_parent_dir = parent_dir + "dataset/";
+        // String input_parent_dir = parent_dir + "testdata/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
         ArrayList<String> dataset_name = new ArrayList<>();
@@ -818,7 +795,7 @@ public class SubcolumnRLETest {
         dataset_block_size.add(1024);
         // output_path_list.add(output_parent_dir + "/compress_ratio.csv"); // 0
         // output_path_list.add(output_parent_dir + "/subcolumn.csv"); // 0
-        output_path_list.add(output_parent_dir + "/subcolumn_rle.csv"); // 0
+        output_path_list.add(output_parent_dir + "/subcolumn_sprintz.csv"); // 0
         // output_path_list.add(output_parent_dir + "/test0.csv"); // 0
         // for (String value : dataset_name) {
         // input_path_list.add(input_parent_dir + value);
@@ -852,7 +829,7 @@ public class SubcolumnRLETest {
 
         int repeatTime2 = 100;
         // TODO 真正计算时，记得注释掉将下面的内容
-        repeatTime2 = 1;
+        // repeatTime2 = 1;
 
         // for (int file_i = 1; file_i < 2; file_i++) {
 
@@ -952,16 +929,19 @@ public class SubcolumnRLETest {
 
                     for (int i = 0; i < data2_arr_decoded.length; i++) {
                         // System.out.print(data2_arr_decoded[i] + " ");
-                        // assert data2_arr[i] == data2_arr_decoded[i] || data2_arr[i] + Integer.MAX_VALUE + 1 == data2_arr_decoded[i];
+                        assert ((data2_arr[i] == data2_arr_decoded[i])
+                                || (data2_arr[i] + Integer.MAX_VALUE + 1 == data2_arr_decoded[i]));
                         // assert data2_arr[i] == data2_arr_decoded[i];
                         // if (data2_arr_decoded[i] != data2_arr[i]) {
-                        if (!(data2_arr[i] == data2_arr_decoded[i] || data2_arr[i] + Integer.MAX_VALUE + 1 == data2_arr_decoded[i])) {
-                            System.out.println("Error");
-                            System.out.println(i);
-                            System.out.println(data2_arr_decoded[i]);
-                            System.out.println(data2_arr[i]);
-                            break;
-                        }
+                        // if (!(data2_arr_decoded[i] == data2_arr[i]
+                        //         || data2_arr_decoded[i] == data2_arr[i] + Integer.MAX_VALUE + 1)) {
+                        // System.out.println("Error");
+                        // System.out.println("repeat: " + repeat);
+                        // System.out.println(i);
+                        // System.out.println(data2_arr_decoded[i]);
+                        // System.out.println(data2_arr[i]);
+                        // break;
+                        // }
                     }
                     // System.out.println();
 
@@ -975,7 +955,7 @@ public class SubcolumnRLETest {
 
                 String[] record = {
                         datasetName,
-                        "RLE+Subcolumn",
+                        "SPRINTZ+Subcolumn",
                         String.valueOf(encodeTime),
                         String.valueOf(decodeTime),
                         // String.valueOf(div),
