@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordinator;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.confignode.manager.pipe.extractor.ConfigRegionListeningFilter;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
@@ -175,7 +175,8 @@ public class PipeTableResp implements DataSet {
               staticMeta.getProcessorParameters().toString(),
               staticMeta.getConnectorParameters().toString(),
               exceptionMessageBuilder.toString());
-      final PipeTemporaryMeta temporaryMeta = pipeMeta.getTemporaryMeta();
+      final PipeTemporaryMetaInCoordinator temporaryMeta =
+          (PipeTemporaryMetaInCoordinator) pipeMeta.getTemporaryMeta();
       final boolean canCalculateOnLocal = canCalculateOnLocal(pipeMeta);
 
       showPipeInfo.setRemainingEventCount(

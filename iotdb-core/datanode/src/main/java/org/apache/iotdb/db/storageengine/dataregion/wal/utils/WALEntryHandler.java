@@ -58,7 +58,7 @@ public class WALEntryHandler {
   private volatile boolean isHardlink = false;
   private final AtomicReference<File> hardlinkFile = new AtomicReference<>();
 
-  public WALEntryHandler(WALEntryValue value) {
+  public WALEntryHandler(final WALEntryValue value) {
     this.value = value;
   }
 
@@ -105,7 +105,7 @@ public class WALEntryHandler {
    */
   public InsertNode getInsertNode() throws WALPipeException {
     // return local cache
-    WALEntryValue res = value;
+    final WALEntryValue res = value;
     if (res != null) {
       if (res instanceof InsertNode) {
         return (InsertNode) res;
@@ -120,7 +120,7 @@ public class WALEntryHandler {
         synchronized (this) {
           this.wait();
         }
-      } catch (InterruptedException e) {
+      } catch (final InterruptedException e) {
         logger.warn("Interrupted when waiting for result.", e);
         Thread.currentThread().interrupt();
       }
@@ -179,7 +179,7 @@ public class WALEntryHandler {
     }
   }
 
-  public void setWalNode(WALNode walNode, long memTableId) {
+  public void setWalNode(final WALNode walNode, final long memTableId) {
     this.walNode = walNode;
     this.memTableId = memTableId;
     walEntryPosition.setWalNode(walNode, memTableId);
@@ -189,7 +189,7 @@ public class WALEntryHandler {
     return memTableId;
   }
 
-  public void setEntryPosition(long walFileVersionId, long position) {
+  public void setEntryPosition(final long walFileVersionId, final long position) {
     this.walEntryPosition.setEntryPosition(walFileVersionId, position, value);
     this.value = null;
     synchronized (this) {
@@ -205,7 +205,7 @@ public class WALEntryHandler {
     return walEntryPosition.getSize();
   }
 
-  public void setSize(int size) {
+  public void setSize(final int size) {
     this.walEntryPosition.setSize(size);
   }
 
