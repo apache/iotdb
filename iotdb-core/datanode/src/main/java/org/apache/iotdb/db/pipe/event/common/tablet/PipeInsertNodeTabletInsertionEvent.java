@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -33,11 +34,14 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryPosition;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
@@ -48,14 +52,22 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
-    implements TabletInsertionEvent {
+    implements TabletInsertionEvent, Accountable {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeInsertNodeTabletInsertionEvent.class);
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(PipeInsertNodeTabletInsertionEvent.class)
+          + RamUsageEstimator.shallowSizeOfInstance(WALEntryHandler.class)
+          + RamUsageEstimator.shallowSizeOfInstance(WALEntryPosition.class)
+          + RamUsageEstimator.shallowSizeOfInstance(AtomicInteger.class)
+          + RamUsageEstimator.shallowSizeOfInstance(AtomicBoolean.class);
 
   private final WALEntryHandler walEntryHandler;
   private final boolean isAligned;
@@ -137,12 +149,13 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       if (Objects.nonNull(pipeName)) {
         PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
             .increaseTabletEventCount(pipeName, creationTime);
+        PipeDataNodeAgent.task().addFloatingMemoryUsageInByte(pipeName, ramBytesUsed());
       }
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
           String.format(
-              "Increase reference count for memtable %d error. Holder Message: %s",
+              "Increase reference count for memTable %d error. Holder Message: %s",
               walEntryHandler.getMemTableId(), holderMessage),
           e);
       return false;
@@ -168,6 +181,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       return false;
     } finally {
       if (Objects.nonNull(pipeName)) {
+        PipeDataNodeAgent.task().decreaseFloatingMemoryUsageInByte(pipeName, ramBytesUsed());
         PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
             .decreaseTabletEventCount(pipeName, creationTime);
       }
@@ -412,5 +426,17 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
             walEntryHandler, progressIndex, isAligned, isGeneratedByPipe)
         + " - "
         + super.coreReportMessage();
+  }
+
+  // Notes:
+  // 1. We only consider insertion event's memory for degrade and restart, because degrade/restart
+  // may not be of use for releasing other events' memory.
+  // 2. We do not consider eventParsers because they may not exist and if it is invoked, the event
+  // will soon be released.
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + (Objects.nonNull(devicePath) ? PartialPath.estimateSize(devicePath) : 0)
+        + (Objects.nonNull(progressIndex) ? progressIndex.ramBytesUsed() : 0);
   }
 }
