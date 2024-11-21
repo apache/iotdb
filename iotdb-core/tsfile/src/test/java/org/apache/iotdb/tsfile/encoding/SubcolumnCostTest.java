@@ -177,7 +177,7 @@ public class SubcolumnCostTest {
             // }
             // System.out.println();
 
-            for (int beta = 1; beta <= 4; beta++) {
+            for (int beta = 4; beta >= 1; beta--) {
                 // System.out.println("beta: " + beta);
 
                 int lowCost = 0;
@@ -270,10 +270,16 @@ public class SubcolumnCostTest {
         writeBits(encoded_result, startBitPosition, 32, data_length);
         startBitPosition += 32;
 
+        // System.out.println("data_length: " + data_length);
+
         writeBits(encoded_result, startBitPosition, 32, block_size);
         startBitPosition += 32;
 
+        // System.out.println("block_size: " + block_size);
+
         int num_blocks = data_length / block_size;
+
+        // System.out.println("num_blocks: " + num_blocks);
 
         for (int i = 0; i < num_blocks; i++) {
             startBitPosition = SubcolumnBlockEncoder(data, i, block_size, block_size, startBitPosition, encoded_result);
@@ -347,6 +353,11 @@ public class SubcolumnCostTest {
         int l = subcolumn_result[1];
         int beta = subcolumn_result[2];
         int cMin = subcolumn_result[3];
+
+        // TODO 测试，下面的要注释
+        // int m = bitWidth(data_delta[2]);
+        // int l = m - 1;
+        // int beta = 4;
 
         // System.out.println("m: " + m);
         // System.out.println("l: " + l);
@@ -440,6 +451,8 @@ public class SubcolumnCostTest {
 
         writeBits(encoded_result, startBitPosition, 16, index);
         startBitPosition += 16;
+        // writeBits(encoded_result, startBitPosition, 6, index);
+        // startBitPosition += 6;
 
         // System.out.println("index: " + index);
 
@@ -526,6 +539,8 @@ public class SubcolumnCostTest {
 
         int index = readBits(encoded_result, startBitPosition, 16, 0);
         startBitPosition += 16;
+        // int index = readBits(encoded_result, startBitPosition, 6, 0);
+        // startBitPosition += 6;
 
         // System.out.println("index: " + index);
 
@@ -702,7 +717,7 @@ public class SubcolumnCostTest {
         // String parent_dir = "/Users/allen/Documents/compress-subcolumn/";
         // String parent_dir =
         // "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
-        // String output_parent_dir = parent_dir + "subcolumn/compression_ratio";
+        // String output_parent_dir = parent_dir;
         String output_parent_dir = "/Users/allen/Documents/compress-subcolumn";
         // String input_parent_dir = parent_dir +
         // "elf/src/test/resources/ElfData_Short";
@@ -727,7 +742,8 @@ public class SubcolumnCostTest {
         input_path_list.add(input_parent_dir);
         dataset_block_size.add(1024);
         // output_path_list.add(output_parent_dir + "/compress_ratio.csv"); // 0
-        output_path_list.add(output_parent_dir + "/test0.csv"); // 0
+        // output_path_list.add(output_parent_dir + "/subcolumn.csv"); // 0
+        output_path_list.add(output_parent_dir + "/subcolumn.csv"); // 0
         // for (String value : dataset_name) {
         // input_path_list.add(input_parent_dir + value);
         // dataset_block_size.add(1024);
