@@ -25,7 +25,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.DiskAlignedChunkLoader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.DiskChunkLoader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata.DiskAlignedChunkMetadataLoader;
@@ -106,7 +106,7 @@ public class FileLoaderUtils {
                     context);
         if (timeSeriesMetadata != null) {
           long t2 = System.nanoTime();
-          List<Modification> pathModifications =
+          List<ModEntry> pathModifications =
               context.getPathModifications(
                   resource, seriesPath.getDeviceId(), seriesPath.getMeasurement());
           timeSeriesMetadata.setModified(!pathModifications.isEmpty());
@@ -338,7 +338,7 @@ public class FileLoaderUtils {
     long startTime = System.nanoTime();
 
     // deal with time column
-    List<Modification> timeModifications =
+    List<ModEntry> timeModifications =
         context.getPathModifications(
             resource, alignedPath.getDeviceId(), timeColumnMetadata.getMeasurementId());
     // all rows are deleted, just return null to skip device data in this file
@@ -357,11 +357,11 @@ public class FileLoaderUtils {
 
     // deal with value columns
     boolean hasNonNullValueColumns = false;
-    List<List<Modification>> valueColumnsModifications = new ArrayList<>();
+    List<List<ModEntry>> valueColumnsModifications = new ArrayList<>();
     for (int i = 0, size = valueColumnMetadataList.size(); i < size; i++) {
       TimeseriesMetadata valueColumnMetadata = valueColumnMetadataList.get(i);
       if (valueColumnMetadata != null) {
-        List<Modification> modifications =
+        List<ModEntry> modifications =
             context.getPathModifications(
                 resource, alignedPath.getDeviceId(), valueColumnMetadata.getMeasurementId());
         valueColumnMetadata.setModified(!modifications.isEmpty());

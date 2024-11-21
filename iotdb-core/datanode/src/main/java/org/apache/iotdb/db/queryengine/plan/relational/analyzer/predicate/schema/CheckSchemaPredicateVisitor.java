@@ -23,21 +23,13 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicateVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableExpressionType;
 
@@ -48,29 +40,14 @@ import java.util.Objects;
 
 // Return whether input expression can not be bounded to a single ID
 public class CheckSchemaPredicateVisitor
-    extends PredicateVisitor<Boolean, CheckSchemaPredicateVisitor.Context> {
+    extends AstVisitor<Boolean, CheckSchemaPredicateVisitor.Context> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CheckSchemaPredicateVisitor.class);
   private static final long LOG_INTERVAL_MS = 60_000L;
   private long lastLogTime = System.currentTimeMillis();
 
   @Override
-  protected Boolean visitInPredicate(final InPredicate node, final Context context) {
-    return processColumn(node, context);
-  }
-
-  @Override
-  protected Boolean visitIsNullPredicate(final IsNullPredicate node, final Context context) {
-    return processColumn(node, context);
-  }
-
-  @Override
-  protected Boolean visitIsNotNullPredicate(final IsNotNullPredicate node, final Context context) {
-    return processColumn(node, context);
-  }
-
-  @Override
-  protected Boolean visitLikePredicate(final LikePredicate node, final Context context) {
+  public Boolean visitExpression(final Expression node, final Context context) {
     return processColumn(node, context);
   }
 
@@ -111,28 +88,6 @@ public class CheckSchemaPredicateVisitor
       final ComparisonExpression node, final Context context) {
     return !(node.getLeft() instanceof Literal) && !(node.getRight() instanceof Literal)
         || processColumn(node, context);
-  }
-
-  @Override
-  protected Boolean visitSimpleCaseExpression(
-      final SimpleCaseExpression node, final Context context) {
-    return visitExpression(node, context);
-  }
-
-  @Override
-  protected Boolean visitSearchedCaseExpression(
-      final SearchedCaseExpression node, final Context context) {
-    return visitExpression(node, context);
-  }
-
-  @Override
-  protected Boolean visitIfExpression(final IfExpression node, final Context context) {
-    return visitExpression(node, context);
-  }
-
-  @Override
-  protected Boolean visitNullIfExpression(final NullIfExpression node, final Context context) {
-    return visitExpression(node, context);
   }
 
   @Override

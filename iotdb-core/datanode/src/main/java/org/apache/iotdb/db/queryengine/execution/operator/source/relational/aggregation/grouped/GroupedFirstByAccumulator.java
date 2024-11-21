@@ -91,6 +91,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
         break;
       case BOOLEAN:
         xBooleanValues = new BooleanBigArray();
+        break;
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type : %s", xDataType));
@@ -195,6 +196,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
         break;
       case BOOLEAN:
         xBooleanValues.reset();
+        break;
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type : %s", xDataType));

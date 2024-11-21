@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 
 import org.apache.tsfile.utils.BitMap;
@@ -51,8 +51,9 @@ public interface IWritableMemChunkGroup extends WALEntryValue {
 
   Map<String, IWritableMemChunk> getMemChunkMap();
 
-  int delete(
-      PartialPath originalPath, PartialPath devicePath, long startTimestamp, long endTimestamp);
+  long delete(ModEntry modEntry);
+
+  long deleteTime(ModEntry modEntry);
 
   long getCurrentTVListSize(String measurement);
 

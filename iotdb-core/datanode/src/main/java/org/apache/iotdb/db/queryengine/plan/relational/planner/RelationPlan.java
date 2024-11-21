@@ -20,6 +20,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import com.google.common.collect.ImmutableList;
 
 import java.util.List;
+import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
@@ -38,7 +39,13 @@ public class RelationPlan {
   // for each field in the relation, the corresponding symbol from "root"
   private final List<Symbol> fieldMappings;
 
-  public RelationPlan(PlanNode root, Scope scope, List<Symbol> fieldMappings) {
+  private final Optional<TranslationMap> outerContext;
+
+  public RelationPlan(
+      PlanNode root,
+      Scope scope,
+      List<Symbol> fieldMappings,
+      Optional<TranslationMap> outerContext) {
     requireNonNull(root, "root is null");
     requireNonNull(fieldMappings, "fieldMappings is null");
     requireNonNull(scope, "scope is null");
@@ -53,6 +60,7 @@ public class RelationPlan {
     this.root = root;
     this.scope = scope;
     this.fieldMappings = ImmutableList.copyOf(fieldMappings);
+    this.outerContext = outerContext;
   }
 
   public Symbol getSymbol(int fieldIndex) {
@@ -77,5 +85,9 @@ public class RelationPlan {
 
   public Scope getScope() {
     return scope;
+  }
+
+  public Optional<TranslationMap> getOuterContext() {
+    return outerContext;
   }
 }
