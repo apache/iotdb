@@ -72,6 +72,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import io.airlift.units.Duration;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.slf4j.Logger;
@@ -91,6 +92,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -420,12 +422,18 @@ public class LoadTsFileScheduler implements IScheduler {
     if (node.getTsFileResource().getTimeIndex() instanceof PlainDeviceTimeIndex) {
       final PlainDeviceTimeIndex timeIndex =
           (PlainDeviceTimeIndex) node.getTsFileResource().getTimeIndex();
+      final Map<IDeviceID, Integer> convertedDeviceToIndex = new ConcurrentHashMap<>();
+      for (final Map.Entry<IDeviceID, Integer> entry : timeIndex.getDeviceToIndex().entrySet()) {
+        convertedDeviceToIndex.put(
+            entry.getKey() instanceof StringArrayDeviceID
+                ? entry.getKey()
+                : new StringArrayDeviceID(entry.getKey().toString()),
+            entry.getValue());
+      }
       node.getTsFileResource()
           .setTimeIndex(
               new ArrayDeviceTimeIndex(
-                  timeIndex.getDeviceToIndex(),
-                  timeIndex.getStartTimes(),
-                  timeIndex.getEndTimes()));
+                  convertedDeviceToIndex, timeIndex.getStartTimes(), timeIndex.getEndTimes()));
     }
 
     try {
