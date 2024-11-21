@@ -649,7 +649,7 @@ public class ConfigPlanExecutor {
                 x.getClass().getName(),
                 System.currentTimeMillis() - startTime);
           } catch (TException | IOException e) {
-            LOGGER.error("Take snapshot error: {}", e.getMessage());
+            LOGGER.error("Take snapshot error", e);
             takeSnapshotResult = false;
           } finally {
             // If any snapshot fails, the whole fails
@@ -690,7 +690,7 @@ public class ConfigPlanExecutor {
                     System.currentTimeMillis() - startTime);
               } catch (TException | IOException e) {
                 result.set(false);
-                LOGGER.error("Load snapshot error: {}", e.getMessage());
+                LOGGER.error("Load snapshot error", e);
               }
             });
     if (result.get()) {

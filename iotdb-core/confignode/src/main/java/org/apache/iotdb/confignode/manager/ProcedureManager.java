@@ -692,6 +692,30 @@ public class ProcedureManager {
       }
       removedDataNodesRegionSet.add(regionMigrationPlan.getRegionId());
     }
+
+    // 4. Check if there are any other unknown or readonly DataNodes in the consensus group that are
+    // not the remove DataNodes
+
+    for (TDataNodeLocation removeDataNode : dataNodeLocations) {
+      Set<TDataNodeLocation> relatedDataNodes =
+          getEnv().getRemoveDataNodeHandler().getRelatedDataNodeLocations(removeDataNode);
+      relatedDataNodes.remove(removeDataNode);
+
+      for (TDataNodeLocation relatedDataNode : relatedDataNodes) {
+        NodeStatus nodeStatus =
+            getConfigManager().getLoadManager().getNodeStatus(relatedDataNode.getDataNodeId());
+        if (nodeStatus == NodeStatus.Unknown || nodeStatus == NodeStatus.ReadOnly) {
+          failMessage =
+              String.format(
+                  "Submit RemoveDataNodesProcedure failed, "
+                      + "because when there are other unknown or readonly nodes in the consensus group that are not remove nodes, "
+                      + "the remove operation cannot be performed for security reasons. "
+                      + "Please check the status of the node %s and ensure it is running.",
+                  relatedDataNode.getDataNodeId());
+        }
+      }
+    }
+
     if (failMessage != null) {
       LOGGER.warn(failMessage);
       TSStatus failStatus = new TSStatus(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode());

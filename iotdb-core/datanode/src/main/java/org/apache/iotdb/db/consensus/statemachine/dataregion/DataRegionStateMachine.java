@@ -349,7 +349,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
       try {
         fragmentInstance = getFragmentInstance(request);
       } catch (IllegalArgumentException e) {
-        logger.error(e.getMessage());
+        logger.error("Get fragment instance failed", e);
         return null;
       }
       return QUERY_INSTANCE_MANAGER.execDataQueryFragmentInstance(fragmentInstance, region);
