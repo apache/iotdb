@@ -45,6 +45,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_EXCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.parseOptions;
+import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.tableOnlySyncPrefix;
+import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.treeOnlySyncPrefix;
 
 /**
  * {@link ConfigRegionListeningFilter} is to classify the {@link ConfigPhysicalPlan}s to help {@link
@@ -58,11 +60,6 @@ public class ConfigRegionListeningFilter {
 
   private static final Map<PartialPath, List<ConfigPhysicalPlanType>> OPTION_PLAN_MAP =
       new HashMap<>();
-
-  private static final PartialPath treeOnlySyncPrefix =
-      new PartialPath(new String[] {"schema", "timeseries"});
-  private static final PartialPath tableOnlySyncPrefix =
-      new PartialPath(new String[] {"schema", "table"});
 
   static {
     try {
