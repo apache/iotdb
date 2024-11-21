@@ -1588,7 +1588,8 @@ public class ProcedureManager {
                 req.tableName,
                 req.queryId,
                 req.getPatternInfo(),
-                req.getFilterInfo());
+                req.getFilterInfo(),
+                req.getModInfo());
         procedureId = this.executor.submitProcedure(procedure);
       }
     }

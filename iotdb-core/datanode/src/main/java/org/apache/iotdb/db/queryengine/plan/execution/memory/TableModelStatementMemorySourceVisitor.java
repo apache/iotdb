@@ -83,7 +83,11 @@ public class TableModelStatementMemorySourceVisitor
     final TableDistributedPlanGenerator.PlanContext planContext =
         new TableDistributedPlanGenerator.PlanContext();
     final PlanNode outputNodeWithExchange =
-        new TableDistributedPlanner(context.getAnalysis(), symbolAllocator, logicalPlan)
+        new TableDistributedPlanner(
+                context.getAnalysis(),
+                symbolAllocator,
+                logicalPlan,
+                LocalExecutionPlanner.getInstance().metadata)
             .generateDistributedPlanWithOptimize(planContext);
 
     final List<String> lines =

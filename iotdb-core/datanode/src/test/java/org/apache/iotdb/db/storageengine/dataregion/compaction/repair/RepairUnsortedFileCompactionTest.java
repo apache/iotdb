@@ -34,8 +34,9 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
@@ -566,9 +567,9 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
       writer.endChunkGroup();
       writer.endFile();
     }
-    ModificationFile modFile = seqResource2.getModFile();
-    Deletion writedModification =
-        new Deletion(new MeasurementPath("root.testsg.d1.s1"), Long.MAX_VALUE, 15);
+    ModificationFile modFile = seqResource2.getModFileForWrite();
+    ModEntry writedModification =
+        new TreeDeletionEntry(new MeasurementPath("root.testsg.d1.s1"), 15);
     modFile.write(writedModification);
     modFile.close();
 
@@ -587,11 +588,9 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     TsFileResource targetResource = tsFileManager.getTsFileList(false).get(0);
     Assert.assertTrue(TsFileResourceUtils.validateTsFileDataCorrectness(targetResource));
     Assert.assertTrue(TsFileResourceUtils.validateTsFileResourceCorrectness(targetResource));
-    Assert.assertTrue(targetResource.modFileExists());
-    Assert.assertEquals(1, targetResource.getModFile().getModifications().size());
-    Deletion modification =
-        (Deletion) targetResource.getModFile().getModifications().iterator().next();
-    Assert.assertEquals(writedModification.getFileOffset(), modification.getFileOffset());
+    Assert.assertTrue(targetResource.anyModFileExists());
+    Assert.assertEquals(1, targetResource.getAllModEntries().size());
+    ModEntry modification = targetResource.getAllModEntries().iterator().next();
     Assert.assertEquals(writedModification.getEndTime(), modification.getEndTime());
   }
 

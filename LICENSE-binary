@@ -215,96 +215,90 @@ following license. See licenses/ for text of these licenses.
 
 Apache Software Foundation License 2.0
 --------------------------------------
-commons-cli:commons-cli:1.3.1
-commons-codec:commons-codec:1.13
+commons-cli:commons-cli:1.5.0
+commons-codec:commons-codec:1.16.1
 org.apache.commons:commons-collections4:4.4
-commons-io:commons-io:2.5
-org.apache.commons:commons-lang3:3.8.1
-commons-lang:commons-lang:2.6
-com.nimbusds:content-type:2.0
-com.google.code.gson:gson:2.8.6
+commons-io:commons-io:2.14.0
+org.apache.commons:commons-lang3:3.13.0
+com.nimbusds:content-type:2.2
+com.google.code.gson:gson:2.10.1
 com.google.guava.guava:32.1.2-jre
-com.fasterxml.jackson.core:jackson-annotations:2.10.0
-com.fasterxml.jackson.core:jackson-core:2.10.0
-com.fasterxml.jackson.core:jackson-databind:2.10.0
-javax.inject:javax.inject:1
-net.jpountz.lz4:1.3.0
+com.fasterxml.jackson.core:jackson-annotations:2.15.4
+com.fasterxml.jackson.core:jackson-core:2.15.4
+com.fasterxml.jackson.core:jackson-databind:2.15.4
+jakarta.inject:jakarta.inject:2.6.1
+org.lz4:lz4-java:1.8.0
 com.github.stephenc.jcip:jcip-annotations:1.0-1
-com.github.ben-manes.caffeine:caffeine:2.9.1
-org.eclipse.jetty:jetty-http:9.4.24.v20191120
-org.eclipse.jetty:jetty-io:9.4.24.v20191120
-org.eclipse.jetty:jetty-security:9.4.24.v20191120
-org.eclipse.jetty:jetty-server:9.4.24.v20191120
-org.eclipse.jetty:jetty-servlet:9.4.24.v20191120
-org.eclipse.jetty:jetty-util:9.4.24.v20191120
-org.eclipse.jetty:jetty-webapp:9.4.24.v20191120
-org.eclipse.jetty:jetty-xml:9.4.24.v20191120
-io.jsonwebtoken:jjwt-api:0.10.7
-io.jsonwebtoken:jjwt-impl:0.10.7
-io.jsonwebtoken:jjwt-jackson:0.10.7
-net.minidev:json-smart:2.3
+com.github.ben-manes.caffeine:caffeine:2.9.3
+org.eclipse.jetty:jetty-http:9.4.56.v20240826
+org.eclipse.jetty:jetty-io:9.4.56.v20240826
+org.eclipse.jetty:jetty-security:9.4.56.v20240826
+org.eclipse.jetty:jetty-server:9.4.56.v20240826
+org.eclipse.jetty:jetty-servlet:9.4.56.v20240826
+org.eclipse.jetty:jetty-util:9.4.56.v20240826
+io.jsonwebtoken:jjwt-api:0.11.5
+io.jsonwebtoken:jjwt-impl:0.11.5
+io.jsonwebtoken:jjwt-jackson:0.11.5
+net.minidev:json-smart:2.5.0
 com.google.code.findbugs:jsr305:3.0.2
-com.nimbusds:lang-tag:1.4.4
+com.nimbusds:lang-tag:1.7
 com.librato.metrics:librato-java:2.1.0
 org.apache.thrift:libthrift:0.14.1
-io.dropwizard.metrics:metrics-core:3.2.6
-io.dropwizard.metrics:metrics-json:3.2.6
-io.dropwizard.metrics:metrics-jvm:3.2.6
+io.dropwizard.metrics:metrics-core:4.2.19
+io.dropwizard.metrics:metrics-jvm:3.2.2
 com.librato.metrics:metrics-librato:5.1.0
-de.fraunhofer.iosb.io.moquette:moquette-broker:0.14.3
-io.netty:netty-buffer:4.1.53.Final
-io.netty:netty-codec:4.1.53.Final
-io.netty:netty-codec-http:4.1.53.Final
-io.netty:netty-codec-mqtt:4.1.53.Final
-io.netty:netty-common:4.1.53.Final
-io.netty:netty-handler:4.1.53.Final
-io.netty:netty-resolver:4.1.53.Final
-io.netty:netty-transport:4.1.53.Final
-io.netty:netty-transport-native-epoll:4.1.53.Final:linux-x86_64
-io.netty:netty-transport-native-unix-common:4.1.53.Final
-com.nimbusds:nimbus-jose-jwt:8.14.1
-com.nimbusds:oauth2-oidc-sdk:8.3
-org.osgi:org.osgi.core:6.0.0
-org.osgi:osgi.cmpn:6.0.0
-org.ops4j.pax.jdbc:pax-jdbc-common:1.4.5
-org.xerial.snappy:snappy-java:1.1.8.4
-io.airlift.airline:0.8
-net.minidev:accessors-smart:1.2
+de.fraunhofer.iosb.io.moquette:moquette-broker:0.17
+io.netty:netty-buffer:4.1.110.Final
+io.netty:netty-codec:4.1.110.Final
+io.netty:netty-codec-http:4.1.110.Final
+io.netty:netty-codec-mqtt:4.1.110.Final
+io.netty:netty-common:4.1.110.Final
+io.netty:netty-handler:4.1.110.Final
+io.netty:netty-resolver:4.1.110.Final
+io.netty:netty-transport:4.1.110.Final
+io.netty:netty-transport-native-epoll:4.1.110.Final:linux-x86_64
+io.netty:netty-transport-native-unix-common:4.1.110.Final
+com.nimbusds:nimbus-jose-jwt:9.37.3
+com.nimbusds:oauth2-oidc-sdk:10.15
+org.osgi:org.osgi.core:7.0.0
+org.osgi:osgi.cmpn:7.0.0
+org.ops4j.pax.jdbc:pax-jdbc-common:1.5.6
+org.xerial.snappy:snappy-java:1.1.10.5
+io.airlift.airline:0.9
+net.minidev:accessors-smart:2.5.0
 
 
 BSD 3-Clause
 ------------
-org.antlr:antlr-runtime:4.8-1
-org.ow2.asm:asm:5.0.4
-org.jline:jline:3.21.0
+org.antlr:antlr-runtime:4.9.3
+org.ow2.asm:asm:9.3
+org.jline:jline:3.26.2
 
 
 BSD 2-Clause
 ------------
-com.github.luben:zstd-jni:1.5.4-2
+com.github.luben:zstd-jni:1.5.6-3
 
 
 MIT License
 ------------
-org.slf4j:slf4j-api
-me.tongfei:progressbar:0.7.3
-com.bugsnag:bugsnag:3.6.1
-org.slf4j:jcl-over-slf4j:1.7.25
+org.slf4j:slf4j-api:2.0.9
+com.bugsnag:bugsnag:3.7.2
 
 
 EPL 1.0
 ------------
-com.h2database:h2-mvstore:1.4.199
-ch.qos.logback:logback-classic:1.2.10
-ch.qos.logback:logback-core:1.2.10
+com.h2database:h2-mvstore:2.1.212
+ch.qos.logback:logback-classic:1.3.14
+ch.qos.logback:logback-core:1.3.14
 
 
 CDDL 1.1
 ------------
-javax.annotation:javax.annotation-api:1.3.2
-javax.servlet:javax.servlet-api:3.1.0
+jakarta.annotation:jakarta.annotation-api:1.3.5
+jakarta.servlet:jakarta.servlet-api:4.0.4
 javax.xml.bind:jaxb-api:2.4.0-b180725.0427
-org.glassfish.jaxb:jaxb-runtime:2.4.0-b180725.0644
+org.glassfish.jaxb:jaxb-runtime:2.3.6
 
 
 Public Domain

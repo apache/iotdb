@@ -1267,6 +1267,11 @@ public class IoTDBTableAggregationIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+
+    expectedHeader = new String[] {"_col0"};
+    retArray = new String[] {"40,"};
+    tableResultSetEqualTest(
+        "select min_by(s1, s10) from table1 where s1=40", expectedHeader, retArray, DATABASE_NAME);
   }
 
   @Test
@@ -1746,6 +1751,11 @@ public class IoTDBTableAggregationIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+
+    expectedHeader = new String[] {"_col0"};
+    retArray = new String[] {"40,"};
+    tableResultSetEqualTest(
+        "select max_by(s1, s10) from table1 where s1=40", expectedHeader, retArray, DATABASE_NAME);
   }
 
   @Test
@@ -2070,6 +2080,32 @@ public class IoTDBTableAggregationIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+
+    expectedHeader = new String[] {"city", "region", "device_id", "_col3"};
+    retArray =
+        new String[] {
+          "beijing,chaoyang,d09,null,",
+          "beijing,chaoyang,d10,true,",
+          "beijing,chaoyang,d11,null,",
+          "beijing,chaoyang,d12,true,",
+          "beijing,haidian,d13,null,",
+          "beijing,haidian,d14,true,",
+          "beijing,haidian,d15,null,",
+          "beijing,haidian,d16,true,",
+          "shanghai,huangpu,d01,null,",
+          "shanghai,huangpu,d02,true,",
+          "shanghai,huangpu,d03,null,",
+          "shanghai,huangpu,d04,true,",
+          "shanghai,pudong,d05,null,",
+          "shanghai,pudong,d06,true,",
+          "shanghai,pudong,d07,null,",
+          "shanghai,pudong,d08,true,",
+        };
+    tableResultSetEqualTest(
+        "select city,region,device_id,first_by(s5,time,time) from table1 group by city,region,device_id order by 1,2,3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
   }
 
   @Test
@@ -2391,6 +2427,32 @@ public class IoTDBTableAggregationIT {
         };
     tableResultSetEqualTest(
         "select province,city,region,device_id,last_by(time,s8),last(s8) from table1 group by 1,2,3,4 order by 1,2,3,4",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"city", "region", "device_id", "_col3"};
+    retArray =
+        new String[] {
+          "beijing,chaoyang,d09,null,",
+          "beijing,chaoyang,d10,null,",
+          "beijing,chaoyang,d11,null,",
+          "beijing,chaoyang,d12,null,",
+          "beijing,haidian,d13,null,",
+          "beijing,haidian,d14,null,",
+          "beijing,haidian,d15,null,",
+          "beijing,haidian,d16,null,",
+          "shanghai,huangpu,d01,null,",
+          "shanghai,huangpu,d02,null,",
+          "shanghai,huangpu,d03,null,",
+          "shanghai,huangpu,d04,null,",
+          "shanghai,pudong,d05,null,",
+          "shanghai,pudong,d06,null,",
+          "shanghai,pudong,d07,null,",
+          "shanghai,pudong,d08,null,",
+        };
+    tableResultSetEqualTest(
+        "select city,region,device_id,last_by(s5,time,time) from table1 group by city,region,device_id order by 1,2,3",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -3665,6 +3727,22 @@ public class IoTDBTableAggregationIT {
     tableAssertTestFail(
         "select extreme() from table1",
         "701: Aggregate functions [extreme] should only have one argument",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select first() from table1",
+        "701: Aggregate functions [first] should only have two arguments",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select first_by() from table1",
+        "701: Aggregate functions [first_by] should only have three arguments",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select last() from table1",
+        "701: Aggregate functions [last] should only have two arguments",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select last_by() from table1",
+        "701: Aggregate functions [last_by] should only have three arguments",
         DATABASE_NAME);
   }
 }
