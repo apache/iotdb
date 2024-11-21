@@ -71,9 +71,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   private File tsFile;
 
   // This is true iff the modFile exists and should be transferred
-  private boolean isWithMod;
-  private File modFile;
+  private boolean isWithExclusiveMod;
+  private File exclusiveModFile;
+  private boolean isWithSharedMod;
   private File sharedModFile;
+  private long sharedModFileOffset;
 
   private final boolean isLoaded;
   private final boolean isGeneratedByPipe;
@@ -142,11 +144,15 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     this.resource = resource;
     tsFile = resource.getTsFile();
 
-    this.isWithMod = isWithMod && resource.anyModFileExists();
-    this.modFile = this.isWithMod ? resource.getExclusiveModFile().getFile() : null;
+    this.isWithExclusiveMod = isWithMod && resource.exclusiveModFileExists();
+    this.exclusiveModFile =
+        this.isWithExclusiveMod ? resource.getExclusiveModFile().getFile() : null;
     // TODO: process the shared mod file
-    this.sharedModFile =
-        resource.getSharedModFile() != null ? resource.getSharedModFile().getFile() : null;
+    this.isWithSharedMod = isWithMod && resource.sharedModFileExists();
+    if (isWithSharedMod) {
+      this.sharedModFile = resource.getSharedModFile().getFile();
+      this.sharedModFileOffset = resource.getShardModFileOffset();
+    }
 
     this.isLoaded = isLoaded;
     this.isGeneratedByPipe = isGeneratedByPipe;
@@ -229,22 +235,30 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     return tsFile;
   }
 
-  public File getModFile() {
-    return modFile;
+  public File getExclusiveModFile() {
+    return exclusiveModFile;
   }
 
   public File getSharedModFile() {
     return sharedModFile;
   }
 
-  public boolean isWithMod() {
-    return isWithMod;
+  public long getSharedModFileOffset() {
+    return sharedModFileOffset;
+  }
+
+  public boolean isWithExclusiveMod() {
+    return isWithExclusiveMod;
+  }
+
+  public boolean isWithSharedMod() {
+    return isWithSharedMod;
   }
 
   // If the previous "isWithMod" is false, the modFile has been set to "null", then the isWithMod
   // can't be set to true
   public void disableMod4NonTransferPipes(final boolean isWithMod) {
-    this.isWithMod = isWithMod && this.isWithMod;
+    this.isWithExclusiveMod = isWithMod && this.isWithExclusiveMod;
   }
 
   public boolean isLoaded() {
@@ -277,8 +291,14 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     try {
       tsFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(tsFile, true, resource);
-      if (isWithMod) {
-        modFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(modFile, false, null);
+      if (isWithExclusiveMod) {
+        exclusiveModFile =
+            PipeDataNodeResourceManager.tsfile()
+                .increaseFileReference(exclusiveModFile, false, null);
+      }
+      if (isWithSharedMod) {
+        sharedModFile =
+            PipeDataNodeResourceManager.tsfile().increaseFileReference(sharedModFile, false, null);
       }
       if (Objects.nonNull(pipeName)) {
         PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
@@ -288,8 +308,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     } catch (final Exception e) {
       LOGGER.warn(
           String.format(
-              "Increase reference count for TsFile %s or modFile %s error. Holder Message: %s",
-              tsFile, modFile, holderMessage),
+              "Increase reference count for TsFile %s or exclusiveModFile %s or sharedModFile %s error. Holder Message: %s",
+              tsFile, exclusiveModFile, sharedModFile, holderMessage),
           e);
       return false;
     }
@@ -299,8 +319,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     try {
       PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile);
-      if (isWithMod) {
-        PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile);
+      if (isWithExclusiveMod) {
+        PipeDataNodeResourceManager.tsfile().decreaseFileReference(exclusiveModFile);
+      }
+      if (isWithSharedMod) {
+        PipeDataNodeResourceManager.tsfile().decreaseFileReference(sharedModFile);
       }
       return true;
     } catch (final Exception e) {
@@ -374,7 +397,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         getRawIsTableModelEvent(),
         getTreeModelDatabaseName(),
         resource,
-        isWithMod,
+        isWithExclusiveMod,
         isLoaded,
         isGeneratedByPipe,
         isGeneratedByHistoricalExtractor,
@@ -645,9 +668,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         this.isReleased,
         this.referenceCount,
         this.tsFile,
-        this.isWithMod,
-        this.modFile,
-        this.sharedModFile);
+        this.isWithExclusiveMod,
+        this.exclusiveModFile,
+        this.isWithExclusiveMod,
+        this.sharedModFile,
+        this.sharedModFileOffset);
   }
 
   private static class PipeTsFileInsertionEventResource extends PipeEventResource {
@@ -655,7 +680,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     private final File tsFile;
     private final boolean isWithMod;
     private final File modFile;
+    private final boolean isWithSharedMod;
     private final File sharedModFile;
+    private final long sharedModFileOffset;
 
     private PipeTsFileInsertionEventResource(
         final AtomicBoolean isReleased,
@@ -663,12 +690,16 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         final File tsFile,
         final boolean isWithMod,
         final File modFile,
-        File sharedModFile) {
+        final boolean isWithSharedMod,
+        final File sharedModFile,
+        final long sharedModFileOffset) {
       super(isReleased, referenceCount);
       this.tsFile = tsFile;
       this.isWithMod = isWithMod;
       this.modFile = modFile;
+      this.isWithSharedMod = isWithSharedMod;
       this.sharedModFile = sharedModFile;
+      this.sharedModFileOffset = sharedModFileOffset;
     }
 
     @Override
@@ -677,6 +708,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile);
         if (isWithMod) {
           PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile);
+        }
+        if (isWithSharedMod) {
+          PipeDataNodeResourceManager.tsfile().decreaseFileReference(sharedModFile);
         }
       } catch (final Exception e) {
         LOGGER.warn(

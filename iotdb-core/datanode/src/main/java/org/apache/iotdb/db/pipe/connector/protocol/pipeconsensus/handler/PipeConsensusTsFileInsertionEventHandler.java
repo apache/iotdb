@@ -33,6 +33,7 @@ import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFileSealWithModReq;
 import org.apache.iotdb.db.pipe.consensus.metric.PipeConsensusConnectorMetrics;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -41,7 +42,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
@@ -60,14 +60,19 @@ public class PipeConsensusTsFileInsertionEventHandler
   private final TConsensusGroupId consensusGroupId;
   private final int thisDataNodeId;
   private final File tsFile;
-  private final File modFile;
+  private final File exclusiveModFile;
+  private final File sharedModFile;
   private File currentFile;
+  private File targetFile;
 
-  private final boolean transferMod;
+  private final boolean transferExclusiveMod;
+  private final boolean transferSharedMod;
 
   private final int readFileBufferSize;
   private final byte[] readBuffer;
   private long position;
+  private long targetOffset = 0;
+  private final long sharedModFileOffset;
 
   private RandomAccessFile reader;
 
@@ -88,7 +93,7 @@ public class PipeConsensusTsFileInsertionEventHandler
       final TConsensusGroupId consensusGroupId,
       final int thisDataNodeId,
       final PipeConsensusConnectorMetrics metric)
-      throws FileNotFoundException {
+      throws IOException {
     this.event = event;
     this.connector = connector;
     this.commitId = commitId;
@@ -96,23 +101,112 @@ public class PipeConsensusTsFileInsertionEventHandler
     this.thisDataNodeId = thisDataNodeId;
 
     tsFile = event.getTsFile();
-    modFile = event.getModFile();
-    transferMod = event.isWithMod();
-    currentFile = transferMod ? modFile : tsFile;
+    exclusiveModFile = event.getExclusiveModFile();
+    transferExclusiveMod = event.isWithExclusiveMod();
+    sharedModFile = event.getSharedModFile();
+    transferSharedMod = event.isWithSharedMod();
+    sharedModFileOffset = event.getSharedModFileOffset();
+
+    if (transferExclusiveMod) {
+      currentFile = exclusiveModFile;
+      targetFile = ModificationFile.getExclusiveMods(tsFile);
+    } else {
+      if (transferSharedMod) {
+        currentFile = sharedModFile;
+        targetFile = ModificationFile.getExclusiveMods(tsFile);
+      } else {
+        currentFile = tsFile;
+        targetFile = tsFile;
+      }
+    }
 
     readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
     readBuffer = new byte[readFileBufferSize];
     position = 0;
 
-    reader =
-        Objects.nonNull(modFile)
-            ? new RandomAccessFile(modFile, "r")
-            : new RandomAccessFile(tsFile, "r");
+    if (Objects.nonNull(exclusiveModFile)) {
+      reader = new RandomAccessFile(exclusiveModFile, "r");
+    } else {
+      if (Objects.nonNull(sharedModFile)) {
+        reader = new RandomAccessFile(sharedModFile, "r");
+        reader.seek(sharedModFileOffset);
+      } else {
+        reader = new RandomAccessFile(tsFile, "r");
+      }
+    }
 
     isSealSignalSent = new AtomicBoolean(false);
 
     this.metric = metric;
     this.createTime = System.nanoTime();
+  }
+
+  private void switchToSharedModFile() throws IOException {
+    // append the shared mod file to the target's exclusive mod file
+    // target file is still the exclusive mod file
+    currentFile = sharedModFile;
+    targetOffset = position;
+    position = 0;
+    try {
+      reader.close();
+    } catch (final IOException e) {
+      LOGGER.warn(
+          "Failed to close file reader when successfully transferred exclusive mod file.", e);
+    }
+    reader = new RandomAccessFile(sharedModFile, "r");
+    reader.seek(sharedModFileOffset);
+  }
+
+  private void switchToTsFile() throws IOException {
+    currentFile = tsFile;
+    targetFile = tsFile;
+    targetOffset = 0;
+    position = 0;
+    try {
+      reader.close();
+    } catch (final IOException e) {
+      LOGGER.warn("Failed to close file reader when successfully transferred mod file.", e);
+    }
+    reader = new RandomAccessFile(tsFile, "r");
+  }
+
+  private void switchToNextFile() throws TException, IOException {
+    if (currentFile == exclusiveModFile) {
+      if (transferSharedMod) {
+        switchToSharedModFile();
+      } else {
+        switchToTsFile();
+      }
+      transfer(client);
+    } else if (currentFile == sharedModFile) {
+      switchToTsFile();
+      transfer(client);
+    } else if (currentFile == tsFile) {
+      isSealSignalSent.set(true);
+      long modFileTotalSize = transferExclusiveMod ? exclusiveModFile.length() : 0;
+      modFileTotalSize += transferSharedMod ? sharedModFile.length() - sharedModFileOffset : 0;
+      client.pipeConsensusTransfer(
+          transferExclusiveMod || transferSharedMod
+              ? PipeConsensusTsFileSealWithModReq.toTPipeConsensusTransferReq(
+                  ModificationFile.getExclusiveMods(tsFile).getName(),
+                  modFileTotalSize,
+                  tsFile.getName(),
+                  tsFile.length(),
+                  event.getFlushPointCount(),
+                  commitId,
+                  consensusGroupId,
+                  event.getProgressIndex(),
+                  thisDataNodeId)
+              : PipeConsensusTsFileSealReq.toTPipeConsensusTransferReq(
+                  tsFile.getName(),
+                  tsFile.length(),
+                  event.getFlushPointCount(),
+                  commitId,
+                  consensusGroupId,
+                  event.getProgressIndex(),
+                  thisDataNodeId),
+          this);
+    }
   }
 
   public void transfer(final AsyncPipeConsensusServiceClient client)
@@ -124,40 +218,7 @@ public class PipeConsensusTsFileInsertionEventHandler
 
     final int readLength = reader.read(readBuffer);
     if (readLength == -1) {
-      if (currentFile == modFile) {
-        currentFile = tsFile;
-        position = 0;
-        try {
-          reader.close();
-        } catch (final IOException e) {
-          LOGGER.warn("Failed to close file reader when successfully transferred mod file.", e);
-        }
-        reader = new RandomAccessFile(tsFile, "r");
-        transfer(client);
-      } else if (currentFile == tsFile) {
-        isSealSignalSent.set(true);
-        client.pipeConsensusTransfer(
-            transferMod
-                ? PipeConsensusTsFileSealWithModReq.toTPipeConsensusTransferReq(
-                    modFile.getName(),
-                    modFile.length(),
-                    tsFile.getName(),
-                    tsFile.length(),
-                    event.getFlushPointCount(),
-                    commitId,
-                    consensusGroupId,
-                    event.getProgressIndex(),
-                    thisDataNodeId)
-                : PipeConsensusTsFileSealReq.toTPipeConsensusTransferReq(
-                    tsFile.getName(),
-                    tsFile.length(),
-                    event.getFlushPointCount(),
-                    commitId,
-                    consensusGroupId,
-                    event.getProgressIndex(),
-                    thisDataNodeId),
-            this);
-      }
+      switchToNextFile();
       return;
     }
 
@@ -167,16 +228,16 @@ public class PipeConsensusTsFileInsertionEventHandler
             ? readBuffer
             : Arrays.copyOfRange(readBuffer, 0, readLength);
     client.pipeConsensusTransfer(
-        transferMod
+        transferExclusiveMod
             ? PipeConsensusTsFilePieceWithModReq.toTPipeConsensusTransferReq(
-                currentFile.getName(),
-                position,
+                targetFile.getName(),
+                position + targetOffset,
                 payload,
                 commitId,
                 consensusGroupId,
                 thisDataNodeId)
             : PipeConsensusTsFilePieceReq.toTPipeConsensusTransferReq(
-                currentFile.getName(),
+                targetFile.getName(),
                 position,
                 payload,
                 commitId,
@@ -249,7 +310,13 @@ public class PipeConsensusTsFileInsertionEventHandler
       final long code = resp.getStatus().getCode();
 
       if (code == TSStatusCode.PIPE_CONSENSUS_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
-        position = resp.getEndWritingOffset();
+        if (currentFile == sharedModFile) {
+          // the exclusive mod file has been written to remote
+          // the local position should subtract the length of exclusive mod file
+          position = resp.getEndWritingOffset() - targetOffset;
+        } else {
+          position = resp.getEndWritingOffset();
+        }
         reader.seek(position);
         LOGGER.info("Redirect file position to {}.", position);
       } else {
