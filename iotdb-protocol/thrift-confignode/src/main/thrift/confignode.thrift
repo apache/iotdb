@@ -166,6 +166,7 @@ struct TDeleteDatabaseReq {
 struct TDeleteDatabasesReq {
   1: required list<string> prefixPathList
   2: optional bool isGeneratedByPipe
+  3: optional bool isTableModel
 }
 
 struct TSetSchemaReplicationFactorReq {
