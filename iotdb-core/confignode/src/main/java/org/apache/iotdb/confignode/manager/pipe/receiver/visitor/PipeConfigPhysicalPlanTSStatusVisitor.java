@@ -95,6 +95,15 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
   }
 
   @Override
+  public TSStatus visitDeleteDatabaseV2(final DatabaseSchemaPlan plan, final TSStatus context) {
+    if (context.getCode() == TSStatusCode.PATH_NOT_EXIST.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return super.visitDeleteDatabaseV2(plan, context);
+  }
+
+  @Override
   public TSStatus visitCreateSchemaTemplate(
       final CreateSchemaTemplatePlan plan, final TSStatus context) {
     if (context.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()) {
