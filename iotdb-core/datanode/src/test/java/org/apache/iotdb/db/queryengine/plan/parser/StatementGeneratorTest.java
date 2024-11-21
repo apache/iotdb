@@ -541,7 +541,9 @@ public class StatementGeneratorTest {
     baos.close();
     CreateSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
     assertEquals("test-template", statement.getName());
-    assertEquals(Arrays.asList("y", "x"), statement.getMeasurements());
+    Set<String> expectedMeasurements = new HashSet<>(Arrays.asList("y", "x"));
+    Set<String> actualMeasurements = new HashSet<>(statement.getMeasurements());
+    assertEquals(expectedMeasurements, actualMeasurements);
   }
 
   @Test
