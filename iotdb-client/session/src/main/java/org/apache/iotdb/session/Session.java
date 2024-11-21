@@ -4182,21 +4182,6 @@ public class Session implements ISession {
 
   public static class Builder extends AbstractSessionBuilder {
 
-    public Builder useSSL(boolean useSSL) {
-      this.useSSL = useSSL;
-      return this;
-    }
-
-    public Builder trustStore(String keyStore) {
-      this.trustStore = keyStore;
-      return this;
-    }
-
-    public Builder trustStorePwd(String keyStorePwd) {
-      this.trustStorePwd = keyStorePwd;
-      return this;
-    }
-
     private List<String> nodeUrls = null;
 
     public Builder host(String host) {
@@ -4289,14 +4274,28 @@ public class Session implements ISession {
       return this;
     }
 
+    public Builder useSSL(boolean useSSL) {
+      this.useSSL = useSSL;
+      return this;
+    }
+
+    public Builder trustStore(String keyStore) {
+      this.trustStore = keyStore;
+      return this;
+    }
+
+    public Builder trustStorePwd(String keyStorePwd) {
+      this.trustStorePwd = keyStorePwd;
+      return this;
+    }
+
     public Session build() {
       if (nodeUrls != null
           && (!SessionConfig.DEFAULT_HOST.equals(host) || rpcPort != SessionConfig.DEFAULT_PORT)) {
         throw new IllegalArgumentException(
             "You should specify either nodeUrls or (host + rpcPort), but not both");
       }
-      Session newSession = new Session(this);
-      return newSession;
+      return new Session(this);
     }
   }
 }

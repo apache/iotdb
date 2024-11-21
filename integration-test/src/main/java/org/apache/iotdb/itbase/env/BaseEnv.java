@@ -23,8 +23,10 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.pool.ISessionPool;
+import org.apache.iotdb.isession.pool.ITableSessionPool;
 import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
@@ -183,36 +185,26 @@ public interface BaseEnv {
   IConfigNodeRPCService.Iface getLeaderConfigNodeConnection()
       throws ClientManagerException, IOException, InterruptedException;
 
-  default ISessionPool getSessionPool(int maxSize) {
-    return getSessionPool(maxSize, TREE_SQL_DIALECT);
-  }
+  ISessionPool getSessionPool(int maxSize);
 
-  ISessionPool getSessionPool(int maxSize, String sqlDialect);
+  ITableSessionPool getTableSessionPool(int maxSize);
 
-  ISessionPool getSessionPool(int maxSize, String sqlDialect, String database);
+  ITableSessionPool getTableSessionPool(int maxSize, String database);
 
-  default ISession getSessionConnection() throws IoTDBConnectionException {
-    return getSessionConnection(TREE_SQL_DIALECT);
-  }
+  ISession getSessionConnection() throws IoTDBConnectionException;
 
-  ISession getSessionConnection(String sqlDialect) throws IoTDBConnectionException;
-
-  ISession getSessionConnectionWithDB(String sqlDialect, String database)
+  ISession getSessionConnection(String userName, String password)
       throws IoTDBConnectionException;
 
-  default ISession getSessionConnection(String userName, String password)
-      throws IoTDBConnectionException {
-    return getSessionConnection(userName, password, TREE_SQL_DIALECT);
-  }
-
-  ISession getSessionConnection(String userName, String password, String sqlDialect)
+  ISession getSessionConnection(List<String> nodeUrls)
       throws IoTDBConnectionException;
 
-  default ISession getSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException {
-    return getSessionConnection(nodeUrls, TREE_SQL_DIALECT);
-  }
+  ITableSession getTableSessionConnection() throws IoTDBConnectionException;
 
-  ISession getSessionConnection(List<String> nodeUrls, String sqlDialect)
+  ITableSession getTableSessionConnectionWithDB(String database)
+      throws IoTDBConnectionException;
+
+  ITableSession getTableSessionConnection(List<String> nodeUrls)
       throws IoTDBConnectionException;
 
   /**

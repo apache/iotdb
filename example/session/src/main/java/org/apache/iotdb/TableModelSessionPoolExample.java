@@ -19,30 +19,31 @@
 
 package org.apache.iotdb;
 
-import org.apache.iotdb.isession.IPooledSession;
+import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.isession.pool.ITableSessionPool;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.pool.SessionPool;
+import org.apache.iotdb.session.pool.TableSessionPoolBuilder;
+
+import java.util.Collections;
 
 public class TableModelSessionPoolExample {
 
-  private static final String LOCAL_HOST = "127.0.0.1";
+  private static final String LOCAL_URL = "127.0.0.1:6667";
 
   public static void main(String[] args) {
 
     // don't specify database in constructor
-    SessionPool sessionPool =
-        new SessionPool.Builder()
-            .host(LOCAL_HOST)
-            .port(6667)
+    ITableSessionPool tableSessionPool =
+        new TableSessionPoolBuilder()
+            .nodeUrls(Collections.singletonList(LOCAL_URL))
             .user("root")
             .password("root")
             .maxSize(1)
-            .sqlDialect("table")
             .build();
 
-    try (IPooledSession session = sessionPool.getPooledSession()) {
+    try (ITableSession session = tableSessionPool.getSession()) {
 
       session.executeNonQueryStatement("CREATE DATABASE test1");
       session.executeNonQueryStatement("CREATE DATABASE test2");
@@ -80,22 +81,20 @@ public class TableModelSessionPoolExample {
     } catch (StatementExecutionException e) {
       e.printStackTrace();
     } finally {
-      sessionPool.close();
+      tableSessionPool.close();
     }
 
     // specify database in constructor
-    sessionPool =
-        new SessionPool.Builder()
-            .host(LOCAL_HOST)
-            .port(6667)
+    tableSessionPool =
+        new TableSessionPoolBuilder()
+            .nodeUrls(Collections.singletonList(LOCAL_URL))
             .user("root")
             .password("root")
             .maxSize(1)
-            .sqlDialect("table")
             .database("test1")
             .build();
 
-    try (IPooledSession session = sessionPool.getPooledSession()) {
+    try (ITableSession session = tableSessionPool.getSession()) {
 
       // show tables from current database
       try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
@@ -125,7 +124,7 @@ public class TableModelSessionPoolExample {
       e.printStackTrace();
     }
 
-    try (IPooledSession session = sessionPool.getPooledSession()) {
+    try (ITableSession session = tableSessionPool.getSession()) {
 
       // show tables from default database test1
       try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
@@ -141,7 +140,7 @@ public class TableModelSessionPoolExample {
     } catch (StatementExecutionException e) {
       e.printStackTrace();
     } finally {
-      sessionPool.close();
+      tableSessionPool.close();
     }
   }
 }

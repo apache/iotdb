@@ -19,46 +19,42 @@
 
 package org.apache.iotdb;
 
+import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
-import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.TableSessionBuilder;
+
+import java.util.Collections;
 
 public class TableModelSessionExample {
 
-  private static final String LOCAL_HOST = "127.0.0.1";
+  private static final String LOCAL_URL = "127.0.0.1:6667";
 
   public static void main(String[] args) {
 
     // don't specify database in constructor
-    Session session =
-        new Session.Builder()
-            .host(LOCAL_HOST)
-            .port(6667)
+    try (ITableSession tableSession =
+        new TableSessionBuilder()
+            .nodeUrls(Collections.singletonList(LOCAL_URL))
             .username("root")
             .password("root")
-            .version(Version.V_1_0)
-            .sqlDialect("table")
-            .build();
+            .build()) {
 
-    try {
-      session.open(false);
+      tableSession.executeNonQueryStatement("CREATE DATABASE test1");
+      tableSession.executeNonQueryStatement("CREATE DATABASE test2");
 
-      session.executeNonQueryStatement("CREATE DATABASE test1");
-      session.executeNonQueryStatement("CREATE DATABASE test2");
-
-      session.executeNonQueryStatement("use test2");
+      tableSession.executeNonQueryStatement("use test2");
 
       // or use full qualified table name
-      session.executeNonQueryStatement(
+      tableSession.executeNonQueryStatement(
           "create table test1.table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=3600000)");
 
-      session.executeNonQueryStatement(
+      tableSession.executeNonQueryStatement(
           "create table table2(region_id STRING ID, plant_id STRING ID, color STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, speed DOUBLE MEASUREMENT) with (TTL=6600000)");
 
       // show tables from current database
-      try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
+      try (SessionDataSet dataSet = tableSession.executeQueryStatement("SHOW TABLES")) {
         System.out.println(dataSet.getColumnNames());
         while (dataSet.hasNext()) {
           System.out.println(dataSet.next());
@@ -67,7 +63,7 @@ public class TableModelSessionExample {
 
       // show tables by specifying another database
       // using SHOW tables FROM
-      try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES FROM test1")) {
+      try (SessionDataSet dataSet = tableSession.executeQueryStatement("SHOW TABLES FROM test1")) {
         System.out.println(dataSet.getColumnNames());
         while (dataSet.hasNext()) {
           System.out.println(dataSet.next());
@@ -78,31 +74,19 @@ public class TableModelSessionExample {
       e.printStackTrace();
     } catch (StatementExecutionException e) {
       e.printStackTrace();
-    } finally {
-      try {
-        session.close();
-      } catch (IoTDBConnectionException e) {
-        e.printStackTrace();
-      }
     }
 
     // specify database in constructor
-    session =
-        new Session.Builder()
-            .host(LOCAL_HOST)
-            .port(6667)
+    try (ITableSession tableSession =
+        new TableSessionBuilder()
+            .nodeUrls(Collections.singletonList(LOCAL_URL))
             .username("root")
             .password("root")
-            .version(Version.V_1_0)
-            .sqlDialect("table")
             .database("test1")
-            .build();
-
-    try {
-      session.open(false);
+            .build()) {
 
       // show tables from current database
-      try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
+      try (SessionDataSet dataSet = tableSession.executeQueryStatement("SHOW TABLES")) {
         System.out.println(dataSet.getColumnNames());
         while (dataSet.hasNext()) {
           System.out.println(dataSet.next());
@@ -110,11 +94,11 @@ public class TableModelSessionExample {
       }
 
       // change database to test2
-      session.executeNonQueryStatement("use test2");
+      tableSession.executeNonQueryStatement("use test2");
 
       // show tables by specifying another database
       // using SHOW tables FROM
-      try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
+      try (SessionDataSet dataSet = tableSession.executeQueryStatement("SHOW TABLES")) {
         System.out.println(dataSet.getColumnNames());
         while (dataSet.hasNext()) {
           System.out.println(dataSet.next());
@@ -125,12 +109,6 @@ public class TableModelSessionExample {
       e.printStackTrace();
     } catch (StatementExecutionException e) {
       e.printStackTrace();
-    } finally {
-      try {
-        session.close();
-      } catch (IoTDBConnectionException e) {
-        e.printStackTrace();
-      }
     }
   }
 }

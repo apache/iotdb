@@ -21,7 +21,6 @@ package org.apache.iotdb.session;
 
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionConfig;
-import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 
 import java.time.ZoneId;
@@ -32,28 +31,8 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
   private boolean enableCompression = false;
   private int connectionTimeoutInMs = SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS;
 
-  public TableSessionBuilder useSSL(boolean useSSL) {
-    this.useSSL = useSSL;
-    return this;
-  }
-
-  public TableSessionBuilder trustStore(String keyStore) {
-    this.trustStore = keyStore;
-    return this;
-  }
-
-  public TableSessionBuilder trustStorePwd(String keyStorePwd) {
-    this.trustStorePwd = keyStorePwd;
-    return this;
-  }
-
-  public TableSessionBuilder host(String host) {
-    this.host = host;
-    return this;
-  }
-
-  public TableSessionBuilder port(int port) {
-    this.rpcPort = port;
+  public TableSessionBuilder nodeUrls(List<String> nodeUrls) {
+    this.nodeUrls = nodeUrls;
     return this;
   }
 
@@ -64,6 +43,16 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
 
   public TableSessionBuilder password(String password) {
     this.pw = password;
+    return this;
+  }
+
+  public TableSessionBuilder database(String database) {
+    this.database = database;
+    return this;
+  }
+
+  public TableSessionBuilder queryTimeoutInMs(long queryTimeoutInMs) {
+    this.timeOut = queryTimeoutInMs;
     return this;
   }
 
@@ -92,27 +81,6 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
     return this;
   }
 
-  public TableSessionBuilder enableRecordsAutoConvertTablet(
-      boolean enableRecordsAutoConvertTablet) {
-    this.enableRecordsAutoConvertTablet = enableRecordsAutoConvertTablet;
-    return this;
-  }
-
-  public TableSessionBuilder nodeUrls(List<String> nodeUrls) {
-    this.nodeUrls = nodeUrls;
-    return this;
-  }
-
-  public TableSessionBuilder version(Version version) {
-    this.version = version;
-    return this;
-  }
-
-  public TableSessionBuilder timeOut(long timeOut) {
-    this.timeOut = timeOut;
-    return this;
-  }
-
   public TableSessionBuilder enableAutoFetch(boolean enableAutoFetch) {
     this.enableAutoFetch = enableAutoFetch;
     return this;
@@ -128,13 +96,18 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
     return this;
   }
 
-  public TableSessionBuilder sqlDialect(String sqlDialect) {
-    this.sqlDialect = sqlDialect;
+  public TableSessionBuilder useSSL(boolean useSSL) {
+    this.useSSL = useSSL;
     return this;
   }
 
-  public TableSessionBuilder database(String database) {
-    this.database = database;
+  public TableSessionBuilder trustStore(String keyStore) {
+    this.trustStore = keyStore;
+    return this;
+  }
+
+  public TableSessionBuilder trustStorePwd(String keyStorePwd) {
+    this.trustStorePwd = keyStorePwd;
     return this;
   }
 
@@ -149,13 +122,12 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
   }
 
   public ITableSession build() throws IoTDBConnectionException {
-    if (nodeUrls != null
-        && (!SessionConfig.DEFAULT_HOST.equals(host) || rpcPort != SessionConfig.DEFAULT_PORT)) {
-      throw new IllegalArgumentException(
-          "You should specify either nodeUrls or (host + rpcPort), but not both");
+    if (nodeUrls != null) {
+      throw new IllegalArgumentException("You should specify nodeUrls");
     }
+    this.sqlDialect = "table";
     Session newSession = new Session(this);
-    // TODO open
-    return newSession;
+    newSession.open(enableCompression, connectionTimeoutInMs);
+    return new TableSession(newSession);
   }
 }

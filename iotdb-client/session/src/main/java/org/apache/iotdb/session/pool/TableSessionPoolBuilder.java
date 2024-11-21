@@ -20,37 +20,11 @@
 package org.apache.iotdb.session.pool;
 
 import org.apache.iotdb.isession.pool.ITableSessionPool;
-import org.apache.iotdb.isession.util.Version;
 
 import java.time.ZoneId;
 import java.util.List;
 
 public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder {
-
-  public TableSessionPoolBuilder useSSL(boolean useSSL) {
-    this.useSSL = useSSL;
-    return this;
-  }
-
-  public TableSessionPoolBuilder trustStore(String keyStore) {
-    this.trustStore = keyStore;
-    return this;
-  }
-
-  public TableSessionPoolBuilder trustStorePwd(String keyStorePwd) {
-    this.trustStorePwd = keyStorePwd;
-    return this;
-  }
-
-  public TableSessionPoolBuilder host(String host) {
-    this.host = host;
-    return this;
-  }
-
-  public TableSessionPoolBuilder port(int port) {
-    this.rpcPort = port;
-    return this;
-  }
 
   public TableSessionPoolBuilder nodeUrls(List<String> nodeUrls) {
     this.nodeUrls = nodeUrls;
@@ -69,6 +43,16 @@ public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder {
 
   public TableSessionPoolBuilder password(String password) {
     this.pw = password;
+    return this;
+  }
+
+  public TableSessionPoolBuilder database(String database) {
+    this.database = database;
+    return this;
+  }
+
+  public TableSessionPoolBuilder queryTimeoutInMs(long queryTimeoutInMs) {
+    this.timeOut = queryTimeoutInMs;
     return this;
   }
 
@@ -107,19 +91,8 @@ public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder {
     return this;
   }
 
-  public TableSessionPoolBuilder enableRecordsAutoConvertTablet(
-      boolean enableRecordsAutoConvertTablet) {
-    this.enableRecordsAutoConvertTablet = enableRecordsAutoConvertTablet;
-    return this;
-  }
-
   public TableSessionPoolBuilder connectionTimeoutInMs(int connectionTimeoutInMs) {
     this.connectionTimeoutInMs = connectionTimeoutInMs;
-    return this;
-  }
-
-  public TableSessionPoolBuilder version(Version version) {
-    this.version = version;
     return this;
   }
 
@@ -138,23 +111,27 @@ public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder {
     return this;
   }
 
-  public TableSessionPoolBuilder sqlDialect(String sqlDialect) {
-    this.sqlDialect = sqlDialect;
+  public TableSessionPoolBuilder useSSL(boolean useSSL) {
+    this.useSSL = useSSL;
     return this;
   }
 
-  public TableSessionPoolBuilder queryTimeoutInMs(long queryTimeoutInMs) {
-    this.timeOut = queryTimeoutInMs;
+  public TableSessionPoolBuilder trustStore(String keyStore) {
+    this.trustStore = keyStore;
     return this;
   }
 
-  public TableSessionPoolBuilder database(String database) {
-    this.database = database;
+  public TableSessionPoolBuilder trustStorePwd(String keyStorePwd) {
+    this.trustStorePwd = keyStorePwd;
     return this;
   }
 
   public ITableSessionPool build() {
-    // TODO
-    return new SessionPool(this);
+    if (nodeUrls != null) {
+      throw new IllegalArgumentException("You should specify nodeUrls");
+    }
+    this.sqlDialect = "table";
+    SessionPool sessionPool = new SessionPool(this);
+    return new TableSessionPool(sessionPool);
   }
 }

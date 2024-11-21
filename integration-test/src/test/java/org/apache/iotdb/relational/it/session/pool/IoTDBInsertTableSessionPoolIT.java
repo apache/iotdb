@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.relational.it.session.pool;
 
-import org.apache.iotdb.isession.IPooledSession;
+import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
-import org.apache.iotdb.isession.pool.ISessionPool;
+import org.apache.iotdb.isession.pool.ITableSessionPool;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
@@ -61,8 +61,8 @@ public class IoTDBInsertTableSessionPoolIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
-    ISessionPool sessionPool = EnvFactory.getEnv().getSessionPool(1, "table");
-    try (final IPooledSession session = sessionPool.getPooledSession()) {
+    ITableSessionPool sessionPool = EnvFactory.getEnv().getTableSessionPool(1);
+    try (final ITableSession session = sessionPool.getSession()) {
       session.executeNonQueryStatement("create database if not exists test");
     }
   }
@@ -74,8 +74,8 @@ public class IoTDBInsertTableSessionPoolIT {
 
   @Test
   public void testPartialInsertTablet() {
-    ISessionPool sessionPool = EnvFactory.getEnv().getSessionPool(1, "table");
-    try (final IPooledSession session = sessionPool.getPooledSession()) {
+    ITableSessionPool sessionPool = EnvFactory.getEnv().getTableSessionPool(1);
+    try (final ITableSession session = sessionPool.getSession()) {
       session.executeNonQueryStatement("use \"test\"");
       session.executeNonQueryStatement("SET CONFIGURATION enable_auto_create_schema='false'");
       session.executeNonQueryStatement(
@@ -121,7 +121,7 @@ public class IoTDBInsertTableSessionPoolIT {
         timestamp++;
       }
       try {
-        session.insertTablet(tablet);
+        session.insert(tablet);
       } catch (Exception e) {
         if (!e.getMessage().contains("507")) {
           fail(e.getMessage());
@@ -130,11 +130,11 @@ public class IoTDBInsertTableSessionPoolIT {
         session.executeNonQueryStatement("SET CONFIGURATION enable_auto_create_schema='false'");
       }
       try (SessionDataSet dataSet = session.executeQueryStatement("SELECT * FROM sg6")) {
-        assertEquals(dataSet.getColumnNames().size(), 4);
-        assertEquals(dataSet.getColumnNames().get(0), "time");
-        assertEquals(dataSet.getColumnNames().get(1), "id1");
-        assertEquals(dataSet.getColumnNames().get(2), "s1");
-        assertEquals(dataSet.getColumnNames().get(3), "s2");
+        assertEquals(4, dataSet.getColumnNames().size());
+        assertEquals("time", dataSet.getColumnNames().get(0));
+        assertEquals("id1", dataSet.getColumnNames().get(1));
+        assertEquals("s1", dataSet.getColumnNames().get(2));
+        assertEquals("s2", dataSet.getColumnNames().get(3));
         int cnt = 0;
         while (dataSet.hasNext()) {
           RowRecord rowRecord = dataSet.next();
@@ -153,8 +153,8 @@ public class IoTDBInsertTableSessionPoolIT {
 
   @Test
   public void testInsertKeyword() throws IoTDBConnectionException, StatementExecutionException {
-    ISessionPool sessionPool = EnvFactory.getEnv().getSessionPool(1, "table");
-    try (final IPooledSession session = sessionPool.getPooledSession()) {
+    ITableSessionPool sessionPool = EnvFactory.getEnv().getTableSessionPool(1);
+    try (final ITableSession session = sessionPool.getSession()) {
       session.executeNonQueryStatement("USE \"test\"");
       session.executeNonQueryStatement(
           "create table table20 ("
@@ -218,7 +218,7 @@ public class IoTDBInsertTableSessionPoolIT {
         tablet.addValue("timestamp", rowIndex, 1L);
         tablet.addValue("date", rowIndex, LocalDate.parse("2024-08-15"));
       }
-      session.insertTablet(tablet);
+      session.insert(tablet);
 
       SessionDataSet rs1 =
           session.executeQueryStatement(
