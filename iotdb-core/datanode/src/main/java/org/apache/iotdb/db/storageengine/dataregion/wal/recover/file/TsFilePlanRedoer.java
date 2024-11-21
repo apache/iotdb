@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -34,6 +37,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -114,7 +118,7 @@ public class TsFilePlanRedoer {
                 (InsertTabletNode) node, 0, ((InsertTabletNode) node).getRowCount());
       }
     }
-    recoveryMemTable.updateMemtablePointCountMetric(node, pointsInserted);
+    updatePointsInsertedMetric(node, pointsInserted);
   }
 
   void redoInsertRows(InsertRowsNode insertRowsNode) {
@@ -140,7 +144,38 @@ public class TsFilePlanRedoer {
         pointsInserted += recoveryMemTable.insert(node);
       }
     }
-    recoveryMemTable.updateMemtablePointCountMetric(insertRowsNode, pointsInserted);
+    updatePointsInsertedMetric(insertRowsNode, pointsInserted);
+  }
+
+  private void updatePointsInsertedMetric(InsertNode insertNode, int pointsInserted) {
+    MetricService.getInstance()
+        .count(
+            pointsInserted,
+            Metric.QUANTITY.toString(),
+            MetricLevel.CORE,
+            Tag.NAME.toString(),
+            Metric.POINTS_IN.toString(),
+            Tag.DATABASE.toString(),
+            tsFileResource.getDatabaseName(),
+            Tag.REGION.toString(),
+            tsFileResource.getDataRegionId(),
+            Tag.TYPE.toString(),
+            Metric.MEMTABLE_POINT_COUNT.toString());
+    if (!insertNode.isGeneratedByRemoteConsensusLeader()) {
+      MetricService.getInstance()
+          .count(
+              pointsInserted,
+              Metric.LEADER_QUANTITY.toString(),
+              MetricLevel.CORE,
+              Tag.NAME.toString(),
+              Metric.POINTS_IN.toString(),
+              Tag.DATABASE.toString(),
+              tsFileResource.getDatabaseName(),
+              Tag.REGION.toString(),
+              tsFileResource.getDataRegionId(),
+              Tag.TYPE.toString(),
+              Metric.MEMTABLE_POINT_COUNT.toString());
+    }
   }
 
   void resetRecoveryMemTable(IMemTable memTable) {

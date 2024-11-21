@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
@@ -81,9 +82,19 @@ public class ShowDBTask implements IConfigTask {
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.getColumnBuilder(0).writeBinary(new Binary(dbName, TSFileConfig.STRING_CHARSET));
 
-      builder.getColumnBuilder(1).writeInt(storageGroupInfo.getSchemaReplicationFactor());
-      builder.getColumnBuilder(2).writeInt(storageGroupInfo.getDataReplicationFactor());
-      builder.getColumnBuilder(3).writeLong(storageGroupInfo.getTimePartitionInterval());
+      if (Long.MAX_VALUE == storageGroupInfo.getTTL()) {
+        builder
+            .getColumnBuilder(1)
+            .writeBinary(new Binary(IoTDBConstant.TTL_INFINITE, TSFileConfig.STRING_CHARSET));
+      } else {
+        builder
+            .getColumnBuilder(1)
+            .writeBinary(
+                new Binary(String.valueOf(storageGroupInfo.getTTL()), TSFileConfig.STRING_CHARSET));
+      }
+      builder.getColumnBuilder(2).writeInt(storageGroupInfo.getSchemaReplicationFactor());
+      builder.getColumnBuilder(3).writeInt(storageGroupInfo.getDataReplicationFactor());
+      builder.getColumnBuilder(4).writeLong(storageGroupInfo.getTimePartitionInterval());
       builder.declarePosition();
     }
 
@@ -106,11 +117,21 @@ public class ShowDBTask implements IConfigTask {
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.getColumnBuilder(0).writeBinary(new Binary(dbName, TSFileConfig.STRING_CHARSET));
 
-      builder.getColumnBuilder(1).writeInt(storageGroupInfo.getSchemaReplicationFactor());
-      builder.getColumnBuilder(2).writeInt(storageGroupInfo.getDataReplicationFactor());
-      builder.getColumnBuilder(3).writeLong(storageGroupInfo.getTimePartitionInterval());
+      if (Long.MAX_VALUE == storageGroupInfo.getTTL()) {
+        builder
+            .getColumnBuilder(1)
+            .writeBinary(new Binary(IoTDBConstant.TTL_INFINITE, TSFileConfig.STRING_CHARSET));
+      } else {
+        builder
+            .getColumnBuilder(1)
+            .writeBinary(
+                new Binary(String.valueOf(storageGroupInfo.getTTL()), TSFileConfig.STRING_CHARSET));
+      }
+      builder.getColumnBuilder(2).writeInt(storageGroupInfo.getSchemaReplicationFactor());
+      builder.getColumnBuilder(3).writeInt(storageGroupInfo.getDataReplicationFactor());
+      builder.getColumnBuilder(4).writeLong(storageGroupInfo.getTimePartitionInterval());
       builder
-          .getColumnBuilder(4)
+          .getColumnBuilder(5)
           .writeBinary(
               new Binary(
                   storageGroupInfo.isIsTableModel() ? "TABLE" : "TREE",
