@@ -564,7 +564,7 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "show databases",
-          "Database,SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
+          "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
           Collections.emptySet(),
           null);
     }
