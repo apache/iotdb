@@ -32,11 +32,11 @@ import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColu
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
-import org.apache.commons.collections4.map.SingletonMap;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Collections;
 
 public class PipeConfigPhysicalPlanTablePatternParseVisitorTest {
   private final TablePattern tablePattern = new TablePattern(true, "^db[0-9]", "a.*b");
@@ -93,9 +93,9 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitorTest {
   @Test
   public void testSetTableProperties() {
     testInput(
-        new SetTablePropertiesPlan("root.db1", "ab", new SingletonMap<>("ttl", "2")),
-        new SetTablePropertiesPlan("root.db1", "ac", new SingletonMap<>("ttl", "2")),
-        new SetTablePropertiesPlan("root.da", "ac", new SingletonMap<>("ttl", "2")));
+        new SetTablePropertiesPlan("root.db1", "ab", Collections.singletonMap("ttl", "2")),
+        new SetTablePropertiesPlan("root.db1", "ac", Collections.singletonMap("ttl", "2")),
+        new SetTablePropertiesPlan("root.da", "ac", Collections.singletonMap("ttl", "2")));
   }
 
   @Test
