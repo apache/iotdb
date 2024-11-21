@@ -58,6 +58,7 @@ public class IoTDBPipeTableManualIT extends AbstractPipeDualManualIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.inclusion", "all");
+      extractorAttributes.put("extractor.inclusion.exclusion", "data.delete");
       extractorAttributes.put("extractor.capture.tree", "false");
       extractorAttributes.put("extractor.capture.table", "true");
       extractorAttributes.put("extractor.database-name", "test");
@@ -166,6 +167,7 @@ public class IoTDBPipeTableManualIT extends AbstractPipeDualManualIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.inclusion", "all");
+      extractorAttributes.put("extractor.inclusion.exclusion", "data.delete");
       extractorAttributes.put("extractor.capture.tree", "false");
       extractorAttributes.put("extractor.capture.table", "true");
 
@@ -216,6 +218,7 @@ public class IoTDBPipeTableManualIT extends AbstractPipeDualManualIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.inclusion", "all");
+      extractorAttributes.put("extractor.inclusion.exclusion", "data.delete");
       extractorAttributes.put("extractor.capture.tree", "true");
       extractorAttributes.put("extractor.capture.table", "false");
 
