@@ -137,7 +137,7 @@ public class RemoteServerEnv implements BaseEnv {
 
   @Override
   public Connection getWriteOnlyConnectionWithSpecifiedDataNode(
-      DataNodeWrapper dataNode, String username, String password) {
+      DataNodeWrapper dataNode, String username, String password, String sqlDialect) {
     throw new UnsupportedOperationException();
   }
 

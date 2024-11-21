@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.exception.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.VerifyMetadataException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -34,6 +36,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -222,5 +225,24 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
   protected void setFailAnalysisForAuthException(IAnalysis analysis, AuthException e) {
     analysis.setFinishQueryAfterAnalyze(true);
     analysis.setFailStatus(RpcUtils.getStatus(e.getCode(), e.getMessage()));
+  }
+
+  protected void checkBeforeAnalyzeFileByFile(IAnalysis analysis) {
+    if (TSFileDescriptor.getInstance().getConfig().getEncryptFlag()) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setFailStatus(
+          RpcUtils.getStatus(
+              TSStatusCode.LOAD_FILE_ERROR,
+              "TSFile encryption is enabled, and the Load TSFile function is disabled"));
+      return;
+    }
+
+    // check if the system is read only
+    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setFailStatus(
+          RpcUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY, LoadReadOnlyException.MESSAGE));
+      return;
+    }
   }
 }

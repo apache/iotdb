@@ -1523,7 +1523,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             .collect(Collectors.toList()),
         (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name),
         (deviceId, pointer, values) ->
-            updateAttribute(database, tableName, deviceId, pointer, attributeNames, values));
+            updateAttribute(database, tableName, deviceId, pointer, attributeNames, values),
+        attributeNames);
   }
 
   @Override
