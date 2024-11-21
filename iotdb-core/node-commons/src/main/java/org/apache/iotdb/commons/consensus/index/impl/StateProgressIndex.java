@@ -252,7 +252,10 @@ public class StateProgressIndex extends ProgressIndex {
         + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY * state.size()
         + state.entrySet().stream()
             .map(
-                entry -> RamUsageEstimator.sizeOf(entry.getKey()) + entry.getValue().ramBytesUsed())
+                entry ->
+                    RamUsageEstimator.sizeOf(entry.getKey())
+                        + RamUsageEstimator.shallowSizeOf(
+                            entry.getValue() != null ? entry.getValue().getValues() : null))
             .reduce(0L, Long::sum);
   }
 }
