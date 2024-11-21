@@ -22,9 +22,27 @@ package org.apache.iotdb.isession.pool;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 
+/**
+ * This interface defines a pool for managing {@link ITableSession} instances. It provides methods
+ * to acquire a session from the pool and to close the pool.
+ *
+ * <p>The implementation should handle the lifecycle of sessions, ensuring efficient reuse and
+ * proper cleanup of resources.
+ */
 public interface ITableSessionPool extends AutoCloseable {
 
+  /**
+   * Acquires an {@link ITableSession} instance from the pool.
+   *
+   * @return an {@link ITableSession} instance for interacting with IoTDB.
+   * @throws IoTDBConnectionException if there is an issue obtaining a session from the pool.
+   */
   ITableSession getSession() throws IoTDBConnectionException;
 
+  /**
+   * Closes the session pool, releasing any held resources.
+   *
+   * <p>Once the pool is closed, no further sessions can be acquired.
+   */
   void close();
 }
