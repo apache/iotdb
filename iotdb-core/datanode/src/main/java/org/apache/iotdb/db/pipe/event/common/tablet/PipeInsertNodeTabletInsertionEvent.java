@@ -196,9 +196,6 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         eventParsers.clear();
         eventParsers = null;
       }
-      if (Objects.nonNull(pipeName)) {
-        PipeDataNodeAgent.task().decreaseFloatingMemoryUsageInByte(pipeName, ramBytesUsed());
-      }
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
@@ -209,6 +206,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       return false;
     } finally {
       if (Objects.nonNull(pipeName)) {
+        PipeDataNodeAgent.task().decreaseFloatingMemoryUsageInByte(pipeName, ramBytesUsed());
         PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
             .decreaseTabletEventCount(pipeName, creationTime);
       }
