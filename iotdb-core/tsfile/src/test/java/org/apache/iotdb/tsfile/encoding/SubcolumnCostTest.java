@@ -13,10 +13,22 @@ import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
 public class SubcolumnCostTest {
+    /**
+     * 位宽
+     * @param value
+     * @return
+     */
     public static int bitWidth(int value) {
         return value == 0 ? 1 : 32 - Integer.numberOfLeadingZeros(value);
     }
 
+    /**
+     * 将 int value 以 bitWidth 位宽，写入 byte array 的 startBitPosition 比特位置
+     * @param array
+     * @param startBitPosition
+     * @param bitWidth
+     * @param value
+     */
     public static void writeBits(byte[] array, int startBitPosition, int bitWidth, int value) {
         int bytePosition = startBitPosition / 8;
         int bitOffset = startBitPosition % 8;
@@ -37,6 +49,14 @@ public class SubcolumnCostTest {
         }
     }
 
+    /**
+     * 从 byte array 的 startBitPosition 比特位置，读取 bitWidth 位宽的 int 值
+     * @param array
+     * @param startBitPosition
+     * @param bitWidth
+     * @param signed 1 表示有符号，0 表示无符号
+     * @return
+     */
     public static int readBits(byte[] array, int startBitPosition, int bitWidth, int signed) {
         int bytePosition = startBitPosition / 8;
         int bitOffset = startBitPosition % 8;
@@ -65,6 +85,13 @@ public class SubcolumnCostTest {
         return value;
     }
 
+    /**
+     * 位打包，将 values 数组中的值，按 bitWidth 位宽，写入 byte array 的 startBitPosition 比特位置
+     * @param values
+     * @param array
+     * @param startBitPosition
+     * @param bitWidth
+     */
     public static void bitPacking(int[] values, byte[] array, int startBitPosition, int bitWidth) {
         for (int i = 0; i < values.length; i++) {
             writeBits(array, startBitPosition + i * bitWidth, bitWidth, values[i]);
@@ -82,13 +109,16 @@ public class SubcolumnCostTest {
     public static int[] subcolumn(int[] x, int m) {
         int x_length = x.length;
         if (x_length == 0) {
-            return new int[] { 0, 0, 0, 0 };
+            return new int[] { 0, 0, 0 };
         }
 
         int cMin = m * x_length;
 
         int lBest = 0;
         int betaBest = 0;
+
+        // int[] beta_list = new int[] { 7, 5, 3, 2 };
+        int[] beta_list = new int[] { 4, 3, 2, 1 };
 
         // costHB[l] 表示高 m - l 位的 RLE 的 cost
         int[] costHB = new int[m + 1];
@@ -141,12 +171,13 @@ public class SubcolumnCostTest {
         // System.out.println();
 
         // costLB[l][beta] 表示低 l 位按 beta 划分进行比特打包的 cost
-        int[][] costLB = new int[m + 1][5];
+        int[][] costLB = new int[m + 1][10];
 
         for (int l = 1; l <= m; l++) {
             costLB[l][1] = l * x_length;
 
-            for (int beta = 2; beta <= 4; beta++) {
+            // for (int beta = 2; beta <= 4; beta++) {
+            for (int beta : beta_list) {
                 int parts = (l + beta - 1) / beta;
                 for (int p = 1; p <= parts; p++) {
                     int currentBit = p * beta;
@@ -169,7 +200,8 @@ public class SubcolumnCostTest {
         // }
 
         for (int l = 1; l <= m; l++) {
-            for (int beta = 4; beta >= 1; beta--) {
+            // for (int beta = 4; beta >= 1; beta--) {
+            for (int beta : beta_list) {
                 if (costHB[l] + costLB[l][beta] < cMin) {
                     cMin = costHB[l] + costLB[l][beta];
                     lBest = l;
@@ -335,9 +367,8 @@ public class SubcolumnCostTest {
         // System.out.println("cMin: " + cMin);
 
         // TODO 真正计算时，记得注释掉将下面的内容
-        // int m = bitWidth(data_delta[2]);
-        // int l = m - 1;
-        // int beta = 4;
+        // l = m - 1;
+        // beta = 4;
 
         writeBits(encoded_result, startBitPosition, 8, m);
         startBitPosition += 8;
@@ -737,6 +768,7 @@ public class SubcolumnCostTest {
         // String parent_dir =
         // "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
         String output_parent_dir = "/Users/allen/Documents/compress-subcolumn";
+        // String output_parent_dir = "/Users/allen/Documents/github/xjz17/subcolumn/elf_resources";
         // String input_parent_dir = parent_dir +
         // "elf/src/test/resources/ElfData_Short";
         String input_parent_dir = parent_dir + "ElfData_Short/";
@@ -760,8 +792,9 @@ public class SubcolumnCostTest {
         input_path_list.add(input_parent_dir);
         dataset_block_size.add(1024);
         // output_path_list.add(output_parent_dir + "/compress_ratio.csv"); // 0
-        output_path_list.add(output_parent_dir + "/subcolumn.csv"); // 0
-        // output_path_list.add(output_parent_dir + "/test0.csv"); // 0
+        // output_path_list.add(output_parent_dir + "/subcolumn.csv"); // 0
+        // output_path_list.add(output_parent_dir + "/subcolumn_7532.csv"); // 0
+        output_path_list.add(output_parent_dir + "/subcolumn_4321.csv"); // 0
         // for (String value : dataset_name) {
         // input_path_list.add(input_parent_dir + value);
         // dataset_block_size.add(1024);
