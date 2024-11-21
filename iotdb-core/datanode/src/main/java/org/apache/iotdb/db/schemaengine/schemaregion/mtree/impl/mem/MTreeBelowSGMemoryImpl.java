@@ -1582,8 +1582,10 @@ public class MTreeBelowSGMemoryImpl {
       final IntSupplier attributePointerGetter,
       final IntConsumer attributeUpdater)
       throws MetadataException {
-    // todo implement storage for device of diverse data types
-
+    // todo implement storage for device of diverse data types\
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("Start to create table device {}.{}", tableName, Arrays.toString(devicePath));
+    }
     IMemMNode cur = storageGroupMNode.getChild(tableName);
     if (cur == null) {
       cur =
@@ -1603,6 +1605,9 @@ public class MTreeBelowSGMemoryImpl {
 
     synchronized (this) {
       if (cur.isDevice()) {
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug("Table device {}.{} already exists", tableName, Arrays.toString(devicePath));
+        }
         entityMNode = cur.getAsDeviceMNode();
         if (!(entityMNode.getDeviceInfo() instanceof TableDeviceInfo)) {
           throw new MetadataException("Table device shall not create under tree model");
@@ -1616,6 +1621,9 @@ public class MTreeBelowSGMemoryImpl {
         deviceInfo.setAttributePointer(attributePointerGetter.getAsInt());
         entityMNode.getAsInternalMNode().setDeviceInfo(deviceInfo);
         regionStatistics.addTableDevice(tableName);
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug("Table device {}.{} created", tableName, Arrays.toString(devicePath));
+        }
       }
     }
   }

@@ -360,6 +360,7 @@ public class ClusterSchemaManager {
       final String database = databaseSchema.getName();
       final TDatabaseInfo databaseInfo = new TDatabaseInfo();
       databaseInfo.setName(database);
+      databaseInfo.setTTL(databaseSchema.isSetTTL() ? databaseSchema.getTTL() : Long.MAX_VALUE);
       databaseInfo.setSchemaReplicationFactor(databaseSchema.getSchemaReplicationFactor());
       databaseInfo.setDataReplicationFactor(databaseSchema.getDataReplicationFactor());
       databaseInfo.setTimePartitionOrigin(databaseSchema.getTimePartitionOrigin());
@@ -1139,27 +1140,30 @@ public class ClusterSchemaManager {
     }
   }
 
-  public void updateTimeSeriesUsage(Map<Integer, Long> seriesUsage) {
+  public void updateTimeSeriesUsage(final Map<Integer, Long> seriesUsage) {
     schemaQuotaStatistics.updateTimeSeriesUsage(seriesUsage);
   }
 
-  public void updateDeviceUsage(Map<Integer, Long> deviceUsage) {
+  public void updateDeviceUsage(final Map<Integer, Long> deviceUsage) {
     schemaQuotaStatistics.updateDeviceUsage(deviceUsage);
   }
 
-  public void updateSchemaQuotaConfiguration(long seriesThreshold, long deviceThreshold) {
+  public void updateSchemaQuotaConfiguration(
+      final long seriesThreshold, final long deviceThreshold) {
     schemaQuotaStatistics.setDeviceThreshold(deviceThreshold);
     schemaQuotaStatistics.setSeriesThreshold(seriesThreshold);
   }
 
-  public Optional<TsTable> getTableIfExists(final String database, final String tableName) {
+  public Optional<TsTable> getTableIfExists(final String database, final String tableName)
+      throws MetadataException {
     return clusterSchemaInfo.getTsTableIfExists(database, tableName);
   }
 
   public synchronized Pair<TSStatus, TsTable> tableColumnCheckForColumnExtension(
       final String database,
       final String tableName,
-      final List<TsTableColumnSchema> columnSchemaList) {
+      final List<TsTableColumnSchema> columnSchemaList)
+      throws MetadataException {
     final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
 
     if (Objects.isNull(originalTable)) {
@@ -1196,7 +1200,8 @@ public class ClusterSchemaManager {
   }
 
   public synchronized Pair<TSStatus, TsTable> tableColumnCheckForColumnRenaming(
-      final String database, final String tableName, final String oldName, final String newName) {
+      final String database, final String tableName, final String oldName, final String newName)
+      throws MetadataException {
     final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
 
     if (Objects.isNull(originalTable)) {
@@ -1289,7 +1294,8 @@ public class ClusterSchemaManager {
       final String database,
       final String tableName,
       final Map<String, String> originalProperties,
-      final Map<String, String> updatedProperties) {
+      final Map<String, String> updatedProperties)
+      throws MetadataException {
     final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
 
     if (Objects.isNull(originalTable)) {
@@ -1316,7 +1322,11 @@ public class ClusterSchemaManager {
     updatedProperties.forEach(
         (k, v) -> {
           originalProperties.put(k, originalTable.getPropValue(k).orElse(null));
-          updatedTable.addProp(k, v);
+          if (Objects.nonNull(v)) {
+            updatedTable.addProp(k, v);
+          } else {
+            updatedTable.removeProp(k);
+          }
         });
 
     return new Pair<>(RpcUtils.SUCCESS_STATUS, updatedTable);
