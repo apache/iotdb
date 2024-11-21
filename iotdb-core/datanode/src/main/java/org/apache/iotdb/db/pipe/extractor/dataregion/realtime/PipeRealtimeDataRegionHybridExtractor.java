@@ -214,7 +214,8 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
         || mayMemTablePinnedCountReachDangerousThreshold()
         || isHistoricalTsFileEventCountExceededLimit()
         || isRealtimeTsFileEventCountExceededLimit()
-        || mayTsFileLinkedCountReachDangerousThreshold();
+        || mayTsFileLinkedCountReachDangerousThreshold()
+        || mayInsertNodeMemoryReachDangerousThreshold();
   }
 
   private boolean mayWalSizeReachThrottleThreshold() {
@@ -243,6 +244,15 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   private boolean mayTsFileLinkedCountReachDangerousThreshold() {
     return PipeDataNodeResourceManager.tsfile().getLinkedTsfileCount()
         >= PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileCount();
+  }
+
+  private boolean mayInsertNodeMemoryReachDangerousThreshold() {
+    return 3
+            * PipeDataNodeAgent.task().getFloatingMemoryUsageInByte(pipeName)
+            * PipeDataNodeAgent.task().getPipeCount()
+        >= (PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes()
+                - PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes())
+            * 2;
   }
 
   @Override

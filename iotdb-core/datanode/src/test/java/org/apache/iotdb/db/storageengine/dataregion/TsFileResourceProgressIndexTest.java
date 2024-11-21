@@ -224,6 +224,11 @@ public class TsFileResourceProgressIndexTest {
     public TotalOrderSumTuple getTotalOrderSumTuple() {
       return new TotalOrderSumTuple((long) val);
     }
+
+    @Override
+    public long ramBytesUsed() {
+      return 0;
+    }
   }
 
   @Test
