@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.consensus.deletion;
 
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -30,7 +31,8 @@ import org.apache.iotdb.db.pipe.consensus.ProgressIndexDataNodeManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.persist.DeletionBuffer;
 import org.apache.iotdb.db.pipe.consensus.deletion.persist.PageCacheDeletionBuffer;
 import org.apache.iotdb.db.pipe.consensus.deletion.recover.DeletionReader;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
+import org.apache.iotdb.db.storageengine.StorageEngine;
 
 import com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
@@ -43,6 +45,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -61,16 +64,29 @@ public class DeletionResourceManager implements AutoCloseable {
       String.format(
           "^_(?<%s>\\d+)-(?<%s>\\d+)\\%s$",
           REBOOT_TIME, MEM_TABLE_FLUSH_ORDER, DELETION_FILE_SUFFIX);
+  private static final String TABLE_NAME = "table";
   private final String dataRegionId;
   private final DeletionBuffer deletionBuffer;
   private final File storageDir;
-  private final Map<DeleteDataNode, DeletionResource> deleteNode2ResourcesMap =
+  private final Map<AbstractDeleteDataNode, DeletionResource> deleteNode2ResourcesMap =
       new ConcurrentHashMap<>();
+  // 1 data region -> 1 kind of database(either a table one or a tree one) -> Determined
+  // deleteNodes/DALs type(either table or tree)
   private final Lock recoverLock = new ReentrantLock();
   private final Condition recoveryReadyCondition = recoverLock.newCondition();
   private volatile boolean hasCompletedRecovery = false;
+  private boolean isRelational;
 
   private DeletionResourceManager(String dataRegionId) throws IOException {
+    // Tree model by default
+    this.isRelational = false;
+    Optional.ofNullable(
+            StorageEngine.getInstance()
+                .getDataRegion(new DataRegionId(Integer.parseInt(dataRegionId))))
+        .ifPresent(
+            dataRegion -> {
+              this.isRelational = dataRegion.getDatabaseName().toLowerCase().contains(TABLE_NAME);
+            });
     this.dataRegionId = dataRegionId;
     this.storageDir =
         new File(
@@ -103,7 +119,8 @@ public class DeletionResourceManager implements AutoCloseable {
 
         for (Path path : deletionPaths) {
           try (DeletionReader deletionReader =
-              new DeletionReader(path.toFile(), dataRegionId, this::removeDeletionResource)) {
+              new DeletionReader(
+                  path.toFile(), dataRegionId, this::removeDeletionResource, isRelational)) {
             deletionReader
                 .readAllDeletions()
                 .forEach(
@@ -133,7 +150,7 @@ public class DeletionResourceManager implements AutoCloseable {
     LOGGER.info("Deletion resource manager for {} has been successfully closed!", dataRegionId);
   }
 
-  public DeletionResource registerDeletionResource(DeleteDataNode deleteDataNode) {
+  public DeletionResource registerDeletionResource(AbstractDeleteDataNode deleteDataNode) {
     DeletionResource deletionResource =
         deleteNode2ResourcesMap.computeIfAbsent(
             deleteDataNode,
@@ -144,7 +161,7 @@ public class DeletionResourceManager implements AutoCloseable {
     return deletionResource;
   }
 
-  public DeletionResource getDeletionResource(DeleteDataNode deleteDataNode) {
+  public DeletionResource getDeletionResource(AbstractDeleteDataNode deleteDataNode) {
     return deleteNode2ResourcesMap.get(deleteDataNode);
   }
 
@@ -305,7 +322,7 @@ public class DeletionResourceManager implements AutoCloseable {
   }
 
   @TestOnly
-  public void recoverForTest() {
+  public void recoverForTest(boolean isRelational) {
     try (Stream<Path> pathStream = Files.walk(Paths.get(storageDir.getPath()), 1)) {
       Path[] deletionPaths =
           pathStream
@@ -315,7 +332,8 @@ public class DeletionResourceManager implements AutoCloseable {
 
       for (Path path : deletionPaths) {
         try (DeletionReader deletionReader =
-            new DeletionReader(path.toFile(), dataRegionId, this::removeDeletionResource)) {
+            new DeletionReader(
+                path.toFile(), dataRegionId, this::removeDeletionResource, isRelational)) {
           deletionReader
               .readAllDeletions()
               .forEach(
