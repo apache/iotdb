@@ -108,9 +108,13 @@ public class TablePattern {
                     SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
                 .equals(SystemConstant.SQL_DIALECT_TREE_VALUE));
     final String databaseNamePattern =
-        sourceParameters.getStringByKeys(EXTRACTOR_DATABASE_NAME_KEY, SOURCE_DATABASE_NAME_KEY);
+        sourceParameters.getStringOrDefault(
+            Arrays.asList(EXTRACTOR_DATABASE_NAME_KEY, SOURCE_DATABASE_NAME_KEY),
+            EXTRACTOR_DATABASE_NAME_DEFAULT_VALUE);
     final String tableNamePattern =
-        sourceParameters.getStringByKeys(EXTRACTOR_TABLE_NAME_KEY, SOURCE_TABLE_NAME_KEY);
+        sourceParameters.getStringOrDefault(
+            Arrays.asList(EXTRACTOR_TABLE_NAME_KEY, SOURCE_TABLE_NAME_KEY),
+            EXTRACTOR_TABLE_NAME_DEFAULT_VALUE);
     try {
       return new TablePattern(
           isTableModelDataAllowedToBeCaptured, databaseNamePattern, tableNamePattern);
