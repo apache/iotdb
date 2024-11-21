@@ -64,6 +64,17 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitorTest {
   }
 
   @Test
+  public void testDeleteDatabaseV2() {
+    testInput(
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.DeleteDatabaseV2, new TDatabaseSchema("root.db1")),
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.DeleteDatabaseV2, new TDatabaseSchema("root.da")),
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.DeleteDatabaseV2, new TDatabaseSchema("root.dc")));
+  }
+
+  @Test
   public void testCreateTable() {
     testInput(
         new PipeCreateTablePlan("root.db1", new TsTable("ab")),
