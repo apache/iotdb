@@ -4216,6 +4216,16 @@ public class Session implements ISession {
       return this;
     }
 
+    public Builder sqlDialect(String sqlDialect) {
+      this.sqlDialect = sqlDialect;
+      return this;
+    }
+
+    public Builder database(String database) {
+      this.database = database;
+      return this;
+    }
+
     public Builder useSSL(boolean useSSL) {
       this.useSSL = useSSL;
       return this;

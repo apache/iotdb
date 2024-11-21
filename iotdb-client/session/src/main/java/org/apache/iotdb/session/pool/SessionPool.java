@@ -572,6 +572,8 @@ public class SessionPool implements ISessionPool {
               .trustStorePwd(trustStorePwd)
               .maxRetryCount(maxRetryCount)
               .retryIntervalInMs(retryIntervalInMs)
+              .sqlDialect(sqlDialect)
+              .database(database)
               .timeOut(queryTimeoutInMs)
               .build();
     } else {
@@ -593,6 +595,8 @@ public class SessionPool implements ISessionPool {
               .trustStorePwd(trustStorePwd)
               .maxRetryCount(maxRetryCount)
               .retryIntervalInMs(retryIntervalInMs)
+              .sqlDialect(sqlDialect)
+              .database(database)
               .timeOut(queryTimeoutInMs)
               .build();
     }
