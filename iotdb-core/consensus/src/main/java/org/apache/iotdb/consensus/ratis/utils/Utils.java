@@ -289,9 +289,6 @@ public class Utils {
         properties, config.getThreadPool().getServerSize());
 
     RaftServerConfigKeys.Log.setUseMemory(properties, config.getLog().isUseMemory());
-    RaftServerConfigKeys.Log.setQueueElementLimit(
-        properties, config.getLog().getQueueElementLimit());
-    RaftServerConfigKeys.Log.setQueueByteLimit(properties, config.getLog().getQueueByteLimit());
     RaftServerConfigKeys.Log.setPurgeGap(properties, config.getLog().getPurgeGap());
     RaftServerConfigKeys.Log.setPurgeUptoSnapshotIndex(
         properties, config.getLog().isPurgeUptoSnapshotIndex());
@@ -303,9 +300,9 @@ public class Utils {
     RaftServerConfigKeys.Log.setSegmentCacheSizeMax(
         properties, config.getLog().getSegmentCacheSizeMax());
     RaftServerConfigKeys.Log.setPreallocatedSize(properties, config.getLog().getPreallocatedSize());
-    final SizeInBytes writeBufferSize =
-        SizeInBytes.valueOf(config.getLeaderLogAppender().getBufferByteLimit().getSizeInt() + 8L);
-    RaftServerConfigKeys.Log.setWriteBufferSize(properties, writeBufferSize);
+    RaftServerConfigKeys.Log.setWriteBufferSize(
+        properties,
+        SizeInBytes.valueOf(config.getLeaderLogAppender().getBufferByteLimit().getSizeInt() + 8L));
     RaftServerConfigKeys.Log.setForceSyncNum(properties, config.getLog().getForceSyncNum());
     RaftServerConfigKeys.Log.setUnsafeFlushEnabled(
         properties, config.getLog().isUnsafeFlushEnabled());
@@ -315,6 +312,8 @@ public class Utils {
     RaftServerConfigKeys.Write.setByteLimit(
         properties, config.getLeaderLogAppender().getBufferByteLimit());
 
+    RaftServerConfigKeys.Log.setQueueByteLimit(
+        properties, config.getLeaderLogAppender().getBufferByteLimit());
     RaftServerConfigKeys.Log.Appender.setBufferByteLimit(
         properties, config.getLeaderLogAppender().getBufferByteLimit());
     RaftServerConfigKeys.Log.Appender.setSnapshotChunkSizeMax(
