@@ -329,7 +329,7 @@ public class TableLogicalPlanner {
             null,
             statement.getColumnHeaderList(),
             null,
-            pushDownLimit);
+            Objects.isNull(statement.getIdFuzzyPredicate()) ? pushDownLimit : -1);
 
     // put the column type info into symbolAllocator to generate TypeProvider
     statement
