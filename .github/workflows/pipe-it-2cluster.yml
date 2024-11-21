@@ -39,7 +39,7 @@ jobs:
       matrix:
         java: [ 17 ]
         # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
-        cluster1: [ PipeConsensusBatchMode, PipeConsensusStreamMode, ScalableSingleNodeMode ]
+        cluster1: [ PipeConsensusBatchMode, PipeConsensusStreamMode, PipeConsensusBatchMode, PipeConsensusStreamMode ]
         cluster2: [ ScalableSingleNodeMode ]
         os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
@@ -77,7 +77,7 @@ jobs:
       matrix:
         java: [ 17 ]
         # do not use HighPerformanceMode here, otherwise some tests will cause the GH runner to receive a shutdown signal
-        cluster1: [ PipeConsensusBatchMode, PipeConsensusStreamMode, ScalableSingleNodeMode ]
+        cluster1: [ PipeConsensusBatchMode, PipeConsensusStreamMode, PipeConsensusBatchMode, PipeConsensusStreamMode ]
         cluster2: [ ScalableSingleNodeMode ]
         os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
@@ -115,7 +115,7 @@ jobs:
       matrix:
         java: [ 17 ]
         # do not use HighPerformanceMode here, otherwise some tests will cause the GH runner to receive a shutdown signal
-        cluster1: [ PipeConsensusBatchMode, PipeConsensusStreamMode, ScalableSingleNodeMode ]
+        cluster1: [ PipeConsensusBatchMode, PipeConsensusStreamMode, PipeConsensusBatchMode, PipeConsensusStreamMode ]
         cluster2: [ ScalableSingleNodeMode ]
         os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}

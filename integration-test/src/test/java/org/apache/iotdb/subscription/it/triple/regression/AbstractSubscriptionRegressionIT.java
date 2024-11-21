@@ -57,6 +57,7 @@ import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.MAX_RETRY_TIMES;
 import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS;
 
 public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscriptionTripleIT {
@@ -285,12 +286,17 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
           StatementExecutionException,
           InterruptedException,
           IoTDBConnectionException {
+    int retryCount = 0;
     while (true) {
       Thread.sleep(1000);
-
+      // That is, the consumer poll will keep pulling if no messages are fetched within the timeout,
+      // until a message is fetched or the time exceeds the timeout.
       List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(POLL_TIMEOUT_MS));
       if (messages.isEmpty()) {
-        break;
+        retryCount++;
+        if (retryCount >= MAX_RETRY_TIMES) {
+          break;
+        }
       }
       for (final SubscriptionMessage message : messages) {
         for (final Iterator<Tablet> it = message.getSessionDataSetsHandler().tabletIterator();
@@ -321,6 +327,7 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
     for (int i = 0; i < devices.size(); i++) {
       rowCounts.add(new AtomicInteger(0));
     }
+    int retryCount = 0;
     AtomicInteger onReceived = new AtomicInteger(0);
     while (true) {
       Thread.sleep(1000);
@@ -328,7 +335,10 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
       // until a message is fetched or the time exceeds the timeout.
       List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(POLL_TIMEOUT_MS));
       if (messages.isEmpty()) {
-        break;
+        retryCount++;
+        if (retryCount >= MAX_RETRY_TIMES) {
+          break;
+        }
       }
       for (final SubscriptionMessage message : messages) {
         onReceived.incrementAndGet();
@@ -361,28 +371,6 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
     }
     results.add(onReceived.get());
     return results;
-  }
-
-  public static void consume_data_long(
-      SubscriptionPullConsumer consumer, Session session, Long timeout)
-      throws StatementExecutionException, InterruptedException, IoTDBConnectionException {
-    timeout = System.currentTimeMillis() + timeout;
-    while (System.currentTimeMillis() < timeout) {
-      List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(POLL_TIMEOUT_MS));
-      if (messages.isEmpty()) {
-        Thread.sleep(1000);
-      }
-      for (final SubscriptionMessage message : messages) {
-        for (final Iterator<Tablet> it = message.getSessionDataSetsHandler().tabletIterator();
-            it.hasNext(); ) {
-          final Tablet tablet = it.next();
-          session.insertTablet(tablet);
-        }
-      }
-      if (!consumer.isAutoCommit()) {
-        consumer.commitSync(messages);
-      }
-    }
   }
 
   public void consume_data(SubscriptionPullConsumer consumer)
