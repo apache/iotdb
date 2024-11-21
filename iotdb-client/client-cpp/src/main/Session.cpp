@@ -34,13 +34,14 @@ static const int64_t QUERY_TIMEOUT_MS = -1;
 LogLevelType LOG_LEVEL = LEVEL_DEBUG;
 
 TSDataType::TSDataType getTSDataTypeFromString(const string &str) {
-    // BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, NULLTYPE
+    // BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, TIMESTAMP, NULLTYPE
     if (str == "BOOLEAN") return TSDataType::BOOLEAN;
     else if (str == "INT32") return TSDataType::INT32;
     else if (str == "INT64") return TSDataType::INT64;
     else if (str == "FLOAT") return TSDataType::FLOAT;
     else if (str == "DOUBLE") return TSDataType::DOUBLE;
     else if (str == "TEXT") return TSDataType::TEXT;
+    else if (str == "TIMESTAMP") return TSDataType::INT64;
     else if (str == "NULLTYPE") return TSDataType::NULLTYPE;
     return TSDataType::TEXT;
 }
