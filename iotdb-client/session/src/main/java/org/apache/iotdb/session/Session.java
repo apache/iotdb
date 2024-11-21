@@ -71,7 +71,6 @@ import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.record.Tablet.ColumnType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
@@ -1259,38 +1258,6 @@ public class Session implements ISession {
     }
 
     insertRecord(deviceId, request);
-  }
-
-  /**
-   * insert data in one row to the table model, if you want to improve your performance, please use
-   * insertRecords method or insertTablet method
-   *
-   * @see Session#insertRecords(List, List, List, List, List)
-   * @see Session#insertTablet(Tablet)
-   */
-  @Override
-  public void insertRelationalRecord(
-      String tableName,
-      long time,
-      List<String> measurements,
-      List<TSDataType> types,
-      List<ColumnType> columnCategories,
-      Object... values)
-      throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertRecordReq request;
-    try {
-      request =
-          filterAndGenTSInsertRecordReq(
-              tableName, time, measurements, types, Arrays.asList(values), false);
-      request.setColumnCategoryies(
-          columnCategories.stream().map(c -> (byte) c.ordinal()).collect(Collectors.toList()));
-      request.setIsWriteToTable(true);
-    } catch (NoValidValueException e) {
-      logger.warn(ALL_VALUES_ARE_NULL, tableName, time, measurements);
-      return;
-    }
-
-    insertRecord(tableName, request);
   }
 
   private void insertRecord(String prefixPath, TSInsertRecordReq request)
@@ -2758,15 +2725,14 @@ public class Session implements ISession {
    * insert a relational Tablet
    *
    * @param tablet data batch
-   * @param sorted deprecated, whether times in Tablet are in ascending order
    */
   @Override
-  public void insertRelationalTablet(Tablet tablet, boolean sorted)
+  public void insertRelationalTablet(Tablet tablet)
       throws IoTDBConnectionException, StatementExecutionException {
     if (enableRedirection) {
       insertRelationalTabletWithLeaderCache(tablet);
     } else {
-      TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted, false);
+      TSInsertTabletReq request = genTSInsertTabletReq(tablet, false, false);
       request.setWriteToTable(true);
       request.setColumnCategories(
           tablet.getColumnTypes().stream()
@@ -2777,17 +2743,6 @@ public class Session implements ISession {
       } catch (RedirectException ignored) {
       }
     }
-  }
-
-  /**
-   * insert a relational Tablet
-   *
-   * @param tablet data batch
-   */
-  @Override
-  public void insertRelationalTablet(Tablet tablet)
-      throws IoTDBConnectionException, StatementExecutionException {
-    insertRelationalTablet(tablet, false);
   }
 
   private void insertRelationalTabletWithLeaderCache(Tablet tablet)

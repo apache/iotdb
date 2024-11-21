@@ -127,7 +127,7 @@ public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder {
   }
 
   public ITableSessionPool build() {
-    if (nodeUrls != null) {
+    if (nodeUrls == null) {
       throw new IllegalArgumentException("You should specify nodeUrls");
     }
     this.sqlDialect = "table";
