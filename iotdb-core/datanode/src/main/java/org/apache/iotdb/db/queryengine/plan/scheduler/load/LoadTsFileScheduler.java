@@ -191,16 +191,6 @@ public class LoadTsFileScheduler implements IScheduler {
                       queryContext.getSession().getUserName()))) { // do not decode, load locally
             final long startTime = System.nanoTime();
             try {
-              if (node.getTsFileResource().getTimeIndex() instanceof PlainDeviceTimeIndex) {
-                final PlainDeviceTimeIndex timeIndex =
-                    (PlainDeviceTimeIndex) node.getTsFileResource().getTimeIndex();
-                node.getTsFileResource()
-                    .setTimeIndex(
-                        new ArrayDeviceTimeIndex(
-                            timeIndex.getDeviceToIndex(),
-                            timeIndex.getStartTimes(),
-                            timeIndex.getEndTimes()));
-              }
               isLoadSingleTsFileSuccess = loadLocally(node);
             } finally {
               LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
@@ -424,6 +414,18 @@ public class LoadTsFileScheduler implements IScheduler {
 
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new LoadReadOnlyException();
+    }
+
+    // if the time index is PlainDeviceTimeIndex, convert it to ArrayDeviceTimeIndex
+    if (node.getTsFileResource().getTimeIndex() instanceof PlainDeviceTimeIndex) {
+      final PlainDeviceTimeIndex timeIndex =
+          (PlainDeviceTimeIndex) node.getTsFileResource().getTimeIndex();
+      node.getTsFileResource()
+          .setTimeIndex(
+              new ArrayDeviceTimeIndex(
+                  timeIndex.getDeviceToIndex(),
+                  timeIndex.getStartTimes(),
+                  timeIndex.getEndTimes()));
     }
 
     try {
