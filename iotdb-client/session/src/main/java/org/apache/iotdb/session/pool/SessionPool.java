@@ -709,7 +709,6 @@ public class SessionPool implements ISessionPool {
       session = constructNewSession();
 
       try {
-
         session.open(
             enableCompression,
             connectionTimeoutInMs,
@@ -3678,18 +3677,8 @@ public class SessionPool implements ISessionPool {
       return this;
     }
 
-    public Builder sqlDialect(String sqlDialect) {
-      this.sqlDialect = sqlDialect;
-      return this;
-    }
-
     public Builder queryTimeoutInMs(long queryTimeoutInMs) {
       this.timeOut = queryTimeoutInMs;
-      return this;
-    }
-
-    public Builder database(String database) {
-      this.database = database;
       return this;
     }
 

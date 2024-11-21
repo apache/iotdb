@@ -95,6 +95,7 @@ public class IoTDBTableModelSessionPoolIT {
       }
 
     } catch (final IoTDBConnectionException | StatementExecutionException e) {
+      e.printStackTrace();
       fail(e.getMessage());
     }
 

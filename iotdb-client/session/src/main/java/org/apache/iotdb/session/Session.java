@@ -2726,7 +2726,6 @@ public class Session implements ISession {
    *
    * @param tablet data batch
    */
-  @Override
   public void insertRelationalTablet(Tablet tablet)
       throws IoTDBConnectionException, StatementExecutionException {
     if (enableRedirection) {
@@ -4136,8 +4135,6 @@ public class Session implements ISession {
   }
 
   public static class Builder extends AbstractSessionBuilder {
-
-    private List<String> nodeUrls = null;
 
     public Builder host(String host) {
       this.host = host;
