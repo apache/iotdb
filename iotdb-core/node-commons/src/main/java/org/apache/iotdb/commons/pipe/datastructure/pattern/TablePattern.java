@@ -48,11 +48,13 @@ public class TablePattern {
     this.isTableModelDataAllowedToBeCaptured = isTableModelDataAllowedToBeCaptured;
     databasePattern =
         databasePatternString == null
-            ? Pattern.compile(EXTRACTOR_DATABASE_NAME_DEFAULT_VALUE)
+                || databasePatternString.trim().equals(EXTRACTOR_DATABASE_NAME_DEFAULT_VALUE)
+            ? null
             : Pattern.compile(databasePatternString);
     tablePattern =
         tablePatternString == null
-            ? Pattern.compile(EXTRACTOR_TABLE_NAME_DEFAULT_VALUE)
+                || tablePatternString.trim().equals(EXTRACTOR_TABLE_NAME_DEFAULT_VALUE)
+            ? null
             : Pattern.compile(tablePatternString);
   }
 
@@ -61,29 +63,32 @@ public class TablePattern {
   }
 
   public boolean hasUserSpecifiedDatabasePatternOrTablePattern() {
-    return !databasePattern.pattern().equals(EXTRACTOR_DATABASE_NAME_DEFAULT_VALUE)
-        || !tablePattern.pattern().equals(EXTRACTOR_TABLE_NAME_DEFAULT_VALUE);
+    return databasePattern != null || tablePattern != null;
   }
 
   public boolean coversDb(final String database) {
-    return databasePattern.matcher(database).matches()
-        && EXTRACTOR_TABLE_NAME_DEFAULT_VALUE.equals(tablePattern.toString());
+    return !hasUserSpecifiedDatabasePatternOrTablePattern()
+        || (databasePattern != null
+            && databasePattern.matcher(database).matches()
+            && tablePattern == null);
   }
 
   public boolean matchesDatabase(final String database) {
-    return databasePattern.matcher(database).matches();
+    return databasePattern == null || databasePattern.matcher(database).matches();
   }
 
   public boolean matchesTable(final String table) {
-    return tablePattern.matcher(table).matches();
+    return tablePattern == null || tablePattern.matcher(table).matches();
   }
 
   public String getDatabasePattern() {
-    return databasePattern.pattern();
+    return databasePattern == null
+        ? EXTRACTOR_DATABASE_NAME_DEFAULT_VALUE
+        : databasePattern.pattern();
   }
 
   public String getTablePattern() {
-    return tablePattern.pattern();
+    return tablePattern == null ? EXTRACTOR_TABLE_NAME_DEFAULT_VALUE : tablePattern.pattern();
   }
 
   /**
@@ -103,13 +108,9 @@ public class TablePattern {
                     SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
                 .equals(SystemConstant.SQL_DIALECT_TREE_VALUE));
     final String databaseNamePattern =
-        sourceParameters.getStringOrDefault(
-            Arrays.asList(EXTRACTOR_DATABASE_NAME_KEY, SOURCE_DATABASE_NAME_KEY),
-            EXTRACTOR_DATABASE_NAME_DEFAULT_VALUE);
+        sourceParameters.getStringByKeys(EXTRACTOR_DATABASE_NAME_KEY, SOURCE_DATABASE_NAME_KEY);
     final String tableNamePattern =
-        sourceParameters.getStringOrDefault(
-            Arrays.asList(EXTRACTOR_TABLE_NAME_KEY, SOURCE_TABLE_NAME_KEY),
-            EXTRACTOR_TABLE_NAME_DEFAULT_VALUE);
+        sourceParameters.getStringByKeys(EXTRACTOR_TABLE_NAME_KEY, SOURCE_TABLE_NAME_KEY);
     try {
       return new TablePattern(
           isTableModelDataAllowedToBeCaptured, databaseNamePattern, tableNamePattern);
