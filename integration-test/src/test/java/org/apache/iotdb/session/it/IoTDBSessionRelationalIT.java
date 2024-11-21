@@ -642,8 +642,8 @@ public class IoTDBSessionRelationalIT {
       for (int row = 0; row < 15; row++) {
         int rowIndex = tablet.rowSize++;
         tablet.addTimestamp(rowIndex, timestamp + row);
-        tablet.addValue("id1", rowIndex, "id1:" + row);
-        tablet.addValue("attr1", rowIndex, "attr1:" + row);
+        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
       }
       session.insert(tablet);
@@ -654,8 +654,8 @@ public class IoTDBSessionRelationalIT {
       for (int row = 15; row < 30; row++) {
         int rowIndex = tablet.rowSize++;
         tablet.addTimestamp(rowIndex, timestamp + row);
-        tablet.addValue("id1", rowIndex, "id1:" + row);
-        tablet.addValue("attr1", rowIndex, "attr1:" + row);
+        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
       }
       session.insert(tablet);
