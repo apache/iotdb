@@ -1038,8 +1038,8 @@ public class TestUtils {
                     TestUtils.assertResultSetEqual(
                         executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
                   }
-                } catch (Exception e) {
-                  Assert.fail();
+                } catch (final Exception e) {
+                  Assert.fail(e.getMessage());
                 }
               });
     } catch (Exception e) {
