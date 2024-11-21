@@ -413,7 +413,9 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     }
 
     private void getDeviceEntriesWithDataPartitions(
-        final TableScanNode tableScanNode, final List<Expression> metadataExpressions, final String timeColumnName) {
+        final TableScanNode tableScanNode,
+        final List<Expression> metadataExpressions,
+        final String timeColumnName) {
 
       final List<String> attributeColumns = new ArrayList<>();
       int attributeIndex = 0;
