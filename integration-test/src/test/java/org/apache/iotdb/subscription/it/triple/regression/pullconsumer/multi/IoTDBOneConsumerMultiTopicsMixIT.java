@@ -114,7 +114,7 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionRegres
       timestamp += 2000;
     }
     session_src.insertTablet(tablet);
-    session_src.executeNonQueryStatement("flush;");
+    session_src.executeNonQueryStatement("flush");
   }
 
   @Test
@@ -131,7 +131,7 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionRegres
             + device
             + "(time,s_0,s_1)values(1710288000000,313,'2024-03-13 08:00:00+08:00');"); // 2024-03-13
     // 08:00:00+08:00
-    session_src.executeNonQueryStatement("flush;");
+    session_src.executeNonQueryStatement("flush");
     // Subscribe
     consumer = create_pull_consumer("multi_1consumer_mix", "tsfile_dataset", false, null);
     System.out.println("###### Before Subscription Query:");
@@ -290,7 +290,7 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionRegres
             + device
             + "(time,s_0,s_1)values(1703980800000,3.45,'2023-12-31 08:00:00+08:00');"); // 2023-12-31 08:00:00+08:00
     insert_data(System.currentTimeMillis());
-    session_src.executeNonQueryStatement("flush;");
+    session_src.executeNonQueryStatement("flush");
     System.out.println(
         FORMAT.format(new Date())
             + " Unsubscribe after writing data src:"

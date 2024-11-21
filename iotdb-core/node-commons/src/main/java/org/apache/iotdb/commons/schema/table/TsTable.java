@@ -20,15 +20,14 @@
 package org.apache.iotdb.commons.schema.table;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -39,13 +38,14 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -56,25 +56,19 @@ public class TsTable {
   private static final TimeColumnSchema TIME_COLUMN_SCHEMA =
       new TimeColumnSchema(TIME_COLUMN_NAME, TSDataType.TIMESTAMP);
 
-  public static final Map<String, Object> TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_MAP =
-      new HashMap<>();
-
-  public static final String TTL_PROPERTY = "TTL";
-
-  static {
-    TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_MAP.put(
-        TTL_PROPERTY.toLowerCase(Locale.ENGLISH), new Binary("INF", TSFileConfig.STRING_CHARSET));
-  }
-
+  public static final String TTL_PROPERTY = "ttl";
+  public static final Set<String> TABLE_ALLOWED_PROPERTIES = Collections.singleton(TTL_PROPERTY);
   private final String tableName;
 
   private final Map<String, TsTableColumnSchema> columnSchemaMap = new LinkedHashMap<>();
+  private final Map<String, Integer> idColumnIndexMap = new HashMap<>();
 
   private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
   private Map<String, String> props = null;
 
   private transient int idNums = 0;
+  private transient int measurementNum = 0;
 
   public TsTable(final String tableName) {
     this.tableName = tableName;
@@ -94,12 +88,24 @@ public class TsTable {
     }
   }
 
+  public int getIdColumnOrdinal(final String columnName) {
+    readWriteLock.readLock().lock();
+    try {
+      return idColumnIndexMap.getOrDefault(columnName.toLowerCase(), -1);
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
   public void addColumnSchema(final TsTableColumnSchema columnSchema) {
     readWriteLock.writeLock().lock();
     try {
       columnSchemaMap.put(columnSchema.getColumnName(), columnSchema);
       if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
         idNums++;
+        idColumnIndexMap.put(columnSchema.getColumnName(), idNums - 1);
+      } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.MEASUREMENT)) {
+        measurementNum++;
       }
     } finally {
       readWriteLock.writeLock().unlock();
@@ -122,10 +128,15 @@ public class TsTable {
   public void removeColumnSchema(final String columnName) {
     readWriteLock.writeLock().lock();
     try {
-      final TsTableColumnSchema columnSchema = columnSchemaMap.remove(columnName);
+      final TsTableColumnSchema columnSchema = columnSchemaMap.get(columnName);
       if (columnSchema != null
           && columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
-        idNums--;
+        throw new SchemaExecutionException("Cannot remove an id column: " + columnName);
+      } else if (columnSchema != null) {
+        columnSchemaMap.remove(columnName);
+        if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.MEASUREMENT)) {
+          measurementNum--;
+        }
       }
     } finally {
       readWriteLock.writeLock().unlock();
@@ -150,6 +161,15 @@ public class TsTable {
     }
   }
 
+  public int getMeasurementNum() {
+    readWriteLock.readLock().lock();
+    try {
+      return measurementNum;
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
   public List<TsTableColumnSchema> getColumnList() {
     readWriteLock.readLock().lock();
     try {
@@ -168,8 +188,7 @@ public class TsTable {
   }
 
   public long getTableTTLInMS() {
-    return Long.parseLong(
-        getPropValue(TTL_PROPERTY.toLowerCase(Locale.ENGLISH)).orElse(Long.MAX_VALUE + ""));
+    return Long.parseLong(getPropValue(TTL_PROPERTY).orElse(Long.MAX_VALUE + ""));
   }
 
   public Optional<String> getPropValue(final String propKey) {

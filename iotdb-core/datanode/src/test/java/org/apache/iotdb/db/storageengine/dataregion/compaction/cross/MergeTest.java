@@ -142,11 +142,9 @@ abstract class MergeTest {
       throws IOException {
     for (TsFileResource tsFileResource : seqResList) {
       tsFileResource.remove();
-      tsFileResource.getModFile().remove();
     }
     for (TsFileResource tsFileResource : unseqResList) {
       tsFileResource.remove();
-      tsFileResource.getModFile().remove();
     }
 
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();

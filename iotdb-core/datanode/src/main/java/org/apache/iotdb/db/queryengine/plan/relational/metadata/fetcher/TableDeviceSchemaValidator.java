@@ -41,6 +41,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -78,9 +79,19 @@ public class TableDeviceSchemaValidator {
     final List<String> attributeKeyList = schemaValidation.getAttributeColumnNameList();
     final List<Object[]> attributeValueList = schemaValidation.getAttributeValueList();
 
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "Validating device schema {}.{} and other {} devices",
+          schemaValidation.getTableName(),
+          Arrays.toString(deviceIdList.get(0)),
+          deviceIdList.size() - 1);
+    }
     ValidateResult validateResult =
         validateDeviceSchemaInCache(
             schemaValidation, deviceIdList, attributeKeyList, attributeValueList);
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("{} devices are missing", validateResult.missingDeviceIndexList.size());
+    }
 
     if (!validateResult.missingDeviceIndexList.isEmpty()) {
       validateResult =
