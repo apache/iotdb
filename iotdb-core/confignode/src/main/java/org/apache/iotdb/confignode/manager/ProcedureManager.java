@@ -1104,6 +1104,15 @@ public class ProcedureManager {
     }
   }
 
+  public TSStatus createConsensusPipe(TCreatePipeReq req) {
+    try {
+      final long procedureId = executor.submitProcedure(new CreatePipeProcedureV2(req));
+      return handleConsensusPipeProcedure(procedureId);
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
+    }
+  }
+
   public TSStatus createPipe(TCreatePipeReq req) {
     try {
       final long procedureId = executor.submitProcedure(new CreatePipeProcedureV2(req));
@@ -1138,6 +1147,15 @@ public class ProcedureManager {
     }
   }
 
+  public TSStatus startConsensusPipe(String pipeName) {
+    try {
+      final long procedureId = executor.submitProcedure(new StartPipeProcedureV2(pipeName));
+      return handleConsensusPipeProcedure(procedureId);
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
+    }
+  }
+
   public TSStatus startPipe(String pipeName) {
     try {
       final long procedureId = executor.submitProcedure(new StartPipeProcedureV2(pipeName));
@@ -1150,6 +1168,15 @@ public class ProcedureManager {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
             .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
       }
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
+    }
+  }
+
+  public TSStatus stopConsensusPipe(String pipeName) {
+    try {
+      final long procedureId = executor.submitProcedure(new StopPipeProcedureV2(pipeName));
+      return handleConsensusPipeProcedure(procedureId);
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
     }
@@ -1172,6 +1199,15 @@ public class ProcedureManager {
     }
   }
 
+  public TSStatus dropConsensusPipe(String pipeName) {
+    try {
+      final long procedureId = executor.submitProcedure(new DropPipeProcedureV2(pipeName));
+      return handleConsensusPipeProcedure(procedureId);
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
+    }
+  }
+
   public TSStatus dropPipe(String pipeName) {
     try {
       final long procedureId = executor.submitProcedure(new DropPipeProcedureV2(pipeName));
@@ -1186,6 +1222,23 @@ public class ProcedureManager {
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
+    }
+  }
+
+  private TSStatus handleConsensusPipeProcedure(final long procedureId) {
+    final List<TSStatus> statusList = new ArrayList<>();
+    final boolean isSucceed =
+        waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
+    if (isSucceed) {
+      return statusList.get(0);
+    } else {
+      // if time out, optimistically believe that this procedure will execute successfully.
+      if (statusList.get(0).getMessage().equals(PROCEDURE_TIMEOUT_MESSAGE)) {
+        return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      }
+      // otherwise, some exceptions must have occurred, throw them.
+      return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
+          .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
     }
   }
 
