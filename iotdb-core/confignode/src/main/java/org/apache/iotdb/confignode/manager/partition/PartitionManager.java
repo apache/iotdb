@@ -519,11 +519,11 @@ public class PartitionManager {
         }
       }
     } catch (NotEnoughDataNodeException e) {
-      LOGGER.error(e.getMessage());
+      LOGGER.error("Extend region group failed", e);
       result.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
       result.setMessage(e.getMessage());
     } catch (DatabaseNotExistsException e) {
-      LOGGER.error(e.getMessage());
+      LOGGER.error("Extend region group failed", e);
       result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
       result.setMessage(e.getMessage());
     }

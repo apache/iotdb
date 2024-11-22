@@ -14,6 +14,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
@@ -58,18 +59,32 @@ public class TableDistributedPlanner {
   private final List<PlanOptimizer> optimizers;
   private final Metadata metadata;
 
+  @TestOnly
   public TableDistributedPlanner(
       Analysis analysis,
       SymbolAllocator symbolAllocator,
       LogicalQueryPlan logicalQueryPlan,
       Metadata metadata) {
+    this(
+        analysis,
+        symbolAllocator,
+        logicalQueryPlan,
+        metadata,
+        new DistributedOptimizeFactory(new PlannerContext(metadata, new InternalTypeManager()))
+            .getPlanOptimizers());
+  }
+
+  public TableDistributedPlanner(
+      Analysis analysis,
+      SymbolAllocator symbolAllocator,
+      LogicalQueryPlan logicalQueryPlan,
+      Metadata metadata,
+      List<PlanOptimizer> distributedOptimizers) {
     this.analysis = analysis;
     this.symbolAllocator = requireNonNull(symbolAllocator, "symbolAllocator is null");
     this.logicalQueryPlan = logicalQueryPlan;
     this.mppQueryContext = logicalQueryPlan.getContext();
-    this.optimizers =
-        new DistributedOptimizeFactory(new PlannerContext(metadata, new InternalTypeManager()))
-            .getPlanOptimizers();
+    this.optimizers = distributedOptimizers;
     this.metadata = metadata;
   }
 

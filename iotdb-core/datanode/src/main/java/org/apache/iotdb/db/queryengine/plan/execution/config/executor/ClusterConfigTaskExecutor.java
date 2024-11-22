@@ -462,12 +462,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> deleteDatabase(
-      DeleteDatabaseStatement deleteDatabaseStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    TDeleteDatabasesReq req = new TDeleteDatabasesReq(deleteDatabaseStatement.getPrefixPath());
-    try (ConfigNodeClient client =
+      final DeleteDatabaseStatement deleteDatabaseStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    final TDeleteDatabasesReq req =
+        new TDeleteDatabasesReq(deleteDatabaseStatement.getPrefixPath()).setIsTableModel(false);
+    try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TSStatus tsStatus = client.deleteDatabases(req);
+      final TSStatus tsStatus = client.deleteDatabases(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
             "Failed to execute delete database {} in config node, status is {}.",
@@ -482,7 +483,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
@@ -1945,7 +1946,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       pipeMetaFromCoordinator =
           getAllPipeInfoResp.getAllPipeInfo().stream()
-              .map(PipeMeta::deserialize)
+              .map(PipeMeta::deserialize4Coordinator)
               .filter(
                   pipeMeta ->
                       pipeMeta
@@ -1964,7 +1965,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             new IoTDBException(exceptionMessage, TSStatusCode.PIPE_ERROR.getStatusCode()));
         return future;
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       final String exceptionMessage =
           String.format(
               "Failed to alter pipe %s, because %s",
@@ -2024,7 +2025,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                   pipeMetaFromCoordinator.getStaticMeta().getConnectorParameters().getAttribute());
         }
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.info("Failed to validate alter pipe statement, because {}", e.getMessage(), e);
       future.setException(
           new IoTDBException(e.getMessage(), TSStatusCode.PIPE_ERROR.getStatusCode()));
@@ -3144,7 +3145,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TDeleteDatabasesReq req =
         new TDeleteDatabasesReq(
-            Collections.singletonList(transformDBName(dropDB.getDbName().getValue())));
+                Collections.singletonList(transformDBName(dropDB.getDbName().getValue())))
+            .setIsTableModel(true);
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TSStatus tsStatus = client.deleteDatabases(req);

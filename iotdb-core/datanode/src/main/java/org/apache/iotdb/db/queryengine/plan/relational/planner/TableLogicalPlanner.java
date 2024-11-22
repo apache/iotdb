@@ -86,23 +86,23 @@ public class TableLogicalPlanner {
   private final Metadata metadata;
   private final WarningCollector warningCollector;
 
+  @TestOnly
   public TableLogicalPlanner(
       MPPQueryContext queryContext,
       Metadata metadata,
       SessionInfo sessionInfo,
       SymbolAllocator symbolAllocator,
       WarningCollector warningCollector) {
-    this.queryContext = queryContext;
-    this.metadata = metadata;
-    this.sessionInfo = requireNonNull(sessionInfo, "session is null");
-    this.symbolAllocator = requireNonNull(symbolAllocator, "symbolAllocator is null");
-    this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
-    this.planOptimizers =
+    this(
+        queryContext,
+        metadata,
+        sessionInfo,
+        symbolAllocator,
+        warningCollector,
         new LogicalOptimizeFactory(new PlannerContext(metadata, new InternalTypeManager()))
-            .getPlanOptimizers();
+            .getPlanOptimizers());
   }
 
-  @TestOnly
   public TableLogicalPlanner(
       MPPQueryContext queryContext,
       Metadata metadata,
