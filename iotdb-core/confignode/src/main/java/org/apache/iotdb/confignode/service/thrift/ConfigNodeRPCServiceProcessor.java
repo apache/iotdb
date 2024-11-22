@@ -476,7 +476,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus alterDatabase(TDatabaseSchema databaseSchema) {
+  public TSStatus alterDatabase(final TDatabaseSchema databaseSchema) {
     TSStatus errorResp = null;
 
     // TODO: Support alter the following fields
@@ -517,9 +517,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
       return errorResp;
     }
 
-    DatabaseSchemaPlan alterPlan =
+    final DatabaseSchemaPlan alterPlan =
         new DatabaseSchemaPlan(ConfigPhysicalPlanType.AlterDatabase, databaseSchema);
-    TSStatus resp = configManager.alterDatabase(alterPlan);
+    final TSStatus resp = configManager.alterDatabase(alterPlan);
 
     // Print log to record the ConfigNode that performs the set SetDatabaseRequest
     LOGGER.info("Execute AlterDatabase: {} with result: {}", databaseSchema, resp);

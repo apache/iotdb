@@ -204,7 +204,8 @@ public class ClusterSchemaManager {
   }
 
   /** Alter Database */
-  public TSStatus alterDatabase(DatabaseSchemaPlan databaseSchemaPlan, boolean isGeneratedByPipe) {
+  public TSStatus alterDatabase(
+      final DatabaseSchemaPlan databaseSchemaPlan, final boolean isGeneratedByPipe) {
     TSStatus result;
     TDatabaseSchema databaseSchema = databaseSchemaPlan.getSchema();
 
@@ -232,7 +233,7 @@ public class ClusterSchemaManager {
     }
     if (databaseSchema.isSetMinDataRegionGroupNum()) {
       // Validate alter DataRegionGroupNum
-      int minDataRegionGroupNum =
+      final int minDataRegionGroupNum =
           getMinRegionGroupNum(databaseSchema.getName(), TConsensusGroupType.DataRegion);
       if (databaseSchema.getMinDataRegionGroupNum() <= minDataRegionGroupNum) {
         result = new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode());
@@ -259,7 +260,7 @@ public class ClusterSchemaManager {
           databaseSchemaPlan.getSchema().getDataReplicationFactor(),
           databaseSchemaPlan.getSchema().getSchemaReplicationFactor());
       return result;
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       result.setMessage(e.getMessage());
