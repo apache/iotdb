@@ -434,6 +434,10 @@ public class CNPhysicalPlanGenerator
         new ConfigTableNode(null, ReadWriteIOUtils.readString(inputStream));
     tableNode.setTable(TsTable.deserialize(inputStream));
     tableNode.setStatus(TableNodeStatus.deserialize(inputStream));
+    final int size = ReadWriteIOUtils.readInt(inputStream);
+    for (int i = 0; i < size; ++i) {
+      tableNode.addPreDeletedColumn(ReadWriteIOUtils.readString(inputStream));
+    }
     return tableNode;
   }
 }
