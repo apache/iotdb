@@ -61,7 +61,6 @@ public class IoTDBRestServiceCaseWhenThenIT {
     DataNodeWrapper portConflictDataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
     port = portConflictDataNodeWrapper.getRestServicePort();
     httpClient = HttpClientBuilder.create().build();
-    prepareTableData();
   }
 
   @After
@@ -105,6 +104,7 @@ public class IoTDBRestServiceCaseWhenThenIT {
   @Test
   public void test() {
     ping();
+    prepareTableData();
     testKind1Basic();
     testKind2Basic();
     testShortCircuitEvaluation();

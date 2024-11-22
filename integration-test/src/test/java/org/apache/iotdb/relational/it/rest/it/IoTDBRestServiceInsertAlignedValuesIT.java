@@ -28,8 +28,13 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import org.apache.http.HttpEntity;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.util.EntityUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -59,7 +64,6 @@ public class IoTDBRestServiceInsertAlignedValuesIT {
     DataNodeWrapper portConflictDataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
     port = portConflictDataNodeWrapper.getRestServicePort();
     httpClient = HttpClientBuilder.create().build();
-    prepareTableData();
   }
 
   @After
@@ -79,8 +83,50 @@ public class IoTDBRestServiceInsertAlignedValuesIT {
 
   private static final String[] sqls = new String[] {"CREATE DATABASE t1"};
 
+  public void ping() {
+    HttpGet httpGet = new HttpGet("http://127.0.0.1:" + port + "/ping");
+    CloseableHttpResponse response = null;
+    try {
+      for (int i = 0; i < 30; i++) {
+        try {
+          response = httpClient.execute(httpGet);
+          break;
+        } catch (Exception e) {
+          if (i == 29) {
+            throw e;
+          }
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+        }
+      }
+
+      HttpEntity responseEntity = response.getEntity();
+      String message = EntityUtils.toString(responseEntity, "utf-8");
+      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      assertEquals(200, response.getStatusLine().getStatusCode());
+      assertEquals(200, Integer.parseInt(result.get("code").toString()));
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
   @Test
   public void test() {
+    ping();
+    prepareTableData();
     testInsertAlignedValues();
     testUpdatingAlignedValues();
     testInsertAlignedValuesWithSameTimestamp();
