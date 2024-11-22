@@ -36,6 +36,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentDatabase;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
@@ -420,6 +422,16 @@ public class IrTypeAnalyzer {
       process(node.getPattern(), context);
       node.getEscape().ifPresent(e -> process(e, context));
       return setExpressionType(node, BOOLEAN);
+    }
+
+    @Override
+    protected Type visitCurrentDatabase(final CurrentDatabase node, final Context context) {
+      return setExpressionType(node, StringType.STRING);
+    }
+
+    @Override
+    protected Type visitCurrentUser(final CurrentUser node, final Context context) {
+      return setExpressionType(node, StringType.STRING);
     }
 
     @Override
