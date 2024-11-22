@@ -81,6 +81,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
 
   ICompactionPerformer performer = new FastCompactionPerformer(false);
   CompactionConfigRestorer configRestorer = new CompactionConfigRestorer();
+
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     configRestorer.recordCompactionConfig();
