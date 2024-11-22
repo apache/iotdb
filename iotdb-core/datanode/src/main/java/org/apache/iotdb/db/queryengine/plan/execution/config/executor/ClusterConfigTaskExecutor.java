@@ -389,15 +389,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> alterDatabase(
-      DatabaseSchemaStatement databaseSchemaStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+      final DatabaseSchemaStatement databaseSchemaStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     // Construct request using statement
-    TDatabaseSchema databaseSchema =
+    final TDatabaseSchema databaseSchema =
         DatabaseSchemaTask.constructDatabaseSchema(databaseSchemaStatement);
-    try (ConfigNodeClient configNodeClient =
+    databaseSchema.setIsTableModel(false);
+    try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
-      TSStatus tsStatus = configNodeClient.alterDatabase(databaseSchema);
+      final TSStatus tsStatus = configNodeClient.alterDatabase(databaseSchema);
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         if (databaseSchemaStatement.getEnablePrintExceptionLog()) {
@@ -410,7 +411,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;

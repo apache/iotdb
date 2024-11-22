@@ -79,6 +79,7 @@ import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoRe
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
+import org.apache.iotdb.db.exception.metadata.DatabaseModelException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
@@ -200,6 +201,18 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
       final TDatabaseSchema currentSchema =
           mTree.getDatabaseNodeByDatabasePath(partialPathName).getAsMNode().getDatabaseSchema();
+
+      // Model conflict detection
+      if (alterSchema.isIsTableModel() && !currentSchema.isIsTableModel()) {
+        final DatabaseModelException exception =
+            new DatabaseModelException(currentSchema.getName(), false);
+        return RpcUtils.getStatus(exception.getErrorCode(), exception.getMessage());
+      } else if (!alterSchema.isIsTableModel() && currentSchema.isIsTableModel()) {
+        final DatabaseModelException exception =
+            new DatabaseModelException(currentSchema.getName(), true);
+        return RpcUtils.getStatus(exception.getErrorCode(), exception.getMessage());
+      }
+
       // TODO: Support alter other fields
       if (alterSchema.isSetMinSchemaRegionGroupNum()) {
         currentSchema.setMinSchemaRegionGroupNum(alterSchema.getMinSchemaRegionGroupNum());
