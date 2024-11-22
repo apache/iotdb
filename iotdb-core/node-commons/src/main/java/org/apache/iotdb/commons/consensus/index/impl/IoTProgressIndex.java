@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.consensus.index.impl;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nonnull;
@@ -37,6 +38,12 @@ import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class IoTProgressIndex extends ProgressIndex {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(IoTProgressIndex.class) + ProgressIndex.LOCK_SIZE;
+
+  // We assume that the integers are all cached, while the longs are all not
+  private static final long ENTRY_SIZE =
+      RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY + Long.BYTES;
 
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
@@ -231,5 +238,10 @@ public class IoTProgressIndex extends ProgressIndex {
   @Override
   public String toString() {
     return "IoTProgressIndex{" + "peerId2SearchIndex=" + peerId2SearchIndex + '}';
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE + peerId2SearchIndex.size() * ENTRY_SIZE;
   }
 }

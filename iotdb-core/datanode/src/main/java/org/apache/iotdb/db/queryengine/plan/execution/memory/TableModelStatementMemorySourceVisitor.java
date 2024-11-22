@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.execution.memory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter;
@@ -73,7 +74,8 @@ public class TableModelStatementMemorySourceVisitor
                 LocalExecutionPlanner.getInstance().metadata,
                 context.getQueryContext().getSession(),
                 symbolAllocator,
-                NOOP)
+                NOOP,
+                Coordinator.getInstance().getLogicalPlanOptimizers())
             .plan(context.getAnalysis());
     //    if (context.getAnalysis().isEmptyDataSource()) {
     //      return new StatementMemorySource(new TsBlock(0), header);
@@ -87,7 +89,8 @@ public class TableModelStatementMemorySourceVisitor
                 context.getAnalysis(),
                 symbolAllocator,
                 logicalPlan,
-                LocalExecutionPlanner.getInstance().metadata)
+                LocalExecutionPlanner.getInstance().metadata,
+                Coordinator.getInstance().getDistributionPlanOptimizers())
             .generateDistributedPlanWithOptimize(planContext);
 
     final List<String> lines =

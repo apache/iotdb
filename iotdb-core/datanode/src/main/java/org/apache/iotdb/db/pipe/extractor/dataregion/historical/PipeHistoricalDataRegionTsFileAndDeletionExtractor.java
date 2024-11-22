@@ -336,9 +336,10 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
       final String databaseName = dataRegion.getDatabaseName();
       if (Objects.nonNull(databaseName)) {
         isDbNameCoveredByPattern =
-            treePattern.coversDb(databaseName)
+            treePattern.isTreeModelDataAllowedToBeCaptured() && treePattern.coversDb(databaseName)
                 // The database name is prefixed with "root."
-                && tablePattern.coversDb(databaseName.substring(5));
+                || tablePattern.isTableModelDataAllowedToBeCaptured()
+                    && tablePattern.coversDb(databaseName.substring(5));
       }
     }
 
