@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.subscription.it.triple.regression.pullconsumer.mode;
 
+import java.util.Collections;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionConsumer;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -131,13 +132,14 @@ public class IoTDBSnapshotDevicePullConsumerDataSetIT extends AbstractSubscripti
     Thread.sleep(1000);
     insert_data(System.currentTimeMillis() - 30000L);
     // Consumption data
-    consume_data(consumer, session_dest);
-    String sql = "select count(s_0) from " + device;
-    System.out.println("src: " + getCount(session_src, sql));
-    check_count(4, sql, "Consumption data:" + pattern);
-    check_count(4, "select count(s_1) from " + device, "Consumption data: s_1");
-    check_count(0, "select count(s_0) from " + database + ".d_1", "Consumption Data: d_1");
-    check_count(0, "select count(s_0) from " + database2 + ".d_2", "Consumption data:d_2");
+    consume_data_await(consumer, session_dest, Collections.singletonList(() -> {
+      String sql = "select count(s_0) from " + device;
+      System.out.println("src: " + getCount(session_src, sql));
+      check_count(4, sql, "Consumption data:" + pattern);
+      check_count(4, "select count(s_1) from " + device, "Consumption data: s_1");
+      check_count(0, "select count(s_0) from " + database + ".d_1", "Consumption Data: d_1");
+      check_count(0, "select count(s_0) from " + database2 + ".d_2", "Consumption data:d_2");
+    }));
     insert_data(System.currentTimeMillis());
     // Unsubscribe
     consumer.unsubscribe(topicName);
@@ -146,8 +148,11 @@ public class IoTDBSnapshotDevicePullConsumerDataSetIT extends AbstractSubscripti
     assertEquals(subs.getSubscriptions().size(), 1, "show subscriptions after re-subscribing");
     // Consumption data: Progress is not retained after unsubscribing and re-subscribing. Full
     // synchronization.
-    consume_data(consumer, session_dest);
-    check_count(8, "select count(s_0) from " + device, "Consume data again:" + pattern);
-    check_count(8, "select count(s_1) from " + device, "Consumption data: s_1");
+    consume_data_await(consumer, session_dest, Collections.singletonList(() -> {
+      String sql = "select count(s_0) from " + device;
+      System.out.println("src: " + getCount(session_src, sql));
+      check_count(8, "select count(s_0) from " + device, "Consume data again:" + pattern);
+      check_count(8, "select count(s_1) from " + device, "Consumption data: s_1");
+    }));
   }
 }
