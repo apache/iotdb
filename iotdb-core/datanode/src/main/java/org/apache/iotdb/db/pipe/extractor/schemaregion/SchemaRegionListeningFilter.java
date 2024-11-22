@@ -89,7 +89,10 @@ public class SchemaRegionListeningFilter {
       // Table model
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.table.devices.update"),
-          Collections.singletonList(PlanNodeType.CREATE_OR_UPDATE_TABLE_DEVICE));
+          Collections.unmodifiableList(
+              Arrays.asList(
+                  PlanNodeType.CREATE_OR_UPDATE_TABLE_DEVICE,
+                  PlanNodeType.TABLE_DEVICE_ATTRIBUTE_UPDATE)));
 
     } catch (final IllegalPathException ignore) {
       // There won't be any exceptions here

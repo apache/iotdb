@@ -49,8 +49,10 @@ import java.util.Optional;
 import java.util.Set;
 
 public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
-  public static final PipePlanPatternParseVisitor PATTERN_PARSE_VISITOR =
-      new PipePlanPatternParseVisitor();
+  public static final PipePlanTreePatternParseVisitor TREE_PATTERN_PARSE_VISITOR =
+      new PipePlanTreePatternParseVisitor();
+  public static final PipePlanTablePatternParseVisitor TABLE_PATTERN_PARSE_VISITOR =
+      new PipePlanTablePatternParseVisitor();
 
   private SchemaRegionId schemaRegionId;
 
@@ -127,9 +129,16 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
   @Override
   protected Optional<PipeWritePlanEvent> trimRealtimeEventByPipePattern(
       final PipeWritePlanEvent event) {
-    return PATTERN_PARSE_VISITOR
+    return TREE_PATTERN_PARSE_VISITOR
         .process(((PipeSchemaRegionWritePlanEvent) event).getPlanNode(), treePattern)
-        .map(planNode -> new PipeSchemaRegionWritePlanEvent(planNode, event.isGeneratedByPipe()));
+        .flatMap(
+            planNode ->
+                TABLE_PATTERN_PARSE_VISITOR
+                    .process(((PipeSchemaRegionWritePlanEvent) event).getPlanNode(), tablePattern)
+                    .map(
+                        planNode1 ->
+                            new PipeSchemaRegionWritePlanEvent(
+                                planNode1, event.isGeneratedByPipe())));
   }
 
   @Override

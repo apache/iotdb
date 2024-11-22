@@ -785,7 +785,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         : status;
   }
 
-  private TSStatus executeStatementForTableModel(Statement statement, String dataBaseName) {
+  private TSStatus executeStatementForTableModel(
+      final Statement statement, final String dataBaseName) {
     try {
       autoCreateDatabaseIfNecessary(dataBaseName);
 
