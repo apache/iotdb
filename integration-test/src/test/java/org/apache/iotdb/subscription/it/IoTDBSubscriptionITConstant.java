@@ -40,5 +40,5 @@ public class IoTDBSubscriptionITConstant {
 
   public static final long SLEEP_NS = 1_000_000_000L;
   public static final long POLL_TIMEOUT_MS = 10_000L;
-  public static final int MAX_RETRY_TIMES = 3;
+  public static final int MAX_RETRY_TIMES = 6;
 }

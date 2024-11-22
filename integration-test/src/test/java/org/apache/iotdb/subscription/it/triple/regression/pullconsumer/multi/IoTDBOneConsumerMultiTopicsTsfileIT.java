@@ -150,7 +150,9 @@ public class IoTDBOneConsumerMultiTopicsTsfileIT extends AbstractSubscriptionReg
                 System.out.println(results);
                 rowCount.addAndGet(results.get(0));
                 rowCount.addAndGet(results.get(1));
-              } catch (InterruptedException e) {
+              } catch (InterruptedException
+                  | IoTDBConnectionException
+                  | StatementExecutionException e) {
                 throw new RuntimeException(e);
               }
             });

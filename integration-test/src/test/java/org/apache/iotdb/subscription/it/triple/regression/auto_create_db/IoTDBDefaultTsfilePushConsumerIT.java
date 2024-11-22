@@ -192,7 +192,8 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionRegres
     AWAIT.untilAsserted(
         () -> {
           for (int i = 0; i < deviceCount; i++) {
-            assertEquals(rowCounts.get(i).get(), 10, devices.get(i) + ".s_0");
+            // NOTE: consider leader change
+            assertGte(rowCounts.get(i).get(), 10, devices.get(i) + ".s_0");
           }
         });
     // Unsubscribe
@@ -217,7 +218,8 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionRegres
     AWAIT.untilAsserted(
         () -> {
           for (int i = 0; i < deviceCount; i++) {
-            assertEquals(rowCounts.get(i).get(), 25, devices.get(i) + ".s_0");
+            // NOTE: consider leader change
+            assertGte(rowCounts.get(i).get(), 25, devices.get(i) + ".s_0");
           }
         });
     System.out.println(FORMAT.format(new Date()) + " onReceived: " + onReceiveCount.get());

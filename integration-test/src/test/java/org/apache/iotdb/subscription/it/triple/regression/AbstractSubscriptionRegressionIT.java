@@ -294,6 +294,7 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
       List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(POLL_TIMEOUT_MS));
       if (messages.isEmpty()) {
         retryCount++;
+        session_src.executeNonQueryStatement("flush");
         if (retryCount >= MAX_RETRY_TIMES) {
           break;
         }
@@ -312,17 +313,18 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
   }
 
   public List<Integer> consume_tsfile_withFileCount(
-      SubscriptionPullConsumer consumer, String device) throws InterruptedException {
+      SubscriptionPullConsumer consumer, String device)
+      throws InterruptedException, IoTDBConnectionException, StatementExecutionException {
     return consume_tsfile(consumer, Collections.singletonList(device));
   }
 
   public int consume_tsfile(SubscriptionPullConsumer consumer, String device)
-      throws InterruptedException {
+      throws InterruptedException, IoTDBConnectionException, StatementExecutionException {
     return consume_tsfile(consumer, Collections.singletonList(device)).get(0);
   }
 
   public List<Integer> consume_tsfile(SubscriptionPullConsumer consumer, List<String> devices)
-      throws InterruptedException {
+      throws InterruptedException, IoTDBConnectionException, StatementExecutionException {
     List<AtomicInteger> rowCounts = new ArrayList<>(devices.size());
     for (int i = 0; i < devices.size(); i++) {
       rowCounts.add(new AtomicInteger(0));
@@ -336,6 +338,7 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
       List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(POLL_TIMEOUT_MS));
       if (messages.isEmpty()) {
         retryCount++;
+        session_src.executeNonQueryStatement("flush");
         if (retryCount >= MAX_RETRY_TIMES) {
           break;
         }
