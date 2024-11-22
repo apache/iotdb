@@ -61,14 +61,11 @@ public class DeletionResourceManager implements AutoCloseable {
       String.format(
           "^_(?<%s>\\d+)-(?<%s>\\d+)\\%s$",
           REBOOT_TIME, MEM_TABLE_FLUSH_ORDER, DELETION_FILE_SUFFIX);
-  private static final String TABLE_NAME = "table";
   private final String dataRegionId;
   private final DeletionBuffer deletionBuffer;
   private final File storageDir;
   private final Map<AbstractDeleteDataNode, DeletionResource> deleteNode2ResourcesMap =
       new ConcurrentHashMap<>();
-  // 1 data region -> 1 kind of database(either a table one or a tree one) -> Determined
-  // deleteNodes/DALs type(either table or tree)
   private final Lock recoverLock = new ReentrantLock();
   private final Condition recoveryReadyCondition = recoverLock.newCondition();
   private volatile boolean hasCompletedRecovery = false;
