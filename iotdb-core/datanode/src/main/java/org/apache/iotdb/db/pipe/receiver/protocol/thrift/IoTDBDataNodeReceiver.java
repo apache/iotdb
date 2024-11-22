@@ -62,9 +62,9 @@ import org.apache.iotdb.db.pipe.metric.PipeDataNodeReceiverMetrics;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipePlanToStatementVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementDataTypeConvertExecutionVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementExceptionVisitor;
-import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementPatternParseVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementTSStatusVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementToBatchVisitor;
+import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementTreePatternParseVisitor;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -142,8 +142,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       new PipeStatementTSStatusVisitor();
   private static final PipeStatementExceptionVisitor STATEMENT_EXCEPTION_VISITOR =
       new PipeStatementExceptionVisitor();
-  private static final PipeStatementPatternParseVisitor STATEMENT_PATTERN_PARSE_VISITOR =
-      new PipeStatementPatternParseVisitor();
+  private static final PipeStatementTreePatternParseVisitor STATEMENT_PATTERN_PARSE_VISITOR =
+      new PipeStatementTreePatternParseVisitor();
   private final PipeStatementDataTypeConvertExecutionVisitor
       statementDataTypeConvertExecutionVisitor =
           new PipeStatementDataTypeConvertExecutionVisitor(this::executeStatementForTreeModel);

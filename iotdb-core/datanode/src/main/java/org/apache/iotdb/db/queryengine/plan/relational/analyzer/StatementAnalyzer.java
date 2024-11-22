@@ -2927,7 +2927,7 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitCreateDevice(
+    protected Scope visitCreateOrUpdateDevice(
         final CreateOrUpdateDevice node, final Optional<Scope> context) {
       queryContext.setQueryType(QueryType.WRITE);
       return null;

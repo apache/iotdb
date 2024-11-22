@@ -74,7 +74,7 @@ public class CreateOrUpdateDevice extends Statement {
 
   @Override
   public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitCreateDevice(this, context);
+    return visitor.visitCreateOrUpdateDevice(this, context);
   }
 
   @Override

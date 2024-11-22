@@ -35,7 +35,7 @@ public class PipePlanTablePatternParseVisitorTest {
   private final TablePattern tablePattern = new TablePattern(true, "^db[0-9]", "a.*b");
 
   @Test
-  public void testCreateDatabase() {
+  public void testCreateOrUpdateTableDevice() {
     testInput(
         new CreateOrUpdateTableDeviceNode(
             new PlanNodeId(""),
@@ -61,7 +61,7 @@ public class PipePlanTablePatternParseVisitorTest {
   }
 
   @Test
-  public void testAlterDatabase() {
+  public void testTableDeviceAttributeUpdate() {
     testInput(
         new TableDeviceAttributeUpdateNode(
             new PlanNodeId(""), "db1", "ab", null, null, null, null, null, null),
