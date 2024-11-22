@@ -342,6 +342,7 @@ public class RegionMaintainHandler {
         TimeUnit.SECONDS.sleep(1);
       } catch (InterruptedException ignore) {
         Thread.currentThread().interrupt();
+        break;
       }
     }
     LOGGER.warn(
