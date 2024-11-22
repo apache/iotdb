@@ -80,7 +80,7 @@ public class IoTDBPipeTableManualIT extends AbstractPipeDualManualIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
       final String dbName = "test";
-      TableModelUtils.createDataBase(senderEnv, dbName, 300);
+      TableModelUtils.createDatabase(senderEnv, dbName, 300);
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           dbName,
@@ -97,7 +97,7 @@ public class IoTDBPipeTableManualIT extends AbstractPipeDualManualIT {
         return;
       }
 
-      TableModelUtils.createDataBase(senderEnv, "noTransferDatabase", 300);
+      TableModelUtils.createDatabase(senderEnv, "noTransferDatabase", 300);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
@@ -238,7 +238,7 @@ public class IoTDBPipeTableManualIT extends AbstractPipeDualManualIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
       final String dbName = "test";
-      TableModelUtils.createDataBase(senderEnv, dbName, 300);
+      TableModelUtils.createDatabase(senderEnv, dbName, 300);
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           dbName,
