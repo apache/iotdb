@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
@@ -604,6 +606,26 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     // Inject table model into the extractor attributes
     node.getExtractorAttributes()
         .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+
+    // Extract all in table model
+    node.getExtractorAttributes()
+        .put(PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY, PipeInclusionOptions.ALL);
+    node.getExtractorAttributes().put(PipeExtractorConstant.EXTRACTOR_EXCLUSION_KEY, "");
+
+    // For maintainers
+    if (node.getExtractorAttributes().containsKey(SystemConstant.INNER_INCLUSION_KEY)) {
+      node.getExtractorAttributes()
+          .put(
+              PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY,
+              node.getExtractorAttributes().get(SystemConstant.INNER_INCLUSION_KEY));
+    }
+
+    if (node.getExtractorAttributes().containsKey(SystemConstant.INNER_EXCLUSION_KEY)) {
+      node.getExtractorAttributes()
+          .put(
+              PipeExtractorConstant.EXTRACTOR_EXCLUSION_KEY,
+              node.getExtractorAttributes().get(SystemConstant.INNER_EXCLUSION_KEY));
+    }
 
     return new CreatePipeTask(node);
   }
