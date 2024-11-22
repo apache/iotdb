@@ -324,7 +324,7 @@ public class CNPhysicalPlanGenerator
       if (type == STORAGE_GROUP_MNODE_TYPE) {
         name = deserializeDatabaseMNode(bufferedInputStream).getName();
       } else if (type == TABLE_MNODE_TYPE) {
-        name = deserializeTableMNode(inputStream).getName();
+        name = deserializeTableMNode(bufferedInputStream).getName();
       } else {
         internalMNode = deserializeInternalMNode(bufferedInputStream);
         // Child num
@@ -351,7 +351,7 @@ public class CNPhysicalPlanGenerator
             tableSet.clear();
             break;
           case TABLE_MNODE_TYPE:
-            final ConfigTableNode node = deserializeTableMNode(inputStream);
+            final ConfigTableNode node = deserializeTableMNode(bufferedInputStream);
             name = node.getName();
             tableSet.add(node.getTable());
             break;
