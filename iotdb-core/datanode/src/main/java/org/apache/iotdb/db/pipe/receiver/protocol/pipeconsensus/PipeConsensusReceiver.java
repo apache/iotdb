@@ -655,10 +655,10 @@ public class PipeConsensusReceiver {
 
   private TSStatus loadFileToDataRegion(String filePath, ProgressIndex progressIndex)
       throws IOException, LoadFileException {
-    TsFileResource resource = generateTsFileResource(filePath, progressIndex);
     DataRegion region =
         StorageEngine.getInstance().getDataRegion(((DataRegionId) consensusGroupId));
     if (region != null) {
+      TsFileResource resource = generateTsFileResource(filePath, progressIndex);
       region.loadNewTsFile(resource, true, false);
     }
     // Data region is null indicates that dr has been removed or migrated. In those cases, there is
